@@ -1,4 +1,17 @@
-### Proto -> TS generation
+### Run example
+
+**Preconditions**
+
+1. Install ts-node: `sudo npm i -g ts-node` to run `.ts` files in one step.
+2. Install js packages: `npm i`.
+3. Generate static ts/go modules from the `.protocol` files.
+
+**Then, simply run**
+
+1. `npm run start@go`
+2. `npm run start@ts`
+
+### TS <- Proto generation
 
 ```
 pbjs -t static-module -w commonjs -o build/ts/event.js event.proto
@@ -10,7 +23,7 @@ Additionally, TypeScript definitions of static modules are compatible with their
 1. Instead of using `new SomeMessage(...)`, always use `SomeMessage.create(...)` because reflection objects do not provide a constructor.
 2. Types, services and enums must start with an uppercase letter to become available as properties of the reflected types as well (i.e. to be able to use `MyMessage.MyEnum` instead of `root.lookup("MyMessage.MyEnum"))`.
 
-### Proto -> GO generation
+### GO <- Proto generation
 
 ```
 protoc -I protocol/ protocol/event.proto --go_out=plugins=grpc:protocol/build/go

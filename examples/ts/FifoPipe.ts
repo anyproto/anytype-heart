@@ -1,10 +1,8 @@
 import * as readline from "readline";
 import * as fs from "fs";
-import * as FIFO from "fifo-js";
 import { spawn } from "child_process";
-
 import { Event } from "../../protocol/build/ts/event/event";
-
+const FIFO = require("fifo-js"); // no ts-types for fifo-js
 
 export default class FifoPipe {
 
@@ -19,21 +17,24 @@ export default class FifoPipe {
 	private makeFifo () {
 		const mkfifoProcess = spawn('mkfifo', [this.js_temp]);
 		mkfifoProcess.on('exit', (status) => {
-			if (status != 0) {
-				throw new Error(`fail to create fifo with code: ${status}`);
-				return
-			};
-
-			console.log('fifo created: ' + this.js_temp);
 			this.fifo = new FIFO(this.js_temp);
 		});
 	}
 
+	private generateId () {
+		const chars: string[] = "0123456789ABCDEF".split('');
+		const len: number = 32;
+		const randChar = () => chars[Math.ceil(Math.random() * chars.length) - 1];
+		const arr: string[] = Array(len).fill(null).map(randChar);
+		return arr.join('');
+	}
+
 	public writer (msg: any) {
+		msg.id = this.generateId();
 		let eventMsg = Event.create(msg);
 		let encoded = Event.encode(eventMsg).finish();
-
-		let m: string = btoa(encoded.toString());
+		
+		let m: string = Buffer.from(encoded.toString()).toString('base64')
 		this.fifo.write(m);
 	}
 
@@ -43,17 +44,9 @@ export default class FifoPipe {
 		})
 
 		rl.on('line', (line: string) => {
-			// b64 -> msg + remove \n at the end
-			const msg: string = atob(line.slice(0, -1));
+			const msg: string = Buffer.from(line.slice(0, -1), 'base64').toString();
 			cb(Event.decode(Buffer.from(msg)));
 		});
-	}
-
-	public static generateId () {
-		let chars: string[] = "0123456789ABCDEF".split('');
-		let len: number = 32;
-		let arr: string[] = Array(len).fill(null).map(()=> chars[Math.ceil(Math.random()*chars.length) - 1]);
-		return arr.join('');
 	}
 
 }
