@@ -1,0 +1,15 @@
+{
+  "name": "ts-bridge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fifo-js": "^2.1.0",
+    "protobufjs": "^6.8.8"
+  }
+}
