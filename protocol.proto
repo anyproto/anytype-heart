@@ -1,0 +1,27 @@
+syntax="proto3";
+
+message Event {
+  string entity = 1;
+  string op = 2;
+  string data = 3;
+  string id = 4;
+}
+
+message Request {
+    string id = 1;
+    string entity = 2;
+    string target = 3;
+}
+
+message DocHeaders {
+    string id = 1;
+    repeated DocHeader docHeaders = 2;
+}
+
+message DocHeader {
+    string id = 1;
+    string name = 2;
+    string root = 3;
+    string version = 4;
+    string iconName = 5;
+}
