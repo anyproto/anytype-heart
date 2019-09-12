@@ -1,7 +1,7 @@
 import * as readline from "readline";
 import * as fs from "fs";
 import { spawn } from "child_process";
-import { Event } from "../../protocol/build/ts/event/event";
+import { Event } from "../build/ts/event/event";
 const FIFO = require("fifo-js"); // no ts-types for fifo-js
 
 export default class FifoPipe {

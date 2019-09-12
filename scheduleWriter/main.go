@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	protoEV "../protocol/build/go/event"
+	protoEV "../build/go/event"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -18,15 +18,12 @@ var js_temp = "/var/tmp/.js_pipe"
 
 func main() {
 	syscall.Mkfifo(go_temp, 0600)
-	f, err := os.OpenFile(go_temp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	// go scheduleWriter(f)
-	reader(f)
+
+	go scheduleWriter()
+	reader()
 }
 
-func reader(f *os.File) {
+func reader() {
 	file, err := os.OpenFile(js_temp, os.O_CREATE, os.ModeNamedPipe)
 	if err != nil {
 		log.Fatal("Open named pipe file error:", err)
@@ -49,7 +46,6 @@ func reader(f *os.File) {
 			}
 
 			fmt.Println("event:", event)
-			f.WriteString(string(line))
 		}
 	}
 }
@@ -59,8 +55,12 @@ func write(f *os.File, data []byte) {
 	f.WriteString(string(encoded) + "\n")
 }
 
-func scheduleWriter(f *os.File) {
+func scheduleWriter() {
 	fmt.Println("start schedule writing.")
+	f, err := os.OpenFile(go_temp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
 
 	for {
 		event := &protoEV.Event{
