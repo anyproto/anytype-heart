@@ -8,7 +8,7 @@ import (
 	"os"
 	"syscall"
 
-	protoEV "../build/go/event"
+	protoEV "../build/go"
 	"github.com/golang/protobuf/proto"
 )
 

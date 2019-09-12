@@ -5,9 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start@ts": "ts-node ts/CLI-example.ts",
-    "start@repeater": "go run repeater/main.go",
-    "start@schedule": "go run scheduleWriter/main.go"
+    "build-all": "npm-run-all build:*",
+    "build:go": "protoc -I ./ protocol.proto --go_out=plugins=grpc:build/go",
+    "build:js": "pbjs -t static-module -w commonjs -o build/ts/protocol.js protocol.proto",
+    "build:ts": "pbts -o build/ts/protocol.d.ts build/ts/protocol.js",
+    
+    "start:ts": "ts-node ts/CLI-example.ts",
+    "start:repeater": "go run repeater/main.go",
+    "start:schedule": "go run scheduleWriter/main.go"
   },
   "author": "",
   "license": "ISC",
