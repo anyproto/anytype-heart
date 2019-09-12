@@ -1,15 +1,16 @@
 package main
 
 import (
-	"encoding/base64"
-	"github.com/golang/protobuf/proto"
-	protoEV "../protocol/build/go/event"
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
 	"syscall"
 	"time"
+
+	protoEV "../protocol/build/go/event"
+	"github.com/golang/protobuf/proto"
 )
 
 var go_temp = "/var/tmp/.go_pipe"
@@ -17,12 +18,15 @@ var js_temp = "/var/tmp/.js_pipe"
 
 func main() {
 	syscall.Mkfifo(go_temp, 0600)
-
-	go scheduleWriter()
-	reader()
+	f, err := os.OpenFile(go_temp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	// go scheduleWriter(f)
+	reader(f)
 }
 
-func reader() {
+func reader(f *os.File) {
 	file, err := os.OpenFile(js_temp, os.O_CREATE, os.ModeNamedPipe)
 	if err != nil {
 		log.Fatal("Open named pipe file error:", err)
@@ -45,6 +49,7 @@ func reader() {
 			}
 
 			fmt.Println("event:", event)
+			f.WriteString(string(line))
 		}
 	}
 }
@@ -54,19 +59,15 @@ func write(f *os.File, data []byte) {
 	f.WriteString(string(encoded) + "\n")
 }
 
-func scheduleWriter() {
+func scheduleWriter(f *os.File) {
 	fmt.Println("start schedule writing.")
-	f, err := os.OpenFile(go_temp, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
 
 	for {
 		event := &protoEV.Event{
 			Entity: "document",
-			Op: "newBlock",
-			Data: "0x123132",
-			Id: "123456789",
+			Op:     "newBlock",
+			Data:   "0x123132",
+			Id:     "123456789",
 		}
 
 		data, err := proto.Marshal(event)
