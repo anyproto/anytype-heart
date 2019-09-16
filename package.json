@@ -10,7 +10,6 @@
     "build:ts": "pbjs -t static-module -w commonjs -o build/ts/protocol.js protocol.proto && pbts -o build/ts/protocol.d.ts build/ts/protocol.js",
     "build:java": "protoc -I ./ protocol.proto --java_out=build/java",
     "build:objc": "protoc -I ./ protocol.proto --objc_out=build/objc",
-    
     "start:ts": "ts-node ts/CLI-example.ts",
     "start:repeater": "go run repeater/main.go",
     "start:schedule": "go run scheduleWriter/main.go"
@@ -18,7 +17,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chokidar": "^3.0.2",
     "fifo-js": "^2.1.0",
-    "protobufjs": "^6.8.8"
+    "protobufjs": "^6.8.8",
+    "walk": "^2.3.14"
   }
 }

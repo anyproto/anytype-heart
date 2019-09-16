@@ -13,15 +13,25 @@ message Request {
     string target = 3;
 }
 
-message DocHeaders {
+message State {
     string id = 1;
     repeated DocHeader docHeaders = 2;
+    string currentDocId = 3;
 }
 
 message DocHeader {
     string id = 1;
     string name = 2;
-    string root = 3;
-    string version = 4;
-    string iconName = 5;
+    string version = 3;
+    string icon = 4;
+}
+
+message Document {
+    DocHeader header = 1;
+    repeated Block blocks = 2;
+}
+
+message Block {
+    string id = 1;
+    string content = 2;
 }
