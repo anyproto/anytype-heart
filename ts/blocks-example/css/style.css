@@ -1,0 +1,37 @@
+html { width:100%; height:100%; }
+body { margin:0px; -webkit-user-select:none; overflow-x:hidden; color:rgb(255,255,255); font-family:'Inconsolata', monospace !important; width:100%; height:100%; }
+* { font-family:'Inconsolata', monospace !important; }
+.status-line-left { position:absolute; top:3px; left:80px; color:#777; font-size:12px; }
+.status-line-right { position:absolute; top:3px; right:8px; color:#777; font-size:12px; }
+.app { background-color:rgb(40,40,40) !important; width:100%; height:100%; }
+.main-content { margin-left:20px; margin-top:2px; background-color:rgb(40,40,40); display:inline-block; width:100%; min-width:800px;}
+
+.msg { padding:23px 100px 20px 25px; width:100%; } 
+.msg > h1 { font-size:42px; padding-left:48px; display:block; padding-bottom:8px; border-bottom:1px solid #505050; font-weight:300; margin-top:14px; }
+.msg > p { font-size:17px; padding:0px 60px 15px 48px; font-weight:200; }
+
+.title-bar { background-color:rgb(27,27,27); width:70px; height:100%; position:absolute; }
+.panel-link { display:block; color:rgb(220,220,220); font-size:30px; vertical-align:center; text-align:center; position:relative; top:20px; width:70px; height:54px; padding-top:25px; }
+.panel-link:hover { background-color:rgb(25,25,25); cursor:pointer;}
+.panel-link:active { background-color:rgb(21,21,21); color:rgb(120,120,120); }
+.panel-link.active { background-color:rgb(10,10,10); }
+
+.explorer { margin-left:70px; }
+.explorer > .line { display:flex; width:760px; min-height:50px; }
+.explorer > .line > .header { margin-bottom:30px; height:50px; font-size:42px; display:block; padding-bottom:5px; border-bottom:1px solid #505050; font-weight:300; margin-top:39px; width:100%; }
+.explorer > .line.first { justify-content: space-between; }
+.explorer > .line.first > .icon { position:relative; top:12px; height:90px; }
+
+.explorer > .add-block { border-color:rgb(120,120,120); color:rgb(120,120,120); outline:none; background-color:rgb(40,40,40); color:white; padding:12px; margin-bottom:10px; position:relative; bottom:-1px; font-size:15px; }
+/* .explorer > .block {} */
+.explorer > .block > .input {width:700px; height:100px; background-color:white; border:1px solid black; color:black; padding:5px}
+
+
+/* .explorer > .line.first > .inp-section > .input { color:rgb(200,200,200); font-weight:200; height:50px; font-size:23px; background-color:rgb(40,40,40); width:485px; padding:20px 0px 20px 0px; border:none; border-bottom:1px solid #505050; font-family:'Inconsolata', monospace !important; }
+.explorer > .line.first > .inp-section > .input:focus { outline:none; border-color:#909090 }
+.explorer > .line.first > .inp-section > .get { border-color:rgb(120,120,120); color:rgb(120,120,120); outline:none; background-color:rgb(40,40,40); color:white; padding:12px; margin-top:4px; position:relative; bottom:-1px; font-size:15px; margin-left:10px; }
+.explorer > .line.first > .inp-section > .get:hover { background-color:rgb(35,35,35); cursor:pointer; }
+.explorer > .line.first > .inp-section > .get:active { border-color:rgb(50,50,50); background-color:rgb(32,32,32); color:rgb(120,120,120); } */
+
+.explorer > .line > .balance {font-size: 25px; text-align:right; width:100%; padding:0px 2px 20px 0px; margin-top: -10px; }
+
