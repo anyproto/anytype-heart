@@ -1,7 +1,22 @@
 ### User stories
 
 #### 1. Холодный запуск
+
+```js
+// 1. Клиент передает мнемонику в middle, которую ввел пользователь
+Front: Package (id:'0x123', entity:'login', op:'mnemonic_request', data:'abc def ... xyz')
+// 2.A. Middle отвечает – ок, мнемоника корректная, как только получу твои данные – пришлю
+Middle: Package (id:'0x456' entity:'login' op:'mnemonic_reply', status:SUCCESS)
+// 3. Middle начинает слать аккаунты
+Middle: Package (id:'0x789' entity:'login', op:'acc_load', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
+Middle: Package (id:'0x912' entity:'login', op:'acc_load', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
+// Клиент отправляет аккаунт, под которым хочет работать
+Front: Package (id:'0x123', entity:'login', op:'acc_chosen', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
+```
+
 #### 2. Горячий запуск
+
+
 #### 3A. Получение списка документов (если store контролирует клиент)
 Нужно получить список id документов, их имена, аватарки, хеши последних актуальных версий 
 Когда нужен этот сценарий? Когда юзер хочет запустить главный экран.
