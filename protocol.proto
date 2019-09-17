@@ -1,29 +1,37 @@
 syntax="proto3";
 
+message Package {
+    string id = 1;  
+    oneof message {
+        Event event = 2;
+        Request request = 3;
+        State state = 4;
+        DocHeader docHeader = 5;
+        Document document = 6;
+        Block block = 7;
+    }
+}
+
 message Event {
   string entity = 1;
   string op = 2;
   string data = 3;
-  string id = 4;
 }
 
 message Request {
-    string id = 1;
-    string entity = 2;
-    string target = 3;
+    string entity = 1;
+    string target = 2;
 }
 
 message State {
-    string id = 1;
-    repeated DocHeader docHeaders = 2;
-    string currentDocId = 3;
+    repeated DocHeader docHeaders = 1;
+    string currentDocId = 2;
 }
 
 message DocHeader {
-    string id = 1;
-    string name = 2;
-    string version = 3;
-    string icon = 4;
+    string name = 1;
+    string version = 2;
+    string icon = 3;
 }
 
 message Document {
@@ -32,6 +40,5 @@ message Document {
 }
 
 message Block {
-    string id = 1;
-    string content = 2;
+    string content = 1;
 }
