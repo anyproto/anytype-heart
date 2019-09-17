@@ -1,7 +1,11 @@
-$ = require \jquery
-fs = require \fs
-FifoPipe = require \./build/fifo-pipe.js
-fifoPipe = new FifoPipe!
+require! {
+	jquery: $
+	fs
+	\./build/fifo-pipe.js : FifoPipe
+	\../../build/ts/protocol.js : { Package }
+}
+console.log \Package Package
+fifoPipe = new FifoPipe "/var/tmp/.go_pipe", "/var/tmp/.js_pipe"
 # setInterval (~> fifoPipe.writer("msg: #{state.i++}")), 500
 fifoPipe.reader (line) -> console.log line
 

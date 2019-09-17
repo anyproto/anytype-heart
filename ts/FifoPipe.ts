@@ -6,18 +6,22 @@ const FIFO = require("fifo-js"); // no ts-types for fifo-js
 
 export default class FifoPipe {
 
-	go_temp: string = "/var/tmp/.go_pipe";
-	js_temp: string = "/var/tmp/.js_pipe";
-	fifo: any;
+	read_from: string;
+	write_to: string;
+	fifo: any = new FIFO();
 
-	constructor () {
-		this.makeFifo();
+	constructor(read_from: string, write_to: string) {
+		this.read_from = read_from;
+		this.write_to = write_to;
+		this.makeFifo()
 	}
 
-	private makeFifo () {
-		const mkfifoProcess = spawn('mkfifo', [this.js_temp]);
+	private makeFifo() {
+		// spawn('rm', [this.write_to])
+		const mkfifoProcess = spawn('mkfifo', [this.write_to]);
 		mkfifoProcess.on('exit', (status) => {
-			this.fifo = new FIFO(this.js_temp);
+			this.fifo = new FIFO(this.write_to);
+			console.log('FIFO:', this.fifo, 'status:', status)
 		});
 	}
 
@@ -39,12 +43,13 @@ export default class FifoPipe {
 	}
 
 	public reader (cb: any) {
-		let rl = readline.createInterface({
-			input: fs.createReadStream(this.go_temp)
-		})
-
-		rl.on('line', (line: string) => {
-			const msg: string = Buffer.from(line.slice(0, -1), 'base64').toString();
+		// let rl = readline.createInterface({
+		// 	input: fs.createReadStream(this.read_from)
+		// })
+		// if (!this.fifo) return;
+		this.fifo.setReader( (line: string) => {
+			console.log('LINE:', line)
+			const msg: string = Buffer.from(line, 'base64').toString();
 			cb(Event.decode(Buffer.from(msg)));
 		});
 	}

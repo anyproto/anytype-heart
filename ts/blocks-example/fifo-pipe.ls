@@ -9,24 +9,27 @@ proto = fs.readFileSync \../../protocol.proto
 protobuf = require \protobufjs
 
 class FifoPipe
-	~> @make-fifo!
-
-	go_temp: \/var/tmp/.go_pipe
-	js_temp: \/var/tmp/.js_pipe
 	i: 0
 
+	(@read_from, @write_to)~> 
+		@make-fifo!
+
 	make-fifo:~>
-		mkfifoProcess = spawn('mkfifo',  [@js_temp])
+		mkfifoProcess = spawn('mkfifo',  [@write_to])
 		mkfifoProcess.on 'exit', (code) ~>
-			if (code == 0) => console.log('fifo created: ' + @js_temp)
+			if (code == 0) => console.log('fifo created: ' + @write_to)
 			else console.log('fail to create fifo with code:  ' + code)
-			@fifo = new FIFO @js_temp
+			@fifo = new FIFO @write_to
 
 	writer:(msg)~>
 		root = protobuf.parse(proto, { keepCase: true }).root # or use Root#load
+		
+		
 		Event = root.lookup("Event")
 		eventMsg = Event.create msg
 		encoded = Event.encode(eventMsg).finish()
+		
+		
 		# console.log 'SENT->', msg
 
 		m = btoa(encoded.toString())
@@ -34,7 +37,7 @@ class FifoPipe
 
 	reader:(cb)~>
 		rl = readline.createInterface do
-			input: fs.createReadStream @go_temp
+			input: fs.createReadStream @read_from
 
 		rl.on \line, (line)~>
 			root = protobuf.parse(proto, { keepCase: true }).root # or use Root#load
