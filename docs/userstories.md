@@ -13,8 +13,8 @@ Middle: Package (id:'0x678', Account {name:'Carlito', id:'0xabcabc', icon:'0x123
 // 3.B. Middle сообщает об ошибке
 Middle: Package (id:'0x765', Reply {to:'0x123', status:WRONG_MNEMONIC, message:'Mnemonic is wrong'}})
 // 4. Клиент отправляет аккаунт, под которым хочет работать
-Front: Package (id:'0x545', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
 Middle: Package (id:'0x789', Reply {to:'0x545',  message:'', status:SELECT}})
+Middle: Package (id:'0x777', Reply {to:'0789',  message:'', status:SUCCESS}})
 ```
 
 #### 2. Sign up
