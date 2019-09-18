@@ -1,30 +1,46 @@
 ### User stories
 
+#### 0. Как ответы задавать
+```js
+// 1. Избыточная информация, плюс Result получится слишком кастомным
+Package (id:'0x765', Reply {to:'0x123', error:Error{ type:WRONG_MNEMONIC, message:'Mnemonic is wrong' }, Result:{ type:FAILURE }})
+// 2. Сообщение тоже получается ибыточным. из Error.type мы можем его получать на клиенте, плюс локализация
+Package (id:'0x765', Status{ type:WRONG_MNEMONIC, message:'Mnemonic is wrong' })
+// 3. 
+Package (id:'0x765', Error{ type:WRONG_MNEMONIC })
+Package (id:'0x765', Success{})
+// 4. 
+Package (id:'0x765', Status{ type:WRONG_MNEMONIC })
+Package (id:'0x765', Status{ type:SUCCESS })
+```
+
+Выбрали четвертый вариант
+
+
 #### 1. Log in
 
 ```js
-// 1. Клиент просит создать аккаунт
-// 2. Клиент передает мнемонику в middle, которую ввел пользователь
+// 1. Клиент передает мнемонику в middle, которую ввел пользователь
 Front: Package (id:'0x123',  Login { mnemonic:'abc def ... xyz', pin:'12345'} )
-Middle: Package (id:'0x980', })
-// 3. Middle начинает слать аккаунты
+Middle: Package (id:'0x980', Status { replyTo:'0x123', type:SUCCESS })
+// 2. Middle начинает слать аккаунты
 Middle: Package (id:'0x789', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
 Middle: Package (id:'0x678', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
-// 3.B. Middle сообщает об ошибке
-Middle: Package (id:'0x765', Reply {to:'0x123', status:WRONG_MNEMONIC, message:'Mnemonic is wrong'}})
-// 4. Клиент отправляет аккаунт, под которым хочет работать
-Middle: Package (id:'0x789', Reply {to:'0x678',  message:'', status:SELECT}})
-Middle: Package (id:'0x777', Reply {to:'0789',  message:'', status:SUCCESS}})
+// 2.B. Middle сообщает об ошибке
+Middle: Package (id:'0x765', Status { replyTo'0x123': type: WRONG_MNEMONIC })
+// 3. Клиент отправляет аккаунт, под которым хочет работать
+Front: Package (id:'0x789', AccountSelect {id:'0xabcabc'}})
+Middle: Package (id:'0x777', Status { replyTo'0x789': type: SUCCESS })
 ```
 
 #### 2. Sign up
 ```js
-// 1. ПРосим создать аккаунт
+// 1. Просим создать аккаунт
 Front: Package (id:'0x123',  Request { type:CREATE_ACCOUNT } )
-Middle: Package (id:'0x980', Reply {to:'0x123',  message:'', status:SUCCESS}})
+Middle: Package (id:'0x980', Status { replyTo'0x123': type: SUCCESS })
 
-Front: Package (id:'0x123', Signup { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
-Middle: Package (id:'0x980', Reply {to:'0x123', status:SUCCESS, message:''}})
+Front: Package (id:'0x345', Signup { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
+Middle: Package (id:'0x456', Status { replyTo'0x345': type: SUCCESS })
 ```
 
 #### 3A. Получение списка документов (если store контролирует клиент)
