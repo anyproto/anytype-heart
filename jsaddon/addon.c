@@ -242,7 +242,7 @@ static napi_value GetData(napi_env env, napi_callback_info info) {
   assert(is_thread_item(env, ad->thread_item_constructor, jsthis));
   ThreadItem * item;
   assert(napi_ok == napi_unwrap(env, jsthis, (void ** ) & item));
-  assert(napi_ok == napi_create_external_arraybuffer(env, item->data, item->data_length+1, NULL, NULL, &data_property));
+  assert(napi_ok == napi_create_external_arraybuffer(env, item->data, item->data_length, NULL, NULL, &data_property));
   return data_property;
 }
 
