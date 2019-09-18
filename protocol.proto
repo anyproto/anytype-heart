@@ -13,21 +13,29 @@ message Package {
         Document document = 24;
         Block block = 25;
         
-        Request request = 26;
+        // Request request = 26;
         Status status = 27;
 
         Login login = 28;
-        Signup signup = 29;
+        CreateWallet createWallet = 29;
+        CreateAccount createAccount = 29;
     }
 }
 
-message Request {
+/*message Request {
     RequestType type = 1;
 }
 
 enum RequestType {
     CREATE_ACCOUNT = 0;
+}*/
+
+message CreateAccount {
+    string name = 1;
+    string icon = 2;
 }
+
+message CreateWallet {}
 
 message Login {
     string mnemonics = 1;

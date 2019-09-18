@@ -35,10 +35,10 @@ Middle: Package (id:'0x777', Status { replyTo'0x789': type: SUCCESS })
 #### 2. Sign up
 ```js
 // 1. Просим создать аккаунт
-Front: Package (id:'0x123',  Request { type:CREATE_ACCOUNT } )
+Front: Package (id:'0x123', CreateWallet {} )
 Middle: Package (id:'0x980', Status { replyTo'0x123': type: SUCCESS })
 
-Front: Package (id:'0x345', Signup { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
+Front: Package (id:'0x345', CreateAccount { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
 Middle: Package (id:'0x456', Status { replyTo'0x345': type: SUCCESS })
 ```
 
