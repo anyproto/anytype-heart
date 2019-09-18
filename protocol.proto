@@ -91,6 +91,7 @@ enum Status {
     FAILURE = 1;
     WRONG_MNEMONIC = 2;
     NOT_FOUND = 3;
+    SELECT = 4;
     // ...
 }
 
