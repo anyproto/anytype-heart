@@ -49,8 +49,7 @@ get-block=-> div class:'block', div class:'input' contentEditable:true, it.conte
 @msg =-> div class:'msg', (h1 {}, &0), (p {}, &1)
 
 @panel-link=->
-	isActive = if get-route! is it.name then 'show active' else ''
-	li class:"panel-link link #{isActive}" route:"#{it.name}",
+	li class:"panel-link link #{get-route! == it.name ? 'show active' : ''}" route:"#{it.name}",
 		a class:" " id:"#{it.name}-merkle-tab" 'aria-controls':"#{it.name}-merkle" 'aria-selected':"false", it.name
 
 # ======================= HELPERS

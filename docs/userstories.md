@@ -16,7 +16,6 @@ Package (id:'0x765', Status{ type:SUCCESS })
 
 Выбрали четвертый вариант
 
-
 #### 1. Log in
 
 ```js

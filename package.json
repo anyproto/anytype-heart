@@ -5,11 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build-all": "npm-run-all build:*",
-    "build:go": "protoc -I ./ protocol.proto --go_out=build/go",
-    "build:ts": "pbjs -t static-module -w commonjs -o build/ts/protocol.js protocol.proto && pbts -o build/ts/protocol.d.ts build/ts/protocol.js",
-    "build:java": "protoc -I ./ protocol.proto --java_out=build/java",
-    "build:objc": "protoc -I ./ protocol.proto --objc_out=build/objc",
+    "build-all": "node scripts/build.js",
     "start:ts": "ts-node ts/CLI-example.ts",
     "start:repeater": "go run repeater/main.go",
     "start:schedule": "go run scheduleWriter/main.go"
