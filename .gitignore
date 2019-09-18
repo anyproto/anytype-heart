@@ -1,0 +1,6 @@
+/.DS_Store
+/.idea
+/jsaddon/node_modules
+/jsaddon/build
+crash.log
+.DS_Store
