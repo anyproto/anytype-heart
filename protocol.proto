@@ -2,8 +2,6 @@ syntax="proto3";
 
 message Package {
     string id = 1;  
-    string entity = 2;
-    string op = 3;   
     oneof message {
         string data = 11;
         bool success = 12;
