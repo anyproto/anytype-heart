@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const {exec} = require('child_process');
+const { exec } = require('child_process');
+const util = require('util')
 
 const getCode = (filename) => {
     let fileRoot = fs.readFileSync( filename, 'utf8')
@@ -16,13 +17,19 @@ const getCode = (filename) => {
     return fileRoot.replace(/import \"[\S]+.proto\"\;/, '')
 }
 
-fs.writeFileSync('scripts/protocol.proto', getCode('protocol.proto'))
-exec('protoc -I ./ scripts/protocol.proto --go_out=build/go --java_out=build/java --objc_out=build/objc', { shell: true }, (stdout, err) => {
-    if (err) console.log(err)
-});
-
-exec('pbjs -t static-module -w commonjs -o build/ts/protocol.js scripts/protocol.proto && pbts -o build/ts/protocol.d.ts build/ts/protocol.js', { shell: true }, (stdout, err) => {
-    if (err) console.log(err)
-});
-
-fs.unlinkSync('scripts/protocol.proto')
+(async() => {
+    fs.writeFileSync('scripts/protocol.proto', getCode('protocol.proto'))
+    await util.promisify(exec)('protoc -I ./ scripts/protocol.proto --go_out=build/go --java_out=build/java --objc_out=build/objc')
+        .then((out) => {
+            if (out.stdout) console.log(out.stdout)
+            if (out.stderr) console.log(out.stderr)
+    });
+        
+    await util.promisify(exec)('pbjs -t static-module -w commonjs -o build/ts/protocol.js scripts/protocol.proto && pbts -o build/ts/protocol.d.ts build/ts/protocol.js')
+        .then((out) => {
+            if (out.stdout) console.log(out.stdout)
+            if (out.stderr) console.log(out.stderr)
+    });
+    
+    fs.unlinkSync('scripts/protocol.proto')
+})()
