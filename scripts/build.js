@@ -14,7 +14,7 @@ const getCode = (filename) => {
             fileRoot += file.replace('syntax="proto3";', '')
         })
 
-    return fileRoot.replace(/import \"[\S]+.proto\"\;/, '')
+    return fileRoot.replace(/import \"[\S]+.proto\"\;/g, '')
 }
 
 (async() => {
