@@ -3,23 +3,28 @@
 #### 1. Log in
 
 ```js
-// 1. Клиент передает мнемонику в middle, которую ввел пользователь
+// 1. Клиент просит создать аккаунт
+// 2. Клиент передает мнемонику в middle, которую ввел пользователь
 Front: Package (id:'0x123',  Login { mnemonic:'abc def ... xyz', pin:'12345'} )
-Middle: Package (id:'0x980', Status {replyTo:'0x123',  message:'', statusType:SUCCESS}})
-// 2. Middle начинает слать аккаунты
+Middle: Package (id:'0x980', Reply {to:'0x123',  message:'', status:SUCCESS}})
+// 3. Middle начинает слать аккаунты
 Middle: Package (id:'0x789', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
 Middle: Package (id:'0x678', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
-// 2.B. Middle сообщает об ошибке
-Middle: Package (id:'0x765', Status {replyTo:'0x123', statusType:WRONG_MNEMONIC, message:'Mnemonic is wrong'}})
-// Клиент отправляет аккаунт, под которым хочет работать
+// 3.B. Middle сообщает об ошибке
+Middle: Package (id:'0x765', Reply {to:'0x123', status:WRONG_MNEMONIC, message:'Mnemonic is wrong'}})
+// 4. Клиент отправляет аккаунт, под которым хочет работать
 Front: Package (id:'0x545', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
 Middle: Package (id:'0x789', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
 ```
 
 #### 2. Sign up
 ```js
+// 1. ПРосим создать аккаунт
+Front: Package (id:'0x123',  Request { type:CREATE_ACCOUNT } )
+Middle: Package (id:'0x980', Reply {to:'0x123',  message:'', status:SUCCESS}})
+
 Front: Package (id:'0x123', Signup { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
-Middle: Package (id:'0x980', Status {replyTo:'0x123', statusType:SUCCESS, message:''}})
+Middle: Package (id:'0x980', Reply {to:'0x123', status:SUCCESS, message:''}})
 ```
 
 #### 3A. Получение списка документов (если store контролирует клиент)

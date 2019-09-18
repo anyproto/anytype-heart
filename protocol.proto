@@ -11,16 +11,27 @@ message Package {
         DocHeader docHeader = 23;
         Document document = 24;
         Block block = 25;
-        Status status = 26;
-        Login login = 27;
-        Signup signup = 28;
+        
+        Request request = 26;
+        Reply reply = 27;
+
+        Login login = 28;
+        Signup signup = 29;
     }
 }
 
-message Status {
-    string replyTo = 1;
+message Reply {
+    string to = 1;
     string message = 2;
-    StatusType statusType = 3;
+    Status status = 3;
+}
+
+message Reuqest {
+    RequestType type = 1;
+}
+
+enum RequestType {
+    CREATE_ACCOUNT = 0;
 }
 
 message Login {
@@ -75,7 +86,7 @@ message Block {
     }
 }
 
-enum StatusType {
+enum Status {
     SUCCESS = 0;
     FAILURE = 1;
     WRONG_MNEMONIC = 2;
