@@ -1,21 +1,26 @@
 ### User stories
 
-#### 1. Холодный запуск
+#### 1. Log in
 
 ```js
 // 1. Клиент передает мнемонику в middle, которую ввел пользователь
-Front: Package (id:'0x123', entity:'login', op:'mnemonic_request', data:'abc def ... xyz')
-// 2.A. Middle отвечает – ок, мнемоника корректная, как только получу твои данные – пришлю
-Middle: Package (id:'0x456' entity:'login' op:'mnemonic_reply', status:SUCCESS)
-// 3. Middle начинает слать аккаунты
-Middle: Package (id:'0x789' entity:'login', op:'acc_load', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
-Middle: Package (id:'0x912' entity:'login', op:'acc_load', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
+Front: Package (id:'0x123',  Login { mnemonic:'abc def ... xyz', pin:'12345'} )
+Middle: Package (id:'0x980', Status {replyTo:'0x123',  message:'', statusType:SUCCESS}})
+// 2. Middle начинает слать аккаунты
+Middle: Package (id:'0x789', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
+Middle: Package (id:'0x678', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
+// 2.B. Middle сообщает об ошибке
+Middle: Package (id:'0x765', Status {replyTo:'0x123', statusType:WRONG_MNEMONIC, message:'Mnemonic is wrong'}})
 // Клиент отправляет аккаунт, под которым хочет работать
-Front: Package (id:'0x123', entity:'login', op:'acc_chosen', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
+Front: Package (id:'0x545', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
+Middle: Package (id:'0x789', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
 ```
 
-#### 2. Горячий запуск
-
+#### 2. Sign up
+```js
+Front: Package (id:'0x123', Signup { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
+Middle: Package (id:'0x980', Status {replyTo:'0x123', statusType:SUCCESS, message:''}})
+```
 
 #### 3A. Получение списка документов (если store контролирует клиент)
 Нужно получить список id документов, их имена, аватарки, хеши последних актуальных версий 

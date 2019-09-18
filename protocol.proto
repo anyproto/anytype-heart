@@ -13,7 +13,27 @@ message Package {
         DocHeader docHeader = 23;
         Document document = 24;
         Block block = 25;
+        Status status = 26;
+        Login login = 27;
+        Signup signup = 28;
     }
+}
+
+message Status {
+    string replyTo = 1;
+    string message = 2;
+    StatusType statusType = 3;
+}
+
+message Login {
+    string mnemonics = 1;
+    string pin = 2;
+}
+
+message Signup {
+    string name = 1;
+    string icon = 2;
+    string pin = 3;
 }
 
 message Account {
@@ -55,6 +75,14 @@ message Block {
         Text text = 11;
         // ...
     }
+}
+
+enum StatusType {
+    SUCCESS = 0;
+    FAILURE = 1;
+    WRONG_MNEMONIC = 2;
+    NOT_FOUND = 3;
+    // ...
 }
 
 enum MarkType {
