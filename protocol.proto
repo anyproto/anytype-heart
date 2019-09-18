@@ -1,10 +1,10 @@
 syntax="proto3";
+import "status.proto";
 
 message Package {
     string id = 1;  
     oneof message {
         string data = 11;
-        bool success = 12;
 
         Account account = 21;
         State state = 22;
@@ -18,11 +18,6 @@ message Package {
         Login login = 28;
         Signup signup = 29;
     }
-}
-
-message Status {
-    string replyTo = 1;
-    Status status = 2;
 }
 
 message Request {
@@ -90,7 +85,6 @@ enum StatusType {
     FAILURE = 1;
     WRONG_MNEMONIC = 2;
     NOT_FOUND = 3;
-    SELECT = 4;
     // ...
 }
 
