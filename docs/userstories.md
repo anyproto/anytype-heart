@@ -20,11 +20,11 @@ Package (id:'0x765', Status{ type:SUCCESS })
 
 ```js
 // 1. Клиент передает мнемонику в middle, которую ввел пользователь
-Front: Package (id:'0x123',  Login { mnemonic:'abc def ... xyz', pin:'12345'} )
+Front: Package (id:'0x123',  WalletLogin { mnemonic:'abc def ... xyz', pin:'12345'} )
 Middle: Package (id:'0x980', Status { replyTo:'0x123', type:SUCCESS })
 // 2. Middle начинает слать аккаунты
-Middle: Package (id:'0x789', Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}})
-Middle: Package (id:'0x678', Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'})
+Middle: Package (id:'0x789', AccountFound { Account {name:'Pablo', id:'0xabcabc', icon:'0x123123'}}})
+Middle: Package (id:'0x678', AccountFound{ Account {name:'Carlito', id:'0xabcabc', icon:'0x123123'}})
 // 2.B. Middle сообщает об ошибке
 Middle: Package (id:'0x765', Status { replyTo'0x123': type: WRONG_MNEMONIC })
 // 3. Клиент отправляет аккаунт, под которым хочет работать
@@ -35,10 +35,10 @@ Middle: Package (id:'0x777', Status { replyTo'0x789': type: SUCCESS })
 #### 2. Sign up
 ```js
 // 1. Просим создать аккаунт
-Front: Package (id:'0x123', CreateWallet {} )
+Front: Package (id:'0x123', WalletCreate {} )
 Middle: Package (id:'0x980', Status { replyTo'0x123': type: SUCCESS })
 
-Front: Package (id:'0x345', CreateAccount { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
+Front: Package (id:'0x345', AccountCreate { name:'Carlos', icon:'0x1231243257', pin:'1232724'} )
 Middle: Package (id:'0x456', Status { replyTo'0x345': type: SUCCESS })
 ```
 
