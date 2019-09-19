@@ -1,4 +1,4 @@
-module github.com/requilence/go-anytype
+module github.com/anytypeio/go-anytype-library
 
 go 1.12
 
