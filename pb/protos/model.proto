@@ -1,4 +1,6 @@
 syntax="proto3";
+package anytype;
+option go_package = "pb";
 
 message Account {
     string id = 1;
@@ -27,7 +29,7 @@ message Text {
     string content = 1;
     repeated Mark marks = 2;
     ContentType contentType = 3;
-} 
+}
 
 message Mark {
     MarkType type = 1;

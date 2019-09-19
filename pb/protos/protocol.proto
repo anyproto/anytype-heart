@@ -1,10 +1,13 @@
 syntax="proto3";
-import "./status.proto";
-import "./model.proto";
+package anytype;
+option go_package = "pb";
+
+import "status.proto";
+import "model.proto";
 
 // -------- Middle
 message Middle {
-    string id = 1;  
+    string id = 1;
     oneof message {
         Status status = 11;
         AccountFound accountFound = 12;
@@ -17,7 +20,7 @@ message AccountFound {
 
 // --------- Client
 message Client {
-    string id = 1;  
+    string id = 1;
     oneof event {
         WalletCreate walletCreate = 11;
         WalletLogin walletLogin = 12;
@@ -26,7 +29,9 @@ message Client {
     }
 }
 
-message WalletCreate {}
+message WalletCreate {
+    string pin = 1;
+}
 
 message WalletLogin {
     string mnemonics = 1;
