@@ -2,8 +2,8 @@ package mobile
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/requilence/go-anytype/pb"
-	"github.com/requilence/go-anytype/core"
+	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/core"
 )
 
 func DocumentsTree() ([]byte, error) {

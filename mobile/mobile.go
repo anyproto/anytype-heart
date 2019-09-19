@@ -11,8 +11,8 @@ import (
 	nativeconfig "github.com/ipfs/go-ipfs-config"
 	tconfig "github.com/textileio/go-textile/repo/config"
 
-	"github.com/requilence/go-anytype/core"
-	"github.com/requilence/go-anytype/pb"
+	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/textileio/go-textile/keypair"
 	tmobile "github.com/textileio/go-textile/mobile"
 )

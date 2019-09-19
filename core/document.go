@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/requilence/go-anytype/pb"
-	"github.com/requilence/go-anytype/util"
+	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/util"
 	tcore "github.com/textileio/go-textile/core"
 	mill2 "github.com/textileio/go-textile/mill"
 	tpb "github.com/textileio/go-textile/pb"

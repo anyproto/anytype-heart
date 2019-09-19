@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/requilence/go-anytype/mobile"
-	"github.com/requilence/go-anytype/pb"
+	"github.com/anytypeio/go-anytype-library/mobile"
+	"github.com/anytypeio/go-anytype-library/pb"
 )
 
 func main() {

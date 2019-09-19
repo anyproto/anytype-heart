@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/requilence/go-anytype/pb"
+	"github.com/anytypeio/go-anytype-library/pb"
 
 	libp2pc "github.com/libp2p/go-libp2p-crypto"
 	"github.com/segmentio/ksuid"

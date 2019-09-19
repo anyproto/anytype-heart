@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/mattbaird/jsonpatch"
-	pb "github.com/requilence/go-anytype/pb"
+	pb "github.com/anytypeio/go-anytype-library/pb"
 	tpb "github.com/textileio/go-textile/pb"
 )
 

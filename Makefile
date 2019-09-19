@@ -25,7 +25,7 @@ build:
 	mv textile dist/
 
 build-debug:
-	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/requilence/go-anytype/common))
+	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-library/common))
 	go build -ldflags "$(FLAGS)" -gcflags "all=-N -l"  -i -o textile textile.go
 	mkdir -p dist
 	mv textile dist/
@@ -38,13 +38,13 @@ install:
 
 ios:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/textileio\/go-textile\/common/g'))
-	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=ios github.com/requilence/go-anytype/mobile github.com/requilence/go-anytype/core
+	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-library/mobile github.com/anytypeio/go-anytype-library/core
 	mkdir -p mobile/dist/ios/ && cp -r Mobile.framework mobile/dist/ios/
 	rm -rf Mobile.framework
 
 android:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/textileio\/go-textile\/common/g'))
-	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=android -o mobile.aar github.com/requilence/go-anytype/mobile github.com/requilence/go-anytype/core
+	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-library/mobile github.com/anytypeio/go-anytype-library/core
 	mkdir -p mobile/dist/android/ && mv mobile.aar mobile/dist/android/
 
 protos:

@@ -3,7 +3,7 @@ package core
 import (
 	"encoding/json"
 
-	"github.com/requilence/go-anytype/pb"
+	"github.com/anytypeio/go-anytype-library/pb"
 )
 
 func (ver *DocumentVersion) ChildrenIds() []string {

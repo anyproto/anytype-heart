@@ -3,8 +3,8 @@ package anytype
 import (
 	"context"
 
-	"github.com/requilence/go-anytype/anytypepb"
-	"github.com/requilence/go-anytype/pb"
+	"github.com/anytypeio/go-anytype-library/anytypepb"
+	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/textileio/go-textile/wallet"
 )
 
