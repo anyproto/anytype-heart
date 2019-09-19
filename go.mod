@@ -2,7 +2,7 @@ module github.com/requilence/go-anytype
 
 go 1.12
 
-require github.com/textileio/go-textile v0.6.10-0.20190804184747-d762c7fa681a
+require github.com/textileio/go-textile v0.7.2-0.20190907000013-95a885123536
 
 require (
 	github.com/Microsoft/go-winio v0.4.14
@@ -20,6 +20,6 @@ require (
 	google.golang.org/grpc v1.19.0
 )
 
-replace github.com/textileio/go-textile => ../go-textile
+replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.0.0-20190919075542-f424be4eaf88
 
 replace github.com/mattbaird/jsonpatch => github.com/requilence/jsonpatch v0.0.0-20190628193028-ccadf8ccb170
