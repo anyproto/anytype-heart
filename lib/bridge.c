@@ -1,14 +1,7 @@
 
-typedef void (*voidFunc) (char*, char*, int);
+typedef void (*proxyFunc) (void* jsFuncData, char* method, char*, int);
 
-voidFunc clientFunc;
-
-void setClientFunc(voidFunc f)
+void ProxyCall(proxyFunc f, void* jsFuncData, char* method, char* data, int data_len)
 {
-	clientFunc = f;
-}
-
-void CallClientFunc(char* operation, char* data, int data_len)
-{
-    clientFunc(operation, data, data_len);
+    f(jsFuncData, method, data, data_len);
 }

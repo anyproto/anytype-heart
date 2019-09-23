@@ -9,65 +9,70 @@ import "C"
 
 import (
 	"fmt"
+	"time"
 	"unsafe"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	log "github.com/sirupsen/logrus"
+	"github.com/gogo/protobuf/proto"
+	"github.com/prometheus/common/log"
 )
 
-//export SetClientFunc
-func SetClientFunc(f C.voidFunc) {
-	C.setClientFunc(f)
+var addonProxyFunc C.proxyFunc
+var eventHandlerJsFunc unsafe.Pointer
+
+//export SetProxyFunc
+func SetProxyFunc(proxyFunc C.proxyFunc) {
+	addonProxyFunc = proxyFunc
 }
 
-//export Call
-func Call(_ *C.char, data unsafe.Pointer, dataLen C.int) {
+//export SetEventHandler
+func SetEventHandler(jsFunc unsafe.Pointer) {
+	eventHandlerJsFunc = jsFunc
+}
+
+//export Command
+func Command(command *C.char, data unsafe.Pointer, dataLen C.int, callbackJsFunc unsafe.Pointer) {
 	b := C.GoBytes(data, dataLen)
 	// todo: free the pointer?
-	var msg pb.Client
 
-	err := proto.Unmarshal(b, &msg)
-	if err != nil {
-		log.Errorf("unmarshal failed: %s", err.Error())
-		CallClientWithStatus(&pb.Status{
-			ReplyTo: msg.Id,
-			Description: err.Error(),
-			Status: &pb.Status_ArgError{pb.Status_DESERIALIZATION_FAILED},
-		})
-		return
-	}
-	switch v := msg.Event.(type) {
-	case *pb.Client_WalletCreate:
-		walletCreate(msg.Id, v.WalletCreate)
+	cmd := C.GoString(command)
+	var cd []byte
+	switch cmd {
+	case "WalletCreate":
+		cd = walletCreate(b)
 	default:
-		fmt.Printf("unknown type: %T\n", v)
+		fmt.Printf("unknown command type: %s\n", cmd)
 	}
-}
 
-func CallClientWithStatus(status *pb.Status){
-	// todo: wrap error to add a code
-	var msg = pb.Middle{
-		Id: RandStringRunes(6),
-		Message: &pb.Middle_Status{status},
+	if cd != nil {
+		C.ProxyCall(addonProxyFunc, callbackJsFunc, C.CString(""), C.CString(string(cd)), C.int(len(cd)))
 	}
-	CallClient(&msg)
-}
-
-func CallClient(msg *pb.Middle){
-	msg.Id = RandStringRunes(6)
-	b, err := proto.Marshal(msg)
-	if err != nil {
-		CallClientWithStatus(&pb.Status{
-			Description: err.Error(),
-			Status: &pb.Status_IntError{pb.Status_INTERNAL_ERROR},
+	go func(){
+		time.Sleep(time.Second*5)
+		SendEvent(&pb.Event{
+			Message: &pb.Event_AccountFound{
+				&pb.AccountFound{
+					Account: &pb.Account{
+						Id: "testID",
+						Name: "testName",
+					},
+				},
+			},
 		})
+	}()
+}
+
+func SendEvent(event *pb.Event) {
+	b, err := proto.Marshal(event)
+	if err != nil {
+		log.Errorf("failed to encode event: %s", err.Error())
 		return
 	}
 
-	C.CallClientFunc(C.CString(""), C.CString(string(b)), C.int(len(b)))
+	if eventHandlerJsFunc != nil {
+		C.ProxyCall(addonProxyFunc, eventHandlerJsFunc, C.CString(""), C.CString(string(b)), C.int(len(b)))
+	}
 }
-
 
 func main(){
 

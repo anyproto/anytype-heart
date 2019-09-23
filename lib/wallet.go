@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/proto"
 	"github.com/textileio/go-textile/keypair"
 	nativeconfig "github.com/ipfs/go-ipfs-config"
 	"github.com/textileio/go-textile/mobile"
@@ -15,50 +16,44 @@ import (
 
 const wordCount int = 12
 
-func walletCreate(msgId string, msg *pb.WalletCreate) {
+func walletCreate(b []byte) []byte {
+	callback := func(code pb.WalletCreateCallback_Error_Code, err error) []byte{
+		m := &pb.WalletCreateCallback{Error: &pb.WalletCreateCallback_Error{Code: code}}
+		if err != nil {
+			m.Error.Desc = err.Error()
+		}
+
+		return Marshal(m)
+	}
+
+	var msg pb.WalletCreate
+	err := proto.Unmarshal(b, &msg)
+	if err != nil {
+		return callback(pb.WalletCreateCallback_Error_BAD_INPUT, err)
+	}
+
 	wallet, err := wallet.WalletFromWordCount(wordCount)
 	if err != nil {
-		CallClientWithStatus(&pb.Status{
-			Description: err.Error(),
-			Status:      &pb.Status_IntError{pb.Status_INTERNAL_ERROR},
-		})
-		return
+		return callback(pb.WalletCreateCallback_Error_UNKNOWN_ERROR, err)
 	}
+
 	account, err := wallet.AccountAt(0, msg.Pin)
 	if err != nil {
-		// todo: correct error
-		CallClientWithStatus(&pb.Status{
-			Description: err.Error(),
-			Status:      &pb.Status_IntError{pb.Status_INTERNAL_ERROR},
-		})
-		return
+		return callback(pb.WalletCreateCallback_Error_UNKNOWN_ERROR, err)
 	}
 
 	kp, err := keypair.Parse(account.Seed())
 	if err != nil {
-		CallClientWithStatus(&pb.Status{
-			Description: err.Error(),
-			Status:      &pb.Status_IntError{pb.Status_INTERNAL_ERROR},
-		})
-		return
+		return callback(pb.WalletCreateCallback_Error_UNKNOWN_ERROR, err)
 	}
 
 	nativeconfig.DefaultBootstrapAddresses = []string{}
 	tconfig.DefaultBootstrapAddresses = core.BootstrapNodes
 
 	err = mobile.InitRepo(&mobile.InitConfig{Seed: account.Seed(), RepoPath: filepath.Join(os.TempDir(), kp.Address()), Debug: true})
-
 	if err != nil {
-		// todo: correct error
-		CallClientWithStatus(&pb.Status{
-			Description: err.Error(),
-			Status:      &pb.Status_IntError{pb.Status_INTERNAL_ERROR},
-		})
-		return
+		return callback(pb.WalletCreateCallback_Error_UNKNOWN_ERROR, err)
 	}
 
-	CallClientWithStatus(&pb.Status{
-		ReplyTo: msgId,
-		Status: &pb.Status_Success{Success:true},
-	})
+	return callback(pb.WalletCreateCallback_Error_NULL, nil)
 }
