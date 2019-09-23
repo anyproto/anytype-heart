@@ -18,7 +18,7 @@ lint:
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-library/common))
 	export GO111MODULE=on
-	go build -o dist/lib.so -ldflags "$(FLAGS)" -gcflags "all=-N -l" -buildmode=c-archive -v ./lib
+	go build -o dist/lib.so -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib
 
 build-js:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-library/common))
