@@ -36,6 +36,7 @@ github.com/anytypeio/go-anytype-library v0.0.0-20190919095000-60d09d6d7154 h1:Cu
 github.com/anytypeio/go-anytype-library v0.0.0-20190919095000-60d09d6d7154/go.mod h1:gJt1ZsQwlRX+jSvJlEBs9qdmkiipyVSL2PTT66iQClU=
 github.com/anytypeio/go-anytype-library v0.0.0-20190919100233-4494cc91894b h1:lIK/rclJ91FR4JAUN4nqxCbUTHHJNGy8L0rUCaVs6D8=
 github.com/anytypeio/go-anytype-library v0.0.0-20190919100233-4494cc91894b/go.mod h1:gJt1ZsQwlRX+jSvJlEBs9qdmkiipyVSL2PTT66iQClU=
+github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec/go.mod h1:upnwIsP8dsXfGQEjJ8BL9AY6yJHU6etVWozxVN4PyXc=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
