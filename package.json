@@ -5,10 +5,16 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build-all": "node scripts/build.js",
+    
     "start:ts": "ts-node ts/CLI-example.ts",
     "start:repeater": "go run repeater/main.go",
-    "start:schedule": "go run scheduleWriter/main.go"
+    "start:schedule": "go run scheduleWriter/main.go",
+
+    "build-all": "npm-run-all build:*",
+    "build:go": "protoc -I ./pb/protos $(find pb/protos -iname \"*.proto\") --go_out=pb/",
+    "build:ts": "pbjs -t static-module -w commonjs -o build/ts/commands.js ./pb/protos/*.proto && pbts -o build/ts/commands.d.ts build/ts/commands.js",
+    "build:java": "protoc -I ./pb/protos $(find pb/protos -iname \"*.proto\") --java_out=build/java/",
+    "build:objc": "protoc -I ./pb/protos $(find pb/protos -iname \"*.proto\") --objc_out=build/objc/" 
   },
   "author": "",
   "license": "ISC",
