@@ -2,40 +2,23 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
+import "models.proto";
+
 service ClientCommands {
-    rpc _WalletCreate (WalletCreate) returns (WalletCreateCallback);
-    rpc _WalletLogin (WalletLogin) returns (WalletLoginCallback);
-    rpc _AccountCreate (AccountCreate) returns (AccountCreateCallback);
-
+    rpc WalletCreate (WalletCreateQ) returns (WalletCreateR);
+    rpc WalletRecover (WalletRecoverQ) returns (WalletRecoverR);
+    rpc AccountCreate (AccountCreateQ) returns (AccountCreateR);
+    rpc AccountSelect (AccountSelectQ) returns (AccountSelectR);
 }
 
-message WalletCreate {
-   string pin = 1;
-}
-
-message WalletCreateCallback {
-    Error error = 1;
-
-    message Error {
-        Code code = 1;
-        string desc = 2;
-
-        enum Code {
-            NULL = 0;
-            UNKNOWN_ERROR = 1;
-            BAD_INPUT = 2;
-            // ...
-        }
-    }
-}
-
-message WalletLogin {
-    string mnemonics = 1;
+message WalletCreateQ {
+    string rootPath = 1;
     string pin = 2;
 }
 
-message WalletLoginCallback {
+message WalletCreateR {
     Error error = 1;
+    string mnemonic = 2;
 
     message Error {
         Code code = 1;
@@ -45,20 +28,40 @@ message WalletLoginCallback {
             NULL = 0;
             UNKNOWN_ERROR = 1;
             BAD_INPUT = 2;
-            NETWORK_ERROR = 3;
 
-            FAILED_TO_FIND_BACKUP = 101;
+            FAILED_TO_CREATE_LOCAL_REPO = 101;
+            // ...
         }
     }
 }
 
-message AccountCreate {
-    string name = 1;
-    string icon = 2;
+message WalletRecoverQ {
+    string rootPath = 1;
+    string mnemonic = 2;
 }
 
-message AccountCreateCallback {
+message WalletRecoverR {
     Error error = 1;
+    message Error {
+        Code code = 1;
+        string desc = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+        }
+    }
+}
+
+message AccountCreateQ {
+    string username = 1;
+    string avatarLocalPath = 2;
+}
+
+message AccountCreateR {
+    Error error = 1;
+    Account account = 2;
 
     message Error {
         Code code = 1;
@@ -67,11 +70,37 @@ message AccountCreateCallback {
         enum Code {
             NULL = 0;
             UNKNOWN_ERROR = 1;
-            // ...
+            BAD_INPUT = 2;
+
+            FAILED_TO_START_NODE = 101;
+            FAILED_TO_SET_NAME = 102;
+            FAILED_TO_SET_AVATAR = 103;
         }
     }
 }
 
-message AccountChosen {
-    string id = 1;
+message AccountSelectQ {
+    int64 index = 1;
+}
+
+message AccountSelectR {
+    Error error = 1;
+    Account account = 2;
+
+    message Error {
+        Code code = 1;
+        string desc = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+
+            FAILED_TO_CREATE_LOCAL_REPO = 101;
+            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102;
+            FAILED_TO_RUN_NODE = 103;
+            FAILED_TO_FIND_ACCOUNT_INFO = 104;
+        }
+    }
 }

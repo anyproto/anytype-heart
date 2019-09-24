@@ -8,10 +8,11 @@ package main
 import "C"
 
 import (
+	"context"
 	"fmt"
-	"time"
 	"unsafe"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/common/log"
@@ -19,6 +20,16 @@ import (
 
 var addonProxyFunc C.proxyFunc
 var eventHandlerJsFunc unsafe.Pointer
+
+type Instance struct{
+	rootPath string
+	mnemonic string
+	pin      string
+	accountSearchCancel context.CancelFunc
+	*core.Anytype
+}
+
+var instance = &Instance{}
 
 //export SetProxyFunc
 func SetProxyFunc(proxyFunc C.proxyFunc) {
@@ -34,32 +45,29 @@ func SetEventHandler(jsFunc unsafe.Pointer) {
 func Command(command *C.char, data unsafe.Pointer, dataLen C.int, callbackJsFunc unsafe.Pointer) {
 	b := C.GoBytes(data, dataLen)
 	// todo: free the pointer?
-
 	cmd := C.GoString(command)
-	var cd []byte
-	switch cmd {
-	case "WalletCreate":
-		cd = walletCreate(b)
-	default:
-		fmt.Printf("unknown command type: %s\n", cmd)
-	}
 
-	if cd != nil {
-		C.ProxyCall(addonProxyFunc, callbackJsFunc, C.CString(""), C.CString(string(cd)), C.int(len(cd)))
-	}
-	go func(){
-		time.Sleep(time.Second*5)
-		SendEvent(&pb.Event{
-			Message: &pb.Event_AccountFound{
-				&pb.AccountFound{
-					Account: &pb.Account{
-						Id: "testID",
-						Name: "testName",
-					},
-				},
-			},
-		})
+	go func() {
+		var cd []byte
+		switch cmd {
+		// Wallet
+		case "WalletCreate":
+			cd = WalletCreate(b)
+		case "WalletRecover":
+			cd = WalletRecover(b)
+		case "AccountCreate":
+			cd = AccountCreate(b)
+		case "AccountSelect":
+			cd = AccountSelect(b)
+		default:
+			fmt.Printf("unknown command type: %s\n", cmd)
+		}
+
+		if cd != nil {
+			C.ProxyCall(addonProxyFunc, callbackJsFunc, C.CString(""), C.CString(string(cd)), C.int(len(cd)))
+		}
 	}()
+
 }
 
 func SendEvent(event *pb.Event) {

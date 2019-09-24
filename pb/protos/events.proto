@@ -2,15 +2,53 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-import "model.proto";
+import "models.proto";
 
 // -------- Middle
 message Event {
     oneof message {
-        AccountFound accountFound = 12;
+        AccountAdd  accountAdd  = 1;
+        BlockCreate blockCreate = 102;
+        BlockUpdate blockUpdate = 103;
+        BlockRemove blockRemove = 104;
     }
 }
 
-message AccountFound {
-    Account account = 1;
+message AccountAdd {
+    Error error = 1;
+    int64  index  = 2;
+    Account account = 3;
+
+    message Error {
+        Code code = 1;
+        string desc = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+
+            FAILED_TO_CREATE_LOCAL_REPO = 101;
+            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102;
+            FAILED_TO_RUN_NODE = 103;
+            FAILED_TO_FIND_ACCOUNT_INFO = 104;
+        }
+    }
+}
+
+message BlockCreate {
+    string id = 1;
+    string docId = 2;
+    uint32 pos = 3;
+}
+
+message BlockUpdate {
+    string id = 1;
+    string docId = 2;
+    // ... update info
+}
+
+message BlockRemove {
+    string id = 1;
+    string docId = 2;
 }

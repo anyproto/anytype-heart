@@ -20,571 +20,751 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type WalletCreateCallback_Error_Code int32
+type WalletCreateR_Error_Code int32
 
 const (
-	WalletCreateCallback_Error_NULL          WalletCreateCallback_Error_Code = 0
-	WalletCreateCallback_Error_UNKNOWN_ERROR WalletCreateCallback_Error_Code = 1
-	WalletCreateCallback_Error_BAD_INPUT     WalletCreateCallback_Error_Code = 2
+	WalletCreateR_Error_NULL                        WalletCreateR_Error_Code = 0
+	WalletCreateR_Error_UNKNOWN_ERROR               WalletCreateR_Error_Code = 1
+	WalletCreateR_Error_BAD_INPUT                   WalletCreateR_Error_Code = 2
+	WalletCreateR_Error_FAILED_TO_CREATE_LOCAL_REPO WalletCreateR_Error_Code = 101
 )
 
-var WalletCreateCallback_Error_Code_name = map[int32]string{
+var WalletCreateR_Error_Code_name = map[int32]string{
+	0:   "NULL",
+	1:   "UNKNOWN_ERROR",
+	2:   "BAD_INPUT",
+	101: "FAILED_TO_CREATE_LOCAL_REPO",
+}
+
+var WalletCreateR_Error_Code_value = map[string]int32{
+	"NULL":                        0,
+	"UNKNOWN_ERROR":               1,
+	"BAD_INPUT":                   2,
+	"FAILED_TO_CREATE_LOCAL_REPO": 101,
+}
+
+func (x WalletCreateR_Error_Code) String() string {
+	return proto.EnumName(WalletCreateR_Error_Code_name, int32(x))
+}
+
+func (WalletCreateR_Error_Code) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{1, 0, 0}
+}
+
+type WalletRecoverR_Error_Code int32
+
+const (
+	WalletRecoverR_Error_NULL          WalletRecoverR_Error_Code = 0
+	WalletRecoverR_Error_UNKNOWN_ERROR WalletRecoverR_Error_Code = 1
+	WalletRecoverR_Error_BAD_INPUT     WalletRecoverR_Error_Code = 2
+)
+
+var WalletRecoverR_Error_Code_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 }
 
-var WalletCreateCallback_Error_Code_value = map[string]int32{
+var WalletRecoverR_Error_Code_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 }
 
-func (x WalletCreateCallback_Error_Code) String() string {
-	return proto.EnumName(WalletCreateCallback_Error_Code_name, int32(x))
+func (x WalletRecoverR_Error_Code) String() string {
+	return proto.EnumName(WalletRecoverR_Error_Code_name, int32(x))
 }
 
-func (WalletCreateCallback_Error_Code) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{1, 0, 0}
-}
-
-type WalletLoginCallback_Error_Code int32
-
-const (
-	WalletLoginCallback_Error_NULL                  WalletLoginCallback_Error_Code = 0
-	WalletLoginCallback_Error_UNKNOWN_ERROR         WalletLoginCallback_Error_Code = 1
-	WalletLoginCallback_Error_BAD_INPUT             WalletLoginCallback_Error_Code = 2
-	WalletLoginCallback_Error_NETWORK_ERROR         WalletLoginCallback_Error_Code = 3
-	WalletLoginCallback_Error_FAILED_TO_FIND_BACKUP WalletLoginCallback_Error_Code = 101
-)
-
-var WalletLoginCallback_Error_Code_name = map[int32]string{
-	0:   "NULL",
-	1:   "UNKNOWN_ERROR",
-	2:   "BAD_INPUT",
-	3:   "NETWORK_ERROR",
-	101: "FAILED_TO_FIND_BACKUP",
-}
-
-var WalletLoginCallback_Error_Code_value = map[string]int32{
-	"NULL":                  0,
-	"UNKNOWN_ERROR":         1,
-	"BAD_INPUT":             2,
-	"NETWORK_ERROR":         3,
-	"FAILED_TO_FIND_BACKUP": 101,
-}
-
-func (x WalletLoginCallback_Error_Code) String() string {
-	return proto.EnumName(WalletLoginCallback_Error_Code_name, int32(x))
-}
-
-func (WalletLoginCallback_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (WalletRecoverR_Error_Code) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{3, 0, 0}
 }
 
-type AccountCreateCallback_Error_Code int32
+type AccountCreateR_Error_Code int32
 
 const (
-	AccountCreateCallback_Error_NULL          AccountCreateCallback_Error_Code = 0
-	AccountCreateCallback_Error_UNKNOWN_ERROR AccountCreateCallback_Error_Code = 1
+	AccountCreateR_Error_NULL                 AccountCreateR_Error_Code = 0
+	AccountCreateR_Error_UNKNOWN_ERROR        AccountCreateR_Error_Code = 1
+	AccountCreateR_Error_BAD_INPUT            AccountCreateR_Error_Code = 2
+	AccountCreateR_Error_FAILED_TO_START_NODE AccountCreateR_Error_Code = 101
+	AccountCreateR_Error_FAILED_TO_SET_NAME   AccountCreateR_Error_Code = 102
+	AccountCreateR_Error_FAILED_TO_SET_AVATAR AccountCreateR_Error_Code = 103
 )
 
-var AccountCreateCallback_Error_Code_name = map[int32]string{
-	0: "NULL",
-	1: "UNKNOWN_ERROR",
+var AccountCreateR_Error_Code_name = map[int32]string{
+	0:   "NULL",
+	1:   "UNKNOWN_ERROR",
+	2:   "BAD_INPUT",
+	101: "FAILED_TO_START_NODE",
+	102: "FAILED_TO_SET_NAME",
+	103: "FAILED_TO_SET_AVATAR",
 }
 
-var AccountCreateCallback_Error_Code_value = map[string]int32{
-	"NULL":          0,
-	"UNKNOWN_ERROR": 1,
+var AccountCreateR_Error_Code_value = map[string]int32{
+	"NULL":                 0,
+	"UNKNOWN_ERROR":        1,
+	"BAD_INPUT":            2,
+	"FAILED_TO_START_NODE": 101,
+	"FAILED_TO_SET_NAME":   102,
+	"FAILED_TO_SET_AVATAR": 103,
 }
 
-func (x AccountCreateCallback_Error_Code) String() string {
-	return proto.EnumName(AccountCreateCallback_Error_Code_name, int32(x))
+func (x AccountCreateR_Error_Code) String() string {
+	return proto.EnumName(AccountCreateR_Error_Code_name, int32(x))
 }
 
-func (AccountCreateCallback_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (AccountCreateR_Error_Code) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{5, 0, 0}
 }
 
-type WalletCreate struct {
-	Pin                  string   `protobuf:"bytes,1,opt,name=pin,proto3" json:"pin,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+type AccountSelectR_Error_Code int32
+
+const (
+	AccountSelectR_Error_NULL                            AccountSelectR_Error_Code = 0
+	AccountSelectR_Error_UNKNOWN_ERROR                   AccountSelectR_Error_Code = 1
+	AccountSelectR_Error_BAD_INPUT                       AccountSelectR_Error_Code = 2
+	AccountSelectR_Error_FAILED_TO_CREATE_LOCAL_REPO     AccountSelectR_Error_Code = 101
+	AccountSelectR_Error_LOCAL_REPO_EXISTS_BUT_CORRUPTED AccountSelectR_Error_Code = 102
+	AccountSelectR_Error_FAILED_TO_RUN_NODE              AccountSelectR_Error_Code = 103
+	AccountSelectR_Error_FAILED_TO_FIND_ACCOUNT_INFO     AccountSelectR_Error_Code = 104
+)
+
+var AccountSelectR_Error_Code_name = map[int32]string{
+	0:   "NULL",
+	1:   "UNKNOWN_ERROR",
+	2:   "BAD_INPUT",
+	101: "FAILED_TO_CREATE_LOCAL_REPO",
+	102: "LOCAL_REPO_EXISTS_BUT_CORRUPTED",
+	103: "FAILED_TO_RUN_NODE",
+	104: "FAILED_TO_FIND_ACCOUNT_INFO",
 }
 
-func (m *WalletCreate) Reset()         { *m = WalletCreate{} }
-func (m *WalletCreate) String() string { return proto.CompactTextString(m) }
-func (*WalletCreate) ProtoMessage()    {}
-func (*WalletCreate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0}
+var AccountSelectR_Error_Code_value = map[string]int32{
+	"NULL":                            0,
+	"UNKNOWN_ERROR":                   1,
+	"BAD_INPUT":                       2,
+	"FAILED_TO_CREATE_LOCAL_REPO":     101,
+	"LOCAL_REPO_EXISTS_BUT_CORRUPTED": 102,
+	"FAILED_TO_RUN_NODE":              103,
+	"FAILED_TO_FIND_ACCOUNT_INFO":     104,
 }
 
-func (m *WalletCreate) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WalletCreate.Unmarshal(m, b)
-}
-func (m *WalletCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WalletCreate.Marshal(b, m, deterministic)
-}
-func (m *WalletCreate) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WalletCreate.Merge(m, src)
-}
-func (m *WalletCreate) XXX_Size() int {
-	return xxx_messageInfo_WalletCreate.Size(m)
-}
-func (m *WalletCreate) XXX_DiscardUnknown() {
-	xxx_messageInfo_WalletCreate.DiscardUnknown(m)
+func (x AccountSelectR_Error_Code) String() string {
+	return proto.EnumName(AccountSelectR_Error_Code_name, int32(x))
 }
 
-var xxx_messageInfo_WalletCreate proto.InternalMessageInfo
-
-func (m *WalletCreate) GetPin() string {
-	if m != nil {
-		return m.Pin
-	}
-	return ""
+func (AccountSelectR_Error_Code) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{7, 0, 0}
 }
 
-type WalletCreateCallback struct {
-	Error                *WalletCreateCallback_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
-	XXX_unrecognized     []byte                      `json:"-"`
-	XXX_sizecache        int32                       `json:"-"`
-}
-
-func (m *WalletCreateCallback) Reset()         { *m = WalletCreateCallback{} }
-func (m *WalletCreateCallback) String() string { return proto.CompactTextString(m) }
-func (*WalletCreateCallback) ProtoMessage()    {}
-func (*WalletCreateCallback) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{1}
-}
-
-func (m *WalletCreateCallback) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WalletCreateCallback.Unmarshal(m, b)
-}
-func (m *WalletCreateCallback) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WalletCreateCallback.Marshal(b, m, deterministic)
-}
-func (m *WalletCreateCallback) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WalletCreateCallback.Merge(m, src)
-}
-func (m *WalletCreateCallback) XXX_Size() int {
-	return xxx_messageInfo_WalletCreateCallback.Size(m)
-}
-func (m *WalletCreateCallback) XXX_DiscardUnknown() {
-	xxx_messageInfo_WalletCreateCallback.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_WalletCreateCallback proto.InternalMessageInfo
-
-func (m *WalletCreateCallback) GetError() *WalletCreateCallback_Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type WalletCreateCallback_Error struct {
-	Code                 WalletCreateCallback_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.WalletCreateCallback_Error_Code" json:"code,omitempty"`
-	Desc                 string                          `protobuf:"bytes,2,opt,name=desc,proto3" json:"desc,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
-	XXX_unrecognized     []byte                          `json:"-"`
-	XXX_sizecache        int32                           `json:"-"`
-}
-
-func (m *WalletCreateCallback_Error) Reset()         { *m = WalletCreateCallback_Error{} }
-func (m *WalletCreateCallback_Error) String() string { return proto.CompactTextString(m) }
-func (*WalletCreateCallback_Error) ProtoMessage()    {}
-func (*WalletCreateCallback_Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{1, 0}
-}
-
-func (m *WalletCreateCallback_Error) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WalletCreateCallback_Error.Unmarshal(m, b)
-}
-func (m *WalletCreateCallback_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WalletCreateCallback_Error.Marshal(b, m, deterministic)
-}
-func (m *WalletCreateCallback_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WalletCreateCallback_Error.Merge(m, src)
-}
-func (m *WalletCreateCallback_Error) XXX_Size() int {
-	return xxx_messageInfo_WalletCreateCallback_Error.Size(m)
-}
-func (m *WalletCreateCallback_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_WalletCreateCallback_Error.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_WalletCreateCallback_Error proto.InternalMessageInfo
-
-func (m *WalletCreateCallback_Error) GetCode() WalletCreateCallback_Error_Code {
-	if m != nil {
-		return m.Code
-	}
-	return WalletCreateCallback_Error_NULL
-}
-
-func (m *WalletCreateCallback_Error) GetDesc() string {
-	if m != nil {
-		return m.Desc
-	}
-	return ""
-}
-
-type WalletLogin struct {
-	Mnemonics            string   `protobuf:"bytes,1,opt,name=mnemonics,proto3" json:"mnemonics,omitempty"`
+type WalletCreateQ struct {
+	RootPath             string   `protobuf:"bytes,1,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
 	Pin                  string   `protobuf:"bytes,2,opt,name=pin,proto3" json:"pin,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WalletLogin) Reset()         { *m = WalletLogin{} }
-func (m *WalletLogin) String() string { return proto.CompactTextString(m) }
-func (*WalletLogin) ProtoMessage()    {}
-func (*WalletLogin) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{2}
+func (m *WalletCreateQ) Reset()         { *m = WalletCreateQ{} }
+func (m *WalletCreateQ) String() string { return proto.CompactTextString(m) }
+func (*WalletCreateQ) ProtoMessage()    {}
+func (*WalletCreateQ) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0}
 }
 
-func (m *WalletLogin) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WalletLogin.Unmarshal(m, b)
+func (m *WalletCreateQ) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WalletCreateQ.Unmarshal(m, b)
 }
-func (m *WalletLogin) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WalletLogin.Marshal(b, m, deterministic)
+func (m *WalletCreateQ) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WalletCreateQ.Marshal(b, m, deterministic)
 }
-func (m *WalletLogin) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WalletLogin.Merge(m, src)
+func (m *WalletCreateQ) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WalletCreateQ.Merge(m, src)
 }
-func (m *WalletLogin) XXX_Size() int {
-	return xxx_messageInfo_WalletLogin.Size(m)
+func (m *WalletCreateQ) XXX_Size() int {
+	return xxx_messageInfo_WalletCreateQ.Size(m)
 }
-func (m *WalletLogin) XXX_DiscardUnknown() {
-	xxx_messageInfo_WalletLogin.DiscardUnknown(m)
+func (m *WalletCreateQ) XXX_DiscardUnknown() {
+	xxx_messageInfo_WalletCreateQ.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_WalletLogin proto.InternalMessageInfo
+var xxx_messageInfo_WalletCreateQ proto.InternalMessageInfo
 
-func (m *WalletLogin) GetMnemonics() string {
+func (m *WalletCreateQ) GetRootPath() string {
 	if m != nil {
-		return m.Mnemonics
+		return m.RootPath
 	}
 	return ""
 }
 
-func (m *WalletLogin) GetPin() string {
+func (m *WalletCreateQ) GetPin() string {
 	if m != nil {
 		return m.Pin
 	}
 	return ""
 }
 
-type WalletLoginCallback struct {
-	Error                *WalletLoginCallback_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
-	XXX_unrecognized     []byte                     `json:"-"`
-	XXX_sizecache        int32                      `json:"-"`
+type WalletCreateR struct {
+	Error                *WalletCreateR_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Mnemonic             string               `protobuf:"bytes,2,opt,name=mnemonic,proto3" json:"mnemonic,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
-func (m *WalletLoginCallback) Reset()         { *m = WalletLoginCallback{} }
-func (m *WalletLoginCallback) String() string { return proto.CompactTextString(m) }
-func (*WalletLoginCallback) ProtoMessage()    {}
-func (*WalletLoginCallback) Descriptor() ([]byte, []int) {
+func (m *WalletCreateR) Reset()         { *m = WalletCreateR{} }
+func (m *WalletCreateR) String() string { return proto.CompactTextString(m) }
+func (*WalletCreateR) ProtoMessage()    {}
+func (*WalletCreateR) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{1}
+}
+
+func (m *WalletCreateR) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WalletCreateR.Unmarshal(m, b)
+}
+func (m *WalletCreateR) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WalletCreateR.Marshal(b, m, deterministic)
+}
+func (m *WalletCreateR) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WalletCreateR.Merge(m, src)
+}
+func (m *WalletCreateR) XXX_Size() int {
+	return xxx_messageInfo_WalletCreateR.Size(m)
+}
+func (m *WalletCreateR) XXX_DiscardUnknown() {
+	xxx_messageInfo_WalletCreateR.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WalletCreateR proto.InternalMessageInfo
+
+func (m *WalletCreateR) GetError() *WalletCreateR_Error {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (m *WalletCreateR) GetMnemonic() string {
+	if m != nil {
+		return m.Mnemonic
+	}
+	return ""
+}
+
+type WalletCreateR_Error struct {
+	Code                 WalletCreateR_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.WalletCreateR_Error_Code" json:"code,omitempty"`
+	Desc                 string                   `protobuf:"bytes,2,opt,name=desc,proto3" json:"desc,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
+}
+
+func (m *WalletCreateR_Error) Reset()         { *m = WalletCreateR_Error{} }
+func (m *WalletCreateR_Error) String() string { return proto.CompactTextString(m) }
+func (*WalletCreateR_Error) ProtoMessage()    {}
+func (*WalletCreateR_Error) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{1, 0}
+}
+
+func (m *WalletCreateR_Error) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WalletCreateR_Error.Unmarshal(m, b)
+}
+func (m *WalletCreateR_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WalletCreateR_Error.Marshal(b, m, deterministic)
+}
+func (m *WalletCreateR_Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WalletCreateR_Error.Merge(m, src)
+}
+func (m *WalletCreateR_Error) XXX_Size() int {
+	return xxx_messageInfo_WalletCreateR_Error.Size(m)
+}
+func (m *WalletCreateR_Error) XXX_DiscardUnknown() {
+	xxx_messageInfo_WalletCreateR_Error.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WalletCreateR_Error proto.InternalMessageInfo
+
+func (m *WalletCreateR_Error) GetCode() WalletCreateR_Error_Code {
+	if m != nil {
+		return m.Code
+	}
+	return WalletCreateR_Error_NULL
+}
+
+func (m *WalletCreateR_Error) GetDesc() string {
+	if m != nil {
+		return m.Desc
+	}
+	return ""
+}
+
+type WalletRecoverQ struct {
+	RootPath             string   `protobuf:"bytes,1,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
+	Mnemonic             string   `protobuf:"bytes,2,opt,name=mnemonic,proto3" json:"mnemonic,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *WalletRecoverQ) Reset()         { *m = WalletRecoverQ{} }
+func (m *WalletRecoverQ) String() string { return proto.CompactTextString(m) }
+func (*WalletRecoverQ) ProtoMessage()    {}
+func (*WalletRecoverQ) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{2}
+}
+
+func (m *WalletRecoverQ) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WalletRecoverQ.Unmarshal(m, b)
+}
+func (m *WalletRecoverQ) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WalletRecoverQ.Marshal(b, m, deterministic)
+}
+func (m *WalletRecoverQ) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WalletRecoverQ.Merge(m, src)
+}
+func (m *WalletRecoverQ) XXX_Size() int {
+	return xxx_messageInfo_WalletRecoverQ.Size(m)
+}
+func (m *WalletRecoverQ) XXX_DiscardUnknown() {
+	xxx_messageInfo_WalletRecoverQ.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WalletRecoverQ proto.InternalMessageInfo
+
+func (m *WalletRecoverQ) GetRootPath() string {
+	if m != nil {
+		return m.RootPath
+	}
+	return ""
+}
+
+func (m *WalletRecoverQ) GetMnemonic() string {
+	if m != nil {
+		return m.Mnemonic
+	}
+	return ""
+}
+
+type WalletRecoverR struct {
+	Error                *WalletRecoverR_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
+}
+
+func (m *WalletRecoverR) Reset()         { *m = WalletRecoverR{} }
+func (m *WalletRecoverR) String() string { return proto.CompactTextString(m) }
+func (*WalletRecoverR) ProtoMessage()    {}
+func (*WalletRecoverR) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{3}
 }
 
-func (m *WalletLoginCallback) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WalletLoginCallback.Unmarshal(m, b)
+func (m *WalletRecoverR) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WalletRecoverR.Unmarshal(m, b)
 }
-func (m *WalletLoginCallback) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WalletLoginCallback.Marshal(b, m, deterministic)
+func (m *WalletRecoverR) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WalletRecoverR.Marshal(b, m, deterministic)
 }
-func (m *WalletLoginCallback) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WalletLoginCallback.Merge(m, src)
+func (m *WalletRecoverR) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WalletRecoverR.Merge(m, src)
 }
-func (m *WalletLoginCallback) XXX_Size() int {
-	return xxx_messageInfo_WalletLoginCallback.Size(m)
+func (m *WalletRecoverR) XXX_Size() int {
+	return xxx_messageInfo_WalletRecoverR.Size(m)
 }
-func (m *WalletLoginCallback) XXX_DiscardUnknown() {
-	xxx_messageInfo_WalletLoginCallback.DiscardUnknown(m)
+func (m *WalletRecoverR) XXX_DiscardUnknown() {
+	xxx_messageInfo_WalletRecoverR.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_WalletLoginCallback proto.InternalMessageInfo
+var xxx_messageInfo_WalletRecoverR proto.InternalMessageInfo
 
-func (m *WalletLoginCallback) GetError() *WalletLoginCallback_Error {
+func (m *WalletRecoverR) GetError() *WalletRecoverR_Error {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type WalletLoginCallback_Error struct {
-	Code                 WalletLoginCallback_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.WalletLoginCallback_Error_Code" json:"code,omitempty"`
-	Desc                 string                         `protobuf:"bytes,2,opt,name=desc,proto3" json:"desc,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                       `json:"-"`
-	XXX_unrecognized     []byte                         `json:"-"`
-	XXX_sizecache        int32                          `json:"-"`
+type WalletRecoverR_Error struct {
+	Code                 WalletRecoverR_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.WalletRecoverR_Error_Code" json:"code,omitempty"`
+	Desc                 string                    `protobuf:"bytes,2,opt,name=desc,proto3" json:"desc,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
 }
 
-func (m *WalletLoginCallback_Error) Reset()         { *m = WalletLoginCallback_Error{} }
-func (m *WalletLoginCallback_Error) String() string { return proto.CompactTextString(m) }
-func (*WalletLoginCallback_Error) ProtoMessage()    {}
-func (*WalletLoginCallback_Error) Descriptor() ([]byte, []int) {
+func (m *WalletRecoverR_Error) Reset()         { *m = WalletRecoverR_Error{} }
+func (m *WalletRecoverR_Error) String() string { return proto.CompactTextString(m) }
+func (*WalletRecoverR_Error) ProtoMessage()    {}
+func (*WalletRecoverR_Error) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{3, 0}
 }
 
-func (m *WalletLoginCallback_Error) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_WalletLoginCallback_Error.Unmarshal(m, b)
+func (m *WalletRecoverR_Error) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_WalletRecoverR_Error.Unmarshal(m, b)
 }
-func (m *WalletLoginCallback_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_WalletLoginCallback_Error.Marshal(b, m, deterministic)
+func (m *WalletRecoverR_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_WalletRecoverR_Error.Marshal(b, m, deterministic)
 }
-func (m *WalletLoginCallback_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_WalletLoginCallback_Error.Merge(m, src)
+func (m *WalletRecoverR_Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WalletRecoverR_Error.Merge(m, src)
 }
-func (m *WalletLoginCallback_Error) XXX_Size() int {
-	return xxx_messageInfo_WalletLoginCallback_Error.Size(m)
+func (m *WalletRecoverR_Error) XXX_Size() int {
+	return xxx_messageInfo_WalletRecoverR_Error.Size(m)
 }
-func (m *WalletLoginCallback_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_WalletLoginCallback_Error.DiscardUnknown(m)
+func (m *WalletRecoverR_Error) XXX_DiscardUnknown() {
+	xxx_messageInfo_WalletRecoverR_Error.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_WalletLoginCallback_Error proto.InternalMessageInfo
+var xxx_messageInfo_WalletRecoverR_Error proto.InternalMessageInfo
 
-func (m *WalletLoginCallback_Error) GetCode() WalletLoginCallback_Error_Code {
+func (m *WalletRecoverR_Error) GetCode() WalletRecoverR_Error_Code {
 	if m != nil {
 		return m.Code
 	}
-	return WalletLoginCallback_Error_NULL
+	return WalletRecoverR_Error_NULL
 }
 
-func (m *WalletLoginCallback_Error) GetDesc() string {
+func (m *WalletRecoverR_Error) GetDesc() string {
 	if m != nil {
 		return m.Desc
 	}
 	return ""
 }
 
-type AccountCreate struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Icon                 string   `protobuf:"bytes,2,opt,name=icon,proto3" json:"icon,omitempty"`
+type AccountCreateQ struct {
+	Username             string   `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	AvatarLocalPath      string   `protobuf:"bytes,2,opt,name=avatarLocalPath,proto3" json:"avatarLocalPath,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AccountCreate) Reset()         { *m = AccountCreate{} }
-func (m *AccountCreate) String() string { return proto.CompactTextString(m) }
-func (*AccountCreate) ProtoMessage()    {}
-func (*AccountCreate) Descriptor() ([]byte, []int) {
+func (m *AccountCreateQ) Reset()         { *m = AccountCreateQ{} }
+func (m *AccountCreateQ) String() string { return proto.CompactTextString(m) }
+func (*AccountCreateQ) ProtoMessage()    {}
+func (*AccountCreateQ) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{4}
 }
 
-func (m *AccountCreate) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AccountCreate.Unmarshal(m, b)
+func (m *AccountCreateQ) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AccountCreateQ.Unmarshal(m, b)
 }
-func (m *AccountCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AccountCreate.Marshal(b, m, deterministic)
+func (m *AccountCreateQ) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AccountCreateQ.Marshal(b, m, deterministic)
 }
-func (m *AccountCreate) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountCreate.Merge(m, src)
+func (m *AccountCreateQ) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountCreateQ.Merge(m, src)
 }
-func (m *AccountCreate) XXX_Size() int {
-	return xxx_messageInfo_AccountCreate.Size(m)
+func (m *AccountCreateQ) XXX_Size() int {
+	return xxx_messageInfo_AccountCreateQ.Size(m)
 }
-func (m *AccountCreate) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountCreate.DiscardUnknown(m)
+func (m *AccountCreateQ) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountCreateQ.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AccountCreate proto.InternalMessageInfo
+var xxx_messageInfo_AccountCreateQ proto.InternalMessageInfo
 
-func (m *AccountCreate) GetName() string {
+func (m *AccountCreateQ) GetUsername() string {
 	if m != nil {
-		return m.Name
+		return m.Username
 	}
 	return ""
 }
 
-func (m *AccountCreate) GetIcon() string {
+func (m *AccountCreateQ) GetAvatarLocalPath() string {
 	if m != nil {
-		return m.Icon
+		return m.AvatarLocalPath
 	}
 	return ""
 }
 
-type AccountCreateCallback struct {
-	Error                *AccountCreateCallback_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                     `json:"-"`
-	XXX_unrecognized     []byte                       `json:"-"`
-	XXX_sizecache        int32                        `json:"-"`
+type AccountCreateR struct {
+	Error                *AccountCreateR_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Account              *Account              `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
-func (m *AccountCreateCallback) Reset()         { *m = AccountCreateCallback{} }
-func (m *AccountCreateCallback) String() string { return proto.CompactTextString(m) }
-func (*AccountCreateCallback) ProtoMessage()    {}
-func (*AccountCreateCallback) Descriptor() ([]byte, []int) {
+func (m *AccountCreateR) Reset()         { *m = AccountCreateR{} }
+func (m *AccountCreateR) String() string { return proto.CompactTextString(m) }
+func (*AccountCreateR) ProtoMessage()    {}
+func (*AccountCreateR) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{5}
 }
 
-func (m *AccountCreateCallback) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AccountCreateCallback.Unmarshal(m, b)
+func (m *AccountCreateR) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AccountCreateR.Unmarshal(m, b)
 }
-func (m *AccountCreateCallback) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AccountCreateCallback.Marshal(b, m, deterministic)
+func (m *AccountCreateR) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AccountCreateR.Marshal(b, m, deterministic)
 }
-func (m *AccountCreateCallback) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountCreateCallback.Merge(m, src)
+func (m *AccountCreateR) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountCreateR.Merge(m, src)
 }
-func (m *AccountCreateCallback) XXX_Size() int {
-	return xxx_messageInfo_AccountCreateCallback.Size(m)
+func (m *AccountCreateR) XXX_Size() int {
+	return xxx_messageInfo_AccountCreateR.Size(m)
 }
-func (m *AccountCreateCallback) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountCreateCallback.DiscardUnknown(m)
+func (m *AccountCreateR) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountCreateR.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AccountCreateCallback proto.InternalMessageInfo
+var xxx_messageInfo_AccountCreateR proto.InternalMessageInfo
 
-func (m *AccountCreateCallback) GetError() *AccountCreateCallback_Error {
+func (m *AccountCreateR) GetError() *AccountCreateR_Error {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type AccountCreateCallback_Error struct {
-	Code                 AccountCreateCallback_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.AccountCreateCallback_Error_Code" json:"code,omitempty"`
-	Desc                 string                           `protobuf:"bytes,2,opt,name=desc,proto3" json:"desc,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                         `json:"-"`
-	XXX_unrecognized     []byte                           `json:"-"`
-	XXX_sizecache        int32                            `json:"-"`
+func (m *AccountCreateR) GetAccount() *Account {
+	if m != nil {
+		return m.Account
+	}
+	return nil
 }
 
-func (m *AccountCreateCallback_Error) Reset()         { *m = AccountCreateCallback_Error{} }
-func (m *AccountCreateCallback_Error) String() string { return proto.CompactTextString(m) }
-func (*AccountCreateCallback_Error) ProtoMessage()    {}
-func (*AccountCreateCallback_Error) Descriptor() ([]byte, []int) {
+type AccountCreateR_Error struct {
+	Code                 AccountCreateR_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.AccountCreateR_Error_Code" json:"code,omitempty"`
+	Desc                 string                    `protobuf:"bytes,2,opt,name=desc,proto3" json:"desc,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
+}
+
+func (m *AccountCreateR_Error) Reset()         { *m = AccountCreateR_Error{} }
+func (m *AccountCreateR_Error) String() string { return proto.CompactTextString(m) }
+func (*AccountCreateR_Error) ProtoMessage()    {}
+func (*AccountCreateR_Error) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{5, 0}
 }
 
-func (m *AccountCreateCallback_Error) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AccountCreateCallback_Error.Unmarshal(m, b)
+func (m *AccountCreateR_Error) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AccountCreateR_Error.Unmarshal(m, b)
 }
-func (m *AccountCreateCallback_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AccountCreateCallback_Error.Marshal(b, m, deterministic)
+func (m *AccountCreateR_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AccountCreateR_Error.Marshal(b, m, deterministic)
 }
-func (m *AccountCreateCallback_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountCreateCallback_Error.Merge(m, src)
+func (m *AccountCreateR_Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountCreateR_Error.Merge(m, src)
 }
-func (m *AccountCreateCallback_Error) XXX_Size() int {
-	return xxx_messageInfo_AccountCreateCallback_Error.Size(m)
+func (m *AccountCreateR_Error) XXX_Size() int {
+	return xxx_messageInfo_AccountCreateR_Error.Size(m)
 }
-func (m *AccountCreateCallback_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountCreateCallback_Error.DiscardUnknown(m)
+func (m *AccountCreateR_Error) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountCreateR_Error.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AccountCreateCallback_Error proto.InternalMessageInfo
+var xxx_messageInfo_AccountCreateR_Error proto.InternalMessageInfo
 
-func (m *AccountCreateCallback_Error) GetCode() AccountCreateCallback_Error_Code {
+func (m *AccountCreateR_Error) GetCode() AccountCreateR_Error_Code {
 	if m != nil {
 		return m.Code
 	}
-	return AccountCreateCallback_Error_NULL
+	return AccountCreateR_Error_NULL
 }
 
-func (m *AccountCreateCallback_Error) GetDesc() string {
+func (m *AccountCreateR_Error) GetDesc() string {
 	if m != nil {
 		return m.Desc
 	}
 	return ""
 }
 
-type AccountChosen struct {
-	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+type AccountSelectQ struct {
+	Index                int64    `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AccountChosen) Reset()         { *m = AccountChosen{} }
-func (m *AccountChosen) String() string { return proto.CompactTextString(m) }
-func (*AccountChosen) ProtoMessage()    {}
-func (*AccountChosen) Descriptor() ([]byte, []int) {
+func (m *AccountSelectQ) Reset()         { *m = AccountSelectQ{} }
+func (m *AccountSelectQ) String() string { return proto.CompactTextString(m) }
+func (*AccountSelectQ) ProtoMessage()    {}
+func (*AccountSelectQ) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{6}
 }
 
-func (m *AccountChosen) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AccountChosen.Unmarshal(m, b)
+func (m *AccountSelectQ) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AccountSelectQ.Unmarshal(m, b)
 }
-func (m *AccountChosen) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AccountChosen.Marshal(b, m, deterministic)
+func (m *AccountSelectQ) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AccountSelectQ.Marshal(b, m, deterministic)
 }
-func (m *AccountChosen) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountChosen.Merge(m, src)
+func (m *AccountSelectQ) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountSelectQ.Merge(m, src)
 }
-func (m *AccountChosen) XXX_Size() int {
-	return xxx_messageInfo_AccountChosen.Size(m)
+func (m *AccountSelectQ) XXX_Size() int {
+	return xxx_messageInfo_AccountSelectQ.Size(m)
 }
-func (m *AccountChosen) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountChosen.DiscardUnknown(m)
+func (m *AccountSelectQ) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountSelectQ.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AccountChosen proto.InternalMessageInfo
+var xxx_messageInfo_AccountSelectQ proto.InternalMessageInfo
 
-func (m *AccountChosen) GetId() string {
+func (m *AccountSelectQ) GetIndex() int64 {
 	if m != nil {
-		return m.Id
+		return m.Index
+	}
+	return 0
+}
+
+type AccountSelectR struct {
+	Error                *AccountSelectR_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Account              *Account              `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
+}
+
+func (m *AccountSelectR) Reset()         { *m = AccountSelectR{} }
+func (m *AccountSelectR) String() string { return proto.CompactTextString(m) }
+func (*AccountSelectR) ProtoMessage()    {}
+func (*AccountSelectR) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{7}
+}
+
+func (m *AccountSelectR) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AccountSelectR.Unmarshal(m, b)
+}
+func (m *AccountSelectR) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AccountSelectR.Marshal(b, m, deterministic)
+}
+func (m *AccountSelectR) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountSelectR.Merge(m, src)
+}
+func (m *AccountSelectR) XXX_Size() int {
+	return xxx_messageInfo_AccountSelectR.Size(m)
+}
+func (m *AccountSelectR) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountSelectR.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AccountSelectR proto.InternalMessageInfo
+
+func (m *AccountSelectR) GetError() *AccountSelectR_Error {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (m *AccountSelectR) GetAccount() *Account {
+	if m != nil {
+		return m.Account
+	}
+	return nil
+}
+
+type AccountSelectR_Error struct {
+	Code                 AccountSelectR_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.AccountSelectR_Error_Code" json:"code,omitempty"`
+	Desc                 string                    `protobuf:"bytes,2,opt,name=desc,proto3" json:"desc,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
+}
+
+func (m *AccountSelectR_Error) Reset()         { *m = AccountSelectR_Error{} }
+func (m *AccountSelectR_Error) String() string { return proto.CompactTextString(m) }
+func (*AccountSelectR_Error) ProtoMessage()    {}
+func (*AccountSelectR_Error) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{7, 0}
+}
+
+func (m *AccountSelectR_Error) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AccountSelectR_Error.Unmarshal(m, b)
+}
+func (m *AccountSelectR_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AccountSelectR_Error.Marshal(b, m, deterministic)
+}
+func (m *AccountSelectR_Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountSelectR_Error.Merge(m, src)
+}
+func (m *AccountSelectR_Error) XXX_Size() int {
+	return xxx_messageInfo_AccountSelectR_Error.Size(m)
+}
+func (m *AccountSelectR_Error) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountSelectR_Error.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AccountSelectR_Error proto.InternalMessageInfo
+
+func (m *AccountSelectR_Error) GetCode() AccountSelectR_Error_Code {
+	if m != nil {
+		return m.Code
+	}
+	return AccountSelectR_Error_NULL
+}
+
+func (m *AccountSelectR_Error) GetDesc() string {
+	if m != nil {
+		return m.Desc
 	}
 	return ""
 }
 
 func init() {
-	proto.RegisterEnum("anytype.WalletCreateCallback_Error_Code", WalletCreateCallback_Error_Code_name, WalletCreateCallback_Error_Code_value)
-	proto.RegisterEnum("anytype.WalletLoginCallback_Error_Code", WalletLoginCallback_Error_Code_name, WalletLoginCallback_Error_Code_value)
-	proto.RegisterEnum("anytype.AccountCreateCallback_Error_Code", AccountCreateCallback_Error_Code_name, AccountCreateCallback_Error_Code_value)
-	proto.RegisterType((*WalletCreate)(nil), "anytype.WalletCreate")
-	proto.RegisterType((*WalletCreateCallback)(nil), "anytype.WalletCreateCallback")
-	proto.RegisterType((*WalletCreateCallback_Error)(nil), "anytype.WalletCreateCallback.Error")
-	proto.RegisterType((*WalletLogin)(nil), "anytype.WalletLogin")
-	proto.RegisterType((*WalletLoginCallback)(nil), "anytype.WalletLoginCallback")
-	proto.RegisterType((*WalletLoginCallback_Error)(nil), "anytype.WalletLoginCallback.Error")
-	proto.RegisterType((*AccountCreate)(nil), "anytype.AccountCreate")
-	proto.RegisterType((*AccountCreateCallback)(nil), "anytype.AccountCreateCallback")
-	proto.RegisterType((*AccountCreateCallback_Error)(nil), "anytype.AccountCreateCallback.Error")
-	proto.RegisterType((*AccountChosen)(nil), "anytype.AccountChosen")
+	proto.RegisterEnum("anytype.WalletCreateR_Error_Code", WalletCreateR_Error_Code_name, WalletCreateR_Error_Code_value)
+	proto.RegisterEnum("anytype.WalletRecoverR_Error_Code", WalletRecoverR_Error_Code_name, WalletRecoverR_Error_Code_value)
+	proto.RegisterEnum("anytype.AccountCreateR_Error_Code", AccountCreateR_Error_Code_name, AccountCreateR_Error_Code_value)
+	proto.RegisterEnum("anytype.AccountSelectR_Error_Code", AccountSelectR_Error_Code_name, AccountSelectR_Error_Code_value)
+	proto.RegisterType((*WalletCreateQ)(nil), "anytype.WalletCreateQ")
+	proto.RegisterType((*WalletCreateR)(nil), "anytype.WalletCreateR")
+	proto.RegisterType((*WalletCreateR_Error)(nil), "anytype.WalletCreateR.Error")
+	proto.RegisterType((*WalletRecoverQ)(nil), "anytype.WalletRecoverQ")
+	proto.RegisterType((*WalletRecoverR)(nil), "anytype.WalletRecoverR")
+	proto.RegisterType((*WalletRecoverR_Error)(nil), "anytype.WalletRecoverR.Error")
+	proto.RegisterType((*AccountCreateQ)(nil), "anytype.AccountCreateQ")
+	proto.RegisterType((*AccountCreateR)(nil), "anytype.AccountCreateR")
+	proto.RegisterType((*AccountCreateR_Error)(nil), "anytype.AccountCreateR.Error")
+	proto.RegisterType((*AccountSelectQ)(nil), "anytype.AccountSelectQ")
+	proto.RegisterType((*AccountSelectR)(nil), "anytype.AccountSelectR")
+	proto.RegisterType((*AccountSelectR_Error)(nil), "anytype.AccountSelectR.Error")
 }
 
 func init() { proto.RegisterFile("commands.proto", fileDescriptor_0dff099eb2e3dfdb) }
 
 var fileDescriptor_0dff099eb2e3dfdb = []byte{
-	// 478 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0xd4, 0xcd, 0x6e, 0xd3, 0x40,
-	0x10, 0x07, 0x70, 0xec, 0xba, 0x40, 0xa6, 0x8d, 0x65, 0x86, 0x06, 0x95, 0xa8, 0x40, 0xe5, 0x22,
-	0x51, 0x2e, 0x3e, 0x84, 0x03, 0x9f, 0x3d, 0x24, 0x8e, 0x2b, 0xa2, 0x44, 0x4e, 0x65, 0x25, 0x8a,
-	0xc4, 0x65, 0x71, 0xd6, 0x2b, 0xb0, 0xb0, 0x77, 0x23, 0xc7, 0x1c, 0x7a, 0xe2, 0x05, 0xe0, 0x85,
-	0x78, 0x0e, 0x5e, 0x80, 0x03, 0xef, 0x81, 0xbc, 0x75, 0x3e, 0x16, 0x59, 0x49, 0xb8, 0xad, 0x56,
-	0xff, 0x99, 0xc4, 0x3f, 0xcf, 0x18, 0x4c, 0x2a, 0xd2, 0x34, 0xe4, 0xd1, 0xdc, 0x99, 0x65, 0x22,
-	0x17, 0x78, 0x27, 0xe4, 0xd7, 0xf9, 0xf5, 0x8c, 0xd9, 0xa7, 0x70, 0x38, 0x09, 0x93, 0x84, 0xe5,
-	0x6e, 0xc6, 0xc2, 0x9c, 0xa1, 0x05, 0x7b, 0xb3, 0x98, 0x1f, 0x6b, 0xa7, 0xda, 0x79, 0x2d, 0x28,
-	0x8e, 0xf6, 0x6f, 0x0d, 0x8e, 0xd6, 0x23, 0x6e, 0x98, 0x24, 0xd3, 0x90, 0x7e, 0xc1, 0xd7, 0xb0,
-	0xcf, 0xb2, 0x4c, 0x64, 0x32, 0x7c, 0xd0, 0x3a, 0x73, 0xca, 0x9e, 0x4e, 0x55, 0xda, 0xf1, 0x8a,
-	0x68, 0x70, 0x53, 0xd1, 0xfc, 0xa1, 0xc1, 0xbe, 0xbc, 0xc0, 0x77, 0x60, 0x50, 0x11, 0x31, 0xd9,
-	0xc3, 0x6c, 0x9d, 0xef, 0xd0, 0xc3, 0x71, 0x45, 0xc4, 0x02, 0x59, 0x85, 0x08, 0x46, 0xc4, 0xe6,
-	0xf4, 0x58, 0x97, 0x7f, 0x57, 0x9e, 0xed, 0x16, 0x18, 0x45, 0x02, 0xef, 0x82, 0xe1, 0x8f, 0x07,
-	0x03, 0xeb, 0x16, 0xde, 0x83, 0xfa, 0xd8, 0xef, 0xfb, 0xc3, 0x89, 0x4f, 0xbc, 0x20, 0x18, 0x06,
-	0x96, 0x86, 0x75, 0xa8, 0x75, 0xda, 0x5d, 0xd2, 0xf3, 0xaf, 0xc6, 0x23, 0x4b, 0xb7, 0x2f, 0xe0,
-	0xe0, 0xe6, 0x07, 0x07, 0xe2, 0x53, 0xcc, 0xf1, 0x04, 0x6a, 0x29, 0x67, 0xa9, 0xe0, 0x31, 0x9d,
-	0x97, 0x14, 0xab, 0x8b, 0x05, 0x91, 0xbe, 0x22, 0xfa, 0xae, 0xc3, 0xfd, 0xb5, 0xfa, 0xa5, 0xd0,
-	0x2b, 0x55, 0xc8, 0xfe, 0xe7, 0xe9, 0x94, 0xb0, 0x0a, 0xf4, 0x73, 0x09, 0xf4, 0x56, 0x01, 0x7a,
-	0xb6, 0xbd, 0xc5, 0x36, 0x9f, 0x8f, 0xff, 0xef, 0x53, 0x24, 0x7c, 0x6f, 0x34, 0x19, 0x06, 0xfd,
-	0x32, 0xb1, 0x87, 0x0f, 0xa1, 0x71, 0xd9, 0xee, 0x0d, 0xbc, 0x2e, 0x19, 0x0d, 0xc9, 0x65, 0xcf,
-	0xef, 0x92, 0x4e, 0xdb, 0xed, 0x8f, 0xaf, 0x2c, 0x66, 0xbf, 0x84, 0x7a, 0x9b, 0x52, 0xf1, 0x95,
-	0x2f, 0x86, 0x0a, 0xc1, 0xe0, 0x61, 0xca, 0x4a, 0x4a, 0x79, 0x2e, 0xee, 0x62, 0x2a, 0x16, 0x8c,
-	0xf2, 0x6c, 0xff, 0xd2, 0xa0, 0xa1, 0x54, 0x2e, 0x25, 0xdf, 0xa8, 0x92, 0x4f, 0x97, 0x0c, 0x95,
-	0x71, 0xd5, 0xf2, 0xdb, 0x82, 0xf2, 0x42, 0xa1, 0x7c, 0xbe, 0x4b, 0x8f, 0x6d, 0x98, 0x67, 0x3b,
-	0x60, 0xda, 0x4f, 0x56, 0x1e, 0x9f, 0xc5, 0x9c, 0x71, 0x34, 0x41, 0x8f, 0xa3, 0x52, 0x43, 0x8f,
-	0xa3, 0xd6, 0x1f, 0x0d, 0x4c, 0x37, 0x89, 0x19, 0xcf, 0xdd, 0x72, 0x4d, 0xd1, 0x83, 0x3a, 0x51,
-	0x16, 0xb3, 0x51, 0xb9, 0x1a, 0xcd, 0x47, 0x1b, 0x37, 0x06, 0x3b, 0x70, 0x48, 0xd6, 0x27, 0xfb,
-	0xa8, 0x6a, 0x7e, 0x9a, 0x27, 0x9b, 0xa6, 0x0a, 0xdf, 0x83, 0x49, 0xd4, 0xf7, 0xf9, 0xa0, 0x9a,
-	0xae, 0xf9, 0x78, 0x33, 0x69, 0xc7, 0xf8, 0xa0, 0xcf, 0xa6, 0xd3, 0xdb, 0xf2, 0x13, 0xf4, 0xe2,
-	0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x70, 0x4f, 0xd9, 0xd3, 0x94, 0x04, 0x00, 0x00,
+	// 633 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x95, 0xcf, 0x6e, 0xd3, 0x4e,
+	0x10, 0xc7, 0x7f, 0x76, 0xd3, 0x5f, 0xdb, 0x6d, 0x1b, 0xcc, 0xaa, 0x2a, 0x95, 0x01, 0x15, 0x8c,
+	0x84, 0x2a, 0x0e, 0x39, 0xb8, 0x82, 0x1b, 0x48, 0x5b, 0x67, 0x2b, 0x22, 0x8c, 0x9d, 0x6c, 0xd6,
+	0x2d, 0xe2, 0xb2, 0x72, 0xed, 0x6d, 0x1b, 0xc9, 0xf6, 0x46, 0xae, 0x5b, 0xd1, 0x0b, 0xd7, 0x8a,
+	0x47, 0xe0, 0x09, 0x38, 0xf3, 0x14, 0x1c, 0x39, 0xf0, 0x38, 0x5c, 0x50, 0xfc, 0x27, 0xcd, 0x9a,
+	0x34, 0x81, 0x4a, 0xdc, 0x3c, 0x3b, 0xdf, 0xf9, 0x8e, 0xfd, 0xd9, 0xc9, 0x04, 0x34, 0x03, 0x11,
+	0xc7, 0x7e, 0x12, 0x9e, 0xb5, 0x86, 0xa9, 0xc8, 0x04, 0x5c, 0xf2, 0x93, 0xcb, 0xec, 0x72, 0xc8,
+	0xf5, 0xb5, 0x58, 0x84, 0x3c, 0x2a, 0x8f, 0x8d, 0x97, 0x60, 0xfd, 0xd0, 0x8f, 0x22, 0x9e, 0x59,
+	0x29, 0xf7, 0x33, 0xde, 0x83, 0x3a, 0x58, 0x4e, 0x85, 0xc8, 0xba, 0x7e, 0x76, 0xba, 0xa5, 0x3c,
+	0x52, 0x76, 0x56, 0xc8, 0x38, 0x86, 0x1a, 0x58, 0x18, 0x0e, 0x92, 0x2d, 0x35, 0x3f, 0x1e, 0x3d,
+	0x1a, 0x9f, 0x54, 0xb9, 0x9e, 0x40, 0x13, 0x2c, 0xf2, 0x34, 0x15, 0x69, 0x5e, 0xbc, 0x6a, 0x3e,
+	0x68, 0x95, 0x7d, 0x5b, 0x92, 0xac, 0x85, 0x47, 0x1a, 0x52, 0x48, 0x47, 0x3d, 0xe3, 0x84, 0xc7,
+	0x22, 0x19, 0x04, 0xa5, 0xf9, 0x38, 0xd6, 0xbf, 0x28, 0x60, 0x31, 0x17, 0xc3, 0xe7, 0xa0, 0x11,
+	0x88, 0x90, 0xe7, 0xc6, 0x4d, 0xf3, 0xf1, 0x2c, 0xe3, 0x96, 0x25, 0x42, 0x4e, 0x72, 0x39, 0x84,
+	0xa0, 0x11, 0xf2, 0xb3, 0xca, 0x38, 0x7f, 0x36, 0xfa, 0xa0, 0x31, 0x52, 0xc0, 0x65, 0xd0, 0x70,
+	0x3c, 0xdb, 0xd6, 0xfe, 0x83, 0x77, 0xc1, 0xba, 0xe7, 0xbc, 0x71, 0xdc, 0x43, 0x87, 0x61, 0x42,
+	0x5c, 0xa2, 0x29, 0x70, 0x1d, 0xac, 0xec, 0xa1, 0x36, 0xeb, 0x38, 0x5d, 0x8f, 0x6a, 0x2a, 0xdc,
+	0x06, 0xf7, 0xf7, 0x51, 0xc7, 0xc6, 0x6d, 0x46, 0x5d, 0x66, 0x11, 0x8c, 0x28, 0x66, 0xb6, 0x6b,
+	0x21, 0x9b, 0x11, 0xdc, 0x75, 0x35, 0x6e, 0xbc, 0x06, 0xcd, 0xe2, 0x55, 0x08, 0x0f, 0xc4, 0x05,
+	0x4f, 0x67, 0xb3, 0x9c, 0xf1, 0xcd, 0xc6, 0x77, 0xa5, 0x66, 0x45, 0xe0, 0xae, 0x8c, 0xf5, 0x61,
+	0xed, 0xeb, 0x2b, 0x9d, 0xc4, 0x55, 0xbf, 0x1a, 0xb3, 0x7b, 0x21, 0xb1, 0x33, 0x66, 0x56, 0xcf,
+	0x83, 0x67, 0xfe, 0x3d, 0x3c, 0xe3, 0x00, 0x34, 0x51, 0x10, 0x88, 0xf3, 0x64, 0x72, 0xce, 0xce,
+	0xcf, 0x78, 0x9a, 0xf8, 0x31, 0xaf, 0xd8, 0x54, 0x31, 0xdc, 0x01, 0x77, 0xfc, 0x0b, 0x3f, 0xf3,
+	0x53, 0x5b, 0x04, 0x7e, 0x94, 0xe3, 0x2b, 0x5e, 0xa0, 0x7e, 0x6c, 0x7c, 0x53, 0x6b, 0xc6, 0x33,
+	0x48, 0xc9, 0x3a, 0x79, 0x02, 0x9f, 0x81, 0x25, 0xbf, 0x48, 0xe7, 0x9d, 0x56, 0x4d, 0xad, 0x5e,
+	0x46, 0x2a, 0x81, 0xfe, 0x63, 0x2e, 0xd5, 0x69, 0x9d, 0xe6, 0x51, 0xfd, 0x78, 0x8b, 0x91, 0xdc,
+	0x02, 0x1b, 0xd7, 0x23, 0xd9, 0xa7, 0x88, 0x50, 0xe6, 0xb8, 0x6d, 0xac, 0x71, 0xb8, 0x09, 0xe0,
+	0x44, 0x06, 0x53, 0xe6, 0xa0, 0xb7, 0x58, 0x3b, 0xae, 0x55, 0x60, 0xca, 0xd0, 0x01, 0xa2, 0x88,
+	0x68, 0x27, 0xc6, 0xd3, 0x31, 0xc8, 0x3e, 0x8f, 0x78, 0x90, 0xf5, 0xe0, 0x06, 0x58, 0x1c, 0x24,
+	0x21, 0xff, 0x90, 0x7f, 0xde, 0x02, 0x29, 0x02, 0xe3, 0xa7, 0x5a, 0x13, 0xce, 0x27, 0x5e, 0xea,
+	0x6e, 0x4f, 0xfc, 0x4a, 0xfd, 0x43, 0xe2, 0x52, 0xa7, 0x79, 0xc4, 0xbf, 0x2a, 0xff, 0x60, 0x0b,
+	0xc0, 0x27, 0x60, 0xfb, 0x3a, 0x66, 0xf8, 0x5d, 0xa7, 0x4f, 0xfb, 0x6c, 0xcf, 0xa3, 0xcc, 0x72,
+	0x09, 0xf1, 0xba, 0x14, 0xb7, 0xb5, 0x63, 0xf9, 0x7a, 0x88, 0xe7, 0x14, 0xd7, 0x76, 0x22, 0xbb,
+	0xef, 0x77, 0x9c, 0x36, 0x43, 0x96, 0xe5, 0x7a, 0x0e, 0x65, 0x1d, 0x67, 0xdf, 0xd5, 0x4e, 0xcd,
+	0xcf, 0x2a, 0x68, 0x5a, 0xd1, 0x80, 0x27, 0x99, 0x55, 0xae, 0x77, 0xf8, 0x0a, 0xac, 0x4d, 0x6e,
+	0x40, 0xb8, 0x39, 0x75, 0x31, 0xf6, 0xf4, 0xe9, 0xe7, 0x04, 0xa2, 0x6a, 0x83, 0x97, 0x5b, 0x00,
+	0xde, 0x9b, 0xbe, 0x1d, 0x7a, 0xfa, 0x0d, 0x89, 0xdc, 0x42, 0x1a, 0xf9, 0x09, 0x0b, 0xf9, 0x57,
+	0xaf, 0xdf, 0x90, 0x98, 0xb4, 0x28, 0xee, 0xf0, 0x77, 0x8b, 0x72, 0x2c, 0xf5, 0x1b, 0x12, 0x64,
+	0xaf, 0xf1, 0x5e, 0x1d, 0x1e, 0x1d, 0xfd, 0x9f, 0xff, 0xaf, 0xed, 0xfe, 0x0a, 0x00, 0x00, 0xff,
+	0xff, 0xb4, 0x64, 0xdf, 0x09, 0x00, 0x07, 0x00, 0x00,
 }

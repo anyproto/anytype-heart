@@ -9,6 +9,7 @@ require (
 	github.com/ipfs/go-ipfs-config v0.0.6
 	github.com/prometheus/common v0.4.0
 	github.com/sirupsen/logrus v1.4.2
-	github.com/textileio/go-textile v0.7.2-0.20190907000013-95a885123536
 	golang.org/x/mobile v0.0.0-20190806162312-597adff16ade
 )
+
+replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec
