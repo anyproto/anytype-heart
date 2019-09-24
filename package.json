@@ -12,7 +12,7 @@
 
     "build-all": "npm-run-all build:*",
     "build:go": "protoc -I ./pb/protos $(find pb/protos -iname \"*.proto\") --go_out=pb/",
-    "build:ts": "pbjs -t static-module -w commonjs -o build/ts/commands.js ./pb/protos/*.proto && pbts -o build/ts/commands.d.ts build/ts/commands.js",
+    "build:ts": "./node_modules/.bin/pbjs -t static-module -w commonjs -o build/ts/commands.js ./pb/protos/*.proto && ./node_modules/.bin/pbts -o build/ts/commands.d.ts build/ts/commands.js",
     "build:java": "protoc -I ./pb/protos $(find pb/protos -iname \"*.proto\") --java_out=build/java/",
     "build:objc": "protoc -I ./pb/protos $(find pb/protos -iname \"*.proto\") --objc_out=build/objc/" 
   },
