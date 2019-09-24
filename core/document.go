@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	mergeFileCaption            = "Merge"
-	defaultDocName = "Untitled"
-	documentSchema = "QmTShDQr2PeWEXE5D8r77Lz5NeyLK7NNRENXtQHTvqo9F5"
+	mergeFileCaption = "Merge"
+	defaultDocName   = "Untitled"
+	documentSchema   = "QmTShDQr2PeWEXE5D8r77Lz5NeyLK7NNRENXtQHTvqo9F5"
 )
 
 var errorNotFound = fmt.Errorf("not found")
@@ -32,8 +32,8 @@ type Document struct {
 	*pb.Document
 
 	// todo: refactor in order to remove
-	thread *tcore.Thread     `json:",inline"`
-	node *Anytype
+	thread *tcore.Thread `json:",inline"`
+	node   *Anytype
 }
 
 type Documents []Document
@@ -71,17 +71,17 @@ type DocumentBlockTypeDocument struct {
 }
 
 func (doc *Document) AddChild(childId string, addDocumentBlock bool) error {
-//	err := doc.Thread.AddChild(childId)
-//	if err != nil {
-//		return err
-//	}
+	//	err := doc.Thread.AddChild(childId)
+	//	if err != nil {
+	//		return err
+	//	}
 
 	// todo: add block to the document
 	return nil
 }
 
 func (doc *Document) GetVersion(id string) (*DocumentVersion, error) {
-	files, err := doc.node.File(id)
+	files, err := doc.node.Textile.Node().File(id)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (doc *Document) GetVersion(id string) (*DocumentVersion, error) {
 		version.Icon = icon
 	}
 
-	plaintext, err := readFile(doc.node.Textile, files.Files[0].File)
+	plaintext, err := readFile(doc.node.Textile.Node(), files.Files[0].File)
 	if err != nil {
 		return nil, fmt.Errorf("readFile error: %s", err.Error())
 	}
@@ -122,7 +122,7 @@ func (doc *Document) GetVersion(id string) (*DocumentVersion, error) {
 }
 
 func (doc *Document) GetLastVersion() (*DocumentVersion, error) {
-	versions, err := doc.GetVersions("", 1, false )
+	versions, err := doc.GetVersions("", 1, false)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (doc *Document) GetLastVersion() (*DocumentVersion, error) {
 }
 
 func (doc *Document) GetVersions(offset string, limit int, metaOnly bool) ([]*DocumentVersion, error) {
-	files, err := doc.node.Files(offset, limit, doc.Id)
+	files, err := doc.node.Textile.Node().Files(offset, limit, doc.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (doc *Document) GetVersions(offset string, limit int, metaOnly bool) ([]*Do
 	for _, item := range files.Items {
 		version := &DocumentVersion{&pb.DocumentVersion{}}
 
-		version.Id =  item.Block
+		version.Id = item.Block
 		version.User = item.User.Address
 		version.Date = item.Date
 
@@ -163,7 +163,7 @@ func (doc *Document) GetVersions(offset string, limit int, metaOnly bool) ([]*Do
 			version.Icon = icon
 		}
 
-		plaintext, err := readFile(doc.node.Textile, item.Files[0].File)
+		plaintext, err := readFile(doc.node.Textile.Node(), item.Files[0].File)
 		if err != nil {
 			return nil, fmt.Errorf("readFile error: %s", err.Error())
 		}
@@ -223,7 +223,7 @@ func isVersionsEqual(version1, version2 *DocumentVersion) bool {
 
 func (doc *Document) ChildrenIds() ([]string, error) {
 	ver, err := doc.GetLastVersion()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -263,25 +263,25 @@ func (doc *Document) AddVersion(newVersion *DocumentVersion, isMerge bool) (*Doc
 		if !parentFound {
 			// so we received the new version that was applied to the outdated parent
 			// we need to found the ancestor and merge the changes
-	/*		ancestorBlockID := doc.Thread.FollowParentsForTheFirstAncestor(newVersion.Parents[0], lastVersion.Id)
-			log.Debugf("ancestorBlockID for %s and %s is %s", newVersion.Parents[0], lastVersion.Id, ancestorBlockID.B58String())
+			/*		ancestorBlockID := doc.Thread.FollowParentsForTheFirstAncestor(newVersion.Parents[0], lastVersion.Id)
+					log.Debugf("ancestorBlockID for %s and %s is %s", newVersion.Parents[0], lastVersion.Id, ancestorBlockID.B58String())
 
-			ancestorFileBlock := doc.Thread.FollowParentsUntilBlock([]string{ancestorBlockID.B58String()}, pb.Block_FILES)
-			if ancestorFileBlock == nil {
-				return nil, fmt.Errorf("can't find ancestor file block")
-			}
+					ancestorFileBlock := doc.Thread.FollowParentsUntilBlock([]string{ancestorBlockID.B58String()}, pb.Block_FILES)
+					if ancestorFileBlock == nil {
+						return nil, fmt.Errorf("can't find ancestor file block")
+					}
 
-			log.Debugf("(%p) [MERGE] outdated parent version (parent = %s, last = %s) – need a merge. Found ancestor: %s -> closest FILE parent %s", doc.textile, newVersion.Parents[0], lastVersions[0].Id, ancestorBlockID.B58String(), ancestorFileBlock.Id)
+					log.Debugf("(%p) [MERGE] outdated parent version (parent = %s, last = %s) – need a merge. Found ancestor: %s -> closest FILE parent %s", doc.textile, newVersion.Parents[0], lastVersions[0].Id, ancestorBlockID.B58String(), ancestorFileBlock.Id)
 
-			ancestorVersion, err := doc.GetVersion(ancestorFileBlock.)
-			if err != nil {
-				return nil, err
-			}
+					ancestorVersion, err := doc.GetVersion(ancestorFileBlock.)
+					if err != nil {
+						return nil, err
+					}
 
-			newVersion, err = mergeVersions(ancestorVersion, lastVersion, newVersion)
-			if err != nil {
-				return nil, err
-			}*/
+					newVersion, err = mergeVersions(ancestorVersion, lastVersion, newVersion)
+					if err != nil {
+						return nil, err
+					}*/
 		}
 
 		newVersionB, _ := json.Marshal(newVersion.Blocks)
@@ -298,10 +298,10 @@ func (doc *Document) AddVersion(newVersion *DocumentVersion, isMerge bool) (*Doc
 	}
 
 	if newVersion.Id != "" {
-	/*	err = doc.Modify(doc.ChildrenIds, newVersion.Name, newVersion.Icon)
-		if err != nil {
-			return nil, err
-		}*/
+		/*	err = doc.Modify(doc.ChildrenIds, newVersion.Name, newVersion.Icon)
+			if err != nil {
+				return nil, err
+			}*/
 		return newVersion, nil
 	}
 
@@ -323,14 +323,14 @@ func (doc *Document) AddVersion(newVersion *DocumentVersion, isMerge bool) (*Doc
 		conf.Added = util.ProtoTs(newVersion.Date.UnixNano())
 	}*/
 
-	newFile, err := doc.node.AddFileIndex(mill, conf)
+	newFile, err := doc.node.Textile.Node().AddFileIndex(mill, conf)
 	if err != nil {
 		return nil, fmt.Errorf("AddFileIndex error: %s", err.Error())
 	}
 
 	//log.Debugf("(%p) AddFileIndex %s",  doc.textile, spew.Sdump(newFile))
 
-	node, keys, err := doc.node.AddNodeFromFiles([]*tpb.FileIndex{newFile})
+	node, keys, err := doc.node.Textile.Node().AddNodeFromFiles([]*tpb.FileIndex{newFile})
 	if err != nil {
 		return nil, fmt.Errorf("AddNodeFromFiles error: %s", err.Error())
 	}
@@ -352,8 +352,8 @@ func (doc *Document) AddVersion(newVersion *DocumentVersion, isMerge bool) (*Doc
 	newVersion.Id = block.B58String()
 	//fmt.Printf("saved new version %s... parent %s\n", newVersion.Id, newVersion.p)
 
-	newVersion.User = doc.node.Account().Address()
-	newBlock, err := doc.node.Block(block.B58String())
+	newVersion.User = doc.node.Textile.Node().Account().Address()
+	newBlock, err := doc.node.Textile.Node().Block(block.B58String())
 	if err != nil {
 		log.Errorf("failed to get the block %s: %s", newBlock.Id, err.Error())
 	}
@@ -426,7 +426,7 @@ func (doc *Document) AddVersion(newVersion *DocumentVersion, isMerge bool) (*Doc
 			isThreadChildren[thrdId] = struct{}{}
 		}
 
-		for _, childThread := range doc.node.Threads() {
+		for _, childThread := range doc.node.Textile.Node().Threads() {
 			if _, isChildThread := isThreadChildren[childThread.Id]; !isChildThread {
 				continue
 			}
@@ -442,8 +442,8 @@ func (doc *Document) AddVersion(newVersion *DocumentVersion, isMerge bool) (*Doc
 				}
 
 				go func(thread *tcore.Thread, peerID string) {
-					peer := doc.node.Datastore().Peers().Get(peerID)
-					err := doc.node.AddInvite(doc.node.Threads(), peer.Address)
+					peer := doc.node.Textile.Node().Datastore().Peers().Get(peerID)
+					err := doc.node.Textile.Node().AddInvite(doc.node.Textile.Node().Threads(), peer.Address)
 					if err != nil {
 						log.Errorf("childThread.AddInvite(%s) error: %s", peerID, err.Error())
 						return
@@ -492,11 +492,11 @@ return nil
 
 /*func (doc *Document) childrenTreeIgnoreBranch(ignoreThreadBranch string) []*Document {
 	var threadById = make(map[string]*Thread)
-	for _, th := range doc.node.loadedThreads {
+	for _, th := range doc.node.Textile.Node().loadedThreads {
 		threadById[th.Id] = th
 	}
 
-	threadById["root"] = doc.node.AccountThread()
+	threadById["root"] = doc.node.Textile.Node().AccountThread()
 
 	var getChildren func([]string, []string, bool) []*Document
 	getChildren = func(breadcrumbs []string, rootIds []string, isTemplate bool) []*Document {

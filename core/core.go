@@ -23,9 +23,9 @@ type Anytype struct {
 	documentsCache map[string]*Document
 }
 
-func New(account string) (*Anytype, error) {
+func New(repoPath string, account string) (*Anytype, error) {
 	msg := messenger{}
-	tm, err := tmobile.NewTextile(&tmobile.RunConfig{filepath.Join(cfg.RepoPath, account), true, nil}, &msg)
+	tm, err := tmobile.NewTextile(&tmobile.RunConfig{filepath.Join(repoPath, account), true, nil}, &msg)
 	if err != nil {
 		return nil, err
 	}
