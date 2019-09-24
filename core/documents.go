@@ -206,7 +206,7 @@ func (t *Textile) DuplicateDocument(id string, parentId string) (mh.Multihash, e
 }
 */
 func (a *Anytype) DocumentView(id string) (*pb.Document, error) {
-	t, err := a.ThreadView(id)
+	t, err := a.Textile.Node().ThreadView(id)
 	if err != nil {
 		return nil, err
 	}
@@ -230,13 +230,13 @@ func (a *Anytype) DocumentView(id string) (*pb.Document, error) {
 }
 
 func (a *Anytype) Document(id string) (*Document, error) {
-	if doc, exists := a.documentsCache[id]; exists{
+	if doc, exists := a.documentsCache[id]; exists {
 		return doc, nil
 	}
 
-	t := a.Thread(id)
+	t := a.Textile.Node().Thread(id)
 	icon, name := getIconAndNameFromPackedThreadName(t.Name)
-	tv, err := a.ThreadView(id)
+	tv, err := a.Textile.Node().ThreadView(id)
 	if err != nil {
 		return nil, err
 	}
@@ -255,14 +255,13 @@ func (a *Anytype) Document(id string) (*Document, error) {
 		node: a,
 	}
 
-
 	return doc, nil
 }
 
 func (a *Anytype) Documents() ([]*Document, error) {
 	var docs []*Document
 	// todo: optimise memory
-	for _, thrd := range a.Threads() {
+	for _, thrd := range a.Textile.Node().Threads() {
 		doc, err := a.Document(thrd.Id)
 		if err != nil {
 			continue
@@ -277,32 +276,32 @@ func (a *Anytype) Documents() ([]*Document, error) {
 func (a *Anytype) traverseDocumentsTree(childrenIds []string) ([]*pb.Document, error) {
 	var children []*pb.Document
 
-		for _, childId := range childrenIds{
-			doc, err := a.Document(childId)
-			if err != nil {
-				// todo: maybe should skip instead of return?
-				return nil, err
-			}
-
-			ver, err := doc.GetLastVersion()
-			if err != nil {
-				// todo: maybe should skip instead of return?
-				return nil, err
-			}
-
-			if doc.Children == nil {
-				childrenIds := ver.ChildrenIds()
-				doc.Children, err = a.traverseDocumentsTree(childrenIds)
-				if err != nil {
-					// todo: maybe should skip instead of return?
-					return nil, err
-				}
-			}
-
-			children = append(children, doc.Document)
+	for _, childId := range childrenIds {
+		doc, err := a.Document(childId)
+		if err != nil {
+			// todo: maybe should skip instead of return?
+			return nil, err
 		}
 
-		return children, nil
+		ver, err := doc.GetLastVersion()
+		if err != nil {
+			// todo: maybe should skip instead of return?
+			return nil, err
+		}
+
+		if doc.Children == nil {
+			childrenIds := ver.ChildrenIds()
+			doc.Children, err = a.traverseDocumentsTree(childrenIds)
+			if err != nil {
+				// todo: maybe should skip instead of return?
+				return nil, err
+			}
+		}
+
+		children = append(children, doc.Document)
+	}
+
+	return children, nil
 }
 
 func (a *Anytype) RootDocuments() ([]*Document, error) {
@@ -379,9 +378,9 @@ func (a *Anytype) AddDocument(conf pb.AddDocumentConfig) (*Document, error) {
 
 	if conf.ParentToAddChild != "" {
 		if conf.ParentToAddChild == "root" {
-			parentThread = a.ThreadByKey(a.Config().Account.Address)
+			parentThread = a.Textile.Node().ThreadByKey(a.Textile.Node().Config().Account.Address)
 		} else {
-			parentThread = a.Thread(conf.ParentToAddChild)
+			parentThread = a.Textile.Node().Thread(conf.ParentToAddChild)
 		}
 		if parentThread == nil {
 			return nil, errorDocumentCantFindParent
@@ -392,7 +391,7 @@ func (a *Anytype) AddDocument(conf pb.AddDocumentConfig) (*Document, error) {
 				// thread wasn't created so no need to update parent
 				return
 			}
-			parentDoc, err  := a.Document(parentThread.Id)
+			parentDoc, err := a.Document(parentThread.Id)
 			if err != nil {
 				log.Errorf("failed to convert parent thread to doc: %s", err.Error())
 				return
@@ -404,7 +403,7 @@ func (a *Anytype) AddDocument(conf pb.AddDocumentConfig) (*Document, error) {
 		}()
 	}
 
-	thrd, err = a.AddThread(config, sk, a.Account().Address(), true, true)
+	thrd, err = a.Textile.Node().AddThread(config, sk, a.Textile.Node().Account().Address(), true, true)
 	if err != nil {
 		return nil, err
 	}
