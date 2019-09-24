@@ -86,7 +86,7 @@ func WalletRecover(b []byte) []byte {
 				break
 			}
 
-			anytype, err := core.New(account.Address())
+			anytype, err := core.New(instance.rootPath, account.Address())
 			if err != nil {
 				sendAccountAddEvent(index,nil, pb.AccountAdd_Error_UNKNOWN_ERROR, err)
 				break

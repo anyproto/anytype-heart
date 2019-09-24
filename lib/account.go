@@ -33,7 +33,7 @@ func AccountCreate(b []byte) []byte {
 		return response(nil, pb.AccountCreateR_Error_UNKNOWN_ERROR, err)
 	}
 
-	anytype, err := core.New(account.Address())
+	anytype, err := core.New(instance.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.AccountCreateR_Error_UNKNOWN_ERROR, err)
 	}
@@ -80,7 +80,7 @@ func AccountSelect(b []byte) []byte {
 		return response(nil, pb.AccountSelectR_Error_BAD_INPUT, err)
 	}
 
-	anytype, err := core.New(account.Address())
+	anytype, err := core.New(instance.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.AccountSelectR_Error_UNKNOWN_ERROR, err)
 	}
