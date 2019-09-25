@@ -23,8 +23,10 @@ func AccountCreate(b []byte) []byte {
 		return response(nil, pb.AccountCreateResponse_Error_BAD_INPUT, err)
 	}
 
-	// this func will wait until search process will stop in order to be sure node was properly stopped
-	instance.accountSearchCancel()
+	if instance.accountSearchCancel != nil {
+		// this func will wait until search process will stop in order to be sure node was properly stopped
+		instance.accountSearchCancel()
+	}
 
 	account, err := core.WalletAccountAt(instance.mnemonic, len(instance.localAccounts), "")
 	if err != nil {
@@ -88,8 +90,10 @@ func AccountSelect(b []byte) []byte {
 		return response(nil, pb.AccountSelectResponse_Error_BAD_INPUT, err)
 	}
 
-	// this func will wait until search process will stop in order to be sure node was properly stopped
-	instance.accountSearchCancel()
+	if instance.accountSearchCancel != nil {
+		// this func will wait until search process will stop in order to be sure node was properly stopped
+		instance.accountSearchCancel()
+	}
 
 	anytype, err := core.New(instance.rootPath, account.Address())
 	if err != nil {
