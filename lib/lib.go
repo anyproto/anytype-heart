@@ -21,11 +21,12 @@ import (
 var addonProxyFunc C.proxyFunc
 var eventHandlerJsFunc unsafe.Pointer
 
-type Instance struct{
-	rootPath string
-	mnemonic string
-	pin      string
+type Instance struct {
+	rootPath            string
+	pin                 string
+	mnemonic            string
 	accountSearchCancel context.CancelFunc
+	localAccounts       []*pb.Account
 	*core.Anytype
 }
 
@@ -82,6 +83,6 @@ func SendEvent(event *pb.Event) {
 	}
 }
 
-func main(){
+func main() {
 
 }

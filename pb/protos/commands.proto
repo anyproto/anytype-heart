@@ -21,7 +21,7 @@ message WalletCreateResponse {
 
     message Error {
         Code code = 1;
-        string descritrion = 2;
+        string description = 2;
 
         enum Code {
             NULL = 0;
@@ -49,6 +49,8 @@ message WalletRecoverResponse {
             NULL = 0;
             UNKNOWN_ERROR = 1;
             BAD_INPUT = 2;
+
+            FAILED_TO_CREATE_LOCAL_REPO = 101;
         }
     }
 }
@@ -71,9 +73,9 @@ message AccountCreateResponse {
             UNKNOWN_ERROR = 1;
             BAD_INPUT = 2;
 
-            FAILED_TO_START_NODE = 101;
-            FAILED_TO_SET_NAME = 102;
-            FAILED_TO_SET_AVATAR = 103;
+            ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE = 101;
+            ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME = 102;
+            ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR = 103;
         }
     }
 }
