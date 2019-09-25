@@ -32,7 +32,6 @@ func WalletCreate(b []byte) []byte {
 	}
 
 	instance.mnemonic = mnemonic
-	instance.pin = q.Pin
 	instance.rootPath = q.RootPath
 
 	return response(mnemonic, pb.WalletCreateR_Error_NULL, nil)

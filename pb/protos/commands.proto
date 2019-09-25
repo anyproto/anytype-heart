@@ -13,7 +13,6 @@ service ClientCommands {
 
 message WalletCreateQ {
     string rootPath = 1;
-    string pin = 2;
 }
 
 message WalletCreateR {
