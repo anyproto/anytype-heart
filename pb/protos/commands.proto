@@ -5,23 +5,23 @@ option go_package = "pb";
 import "models.proto";
 
 service ClientCommands {
-    rpc WalletCreate (WalletCreateQ) returns (WalletCreateR);
-    rpc WalletRecover (WalletRecoverQ) returns (WalletRecoverR);
-    rpc AccountCreate (AccountCreateQ) returns (AccountCreateR);
-    rpc AccountSelect (AccountSelectQ) returns (AccountSelectR);
+    rpc WalletCreate (WalletCreateRequest) returns (WalletCreateResponse);
+    rpc WalletRecover (WalletRecoverRequest) returns (WalletRecoverResponse);
+    rpc AccountCreate (AccountCreateRequest) returns (AccountCreateResponse);
+    rpc AccountSelect (AccountSelectRequest) returns (AccountSelectResponse);
 }
 
-message WalletCreateQ {
+message WalletCreateRequest {
     string rootPath = 1;
 }
 
-message WalletCreateR {
+message WalletCreateResponse {
     Error error = 1;
     string mnemonic = 2;
 
     message Error {
         Code code = 1;
-        string desc = 2;
+        string descritrion = 2;
 
         enum Code {
             NULL = 0;
@@ -34,16 +34,16 @@ message WalletCreateR {
     }
 }
 
-message WalletRecoverQ {
+message WalletRecoverRequest {
     string rootPath = 1;
     string mnemonic = 2;
 }
 
-message WalletRecoverR {
+message WalletRecoverResponse {
     Error error = 1;
     message Error {
         Code code = 1;
-        string desc = 2;
+        string description = 2;
 
         enum Code {
             NULL = 0;
@@ -53,18 +53,18 @@ message WalletRecoverR {
     }
 }
 
-message AccountCreateQ {
+message AccountCreateRequest {
     string username = 1;
     string avatarLocalPath = 2;
 }
 
-message AccountCreateR {
+message AccountCreateResponse {
     Error error = 1;
     Account account = 2;
 
     message Error {
         Code code = 1;
-        string desc = 2;
+        string description = 2;
 
         enum Code {
             NULL = 0;
@@ -78,17 +78,17 @@ message AccountCreateR {
     }
 }
 
-message AccountSelectQ {
+message AccountSelectRequest {
     int64 index = 1;
 }
 
-message AccountSelectR {
+message AccountSelectResponse {
     Error error = 1;
     Account account = 2;
 
     message Error {
         Code code = 1;
-        string desc = 2;
+        string description = 2;
 
         enum Code {
             NULL = 0;

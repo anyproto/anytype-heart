@@ -21,7 +21,7 @@ message AccountAdd {
 
     message Error {
         Code code = 1;
-        string desc = 2;
+        string description = 2;
 
         enum Code {
             NULL = 0;

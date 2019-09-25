@@ -13,11 +13,11 @@ message Accounts {
 }
 
 message State {
-    repeated DocHeader docHeaders = 1;
-    string currentDocId = 2;
+    repeated DocumentHeader documentHeaders = 1;
+    string currentDocumentId = 2;
 }
 
-message DocHeader {
+message DocumentHeader {
     string id = 1;
     string name = 2;
     string version = 3;
@@ -25,7 +25,7 @@ message DocHeader {
 }
 
 message Document {
-    DocHeader header = 1;
+    DocumentHeader header = 1;
     repeated Block blocks = 2;
 }
 
