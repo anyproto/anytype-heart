@@ -1,1 +1,2 @@
 lib/lib.so filter=lfs diff=lfs merge=lfs -text
+dist/lib.so filter=lfs diff=lfs merge=lfs -text
