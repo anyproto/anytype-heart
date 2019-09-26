@@ -15,6 +15,9 @@ lint:
 	echo 'Linting with golint...'
 	golint `go list ./... | grep -v /vendor/`
 
+test:
+	go test github.com/anytypeio/go-anytype-middleware/lib
+
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-library/common))
 	export GO111MODULE=on

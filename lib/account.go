@@ -73,7 +73,7 @@ func AccountCreate(b []byte) []byte {
 	}
 
 	instance.localAccounts = append(instance.localAccounts, newAcc)
-	return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
+	return response(newAcc, pb.AccountCreateResponse_Error_NULL, nil)
 }
 
 //exportMobile AccountSelect
@@ -89,10 +89,13 @@ func AccountSelect(b []byte) []byte {
 
 	var q pb.AccountSelectRequest
 	err := proto.Unmarshal(b, &q)
-
 	if err != nil {
 		return response(nil, pb.AccountSelectResponse_Error_BAD_INPUT, err)
 	}
+
+	// Currently it is possible to choose not existing index – this will create the new account
+	// todo: decide if this is ok
+
 	account, err := core.WalletAccountAt(instance.mnemonic, int(q.Index), "")
 	if err != nil {
 		return response(nil, pb.AccountSelectResponse_Error_BAD_INPUT, err)

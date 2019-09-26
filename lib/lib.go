@@ -9,13 +9,14 @@ import "C"
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"unsafe"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 )
 
 var addonProxyFunc C.proxyFunc
@@ -81,6 +82,9 @@ func SendEvent(event *pb.Event) {
 
 	if eventHandlerJsFunc != nil {
 		C.ProxyCall(addonProxyFunc, eventHandlerJsFunc, C.CString(""), C.CString(string(b)), C.int(len(b)))
+	} else {
+		eventB,_ := json.Marshal(event)
+		log.Errorf("failed to send event to nil eventHandler: %s", string(eventB))
 	}
 }
 

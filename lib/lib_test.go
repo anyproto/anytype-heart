@@ -4,41 +4,162 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 )
 
-func SignUp(t *testing.T) {
+func Test_SignUp(t *testing.T) {
 	rootPath := os.TempDir()
-	msg1, err := proto.Marshal(&pb.WalletCreateRequest{RootPath: rootPath})
+	walletCreateReq, err := proto.Marshal(&pb.WalletCreateRequest{RootPath: rootPath})
 	fmt.Printf("rootPath: %s\n", rootPath)
 	require.NoError(t, err, "failed to marshal WalletCreateRequest")
 
-	resp1 := WalletCreate(msg1)
-
-	var msg2 pb.WalletCreateResponse
-	err = proto.Unmarshal(resp1, &msg2)
+	walletCreateResp := WalletCreate(walletCreateReq)
+	var walletCreateRespMsg pb.WalletCreateResponse
+	err = proto.Unmarshal(walletCreateResp, &walletCreateRespMsg)
 	require.NoError(t, err, "failed to unmarshal WalletCreateResponse")
+	fmt.Println(walletCreateRespMsg.Mnemonic)
 
-	msg3, err := proto.Marshal(&pb.AccountCreateRequest{Username: "testname", AvatarLocalPath: "testdata/pic1.jpg"})
+	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Username: "name_to_test_recover", AvatarLocalPath: "testdata/pic1.jpg"})
 	require.NoError(t, err, "failed to marshal AccountCreateRequest")
 
-	resp2 := AccountCreate(msg3)
-	var msg4 pb.AccountCreateResponse
-	err = proto.Unmarshal(resp2, &msg4)
+	accountCreateResp := AccountCreate(accountCreateReq)
+	var accountCreateRespMsg pb.AccountCreateResponse
+	err = proto.Unmarshal(accountCreateResp, &accountCreateRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountCreateResponse")
+	require.Equal(t, pb.AccountCreateResponse_Error_NULL, accountCreateRespMsg.Error.Code, "AccountCreateResponse contains error: %s %s", accountCreateRespMsg.Error.Code.String(), accountCreateRespMsg.Error.Description)
 
-	msg5, err := proto.Marshal(&pb.ImageGetBlobRequest{Id: msg4.Account.Avatar.Id, Size: pb.ImageSize_SMALL})
+	imageGetBlobReq, err := proto.Marshal(&pb.ImageGetBlobRequest{Id: accountCreateRespMsg.Account.Avatar.Id, Size: pb.ImageSize_SMALL})
 	if err != nil {
 		require.NoError(t, err, "failed to marshal AccountCreateRequest")
 	}
-	resp3 := ImageGetBlob(msg5)
-	var msg6 pb.ImageGetBlobResponse
-	err = proto.Unmarshal(resp3, &msg6)
+	imageGetBlobResp := ImageGetBlob(imageGetBlobReq)
+	var imageGetBlobRespMsg pb.ImageGetBlobResponse
+	err = proto.Unmarshal(imageGetBlobResp, &imageGetBlobRespMsg)
 	require.NoError(t, err, "failed to unmarshal ImageGetBlobResponse")
-	require.Equal(t, msg6.Error.Code, pb.ImageGetBlobResponse_Error_NULL, "ImageGetBlobResponse contains error: %s", msg6.Error.Code.String())
-	require.True(t, len(msg6.Blob) > 0, "ava size should be greater than 0")
+	require.Equal(t, pb.ImageGetBlobResponse_Error_NULL, imageGetBlobRespMsg.Error.Code, "ImageGetBlobResponse contains error: %s", imageGetBlobRespMsg.Error.Code.String())
+	require.True(t, len(imageGetBlobRespMsg.Blob) > 0, "ava size should be greater than 0")
+	time.Sleep(time.Minute)
+}
+
+func Test_RecoverLocalWithoutRestart(t *testing.T) {
+	rootPath := os.TempDir()
+	walletCreateReq, err := proto.Marshal(&pb.WalletCreateRequest{RootPath: rootPath})
+	fmt.Printf("rootPath: %s\n", rootPath)
+	require.NoError(t, err, "failed to marshal WalletCreateRequest")
+
+	walletCreateResp := WalletCreate(walletCreateReq)
+	var walletCreateRespMsg pb.WalletCreateResponse
+	err = proto.Unmarshal(walletCreateResp, &walletCreateRespMsg)
+	require.NoError(t, err, "failed to unmarshal WalletCreateResponse")
+
+	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Username: "testname", AvatarLocalPath: "testdata/pic1.jpg"})
+	require.NoError(t, err, "failed to marshal AccountCreateRequest")
+
+	accountCreateResp := AccountCreate(accountCreateReq)
+	var accountCreateRespMsg pb.AccountCreateResponse
+	err = proto.Unmarshal(accountCreateResp, &accountCreateRespMsg)
+	require.NoError(t, err, "failed to unmarshal AccountCreateResponse")
+
+	err = instance.Textile.Node().Stop()
+	require.NoError(t, err, "failed to stop node")
+
+	walletRecoverReq, err := proto.Marshal(&pb.WalletRecoverRequest{RootPath: rootPath, Mnemonic: walletCreateRespMsg.Mnemonic})
+	fmt.Printf("rootPath: %s\n", rootPath)
+	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
+
+	walletRecoverResp := WalletRecover(walletRecoverReq)
+	var walletRecoverRespMsg pb.WalletRecoverResponse
+	err = proto.Unmarshal(walletRecoverResp, &walletRecoverRespMsg)
+	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
+	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s", walletRecoverRespMsg.Error.Code)
+
+	time.Sleep(time.Second * 10)
+
+	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Index: 0})
+	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
+
+	accountSelectResp := AccountSelect(accountSelectReq)
+	var accountSelectRespMsg pb.AccountSelectResponse
+	err = proto.Unmarshal(accountSelectResp, &accountSelectRespMsg)
+	require.NoError(t, err, "failed to unmarshal AccountSelectResponse")
+	require.Equal(t, pb.AccountSelectResponse_Error_NULL, accountSelectRespMsg.Error.Code, "AccountSelectResponse contains error: %s", accountSelectRespMsg.Error.Code)
+}
+
+func Test_RecoverLocalAfterRestart(t *testing.T) {
+	rootPath := os.TempDir()
+	walletCreateReq, err := proto.Marshal(&pb.WalletCreateRequest{RootPath: rootPath})
+	fmt.Printf("rootPath: %s\n", rootPath)
+	require.NoError(t, err, "failed to marshal WalletCreateRequest")
+
+	walletCreateResp := WalletCreate(walletCreateReq)
+	var walletCreateRespMsg pb.WalletCreateResponse
+	err = proto.Unmarshal(walletCreateResp, &walletCreateRespMsg)
+	require.NoError(t, err, "failed to unmarshal WalletCreateResponse")
+
+	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Username: "testname", AvatarLocalPath: "testdata/pic1.jpg"})
+	require.NoError(t, err, "failed to marshal AccountCreateRequest")
+
+	accountCreateResp := AccountCreate(accountCreateReq)
+	var accountCreateRespMsg pb.AccountCreateResponse
+	err = proto.Unmarshal(accountCreateResp, &accountCreateRespMsg)
+	require.NoError(t, err, "failed to unmarshal AccountCreateResponse")
+
+	err = instance.Textile.Node().Stop()
+	require.NoError(t, err, "failed to stop node")
+
+	instance = &Instance{}
+
+	walletRecoverReq, err := proto.Marshal(&pb.WalletRecoverRequest{RootPath: rootPath, Mnemonic: walletCreateRespMsg.Mnemonic})
+	fmt.Printf("rootPath: %s\n", rootPath)
+	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
+
+	walletRecoverResp := WalletRecover(walletRecoverReq)
+	var walletRecoverRespMsg pb.WalletRecoverResponse
+	err = proto.Unmarshal(walletRecoverResp, &walletRecoverRespMsg)
+	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
+	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s", walletRecoverRespMsg.Error.Code)
+
+	time.Sleep(time.Second * 10)
+
+	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Index: 0})
+	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
+
+	accountSelectResp := AccountSelect(accountSelectReq)
+	var accountSelectRespMsg pb.AccountSelectResponse
+	err = proto.Unmarshal(accountSelectResp, &accountSelectRespMsg)
+	require.NoError(t, err, "failed to unmarshal AccountSelectResponse")
+	require.Equal(t, pb.AccountSelectResponse_Error_NULL, accountSelectRespMsg.Error.Code, "AccountSelectResponse contains error: %s", accountSelectRespMsg.Error.Code)
+
+}
+
+func Test_RecoverRemoteNotExisting(t *testing.T) {
+	rootPath := os.TempDir()
+
+	walletRecoverReq, err := proto.Marshal(&pb.WalletRecoverRequest{RootPath: rootPath, Mnemonic: "limit oxygen february destroy subway toddler umbrella nose praise shield afford eager"})
+	fmt.Printf("rootPath: %s\n", rootPath)
+	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
+
+	walletRecoverResp := WalletRecover(walletRecoverReq)
+	var walletRecoverRespMsg pb.WalletRecoverResponse
+	err = proto.Unmarshal(walletRecoverResp, &walletRecoverRespMsg)
+	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
+	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s", walletRecoverRespMsg.Error.Code)
+
+	time.Sleep(time.Second * 30)
+
+	require.Equal(t, len(instance.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(instance.localAccounts))
+
+	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Index: 0})
+	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
+
+	accountSelectResp := AccountSelect(accountSelectReq)
+	var accountSelectRespMsg pb.AccountSelectResponse
+	err = proto.Unmarshal(accountSelectResp, &accountSelectRespMsg)
+	require.NoError(t, err, "failed to unmarshal AccountSelectResponse")
+	require.Equal(t, pb.AccountSelectResponse_Error_NULL, accountSelectRespMsg.Error.Code, "AccountSelectResponse contains error: %s", accountSelectRespMsg.Error.Code)
 
 }

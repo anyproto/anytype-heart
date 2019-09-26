@@ -101,8 +101,9 @@ func WalletRecover(b []byte) []byte {
 		err = anytype.Textile.Node().Stop()
 		if err != nil {
 			sendAccountAddEvent(0, nil, pb.AccountAdd_Error_UNKNOWN_ERROR, err)
-			accountStoppedChan <- struct{}{}
 		}
+
+		accountStoppedChan <- struct{}{}
 	}
 
 	go func() {
@@ -137,8 +138,7 @@ func WalletRecover(b []byte) []byte {
 				sendAccountAddEvent(index, nil, pb.AccountAdd_Error_UNKNOWN_ERROR, err)
 				break
 			}
-
-			err = instance.Run()
+			err = anytype.Run()
 			if err != nil {
 				if err == core.ErrRepoCorrupted {
 					sendAccountAddEvent(index, nil, pb.AccountAdd_Error_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -154,7 +154,7 @@ func WalletRecover(b []byte) []byte {
 			}
 
 			name, err := anytype.Textile.Name()
-			if err != nil {
+			if err != nil || name == "" {
 				sendAccountAddEvent(index, nil, pb.AccountAdd_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
 				stopNode(anytype)
 				return
