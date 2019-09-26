@@ -2,6 +2,7 @@ package core
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,6 +17,11 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 var BootstrapNodes = []string{
 	"/ip4/68.183.2.167/tcp/4001/ipfs/12D3KooWE22N7rUX12WT34XsSpjMaCEuFNV3eVAo331kDgrP43WZ",
 	"/ip4/157.230.124.182/tcp/4001/ipfs/12D3KooWKLLf9Qc6SHaLWNPvx7Tk4AMc9i71CLdnbZuRiFMFMnEf",
+}
+
+func init() {
+	// todo: remove this temp workaround after release of go-ipfs v0.4.23
+	os.Setenv("LIBP2P_ALLOW_WEAK_RSA_KEYS", "1")
 }
 
 type Anytype struct {
