@@ -5,7 +5,28 @@ option go_package = "pb";
 message Account {
     string id = 1;
     string name = 2;
-    string avatar = 3;
+    Image avatar = 3;
+}
+
+message IpfsLink {
+    string cid = 1;
+    string name = 2;
+    uint64 size = 3;
+}
+
+enum ImageSize {
+    LARGE = 0;
+    SMALL = 1;
+    THUMB = 2;
+}
+
+message Image {
+    string id = 1;
+    repeated ImageSize sizes = 2;
+}
+
+message IpfsLinks {
+    repeated IpfsLink links = 1;
 }
 
 message Accounts {

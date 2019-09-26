@@ -51,7 +51,6 @@ func Command(command *C.char, data unsafe.Pointer, dataLen C.int, callbackJsFunc
 	go func() {
 		var cd []byte
 		switch cmd {
-		// Wallet
 		case "WalletCreate":
 			cd = WalletCreate(b)
 		case "WalletRecover":
@@ -60,6 +59,8 @@ func Command(command *C.char, data unsafe.Pointer, dataLen C.int, callbackJsFunc
 			cd = AccountCreate(b)
 		case "AccountSelect":
 			cd = AccountSelect(b)
+		case "ImageGetBlob":
+			cd = ImageGetBlob(b)
 		default:
 			fmt.Printf("unknown command type: %s\n", cmd)
 		}

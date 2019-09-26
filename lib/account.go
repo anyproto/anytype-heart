@@ -6,6 +6,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+var avatarSizes = []pb.ImageSize{pb.ImageSize_SMALL, pb.ImageSize_LARGE}
+
 //exportMobile AccountCreate
 func AccountCreate(b []byte) []byte {
 	response := func(account *pb.Account, code pb.AccountCreateResponse_Error_Code, err error) []byte {
@@ -57,11 +59,17 @@ func AccountCreate(b []byte) []byte {
 	}
 
 	if q.AvatarLocalPath != "" {
-		hash, err := instance.AccountSetAvatar(q.AvatarLocalPath)
+		_, err := instance.AccountSetAvatar(q.AvatarLocalPath)
 		if err != nil {
 			return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
-		newAcc.Avatar = ipfsFileURL(hash, q.AvatarLocalPath)
+
+		hash, err := instance.Textile.Avatar()
+		if err != nil {
+			return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
+		}
+
+		newAcc.Avatar = &pb.Image{Id: hash, Sizes: avatarSizes}
 	}
 
 	instance.localAccounts = append(instance.localAccounts, newAcc)
@@ -118,10 +126,12 @@ func AccountSelect(b []byte) []byte {
 		return response(acc, pb.AccountSelectResponse_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
 
-	acc.Avatar, err = instance.Anytype.Textile.Avatar()
+	avatarHash, err := instance.Anytype.Textile.Avatar()
 	if err != nil {
 		return response(acc, pb.AccountSelectResponse_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
+
+	acc.Avatar = &pb.Image{Id: avatarHash, Sizes: avatarSizes}
 
 	return response(acc, pb.AccountSelectResponse_Error_NULL, nil)
 }

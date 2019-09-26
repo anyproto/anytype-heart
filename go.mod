@@ -10,6 +10,8 @@ require (
 	github.com/multiformats/go-multihash v0.0.5
 	github.com/prometheus/common v0.4.0
 	github.com/sirupsen/logrus v1.4.2
+	github.com/stretchr/testify v1.3.0
+	github.com/textileio/go-textile v0.7.2-0.20190907000013-95a885123536
 	golang.org/x/mobile v0.0.0-20190806162312-597adff16ade
 )
 

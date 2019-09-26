@@ -168,12 +168,13 @@ func WalletRecover(b []byte) []byte {
 				return
 			}
 
-			newAcc.Avatar, err = anytype.Textile.Avatar()
+			avatarHash, err := anytype.Textile.Avatar()
 			if err != nil {
 				sendAccountAddEvent(index, nil, pb.AccountAdd_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
 				stopNode(anytype)
 				return
 			}
+			newAcc.Avatar = &pb.Image{Id: avatarHash, Sizes: avatarSizes}
 
 			if shouldCancel {
 				stopNode(anytype)
