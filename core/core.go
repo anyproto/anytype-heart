@@ -2,11 +2,11 @@ package core
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
 	tmobile "github.com/textileio/go-textile/mobile"
 )
 
@@ -19,17 +19,15 @@ var BootstrapNodes = []string{
 	"/ip4/157.230.124.182/tcp/4001/ipfs/12D3KooWKLLf9Qc6SHaLWNPvx7Tk4AMc9i71CLdnbZuRiFMFMnEf",
 }
 
-func init() {
-	// todo: remove this temp workaround after release of go-ipfs v0.4.23
-	os.Setenv("LIBP2P_ALLOW_WEAK_RSA_KEYS", "1")
-}
-
 type Anytype struct {
 	Textile        *tmobile.Mobile
 	documentsCache map[string]*Document
 }
 
 func New(repoPath string, account string) (*Anytype, error) {
+	// todo: remove this temp workaround after release of go-ipfs v0.4.23
+	crypto.MinRsaKeyBits = 1024
+
 	msg := messenger{}
 	tm, err := tmobile.NewTextile(&tmobile.RunConfig{filepath.Join(repoPath, account), true, nil}, &msg)
 	if err != nil {
