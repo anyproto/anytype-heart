@@ -30,7 +30,7 @@ jobs:
           name: cache mods
           command: |
             mkdir -p ~/.ssh
-            echo ssh-keyscan -t rsa,dsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts
+            ssh-keyscan -t rsa,dsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts
             chmod 600 ~/.ssh/known_hosts
             git config --global url.ssh://git@github.com/.insteadOf https://github.com/
             go mod download
