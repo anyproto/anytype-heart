@@ -15,7 +15,7 @@ const privateKey = `/key/swarm/psk/1.0.0/
 fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 
 var BootstrapNodes = []string{
-	"/ip4/68.183.2.167/tcp/4001/ipfs/12D3KooWE22N7rUX12WT34XsSpjMaCEuFNV3eVAo331kDgrP43WZ",
+	"/ip4/68.183.2.167/tcp/4001/ipfs/12D3KooWB2Ya2GkLLRSR322Z13ZDZ9LP4fDJxauscYwUMKLFCqaD",
 	"/ip4/157.230.124.182/tcp/4001/ipfs/12D3KooWKLLf9Qc6SHaLWNPvx7Tk4AMc9i71CLdnbZuRiFMFMnEf",
 }
 
@@ -58,7 +58,7 @@ func (a *Anytype) Run() error {
 		// todo: need to call this when IPFS node is up
 		time.Sleep(time.Second * 5)
 		for {
-			_, err = a.Textile.Node().RegisterCafe("12D3KooWE22N7rUX12WT34XsSpjMaCEuFNV3eVAo331kDgrP43WZ", "2M7TtjbhoTaLXyXWJJJpF6WBfFyxebCGj6pEZb3akC2hHcuzYPkFTYc9UEttE")
+			_, err = a.Textile.Node().RegisterCafe("12D3KooWB2Ya2GkLLRSR322Z13ZDZ9LP4fDJxauscYwUMKLFCqaD", "2MsR9h7mfq53oNt8vh7RfdPr57qPsn28X3dwbviZWs3E8kEu6kpdcDHyMx7Qo")
 			if err != nil {
 				log.Errorf("failed to register cafe: %s", err.Error())
 				time.Sleep(time.Second * 10)
