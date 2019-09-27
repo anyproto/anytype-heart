@@ -29,7 +29,9 @@ jobs:
       - run:
           name: cache mods
           command: |
+            mkdir -p ~/.ssh
             echo 'github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWp$' >> ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
             git config --global url.ssh://git@github.com/.insteadOf https://github.com/
             go mod download
       - save_cache:
