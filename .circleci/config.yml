@@ -26,7 +26,7 @@ jobs:
       - *checkout-linux
       - add_ssh_keys:
           fingerprints:
-            - "fa:75:0d:23:51:5d:41:76:94:6f:8d:8c:f6:e1:4e:5b"
+            - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
