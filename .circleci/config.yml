@@ -24,6 +24,9 @@ jobs:
       - image: circleci/golang:1.12.9
     steps:
       - *checkout-linux
+      - add_ssh_keys:
+          fingerprints:
+            - "fa:75:0d:23:51:5d:41:76:94:6f:8d:8c:f6:e1:4e:5b"
       - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
