@@ -1,0 +1,423 @@
+version: 2.1
+
+checkout-linux: &checkout-linux
+  attach_workspace:
+    at: /root
+
+jobs:
+  persist-checkout:
+    docker:
+      - image: python
+    steps:
+      - checkout
+      - run:
+          name: clean up git
+          command: |
+            rm -rf .git
+      - persist_to_workspace:
+          root: /root
+          paths:
+            - project
+
+  unit-test:
+    docker:
+      - image: circleci/golang:1.12.10
+    steps:
+      - *checkout-linux
+      - restore_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      - run:
+          name: cache mods
+          command: |
+            go mod download
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+          paths:
+            - /go/pkg/mod
+      - run:
+          name: Run unit tests
+          command: |
+            PACKAGE_NAMES=$(go list ./... | circleci tests split --split-by=timings --timings-type=classname)
+            gotestsum --junitfile ${TEST_RESULTS}/gotestsum-report.xml -- $PACKAGE_NAMES
+
+  build-lib-linux:
+    docker:
+      - image: textile/builder:1.12.10
+    steps:
+      - *checkout-linux
+      - restore_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      - run:
+          name: install patched gox
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            mkdir -p $GOPATH/src/github.com/mitchellh
+            cd $GOPATH/src/github.com/mitchellh
+            git clone https://github.com/aslakhellesoy/gox
+            cd gox
+            git fetch
+            git checkout db6184738b77fbd5089e5fa1112177f391c91b24
+            go install github.com/mitchellh/gox
+      - run:
+          name: compile
+          command: |
+            COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
+            SUMMARY=$CIRCLE_SHA1
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                SUMMARY=${CIRCLE_TAG}
+            fi
+            DATE=$(date --iso-8601=seconds)
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64 linux/386 linux/arm" -output="{.OS}}-{{.Arch}}.so" ./lib
+      - run:
+          name: collect artifacts
+          command: |
+            VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                VERSION=${CIRCLE_TAG}
+            fi
+            OUT=~/dist/lib
+            mkdir -p ${OUT}
+            mkdir -p tmp
+            cd tmp
+            declare -a arr=("linux-amd64.so" "linux-386.so" "linux-arm.so")
+            for i in "${arr[@]}"
+            do
+                OSARCH=${i%.*}
+                EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
+                cp ../${i} textile${EXT}
+                tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
+                mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
+            done
+            cd .. && rm -rf tmp
+      - persist_to_workspace:
+          root: ~/dist
+          paths:
+            - lib
+      - store_artifacts:
+          path: ~/dist/lib
+
+  build-lib-darwin-windows:
+    macos:
+      xcode: '10.2.1'
+    environment:
+      GOPATH: /Users/distiller/go
+      GOROOT: /usr/local/go
+    steps:
+      - checkout
+      - run:
+          name: install golang
+          command: |
+            curl -L -o go1.12.10.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.10.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.10.darwin-amd64.tar.gz
+      - restore_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      - run:
+          name: cache mods
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            go mod download
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+          paths:
+            - ~/go/pkg/mod
+      - run:
+          name: install patched gox
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            mkdir -p $GOPATH/src/github.com/mitchellh
+            cd $GOPATH/src/github.com/mitchellh
+            git clone https://github.com/aslakhellesoy/gox
+            cd gox
+            git fetch
+            git checkout db6184738b77fbd5089e5fa1112177f391c91b24
+            go install github.com/mitchellh/gox
+      - run:
+          name: install mingw-w64
+          command: |
+            brew install mingw-w64
+      - run:
+          name: cross-compile
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
+            SUMMARY=$CIRCLE_SHA1
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                SUMMARY=${CIRCLE_TAG}
+            fi
+            DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" ./lib
+            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" ./lib
+      - run:
+          name: collect artifacts
+          command: |
+            VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                VERSION=${CIRCLE_TAG}
+            fi
+            OUT=~/dist/cli
+            mkdir -p ${OUT}
+            mkdir -p tmp
+            cp LICENSE tmp/
+            cp dist/README.md tmp/
+            cp dist/install tmp/
+            cd tmp
+            declare -a arr=("darwin-amd64.so" "windows-amd64.so")
+            for i in "${arr[@]}"
+            do
+                OSARCH=${i%.*}
+                EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
+                cp ../${i} textile${EXT}
+                tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
+                mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
+
+            done
+            cd .. && rm -rf tmp
+      - persist_to_workspace:
+          root: ~/dist
+          paths:
+            - cli
+      - store_artifacts:
+          path: ~/dist/cli
+
+  build-ios-framework:
+    macos:
+      xcode: '10.2.1'
+    environment:
+      GOPATH: /Users/distiller/go
+      GOROOT: /Users/distiller/gosrc/go
+    steps:
+      - checkout
+      - run:
+          name: install golang
+          command: |
+            export GOROOT=/usr/local/go
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            curl -L -o go1.12.5.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.5.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.5.darwin-amd64.tar.gz
+            cd ~ && mkdir gosrc && cd gosrc
+            git clone https://github.com/anytypeio/go.git && cd go
+            git checkout sander/ptrace-hackery
+            cd src && ./all.bash
+      - restore_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      - run:
+          name: cache mods
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            go mod download
+      - save_cache:
+          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+          paths:
+            - ~/go/pkg/mod
+      - run:
+          name: install protobuf
+          command: |
+            brew install protobuf
+      - run:
+          name: build ios framework
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            go mod vendor
+            mkdir -p ~/go/src/github.com/anytypeio
+            cd ~ && mv project go/src/github.com/anytypeio/go-anytype-middleware
+            cd ~/go/src/github.com/anytypeio/go-anytype-middleware
+            export GO111MODULE=off
+            go get golang.org/x/mobile/cmd/...
+            COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
+            SUMMARY=$CIRCLE_SHA1
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                SUMMARY=${CIRCLE_TAG}
+            fi
+            DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            gomobile bind -v -ldflags="-w $FLAGS" -target=ios github.com/anytypeio/go-anytype-middleware/lib
+      - run:
+          name: build obj c protobuf bindings
+          command: |
+            cd ~/go/src/github.com/anytypeio/go-anytype-middleware
+            mkdir protos
+            protoc --proto_path=./pb/protos --objc_out=./protos ./pb/protos/*
+      - run:
+          name: collect artifacts
+          command: |
+            VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                VERSION=${CIRCLE_TAG}
+            fi
+            OUT=~/dist/ios_framework
+            mkdir -p ${OUT}
+            cd ~/go/src/github.com/anytypeio/go-anytype-middleware
+            tar -czvf go-textile_${VERSION}_ios-framework.tar.gz Mobile.framework protos
+            mv go-textile_${VERSION}_ios-framework.tar.gz ${OUT}/
+      - persist_to_workspace:
+          root: ~/dist
+          paths:
+            - ios_framework
+      - store_artifacts:
+          path: ~/dist/ios_framework
+
+  build-android-aar:
+    docker:
+      - image: circleci/android:api-28-ndk
+    environment:
+      GOROOT: /usr/local/go
+      GOPATH: /home/circleci/go
+    steps:
+      - checkout
+      - run:
+          name: install golang
+          command: |
+            wget https://dl.google.com/go/go1.12.10.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.10.linux-amd64.tar.gz
+            mkdir -p $GOPATH/bin
+      - run:
+          name: install protobuf
+          command: |
+            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
+            unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
+            sudo mv protoc3/bin/* /usr/local/bin/
+            sudo mv protoc3/include/* /usr/local/include/
+      - restore_cache:
+          key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
+      - run:
+          name: cache mods
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            go mod download
+      - save_cache:
+          key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
+          paths:
+            - /go/pkg/mod
+      - run:
+          name: install tools
+          command: |
+            sdkmanager --licenses
+            echo y | sdkmanager "build-tools;28.0.3"
+            echo y | sdkmanager "platforms;android-28"
+            sdkmanager 'ndk-bundle'
+      - run:
+          name: build android framework
+          command: |
+            export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+            go mod vendor
+            mkdir -p ~/go/src/github.com/anytypeio
+            cd ~ && mv project go/src/github.com/anytypeio/go-anytype-middleware
+            cd ~/go/src/github.com/anytypeio/go-anytype-middleware
+            export GO111MODULE=off
+            go get golang.org/x/mobile/cmd/...
+            COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
+            SUMMARY=$CIRCLE_SHA1
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                SUMMARY=${CIRCLE_TAG}
+            fi
+            DATE=$(date --iso-8601=seconds)
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=mobile.aar github.com/anytypeio/go-anytype-middleware/lib
+      - run:
+          name: build java protobuf bindings
+          command: |
+            cd ~/go/src/github.com/anytypeio/go-anytype-middleware
+            mkdir protos
+            protoc --proto_path=./pb/protos --java_out=./protos ./pb/protos/*
+      - run:
+          name: collect artifacts
+          command: |
+            VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                VERSION=${CIRCLE_TAG}
+            fi
+            OUT=~/dist/android_aar
+            mkdir -p ${OUT}
+            cd ~/go/src/github.com/anytypeio/go-anytype-middleware
+            tar -czvf go-textile_${VERSION}_android-aar.tar.gz mobile.aar protos
+            mv go-textile_${VERSION}_android-aar.tar.gz ${OUT}/
+      - persist_to_workspace:
+          root: ~/go/src/github.com/anytypeio/go-anytype-middleware
+          paths:
+            - mobile.aar
+            - protos
+      - persist_to_workspace:
+          root: ~/dist
+          paths:
+            - android_aar
+      - store_artifacts:
+          path: ~/dist/android_aar
+
+  release:
+    docker:
+      - image: cibuilds/github:0.10
+    steps:
+      - *checkout-linux
+      - deploy:
+          name: release all
+          command: |
+            mkdir -p ~/dist
+            mv ~/cli/* ~/dist/
+            mv ~/ios_framework/* ~/dist/
+            mv ~/android_aar/* ~/dist/
+            PRE=$(echo "${CIRCLE_TAG}" | grep "rc" || true)
+            if [ "${PRE}" != "" ]; then
+                ghr -prerelease -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} ~/dist/
+            else
+                ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} ~/dist/
+            fi
+
+workflows:
+  version: 2
+  go-textile:
+    jobs:
+      - persist-checkout:
+          filters:
+            tags:
+              only: /.*/
+      - unit-test:
+          requires:
+            - persist-checkout
+          filters:
+            tags:
+              only: /.*/
+      - build-lib-darwin-windows:
+          requires:
+            - unit-test
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
+      - build-lib-linux:
+          requires:
+            - unit-test
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
+      - build-ios-framework:
+          requires:
+            - unit-test
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
+      - build-android-aar:
+          requires:
+            - unit-test
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /.*/
+      - release:
+          requires:
+            - build-lib-darwin-windows
+            - build-lib-linux
+            - build-ios-framework
+            - build-android-aar
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
