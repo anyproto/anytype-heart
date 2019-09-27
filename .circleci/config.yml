@@ -7,7 +7,7 @@ checkout-linux: &checkout-linux
 jobs:
   persist-checkout:
     docker:
-      - image: circleci/golang:1.12.10
+      - image: circleci/golang:1.12.5
     steps:
       - checkout
       - run:
@@ -21,7 +21,7 @@ jobs:
 
   unit-test:
     docker:
-      - image: circleci/golang:1.12.10
+      - image: circleci/golang:1.12.5
     steps:
       - *checkout-linux
       - restore_cache:
@@ -42,7 +42,7 @@ jobs:
 
   build-lib-linux:
     docker:
-      - image: textile/builder:1.12.10
+      - image: circleci/golang:1.12.5
     steps:
       - *checkout-linux
       - restore_cache:
@@ -108,8 +108,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            curl -L -o go1.12.10.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.10.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.10.darwin-amd64.tar.gz
+            curl -L -o go1.12.5.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.5.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.5.darwin-amd64.tar.gz
       - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -249,8 +249,8 @@ jobs:
             OUT=~/dist/ios_framework
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf go-textile_${VERSION}_ios-framework.tar.gz Mobile.framework protos
-            mv go-textile_${VERSION}_ios-framework.tar.gz ${OUT}/
+            tar -czvf ${VERSION}_ios-framework.tar.gz Mobile.framework protos
+            mv ${VERSION}_ios-framework.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
           paths:
@@ -269,8 +269,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            wget https://dl.google.com/go/go1.12.10.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.10.linux-amd64.tar.gz
+            wget https://dl.google.com/go/go1.12.5.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.5.linux-amd64.tar.gz
             mkdir -p $GOPATH/bin
       - run:
           name: install protobuf
@@ -366,7 +366,7 @@ jobs:
 
 workflows:
   version: 2
-  go-textile:
+  go-anytype-middleware:
     jobs:
       - persist-checkout:
           filters:
