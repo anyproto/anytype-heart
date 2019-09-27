@@ -7,7 +7,7 @@ checkout-linux: &checkout-linux
 jobs:
   persist-checkout:
     docker:
-      - image: circleci/golang:1.12.5
+      - image: circleci/golang:1.12.9
     steps:
       - checkout
       - run:
@@ -21,7 +21,7 @@ jobs:
 
   unit-test:
     docker:
-      - image: circleci/golang:1.12.5
+      - image: circleci/golang:1.12.9
     steps:
       - *checkout-linux
       - restore_cache:
@@ -42,7 +42,7 @@ jobs:
 
   build-lib-linux:
     docker:
-      - image: circleci/golang:1.12.5
+      - image: circleci/golang:1.12.9
     steps:
       - *checkout-linux
       - restore_cache:
@@ -108,8 +108,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            curl -L -o go1.12.5.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.5.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.5.darwin-amd64.tar.gz
+            curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
       - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -194,8 +194,8 @@ jobs:
           command: |
             export GOROOT=/usr/local/go
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
-            curl -L -o go1.12.5.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.5.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.5.darwin-amd64.tar.gz
+            curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
             cd ~ && mkdir gosrc && cd gosrc
             git clone https://github.com/anytypeio/go.git && cd go
             git checkout sander/ptrace-hackery
@@ -269,8 +269,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            wget https://dl.google.com/go/go1.12.5.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.5.linux-amd64.tar.gz
+            wget https://dl.google.com/go/go1.12.9.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.12.9.linux-amd64.tar.gz
             mkdir -p $GOPATH/bin
       - run:
           name: install protobuf
@@ -382,7 +382,7 @@ workflows:
           requires:
             - unit-test
           filters:
-            branches:
+           ## branches:
             ## only: master
             tags:
               only: /.*/
@@ -390,7 +390,7 @@ workflows:
           requires:
             - unit-test
           filters:
-            branches:
+          ##  branches:
           ##    only: master
             tags:
               only: /.*/
@@ -398,7 +398,7 @@ workflows:
           requires:
             - unit-test
           filters:
-            branches:
+         ##   branches:
           ##    only: master
             tags:
               only: /.*/
@@ -406,7 +406,7 @@ workflows:
           requires:
             - unit-test
           filters:
-            branches:
+          ##  branches:
           ##    only: master
             tags:
               only: /.*/
