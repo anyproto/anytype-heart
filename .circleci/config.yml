@@ -2,12 +2,12 @@ version: 2.1
 
 checkout-linux: &checkout-linux
   attach_workspace:
-    at: /root
+    at: /home/circleci
 
 jobs:
   persist-checkout:
     docker:
-      - image: python
+      - image: circleci/golang:1.12.10
     steps:
       - checkout
       - run:
@@ -15,7 +15,7 @@ jobs:
           command: |
             rm -rf .git
       - persist_to_workspace:
-          root: /root
+          root: /home/circleci
           paths:
             - project
 
@@ -383,7 +383,7 @@ workflows:
             - unit-test
           filters:
             branches:
-              only: master
+            ## only: master
             tags:
               only: /.*/
       - build-lib-linux:
@@ -391,7 +391,7 @@ workflows:
             - unit-test
           filters:
             branches:
-              only: master
+          ##    only: master
             tags:
               only: /.*/
       - build-ios-framework:
@@ -399,7 +399,7 @@ workflows:
             - unit-test
           filters:
             branches:
-              only: master
+          ##    only: master
             tags:
               only: /.*/
       - build-android-aar:
@@ -407,7 +407,7 @@ workflows:
             - unit-test
           filters:
             branches:
-              only: master
+          ##    only: master
             tags:
               only: /.*/
       - release:
