@@ -37,6 +37,7 @@ github.com/anytypeio/go-anytype-library v0.0.0-20190926194118-b760b485da67 h1:wq
 github.com/anytypeio/go-anytype-library v0.0.0-20190926194118-b760b485da67/go.mod h1:xaSUBgjlsup3IEDlOY+5CPHHFR7ja472HXEN7kam6AY=
 github.com/anytypeio/go-anytype-library v0.0.0-20190927092215-1b4e4e7420bd h1:r7+SpXagRh2MHHsdt7fFV1WjslzLQxARyKzrQr4tJrI=
 github.com/anytypeio/go-anytype-library v0.0.0-20190927092215-1b4e4e7420bd/go.mod h1:xaSUBgjlsup3IEDlOY+5CPHHFR7ja472HXEN7kam6AY=
+github.com/anytypeio/go-anytype-library v0.0.0-20190930101559-b384164c3b12 h1:olZWbf5HkVMMZrMpBnUQFnIh/guI7G5hoLy8yjd8D/g=
 github.com/anytypeio/go-anytype-library v0.0.0-20190930101559-b384164c3b12/go.mod h1:xaSUBgjlsup3IEDlOY+5CPHHFR7ja472HXEN7kam6AY=
 github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec h1:f/fnKGgxS33FvG0g96HcwasQrf6V1CjsAt1suWz8kF0=
 github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec/go.mod h1:upnwIsP8dsXfGQEjJ8BL9AY6yJHU6etVWozxVN4PyXc=

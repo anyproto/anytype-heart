@@ -60,8 +60,6 @@ func Command(command *C.char, data unsafe.Pointer, dataLen C.int, callbackJsFunc
 			cd = AccountCreate(b)
 		case "AccountSelect":
 			cd = AccountSelect(b)
-		case "AccountStart":
-			cd = AccountStart(b)
 		case "ImageGetBlob":
 			cd = ImageGetBlob(b)
 		default:

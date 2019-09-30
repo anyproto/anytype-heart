@@ -112,7 +112,7 @@ func AccountSelect(b []byte) []byte {
 	if err != nil {
 		return response(nil, pb.AccountSelectResponse_Error_UNKNOWN_ERROR, err)
 	}
-	
+
 	instance.Anytype = anytype
 
 	err = instance.Run()
