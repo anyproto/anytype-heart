@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"time"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
@@ -57,6 +60,10 @@ func AccountCreate(b []byte) []byte {
 	if err != nil {
 		return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
+	newAcc.Name, err = instance.Textile.Name()
+	if err != nil {
+		return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+	}
 
 	if q.AvatarLocalPath != "" {
 		_, err := instance.AccountSetAvatar(q.AvatarLocalPath)
@@ -96,21 +103,16 @@ func AccountSelect(b []byte) []byte {
 	// Currently it is possible to choose not existing index – this will create the new account
 	// todo: decide if this is ok
 
-	account, err := core.WalletAccountAt(instance.mnemonic, int(q.Index), "")
-	if err != nil {
-		return response(nil, pb.AccountSelectResponse_Error_BAD_INPUT, err)
-	}
-
 	if instance.accountSearchCancel != nil {
 		// this func will wait until search process will stop in order to be sure node was properly stopped
 		instance.accountSearchCancel()
 	}
 
-	anytype, err := core.New(instance.rootPath, account.Address())
+	anytype, err := core.New(instance.rootPath, q.Id)
 	if err != nil {
 		return response(nil, pb.AccountSelectResponse_Error_UNKNOWN_ERROR, err)
 	}
-
+	
 	instance.Anytype = anytype
 
 	err = instance.Run()
@@ -122,7 +124,7 @@ func AccountSelect(b []byte) []byte {
 		return response(nil, pb.AccountSelectResponse_Error_FAILED_TO_RUN_NODE, err)
 	}
 
-	acc := &pb.Account{Id: account.Address()}
+	acc := &pb.Account{Id: q.Id}
 
 	acc.Name, err = instance.Anytype.Textile.Name()
 	if err != nil {
@@ -134,7 +136,28 @@ func AccountSelect(b []byte) []byte {
 		return response(acc, pb.AccountSelectResponse_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
 
-	acc.Avatar = &pb.Image{Id: avatarHash, Sizes: avatarSizes}
+	if acc.Name == "" && avatarHash == "" {
+		for {
+			// wait for cafe registration
+			// in order to use cafeAPI instead of pubsub
+			if cs :=anytype.Textile.Node().CafeSessions(); cs!=nil && len(cs.Items)>0  {
+				break
+			}
+
+			time.Sleep(time.Second)
+		}
+
+		contact, err := anytype.AccountRequestStoredContact(context.Background(), q.Id)
+		if err != nil {
+			return response(acc, pb.AccountSelectResponse_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
+		}
+		acc.Name = contact.Name
+		avatarHash = contact.Avatar
+	}
+
+	if avatarHash != ""{
+		acc.Avatar = &pb.Image{Id: avatarHash, Sizes: avatarSizes}
+	}
 
 	return response(acc, pb.AccountSelectResponse_Error_NULL, nil)
 }

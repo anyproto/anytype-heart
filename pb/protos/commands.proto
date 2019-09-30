@@ -82,7 +82,7 @@ message AccountCreateResponse {
 }
 
 message AccountSelectRequest {
-    int64 index = 1;
+    string id = 1;
 }
 
 message AccountSelectResponse {
@@ -100,6 +100,32 @@ message AccountSelectResponse {
             // ...
 
             FAILED_TO_CREATE_LOCAL_REPO = 101;
+            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102;
+            FAILED_TO_RUN_NODE = 103;
+            FAILED_TO_FIND_ACCOUNT_INFO = 104;
+        }
+    }
+}
+
+message AccountStartRequest {
+    string id = 1;
+}
+
+message AccountStartResponse {
+    Error error = 1;
+    Account account = 2;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+
+            LOCAL_REPO_DOESNT_EXIST = 101;
             LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102;
             FAILED_TO_RUN_NODE = 103;
             FAILED_TO_FIND_ACCOUNT_INFO = 104;

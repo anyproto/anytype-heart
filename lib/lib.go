@@ -60,6 +60,8 @@ func Command(command *C.char, data unsafe.Pointer, dataLen C.int, callbackJsFunc
 			cd = AccountCreate(b)
 		case "AccountSelect":
 			cd = AccountSelect(b)
+		case "AccountStart":
+			cd = AccountStart(b)
 		case "ImageGetBlob":
 			cd = ImageGetBlob(b)
 		default:
@@ -86,6 +88,20 @@ func SendEvent(event *pb.Event) {
 		eventB,_ := json.Marshal(event)
 		log.Errorf("failed to send event to nil eventHandler: %s", string(eventB))
 	}
+}
+
+func (instnc *Instance) Stop() error {
+	if instnc != nil && instance.Anytype != nil {
+		err := instnc.Anytype.Stop()
+		if err != nil {
+			return err
+		}
+
+		instnc.Anytype = nil
+		instnc.accountSearchCancel = nil
+	}
+
+	return nil
 }
 
 func main() {
