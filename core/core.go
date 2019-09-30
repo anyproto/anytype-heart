@@ -55,13 +55,20 @@ func (a *Anytype) Run() error {
 	}
 
 	go func() {
-		// todo: need to call this when IPFS node is up
-		time.Sleep(time.Second * 5)
 		for {
+			if !a.Textile.Node().Started() {
+				break
+			}
+
+			if !a.Textile.Node().Ipfs().IsOnline {
+				time.Sleep(time.Second)
+				continue
+			}
+
 			_, err = a.Textile.Node().RegisterCafe("12D3KooWB2Ya2GkLLRSR322Z13ZDZ9LP4fDJxauscYwUMKLFCqaD", "2MsR9h7mfq53oNt8vh7RfdPr57qPsn28X3dwbviZWs3E8kEu6kpdcDHyMx7Qo")
 			if err != nil {
 				log.Errorf("failed to register cafe: %s", err.Error())
-				time.Sleep(time.Second * 10)
+				time.Sleep(time.Second * 5)
 				continue
 			}
 			break
@@ -69,6 +76,10 @@ func (a *Anytype) Run() error {
 	}()
 
 	return err
+}
+
+func (a *Anytype) Stop() error {
+	return a.Textile.Node().Stop()
 }
 
 func pbValForEnumString(vals map[string]int32, str string) int32 {
