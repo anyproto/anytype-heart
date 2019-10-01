@@ -11,6 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_EventHandler(t *testing.T) {
+	var eventReceived *pb.Event
+	SetEventHandler(func(event *pb.Event){
+		eventReceived = event
+	})
+
+	eventSent := &pb.Event{Message:&pb.Event_AccountAdd{AccountAdd: &pb.AccountAdd{Index: 0, Account: &pb.Account{Id:"1", Name: "name"}}}}
+	SendEvent(eventSent)
+
+	require.Equal(t,eventSent, eventReceived, "eventReceived not equal to eventSent: %s %s", eventSent, eventReceived)
+
+}
+
 func Test_SignUp(t *testing.T) {
 	rootPath := os.TempDir()
 	walletCreateReq, err := proto.Marshal(&pb.WalletCreateRequest{RootPath: rootPath})
@@ -43,7 +56,6 @@ func Test_SignUp(t *testing.T) {
 	require.Equal(t, pb.ImageGetBlobResponse_Error_NULL, imageGetBlobRespMsg.Error.Code, "ImageGetBlobResponse contains error: %s", imageGetBlobRespMsg.Error.Code.String())
 	require.True(t, len(imageGetBlobRespMsg.Blob) > 0, "ava size should be greater than 0")
 
-	time.Sleep(time.Minute*3)
 	err = instance.Stop()
 	require.NoError(t, err, "failed to stop instance")
 }
@@ -70,6 +82,17 @@ func Test_RecoverLocalWithoutRestart(t *testing.T) {
 	err = instance.Stop()
 	require.NoError(t, err, "failed to stop node")
 
+	var account *pb.Account
+	SetEventHandler(func(event *pb.Event){
+		if aa, ok := event.Message.(*pb.Event_AccountAdd); ok{
+			if aa.AccountAdd.Index != 0 {
+				return
+			}
+
+			account = aa.AccountAdd.Account
+		}
+	})
+
 	walletRecoverReq, err := proto.Marshal(&pb.WalletRecoverRequest{RootPath: rootPath, Mnemonic: walletCreateRespMsg.Mnemonic})
 	fmt.Printf("rootPath: %s\n", rootPath)
 	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
@@ -80,9 +103,23 @@ func Test_RecoverLocalWithoutRestart(t *testing.T) {
 	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
 	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code, walletRecoverRespMsg.Error.Description)
 
-	time.Sleep(time.Second * 10)
+	start := time.Now()
+	for {
+		if time.Since(start).Seconds()>100{
+			break
+		}
 
-	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Index: 0})
+		if account != nil  {
+			fmt.Println("found account!")
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	require.NotNil(t, account, "didn't receive event with 0 account")
+
+	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Id: account.Id})
 	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
 
 	accountSelectResp := AccountSelect(accountSelectReq)
@@ -119,8 +156,18 @@ func Test_RecoverLocalAfterRestart(t *testing.T) {
 
 	instance = &Instance{}
 
+	var account *pb.Account
+	SetEventHandler(func(event *pb.Event){
+		if aa, ok := event.Message.(*pb.Event_AccountAdd); ok{
+			if aa.AccountAdd.Index != 0 {
+				return
+			}
+
+			account = aa.AccountAdd.Account
+		}
+	})
+
 	walletRecoverReq, err := proto.Marshal(&pb.WalletRecoverRequest{RootPath: rootPath, Mnemonic: walletCreateRespMsg.Mnemonic})
-	fmt.Printf("rootPath: %s\n", rootPath)
 	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
 
 	walletRecoverResp := WalletRecover(walletRecoverReq)
@@ -129,9 +176,23 @@ func Test_RecoverLocalAfterRestart(t *testing.T) {
 	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
 	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code, walletRecoverRespMsg.Error.Description)
 
-	time.Sleep(time.Second * 10)
+	start := time.Now()
+	for {
+		if time.Since(start).Seconds()>100{
+			break
+		}
 
-	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Index: 0})
+		if account != nil  {
+			fmt.Println("found account!")
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	require.NotNil(t, account, "didn't receive event with 0 account")
+
+	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Id: account.Id})
 	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
 
 	accountSelectResp := AccountSelect(accountSelectReq)
@@ -157,18 +218,9 @@ func Test_RecoverRemoteNotExisting(t *testing.T) {
 	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
 	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code, walletRecoverRespMsg.Error.Description)
 
-	time.Sleep(time.Second * 30)
+	time.Sleep(time.Second * 10)
 
 	require.Equal(t, len(instance.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(instance.localAccounts))
-
-	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Index: 0})
-	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
-
-	accountSelectResp := AccountSelect(accountSelectReq)
-	var accountSelectRespMsg pb.AccountSelectResponse
-	err = proto.Unmarshal(accountSelectResp, &accountSelectRespMsg)
-	require.NoError(t, err, "failed to unmarshal AccountSelectResponse")
-	require.Equal(t, pb.AccountSelectResponse_Error_NULL, accountSelectRespMsg.Error.Code, "AccountSelectResponse contains error: %s %s", accountSelectRespMsg.Error.Code, accountSelectRespMsg.Error.Description)
 
 	err = instance.Stop()
 	require.NoError(t, err, "failed to stop instance")
@@ -176,6 +228,17 @@ func Test_RecoverRemoteNotExisting(t *testing.T) {
 
 func Test_RecoverRemoteExisting(t *testing.T) {
 	rootPath := os.TempDir()
+
+	var account *pb.Account
+	SetEventHandler(func(event *pb.Event){
+		if aa, ok := event.Message.(*pb.Event_AccountAdd); ok{
+			if aa.AccountAdd.Index != 0 {
+				return
+			}
+
+			account = aa.AccountAdd.Account
+		}
+	})
 
 	walletRecoverReq, err := proto.Marshal(&pb.WalletRecoverRequest{RootPath: rootPath, Mnemonic: "input blame switch simple fatigue fragile grab goose unusual identify abuse use"})
 	fmt.Printf("rootPath: %s\n", rootPath)
@@ -188,11 +251,11 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code)
 	start := time.Now()
 	for {
-		if time.Since(start).Seconds()>300{
+		if time.Since(start).Seconds()>100{
 			break
 		}
 
-		if len(instance.localAccounts) > 0  {
+		if account != nil  {
 			fmt.Println("found account!")
 			break
 		}
@@ -200,9 +263,9 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 		time.Sleep(time.Second)
 	}
 
-	require.Equal(t, len(instance.localAccounts), 1, "len(localAccounts) should be 1 , instead got = %d", len(instance.localAccounts))
+	require.NotNil(t, account, "didn't receive event with 0 account")
 
-	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Index: 0})
+	accountSelectReq, err := proto.Marshal(&pb.AccountSelectRequest{Id: account.Id})
 	require.NoError(t, err, "failed to marshal WalletRecoverRequest")
 
 	accountSelectResp := AccountSelect(accountSelectReq)
