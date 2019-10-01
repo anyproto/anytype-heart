@@ -19,8 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var addonProxyFunc C.proxyFunc
-var eventHandlerJsFunc unsafe.Pointer
+var eventHandler func(event *pb.Event)
 
 type Instance struct {
 	rootPath            string
@@ -33,59 +32,65 @@ type Instance struct {
 
 var instance = &Instance{}
 
-//export SetProxyFunc
-func SetProxyFunc(proxyFunc C.proxyFunc) {
-	addonProxyFunc = proxyFunc
+//export SetCEventHandler
+func SetCEventHandler(proxyFunc C.proxyFunc, ctx unsafe.Pointer) {
+	SetEventHandler(func(event *pb.Event){
+		b, err := proto.Marshal(event)
+		if err != nil {
+			log.Errorf("failed to encode event: %s", err.Error())
+			return
+		}
+
+		if proxyFunc != nil {
+			C.ProxyCall(proxyFunc, ctx, C.CString(""), C.CString(string(b)), C.int(len(b)))
+		} else {
+			eventB, _ := json.Marshal(event)
+			log.Errorf("failed to send event to nil eventHandler: %s", string(eventB))
+		}
+	})
 }
 
-//export SetEventHandler
-func SetEventHandler(jsFunc unsafe.Pointer) {
-	eventHandlerJsFunc = jsFunc
+func SetEventHandler(eh func(event *pb.Event)){
+	eventHandler = eh
 }
 
-//export Command
-func Command(command *C.char, data unsafe.Pointer, dataLen C.int, callbackJsFunc unsafe.Pointer) {
-	b := C.GoBytes(data, dataLen)
-	// todo: free the pointer?
-	cmd := C.GoString(command)
-
+func command(cmd string, data []byte, callback func(data []byte)) {
 	go func() {
 		var cd []byte
 		switch cmd {
-		case "WalletCreate":
-			cd = WalletCreate(b)
-		case "WalletRecover":
-			cd = WalletRecover(b)
-		case "AccountCreate":
-			cd = AccountCreate(b)
-		case "AccountSelect":
-			cd = AccountSelect(b)
-		case "ImageGetBlob":
-			cd = ImageGetBlob(b)
-		default:
-			fmt.Printf("unknown command type: %s\n", cmd)
+			case "WalletCreate":
+				cd = WalletCreate(data)
+			case "WalletRecover":
+				cd = WalletRecover(data)
+			case "AccountCreate":
+				cd = AccountCreate(data)
+			case "AccountSelect":
+				cd = AccountSelect(data)
+			case "ImageGetBlob":
+				cd = ImageGetBlob(data)
+			default:
+				fmt.Printf("unknown command type: %s\n", cmd)
 		}
 
-		if cd != nil {
-			C.ProxyCall(addonProxyFunc, callbackJsFunc, C.CString(""), C.CString(string(cd)), C.int(len(cd)))
-		}
+		callback(cd)
 	}()
+}
 
+//export Command
+func Command(cmd *C.char, data unsafe.Pointer, dataLen C.int, callback C.proxyFunc, callbackContext unsafe.Pointer) {
+	command(C.GoString(cmd), C.GoBytes(data, dataLen), func(data []byte) {
+		C.ProxyCall(callback, callbackContext, C.CString(""), C.CString(string(data)), C.int(len(data)))
+	})
 }
 
 func SendEvent(event *pb.Event) {
-	b, err := proto.Marshal(event)
-	if err != nil {
-		log.Errorf("failed to encode event: %s", err.Error())
+	if eventHandler == nil {
+		b, _ := json.Marshal(event)
+		log.Errorf("failed to send event to nil eventHandler: %s", string(b))
 		return
 	}
 
-	if eventHandlerJsFunc != nil {
-		C.ProxyCall(addonProxyFunc, eventHandlerJsFunc, C.CString(""), C.CString(string(b)), C.int(len(b)))
-	} else {
-		eventB,_ := json.Marshal(event)
-		log.Errorf("failed to send event to nil eventHandler: %s", string(eventB))
-	}
+	eventHandler(event)
 }
 
 func (instnc *Instance) Stop() error {
