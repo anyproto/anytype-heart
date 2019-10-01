@@ -42,6 +42,14 @@ func (a *Anytype) AccountSetAvatar(localPath string) (hash mh.Multihash, err err
 }
 
 func (a *Anytype) AccountRequestStoredContact(ctx context.Context, accountId string) (contact *tpb.Contact, err error) {
+	contact = a.Textile.Node().Contact(accountId)
+
+	if contact != nil && (contact.Name != "" || contact.Avatar != ""){
+		return contact, nil
+	}
+	// reset in case local contact wasn't full
+	contact = nil
+
 	var resCh <-chan *tpb.QueryResult
 	var errCh <-chan error
 	var cancel *broadcast.Broadcaster
