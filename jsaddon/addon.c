@@ -54,13 +54,19 @@ static void CallJs(napi_env env, napi_value js_cb, void * context, void * data) 
     assert(napi_get_reference_value(env,
       addon_data->thread_item_constructor,
       &constructor) == napi_ok);
+    napi_status status;
 
     // Construct a new instance of the JavaScript class to hold the native item.
-    assert(napi_new_instance(env,
+    status = napi_new_instance(env,
       constructor,
       0,
       NULL,
-      &js_thread_item) == napi_ok);
+      &js_thread_item);
+
+    if (status != napi_ok) {
+        printf("napi_new_instance status %d\n", status);
+        assert(status == napi_ok)
+    }
 
     // Associate the native item with the newly constructed JavaScript object.
     // We assume that the JavaScript side will eventually pass this JavaScript
@@ -69,7 +75,6 @@ static void CallJs(napi_env env, napi_value js_cb, void * context, void * data) 
     // finalizer here.
     assert(napi_wrap(env, js_thread_item, data, NULL, NULL, NULL) == napi_ok);
 
-    napi_status status;
     // Call the JavaScript function with the item as wrapped into an instance of
     // the JavaScript `ThreadItem` class and the prime.
     status = napi_call_function(env,
