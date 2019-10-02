@@ -169,9 +169,6 @@ jobs:
             OUT=~/dist/lib
             mkdir -p ${OUT}
             mkdir -p tmp
-            cp LICENSE tmp/
-            cp dist/README.md tmp/
-            cp dist/install tmp/
             cd tmp
             declare -a arr=("darwin-amd64.so" "windows-amd64.so")
             for i in "${arr[@]}"
