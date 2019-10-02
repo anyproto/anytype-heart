@@ -78,7 +78,7 @@ jobs:
             fi
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
-            gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64 linux/386 linux/arm" -output="{.OS}}-{{.Arch}}.so" ./lib
+            gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64 linux/386 linux/arm" -output="{{.OS}}-{{.Arch}}.so" ./lib/clib
       - run:
           name: collect artifacts
           command: |
@@ -95,9 +95,9 @@ jobs:
             do
                 OSARCH=${i%.*}
                 EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
-                cp ../${i} textile${EXT}
+                cp ../${i} lib{EXT}
                 tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
-                mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
+                mv anytype_lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
       - persist_to_workspace:
@@ -157,8 +157,8 @@ jobs:
             fi
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
-            gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" ./lib
-            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" ./lib
+            gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" ./lib/clib
+            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" ./lib/clib
       - run:
           name: collect artifacts
           command: |
@@ -178,10 +178,9 @@ jobs:
             do
                 OSARCH=${i%.*}
                 EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
-                cp ../${i} textile${EXT}
+                cp ../${i} lib{EXT}
                 tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
-                mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
-
+                mv anytype_lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
       - persist_to_workspace:
@@ -189,7 +188,7 @@ jobs:
           paths:
             - cli
       - store_artifacts:
-          path: ~/dist/cli
+          path: ~/dist/lib
 
   build-ios-framework:
     macos:
@@ -207,7 +206,7 @@ jobs:
             curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
             sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
             cd ~ && mkdir gosrc && cd gosrc
-            git clone https://github.com/anytypeio/go.git && cd go
+            git clone https://github.com/textileio/go.git && cd go
             git checkout sander/ptrace-hackery
             cd src && ./all.bash
       - restore_cache:
@@ -341,8 +340,8 @@ jobs:
             OUT=~/dist/android_aar
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf go-textile_${VERSION}_android-aar.tar.gz mobile.aar protos
-            mv go-textile_${VERSION}_android-aar.tar.gz ${OUT}/
+            tar -czvf go-anytype_${VERSION}_android-aar.tar.gz mobile.aar protos
+            mv go-anytype_${VERSION}_android-aar.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/go/src/github.com/anytypeio/go-anytype-middleware
           paths:
@@ -386,38 +385,40 @@ workflows:
           requires:
             - persist-checkout
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-lib-darwin-windows:
           requires:
             - unit-test
           filters:
-           ## branches:
-            ## only: master
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-lib-linux:
           requires:
             - unit-test
           filters:
-          ##  branches:
-          ##    only: master
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-ios-framework:
           requires:
             - unit-test
           filters:
-         ##   branches:
-          ##    only: master
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-android-aar:
           requires:
             - unit-test
           filters:
-          ##  branches:
-          ##    only: master
+            branches:
+              only: master
             tags:
               only: /.*/
       - release:
