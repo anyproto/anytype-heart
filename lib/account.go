@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"context"
@@ -28,50 +28,50 @@ func AccountCreate(b []byte) []byte {
 		return response(nil, pb.AccountCreateResponse_Error_BAD_INPUT, err)
 	}
 
-	if instance.accountSearchCancel != nil {
+	if mw.accountSearchCancel != nil {
 		// this func will wait until search process will stop in order to be sure node was properly stopped
-		instance.accountSearchCancel()
+		mw.accountSearchCancel()
 	}
 
-	account, err := core.WalletAccountAt(instance.mnemonic, len(instance.localAccounts), "")
+	account, err := core.WalletAccountAt(mw.mnemonic, len(mw.localAccounts), "")
 	if err != nil {
 		return response(nil, pb.AccountCreateResponse_Error_UNKNOWN_ERROR, err)
 	}
 
-	err = core.WalletInitRepo(instance.rootPath, account.Seed())
+	err = core.WalletInitRepo(mw.rootPath, account.Seed())
 	if err != nil {
 		return response(nil, pb.AccountCreateResponse_Error_UNKNOWN_ERROR, err)
 	}
 
-	anytype, err := core.New(instance.rootPath, account.Address())
+	anytype, err := core.New(mw.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.AccountCreateResponse_Error_UNKNOWN_ERROR, err)
 	}
 
-	instance.Anytype = anytype
+	mw.Anytype = anytype
 	newAcc := &pb.Account{Id: account.Address()}
 
-	err = instance.Run()
+	err = mw.Run()
 	if err != nil {
 		return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	err = instance.AccountSetName(q.Username)
+	err = mw.AccountSetName(q.Username)
 	if err != nil {
 		return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
-	newAcc.Name, err = instance.Textile.Name()
+	newAcc.Name, err = mw.Textile.Name()
 	if err != nil {
 		return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
 	if q.AvatarLocalPath != "" {
-		_, err := instance.AccountSetAvatar(q.AvatarLocalPath)
+		_, err := mw.AccountSetAvatar(q.AvatarLocalPath)
 		if err != nil {
 			return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
 
-		hash, err := instance.Textile.Avatar()
+		hash, err := mw.Textile.Avatar()
 		if err != nil {
 			return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
@@ -79,7 +79,7 @@ func AccountCreate(b []byte) []byte {
 		newAcc.Avatar = &pb.Image{Id: hash, Sizes: avatarSizes}
 	}
 
-	instance.localAccounts = append(instance.localAccounts, newAcc)
+	mw.localAccounts = append(mw.localAccounts, newAcc)
 	return response(newAcc, pb.AccountCreateResponse_Error_NULL, nil)
 }
 
@@ -103,19 +103,19 @@ func AccountSelect(b []byte) []byte {
 	// Currently it is possible to choose not existing index – this will create the new account
 	// todo: decide if this is ok
 
-	if instance.accountSearchCancel != nil {
+	if mw.accountSearchCancel != nil {
 		// this func will wait until search process will stop in order to be sure node was properly stopped
-		instance.accountSearchCancel()
+		mw.accountSearchCancel()
 	}
 
-	anytype, err := core.New(instance.rootPath, q.Id)
+	anytype, err := core.New(mw.rootPath, q.Id)
 	if err != nil {
 		return response(nil, pb.AccountSelectResponse_Error_UNKNOWN_ERROR, err)
 	}
 
-	instance.Anytype = anytype
+	mw.Anytype = anytype
 
-	err = instance.Run()
+	err = mw.Run()
 	if err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.AccountSelectResponse_Error_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -126,12 +126,12 @@ func AccountSelect(b []byte) []byte {
 
 	acc := &pb.Account{Id: q.Id}
 
-	acc.Name, err = instance.Anytype.Textile.Name()
+	acc.Name, err = mw.Anytype.Textile.Name()
 	if err != nil {
 		return response(acc, pb.AccountSelectResponse_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
 
-	avatarHash, err := instance.Anytype.Textile.Avatar()
+	avatarHash, err := mw.Anytype.Textile.Avatar()
 	if err != nil {
 		return response(acc, pb.AccountSelectResponse_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
@@ -140,7 +140,7 @@ func AccountSelect(b []byte) []byte {
 		for {
 			// wait for cafe registration
 			// in order to use cafeAPI instead of pubsub
-			if cs :=anytype.Textile.Node().CafeSessions(); cs!=nil && len(cs.Items)>0  {
+			if cs := anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
 				break
 			}
 
@@ -155,7 +155,7 @@ func AccountSelect(b []byte) []byte {
 		avatarHash = contact.Avatar
 	}
 
-	if avatarHash != ""{
+	if avatarHash != "" {
 		acc.Avatar = &pb.Image{Id: avatarHash, Sizes: avatarSizes}
 	}
 

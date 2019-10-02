@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"io/ioutil"
@@ -10,7 +10,6 @@ import (
 	"github.com/textileio/go-textile/ipfs"
 )
 
-//exportMobile IpfsGetFile
 func IpfsGetFile(b []byte) []byte {
 	response := func(data []byte, media string, name string, code pb.IpfsGetFileResponse_Error_Code, err error) []byte {
 		m := &pb.IpfsGetFileResponse{Data: data, Media: media, Error: &pb.IpfsGetFileResponse_Error{Code: code}}
@@ -27,7 +26,7 @@ func IpfsGetFile(b []byte) []byte {
 		return response(nil, "", "", pb.IpfsGetFileResponse_Error_BAD_INPUT, err)
 	}
 
-	reader, info, err := instance.Anytype.Textile.Node().FileContent(q.Id)
+	reader, info, err := mw.Anytype.Textile.Node().FileContent(q.Id)
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, "", "", pb.IpfsGetFileResponse_Error_NOT_FOUND, err)
@@ -62,7 +61,7 @@ func IpfsGetData(b []byte) []byte {
 		return response(nil, pb.IpfsGetDataResponse_Error_BAD_INPUT, err)
 	}
 
-	data, err := ipfs.DataAtPath(instance.Anytype.Textile.Node().Ipfs(), q.Id)
+	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), q.Id)
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, pb.IpfsGetDataResponse_Error_NOT_FOUND, err)
@@ -92,7 +91,7 @@ func ImageGetBlob(b []byte) []byte {
 		return response(nil, pb.ImageGetBlobResponse_Error_BAD_INPUT, err)
 	}
 
-	data, err := ipfs.DataAtPath(instance.Anytype.Textile.Node().Ipfs(), q.Id+"/0/"+strings.ToLower(q.Size.String())+"/content")
+	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), q.Id+"/0/"+strings.ToLower(q.Size.String())+"/content")
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, pb.ImageGetBlobResponse_Error_NOT_FOUND, err)

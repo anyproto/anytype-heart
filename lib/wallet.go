@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"context"
@@ -30,10 +30,10 @@ func WalletCreate(b []byte) []byte {
 		return response("", pb.WalletCreateResponse_Error_BAD_INPUT, err)
 	}
 
-	instance.rootPath = q.RootPath
-	instance.localAccounts = nil
+	mw.rootPath = q.RootPath
+	mw.localAccounts = nil
 
-	err = os.MkdirAll(instance.rootPath, 0644)
+	err = os.MkdirAll(mw.rootPath, 0644)
 	if err != nil {
 		return response("", pb.WalletCreateResponse_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
@@ -43,7 +43,7 @@ func WalletCreate(b []byte) []byte {
 		return response("", pb.WalletCreateResponse_Error_UNKNOWN_ERROR, err)
 	}
 
-	instance.mnemonic = mnemonic
+	mw.mnemonic = mnemonic
 
 	return response(mnemonic, pb.WalletCreateResponse_Error_NULL, nil)
 }
@@ -75,14 +75,14 @@ func WalletRecover(b []byte) []byte {
 		return response(pb.WalletRecoverResponse_Error_BAD_INPUT, err)
 	}
 
-	if instance.mnemonic != q.Mnemonic {
-		instance.localAccounts = nil
+	if mw.mnemonic != q.Mnemonic {
+		mw.localAccounts = nil
 	}
 
-	instance.mnemonic = q.Mnemonic
-	instance.rootPath = q.RootPath
+	mw.mnemonic = q.Mnemonic
+	mw.rootPath = q.RootPath
 
-	err = os.MkdirAll(instance.rootPath, 0644)
+	err = os.MkdirAll(mw.rootPath, 0644)
 	if err != nil {
 		return response(pb.WalletRecoverResponse_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
@@ -97,7 +97,7 @@ func WalletRecover(b []byte) []byte {
 	var accountSearchFinished = make(chan struct{}, 1)
 	var searchQueryCancel context.CancelFunc
 
-	instance.accountSearchCancel = func() {
+	mw.accountSearchCancel = func() {
 		shouldCancel = true
 		if searchQueryCancel != nil {
 			searchQueryCancel()
@@ -118,9 +118,9 @@ func WalletRecover(b []byte) []byte {
 			accountSearchFinished <- struct{}{}
 		}()
 
-		for index := 0; index < len(instance.localAccounts); index++ {
+		for index := 0; index < len(mw.localAccounts); index++ {
 			// in case we returned to the account choose screen we can use cached accounts
-			sendAccountAddEvent(index, instance.localAccounts[index], pb.AccountAdd_Error_NULL, nil)
+			sendAccountAddEvent(index, mw.localAccounts[index], pb.AccountAdd_Error_NULL, nil)
 			index++
 			if shouldCancel {
 				return
@@ -135,13 +135,13 @@ func WalletRecover(b []byte) []byte {
 		}
 
 		// todo: find a better way to brut force deterministic accounts, e.g. via cafe
-		err = core.WalletInitRepo(instance.rootPath, account.Seed())
+		err = core.WalletInitRepo(mw.rootPath, account.Seed())
 		if err != nil && err != core.ErrRepoExists {
 			sendAccountAddEvent(0, nil, pb.AccountAdd_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
 			return
 		}
 
-		anytype, err := core.New(instance.rootPath, account.Address())
+		anytype, err := core.New(mw.rootPath, account.Address())
 		if err != nil {
 			sendAccountAddEvent(0, nil, pb.AccountAdd_Error_UNKNOWN_ERROR, err)
 			return
@@ -210,7 +210,7 @@ func WalletRecover(b []byte) []byte {
 			}
 
 			sendAccountAddEvent(index, newAcc, pb.AccountAdd_Error_NULL, err)
-			instance.localAccounts = append(instance.localAccounts, newAcc)
+			mw.localAccounts = append(mw.localAccounts, newAcc)
 
 			if shouldCancel {
 				stopNode(anytype)
