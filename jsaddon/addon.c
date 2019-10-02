@@ -114,8 +114,7 @@ static void CallJsProxy(void * adata, char * method, char * data, int data_lengt
 
 }
 
-// This binding can be called from JavaScript to start the asynchronous prime
-// generator.
+// This binding can be called from JavaScript to set the event handler
 static napi_value SetEventHandlerProxy(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value js_cb, work_name;
@@ -156,8 +155,7 @@ static napi_value SetEventHandlerProxy(napi_env env, napi_callback_info info) {
     CallJs,
     &addon_data->tsfn) == napi_ok);
 
-  SetEventHandler((void*) addon_data);
-  SetProxyFunc(CallJsProxy);
+  SetEventHandler(CallJsProxy, (void*) addon_data);
   return NULL;
 }
 
@@ -335,7 +333,7 @@ static napi_value SendCommand(napi_env env, napi_callback_info info) {
 
   //napi_create_reference(env, args[1], 1, &value1ref);
 
-  Command(command, data, data_size, addon_data);
+  Command(command, data, data_size, CallJsProxy, addon_data);
   return NULL;
 }
 
