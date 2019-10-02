@@ -1,7 +1,7 @@
 {
-  "name": "thread_safe_function_round_trip",
+  "name": "anytype_library",
   "version": "0.0.0",
-  "description": "Thread-safe Function Example With JavaScript Round Trip",
+  "description": "Anytype library",
   "main": "index.js",
   "private": true,
   "dependencies": {
@@ -13,7 +13,7 @@
     "node": ">= 10.6.0"
   },
   "scripts": {
-    "test": "node index.js"
+    "test": "node test2.js"
   },
   "gypfile": true
 }
