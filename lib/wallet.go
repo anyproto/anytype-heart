@@ -33,7 +33,7 @@ func WalletCreate(b []byte) []byte {
 	mw.rootPath = q.RootPath
 	mw.localAccounts = nil
 
-	err = os.MkdirAll(mw.rootPath, 0644)
+	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
 		return response("", pb.WalletCreateResponse_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
@@ -82,7 +82,7 @@ func WalletRecover(b []byte) []byte {
 	mw.mnemonic = q.Mnemonic
 	mw.rootPath = q.RootPath
 
-	err = os.MkdirAll(mw.rootPath, 0644)
+	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
 		return response(pb.WalletRecoverResponse_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
