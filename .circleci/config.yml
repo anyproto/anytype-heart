@@ -90,14 +90,14 @@ jobs:
             mkdir -p ${OUT}
             mkdir -p tmp
             cd tmp
-            declare -a arr=("linux-amd64.so" "linux-386.so" "linux-arm.so")
+            declare -a arr=("linux-amd64.so")
             for i in "${arr[@]}"
             do
                 OSARCH=${i%.*}
                 EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
                 cp ../${i} lib${EXT}
                 tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
-                mv anytype_lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
+                mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
       - persist_to_workspace:
@@ -183,7 +183,7 @@ jobs:
                 EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
                 cp ../${i} lib${EXT}
                 tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
-                mv anytype_lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
+                mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
       - run:
@@ -215,6 +215,7 @@ jobs:
             mv build/ts protots
             mv jsaddon/build addon
             tar -czvf js_${VERSION}_darwin-amd64.tar.gz protots addon
+            mv js_${VERSION}_darwin-amd64.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
           paths:
@@ -290,8 +291,8 @@ jobs:
             OUT=~/dist/ios_framework
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf ${VERSION}_ios-framework.tar.gz Lib.framework protos
-            mv ${VERSION}_ios-framework.tar.gz ${OUT}/
+            tar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protos
+            mv ios_framework_${VERSION}.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
           paths:
@@ -372,8 +373,8 @@ jobs:
             OUT=~/dist/android_aar
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf go-anytype_${VERSION}_android-aar.tar.gz lib.aar protos
-            mv go-anytype_${VERSION}_android-aar.tar.gz ${OUT}/
+            tar -czvf android_lib_${VERSION}.tar.gz lib.aar protos
+            mv android_lib_${VERSION}_android-aar.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/go/src/github.com/anytypeio/go-anytype-middleware
           paths:
@@ -436,7 +437,7 @@ workflows:
             branches:
               only: master
             tags:
-              only: linux
+              only: /.*/
       - build-ios-framework:
           requires:
             - unit-test
@@ -456,6 +457,7 @@ workflows:
       - release:
           requires:
             - build-lib-darwin-windows
+            - build-lib-linux
             - build-ios-framework
             - build-android-aar
           filters:
