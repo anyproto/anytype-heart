@@ -195,7 +195,9 @@ jobs:
                 VERSION=${CIRCLE_TAG}
             fi
             OUT=~/dist/lib
-            cp ~/project/darwin-amd64.so lib.so
+            cp ~/project/darwin-amd64.so  lib.so
+            cp ~/project/darwin-amd64.h lib.h
+
             # Electron's version.
             export npm_config_target=6.0.10
             # The architecture of Electron, see https://electronjs.org/docs/tutorial/support#supported-platforms
