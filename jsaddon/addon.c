@@ -65,7 +65,7 @@ static void CallJs(napi_env env, napi_value js_cb, void * context, void * data) 
 
     if (status != napi_ok) {
         printf("napi_new_instance status %d\n", status);
-        assert(status == napi_ok)
+        assert(status == napi_ok);
     }
 
     // Associate the native item with the newly constructed JavaScript object.

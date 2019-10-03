@@ -78,7 +78,7 @@ jobs:
             fi
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
-            gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64 linux/386 linux/arm" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
+            gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
       - run:
           name: collect artifacts
           command: |
@@ -95,7 +95,7 @@ jobs:
             do
                 OSARCH=${i%.*}
                 EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
-                cp ../${i} lib{EXT}
+                cp ../${i} lib${EXT}
                 tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
                 mv anytype_lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
@@ -143,9 +143,10 @@ jobs:
             git checkout db6184738b77fbd5089e5fa1112177f391c91b24
             go install github.com/mitchellh/gox
       - run:
-          name: install mingw-w64
+          name: install mingw-w64 and node
           command: |
-            brew install mingw-w64
+            brew install mingw-w64 node@12
+            npm i node-gyp
       - run:
           name: cross-compile
           command: |
@@ -159,6 +160,11 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
             CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
+      - run:
+          name: node-addon
+          command: |
+            cd jsaddon
+            node-gyp configure && node-gyp build
       - run:
           name: collect artifacts
           command: |
@@ -175,11 +181,40 @@ jobs:
             do
                 OSARCH=${i%.*}
                 EXT=$([[ "$i" = *.* ]] && echo ".${i##*.}" || echo '')
-                cp ../${i} lib{EXT}
+                cp ../${i} lib${EXT}
                 tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib${EXT}
                 mv anytype_lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
+      - run:
+          name: compile addon
+          command: |
+            cd jsaddon
+            VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                VERSION=${CIRCLE_TAG}
+            fi
+            OUT=~/dist/lib
+            cp ~/project/darwin-amd64.so lib.so
+            # Electron's version.
+            export npm_config_target=6.0.10
+            # The architecture of Electron, see https://electronjs.org/docs/tutorial/support#supported-platforms
+            # for supported architectures.
+            export npm_config_arch=x64
+            export npm_config_target_arch=x64
+            # Download headers for Electron.
+            export npm_config_disturl=https://electronjs.org/headers
+            # Tell node-pre-gyp that we are building for Electron.
+            export npm_config_runtime=electron
+            # Tell node-pre-gyp to build module from source code.
+            export npm_config_build_from_source=true
+            npm install
+            cd ..
+            npm install
+            npm run build:ts
+            mv build/ts protots
+            mv jsaddon/build addon
+            tar -czvf js_${VERSION}_darwin-amd64.tar.gz protots addon
       - persist_to_workspace:
           root: ~/dist
           paths:
@@ -255,7 +290,7 @@ jobs:
             OUT=~/dist/ios_framework
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf ${VERSION}_ios-framework.tar.gz Mobile.framework protos
+            tar -czvf ${VERSION}_ios-framework.tar.gz Lib.framework protos
             mv ${VERSION}_ios-framework.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
@@ -320,7 +355,7 @@ jobs:
             fi
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
-            gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=mobile.aar github.com/anytypeio/go-anytype-middleware/lib
+            gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/lib
       - run:
           name: build java protobuf bindings
           command: |
@@ -337,12 +372,12 @@ jobs:
             OUT=~/dist/android_aar
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf go-anytype_${VERSION}_android-aar.tar.gz mobile.aar protos
+            tar -czvf go-anytype_${VERSION}_android-aar.tar.gz lib.aar protos
             mv go-anytype_${VERSION}_android-aar.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/go/src/github.com/anytypeio/go-anytype-middleware
           paths:
-            - mobile.aar
+            - lib.aar
             - protos
       - persist_to_workspace:
           root: ~/dist
@@ -401,7 +436,7 @@ workflows:
             branches:
               only: master
             tags:
-              only: /.*/
+              only: linux
       - build-ios-framework:
           requires:
             - unit-test
@@ -421,7 +456,6 @@ workflows:
       - release:
           requires:
             - build-lib-darwin-windows
-            - build-lib-linux
             - build-ios-framework
             - build-android-aar
           filters:
