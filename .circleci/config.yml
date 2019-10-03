@@ -160,6 +160,9 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
             CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
+            # workaround for gox putting .exe ext
+            mv windows-amd64.so.exe windows-amd64.so
+            mv windows-amd64.so.h windows-amd64.h
       - run:
           name: collect artifacts
           command: |
