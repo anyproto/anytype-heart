@@ -161,11 +161,6 @@ jobs:
             gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
             CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
       - run:
-          name: node-addon
-          command: |
-            cd jsaddon
-            node-gyp configure && node-gyp build
-      - run:
           name: collect artifacts
           command: |
             VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
