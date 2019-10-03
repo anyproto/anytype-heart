@@ -145,7 +145,7 @@ jobs:
       - run:
           name: install mingw-w64 and node
           command: |
-            brew install mingw-w64 node@12
+            brew install mingw-w64
             npm i node-gyp
       - run:
           name: cross-compile
@@ -374,7 +374,7 @@ jobs:
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             tar -czvf android_lib_${VERSION}.tar.gz lib.aar protos
-            mv android_lib_${VERSION}_android-aar.tar.gz ${OUT}/
+            mv android_lib_${VERSION}.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/go/src/github.com/anytypeio/go-anytype-middleware
           paths:
