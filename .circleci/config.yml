@@ -146,7 +146,7 @@ jobs:
           name: install mingw-w64 and node
           command: |
             brew install mingw-w64
-            npm i node-gyp
+            npm i -g node-gyp
       - run:
           name: cross-compile
           command: |
