@@ -259,13 +259,6 @@ func AccountSelect(b []byte) []byte {
 		mw.accountSearchCancel()
 	}
 
-	anytype, err := core.New(mw.rootPath, q.Id)
-	if err != nil {
-		return response(nil, pb.AccountSelectResponse_Error_UNKNOWN_ERROR, err)
-	}
-
-	mw.Anytype = anytype
-
 	if _, err := os.Stat(filepath.Join(mw.rootPath, q.Id)); os.IsNotExist(err) {
 		if mw.mnemonic == "" {
 			return response(nil, pb.AccountSelectResponse_Error_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
@@ -282,6 +275,12 @@ func AccountSelect(b []byte) []byte {
 		}
 	}
 
+	anytype, err := core.New(mw.rootPath, q.Id)
+	if err != nil {
+		return response(nil, pb.AccountSelectResponse_Error_UNKNOWN_ERROR, err)
+	}
+
+	mw.Anytype = anytype
 
 	err = mw.Run()
 	if err != nil {
