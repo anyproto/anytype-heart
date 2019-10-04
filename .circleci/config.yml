@@ -29,8 +29,8 @@ jobs:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
           key: go-pkg-v1-{{ arch }}
-      - restore_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      #- restore_cache:
+      #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
           command: |
@@ -66,8 +66,8 @@ jobs:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
           key: go-pkg-v1-{{ arch }}
-      - restore_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      #- restore_cache:
+      #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: install patched gox
           command: |
@@ -143,8 +143,8 @@ jobs:
             sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
       - restore_cache:
           key: go-pkg-v1-{{ arch }}
-      - restore_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      #- restore_cache:
+      #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
           command: |
@@ -271,17 +271,17 @@ jobs:
             cd src && ./all.bash
       - restore_cache:
           key: go-pkg-v1-{{ arch }}
-      - restore_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      #- restore_cache:
+      #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
           command: |
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod download
-      - save_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
-          paths:
-            - ~/go/pkg/mod
+#      - save_cache:
+#          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+#          paths:
+#            - ~/go/pkg/mod
       - restore_cache:
           key: homebrew-v1-{{ arch }}
       - run:
