@@ -28,7 +28,7 @@ jobs:
           fingerprints:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
       #- restore_cache:
       #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -39,10 +39,10 @@ jobs:
             chmod 600 ~/.ssh/known_hosts
             git config --global url.ssh://git@github.com/.insteadOf https://github.com/
             go mod download
-      - save_cache:
-          key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
-          paths:
-            - /go/pkg/mod
+      #- save_cache:
+      #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
+      #    paths:
+      #      - /go/pkg/mod
       - run:
           name: Run unit tests
           command: |
@@ -50,7 +50,7 @@ jobs:
             PACKAGE_NAMES=$(go list ./... | circleci tests split --split-by=timings --timings-type=classname)
             gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml -- $PACKAGE_NAMES
       - save_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
           paths:
             - /go/pkg
       - store_test_results:
@@ -65,7 +65,7 @@ jobs:
           fingerprints:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
       #- restore_cache:
       #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -91,7 +91,7 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
       - save_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
           paths:
             - /go/pkg
       - run:
@@ -142,7 +142,7 @@ jobs:
             curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
             sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
       - restore_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
       #- restore_cache:
       #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -194,7 +194,7 @@ jobs:
             mv windows-amd64.so.exe windows-amd64.so
             mv windows-amd64.so.h windows-amd64.h
       - save_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
           paths:
             - /go/pkg
       - run:
@@ -270,7 +270,7 @@ jobs:
             git checkout sander/ptrace-hackery
             cd src && ./all.bash
       - restore_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
       #- restore_cache:
       #    key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -312,7 +312,7 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=ios github.com/anytypeio/go-anytype-middleware/lib
       - save_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
           paths:
             - ~/go/pkg
       - run:
@@ -366,7 +366,7 @@ jobs:
             sudo mv protoc3/bin/* /usr/local/bin/
             sudo mv protoc3/include/* /usr/local/include/
       - restore_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
       - restore_cache:
           key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -404,7 +404,7 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/lib
       - save_cache:
-          key: go-pkg-v1-{{ arch }}
+          key: go-pkg-v2-{{ arch }}
           paths:
             - /go/pkg
       - run:
