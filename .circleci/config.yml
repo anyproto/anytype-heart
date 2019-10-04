@@ -42,7 +42,7 @@ jobs:
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
           paths:
-            - ~/go/pkg/mod
+            - /go/pkg/mod
       - run:
           name: Run unit tests
           command: |
@@ -52,7 +52,7 @@ jobs:
       - save_cache:
           key: go-pkg-v1-{{ arch }}
           paths:
-            - ~/go/pkg
+            - /go/pkg
       - store_test_results:
           path: ~/gotestsum-report/
 
@@ -61,6 +61,9 @@ jobs:
       - image: circleci/golang:1.12.9
     steps:
       - *checkout-linux
+      - add_ssh_keys:
+          fingerprints:
+            - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
           key: go-pkg-v1-{{ arch }}
       - restore_cache:
@@ -90,7 +93,7 @@ jobs:
       - save_cache:
           key: go-pkg-v1-{{ arch }}
           paths:
-            - ~/go/pkg
+            - /go/pkg
       - run:
           name: collect artifacts
           command: |
@@ -130,6 +133,9 @@ jobs:
       GOROOT: /usr/local/go
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - run:
           name: install golang
           command: |
@@ -147,7 +153,7 @@ jobs:
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
           paths:
-            - ~/go/pkg/mod
+            - /go/pkg/mod
       - run:
           name: install patched gox
           command: |
@@ -190,7 +196,7 @@ jobs:
       - save_cache:
           key: go-pkg-v1-{{ arch }}
           paths:
-            - ~/go/pkg
+            - /go/pkg
       - run:
           name: collect artifacts
           command: |
@@ -249,6 +255,9 @@ jobs:
       GOROOT: /Users/distiller/gosrc/go
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - run:
           name: install golang
           command: |
@@ -340,6 +349,9 @@ jobs:
       GOPATH: /home/circleci/go
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - run:
           name: install golang
           command: |
@@ -365,7 +377,7 @@ jobs:
       - save_cache:
           key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
           paths:
-            - ~/go/pkg/mod
+            - /go/pkg/mod
       - run:
           name: install tools
           command: |
@@ -379,7 +391,7 @@ jobs:
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
             mkdir -p ~/go/src/github.com/anytypeio
-            cd ~ && mv project go/src/github.com/anytypeio/go-anytype-middleware
+            cd ~ && mv project ~/go/src/github.com/anytypeio/go-anytype-middleware
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             export GO111MODULE=off
             go get golang.org/x/mobile/cmd/...
@@ -394,7 +406,7 @@ jobs:
       - save_cache:
           key: go-pkg-v1-{{ arch }}
           paths:
-            - ~/go/pkg
+            - /go/pkg
       - run:
           name: build java protobuf bindings
           command: |

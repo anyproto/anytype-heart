@@ -7,6 +7,15 @@ SegfaultHandler.registerHandler( "crash.log" );
 bindings.setEventHandler( item => {
 	console.log("got event...", item);
 	let msg = com.anytype.Event.decode(item.data);
+	if (msg.accountAdd) {
+		service.accountSelect(
+			{id: msg.accountAdd.account.id},
+			(err, res) => {
+				console.log('accountSelect err:', err, 'res:', res)
+			}
+		);
+		
+	}
 	try {
 		console.log("got event:", JSON.stringify(msg));
 	} catch (err) {
@@ -37,11 +46,8 @@ service.walletRecover({ rootPath: "/Users/roman/.anytype", mnemonic: 'input blam
 	console.log('err:', err, 'res:', res)
 });
 
-service.accountSelect(
-	{id: "P85fsQ1WTcKBrGqdhMVtCKQQryNX75sHJLXPTH8Dd99SrqwZ"},
-	(err, res) => {
-		console.log('err:', err, 'res:', res)
-	}
-);
+service.accountRecover({ }, (err, res) => {
+	console.log('err:', err, 'res:', res)
+});
 
 
