@@ -13,8 +13,11 @@ import (
 func IpfsGetFile(b []byte) []byte {
 	response := func(data []byte, media string, name string, code pb.IpfsGetFileResponse_Error_Code, err error) []byte {
 		m := &pb.IpfsGetFileResponse{Data: data, Media: media, Error: &pb.IpfsGetFileResponse_Error{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
+		if code != pb.IpfsGetFileResponse_Error_NULL {
+			m.Error = &pb.IpfsGetFileResponse_Error{Code: code}
+			if err != nil {
+				m.Error.Description = err.Error()
+			}
 		}
 
 		return Marshal(m)
@@ -77,9 +80,12 @@ func IpfsGetData(b []byte) []byte {
 
 func ImageGetBlob(b []byte) []byte {
 	response := func(blob []byte, code pb.ImageGetBlobResponse_Error_Code, err error) []byte {
-		m := &pb.ImageGetBlobResponse{Blob: blob, Error: &pb.ImageGetBlobResponse_Error{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
+		m := &pb.ImageGetBlobResponse{Blob: blob}
+		if code != pb.ImageGetBlobResponse_Error_NULL {
+			m.Error = &pb.ImageGetBlobResponse_Error{Code: code}
+			if err != nil {
+				m.Error.Description = err.Error()
+			}
 		}
 
 		return Marshal(m)

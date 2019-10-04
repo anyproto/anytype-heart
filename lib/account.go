@@ -15,9 +15,12 @@ var avatarSizes = []pb.ImageSize{pb.ImageSize_SMALL, pb.ImageSize_LARGE}
 
 func AccountCreate(b []byte) []byte {
 	response := func(account *pb.Account, code pb.AccountCreateResponse_Error_Code, err error) []byte {
-		m := &pb.AccountCreateResponse{Account: account, Error: &pb.AccountCreateResponse_Error{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
+		m := &pb.AccountCreateResponse{Account: account}
+		if code != pb.AccountCreateResponse_Error_NULL {
+			m.Error = &pb.AccountCreateResponse_Error{Code: code}
+			if err != nil {
+				m.Error.Description = err.Error()
+			}
 		}
 
 		return Marshal(m)
@@ -86,9 +89,12 @@ func AccountCreate(b []byte) []byte {
 
 func AccountRecover(b []byte) []byte {
 	response := func(code pb.AccountRecoverResponse_Error_Code, err error) []byte {
-		m := &pb.AccountRecoverResponse{Error: &pb.AccountRecoverResponse_Error{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
+		m := &pb.AccountRecoverResponse{}
+		if code != pb.AccountRecoverResponse_Error_NULL {
+			m.Error = &pb.AccountRecoverResponse_Error{Code: code}
+			if err != nil {
+				m.Error.Description = err.Error()
+			}
 		}
 
 		return Marshal(m)
@@ -236,9 +242,12 @@ func AccountRecover(b []byte) []byte {
 
 func AccountSelect(b []byte) []byte {
 	response := func(account *pb.Account, code pb.AccountSelectResponse_Error_Code, err error) []byte {
-		m := &pb.AccountSelectResponse{Account: account, Error: &pb.AccountSelectResponse_Error{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
+		m := &pb.AccountSelectResponse{Account: account}
+		if code != pb.AccountSelectResponse_Error_NULL {
+			m.Error = &pb.AccountSelectResponse_Error{Code: code}
+			if err != nil {
+				m.Error.Description = err.Error()
+			}
 		}
 
 		return Marshal(m)

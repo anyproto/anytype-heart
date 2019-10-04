@@ -12,9 +12,12 @@ const wordCount int = 12
 
 func WalletCreate(b []byte) []byte {
 	response := func(mnemonic string, code pb.WalletCreateResponse_Error_Code, err error) []byte {
-		m := &pb.WalletCreateResponse{Mnemonic: mnemonic, Error: &pb.WalletCreateResponse_Error{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
+		m := &pb.WalletCreateResponse{Mnemonic: mnemonic}
+		if code != pb.WalletCreateResponse_Error_NULL {
+			m.Error = &pb.WalletCreateResponse_Error{Code: code}
+			if err != nil {
+				m.Error.Description = err.Error()
+			}
 		}
 
 		return Marshal(m)
@@ -46,9 +49,12 @@ func WalletCreate(b []byte) []byte {
 
 func WalletRecover(b []byte) []byte {
 	response := func(code pb.WalletRecoverResponse_Error_Code, err error) []byte {
-		m := &pb.WalletRecoverResponse{Error: &pb.WalletRecoverResponse_Error{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
+		m := &pb.WalletRecoverResponse{}
+		if code != pb.WalletRecoverResponse_Error_NULL {
+			m.Error = &pb.WalletRecoverResponse_Error{Code: code}
+			if err != nil {
+				m.Error.Description = err.Error()
+			}
 		}
 
 		return Marshal(m)
