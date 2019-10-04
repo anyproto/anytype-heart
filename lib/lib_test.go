@@ -42,7 +42,7 @@ func Test_SignUp(t *testing.T) {
 	var accountCreateRespMsg pb.AccountCreateResponse
 	err = proto.Unmarshal(accountCreateResp, &accountCreateRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountCreateResponse")
-	require.Equal(t, pb.AccountCreateResponse_Error_NULL, accountCreateRespMsg.Error.Code, "AccountCreateResponse contains error: %s %s", accountCreateRespMsg.Error.Code.String(), accountCreateRespMsg.Error.Description)
+	require.Nil(t, accountCreateRespMsg.Error, "AccountCreateResponse contains error: %+v", accountCreateRespMsg.Error)
 	require.Equal(t, "name_to_test_recover", accountCreateRespMsg.Account.Name, "ImageGetBlobResponse got account with name '%s'", accountCreateRespMsg.Account.Name)
 
 	imageGetBlobReq, err := proto.Marshal(&pb.ImageGetBlobRequest{Id: accountCreateRespMsg.Account.Avatar.Id, Size: pb.ImageSize_SMALL})
@@ -53,7 +53,7 @@ func Test_SignUp(t *testing.T) {
 	var imageGetBlobRespMsg pb.ImageGetBlobResponse
 	err = proto.Unmarshal(imageGetBlobResp, &imageGetBlobRespMsg)
 	require.NoError(t, err, "failed to unmarshal ImageGetBlobResponse")
-	require.Equal(t, pb.ImageGetBlobResponse_Error_NULL, imageGetBlobRespMsg.Error.Code, "ImageGetBlobResponse contains error: %s", imageGetBlobRespMsg.Error.Code.String())
+	require.Nil(t, imageGetBlobRespMsg.Error, "ImageGetBlobResponse contains error: %+v", imageGetBlobRespMsg.Error)
 	require.True(t, len(imageGetBlobRespMsg.Blob) > 0, "ava size should be greater than 0")
 
 	err = mw.Stop()
@@ -101,7 +101,7 @@ func Test_RecoverLocalWithoutRestart(t *testing.T) {
 	var walletRecoverRespMsg pb.WalletRecoverResponse
 	err = proto.Unmarshal(walletRecoverResp, &walletRecoverRespMsg)
 	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
-	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code, walletRecoverRespMsg.Error.Description)
+	require.Nil(t, walletRecoverRespMsg.Error, "WalletRecoverResponse contains error: %+v", walletRecoverRespMsg.Error)
 
 	accountRecoverReq, err := proto.Marshal(&pb.AccountRecoverRequest{})
 	require.NoError(t, err, "failed to marshal AccountRecoverRequest")
@@ -110,7 +110,7 @@ func Test_RecoverLocalWithoutRestart(t *testing.T) {
 	var accountRecoverRespMsg pb.AccountRecoverResponse
 	err = proto.Unmarshal(accountRecoverResp, &accountRecoverRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountRecoverResponse")
-	require.Equal(t, pb.AccountRecoverResponse_Error_NULL, accountRecoverRespMsg.Error.Code, "AccountRecoverResponse contains error: %s %s", accountRecoverRespMsg.Error.Code)
+	require.Nil(t, accountRecoverRespMsg.Error, "AccountRecoverResponse contains error: %+v", accountRecoverRespMsg.Error)
 
 	start := time.Now()
 	for {
@@ -135,7 +135,7 @@ func Test_RecoverLocalWithoutRestart(t *testing.T) {
 	var accountSelectRespMsg pb.AccountSelectResponse
 	err = proto.Unmarshal(accountSelectResp, &accountSelectRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountSelectResponse")
-	require.Equal(t, pb.AccountSelectResponse_Error_NULL, accountSelectRespMsg.Error.Code, "AccountSelectResponse contains error: %s %s", accountSelectRespMsg.Error.Code, accountSelectRespMsg.Error.Description)
+	require.Nil(t, accountSelectRespMsg.Error, "AccountSelectResponse contains error: %+v", accountSelectRespMsg.Error)
 
 	err = mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
@@ -183,7 +183,7 @@ func Test_RecoverLocalAfterRestart(t *testing.T) {
 	var walletRecoverRespMsg pb.WalletRecoverResponse
 	err = proto.Unmarshal(walletRecoverResp, &walletRecoverRespMsg)
 	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
-	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code, walletRecoverRespMsg.Error.Description)
+	require.Nil(t, walletRecoverRespMsg.Error, "WalletRecoverResponse contains error: %+v", walletRecoverRespMsg.Error)
 
 	accountRecoverReq, err := proto.Marshal(&pb.AccountRecoverRequest{})
 	require.NoError(t, err, "failed to marshal AccountRecoverRequest")
@@ -192,7 +192,7 @@ func Test_RecoverLocalAfterRestart(t *testing.T) {
 	var accountRecoverRespMsg pb.AccountRecoverResponse
 	err = proto.Unmarshal(accountRecoverResp, &accountRecoverRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountRecoverResponse")
-	require.Equal(t, pb.AccountRecoverResponse_Error_NULL, accountRecoverRespMsg.Error.Code, "AccountRecoverResponse contains error: %s %s", accountRecoverRespMsg.Error.Code)
+	require.Nil(t, accountRecoverRespMsg.Error, "AccountRecoverResponse contains error: %+v", accountRecoverRespMsg.Error)
 
 	start := time.Now()
 	for {
@@ -217,7 +217,7 @@ func Test_RecoverLocalAfterRestart(t *testing.T) {
 	var accountSelectRespMsg pb.AccountSelectResponse
 	err = proto.Unmarshal(accountSelectResp, &accountSelectRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountSelectResponse")
-	require.Equal(t, pb.AccountSelectResponse_Error_NULL, accountSelectRespMsg.Error.Code, "AccountSelectResponse contains error: %s %s", accountSelectRespMsg.Error.Code, accountSelectRespMsg.Error.Description)
+	require.Nil(t, accountSelectRespMsg.Error, "AccountSelectResponse contains error: %+v", accountSelectRespMsg.Error)
 
 	err = mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
@@ -234,7 +234,7 @@ func Test_RecoverRemoteNotExisting(t *testing.T) {
 	var walletRecoverRespMsg pb.WalletRecoverResponse
 	err = proto.Unmarshal(walletRecoverResp, &walletRecoverRespMsg)
 	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
-	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code, walletRecoverRespMsg.Error.Description)
+	require.Nil(t, walletRecoverRespMsg.Error, "WalletRecoverResponse contains error: %+v", walletRecoverRespMsg.Error)
 
 	time.Sleep(time.Second * 10)
 
@@ -265,7 +265,7 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 	var walletRecoverRespMsg pb.WalletRecoverResponse
 	err = proto.Unmarshal(walletRecoverResp, &walletRecoverRespMsg)
 	require.NoError(t, err, "failed to unmarshal WalletRecoverResponse")
-	require.Equal(t, pb.WalletRecoverResponse_Error_NULL, walletRecoverRespMsg.Error.Code, "WalletRecoverResponse contains error: %s %s", walletRecoverRespMsg.Error.Code)
+	require.Nil(t, walletRecoverRespMsg.Error, "WalletRecoverResponse contains error: %+v", walletRecoverRespMsg.Error)
 
 	accountRecoverReq, err := proto.Marshal(&pb.AccountRecoverRequest{})
 	require.NoError(t, err, "failed to marshal AccountRecoverRequest")
@@ -274,7 +274,7 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 	var accountRecoverRespMsg pb.AccountRecoverResponse
 	err = proto.Unmarshal(accountRecoverResp, &accountRecoverRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountRecoverResponse")
-	require.Equal(t, pb.AccountRecoverResponse_Error_NULL, accountRecoverRespMsg.Error.Code, "AccountRecoverResponse contains error: %s %s", accountRecoverRespMsg.Error.Code)
+	require.Nil(t, accountRecoverRespMsg.Error, "AccountRecoverResponse contains error: %+v", accountRecoverRespMsg.Error)
 
 	start := time.Now()
 	for {
@@ -299,7 +299,7 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 	var accountSelectRespMsg pb.AccountSelectResponse
 	err = proto.Unmarshal(accountSelectResp, &accountSelectRespMsg)
 	require.NoError(t, err, "failed to unmarshal AccountSelectResponse")
-	require.Equal(t, pb.AccountSelectResponse_Error_NULL, accountSelectRespMsg.Error.Code, "AccountSelectResponse contains error: %s %s", accountSelectRespMsg.Error.Code, accountSelectRespMsg.Error.Description)
+	require.Nil(t, accountSelectRespMsg.Error, "AccountSelectResponse contains error: %+v", accountSelectRespMsg.Error)
 	require.Equal(t, "name_to_test_recover", accountSelectRespMsg.Account.Name, "AccountSelectResponse should contains account with the name 'name_to_test_recover'")
 	/*	err = mw.Textile.SnapshotThreads()
 		if err != nil {
