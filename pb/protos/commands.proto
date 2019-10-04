@@ -182,7 +182,7 @@ message IpfsGetFileResponse {
             // ...
 
             NOT_FOUND = 101;
-            TIMOUT = 102;
+            TIMEOUT = 102;
         }
     }
 }
@@ -209,7 +209,7 @@ message IpfsGetDataResponse {
             // ...
 
             NOT_FOUND = 101;
-            TIMOUT = 102;
+            TIMEOUT = 102;
         }
     }
 }
@@ -234,7 +234,7 @@ message ImageGetBlobResponse {
             // ...
 
             NOT_FOUND = 101;
-            TIMOUT = 102;
+            TIMEOUT = 102;
         }
     }
 }
