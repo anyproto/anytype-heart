@@ -1,30 +1,23 @@
-### Run example
+### Anytype Middleware Library
+[![CircleCI](https://circleci.com/gh/anytypeio/go-anytype-middleware/tree/master.svg?style=svg&circle-token=eb74d38301ec933d25eb6778f662c94b175186ef)](https://circleci.com/gh/anytypeio/go-anytype-middleware/tree/master)
 
-**Preconditions**
+#### How to build
 
-1. Install ts-node: `sudo npm i -g ts-node` to run `.ts` files in one step.
-2. Install js packages: `npm i`.
-3. Generate static ts/go modules from the `.protocol` files.
+1. Install Golang 1.12.* [from here](http://golang.org/dl/)
+2. `make setup` to install deps
+3. `make build-lib` to build C(`.so`) library into `dist` folder
+4. `make build-lib` to build C(`.so`) library into `dist` folder
+5. `make build-js` to build NodeJS Addon into `jsaddon/build`
+6. `npm install & npm build:ts` to compile proto files for TS/JS to `build/ts`
 
-**Then, simply run**
-
-1. `npm run start@go`
-2. `npm run start@ts`
-
-### TS <- Proto generation
-
+#### Run tests
+GO test:
 ```
-pbjs -t static-module -w commonjs -o build/ts/event.js event.proto
-pbts -o build/ts/event.d.ts build/ts/event.js
+make test
 ```
 
-Additionally, TypeScript definitions of static modules are compatible with their reflection-based counterparts (i.e. as exported by JSON modules), as long as the following conditions are met:
-
-1. Instead of using `new SomeMessage(...)`, always use `SomeMessage.create(...)` because reflection objects do not provide a constructor.
-2. Types, services and enums must start with an uppercase letter to become available as properties of the reflected types as well (i.e. to be able to use `MyMessage.MyEnum` instead of `root.lookup("MyMessage.MyEnum"))`.
-
-### GO <- Proto generation
-
+NodeJS addon test:
 ```
-protoc -I protocol/ protocol/event.proto --go_out=plugins=grpc:protocol/build/go
+cd jsaddon
+npm run test
 ```
