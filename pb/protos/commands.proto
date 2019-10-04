@@ -7,6 +7,7 @@ import "models.proto";
 service ClientCommands {
     rpc WalletCreate (WalletCreateRequest) returns (WalletCreateResponse);
     rpc WalletRecover (WalletRecoverRequest) returns (WalletRecoverResponse);
+    rpc AccountRecover (AccountRecoverRequest) returns (AccountRecoverResponse);
     rpc AccountCreate (AccountCreateRequest) returns (AccountCreateResponse);
     rpc AccountSelect (AccountSelectRequest) returns (AccountSelectResponse);
     rpc ImageGetBlob (ImageGetBlobRequest) returns (ImageGetBlobResponse);
