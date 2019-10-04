@@ -28,7 +28,6 @@ build-js:
 	cp dist/lib.so jsaddon/lib.so
 	cp dist/lib.h jsaddon/lib.h
 	cp lib/clib/bridge.h jsaddon/bridge.h
-	cd jsaddon
     # Electron's version.
 	export npm_config_target=6.0.10
 	# The architecture of Electron, see https://electronjs.org/docs/tutorial/support#supported-platforms
@@ -41,9 +40,8 @@ build-js:
 	export npm_config_runtime=electron
 	# Tell node-pre-gyp to build module from source code.
 	export npm_config_build_from_source=true
-	npm install
-	cd ..
-
+	npm install -C ./jsaddon
+	rm jsaddon/lib.so jsaddon/lib.h jsaddon/bridge.h
 ios:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/textileio\/go-textile\/common/g'))
 	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-library/lib github.com/anytypeio/go-anytype-library/core

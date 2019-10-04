@@ -33,9 +33,9 @@ let napiCall = (method, inputObj, outputObj, request, callback) => {
 com.anytype.ClientCommands.prototype.rpcCall = napiCall
 let service = com.anytype.ClientCommands.create(() => { }, false, false);
 
-/*service.walletRecover({ rootPath: "/Users/roman/.anytype", mnemonic: 'input blame switch simple fatigue fragile grab goose unusual identify abuse use' }, (err, res) => {
+service.walletRecover({ rootPath: "/Users/roman/.anytype", mnemonic: 'input blame switch simple fatigue fragile grab goose unusual identify abuse use' }, (err, res) => {
 	console.log('err:', err, 'res:', res)
-})*/
+});
 
 service.accountSelect(
 	{id: "P85fsQ1WTcKBrGqdhMVtCKQQryNX75sHJLXPTH8Dd99SrqwZ"},

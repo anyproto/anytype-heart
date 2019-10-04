@@ -107,6 +107,8 @@ message AccountRecoverResponse {
 
 message AccountSelectRequest {
     string id = 1;
+    // optional, set if this is the first request
+    string rootPath = 2;
 }
 
 message AccountSelectResponse {
@@ -127,6 +129,8 @@ message AccountSelectResponse {
             LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102;
             FAILED_TO_RUN_NODE = 103;
             FAILED_TO_FIND_ACCOUNT_INFO = 104;
+            LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET = 105;
+
         }
     }
 }

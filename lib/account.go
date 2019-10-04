@@ -2,6 +2,8 @@ package lib
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
@@ -248,8 +250,9 @@ func AccountSelect(b []byte) []byte {
 		return response(nil, pb.AccountSelectResponse_Error_BAD_INPUT, err)
 	}
 
-	// Currently it is possible to choose not existing index – this will create the new account
-	// todo: decide if this is ok
+	if q.RootPath != "" {
+		mw.rootPath = q.RootPath
+	}
 
 	if mw.accountSearchCancel != nil {
 		// this func will wait until search process will stop in order to be sure node was properly stopped
@@ -262,6 +265,23 @@ func AccountSelect(b []byte) []byte {
 	}
 
 	mw.Anytype = anytype
+
+	if _, err := os.Stat(filepath.Join(mw.rootPath, q.Id)); os.IsNotExist(err) {
+		if mw.mnemonic == "" {
+			return response(nil, pb.AccountSelectResponse_Error_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
+		}
+
+		account, err := core.WalletAccountAt(mw.mnemonic, len(mw.localAccounts), "")
+		if err != nil {
+			return response(nil, pb.AccountSelectResponse_Error_UNKNOWN_ERROR, err)
+		}
+
+		err = core.WalletInitRepo(mw.rootPath, account.Seed())
+		if err != nil {
+			return response(nil, pb.AccountSelectResponse_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
+		}
+	}
+
 
 	err = mw.Run()
 	if err != nil {
