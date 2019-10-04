@@ -81,6 +81,30 @@ message AccountCreateResponse {
     }
 }
 
+// Start accounts search for recovered mnemonic
+message AccountRecoverRequest {}
+
+// Found accounts will come in event AccountAdd
+message AccountRecoverResponse {
+    Error error = 1;
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+            NO_ACCOUNTS_FOUND = 101;
+            NEED_TO_RECOVER_WALLET_FIRST = 102;
+            FAILED_TO_CREATE_LOCAL_REPO = 103;
+            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104;
+            FAILED_TO_RUN_NODE = 105;
+        }
+    }
+}
+
 message AccountSelectRequest {
     string id = 1;
 }

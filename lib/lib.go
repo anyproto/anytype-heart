@@ -3,7 +3,6 @@ package lib
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -37,7 +36,7 @@ func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
 		b, err := proto.Marshal(event)
 		if err != nil {
-			fmt.Printf("eventHandler failed to marshal error: %s", err.Error())
+			log.Errorf("eventHandler failed to marshal error: %s", err.Error())
 		}
 		eh.Handle(b)
 	})
@@ -53,12 +52,14 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = WalletRecover(data)
 		case "AccountCreate":
 			cd = AccountCreate(data)
+		case "AccountRecover":
+			cd = AccountRecover(data)
 		case "AccountSelect":
 			cd = AccountSelect(data)
 		case "ImageGetBlob":
 			cd = ImageGetBlob(data)
 		default:
-			fmt.Printf("unknown command type: %s\n", cmd)
+			log.Errorf("unknown command type: %s\n", cmd)
 		}
 
 		callback(cd)
