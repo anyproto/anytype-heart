@@ -1,45 +1,47 @@
 const bindings = require( 'bindings' )( 'addon' );
-var protobuf = require( "protobufjs" );
 var SegfaultHandler = require( 'segfault-handler' );
+const com = require('../build/ts/commands.js');
 
 SegfaultHandler.registerHandler( "crash.log" );
-var EventMessage;
-
-protobuf.load( "../pb/protos/events.proto", function (err, root){
-	if (err)
-		throw err;
-	EventMessage = root.lookupType( "anytype.Event" );
-});
 
 bindings.setEventHandler( item => {
-	console.log("got event...");
-	var msg = EventMessage.decode( item.data );
+	console.log("got event...", item);
+	let msg = com.anytype.Event.decode(item.data);
 	try {
-		console.log("got event:  ", JSON.stringify(msg));
-	}
-	catch(err) {
-		console.log("eventHandler error: "+ err);
+		console.log("got event:", JSON.stringify(msg));
+	} catch (err) {
+		console.log("eventHandler error:", err);
 	}
 });
 
+let toCamelCase = (str) => str[0].toUpperCase() + str.slice(1, str.length)
 
-setTimeout( () => {
-	
-	protobuf.load( "../pb/protos/commands.proto", function (err, root){
-			if (err)
-				throw err;
-			WalletCreateMessage = root.lookupType( "anytype.WalletCreate" );
-			
-			var buffer = WalletCreateMessage.encode( {pin: ""} ).finish();
-			bindings.sendCommand( "WalletCreate", buffer, function (item){
-				try {
-					var msg = root.lookupType( "anytype.WalletCreateCallback" ).decode( item.data );
-					
-					console.log( "got callback: " + JSON.stringify(msg));
-				}catch(err) {
-					console.log(err);
-				}
-			});
+let napiCall = (method, inputObj, outputObj, request, callback) => {
+	let buffer = inputObj.encode(request).finish();
+	bindings.sendCommand(toCamelCase(method.name), buffer, (item) => {
+		try {
+			let msg = outputObj.decode(item.data);
+			console.log("napiCall >>> got callback:", msg);
+			callback(null, msg);
+		} catch (err) {
+			console.log("napiCall >>> got error: ", err);
+			callback(err, null);
 		}
-	);
-}, 5000 );
+	});
+}
+
+com.anytype.ClientCommands.prototype.rpcCall = napiCall
+let service = com.anytype.ClientCommands.create(() => { }, false, false);
+
+/*service.walletRecover({ rootPath: "/Users/roman/.anytype", mnemonic: 'input blame switch simple fatigue fragile grab goose unusual identify abuse use' }, (err, res) => {
+	console.log('err:', err, 'res:', res)
+})*/
+
+service.accountSelect(
+	{id: "P85fsQ1WTcKBrGqdhMVtCKQQryNX75sHJLXPTH8Dd99SrqwZ"},
+	(err, res) => {
+		console.log('err:', err, 'res:', res)
+	}
+);
+
+
