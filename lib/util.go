@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/sirupsen/logrus"
 )
 
 const ipfsUrlScheme = "ipfs://"
@@ -37,7 +36,7 @@ func RandStringRunes(n int) string {
 func Marshal(msg proto.Message) []byte {
 	b, err := proto.Marshal(msg)
 	if err != nil {
-		logrus.Errorf("failed to marshal: %s", err.Error())
+		log.Errorf("failed to marshal proto: %s", err.Error())
 		return nil
 	}
 

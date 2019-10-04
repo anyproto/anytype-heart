@@ -28,6 +28,8 @@ jobs:
           fingerprints:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
+          key: go-pkg-v1-{{ arch }}
+      - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
@@ -40,13 +42,17 @@ jobs:
       - save_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
           paths:
-            - /go/pkg/mod
+            - ~/go/pkg/mod
       - run:
           name: Run unit tests
           command: |
             mkdir ~/gotestsum-report
             PACKAGE_NAMES=$(go list ./... | circleci tests split --split-by=timings --timings-type=classname)
             gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml -- $PACKAGE_NAMES
+      - save_cache:
+          key: go-pkg-v1-{{ arch }}
+          paths:
+            - ~/go/pkg
       - store_test_results:
           path: ~/gotestsum-report/
 
@@ -55,6 +61,8 @@ jobs:
       - image: circleci/golang:1.12.9
     steps:
       - *checkout-linux
+      - restore_cache:
+          key: go-pkg-v1-{{ arch }}
       - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
@@ -79,6 +87,10 @@ jobs:
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
+      - save_cache:
+          key: go-pkg-v1-{{ arch }}
+          paths:
+            - ~/go/pkg
       - run:
           name: collect artifacts
           command: |
@@ -124,6 +136,8 @@ jobs:
             curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
             sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
       - restore_cache:
+          key: go-pkg-v1-{{ arch }}
+      - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
@@ -145,11 +159,18 @@ jobs:
             git fetch
             git checkout db6184738b77fbd5089e5fa1112177f391c91b24
             go install github.com/mitchellh/gox
+      - restore_cache:
+          key: homebrew-v1-{{ arch }}
       - run:
           name: install mingw-w64 and node
+          # also protobuf because we have the shared cache with build-ios-framework
           command: |
-            brew install mingw-w64
+            brew install mingw-w64 protobuf
             npm i -g node-gyp
+      - save_cache:
+          key: homebrew-v1-{{ arch }}
+          paths:
+            - /usr/local/Homebrew
       - run:
           name: cross-compile
           command: |
@@ -166,6 +187,10 @@ jobs:
             # workaround for gox putting .exe ext
             mv windows-amd64.so.exe windows-amd64.so
             mv windows-amd64.so.h windows-amd64.h
+      - save_cache:
+          key: go-pkg-v1-{{ arch }}
+          paths:
+            - ~/go/pkg
       - run:
           name: collect artifacts
           command: |
@@ -236,6 +261,8 @@ jobs:
             git checkout sander/ptrace-hackery
             cd src && ./all.bash
       - restore_cache:
+          key: go-pkg-v1-{{ arch }}
+      - restore_cache:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
@@ -246,10 +273,17 @@ jobs:
           key: go-mod-v1-{{ checksum "go.sum" }}-{{ arch }}
           paths:
             - ~/go/pkg/mod
+      - restore_cache:
+          key: homebrew-v1-{{ arch }}
       - run:
           name: install protobuf
+          # also mingw-w64 because we have the shared cache with build-lib-darwin-windows
           command: |
-            brew install protobuf
+            brew install mingw-w64 protobuf
+      - save_cache:
+          key: homebrew-v1-{{ arch }}
+          paths:
+            - /usr/local/Homebrew
       - run:
           name: build ios framework
           command: |
@@ -268,6 +302,10 @@ jobs:
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=ios github.com/anytypeio/go-anytype-middleware/lib
+      - save_cache:
+          key: go-pkg-v1-{{ arch }}
+          paths:
+            - ~/go/pkg
       - run:
           name: build obj c protobuf bindings
           command: |
@@ -316,6 +354,8 @@ jobs:
             sudo mv protoc3/bin/* /usr/local/bin/
             sudo mv protoc3/include/* /usr/local/include/
       - restore_cache:
+          key: go-pkg-v1-{{ arch }}
+      - restore_cache:
           key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
@@ -325,7 +365,7 @@ jobs:
       - save_cache:
           key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
           paths:
-            - /go/pkg/mod
+            - ~/go/pkg/mod
       - run:
           name: install tools
           command: |
@@ -351,6 +391,10 @@ jobs:
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/lib
+      - save_cache:
+          key: go-pkg-v1-{{ arch }}
+          paths:
+            - ~/go/pkg
       - run:
           name: build java protobuf bindings
           command: |
