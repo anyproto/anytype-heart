@@ -35,7 +35,7 @@ func Test_SignUp(t *testing.T) {
 	require.NoError(t, err, "failed to unmarshal WalletCreateResponse")
 	fmt.Printf("rootPath: %s\nmnemonic:%s\n", rootPath, walletCreateRespMsg.Mnemonic)
 
-	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Username: "name_to_test_recover", AvatarLocalPath: "testdata/pic1.jpg"})
+	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Name: "name_to_test_recover", AvatarLocalPath: "testdata/pic1.jpg"})
 	require.NoError(t, err, "failed to marshal AccountCreateRequest")
 
 	accountCreateResp := AccountCreate(accountCreateReq)
@@ -71,7 +71,7 @@ func Test_RecoverLocalWithoutRestart(t *testing.T) {
 	err = proto.Unmarshal(walletCreateResp, &walletCreateRespMsg)
 	require.NoError(t, err, "failed to unmarshal WalletCreateResponse")
 
-	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Username: "testname", AvatarLocalPath: "testdata/pic1.jpg"})
+	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Name: "testname", AvatarLocalPath: "testdata/pic1.jpg"})
 	require.NoError(t, err, "failed to marshal AccountCreateRequest")
 
 	accountCreateResp := AccountCreate(accountCreateReq)
@@ -152,7 +152,7 @@ func Test_RecoverLocalAfterRestart(t *testing.T) {
 	err = proto.Unmarshal(walletCreateResp, &walletCreateRespMsg)
 	require.NoError(t, err, "failed to unmarshal WalletCreateResponse")
 
-	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Username: "testname", AvatarLocalPath: "testdata/pic1.jpg"})
+	accountCreateReq, err := proto.Marshal(&pb.AccountCreateRequest{Name: "testname", AvatarLocalPath: "testdata/pic1.jpg"})
 	require.NoError(t, err, "failed to marshal AccountCreateRequest")
 
 	accountCreateResp := AccountCreate(accountCreateReq)

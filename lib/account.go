@@ -60,7 +60,7 @@ func AccountCreate(b []byte) []byte {
 		return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	err = mw.AccountSetName(q.Username)
+	err = mw.AccountSetName(q.Name)
 	if err != nil {
 		return response(newAcc, pb.AccountCreateResponse_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}

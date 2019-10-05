@@ -58,7 +58,7 @@ message WalletRecoverResponse {
 }
 
 message AccountCreateRequest {
-    string username = 1;
+    string name = 1;
     string avatarLocalPath = 2;
 }
 
