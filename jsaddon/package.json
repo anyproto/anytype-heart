@@ -13,7 +13,7 @@
     "node": ">= 10.6.0"
   },
   "scripts": {
-    "test": "node test2.js"
+    "test": "node test.js"
   },
   "gypfile": true
 }

@@ -366,18 +366,18 @@ jobs:
             sudo mv protoc3/bin/* /usr/local/bin/
             sudo mv protoc3/include/* /usr/local/include/
       - restore_cache:
-          key: go-pkg-v2-{{ arch }}
-      - restore_cache:
-          key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
+          key: go-pkg-v2-android-{{ arch }}
+     # - restore_cache:
+     #     key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
       - run:
           name: cache mods
           command: |
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod download
-      - save_cache:
-          key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
-          paths:
-            - /go/pkg/mod
+     # - save_cache:
+     #     key: go-mod-v1-android-{{ checksum "go.sum" }}-{{ arch }}
+     #     paths:
+     #       - /go/pkg/mod
       - run:
           name: install tools
           command: |
@@ -404,7 +404,7 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/lib
       - save_cache:
-          key: go-pkg-v2-{{ arch }}
+          key: go-pkg-v2-android-{{ arch }}
           paths:
             - /go/pkg
       - run:
