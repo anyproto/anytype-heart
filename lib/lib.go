@@ -58,6 +58,10 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = AccountSelect(data)
 		case "ImageGetBlob":
 			cd = ImageGetBlob(data)
+		case "GetVersion":
+			cd = GetVersion(data)
+		case "Log":
+			cd = Log(data)
 		default:
 			log.Errorf("unknown command type: %s\n", cmd)
 		}

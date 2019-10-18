@@ -309,3 +309,37 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 	err = mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
 }
+
+func Test_GetVersion(t *testing.T) {
+
+	v, err := proto.Marshal(&pb.GetVersionRequest{})
+	require.NoError(t, err, "failed to marshal GetVersionRequest")
+
+	getVersion := GetVersion(v)
+	var versionRespMsg pb.GetVersionResponse
+	err = proto.Unmarshal(getVersion, &versionRespMsg)
+
+	require.NoError(t, err, "failed to unmarshal GetVersionResponse")
+	require.Nil(t, versionRespMsg.Error, "GetVersionResponse contains error: %+v", versionRespMsg.Error)
+	require.Equal(t, versionRespMsg.Version, Version)
+
+}
+
+func Test_Log(t *testing.T) {
+	LogTst(t, pb.LogRequest_DEBUG)
+	LogTst(t, pb.LogRequest_ERROR)
+	LogTst(t, pb.LogRequest_FATAL)
+	LogTst(t, pb.LogRequest_INFO)
+	LogTst(t, pb.LogRequest_PANIC)
+	LogTst(t, pb.LogRequest_WARNING)
+}
+
+func LogTst(t *testing.T, level pb.LogRequest_Level) {
+	l, err := proto.Marshal(&pb.LogRequest{Message: "test", Level: level})
+	require.NoError(t, err, "failed to marshal LogRequest")
+	log := Log(l)
+	var logRespMsg pb.LogResponse
+	err = proto.Unmarshal(log, &logRespMsg)
+	require.NoError(t, err, "failed to unmarshal LogResponse")
+	require.Nil(t, logRespMsg.Error, "GetVersionResponse contains error: %+v", logRespMsg.Error)
+}

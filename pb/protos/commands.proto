@@ -11,6 +11,8 @@ service ClientCommands {
     rpc AccountCreate (AccountCreateRequest) returns (AccountCreateResponse);
     rpc AccountSelect (AccountSelectRequest) returns (AccountSelectResponse);
     rpc ImageGetBlob (ImageGetBlobRequest) returns (ImageGetBlobResponse);
+    rpc GetVersion (GetVersionRequest) returns (GetVersionResponse);
+    rpc Log (LogRequest) returns (LogResponse);
 }
 
 message WalletCreateRequest {
@@ -232,6 +234,61 @@ message ImageGetBlobResponse {
             UNKNOWN_ERROR = 1;
             BAD_INPUT = 2;
             // ...
+
+            NOT_FOUND = 101;
+            TIMEOUT = 102;
+        }
+    }
+}
+
+message GetVersionRequest {}
+
+message GetVersionResponse {
+    Error error = 1;
+    string version = 2;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            VERSION_IS_EMPTY = 3;
+
+            NOT_FOUND = 101;
+            TIMEOUT = 102;
+        }
+    }
+}
+
+
+message LogRequest {
+    string message = 1;
+    Level level = 2;
+
+    enum Level {
+            DEBUG = 0;
+            ERROR = 1;
+            FATAL = 2;
+            INFO = 3;
+            PANIC = 4;
+            WARNING = 5;
+        }
+}
+
+message LogResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
 
             NOT_FOUND = 101;
             TIMEOUT = 102;
