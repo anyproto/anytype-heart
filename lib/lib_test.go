@@ -22,7 +22,7 @@ func Test_Unpack(t *testing.T) {
 
 func Test_EventHandler(t *testing.T) {
 	var eventReceived *pb.Event
-	mw := &core.Middleware{}
+	mw = &core.Middleware{}
 	SetEventHandler(func(event *pb.Event) {
 		eventReceived = event
 	})
