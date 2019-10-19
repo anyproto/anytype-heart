@@ -16,15 +16,14 @@ lint:
 	golint `go list ./... | grep -v /vendor/`
 
 test:
-	go test github.com/anytypeio/go-anytype-middleware/lib
+	go test github.com/anytypeio/go-anytype-middleware/core github.com/anytypeio/go-anytype-middleware/lib
 
 build-lib:
-	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-library/common))
+	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
 	export GO111MODULE=on
 	go build -o dist/lib.so -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
 
 build-js:
-	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-library/common))
 	cp dist/lib.so jsaddon/lib.so
 	cp dist/lib.h jsaddon/lib.h
 	cp lib/clib/bridge.h jsaddon/bridge.h
@@ -42,19 +41,27 @@ build-js:
 	export npm_config_build_from_source=true
 	npm install -C ./jsaddon
 	rm jsaddon/lib.so jsaddon/lib.h jsaddon/bridge.h
-ios:
-	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/textileio\/go-textile\/common/g'))
-	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-library/lib github.com/anytypeio/go-anytype-library/core
+
+build-ios:
+	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
+	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/ios/ && cp -r Mobile.framework mobile/dist/ios/
 	rm -rf Mobile.framework
 
-android:
-	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/textileio\/go-textile\/common/g'))
-	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-library/lib github.com/anytypeio/go-anytype-library/core
+build-android:
+	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
+	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/android/ && mv mobile.aar mobile/dist/android/
 
+protoc:
+	rm -rf $(GOPATH)/src/github.com/gogo/protobuf
+	mkdir -p $(GOPATH)/src/github.com/gogo
+	cd $(GOPATH)/src/github.com/gogo
+	git clone https://github.com/anytypeio/protobuf
+	cd protobuf
+	go install github.com/gogo/protobuf
+	export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+
 protos:
-	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp)
-	$(eval P_ANY := Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any)
-	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_ANY))
-	cd pb/protos; protoc --go_out=$(PKGMAP):.. *.proto
+	cd pb/protos; protoc --gogofaster_out=plugins=gomobile:.. *.proto
+	cd pb/protos/service; protoc -I=.. -I=. --gogofaster_out=plugins=gomobile:../../../lib service.proto

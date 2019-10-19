@@ -1,35 +1,25 @@
-package lib
+package core
 
 import (
 	"io/ioutil"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/proto"
 	core2 "github.com/textileio/go-textile/core"
 	"github.com/textileio/go-textile/ipfs"
 )
 
-func IpfsGetFile(b []byte) []byte {
-	response := func(data []byte, media string, name string, code pb.IpfsGetFileResponse_Error_Code, err error) []byte {
+func (mw *Middleware) IpfsGetFile(req *pb.IpfsGetFileRequest) *pb.IpfsGetFileResponse {
+	response := func(data []byte, media string, name string, code pb.IpfsGetFileResponse_Error_Code, err error) *pb.IpfsGetFileResponse {
 		m := &pb.IpfsGetFileResponse{Data: data, Media: media, Error: &pb.IpfsGetFileResponse_Error{Code: code}}
-		if code != pb.IpfsGetFileResponse_Error_NULL {
-			m.Error = &pb.IpfsGetFileResponse_Error{Code: code}
-			if err != nil {
-				m.Error.Description = err.Error()
-			}
+		if err != nil {
+			m.Error.Description = err.Error()
 		}
 
-		return Marshal(m)
+		return m
 	}
 
-	var q pb.IpfsGetFileRequest
-	err := proto.Unmarshal(b, &q)
-	if err != nil {
-		return response(nil, "", "", pb.IpfsGetFileResponse_Error_BAD_INPUT, err)
-	}
-
-	reader, info, err := mw.Anytype.Textile.Node().FileContent(q.Id)
+	reader, info, err := mw.Anytype.Textile.Node().FileContent(req.Id)
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, "", "", pb.IpfsGetFileResponse_Error_NOT_FOUND, err)
@@ -78,26 +68,17 @@ func IpfsGetData(b []byte) []byte {
 
 */
 
-func ImageGetBlob(b []byte) []byte {
-	response := func(blob []byte, code pb.ImageGetBlobResponse_Error_Code, err error) []byte {
-		m := &pb.ImageGetBlobResponse{Blob: blob}
-		if code != pb.ImageGetBlobResponse_Error_NULL {
-			m.Error = &pb.ImageGetBlobResponse_Error{Code: code}
-			if err != nil {
-				m.Error.Description = err.Error()
-			}
+func (mw *Middleware) ImageGetBlob(req *pb.ImageGetBlobRequest) *pb.ImageGetBlobResponse {
+	response := func(blob []byte, code pb.ImageGetBlobResponse_Error_Code, err error) *pb.ImageGetBlobResponse {
+		m := &pb.ImageGetBlobResponse{Blob: blob, Error: &pb.ImageGetBlobResponse_Error{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
 		}
 
-		return Marshal(m)
+		return m
 	}
 
-	var q pb.ImageGetBlobRequest
-	err := proto.Unmarshal(b, &q)
-	if err != nil {
-		return response(nil, pb.ImageGetBlobResponse_Error_BAD_INPUT, err)
-	}
-
-	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), q.Id+"/0/"+strings.ToLower(q.Size.String())+"/content")
+	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), req.Id+"/0/"+strings.ToLower(req.GetSize_().String())+"/content")
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, pb.ImageGetBlobResponse_Error_NOT_FOUND, err)

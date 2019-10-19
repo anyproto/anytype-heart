@@ -1,11 +1,9 @@
-package lib
+package core
 
 import (
 	"math/rand"
 	"path/filepath"
 	"time"
-
-	"github.com/gogo/protobuf/proto"
 )
 
 const ipfsUrlScheme = "ipfs://"
@@ -31,14 +29,4 @@ func RandStringRunes(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
-}
-
-func Marshal(msg proto.Message) []byte {
-	b, err := proto.Marshal(msg)
-	if err != nil {
-		log.Errorf("failed to marshal proto: %s", err.Error())
-		return nil
-	}
-
-	return b
 }

@@ -1,0 +1,16 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+import "module.proto";
+
+message DashboardBlock {
+    oneof block {
+        DashboardBlockModule module = 1;
+    }
+}
+
+
+message DashboardBlockModule {
+    ModuleHeader module = 1;
+}

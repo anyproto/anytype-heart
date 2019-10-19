@@ -6,9 +6,8 @@
 1. Install Golang 1.12.* [from here](http://golang.org/dl/)
 2. `make setup` to install deps
 3. `make build-lib` to build C(`.so`) library into `dist` folder
-4. `make build-lib` to build C(`.so`) library into `dist` folder
-5. `make build-js` to build NodeJS Addon into `jsaddon/build`
-6. `npm install & npm build:ts` to compile proto files for TS/JS to `build/ts`
+4. `make build-js` to build NodeJS Addon into `jsaddon/build`
+5. `npm install & npm build:ts` to compile proto files for TS/JS to `build/ts`
 
 #### Run tests
 GO test:

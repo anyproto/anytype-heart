@@ -1,0 +1,20 @@
+syntax="proto3";
+package anytype;
+option go_package = "lib";
+
+import "account.proto";
+import "file.proto";
+import "misc.proto";
+
+service ClientCommands {
+    rpc WalletCreate (anytype.WalletCreateRequest) returns (anytype.WalletCreateResponse);
+    rpc WalletRecover (anytype.WalletRecoverRequest) returns (anytype.WalletRecoverResponse);
+    rpc AccountRecover (anytype.AccountRecoverRequest) returns (anytype.AccountRecoverResponse);
+    rpc AccountCreate (anytype.AccountCreateRequest) returns (anytype.AccountCreateResponse);
+    rpc AccountSelect (anytype.AccountSelectRequest) returns (anytype.AccountSelectResponse);
+
+    rpc ImageGetBlob (anytype.ImageGetBlobRequest) returns (anytype.ImageGetBlobResponse);
+
+    rpc GetVersion (GetVersionRequest) returns (GetVersionResponse);
+    rpc Log (LogRequest) returns (LogResponse);
+}
