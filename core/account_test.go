@@ -50,7 +50,7 @@ func Test_AccountRecover_LocalWithoutRestart(t *testing.T) {
 	err := mw.Stop()
 	require.NoError(t, err, "failed to stop node")
 
-	var accountCh = make(chan *pb.Account, 1)
+	var accountCh = make(chan *pb.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
 			if aa.AccountShow.Index != 0 {
@@ -94,7 +94,7 @@ func Test_AccountRecover_LocalAfterRestart(t *testing.T) {
 	// reset singleton to emulate restart
 	mw = &Middleware{}
 
-	var accountCh = make(chan *pb.Account, 1)
+	var accountCh = make(chan *pb.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
 			if aa.AccountShow.Index != 0 {
@@ -148,7 +148,7 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 	mw := recoverWallet(t, "input blame switch simple fatigue fragile grab goose unusual identify abuse use")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
 
-	var accountCh = make(chan *pb.Account, 1)
+	var accountCh = make(chan *pb.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
 			if aa.AccountShow.Index != 0 {

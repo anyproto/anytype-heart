@@ -13,6 +13,7 @@ import (
 )
 
 func Test_Log(t *testing.T) {
+	mw := Middleware{}
 	file, err := ioutil.TempFile("", "testlog")
 	require.NoError(t, err)
 	file.Close()
@@ -25,7 +26,7 @@ func Test_Log(t *testing.T) {
 		pb.LogRequest_WARNING: "[33mWARNI",
 	} {
 		text := fmt.Sprintf("test_log_%s", time.Now().String())
-		resp := Log(&pb.LogRequest{Message: text, Level: level})
+		resp := mw.Log(&pb.LogRequest{Message: text, Level: level})
 		require.Equal(t, pb.LogResponse_Error_NULL, resp.Error.Code, "LogResponse contains error: %+v", resp.Error)
 
 		b, err := ioutil.ReadFile(file.Name())

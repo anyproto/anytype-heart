@@ -4,7 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func Log(req *pb.LogRequest) *pb.LogResponse {
+func (mw *Middleware) Log(req *pb.LogRequest) *pb.LogResponse {
 	response := func(code pb.LogResponse_Error_Code, err error) *pb.LogResponse {
 		m := &pb.LogResponse{Error: &pb.LogResponse_Error{Code: code}}
 		if err != nil {
