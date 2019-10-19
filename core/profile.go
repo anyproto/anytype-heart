@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -14,6 +16,45 @@ import (
 
 func (a *Anytype) AccountSetName(username string) error {
 	return a.Textile.SetName(username)
+}
+
+var hexColorRegexp = regexp.MustCompile(`^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$`)
+var invalidHexColor = fmt.Errorf("HEX color has invalid format")
+
+func (a *Anytype) AccountSetAvatarColor(hex string) (err error) {
+	if !a.Textile.Online() {
+		return core.ErrOffline
+	}
+	if !hexColorRegexp.MatchString(hex) {
+		return invalidHexColor
+	}
+
+	hex = strings.ToUpper(hex)
+
+	if latest, _ := a.Textile.Avatar(); latest == hex {
+		return nil
+	}
+
+	thrd := a.Textile.Node().AccountThread()
+	if thrd == nil {
+		return fmt.Errorf("account thread not found")
+	}
+
+	err = a.Textile.Node().Datastore().Peers().UpdateAvatar(a.Textile.Node().Ipfs().Identity.Pretty(), hex)
+	if err != nil {
+		return err
+	}
+
+	for _, thrd := range a.Textile.Node().Threads() {
+		_, err = thrd.Annouce(nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	a.Textile.Node().FlushCafes()
+
+	return nil
 }
 
 func (a *Anytype) AccountSetAvatar(localPath string) (hash mh.Multihash, err error) {
@@ -44,7 +85,7 @@ func (a *Anytype) AccountSetAvatar(localPath string) (hash mh.Multihash, err err
 func (a *Anytype) AccountRequestStoredContact(ctx context.Context, accountId string) (contact *tpb.Contact, err error) {
 	contact = a.Textile.Node().Contact(accountId)
 
-	if contact != nil && (contact.Name != "" || contact.Avatar != ""){
+	if contact != nil && (contact.Name != "" || contact.Avatar != "") {
 		return contact, nil
 	}
 	// reset in case local contact wasn't full
