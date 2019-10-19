@@ -5,7 +5,7 @@ package lib
 
 import (
 	fmt "fmt"
-	go_anytype_middleware "github.com/anytypeio/go-anytype-middleware"
+	pb "github.com/anytypeio/go-anytype-middleware/pb"
 	proto "github.com/gogo/protobuf/proto"
 	math "math"
 )
@@ -54,14 +54,14 @@ var fileDescriptor_a0b84a42fa06f626 = []byte{
 var handler ClientCommandsServer
 
 type ClientCommandsServer interface {
-	WalletCreate(*go_anytype_middleware.WalletCreateRequest) *go_anytype_middleware.WalletCreateResponse
-	WalletRecover(*go_anytype_middleware.WalletRecoverRequest) *go_anytype_middleware.WalletRecoverResponse
-	AccountRecover(*go_anytype_middleware.AccountRecoverRequest) *go_anytype_middleware.AccountRecoverResponse
-	AccountCreate(*go_anytype_middleware.AccountCreateRequest) *go_anytype_middleware.AccountCreateResponse
-	AccountSelect(*go_anytype_middleware.AccountSelectRequest) *go_anytype_middleware.AccountSelectResponse
-	ImageGetBlob(*go_anytype_middleware.ImageGetBlobRequest) *go_anytype_middleware.ImageGetBlobResponse
-	GetVersion(*go_anytype_middleware.GetVersionRequest) *go_anytype_middleware.GetVersionResponse
-	Log(*go_anytype_middleware.LogRequest) *go_anytype_middleware.LogResponse
+	WalletCreate(*pb.WalletCreateRequest) *pb.WalletCreateResponse
+	WalletRecover(*pb.WalletRecoverRequest) *pb.WalletRecoverResponse
+	AccountRecover(*pb.AccountRecoverRequest) *pb.AccountRecoverResponse
+	AccountCreate(*pb.AccountCreateRequest) *pb.AccountCreateResponse
+	AccountSelect(*pb.AccountSelectRequest) *pb.AccountSelectResponse
+	ImageGetBlob(*pb.ImageGetBlobRequest) *pb.ImageGetBlobResponse
+	GetVersion(*pb.GetVersionRequest) *pb.GetVersionResponse
+	Log(*pb.LogRequest) *pb.LogResponse
 }
 
 func RegisterClientCommandsServer(srv ClientCommandsServer) {
@@ -69,9 +69,9 @@ func RegisterClientCommandsServer(srv ClientCommandsServer) {
 }
 
 func WalletCreate(b []byte) []byte {
-	in := new(go_anytype_middleware.WalletCreateRequest)
+	in := new(pb.WalletCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.WalletCreateResponse{Error: &go_anytype_middleware.WalletCreateResponse_Error{Code: go_anytype_middleware.WalletCreateResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.WalletCreateResponse{Error: &pb.WalletCreateResponse_Error{Code: pb.WalletCreateResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.WalletCreate(in).Marshal()
@@ -79,9 +79,9 @@ func WalletCreate(b []byte) []byte {
 }
 
 func WalletRecover(b []byte) []byte {
-	in := new(go_anytype_middleware.WalletRecoverRequest)
+	in := new(pb.WalletRecoverRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.WalletRecoverResponse{Error: &go_anytype_middleware.WalletRecoverResponse_Error{Code: go_anytype_middleware.WalletRecoverResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.WalletRecoverResponse{Error: &pb.WalletRecoverResponse_Error{Code: pb.WalletRecoverResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.WalletRecover(in).Marshal()
@@ -89,9 +89,9 @@ func WalletRecover(b []byte) []byte {
 }
 
 func AccountRecover(b []byte) []byte {
-	in := new(go_anytype_middleware.AccountRecoverRequest)
+	in := new(pb.AccountRecoverRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.AccountRecoverResponse{Error: &go_anytype_middleware.AccountRecoverResponse_Error{Code: go_anytype_middleware.AccountRecoverResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.AccountRecoverResponse{Error: &pb.AccountRecoverResponse_Error{Code: pb.AccountRecoverResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.AccountRecover(in).Marshal()
@@ -99,9 +99,9 @@ func AccountRecover(b []byte) []byte {
 }
 
 func AccountCreate(b []byte) []byte {
-	in := new(go_anytype_middleware.AccountCreateRequest)
+	in := new(pb.AccountCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.AccountCreateResponse{Error: &go_anytype_middleware.AccountCreateResponse_Error{Code: go_anytype_middleware.AccountCreateResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.AccountCreateResponse{Error: &pb.AccountCreateResponse_Error{Code: pb.AccountCreateResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.AccountCreate(in).Marshal()
@@ -109,9 +109,9 @@ func AccountCreate(b []byte) []byte {
 }
 
 func AccountSelect(b []byte) []byte {
-	in := new(go_anytype_middleware.AccountSelectRequest)
+	in := new(pb.AccountSelectRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.AccountSelectResponse{Error: &go_anytype_middleware.AccountSelectResponse_Error{Code: go_anytype_middleware.AccountSelectResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.AccountSelectResponse{Error: &pb.AccountSelectResponse_Error{Code: pb.AccountSelectResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.AccountSelect(in).Marshal()
@@ -119,9 +119,9 @@ func AccountSelect(b []byte) []byte {
 }
 
 func ImageGetBlob(b []byte) []byte {
-	in := new(go_anytype_middleware.ImageGetBlobRequest)
+	in := new(pb.ImageGetBlobRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.ImageGetBlobResponse{Error: &go_anytype_middleware.ImageGetBlobResponse_Error{Code: go_anytype_middleware.ImageGetBlobResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.ImageGetBlobResponse{Error: &pb.ImageGetBlobResponse_Error{Code: pb.ImageGetBlobResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.ImageGetBlob(in).Marshal()
@@ -129,9 +129,9 @@ func ImageGetBlob(b []byte) []byte {
 }
 
 func GetVersion(b []byte) []byte {
-	in := new(go_anytype_middleware.GetVersionRequest)
+	in := new(pb.GetVersionRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.GetVersionResponse{Error: &go_anytype_middleware.GetVersionResponse_Error{Code: go_anytype_middleware.GetVersionResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.GetVersionResponse{Error: &pb.GetVersionResponse_Error{Code: pb.GetVersionResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.GetVersion(in).Marshal()
@@ -139,9 +139,9 @@ func GetVersion(b []byte) []byte {
 }
 
 func Log(b []byte) []byte {
-	in := new(go_anytype_middleware.LogRequest)
+	in := new(pb.LogRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&go_anytype_middleware.LogResponse{Error: &go_anytype_middleware.LogResponse_Error{Code: go_anytype_middleware.LogResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.LogResponse{Error: &pb.LogResponse_Error{Code: pb.LogResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := handler.Log(in).Marshal()

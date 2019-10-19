@@ -64,4 +64,4 @@ protoc:
 
 protos:
 	cd pb/protos; protoc --gogofaster_out=plugins=gomobile:.. *.proto
-	cd pb/protos/service; protoc -I=.. -I=. --gogofaster_out=plugins=gomobile:../../../lib service.proto
+	cd pb/protos/service; env PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=.. -I=. --gogofaster_out=plugins=gomobile:../../../lib service.proto

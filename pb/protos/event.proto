@@ -3,18 +3,11 @@ package anytype;
 option go_package = "pb";
 
 import "account.proto";
-import "dashboard.proto";
 
 message Event {
     oneof message {
         // show wallet's accounts that were loaded from local or remote source
         AccountShow accountShow  = 1;
-
-        // show units that were already existing locally
-         dashboardBlockShow = 102;
-
-        // units that were just received from p2p network
-        Units unitsCreate = 103;
 
         // unit was rearranged. Need to update the position
        // UnitMoved unitMoved = 104;
