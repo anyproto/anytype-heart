@@ -8,6 +8,7 @@ require (
 	github.com/golang/protobuf v1.3.1
 	github.com/ipfs/go-ipfs-config v0.0.6
 	github.com/ipfs/go-log v0.0.1
+	github.com/libp2p/go-libp2p-core v0.2.2
 	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/mr-tron/base58 v1.1.2
 	github.com/multiformats/go-multihash v0.0.5
