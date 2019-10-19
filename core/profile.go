@@ -104,14 +104,21 @@ func (a *Anytype) AccountRequestStoredContact(ctx context.Context, accountId str
 
 	readTimeout := time.After(time.Second * 30)
 	for {
+		// SearchContacts can send multiple contacts for one address, because it is based on peers
+		// the last one should be most accurate so we need to wait until the last available contact
 		select {
 		case <-ctx.Done():
 			cancel.Close()
-			err = fmt.Errorf("read timeout")
+			err = fmt.Errorf("overall read timeout")
 			return
 		case <-readTimeout:
-			// this was introduced because we doesn't use pubsub to query this (only cafe api)
-			// so all results will come in one batch
+			// this was introduced because we don't use pubsub currently to query this (only cafe api)
+			// so all results will come in the one batch
+			if contact == nil {
+				// only set error if there was no any contacts received so far
+				err = fmt.Errorf("read timeout")
+			}
+
 			cancel.Close()
 			return
 		case err = <-errCh:
