@@ -1,0 +1,110 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+
+message Block {
+    BlockHeader header = 1;
+    
+    oneof content {
+        Dashboard dashboard = 11;
+        Page page = 12;
+        Dataview dataview = 13;
+        
+        Text text = 14;
+        Media media = 15;
+    }
+}
+
+message BlockHeader {
+    string id = 1;
+    BlockType type = 2;
+    string name = 3;
+    string icon = 4;
+}
+
+enum BlockType {
+    DASHBOARD = 0;
+    PAGE = 1;
+    DATAVIEW = 2;
+    
+    TEXT = 3;
+    FILE = 4;
+    PICTURE = 5;
+    VIDEO = 6;
+}
+
+message Dashboard {
+    DashboardStyle style = 1;
+    repeated BlockConnections structure = 2;
+    repeated BlockHeader headers = 3;
+}
+
+enum DashboardStyle {
+    MAIN_SCREEN = 0;
+    // ...
+}
+
+message Page {
+    PageStyle style = 1;
+    repeated BlockConnections structure = 2;
+    repeated Block blocks = 3;
+}
+
+enum PageStyle {
+    EMPTY = 0;
+    TASK = 1;
+    BOOKMARK = 2;
+    // ...
+}
+
+message Dataview {
+    // ...
+}
+
+message BlockConnections {
+    string id = 1;
+    string next = 2;
+    string columnBottom = 3;
+    string rowRight = 4;
+    string inner = 5;
+}  
+
+message Media {
+    string link = 1;
+    MediaMeta meta = 2;
+}
+
+message MediaMeta {
+    string name = 1;
+    string dateAdded = 2;
+    int32 size = 3;
+    string description = 4;
+}
+
+message Text {
+    string text = 1;
+    TextStyle style = 2;
+
+    bool toggleable = 3;
+    MarkerType markerType = 4;
+
+    bool checkable = 5;
+    bool checked = 6;
+}
+
+enum TextStyle {
+    p = 0;
+    h1 = 1;
+    h2 = 2;
+    h3 = 3;
+    h4 = 4;
+    citate = 5;
+    quote = 6;
+}
+
+enum MarkerType {
+    none = 0;
+    number = 1;
+    bullet = 2;
+}  
