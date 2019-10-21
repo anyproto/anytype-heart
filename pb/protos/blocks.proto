@@ -7,12 +7,72 @@ message BlockReadRequest {
     string id = 1;
 }
 
+message BlockReadResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+        }
+    }
+}
+
 message BlockCreateRequest {
     BlockType type = 1;
 }
 
+message BlockCreateResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+        }
+    }
+}
+
 message BlockUpdateRequest {
     Changes changes = 1;
+}
+
+message BlockUpdateResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+        }
+    }
+}
+
+message BlockReadEvent {
+    Block block = 1;
+}
+
+message BlockUpdateEvent {
+    Changes changes = 1;
+}
+
+message BlockCreateEvent {
+    Block block = 1;
 }
 
 message TextChange {
