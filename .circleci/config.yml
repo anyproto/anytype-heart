@@ -130,6 +130,10 @@ jobs:
       GOROOT: /usr/local/go
     steps:
       - checkout
+      - run:
+          name: save git summary
+          command: |
+            echo "GIT_SUMMARY="$(git describe --tags --dirty --always) > source.env
       - add_ssh_keys:
           fingerprints:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
@@ -246,6 +250,10 @@ jobs:
       GOROOT: /Users/distiller/gosrc/go
     steps:
       - checkout
+      - run:
+          name: save git summary
+          command: |
+            echo "GIT_SUMMARY="$(git describe --tags --dirty --always) > source.env
       - add_ssh_keys:
           fingerprints:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
@@ -334,6 +342,10 @@ jobs:
       GOPATH: /home/circleci/go
     steps:
       - checkout
+      - run:
+          name: save git summary
+          command: |
+            echo "GIT_SUMMARY="$(git describe --tags --dirty --always) > source.env
       - add_ssh_keys:
           fingerprints:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
@@ -449,8 +461,6 @@ workflows:
           requires:
             - persist-checkout
           filters:
-            branches:
-              only: master
             tags:
               only: /.*/
       - build-lib-darwin-windows:
