@@ -3,6 +3,82 @@ package anytype;
 option go_package = "pb";
 
 
+message BlockReadRequest {
+    string id = 1;
+}
+
+message BlockCreateRequest {
+    BlockType type = 1;
+}
+
+message BlockUpdateRequest {
+    Changes changes = 1;
+}
+
+message TextChange {
+    oneof change {
+        string text = 1;
+        TextStyle style = 2;
+        Marks marks = 3;
+
+        bool toggleable = 4;
+        MarkerType markerType = 5;
+
+        bool checkable = 6;
+        bool checked = 7;
+    }
+}
+
+message PageChange {
+    oneof change {
+        PageStyle style = 1;
+        BlockConnectionsList structure = 2;
+        BlocksList blocks = 3;
+    }
+}
+
+message BlockHeaderChange {
+    oneof change {
+        string id = 1;
+        BlockType type = 2;
+        string name = 3;
+        string icon = 4;
+
+        Permissions permissions = 5;
+    }
+}
+
+message DashboardChange {
+    oneof change {
+        DashboardStyle style = 1;
+        BlockConnectionsList structure = 2;
+        BlockHeadersList headers = 3;
+    }
+}
+
+message AtomicChange {
+    string id = 1;
+    oneof change {
+        TextChange textChange = 2;
+        BlockHeaderChange blockHeaderChange = 3;
+        PageChange pageChange = 4;
+        DashboardChange dashboardChange = 5;
+    }
+}
+
+message Changes {
+    repeated AtomicChange changes = 1;
+}
+
+
+message BlockShow {
+    Block block = 1;
+}
+
+message BlockUpdate {
+    Changes changes = 1;
+}
+
 message Block {
     BlockHeader header = 1;
     
@@ -21,6 +97,16 @@ message BlockHeader {
     BlockType type = 2;
     string name = 3;
     string icon = 4;
+
+    Permissions permissions = 5;
+}
+
+message Permissions {
+    bool editable = 1;
+    bool removable = 2;
+    bool readable = 3;
+    bool draggable = 4;
+    bool droppable = 5;
 }
 
 enum BlockType {
@@ -36,8 +122,16 @@ enum BlockType {
 
 message Dashboard {
     DashboardStyle style = 1;
-    repeated BlockConnections structure = 2;
-    repeated BlockHeader headers = 3;
+    BlockConnectionsList structure = 2;
+    BlockHeadersList headers = 3;
+}
+
+message BlockConnectionsList {
+    repeated BlockConnections structure = 1;
+}
+
+message BlockHeadersList {
+    repeated BlockHeader headers = 1;
 }
 
 enum DashboardStyle {
@@ -47,14 +141,19 @@ enum DashboardStyle {
 
 message Page {
     PageStyle style = 1;
-    repeated BlockConnections structure = 2;
-    repeated Block blocks = 3;
+    BlockConnectionsList structure = 2;
+    BlocksList blocks = 3;
+}
+
+message BlocksList {
+    repeated Block blocks = 1;
 }
 
 enum PageStyle {
     EMPTY = 0;
     TASK = 1;
     BOOKMARK = 2;
+    SET = 3;
     // ...
 }
 
@@ -85,12 +184,13 @@ message MediaMeta {
 message Text {
     string text = 1;
     TextStyle style = 2;
+    Marks marksList = 3;
 
-    bool toggleable = 3;
-    MarkerType markerType = 4;
+    bool toggleable = 4;
+    MarkerType markerType = 5;
 
-    bool checkable = 5;
-    bool checked = 6;
+    bool checkable = 6;
+    bool checked = 7;
 }
 
 enum TextStyle {
@@ -99,12 +199,32 @@ enum TextStyle {
     h2 = 2;
     h3 = 3;
     h4 = 4;
-    citate = 5;
-    quote = 6;
+    quote = 5;
 }
 
 enum MarkerType {
     none = 0;
     number = 1;
     bullet = 2;
+}  
+message Marks {
+    repeated Mark marks = 1;
+}
+
+message Mark {
+    Range range = 1;
+    MarkType type = 2;
+}
+
+message Range {
+    int32 from = 1;
+    int32 to = 2;
+}
+
+enum MarkType {
+    S = 0;
+    KBD = 1;
+    I = 2;
+    B = 3;
+    A = 4;
 }  
