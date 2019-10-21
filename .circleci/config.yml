@@ -82,7 +82,7 @@ jobs:
       - run:
           name: compile
           command: |
-            source ./project/source.env
+            source ./source.env
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
@@ -174,7 +174,7 @@ jobs:
       - run:
           name: cross-compile
           command: |
-            source ./project/source.env
+            source ./source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -284,7 +284,7 @@ jobs:
       - run:
           name: build ios framework
           command: |
-            source ./project/source.env
+            source ./source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
             mkdir -p ~/go/src/github.com/anytypeio
@@ -369,7 +369,7 @@ jobs:
       - run:
           name: build android framework
           command: |
-            source ./project/source.env
+            source ./source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
             mkdir -p ~/go/src/github.com/anytypeio
