@@ -11,6 +11,10 @@ jobs:
     steps:
       - checkout
       - run:
+          name: save git summary
+          command: |
+            echo "GIT_SUMMARY="$(git describe --tags --dirty --always) > source.env
+      - run:
           name: clean up git
           command: |
             rm -rf .git
@@ -78,10 +82,10 @@ jobs:
       - run:
           name: compile
           command: |
+            source ./project/source.env
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
-            SUMMARY=$(git -C $CIRCLE_WORKING_DIRECTORY describe --tags --dirty --always)
             DATE=$(date --iso-8601=seconds)
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
       - save_cache:
           key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
@@ -170,11 +174,11 @@ jobs:
       - run:
           name: cross-compile
           command: |
+            source ./project/source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
-            SUMMARY=$(git -C $CIRCLE_WORKING_DIRECTORY describe --tags --dirty --always)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
             CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
             # workaround for gox putting .exe ext
@@ -280,6 +284,7 @@ jobs:
       - run:
           name: build ios framework
           command: |
+            source ./project/source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
             mkdir -p ~/go/src/github.com/anytypeio
@@ -288,9 +293,8 @@ jobs:
             export GO111MODULE=off
             go get golang.org/x/mobile/cmd/...
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
-            SUMMARY=$(git -C $GOPATH/src/github.com/anytypeio/go-anytype-middleware describe --tags --dirty --always)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=ios github.com/anytypeio/go-anytype-middleware/lib
       - save_cache:
           key: go-pkg-v2-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
@@ -365,6 +369,7 @@ jobs:
       - run:
           name: build android framework
           command: |
+            source ./project/source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
             mkdir -p ~/go/src/github.com/anytypeio
@@ -373,9 +378,8 @@ jobs:
             export GO111MODULE=off
             go get golang.org/x/mobile/cmd/...
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
-            SUMMARY=$(git -C $GOPATH/src/github.com/anytypeio/go-anytype-middleware describe --tags --dirty --always)
             DATE=$(date --iso-8601=seconds)
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/lib
       - save_cache:
           key: go-pkg-v2-android-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
