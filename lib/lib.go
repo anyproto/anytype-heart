@@ -13,7 +13,7 @@ var log = logging.Logger("anytype-mw")
 var mw = &core.Middleware{}
 
 func init() {
-	RegisterClientCommandsServer(mw)
+	registerClientCommandsHandler(mw)
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
