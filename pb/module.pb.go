@@ -20,7 +20,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type ModuleType int32
 
@@ -103,7 +103,7 @@ func (m *ModuleHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return xxx_messageInfo_ModuleHeader.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +168,7 @@ func (m *Modules) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Modules.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +212,7 @@ func (m *ModuleOpenRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return xxx_messageInfo_ModuleOpenRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -256,7 +256,7 @@ func (m *ModuleOpenResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return xxx_messageInfo_ModuleOpenResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -301,7 +301,7 @@ func (m *ModuleOpenResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]
 		return xxx_messageInfo_ModuleOpenResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -378,7 +378,7 @@ var fileDescriptor_ae7704718fb7daeb = []byte{
 func (m *ModuleHeader) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -386,40 +386,48 @@ func (m *ModuleHeader) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *ModuleHeader) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ModuleHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Id) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintModule(dAtA, i, uint64(len(m.Id)))
-		i += copy(dAtA[i:], m.Id)
-	}
-	if m.Type != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintModule(dAtA, i, uint64(m.Type))
+	if len(m.Icon) > 0 {
+		i -= len(m.Icon)
+		copy(dAtA[i:], m.Icon)
+		i = encodeVarintModule(dAtA, i, uint64(len(m.Icon)))
+		i--
+		dAtA[i] = 0x22
 	}
 	if len(m.Name) > 0 {
-		dAtA[i] = 0x1a
-		i++
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
 		i = encodeVarintModule(dAtA, i, uint64(len(m.Name)))
-		i += copy(dAtA[i:], m.Name)
+		i--
+		dAtA[i] = 0x1a
 	}
-	if len(m.Icon) > 0 {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintModule(dAtA, i, uint64(len(m.Icon)))
-		i += copy(dAtA[i:], m.Icon)
+	if m.Type != 0 {
+		i = encodeVarintModule(dAtA, i, uint64(m.Type))
+		i--
+		dAtA[i] = 0x10
 	}
-	return i, nil
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintModule(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *Modules) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -427,29 +435,36 @@ func (m *Modules) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Modules) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Modules) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if len(m.Modules) > 0 {
-		for _, msg := range m.Modules {
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintModule(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
+		for iNdEx := len(m.Modules) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Modules[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintModule(dAtA, i, uint64(size))
 			}
-			i += n
+			i--
+			dAtA[i] = 0xa
 		}
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *ModuleOpenRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -457,23 +472,29 @@ func (m *ModuleOpenRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *ModuleOpenRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ModuleOpenRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if len(m.Id) > 0 {
-		dAtA[i] = 0xa
-		i++
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
 		i = encodeVarintModule(dAtA, i, uint64(len(m.Id)))
-		i += copy(dAtA[i:], m.Id)
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *ModuleOpenResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -481,27 +502,34 @@ func (m *ModuleOpenResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *ModuleOpenResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ModuleOpenResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if m.Error != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintModule(dAtA, i, uint64(m.Error.Size()))
-		n1, err1 := m.Error.MarshalTo(dAtA[i:])
-		if err1 != nil {
-			return 0, err1
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModule(dAtA, i, uint64(size))
 		}
-		i += n1
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *ModuleOpenResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -509,32 +537,40 @@ func (m *ModuleOpenResponse_Error) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *ModuleOpenResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ModuleOpenResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Code != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintModule(dAtA, i, uint64(m.Code))
-	}
 	if len(m.Description) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
 		i = encodeVarintModule(dAtA, i, uint64(len(m.Description)))
-		i += copy(dAtA[i:], m.Description)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Code != 0 {
+		i = encodeVarintModule(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func encodeVarintModule(dAtA []byte, offset int, v uint64) int {
+	offset -= sovModule(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *ModuleHeader) Size() (n int) {
 	if m == nil {
@@ -1159,6 +1195,7 @@ func (m *ModuleOpenResponse_Error) Unmarshal(dAtA []byte) error {
 func skipModule(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
+	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -1190,10 +1227,8 @@ func skipModule(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
-			return iNdEx, nil
 		case 1:
 			iNdEx += 8
-			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -1214,55 +1249,30 @@ func skipModule(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthModule
 			}
 			iNdEx += length
-			if iNdEx < 0 {
-				return 0, ErrInvalidLengthModule
-			}
-			return iNdEx, nil
 		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return 0, ErrIntOverflowModule
-					}
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipModule(dAtA[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-				if iNdEx < 0 {
-					return 0, ErrInvalidLengthModule
-				}
-			}
-			return iNdEx, nil
+			depth++
 		case 4:
-			return iNdEx, nil
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupModule
+			}
+			depth--
 		case 5:
 			iNdEx += 4
-			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthModule
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
 	}
-	panic("unreachable")
+	return 0, io.ErrUnexpectedEOF
 }
 
 var (
-	ErrInvalidLengthModule = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowModule   = fmt.Errorf("proto: integer overflow")
+	ErrInvalidLengthModule        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowModule          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupModule = fmt.Errorf("proto: unexpected end of group")
 )

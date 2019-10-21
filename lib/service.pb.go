@@ -19,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 func init() { proto.RegisterFile("service.proto", fileDescriptor_a0b84a42fa06f626) }
 
@@ -50,10 +50,10 @@ var fileDescriptor_a0b84a42fa06f626 = []byte{
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the gomobile package it is being compiled against.
 
-// ClientCommandsServer is the server API for ClientCommands service.
-var handler ClientCommandsServer
+// ClientCommandsHandler is the handler API for ClientCommands service.
+var clientCommandsHandler ClientCommandsHandler
 
-type ClientCommandsServer interface {
+type ClientCommandsHandler interface {
 	WalletCreate(*pb.WalletCreateRequest) *pb.WalletCreateResponse
 	WalletRecover(*pb.WalletRecoverRequest) *pb.WalletRecoverResponse
 	AccountRecover(*pb.AccountRecoverRequest) *pb.AccountRecoverResponse
@@ -64,8 +64,8 @@ type ClientCommandsServer interface {
 	Log(*pb.LogRequest) *pb.LogResponse
 }
 
-func RegisterClientCommandsServer(srv ClientCommandsServer) {
-	handler = srv
+func registerClientCommandsHandler(srv ClientCommandsHandler) {
+	clientCommandsHandler = srv
 }
 
 func WalletCreate(b []byte) []byte {
@@ -74,7 +74,7 @@ func WalletCreate(b []byte) []byte {
 		resp, _ := (&pb.WalletCreateResponse{Error: &pb.WalletCreateResponse_Error{Code: pb.WalletCreateResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.WalletCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.WalletCreate(in).Marshal()
 	return resp
 }
 
@@ -84,7 +84,7 @@ func WalletRecover(b []byte) []byte {
 		resp, _ := (&pb.WalletRecoverResponse{Error: &pb.WalletRecoverResponse_Error{Code: pb.WalletRecoverResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.WalletRecover(in).Marshal()
+	resp, _ := clientCommandsHandler.WalletRecover(in).Marshal()
 	return resp
 }
 
@@ -94,7 +94,7 @@ func AccountRecover(b []byte) []byte {
 		resp, _ := (&pb.AccountRecoverResponse{Error: &pb.AccountRecoverResponse_Error{Code: pb.AccountRecoverResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.AccountRecover(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountRecover(in).Marshal()
 	return resp
 }
 
@@ -104,7 +104,7 @@ func AccountCreate(b []byte) []byte {
 		resp, _ := (&pb.AccountCreateResponse{Error: &pb.AccountCreateResponse_Error{Code: pb.AccountCreateResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.AccountCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountCreate(in).Marshal()
 	return resp
 }
 
@@ -114,7 +114,7 @@ func AccountSelect(b []byte) []byte {
 		resp, _ := (&pb.AccountSelectResponse{Error: &pb.AccountSelectResponse_Error{Code: pb.AccountSelectResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.AccountSelect(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountSelect(in).Marshal()
 	return resp
 }
 
@@ -124,7 +124,7 @@ func ImageGetBlob(b []byte) []byte {
 		resp, _ := (&pb.ImageGetBlobResponse{Error: &pb.ImageGetBlobResponse_Error{Code: pb.ImageGetBlobResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.ImageGetBlob(in).Marshal()
+	resp, _ := clientCommandsHandler.ImageGetBlob(in).Marshal()
 	return resp
 }
 
@@ -134,7 +134,7 @@ func GetVersion(b []byte) []byte {
 		resp, _ := (&pb.GetVersionResponse{Error: &pb.GetVersionResponse_Error{Code: pb.GetVersionResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.GetVersion(in).Marshal()
+	resp, _ := clientCommandsHandler.GetVersion(in).Marshal()
 	return resp
 }
 
@@ -144,7 +144,7 @@ func Log(b []byte) []byte {
 		resp, _ := (&pb.LogResponse{Error: &pb.LogResponse_Error{Code: pb.LogResponse_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-	resp, _ := handler.Log(in).Marshal()
+	resp, _ := clientCommandsHandler.Log(in).Marshal()
 	return resp
 }
 

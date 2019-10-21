@@ -20,7 +20,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type Event struct {
 	// Types that are valid to be assigned to Message:
@@ -42,7 +42,7 @@ func (m *Event) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Event.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +68,7 @@ type isEvent_Message interface {
 }
 
 type Event_AccountShow struct {
-	AccountShow *AccountShow `protobuf:"bytes,1,opt,name=accountShow,proto3,oneof"`
+	AccountShow *AccountShow `protobuf:"bytes,1,opt,name=accountShow,proto3,oneof" json:"accountShow,omitempty"`
 }
 
 func (*Event_AccountShow) isEvent_Message() {}
@@ -87,59 +87,11 @@ func (m *Event) GetAccountShow() *AccountShow {
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Event) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Event_OneofMarshaler, _Event_OneofUnmarshaler, _Event_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*Event) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*Event_AccountShow)(nil),
 	}
-}
-
-func _Event_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Event)
-	// message
-	switch x := m.Message.(type) {
-	case *Event_AccountShow:
-		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.AccountShow); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("Event.Message has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Event_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Event)
-	switch tag {
-	case 1: // message.accountShow
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(AccountShow)
-		err := b.DecodeMessage(msg)
-		m.Message = &Event_AccountShow{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Event_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Event)
-	// message
-	switch x := m.Message.(type) {
-	case *Event_AccountShow:
-		s := proto.Size(x.AccountShow)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 func init() {
@@ -164,7 +116,7 @@ var fileDescriptor_2d17a9d3f0ddf27e = []byte{
 func (m *Event) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -172,42 +124,58 @@ func (m *Event) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Event) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Event) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if m.Message != nil {
-		nn1, err1 := m.Message.MarshalTo(dAtA[i:])
-		if err1 != nil {
-			return 0, err1
+		{
+			size := m.Message.Size()
+			i -= size
+			if _, err := m.Message.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
 		}
-		i += nn1
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *Event_AccountShow) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Event_AccountShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	if m.AccountShow != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintEvent(dAtA, i, uint64(m.AccountShow.Size()))
-		n2, err2 := m.AccountShow.MarshalTo(dAtA[i:])
-		if err2 != nil {
-			return 0, err2
+		{
+			size, err := m.AccountShow.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvent(dAtA, i, uint64(size))
 		}
-		i += n2
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 func encodeVarintEvent(dAtA []byte, offset int, v uint64) int {
+	offset -= sovEvent(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *Event) Size() (n int) {
 	if m == nil {
@@ -331,6 +299,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 func skipEvent(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
+	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -362,10 +331,8 @@ func skipEvent(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
-			return iNdEx, nil
 		case 1:
 			iNdEx += 8
-			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -386,55 +353,30 @@ func skipEvent(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthEvent
 			}
 			iNdEx += length
-			if iNdEx < 0 {
-				return 0, ErrInvalidLengthEvent
-			}
-			return iNdEx, nil
 		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return 0, ErrIntOverflowEvent
-					}
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipEvent(dAtA[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-				if iNdEx < 0 {
-					return 0, ErrInvalidLengthEvent
-				}
-			}
-			return iNdEx, nil
+			depth++
 		case 4:
-			return iNdEx, nil
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupEvent
+			}
+			depth--
 		case 5:
 			iNdEx += 4
-			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthEvent
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
 	}
-	panic("unreachable")
+	return 0, io.ErrUnexpectedEOF
 }
 
 var (
-	ErrInvalidLengthEvent = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowEvent   = fmt.Errorf("proto: integer overflow")
+	ErrInvalidLengthEvent        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowEvent          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupEvent = fmt.Errorf("proto: unexpected end of group")
 )

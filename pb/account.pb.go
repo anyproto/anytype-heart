@@ -20,7 +20,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type WalletCreateResponse_Error_Code int32
 
@@ -269,7 +269,7 @@ func (m *Avatar) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Avatar.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -295,10 +295,10 @@ type isAvatar_Avatar interface {
 }
 
 type Avatar_Image struct {
-	Image *Image `protobuf:"bytes,1,opt,name=image,proto3,oneof"`
+	Image *Image `protobuf:"bytes,1,opt,name=image,proto3,oneof" json:"image,omitempty"`
 }
 type Avatar_Color struct {
-	Color string `protobuf:"bytes,2,opt,name=color,proto3,oneof"`
+	Color string `protobuf:"bytes,2,opt,name=color,proto3,oneof" json:"color,omitempty"`
 }
 
 func (*Avatar_Image) isAvatar_Avatar() {}
@@ -325,74 +325,12 @@ func (m *Avatar) GetColor() string {
 	return ""
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Avatar) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Avatar_OneofMarshaler, _Avatar_OneofUnmarshaler, _Avatar_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*Avatar) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*Avatar_Image)(nil),
 		(*Avatar_Color)(nil),
 	}
-}
-
-func _Avatar_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Avatar)
-	// avatar
-	switch x := m.Avatar.(type) {
-	case *Avatar_Image:
-		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Image); err != nil {
-			return err
-		}
-	case *Avatar_Color:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Color)
-	case nil:
-	default:
-		return fmt.Errorf("Avatar.Avatar has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Avatar_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Avatar)
-	switch tag {
-	case 1: // avatar.image
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Image)
-		err := b.DecodeMessage(msg)
-		m.Avatar = &Avatar_Image{msg}
-		return true, err
-	case 2: // avatar.color
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Avatar = &Avatar_Color{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Avatar_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Avatar)
-	// avatar
-	switch x := m.Avatar.(type) {
-	case *Avatar_Image:
-		s := proto.Size(x.Image)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Avatar_Color:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Color)))
-		n += len(x.Color)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 type Account struct {
@@ -415,7 +353,7 @@ func (m *Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Account.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -473,7 +411,7 @@ func (m *WalletCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte,
 		return xxx_messageInfo_WalletCreateRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -518,7 +456,7 @@ func (m *WalletCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return xxx_messageInfo_WalletCreateResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -570,7 +508,7 @@ func (m *WalletCreateResponse_Error) XXX_Marshal(b []byte, deterministic bool) (
 		return xxx_messageInfo_WalletCreateResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -622,7 +560,7 @@ func (m *WalletRecoverRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return xxx_messageInfo_WalletRecoverRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -673,7 +611,7 @@ func (m *WalletRecoverResponse) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return xxx_messageInfo_WalletRecoverResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -718,7 +656,7 @@ func (m *WalletRecoverResponse_Error) XXX_Marshal(b []byte, deterministic bool) 
 		return xxx_messageInfo_WalletRecoverResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -773,7 +711,7 @@ func (m *AccountCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return xxx_messageInfo_AccountCreateRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -799,10 +737,10 @@ type isAccountCreateRequest_Avatar interface {
 }
 
 type AccountCreateRequest_AvatarLocalPath struct {
-	AvatarLocalPath string `protobuf:"bytes,2,opt,name=avatarLocalPath,proto3,oneof"`
+	AvatarLocalPath string `protobuf:"bytes,2,opt,name=avatarLocalPath,proto3,oneof" json:"avatarLocalPath,omitempty"`
 }
 type AccountCreateRequest_AvatarColor struct {
-	AvatarColor string `protobuf:"bytes,3,opt,name=avatarColor,proto3,oneof"`
+	AvatarColor string `protobuf:"bytes,3,opt,name=avatarColor,proto3,oneof" json:"avatarColor,omitempty"`
 }
 
 func (*AccountCreateRequest_AvatarLocalPath) isAccountCreateRequest_Avatar() {}
@@ -836,70 +774,12 @@ func (m *AccountCreateRequest) GetAvatarColor() string {
 	return ""
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*AccountCreateRequest) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _AccountCreateRequest_OneofMarshaler, _AccountCreateRequest_OneofUnmarshaler, _AccountCreateRequest_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*AccountCreateRequest) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*AccountCreateRequest_AvatarLocalPath)(nil),
 		(*AccountCreateRequest_AvatarColor)(nil),
 	}
-}
-
-func _AccountCreateRequest_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*AccountCreateRequest)
-	// avatar
-	switch x := m.Avatar.(type) {
-	case *AccountCreateRequest_AvatarLocalPath:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.AvatarLocalPath)
-	case *AccountCreateRequest_AvatarColor:
-		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.AvatarColor)
-	case nil:
-	default:
-		return fmt.Errorf("AccountCreateRequest.Avatar has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _AccountCreateRequest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*AccountCreateRequest)
-	switch tag {
-	case 2: // avatar.avatarLocalPath
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Avatar = &AccountCreateRequest_AvatarLocalPath{x}
-		return true, err
-	case 3: // avatar.avatarColor
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Avatar = &AccountCreateRequest_AvatarColor{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _AccountCreateRequest_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*AccountCreateRequest)
-	// avatar
-	switch x := m.Avatar.(type) {
-	case *AccountCreateRequest_AvatarLocalPath:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.AvatarLocalPath)))
-		n += len(x.AvatarLocalPath)
-	case *AccountCreateRequest_AvatarColor:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.AvatarColor)))
-		n += len(x.AvatarColor)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 type AccountCreateResponse struct {
@@ -921,7 +801,7 @@ func (m *AccountCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return xxx_messageInfo_AccountCreateResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -973,7 +853,7 @@ func (m *AccountCreateResponse_Error) XXX_Marshal(b []byte, deterministic bool) 
 		return xxx_messageInfo_AccountCreateResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1024,7 +904,7 @@ func (m *AccountRecoverRequest) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return xxx_messageInfo_AccountRecoverRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1062,7 +942,7 @@ func (m *AccountRecoverResponse) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return xxx_messageInfo_AccountRecoverResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1107,7 +987,7 @@ func (m *AccountRecoverResponse_Error) XXX_Marshal(b []byte, deterministic bool)
 		return xxx_messageInfo_AccountRecoverResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1160,7 +1040,7 @@ func (m *AccountSelectRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return xxx_messageInfo_AccountSelectRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1212,7 +1092,7 @@ func (m *AccountSelectResponse) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return xxx_messageInfo_AccountSelectResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1264,7 +1144,7 @@ func (m *AccountSelectResponse_Error) XXX_Marshal(b []byte, deterministic bool) 
 		return xxx_messageInfo_AccountSelectResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1315,7 +1195,7 @@ func (m *AccountStartRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte,
 		return xxx_messageInfo_AccountStartRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1360,7 +1240,7 @@ func (m *AccountStartResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return xxx_messageInfo_AccountStartResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1412,7 +1292,7 @@ func (m *AccountStartResponse_Error) XXX_Marshal(b []byte, deterministic bool) (
 		return xxx_messageInfo_AccountStartResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1464,7 +1344,7 @@ func (m *AccountShow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return xxx_messageInfo_AccountShow.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1593,7 +1473,7 @@ var fileDescriptor_8e28828dcb8d24f0 = []byte{
 func (m *Avatar) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1601,46 +1481,66 @@ func (m *Avatar) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Avatar) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Avatar) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if m.Avatar != nil {
-		nn1, err1 := m.Avatar.MarshalTo(dAtA[i:])
-		if err1 != nil {
-			return 0, err1
+		{
+			size := m.Avatar.Size()
+			i -= size
+			if _, err := m.Avatar.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
 		}
-		i += nn1
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *Avatar_Image) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Avatar_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	if m.Image != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Image.Size()))
-		n2, err2 := m.Image.MarshalTo(dAtA[i:])
-		if err2 != nil {
-			return 0, err2
+		{
+			size, err := m.Image.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
 		}
-		i += n2
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 func (m *Avatar_Color) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x12
-	i++
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Avatar_Color) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Color)
+	copy(dAtA[i:], m.Color)
 	i = encodeVarintAccount(dAtA, i, uint64(len(m.Color)))
-	i += copy(dAtA[i:], m.Color)
-	return i, nil
+	i--
+	dAtA[i] = 0x12
+	return len(dAtA) - i, nil
 }
 func (m *Account) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1648,39 +1548,48 @@ func (m *Account) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Account) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Id) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(len(m.Id)))
-		i += copy(dAtA[i:], m.Id)
+	if m.Avatar != nil {
+		{
+			size, err := m.Avatar.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
 	}
 	if len(m.Name) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Name)))
-		i += copy(dAtA[i:], m.Name)
+		i--
+		dAtA[i] = 0x12
 	}
-	if m.Avatar != nil {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Avatar.Size()))
-		n3, err3 := m.Avatar.MarshalTo(dAtA[i:])
-		if err3 != nil {
-			return 0, err3
-		}
-		i += n3
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintAccount(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *WalletCreateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1688,23 +1597,29 @@ func (m *WalletCreateRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *WalletCreateRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WalletCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if len(m.RootPath) > 0 {
-		dAtA[i] = 0xa
-		i++
+		i -= len(m.RootPath)
+		copy(dAtA[i:], m.RootPath)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.RootPath)))
-		i += copy(dAtA[i:], m.RootPath)
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *WalletCreateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1712,33 +1627,41 @@ func (m *WalletCreateResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *WalletCreateResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WalletCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Error != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Error.Size()))
-		n4, err4 := m.Error.MarshalTo(dAtA[i:])
-		if err4 != nil {
-			return 0, err4
-		}
-		i += n4
-	}
 	if len(m.Mnemonic) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Mnemonic)
+		copy(dAtA[i:], m.Mnemonic)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Mnemonic)))
-		i += copy(dAtA[i:], m.Mnemonic)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *WalletCreateResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1746,28 +1669,34 @@ func (m *WalletCreateResponse_Error) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *WalletCreateResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WalletCreateResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Code != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
-	}
 	if len(m.Description) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Description)))
-		i += copy(dAtA[i:], m.Description)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Code != 0 {
+		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *WalletRecoverRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1775,29 +1704,36 @@ func (m *WalletRecoverRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *WalletRecoverRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WalletRecoverRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.RootPath) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(len(m.RootPath)))
-		i += copy(dAtA[i:], m.RootPath)
-	}
 	if len(m.Mnemonic) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Mnemonic)
+		copy(dAtA[i:], m.Mnemonic)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Mnemonic)))
-		i += copy(dAtA[i:], m.Mnemonic)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if len(m.RootPath) > 0 {
+		i -= len(m.RootPath)
+		copy(dAtA[i:], m.RootPath)
+		i = encodeVarintAccount(dAtA, i, uint64(len(m.RootPath)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *WalletRecoverResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1805,27 +1741,34 @@ func (m *WalletRecoverResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *WalletRecoverResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WalletRecoverResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if m.Error != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Error.Size()))
-		n5, err5 := m.Error.MarshalTo(dAtA[i:])
-		if err5 != nil {
-			return 0, err5
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
 		}
-		i += n5
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *WalletRecoverResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1833,28 +1776,34 @@ func (m *WalletRecoverResponse_Error) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *WalletRecoverResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *WalletRecoverResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Code != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
-	}
 	if len(m.Description) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Description)))
-		i += copy(dAtA[i:], m.Description)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Code != 0 {
+		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountCreateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1862,46 +1811,66 @@ func (m *AccountCreateRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountCreateRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Name) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(len(m.Name)))
-		i += copy(dAtA[i:], m.Name)
-	}
 	if m.Avatar != nil {
-		nn6, err6 := m.Avatar.MarshalTo(dAtA[i:])
-		if err6 != nil {
-			return 0, err6
+		{
+			size := m.Avatar.Size()
+			i -= size
+			if _, err := m.Avatar.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
 		}
-		i += nn6
 	}
-	return i, nil
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintAccount(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountCreateRequest_AvatarLocalPath) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x12
-	i++
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountCreateRequest_AvatarLocalPath) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.AvatarLocalPath)
+	copy(dAtA[i:], m.AvatarLocalPath)
 	i = encodeVarintAccount(dAtA, i, uint64(len(m.AvatarLocalPath)))
-	i += copy(dAtA[i:], m.AvatarLocalPath)
-	return i, nil
+	i--
+	dAtA[i] = 0x12
+	return len(dAtA) - i, nil
 }
 func (m *AccountCreateRequest_AvatarColor) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x1a
-	i++
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountCreateRequest_AvatarColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.AvatarColor)
+	copy(dAtA[i:], m.AvatarColor)
 	i = encodeVarintAccount(dAtA, i, uint64(len(m.AvatarColor)))
-	i += copy(dAtA[i:], m.AvatarColor)
-	return i, nil
+	i--
+	dAtA[i] = 0x1a
+	return len(dAtA) - i, nil
 }
 func (m *AccountCreateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1909,37 +1878,46 @@ func (m *AccountCreateResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountCreateResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Error != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Error.Size()))
-		n7, err7 := m.Error.MarshalTo(dAtA[i:])
-		if err7 != nil {
-			return 0, err7
-		}
-		i += n7
-	}
 	if m.Account != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Account.Size()))
-		n8, err8 := m.Account.MarshalTo(dAtA[i:])
-		if err8 != nil {
-			return 0, err8
+		{
+			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
 		}
-		i += n8
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountCreateResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1947,28 +1925,34 @@ func (m *AccountCreateResponse_Error) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountCreateResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountCreateResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Code != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
-	}
 	if len(m.Description) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Description)))
-		i += copy(dAtA[i:], m.Description)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Code != 0 {
+		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountRecoverRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1976,17 +1960,22 @@ func (m *AccountRecoverRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountRecoverRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountRecoverRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountRecoverResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1994,27 +1983,34 @@ func (m *AccountRecoverResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountRecoverResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountRecoverResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if m.Error != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Error.Size()))
-		n9, err9 := m.Error.MarshalTo(dAtA[i:])
-		if err9 != nil {
-			return 0, err9
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
 		}
-		i += n9
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountRecoverResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2022,28 +2018,34 @@ func (m *AccountRecoverResponse_Error) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountRecoverResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountRecoverResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Code != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
-	}
 	if len(m.Description) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Description)))
-		i += copy(dAtA[i:], m.Description)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Code != 0 {
+		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountSelectRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2051,29 +2053,36 @@ func (m *AccountSelectRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountSelectRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountSelectRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Id) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(len(m.Id)))
-		i += copy(dAtA[i:], m.Id)
-	}
 	if len(m.RootPath) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.RootPath)
+		copy(dAtA[i:], m.RootPath)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.RootPath)))
-		i += copy(dAtA[i:], m.RootPath)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintAccount(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountSelectResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2081,37 +2090,46 @@ func (m *AccountSelectResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountSelectResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountSelectResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Error != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Error.Size()))
-		n10, err10 := m.Error.MarshalTo(dAtA[i:])
-		if err10 != nil {
-			return 0, err10
-		}
-		i += n10
-	}
 	if m.Account != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Account.Size()))
-		n11, err11 := m.Account.MarshalTo(dAtA[i:])
-		if err11 != nil {
-			return 0, err11
+		{
+			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
 		}
-		i += n11
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountSelectResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2119,28 +2137,34 @@ func (m *AccountSelectResponse_Error) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountSelectResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountSelectResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Code != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
-	}
 	if len(m.Description) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Description)))
-		i += copy(dAtA[i:], m.Description)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Code != 0 {
+		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountStartRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2148,23 +2172,29 @@ func (m *AccountStartRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountStartRequest) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountStartRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	if len(m.Id) > 0 {
-		dAtA[i] = 0xa
-		i++
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Id)))
-		i += copy(dAtA[i:], m.Id)
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountStartResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2172,37 +2202,46 @@ func (m *AccountStartResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountStartResponse) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountStartResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Error != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Error.Size()))
-		n12, err12 := m.Error.MarshalTo(dAtA[i:])
-		if err12 != nil {
-			return 0, err12
-		}
-		i += n12
-	}
 	if m.Account != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Account.Size()))
-		n13, err13 := m.Account.MarshalTo(dAtA[i:])
-		if err13 != nil {
-			return 0, err13
+		{
+			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
 		}
-		i += n13
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountStartResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2210,28 +2249,34 @@ func (m *AccountStartResponse_Error) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountStartResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountStartResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Code != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
-	}
 	if len(m.Description) > 0 {
-		dAtA[i] = 0x12
-		i++
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
 		i = encodeVarintAccount(dAtA, i, uint64(len(m.Description)))
-		i += copy(dAtA[i:], m.Description)
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Code != 0 {
+		i = encodeVarintAccount(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AccountShow) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -2239,36 +2284,45 @@ func (m *AccountShow) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *AccountShow) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AccountShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Index != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Index))
-	}
 	if m.Account != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Account.Size()))
-		n14, err14 := m.Account.MarshalTo(dAtA[i:])
-		if err14 != nil {
-			return 0, err14
+		{
+			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAccount(dAtA, i, uint64(size))
 		}
-		i += n14
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Index != 0 {
+		i = encodeVarintAccount(dAtA, i, uint64(m.Index))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func encodeVarintAccount(dAtA []byte, offset int, v uint64) int {
+	offset -= sovAccount(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *Avatar) Size() (n int) {
 	if m == nil {
@@ -4930,6 +4984,7 @@ func (m *AccountShow) Unmarshal(dAtA []byte) error {
 func skipAccount(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
+	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -4961,10 +5016,8 @@ func skipAccount(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
-			return iNdEx, nil
 		case 1:
 			iNdEx += 8
-			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -4985,55 +5038,30 @@ func skipAccount(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthAccount
 			}
 			iNdEx += length
-			if iNdEx < 0 {
-				return 0, ErrInvalidLengthAccount
-			}
-			return iNdEx, nil
 		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return 0, ErrIntOverflowAccount
-					}
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipAccount(dAtA[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-				if iNdEx < 0 {
-					return 0, ErrInvalidLengthAccount
-				}
-			}
-			return iNdEx, nil
+			depth++
 		case 4:
-			return iNdEx, nil
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupAccount
+			}
+			depth--
 		case 5:
 			iNdEx += 4
-			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthAccount
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
 	}
-	panic("unreachable")
+	return 0, io.ErrUnexpectedEOF
 }
 
 var (
-	ErrInvalidLengthAccount = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowAccount   = fmt.Errorf("proto: integer overflow")
+	ErrInvalidLengthAccount        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowAccount          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupAccount = fmt.Errorf("proto: unexpected end of group")
 )
