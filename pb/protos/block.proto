@@ -109,7 +109,7 @@ message BlockHeaderChange {
         string name = 3;
         string icon = 4;
 
-        Permissions permissions = 5;
+        BlockPermissions permissions = 5;
     }
 }
 
@@ -157,15 +157,15 @@ message BlockHeader {
     string name = 3;
     string icon = 4;
 
-    Permissions permissions = 5;
+    BlockPermissions permissions = 5;
 }
 
-message Permissions {
-    bool editable = 1;
-    bool removable = 2;
-    bool readable = 3;
-    bool draggable = 4;
-    bool droppable = 5;
+message BlockPermissions {
+    bool read = 1;
+    bool edit = 2;
+    bool remove = 3;
+    bool drag = 4;
+    bool dropOn = 5;
 }
 
 enum BlockType {
