@@ -9,6 +9,18 @@
 4. `make build-js` to build NodeJS Addon into `jsaddon/build`
 5. `npm install & npm build:ts` to compile proto files for TS/JS to `build/ts`
 
+#### Rebuild proto files
+This repo uses custom protoc plugin located at [anytypeio/protobuf/protoc-gen-gogo/gomobile](https://github.com/anytypeio/protobuf/tree/master/protoc-gen-gogo/gomobile).
+So make sure you have installed it:
+```
+make setup-protoc
+```
+
+Then you can easily regenerate proto files:
+```
+make protos
+```
+
 #### Run tests
 GO test:
 ```

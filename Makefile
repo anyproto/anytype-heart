@@ -53,13 +53,13 @@ build-android:
 	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/android/ && mv mobile.aar mobile/dist/android/
 
-protoc:
+setup-protoc:
 	rm -rf $(GOPATH)/src/github.com/gogo/protobuf
 	mkdir -p $(GOPATH)/src/github.com/gogo
 	cd $(GOPATH)/src/github.com/gogo
 	git clone https://github.com/anytypeio/protobuf
 	cd protobuf
-	go install github.com/gogo/protobuf
+	go install github.com/gogo/protobuf/protoc-gen-gogofaster
 	export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 
 protos:
