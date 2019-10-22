@@ -21,13 +21,13 @@ func Test_Log(t *testing.T) {
 	os.Setenv("GOLOG_FILE", file.Name())
 	logger.SetupLogging()
 	logger.SetDebugLogging()
-	for level, levelText := range map[pb.LogRequest_Level]string{
-		pb.LogRequest_ERROR:   "[31mERROR",
-		pb.LogRequest_WARNING: "[33mWARNI",
+	for level, levelText := range map[pb.LogSendRequest_Level]string{
+		pb.LogSendRequest_ERROR:   "[31mERROR",
+		pb.LogSendRequest_WARNING: "[33mWARNI",
 	} {
 		text := fmt.Sprintf("test_log_%s", time.Now().String())
-		resp := mw.Log(&pb.LogRequest{Message: text, Level: level})
-		require.Equal(t, pb.LogResponse_Error_NULL, resp.Error.Code, "LogResponse contains error: %+v", resp.Error)
+		resp := mw.LogSend(&pb.LogSendRequest{Message: text, Level: level})
+		require.Equal(t, pb.LogSendResponse_Error_NULL, resp.Error.Code, "LogSendResponse contains error: %+v", resp.Error)
 
 		b, err := ioutil.ReadFile(file.Name())
 		require.NoError(t, err)
