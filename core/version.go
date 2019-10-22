@@ -5,9 +5,9 @@ import "github.com/anytypeio/go-anytype-middleware/pb"
 // Set by ldflags
 var GitCommit, GitBranch, GitState, GitSummary, BuildDate string
 
-func (mw *Middleware) GetVersion(req *pb.GetVersionRequest) *pb.GetVersionResponse {
-	response := func(version string, code pb.GetVersionResponse_Error_Code, err error) *pb.GetVersionResponse {
-		m := &pb.GetVersionResponse{Version: version, Error: &pb.GetVersionResponse_Error{Code: code}}
+func (mw *Middleware) VersionGet(req *pb.VersionGetRequest) *pb.VersionGetResponse {
+	response := func(version string, code pb.VersionGetResponse_Error_Code, err error) *pb.VersionGetResponse {
+		m := &pb.VersionGetResponse{Version: version, Error: &pb.VersionGetResponse_Error{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -16,8 +16,8 @@ func (mw *Middleware) GetVersion(req *pb.GetVersionRequest) *pb.GetVersionRespon
 	}
 
 	if len(GitSummary) == 0 {
-		return response("", pb.GetVersionResponse_Error_VERSION_IS_EMPTY, nil)
+		return response("", pb.VersionGetResponse_Error_VERSION_IS_EMPTY, nil)
 	}
 
-	return response(GitSummary, pb.GetVersionResponse_Error_NULL, nil)
+	return response(GitSummary, pb.VersionGetResponse_Error_NULL, nil)
 }

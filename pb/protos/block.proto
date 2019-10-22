@@ -2,12 +2,13 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-
-message BlockReadRequest {
+// commands
+//
+message BlockOpenRequest {
     string id = 1;
 }
 
-message BlockReadResponse {
+message BlockOpenResponse {
     Error error = 1;
 
     message Error {
@@ -44,7 +45,7 @@ message BlockCreateResponse {
 }
 
 message BlockUpdateRequest {
-    Changes changes = 1;
+    BlockChanges changes = 1;
 }
 
 message BlockUpdateResponse {
@@ -63,35 +64,39 @@ message BlockUpdateResponse {
     }
 }
 
-message BlockReadEvent {
+// events
+//
+
+// call
+message BlockShow {
     Block block = 1;
 }
 
-message BlockUpdateEvent {
-    Changes changes = 1;
+message BlockUpdate {
+    BlockChanges changes = 1;
 }
 
-message BlockCreateEvent {
+message BlockCreate {
     Block block = 1;
 }
 
-message TextChange {
+message BlockTextChange {
     oneof change {
         string text = 1;
-        TextStyle style = 2;
-        Marks marks = 3;
+        BlockText.Style style = 2;
+        BlockText.Marks marks = 3;
 
         bool toggleable = 4;
-        MarkerType markerType = 5;
+        BlockText.MarkerType markerType = 5;
 
         bool checkable = 6;
         bool checked = 7;
     }
 }
 
-message PageChange {
+message BlockPageChange {
     oneof change {
-        PageStyle style = 1;
+        BlockPage.Style style = 1;
         BlockConnectionsList structure = 2;
         BlocksList blocks = 3;
     }
@@ -108,47 +113,41 @@ message BlockHeaderChange {
     }
 }
 
-message DashboardChange {
+message BlockDashboardChange {
     oneof change {
-        DashboardStyle style = 1;
+        BlockDashboard.Style style = 1;
         BlockConnectionsList structure = 2;
         BlockHeadersList headers = 3;
     }
 }
 
-message AtomicChange {
+message BlockAtomicChange {
     string id = 1;
     oneof change {
-        TextChange textChange = 2;
-        BlockHeaderChange blockHeaderChange = 3;
-        PageChange pageChange = 4;
-        DashboardChange dashboardChange = 5;
+        BlockTextChange text = 2;
+        BlockHeaderChange blockHeader = 3;
+        BlockPageChange page = 4;
+        BlockDashboardChange dashboard = 5;
     }
 }
 
-message Changes {
-    repeated AtomicChange changes = 1;
+message BlockChanges {
+    repeated BlockAtomicChange changes = 1;
 }
 
-
-message BlockShow {
-    Block block = 1;
-}
-
-message BlockUpdate {
-    Changes changes = 1;
-}
+// models
+//
 
 message Block {
     BlockHeader header = 1;
-    
+
     oneof content {
-        Dashboard dashboard = 11;
-        Page page = 12;
-        Dataview dataview = 13;
-        
-        Text text = 14;
-        Media media = 15;
+        BlockDashboard dashboard = 11;
+        BlockPage page = 12;
+        BlockDataview dataview = 13;
+
+        BlockText text = 14;
+        BlockMedia media = 15;
     }
 }
 
@@ -173,17 +172,19 @@ enum BlockType {
     DASHBOARD = 0;
     PAGE = 1;
     DATAVIEW = 2;
-    
+
     TEXT = 3;
     FILE = 4;
     PICTURE = 5;
     VIDEO = 6;
 }
 
-message Dashboard {
-    DashboardStyle style = 1;
-    BlockConnectionsList structure = 2;
-    BlockHeadersList headers = 3;
+message BlockConnections {
+    string id = 1;
+    string next = 2;
+    string columnBottom = 3;
+    string rowRight = 4;
+    string inner = 5;
 }
 
 message BlockConnectionsList {
@@ -194,56 +195,79 @@ message BlockHeadersList {
     repeated BlockHeader headers = 1;
 }
 
-enum DashboardStyle {
-    MAIN_SCREEN = 0;
-    // ...
-}
-
-message Page {
-    PageStyle style = 1;
-    BlockConnectionsList structure = 2;
-    BlocksList blocks = 3;
-}
-
 message BlocksList {
     repeated Block blocks = 1;
 }
 
-enum PageStyle {
-    EMPTY = 0;
-    TASK = 1;
-    BOOKMARK = 2;
-    SET = 3;
+message BlockPage {
+    enum Style {
+        EMPTY = 0;
+        TASK = 1;
+        BOOKMARK = 2;
+        SET = 3;
+        // ...
+    }
+
+    Style style = 1;
+    BlockConnectionsList structure = 2;
+    BlocksList blocks = 3;
+}
+
+message BlockDashboard {
+    enum Style {
+        MAIN_SCREEN = 0;
+        // ...
+    }
+
+    Style style = 1;
+    BlockConnectionsList structure = 2;
+    BlockHeadersList headers = 3;
+}
+
+message BlockDataview {
     // ...
 }
 
-message Dataview {
-    // ...
-}
+message BlockText {
+    enum Style {
+        p = 0;
+        h1 = 1;
+        h2 = 2;
+        h3 = 3;
+        h4 = 4;
+        quote = 5;
+    }
 
-message BlockConnections {
-    string id = 1;
-    string next = 2;
-    string columnBottom = 3;
-    string rowRight = 4;
-    string inner = 5;
-}  
+    enum MarkerType {
+        none = 0;
+        number = 1;
+        bullet = 2;
+    }
 
-message Media {
-    string link = 1;
-    MediaMeta meta = 2;
-}
+    message Marks {
+        repeated Mark marks = 1;
+    }
 
-message MediaMeta {
-    string name = 1;
-    string dateAdded = 2;
-    int32 size = 3;
-    string description = 4;
-}
+    message Mark {
+        message Range {
+            int32 from = 1;
+            int32 to = 2;
+        }
 
-message Text {
+        enum Type {
+            S = 0;
+            KBD = 1;
+            I = 2;
+            B = 3;
+            A = 4;
+        }
+
+        Range range = 1;
+        Type type = 2;
+    }
+
     string text = 1;
-    TextStyle style = 2;
+    Style style = 2;
     Marks marksList = 3;
 
     bool toggleable = 4;
@@ -253,38 +277,17 @@ message Text {
     bool checked = 7;
 }
 
-enum TextStyle {
-    p = 0;
-    h1 = 1;
-    h2 = 2;
-    h3 = 3;
-    h4 = 4;
-    quote = 5;
+message BlockMedia {
+    string link = 1;
+    BlockMediaMeta meta = 2;
 }
 
-enum MarkerType {
-    none = 0;
-    number = 1;
-    bullet = 2;
-}  
-message Marks {
-    repeated Mark marks = 1;
+message BlockMediaMeta {
+    string name = 1;
+    string dateAdded = 2;
+    int32 size = 3;
+    string description = 4;
 }
 
-message Mark {
-    Range range = 1;
-    MarkType type = 2;
-}
 
-message Range {
-    int32 from = 1;
-    int32 to = 2;
-}
 
-enum MarkType {
-    S = 0;
-    KBD = 1;
-    I = 2;
-    B = 3;
-    A = 4;
-}  

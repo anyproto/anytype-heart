@@ -2,9 +2,9 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-message GetVersionRequest {}
+message VersionGetRequest {}
 
-message GetVersionResponse {
+message VersionGetResponse {
     Error error = 1;
     string version = 2;
 
@@ -24,7 +24,7 @@ message GetVersionResponse {
     }
 }
 
-message LogRequest {
+message LogSendRequest {
     string message = 1;
     Level level = 2;
 
@@ -38,7 +38,7 @@ message LogRequest {
     }
 }
 
-message LogResponse {
+message LogSendResponse {
     Error error = 1;
 
     message Error {

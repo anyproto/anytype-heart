@@ -22,18 +22,18 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type GetVersionResponse_Error_Code int32
+type VersionGetResponse_Error_Code int32
 
 const (
-	GetVersionResponse_Error_NULL             GetVersionResponse_Error_Code = 0
-	GetVersionResponse_Error_UNKNOWN_ERROR    GetVersionResponse_Error_Code = 1
-	GetVersionResponse_Error_BAD_INPUT        GetVersionResponse_Error_Code = 2
-	GetVersionResponse_Error_VERSION_IS_EMPTY GetVersionResponse_Error_Code = 3
-	GetVersionResponse_Error_NOT_FOUND        GetVersionResponse_Error_Code = 101
-	GetVersionResponse_Error_TIMEOUT          GetVersionResponse_Error_Code = 102
+	VersionGetResponse_Error_NULL             VersionGetResponse_Error_Code = 0
+	VersionGetResponse_Error_UNKNOWN_ERROR    VersionGetResponse_Error_Code = 1
+	VersionGetResponse_Error_BAD_INPUT        VersionGetResponse_Error_Code = 2
+	VersionGetResponse_Error_VERSION_IS_EMPTY VersionGetResponse_Error_Code = 3
+	VersionGetResponse_Error_NOT_FOUND        VersionGetResponse_Error_Code = 101
+	VersionGetResponse_Error_TIMEOUT          VersionGetResponse_Error_Code = 102
 )
 
-var GetVersionResponse_Error_Code_name = map[int32]string{
+var VersionGetResponse_Error_Code_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -42,7 +42,7 @@ var GetVersionResponse_Error_Code_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var GetVersionResponse_Error_Code_value = map[string]int32{
+var VersionGetResponse_Error_Code_value = map[string]int32{
 	"NULL":             0,
 	"UNKNOWN_ERROR":    1,
 	"BAD_INPUT":        2,
@@ -51,26 +51,26 @@ var GetVersionResponse_Error_Code_value = map[string]int32{
 	"TIMEOUT":          102,
 }
 
-func (x GetVersionResponse_Error_Code) String() string {
-	return proto.EnumName(GetVersionResponse_Error_Code_name, int32(x))
+func (x VersionGetResponse_Error_Code) String() string {
+	return proto.EnumName(VersionGetResponse_Error_Code_name, int32(x))
 }
 
-func (GetVersionResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (VersionGetResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{1, 0, 0}
 }
 
-type LogRequest_Level int32
+type LogSendRequest_Level int32
 
 const (
-	LogRequest_DEBUG   LogRequest_Level = 0
-	LogRequest_ERROR   LogRequest_Level = 1
-	LogRequest_FATAL   LogRequest_Level = 2
-	LogRequest_INFO    LogRequest_Level = 3
-	LogRequest_PANIC   LogRequest_Level = 4
-	LogRequest_WARNING LogRequest_Level = 5
+	LogSendRequest_DEBUG   LogSendRequest_Level = 0
+	LogSendRequest_ERROR   LogSendRequest_Level = 1
+	LogSendRequest_FATAL   LogSendRequest_Level = 2
+	LogSendRequest_INFO    LogSendRequest_Level = 3
+	LogSendRequest_PANIC   LogSendRequest_Level = 4
+	LogSendRequest_WARNING LogSendRequest_Level = 5
 )
 
-var LogRequest_Level_name = map[int32]string{
+var LogSendRequest_Level_name = map[int32]string{
 	0: "DEBUG",
 	1: "ERROR",
 	2: "FATAL",
@@ -79,7 +79,7 @@ var LogRequest_Level_name = map[int32]string{
 	5: "WARNING",
 }
 
-var LogRequest_Level_value = map[string]int32{
+var LogSendRequest_Level_value = map[string]int32{
 	"DEBUG":   0,
 	"ERROR":   1,
 	"FATAL":   2,
@@ -88,25 +88,25 @@ var LogRequest_Level_value = map[string]int32{
 	"WARNING": 5,
 }
 
-func (x LogRequest_Level) String() string {
-	return proto.EnumName(LogRequest_Level_name, int32(x))
+func (x LogSendRequest_Level) String() string {
+	return proto.EnumName(LogSendRequest_Level_name, int32(x))
 }
 
-func (LogRequest_Level) EnumDescriptor() ([]byte, []int) {
+func (LogSendRequest_Level) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{2, 0}
 }
 
-type LogResponse_Error_Code int32
+type LogSendResponse_Error_Code int32
 
 const (
-	LogResponse_Error_NULL          LogResponse_Error_Code = 0
-	LogResponse_Error_UNKNOWN_ERROR LogResponse_Error_Code = 1
-	LogResponse_Error_BAD_INPUT     LogResponse_Error_Code = 2
-	LogResponse_Error_NOT_FOUND     LogResponse_Error_Code = 101
-	LogResponse_Error_TIMEOUT       LogResponse_Error_Code = 102
+	LogSendResponse_Error_NULL          LogSendResponse_Error_Code = 0
+	LogSendResponse_Error_UNKNOWN_ERROR LogSendResponse_Error_Code = 1
+	LogSendResponse_Error_BAD_INPUT     LogSendResponse_Error_Code = 2
+	LogSendResponse_Error_NOT_FOUND     LogSendResponse_Error_Code = 101
+	LogSendResponse_Error_TIMEOUT       LogSendResponse_Error_Code = 102
 )
 
-var LogResponse_Error_Code_name = map[int32]string{
+var LogSendResponse_Error_Code_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -114,7 +114,7 @@ var LogResponse_Error_Code_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var LogResponse_Error_Code_value = map[string]int32{
+var LogSendResponse_Error_Code_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -122,29 +122,29 @@ var LogResponse_Error_Code_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x LogResponse_Error_Code) String() string {
-	return proto.EnumName(LogResponse_Error_Code_name, int32(x))
+func (x LogSendResponse_Error_Code) String() string {
+	return proto.EnumName(LogSendResponse_Error_Code_name, int32(x))
 }
 
-func (LogResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (LogSendResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{3, 0, 0}
 }
 
-type GetVersionRequest struct {
+type VersionGetRequest struct {
 }
 
-func (m *GetVersionRequest) Reset()         { *m = GetVersionRequest{} }
-func (m *GetVersionRequest) String() string { return proto.CompactTextString(m) }
-func (*GetVersionRequest) ProtoMessage()    {}
-func (*GetVersionRequest) Descriptor() ([]byte, []int) {
+func (m *VersionGetRequest) Reset()         { *m = VersionGetRequest{} }
+func (m *VersionGetRequest) String() string { return proto.CompactTextString(m) }
+func (*VersionGetRequest) ProtoMessage()    {}
+func (*VersionGetRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{0}
 }
-func (m *GetVersionRequest) XXX_Unmarshal(b []byte) error {
+func (m *VersionGetRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *GetVersionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *VersionGetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_GetVersionRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_VersionGetRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -154,35 +154,35 @@ func (m *GetVersionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *GetVersionRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetVersionRequest.Merge(m, src)
+func (m *VersionGetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionGetRequest.Merge(m, src)
 }
-func (m *GetVersionRequest) XXX_Size() int {
+func (m *VersionGetRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *GetVersionRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetVersionRequest.DiscardUnknown(m)
+func (m *VersionGetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_VersionGetRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetVersionRequest proto.InternalMessageInfo
+var xxx_messageInfo_VersionGetRequest proto.InternalMessageInfo
 
-type GetVersionResponse struct {
-	Error   *GetVersionResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type VersionGetResponse struct {
+	Error   *VersionGetResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Version string                    `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 }
 
-func (m *GetVersionResponse) Reset()         { *m = GetVersionResponse{} }
-func (m *GetVersionResponse) String() string { return proto.CompactTextString(m) }
-func (*GetVersionResponse) ProtoMessage()    {}
-func (*GetVersionResponse) Descriptor() ([]byte, []int) {
+func (m *VersionGetResponse) Reset()         { *m = VersionGetResponse{} }
+func (m *VersionGetResponse) String() string { return proto.CompactTextString(m) }
+func (*VersionGetResponse) ProtoMessage()    {}
+func (*VersionGetResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{1}
 }
-func (m *GetVersionResponse) XXX_Unmarshal(b []byte) error {
+func (m *VersionGetResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *GetVersionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *VersionGetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_GetVersionResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_VersionGetResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -192,49 +192,49 @@ func (m *GetVersionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *GetVersionResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetVersionResponse.Merge(m, src)
+func (m *VersionGetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionGetResponse.Merge(m, src)
 }
-func (m *GetVersionResponse) XXX_Size() int {
+func (m *VersionGetResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *GetVersionResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetVersionResponse.DiscardUnknown(m)
+func (m *VersionGetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_VersionGetResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetVersionResponse proto.InternalMessageInfo
+var xxx_messageInfo_VersionGetResponse proto.InternalMessageInfo
 
-func (m *GetVersionResponse) GetError() *GetVersionResponse_Error {
+func (m *VersionGetResponse) GetError() *VersionGetResponse_Error {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *GetVersionResponse) GetVersion() string {
+func (m *VersionGetResponse) GetVersion() string {
 	if m != nil {
 		return m.Version
 	}
 	return ""
 }
 
-type GetVersionResponse_Error struct {
-	Code        GetVersionResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.GetVersionResponse_Error_Code" json:"code,omitempty"`
+type VersionGetResponse_Error struct {
+	Code        VersionGetResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.VersionGetResponse_Error_Code" json:"code,omitempty"`
 	Description string                        `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *GetVersionResponse_Error) Reset()         { *m = GetVersionResponse_Error{} }
-func (m *GetVersionResponse_Error) String() string { return proto.CompactTextString(m) }
-func (*GetVersionResponse_Error) ProtoMessage()    {}
-func (*GetVersionResponse_Error) Descriptor() ([]byte, []int) {
+func (m *VersionGetResponse_Error) Reset()         { *m = VersionGetResponse_Error{} }
+func (m *VersionGetResponse_Error) String() string { return proto.CompactTextString(m) }
+func (*VersionGetResponse_Error) ProtoMessage()    {}
+func (*VersionGetResponse_Error) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{1, 0}
 }
-func (m *GetVersionResponse_Error) XXX_Unmarshal(b []byte) error {
+func (m *VersionGetResponse_Error) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *GetVersionResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *VersionGetResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_GetVersionResponse_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_VersionGetResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -244,49 +244,49 @@ func (m *GetVersionResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *GetVersionResponse_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetVersionResponse_Error.Merge(m, src)
+func (m *VersionGetResponse_Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionGetResponse_Error.Merge(m, src)
 }
-func (m *GetVersionResponse_Error) XXX_Size() int {
+func (m *VersionGetResponse_Error) XXX_Size() int {
 	return m.Size()
 }
-func (m *GetVersionResponse_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetVersionResponse_Error.DiscardUnknown(m)
+func (m *VersionGetResponse_Error) XXX_DiscardUnknown() {
+	xxx_messageInfo_VersionGetResponse_Error.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetVersionResponse_Error proto.InternalMessageInfo
+var xxx_messageInfo_VersionGetResponse_Error proto.InternalMessageInfo
 
-func (m *GetVersionResponse_Error) GetCode() GetVersionResponse_Error_Code {
+func (m *VersionGetResponse_Error) GetCode() VersionGetResponse_Error_Code {
 	if m != nil {
 		return m.Code
 	}
-	return GetVersionResponse_Error_NULL
+	return VersionGetResponse_Error_NULL
 }
 
-func (m *GetVersionResponse_Error) GetDescription() string {
+func (m *VersionGetResponse_Error) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type LogRequest struct {
-	Message string           `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Level   LogRequest_Level `protobuf:"varint,2,opt,name=level,proto3,enum=anytype.LogRequest_Level" json:"level,omitempty"`
+type LogSendRequest struct {
+	Message string               `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Level   LogSendRequest_Level `protobuf:"varint,2,opt,name=level,proto3,enum=anytype.LogSendRequest_Level" json:"level,omitempty"`
 }
 
-func (m *LogRequest) Reset()         { *m = LogRequest{} }
-func (m *LogRequest) String() string { return proto.CompactTextString(m) }
-func (*LogRequest) ProtoMessage()    {}
-func (*LogRequest) Descriptor() ([]byte, []int) {
+func (m *LogSendRequest) Reset()         { *m = LogSendRequest{} }
+func (m *LogSendRequest) String() string { return proto.CompactTextString(m) }
+func (*LogSendRequest) ProtoMessage()    {}
+func (*LogSendRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{2}
 }
-func (m *LogRequest) XXX_Unmarshal(b []byte) error {
+func (m *LogSendRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *LogRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *LogSendRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_LogRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_LogSendRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -296,48 +296,48 @@ func (m *LogRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *LogRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogRequest.Merge(m, src)
+func (m *LogSendRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogSendRequest.Merge(m, src)
 }
-func (m *LogRequest) XXX_Size() int {
+func (m *LogSendRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *LogRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_LogRequest.DiscardUnknown(m)
+func (m *LogSendRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogSendRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_LogRequest proto.InternalMessageInfo
+var xxx_messageInfo_LogSendRequest proto.InternalMessageInfo
 
-func (m *LogRequest) GetMessage() string {
+func (m *LogSendRequest) GetMessage() string {
 	if m != nil {
 		return m.Message
 	}
 	return ""
 }
 
-func (m *LogRequest) GetLevel() LogRequest_Level {
+func (m *LogSendRequest) GetLevel() LogSendRequest_Level {
 	if m != nil {
 		return m.Level
 	}
-	return LogRequest_DEBUG
+	return LogSendRequest_DEBUG
 }
 
-type LogResponse struct {
-	Error *LogResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type LogSendResponse struct {
+	Error *LogSendResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *LogResponse) Reset()         { *m = LogResponse{} }
-func (m *LogResponse) String() string { return proto.CompactTextString(m) }
-func (*LogResponse) ProtoMessage()    {}
-func (*LogResponse) Descriptor() ([]byte, []int) {
+func (m *LogSendResponse) Reset()         { *m = LogSendResponse{} }
+func (m *LogSendResponse) String() string { return proto.CompactTextString(m) }
+func (*LogSendResponse) ProtoMessage()    {}
+func (*LogSendResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{3}
 }
-func (m *LogResponse) XXX_Unmarshal(b []byte) error {
+func (m *LogSendResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *LogResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *LogSendResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_LogResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_LogSendResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -347,42 +347,42 @@ func (m *LogResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *LogResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogResponse.Merge(m, src)
+func (m *LogSendResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogSendResponse.Merge(m, src)
 }
-func (m *LogResponse) XXX_Size() int {
+func (m *LogSendResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *LogResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_LogResponse.DiscardUnknown(m)
+func (m *LogSendResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogSendResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_LogResponse proto.InternalMessageInfo
+var xxx_messageInfo_LogSendResponse proto.InternalMessageInfo
 
-func (m *LogResponse) GetError() *LogResponse_Error {
+func (m *LogSendResponse) GetError() *LogSendResponse_Error {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type LogResponse_Error struct {
-	Code        LogResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.LogResponse_Error_Code" json:"code,omitempty"`
-	Description string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type LogSendResponse_Error struct {
+	Code        LogSendResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.LogSendResponse_Error_Code" json:"code,omitempty"`
+	Description string                     `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *LogResponse_Error) Reset()         { *m = LogResponse_Error{} }
-func (m *LogResponse_Error) String() string { return proto.CompactTextString(m) }
-func (*LogResponse_Error) ProtoMessage()    {}
-func (*LogResponse_Error) Descriptor() ([]byte, []int) {
+func (m *LogSendResponse_Error) Reset()         { *m = LogSendResponse_Error{} }
+func (m *LogSendResponse_Error) String() string { return proto.CompactTextString(m) }
+func (*LogSendResponse_Error) ProtoMessage()    {}
+func (*LogSendResponse_Error) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{3, 0}
 }
-func (m *LogResponse_Error) XXX_Unmarshal(b []byte) error {
+func (m *LogSendResponse_Error) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *LogResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *LogSendResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_LogResponse_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_LogSendResponse_Error.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -392,26 +392,26 @@ func (m *LogResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *LogResponse_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LogResponse_Error.Merge(m, src)
+func (m *LogSendResponse_Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogSendResponse_Error.Merge(m, src)
 }
-func (m *LogResponse_Error) XXX_Size() int {
+func (m *LogSendResponse_Error) XXX_Size() int {
 	return m.Size()
 }
-func (m *LogResponse_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_LogResponse_Error.DiscardUnknown(m)
+func (m *LogSendResponse_Error) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogSendResponse_Error.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_LogResponse_Error proto.InternalMessageInfo
+var xxx_messageInfo_LogSendResponse_Error proto.InternalMessageInfo
 
-func (m *LogResponse_Error) GetCode() LogResponse_Error_Code {
+func (m *LogSendResponse_Error) GetCode() LogSendResponse_Error_Code {
 	if m != nil {
 		return m.Code
 	}
-	return LogResponse_Error_NULL
+	return LogSendResponse_Error_NULL
 }
 
-func (m *LogResponse_Error) GetDescription() string {
+func (m *LogSendResponse_Error) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
@@ -419,52 +419,53 @@ func (m *LogResponse_Error) GetDescription() string {
 }
 
 func init() {
-	proto.RegisterEnum("anytype.GetVersionResponse_Error_Code", GetVersionResponse_Error_Code_name, GetVersionResponse_Error_Code_value)
-	proto.RegisterEnum("anytype.LogRequest_Level", LogRequest_Level_name, LogRequest_Level_value)
-	proto.RegisterEnum("anytype.LogResponse_Error_Code", LogResponse_Error_Code_name, LogResponse_Error_Code_value)
-	proto.RegisterType((*GetVersionRequest)(nil), "anytype.GetVersionRequest")
-	proto.RegisterType((*GetVersionResponse)(nil), "anytype.GetVersionResponse")
-	proto.RegisterType((*GetVersionResponse_Error)(nil), "anytype.GetVersionResponse.Error")
-	proto.RegisterType((*LogRequest)(nil), "anytype.LogRequest")
-	proto.RegisterType((*LogResponse)(nil), "anytype.LogResponse")
-	proto.RegisterType((*LogResponse_Error)(nil), "anytype.LogResponse.Error")
+	proto.RegisterEnum("anytype.VersionGetResponse_Error_Code", VersionGetResponse_Error_Code_name, VersionGetResponse_Error_Code_value)
+	proto.RegisterEnum("anytype.LogSendRequest_Level", LogSendRequest_Level_name, LogSendRequest_Level_value)
+	proto.RegisterEnum("anytype.LogSendResponse_Error_Code", LogSendResponse_Error_Code_name, LogSendResponse_Error_Code_value)
+	proto.RegisterType((*VersionGetRequest)(nil), "anytype.VersionGetRequest")
+	proto.RegisterType((*VersionGetResponse)(nil), "anytype.VersionGetResponse")
+	proto.RegisterType((*VersionGetResponse_Error)(nil), "anytype.VersionGetResponse.Error")
+	proto.RegisterType((*LogSendRequest)(nil), "anytype.LogSendRequest")
+	proto.RegisterType((*LogSendResponse)(nil), "anytype.LogSendResponse")
+	proto.RegisterType((*LogSendResponse_Error)(nil), "anytype.LogSendResponse.Error")
 }
 
 func init() { proto.RegisterFile("misc.proto", fileDescriptor_2d3ba2f07ad357c5) }
 
 var fileDescriptor_2d3ba2f07ad357c5 = []byte{
-	// 448 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x93, 0x4d, 0x6e, 0xd3, 0x40,
-	0x14, 0x80, 0x3d, 0x6e, 0x4c, 0xf0, 0xb3, 0x5a, 0x4d, 0x07, 0x16, 0x21, 0x42, 0x26, 0x78, 0x81,
-	0xba, 0x32, 0x28, 0x5d, 0x20, 0xb1, 0x73, 0x1a, 0x27, 0x32, 0xb8, 0xe3, 0x68, 0x6a, 0xb7, 0x82,
-	0x8d, 0xd5, 0xc6, 0x43, 0x15, 0xa9, 0xcd, 0x18, 0x8f, 0xa9, 0xd4, 0x5b, 0x70, 0x07, 0xf6, 0xec,
-	0xb8, 0x03, 0x12, 0x9b, 0x2e, 0x59, 0xa2, 0xe4, 0x02, 0x1c, 0x01, 0x8d, 0x9d, 0xb4, 0x89, 0xf8,
-	0x13, 0xdd, 0xf9, 0x3d, 0x7f, 0xef, 0xcf, 0x9f, 0x0c, 0x70, 0x3e, 0x91, 0x63, 0x37, 0x2f, 0x44,
-	0x29, 0x48, 0xf3, 0x78, 0x7a, 0x59, 0x5e, 0xe6, 0xdc, 0xb9, 0x07, 0xdb, 0x43, 0x5e, 0x1e, 0xf2,
-	0x42, 0x4e, 0xc4, 0x94, 0xf1, 0x77, 0xef, 0xb9, 0x2c, 0x9d, 0xcf, 0x3a, 0x90, 0xd5, 0xac, 0xcc,
-	0xc5, 0x54, 0x72, 0xf2, 0x1c, 0x0c, 0x5e, 0x14, 0xa2, 0x68, 0xa1, 0x0e, 0xda, 0xb1, 0xba, 0x8f,
-	0xdd, 0x45, 0x13, 0xf7, 0x57, 0xd6, 0xf5, 0x15, 0xc8, 0x6a, 0x9e, 0xb4, 0xa0, 0x79, 0x51, 0xbf,
-	0x6f, 0xe9, 0x1d, 0xb4, 0x63, 0xb2, 0x65, 0xd8, 0xfe, 0x8a, 0xc0, 0xa8, 0x50, 0xf2, 0x02, 0x1a,
-	0x63, 0x91, 0xf1, 0xaa, 0xf7, 0x56, 0xf7, 0xc9, 0x3f, 0x7b, 0xbb, 0x7b, 0x22, 0xe3, 0xac, 0xaa,
-	0x21, 0x1d, 0xb0, 0x32, 0x2e, 0xc7, 0xc5, 0x24, 0x2f, 0x6f, 0x66, 0xac, 0xa6, 0x9c, 0x0c, 0x1a,
-	0x8a, 0x27, 0x77, 0xa1, 0x41, 0x93, 0x30, 0xc4, 0x1a, 0xd9, 0x86, 0xcd, 0x84, 0xbe, 0xa2, 0xd1,
-	0x11, 0x4d, 0x7d, 0xc6, 0x22, 0x86, 0x11, 0xd9, 0x04, 0xb3, 0xe7, 0xf5, 0xd3, 0x80, 0x8e, 0x92,
-	0x18, 0xeb, 0xe4, 0x3e, 0xe0, 0x43, 0x9f, 0x1d, 0x04, 0x11, 0x4d, 0x83, 0x83, 0xd4, 0xdf, 0x1f,
-	0xc5, 0xaf, 0xf1, 0x86, 0x82, 0x68, 0x14, 0xa7, 0x83, 0x28, 0xa1, 0x7d, 0xcc, 0x89, 0x05, 0xcd,
-	0x38, 0xd8, 0xf7, 0xa3, 0x24, 0xc6, 0x6f, 0x9d, 0x8f, 0x08, 0x20, 0x14, 0xa7, 0x8b, 0xcf, 0xa8,
-	0xce, 0x3e, 0xe7, 0x52, 0x1e, 0x9f, 0xd6, 0x57, 0x99, 0x6c, 0x19, 0x92, 0xa7, 0x60, 0x9c, 0xf1,
-	0x0b, 0x7e, 0x56, 0xad, 0xba, 0xd5, 0x7d, 0x70, 0x7d, 0xed, 0x4d, 0xb5, 0x1b, 0x2a, 0x80, 0xd5,
-	0x9c, 0xf3, 0x12, 0x8c, 0x2a, 0x26, 0x26, 0x18, 0x7d, 0xbf, 0x97, 0x0c, 0xb1, 0xa6, 0x1e, 0x97,
-	0x9b, 0x9b, 0x60, 0x0c, 0xbc, 0xd8, 0x0b, 0xb1, 0xae, 0x2e, 0x0c, 0xe8, 0x20, 0xc2, 0x1b, 0x2a,
-	0x39, 0xf2, 0x68, 0xb0, 0x87, 0x1b, 0x6a, 0xcb, 0x23, 0x8f, 0xd1, 0x80, 0x0e, 0xb1, 0xe1, 0xfc,
-	0x40, 0x60, 0x55, 0x73, 0x16, 0x5a, 0x9f, 0xad, 0x6b, 0x6d, 0xaf, 0x2f, 0xf3, 0x1b, 0x9f, 0xed,
-	0x4f, 0xd7, 0xd6, 0x76, 0xd7, 0xac, 0x3d, 0xfa, 0x73, 0xe9, 0xff, 0xe9, 0xa2, 0xb7, 0xd0, 0xf5,
-	0x17, 0x31, 0xbd, 0x87, 0x5f, 0x66, 0x36, 0xba, 0x9a, 0xd9, 0xe8, 0xfb, 0xcc, 0x46, 0x1f, 0xe6,
-	0xb6, 0x76, 0x35, 0xb7, 0xb5, 0x6f, 0x73, 0x5b, 0x7b, 0xa3, 0xe7, 0x27, 0x27, 0x77, 0xaa, 0x7f,
-	0x62, 0xf7, 0x67, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x41, 0xb2, 0x2c, 0x21, 0x03, 0x00, 0x00,
+	// 452 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x93, 0x41, 0x6f, 0xd3, 0x30,
+	0x14, 0xc7, 0xe3, 0xac, 0xa1, 0xe4, 0x55, 0x2b, 0x9e, 0xe1, 0x50, 0x4d, 0x10, 0x95, 0x20, 0xa1,
+	0x9d, 0x72, 0xe8, 0x90, 0x26, 0x71, 0x4b, 0xd7, 0xb4, 0x0a, 0x64, 0x4e, 0xe5, 0x26, 0x9b, 0xe0,
+	0x12, 0x6d, 0x8d, 0x99, 0x2a, 0x6d, 0x75, 0x88, 0xc3, 0xa4, 0x7d, 0x0b, 0xbe, 0x07, 0x37, 0x24,
+	0xbe, 0x03, 0x12, 0x97, 0x1d, 0x39, 0xa2, 0xf6, 0x6b, 0x70, 0x40, 0x4e, 0xda, 0xb2, 0x6a, 0xa8,
+	0x08, 0x6e, 0x79, 0x4f, 0x3f, 0x3f, 0xbf, 0x7f, 0x7e, 0x32, 0xc0, 0xe5, 0x44, 0x8e, 0x9d, 0x2c,
+	0x17, 0x85, 0x20, 0xf5, 0xd3, 0xe9, 0x75, 0x71, 0x9d, 0x71, 0xfb, 0x21, 0xec, 0x1c, 0xf3, 0x5c,
+	0x4e, 0xc4, 0x74, 0xc0, 0x0b, 0xc6, 0xdf, 0x7f, 0xe0, 0xb2, 0xb0, 0xbf, 0xe8, 0x40, 0x6e, 0x77,
+	0x65, 0x26, 0xa6, 0x92, 0x93, 0x03, 0x30, 0x78, 0x9e, 0x8b, 0xbc, 0x85, 0xda, 0x68, 0xaf, 0xd1,
+	0x79, 0xea, 0x2c, 0x86, 0x38, 0x77, 0x59, 0xc7, 0x53, 0x20, 0xab, 0x78, 0xd2, 0x82, 0xfa, 0x55,
+	0x85, 0xb4, 0xf4, 0x36, 0xda, 0x33, 0xd9, 0xb2, 0xdc, 0xfd, 0x86, 0xc0, 0x28, 0x51, 0xf2, 0x12,
+	0x6a, 0x63, 0x91, 0xf2, 0x72, 0x76, 0xb3, 0xf3, 0xfc, 0xaf, 0xb3, 0x9d, 0x43, 0x91, 0x72, 0x56,
+	0x9e, 0x21, 0x6d, 0x68, 0xa4, 0x5c, 0x8e, 0xf3, 0x49, 0x56, 0xfc, 0xbe, 0xe3, 0x76, 0xcb, 0x4e,
+	0xa1, 0xa6, 0x78, 0x72, 0x1f, 0x6a, 0x34, 0x0e, 0x02, 0xac, 0x91, 0x1d, 0xd8, 0x8e, 0xe9, 0x6b,
+	0x1a, 0x9e, 0xd0, 0xc4, 0x63, 0x2c, 0x64, 0x18, 0x91, 0x6d, 0x30, 0xbb, 0x6e, 0x2f, 0xf1, 0xe9,
+	0x30, 0x8e, 0xb0, 0x4e, 0x1e, 0x01, 0x3e, 0xf6, 0xd8, 0xc8, 0x0f, 0x69, 0xe2, 0x8f, 0x12, 0xef,
+	0x68, 0x18, 0xbd, 0xc1, 0x5b, 0x0a, 0xa2, 0x61, 0x94, 0xf4, 0xc3, 0x98, 0xf6, 0x30, 0x27, 0x0d,
+	0xa8, 0x47, 0xfe, 0x91, 0x17, 0xc6, 0x11, 0x7e, 0x67, 0x7f, 0x42, 0xd0, 0x0c, 0xc4, 0xf9, 0x88,
+	0x4f, 0xd3, 0xc5, 0xaf, 0x54, 0xd1, 0x2f, 0xb9, 0x94, 0xa7, 0xe7, 0x55, 0x32, 0x93, 0x2d, 0x4b,
+	0xb2, 0x0f, 0xc6, 0x05, 0xbf, 0xe2, 0x17, 0xe5, 0xba, 0xcd, 0xce, 0x93, 0x55, 0xe2, 0xf5, 0x09,
+	0x4e, 0xa0, 0x20, 0x56, 0xb1, 0xf6, 0x2b, 0x30, 0xca, 0x9a, 0x98, 0x60, 0xf4, 0xbc, 0x6e, 0x3c,
+	0xc0, 0x9a, 0xfa, 0x5c, 0x26, 0x30, 0xc1, 0xe8, 0xbb, 0x91, 0x1b, 0x60, 0x5d, 0x25, 0xf5, 0x69,
+	0x3f, 0xc4, 0x5b, 0xaa, 0x39, 0x74, 0xa9, 0x7f, 0x88, 0x6b, 0x6a, 0xdb, 0x13, 0x97, 0x51, 0x9f,
+	0x0e, 0xb0, 0x61, 0xff, 0x44, 0xf0, 0x60, 0x75, 0xd7, 0x42, 0xf1, 0x8b, 0x75, 0xc5, 0xd6, 0xdd,
+	0xa5, 0xfe, 0xe0, 0x77, 0xf7, 0xf3, 0xca, 0xe2, 0xc1, 0x9a, 0xc5, 0x67, 0x9b, 0x8f, 0xff, 0x9b,
+	0x42, 0xfa, 0x1f, 0x0a, 0x37, 0xc8, 0xea, 0x3e, 0xfe, 0x3a, 0xb3, 0xd0, 0xcd, 0xcc, 0x42, 0x3f,
+	0x66, 0x16, 0xfa, 0x38, 0xb7, 0xb4, 0x9b, 0xb9, 0xa5, 0x7d, 0x9f, 0x5b, 0xda, 0x5b, 0x3d, 0x3b,
+	0x3b, 0xbb, 0x57, 0xbe, 0x93, 0xfd, 0x5f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x39, 0x57, 0x42, 0x0b,
+	0x35, 0x03, 0x00, 0x00,
 }
 
-func (m *GetVersionRequest) Marshal() (dAtA []byte, err error) {
+func (m *VersionGetRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -474,12 +475,12 @@ func (m *GetVersionRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *GetVersionRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *VersionGetRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *GetVersionRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *VersionGetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -487,7 +488,7 @@ func (m *GetVersionRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *GetVersionResponse) Marshal() (dAtA []byte, err error) {
+func (m *VersionGetResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -497,12 +498,12 @@ func (m *GetVersionResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *GetVersionResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *VersionGetResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *GetVersionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *VersionGetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -529,7 +530,7 @@ func (m *GetVersionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *GetVersionResponse_Error) Marshal() (dAtA []byte, err error) {
+func (m *VersionGetResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -539,12 +540,12 @@ func (m *GetVersionResponse_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *GetVersionResponse_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *VersionGetResponse_Error) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *GetVersionResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *VersionGetResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -564,7 +565,7 @@ func (m *GetVersionResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *LogRequest) Marshal() (dAtA []byte, err error) {
+func (m *LogSendRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -574,12 +575,12 @@ func (m *LogRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *LogRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *LogSendRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *LogRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *LogSendRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -599,7 +600,7 @@ func (m *LogRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *LogResponse) Marshal() (dAtA []byte, err error) {
+func (m *LogSendResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -609,12 +610,12 @@ func (m *LogResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *LogResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *LogSendResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *LogResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *LogSendResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -634,7 +635,7 @@ func (m *LogResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *LogResponse_Error) Marshal() (dAtA []byte, err error) {
+func (m *LogSendResponse_Error) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -644,12 +645,12 @@ func (m *LogResponse_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *LogResponse_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *LogSendResponse_Error) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *LogResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *LogSendResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -680,7 +681,7 @@ func encodeVarintMisc(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *GetVersionRequest) Size() (n int) {
+func (m *VersionGetRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -689,7 +690,7 @@ func (m *GetVersionRequest) Size() (n int) {
 	return n
 }
 
-func (m *GetVersionResponse) Size() (n int) {
+func (m *VersionGetResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -706,7 +707,7 @@ func (m *GetVersionResponse) Size() (n int) {
 	return n
 }
 
-func (m *GetVersionResponse_Error) Size() (n int) {
+func (m *VersionGetResponse_Error) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -722,7 +723,7 @@ func (m *GetVersionResponse_Error) Size() (n int) {
 	return n
 }
 
-func (m *LogRequest) Size() (n int) {
+func (m *LogSendRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -738,7 +739,7 @@ func (m *LogRequest) Size() (n int) {
 	return n
 }
 
-func (m *LogResponse) Size() (n int) {
+func (m *LogSendResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -751,7 +752,7 @@ func (m *LogResponse) Size() (n int) {
 	return n
 }
 
-func (m *LogResponse_Error) Size() (n int) {
+func (m *LogSendResponse_Error) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -773,7 +774,7 @@ func sovMisc(x uint64) (n int) {
 func sozMisc(x uint64) (n int) {
 	return sovMisc(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *GetVersionRequest) Unmarshal(dAtA []byte) error {
+func (m *VersionGetRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -796,10 +797,10 @@ func (m *GetVersionRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GetVersionRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: VersionGetRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetVersionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: VersionGetRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -826,7 +827,7 @@ func (m *GetVersionRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *GetVersionResponse) Unmarshal(dAtA []byte) error {
+func (m *VersionGetResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -849,10 +850,10 @@ func (m *GetVersionResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GetVersionResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: VersionGetResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetVersionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: VersionGetResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -885,7 +886,7 @@ func (m *GetVersionResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &GetVersionResponse_Error{}
+				m.Error = &VersionGetResponse_Error{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -947,7 +948,7 @@ func (m *GetVersionResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *GetVersionResponse_Error) Unmarshal(dAtA []byte) error {
+func (m *VersionGetResponse_Error) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -990,7 +991,7 @@ func (m *GetVersionResponse_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= GetVersionResponse_Error_Code(b&0x7F) << shift
+				m.Code |= VersionGetResponse_Error_Code(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1051,7 +1052,7 @@ func (m *GetVersionResponse_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *LogRequest) Unmarshal(dAtA []byte) error {
+func (m *LogSendRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1074,10 +1075,10 @@ func (m *LogRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: LogRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: LogSendRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LogRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: LogSendRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1126,7 +1127,7 @@ func (m *LogRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Level |= LogRequest_Level(b&0x7F) << shift
+				m.Level |= LogSendRequest_Level(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1155,7 +1156,7 @@ func (m *LogRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *LogResponse) Unmarshal(dAtA []byte) error {
+func (m *LogSendResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1178,10 +1179,10 @@ func (m *LogResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: LogResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: LogSendResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LogResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: LogSendResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1214,7 +1215,7 @@ func (m *LogResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &LogResponse_Error{}
+				m.Error = &LogSendResponse_Error{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -1244,7 +1245,7 @@ func (m *LogResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *LogResponse_Error) Unmarshal(dAtA []byte) error {
+func (m *LogSendResponse_Error) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1287,7 +1288,7 @@ func (m *LogResponse_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= LogResponse_Error_Code(b&0x7F) << shift
+				m.Code |= LogSendResponse_Error_Code(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

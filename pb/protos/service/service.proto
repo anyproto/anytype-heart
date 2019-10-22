@@ -16,10 +16,10 @@ service ClientCommands {
 
     rpc ImageGetBlob (anytype.ImageGetBlobRequest) returns (anytype.ImageGetBlobResponse);
 
-    rpc GetVersion (GetVersionRequest) returns (GetVersionResponse);
-    rpc Log (LogRequest) returns (LogResponse);
+    rpc VersionGet (VersionGetRequest) returns (VersionGetResponse);
+    rpc LogSend (LogSendRequest) returns (LogSendResponse);
 
-    rpc BlockRead (BlockReadRequest) returns (BlockReadResponse);
+    rpc BlockOpen (BlockOpenRequest) returns (BlockOpenResponse);
     rpc BlockCreate (BlockCreateRequest) returns (BlockCreateResponse);
     rpc BlockUpdate (BlockUpdateRequest) returns (BlockUpdateResponse);
 }
