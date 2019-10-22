@@ -3,11 +3,15 @@ package anytype;
 option go_package = "pb";
 
 import "account.proto";
+import "block.proto";
 
 message Event {
     oneof message {
         // show wallet's accounts that were loaded from local or remote source
         AccountShow accountShow  = 1;
+        BlockReadEvent blockReadEvent = 2;
+        BlockUpdateEvent blockUpdateEvent = 3;
+        BlockCreateEvent blockCreateEvent = 4;
 
         // unit was rearranged. Need to update the position
        // UnitMoved unitMoved = 104;

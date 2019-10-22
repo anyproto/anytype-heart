@@ -5,6 +5,7 @@ option go_package = "lib";
 import "account.proto";
 import "file.proto";
 import "misc.proto";
+import "block.proto";
 
 service ClientCommands {
     rpc WalletCreate (anytype.WalletCreateRequest) returns (anytype.WalletCreateResponse);
@@ -17,4 +18,8 @@ service ClientCommands {
 
     rpc GetVersion (GetVersionRequest) returns (GetVersionResponse);
     rpc Log (LogRequest) returns (LogResponse);
+
+    rpc BlockRead (BlockReadRequest) returns (BlockReadResponse);
+    rpc BlockCreate (BlockCreateRequest) returns (BlockCreateResponse);
+    rpc BlockUpdate (BlockUpdateRequest) returns (BlockUpdateResponse);
 }
