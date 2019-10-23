@@ -86,7 +86,7 @@ jobs:
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
-            gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
+            gox -ldflags="-w $FLAGS" -buildmode=c-archive -osarch="linux/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/lib/clib
       - save_cache:
           key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
           paths:
@@ -109,12 +109,32 @@ jobs:
             for i in "${arr[@]}"
             do
                 OSARCH=${i%.*}
-                cp ../${i}.so lib.so
+                cp ../${i}.a lib.a
                 cp ../${i}.h lib.h
-                tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib.so lib.h protos
+                tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib.a lib.h protos
                 mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
+      - run:
+          name: compile addon
+          command: |
+            VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
+            if [ "${CIRCLE_TAG}" != "" ]; then
+                VERSION=${CIRCLE_TAG}
+            fi
+            OUT=~/dist/lib
+            cp ~/project/linux-amd64.a  ./dist/lib.a
+            cp ~/project/linux-amd64.a ./dist/lib.h
+            make build-js
+
+            npm install
+            npm run build:ts
+            mv build/ts protobuf
+            mkdir protobuf/protos
+            mv pb/protos/*.proto ./protobuf/protos
+            mv jsaddon/build addon
+            tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon
+            mv js_${VERSION}_linux-amd64.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
           paths:
@@ -183,11 +203,11 @@ jobs:
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
-            gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
-            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.so" github.com/anytypeio/go-anytype-middleware/lib/clib
+            gox -buildmode=c-archive -ldflags="-w $FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/lib/clib
+            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -ldflags="-w $FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/lib/clib
             # workaround for gox putting .exe ext
-            mv windows-amd64.so.exe windows-amd64.so
-            mv windows-amd64.so.h windows-amd64.h
+            mv windows-amd64.a.exe windows-amd64.a
+            mv windows-amd64.a.h windows-amd64.h
       - save_cache:
           key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
           paths:
@@ -209,9 +229,9 @@ jobs:
             for i in "${arr[@]}"
             do
                 OSARCH=${i%.*}
-                cp ../${i}.so lib.so
+                cp ../${i}.a lib.a
                 cp ../${i}.h lib.h
-                tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib.so lib.h protos
+                tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib.a lib.h protos
                 mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
@@ -223,7 +243,7 @@ jobs:
                 VERSION=${CIRCLE_TAG}
             fi
             OUT=~/dist/lib
-            cp ~/project/darwin-amd64.so  ./dist/lib.so
+            cp ~/project/darwin-amd64.a  ./dist/lib.a
             cp ~/project/darwin-amd64.h ./dist/lib.h
             make build-js
 
