@@ -21,10 +21,10 @@ test:
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
 	export GO111MODULE=on
-	go build -o dist/lib.so -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
+	go build -o dist/lib.a -ldflags "$(FLAGS) -w -s" -buildmode=c-archive -v ./lib/clib
 
 build-js:
-	cp dist/lib.so jsaddon/lib.so
+	cp dist/lib.a jsaddon/lib.a
 	cp dist/lib.h jsaddon/lib.h
 	cp lib/clib/bridge.h jsaddon/bridge.h
     # Electron's version.
@@ -40,7 +40,7 @@ build-js:
 	# Tell node-pre-gyp to build module from source code.
 	export npm_config_build_from_source=true
 	npm install -C ./jsaddon
-	rm jsaddon/lib.so jsaddon/lib.h jsaddon/bridge.h
+	rm jsaddon/lib.a jsaddon/lib.h jsaddon/bridge.h
 
 build-ios:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
