@@ -146,71 +146,71 @@ func (BlockUpdateResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{5, 0, 0}
 }
 
-type BlockPage_Style int32
+type BlockContentPage_Style int32
 
 const (
-	BlockPage_EMPTY    BlockPage_Style = 0
-	BlockPage_TASK     BlockPage_Style = 1
-	BlockPage_BOOKMARK BlockPage_Style = 2
-	BlockPage_SET      BlockPage_Style = 3
+	BlockContentPage_EMPTY    BlockContentPage_Style = 0
+	BlockContentPage_TASK     BlockContentPage_Style = 1
+	BlockContentPage_BOOKMARK BlockContentPage_Style = 2
+	BlockContentPage_SET      BlockContentPage_Style = 3
 )
 
-var BlockPage_Style_name = map[int32]string{
+var BlockContentPage_Style_name = map[int32]string{
 	0: "EMPTY",
 	1: "TASK",
 	2: "BOOKMARK",
 	3: "SET",
 }
 
-var BlockPage_Style_value = map[string]int32{
+var BlockContentPage_Style_value = map[string]int32{
 	"EMPTY":    0,
 	"TASK":     1,
 	"BOOKMARK": 2,
 	"SET":      3,
 }
 
-func (x BlockPage_Style) String() string {
-	return proto.EnumName(BlockPage_Style_name, int32(x))
+func (x BlockContentPage_Style) String() string {
+	return proto.EnumName(BlockContentPage_Style_name, int32(x))
 }
 
-func (BlockPage_Style) EnumDescriptor() ([]byte, []int) {
+func (BlockContentPage_Style) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{22, 0}
 }
 
-type BlockDashboard_Style int32
+type BlockContentDashboard_Style int32
 
 const (
-	BlockDashboard_MAIN_SCREEN BlockDashboard_Style = 0
+	BlockContentDashboard_MAIN_SCREEN BlockContentDashboard_Style = 0
 )
 
-var BlockDashboard_Style_name = map[int32]string{
+var BlockContentDashboard_Style_name = map[int32]string{
 	0: "MAIN_SCREEN",
 }
 
-var BlockDashboard_Style_value = map[string]int32{
+var BlockContentDashboard_Style_value = map[string]int32{
 	"MAIN_SCREEN": 0,
 }
 
-func (x BlockDashboard_Style) String() string {
-	return proto.EnumName(BlockDashboard_Style_name, int32(x))
+func (x BlockContentDashboard_Style) String() string {
+	return proto.EnumName(BlockContentDashboard_Style_name, int32(x))
 }
 
-func (BlockDashboard_Style) EnumDescriptor() ([]byte, []int) {
+func (BlockContentDashboard_Style) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{23, 0}
 }
 
-type BlockText_Style int32
+type BlockContentText_Style int32
 
 const (
-	BlockText_p     BlockText_Style = 0
-	BlockText_h1    BlockText_Style = 1
-	BlockText_h2    BlockText_Style = 2
-	BlockText_h3    BlockText_Style = 3
-	BlockText_h4    BlockText_Style = 4
-	BlockText_quote BlockText_Style = 5
+	BlockContentText_p     BlockContentText_Style = 0
+	BlockContentText_h1    BlockContentText_Style = 1
+	BlockContentText_h2    BlockContentText_Style = 2
+	BlockContentText_h3    BlockContentText_Style = 3
+	BlockContentText_h4    BlockContentText_Style = 4
+	BlockContentText_quote BlockContentText_Style = 5
 )
 
-var BlockText_Style_name = map[int32]string{
+var BlockContentText_Style_name = map[int32]string{
 	0: "p",
 	1: "h1",
 	2: "h2",
@@ -219,7 +219,7 @@ var BlockText_Style_name = map[int32]string{
 	5: "quote",
 }
 
-var BlockText_Style_value = map[string]int32{
+var BlockContentText_Style_value = map[string]int32{
 	"p":     0,
 	"h1":    1,
 	"h2":    2,
@@ -228,73 +228,73 @@ var BlockText_Style_value = map[string]int32{
 	"quote": 5,
 }
 
-func (x BlockText_Style) String() string {
-	return proto.EnumName(BlockText_Style_name, int32(x))
+func (x BlockContentText_Style) String() string {
+	return proto.EnumName(BlockContentText_Style_name, int32(x))
 }
 
-func (BlockText_Style) EnumDescriptor() ([]byte, []int) {
+func (BlockContentText_Style) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{25, 0}
 }
 
-type BlockText_MarkerType int32
+type BlockContentText_MarkerType int32
 
 const (
-	BlockText_none   BlockText_MarkerType = 0
-	BlockText_number BlockText_MarkerType = 1
-	BlockText_bullet BlockText_MarkerType = 2
+	BlockContentText_none   BlockContentText_MarkerType = 0
+	BlockContentText_number BlockContentText_MarkerType = 1
+	BlockContentText_bullet BlockContentText_MarkerType = 2
 )
 
-var BlockText_MarkerType_name = map[int32]string{
+var BlockContentText_MarkerType_name = map[int32]string{
 	0: "none",
 	1: "number",
 	2: "bullet",
 }
 
-var BlockText_MarkerType_value = map[string]int32{
+var BlockContentText_MarkerType_value = map[string]int32{
 	"none":   0,
 	"number": 1,
 	"bullet": 2,
 }
 
-func (x BlockText_MarkerType) String() string {
-	return proto.EnumName(BlockText_MarkerType_name, int32(x))
+func (x BlockContentText_MarkerType) String() string {
+	return proto.EnumName(BlockContentText_MarkerType_name, int32(x))
 }
 
-func (BlockText_MarkerType) EnumDescriptor() ([]byte, []int) {
+func (BlockContentText_MarkerType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{25, 1}
 }
 
-type BlockText_Mark_Type int32
+type BlockContentText_Mark_Type int32
 
 const (
-	BlockText_Mark_S   BlockText_Mark_Type = 0
-	BlockText_Mark_KBD BlockText_Mark_Type = 1
-	BlockText_Mark_I   BlockText_Mark_Type = 2
-	BlockText_Mark_B   BlockText_Mark_Type = 3
-	BlockText_Mark_A   BlockText_Mark_Type = 4
+	BlockContentText_Mark_STRIKETHROUGH BlockContentText_Mark_Type = 0
+	BlockContentText_Mark_KEYBOARD      BlockContentText_Mark_Type = 1
+	BlockContentText_Mark_ITALIC        BlockContentText_Mark_Type = 2
+	BlockContentText_Mark_BOLD          BlockContentText_Mark_Type = 3
+	BlockContentText_Mark_LINK          BlockContentText_Mark_Type = 4
 )
 
-var BlockText_Mark_Type_name = map[int32]string{
-	0: "S",
-	1: "KBD",
-	2: "I",
-	3: "B",
-	4: "A",
+var BlockContentText_Mark_Type_name = map[int32]string{
+	0: "STRIKETHROUGH",
+	1: "KEYBOARD",
+	2: "ITALIC",
+	3: "BOLD",
+	4: "LINK",
 }
 
-var BlockText_Mark_Type_value = map[string]int32{
-	"S":   0,
-	"KBD": 1,
-	"I":   2,
-	"B":   3,
-	"A":   4,
+var BlockContentText_Mark_Type_value = map[string]int32{
+	"STRIKETHROUGH": 0,
+	"KEYBOARD":      1,
+	"ITALIC":        2,
+	"BOLD":          3,
+	"LINK":          4,
 }
 
-func (x BlockText_Mark_Type) String() string {
-	return proto.EnumName(BlockText_Mark_Type_name, int32(x))
+func (x BlockContentText_Mark_Type) String() string {
+	return proto.EnumName(BlockContentText_Mark_Type_name, int32(x))
 }
 
-func (BlockText_Mark_Type) EnumDescriptor() ([]byte, []int) {
+func (BlockContentText_Mark_Type) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{25, 1, 0}
 }
 
@@ -345,7 +345,8 @@ func (m *BlockOpenRequest) GetId() string {
 }
 
 type BlockOpenResponse struct {
-	Error *BlockOpenResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Error       *BlockOpenResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	BlockHeader *BlockHeader             `protobuf:"bytes,2,opt,name=blockHeader,proto3" json:"blockHeader,omitempty"`
 }
 
 func (m *BlockOpenResponse) Reset()         { *m = BlockOpenResponse{} }
@@ -384,6 +385,13 @@ var xxx_messageInfo_BlockOpenResponse proto.InternalMessageInfo
 func (m *BlockOpenResponse) GetError() *BlockOpenResponse_Error {
 	if m != nil {
 		return m.Error
+	}
+	return nil
+}
+
+func (m *BlockOpenResponse) GetBlockHeader() *BlockHeader {
+	if m != nil {
+		return m.BlockHeader
 	}
 	return nil
 }
@@ -853,30 +861,30 @@ func (m *BlockCreate) GetBlock() *Block {
 	return nil
 }
 
-type BlockTextChange struct {
+type BlockContentTextChange struct {
 	// Types that are valid to be assigned to Change:
-	//	*BlockTextChange_Text
-	//	*BlockTextChange_Style
-	//	*BlockTextChange_Marks
-	//	*BlockTextChange_Toggleable
-	//	*BlockTextChange_MarkerType
-	//	*BlockTextChange_Checkable
-	//	*BlockTextChange_Checked
-	Change isBlockTextChange_Change `protobuf_oneof:"change"`
+	//	*BlockContentTextChange_Text
+	//	*BlockContentTextChange_Style
+	//	*BlockContentTextChange_Marks
+	//	*BlockContentTextChange_Toggleable
+	//	*BlockContentTextChange_MarkerType
+	//	*BlockContentTextChange_Checkable
+	//	*BlockContentTextChange_Checked
+	Change isBlockContentTextChange_Change `protobuf_oneof:"change"`
 }
 
-func (m *BlockTextChange) Reset()         { *m = BlockTextChange{} }
-func (m *BlockTextChange) String() string { return proto.CompactTextString(m) }
-func (*BlockTextChange) ProtoMessage()    {}
-func (*BlockTextChange) Descriptor() ([]byte, []int) {
+func (m *BlockContentTextChange) Reset()         { *m = BlockContentTextChange{} }
+func (m *BlockContentTextChange) String() string { return proto.CompactTextString(m) }
+func (*BlockContentTextChange) ProtoMessage()    {}
+func (*BlockContentTextChange) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{9}
 }
-func (m *BlockTextChange) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentTextChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockTextChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentTextChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockTextChange.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentTextChange.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -886,143 +894,143 @@ func (m *BlockTextChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *BlockTextChange) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockTextChange.Merge(m, src)
+func (m *BlockContentTextChange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentTextChange.Merge(m, src)
 }
-func (m *BlockTextChange) XXX_Size() int {
+func (m *BlockContentTextChange) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockTextChange) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockTextChange.DiscardUnknown(m)
+func (m *BlockContentTextChange) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentTextChange.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockTextChange proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentTextChange proto.InternalMessageInfo
 
-type isBlockTextChange_Change interface {
-	isBlockTextChange_Change()
+type isBlockContentTextChange_Change interface {
+	isBlockContentTextChange_Change()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type BlockTextChange_Text struct {
+type BlockContentTextChange_Text struct {
 	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
-type BlockTextChange_Style struct {
-	Style BlockText_Style `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.BlockText_Style,oneof" json:"style,omitempty"`
+type BlockContentTextChange_Style struct {
+	Style BlockContentText_Style `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.BlockContentText_Style,oneof" json:"style,omitempty"`
 }
-type BlockTextChange_Marks struct {
-	Marks *BlockText_Marks `protobuf:"bytes,3,opt,name=marks,proto3,oneof" json:"marks,omitempty"`
+type BlockContentTextChange_Marks struct {
+	Marks *BlockContentText_Marks `protobuf:"bytes,3,opt,name=marks,proto3,oneof" json:"marks,omitempty"`
 }
-type BlockTextChange_Toggleable struct {
+type BlockContentTextChange_Toggleable struct {
 	Toggleable bool `protobuf:"varint,4,opt,name=toggleable,proto3,oneof" json:"toggleable,omitempty"`
 }
-type BlockTextChange_MarkerType struct {
-	MarkerType BlockText_MarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.BlockText_MarkerType,oneof" json:"markerType,omitempty"`
+type BlockContentTextChange_MarkerType struct {
+	MarkerType BlockContentText_MarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.BlockContentText_MarkerType,oneof" json:"markerType,omitempty"`
 }
-type BlockTextChange_Checkable struct {
+type BlockContentTextChange_Checkable struct {
 	Checkable bool `protobuf:"varint,6,opt,name=checkable,proto3,oneof" json:"checkable,omitempty"`
 }
-type BlockTextChange_Checked struct {
+type BlockContentTextChange_Checked struct {
 	Checked bool `protobuf:"varint,7,opt,name=checked,proto3,oneof" json:"checked,omitempty"`
 }
 
-func (*BlockTextChange_Text) isBlockTextChange_Change()       {}
-func (*BlockTextChange_Style) isBlockTextChange_Change()      {}
-func (*BlockTextChange_Marks) isBlockTextChange_Change()      {}
-func (*BlockTextChange_Toggleable) isBlockTextChange_Change() {}
-func (*BlockTextChange_MarkerType) isBlockTextChange_Change() {}
-func (*BlockTextChange_Checkable) isBlockTextChange_Change()  {}
-func (*BlockTextChange_Checked) isBlockTextChange_Change()    {}
+func (*BlockContentTextChange_Text) isBlockContentTextChange_Change()       {}
+func (*BlockContentTextChange_Style) isBlockContentTextChange_Change()      {}
+func (*BlockContentTextChange_Marks) isBlockContentTextChange_Change()      {}
+func (*BlockContentTextChange_Toggleable) isBlockContentTextChange_Change() {}
+func (*BlockContentTextChange_MarkerType) isBlockContentTextChange_Change() {}
+func (*BlockContentTextChange_Checkable) isBlockContentTextChange_Change()  {}
+func (*BlockContentTextChange_Checked) isBlockContentTextChange_Change()    {}
 
-func (m *BlockTextChange) GetChange() isBlockTextChange_Change {
+func (m *BlockContentTextChange) GetChange() isBlockContentTextChange_Change {
 	if m != nil {
 		return m.Change
 	}
 	return nil
 }
 
-func (m *BlockTextChange) GetText() string {
-	if x, ok := m.GetChange().(*BlockTextChange_Text); ok {
+func (m *BlockContentTextChange) GetText() string {
+	if x, ok := m.GetChange().(*BlockContentTextChange_Text); ok {
 		return x.Text
 	}
 	return ""
 }
 
-func (m *BlockTextChange) GetStyle() BlockText_Style {
-	if x, ok := m.GetChange().(*BlockTextChange_Style); ok {
+func (m *BlockContentTextChange) GetStyle() BlockContentText_Style {
+	if x, ok := m.GetChange().(*BlockContentTextChange_Style); ok {
 		return x.Style
 	}
-	return BlockText_p
+	return BlockContentText_p
 }
 
-func (m *BlockTextChange) GetMarks() *BlockText_Marks {
-	if x, ok := m.GetChange().(*BlockTextChange_Marks); ok {
+func (m *BlockContentTextChange) GetMarks() *BlockContentText_Marks {
+	if x, ok := m.GetChange().(*BlockContentTextChange_Marks); ok {
 		return x.Marks
 	}
 	return nil
 }
 
-func (m *BlockTextChange) GetToggleable() bool {
-	if x, ok := m.GetChange().(*BlockTextChange_Toggleable); ok {
+func (m *BlockContentTextChange) GetToggleable() bool {
+	if x, ok := m.GetChange().(*BlockContentTextChange_Toggleable); ok {
 		return x.Toggleable
 	}
 	return false
 }
 
-func (m *BlockTextChange) GetMarkerType() BlockText_MarkerType {
-	if x, ok := m.GetChange().(*BlockTextChange_MarkerType); ok {
+func (m *BlockContentTextChange) GetMarkerType() BlockContentText_MarkerType {
+	if x, ok := m.GetChange().(*BlockContentTextChange_MarkerType); ok {
 		return x.MarkerType
 	}
-	return BlockText_none
+	return BlockContentText_none
 }
 
-func (m *BlockTextChange) GetCheckable() bool {
-	if x, ok := m.GetChange().(*BlockTextChange_Checkable); ok {
+func (m *BlockContentTextChange) GetCheckable() bool {
+	if x, ok := m.GetChange().(*BlockContentTextChange_Checkable); ok {
 		return x.Checkable
 	}
 	return false
 }
 
-func (m *BlockTextChange) GetChecked() bool {
-	if x, ok := m.GetChange().(*BlockTextChange_Checked); ok {
+func (m *BlockContentTextChange) GetChecked() bool {
+	if x, ok := m.GetChange().(*BlockContentTextChange_Checked); ok {
 		return x.Checked
 	}
 	return false
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*BlockTextChange) XXX_OneofWrappers() []interface{} {
+func (*BlockContentTextChange) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*BlockTextChange_Text)(nil),
-		(*BlockTextChange_Style)(nil),
-		(*BlockTextChange_Marks)(nil),
-		(*BlockTextChange_Toggleable)(nil),
-		(*BlockTextChange_MarkerType)(nil),
-		(*BlockTextChange_Checkable)(nil),
-		(*BlockTextChange_Checked)(nil),
+		(*BlockContentTextChange_Text)(nil),
+		(*BlockContentTextChange_Style)(nil),
+		(*BlockContentTextChange_Marks)(nil),
+		(*BlockContentTextChange_Toggleable)(nil),
+		(*BlockContentTextChange_MarkerType)(nil),
+		(*BlockContentTextChange_Checkable)(nil),
+		(*BlockContentTextChange_Checked)(nil),
 	}
 }
 
-type BlockPageChange struct {
+type BlockContentPageChange struct {
 	// Types that are valid to be assigned to Change:
-	//	*BlockPageChange_Style
-	//	*BlockPageChange_Structure
-	//	*BlockPageChange_Blocks
-	Change isBlockPageChange_Change `protobuf_oneof:"change"`
+	//	*BlockContentPageChange_Style
+	//	*BlockContentPageChange_Structure
+	//	*BlockContentPageChange_Blocks
+	Change isBlockContentPageChange_Change `protobuf_oneof:"change"`
 }
 
-func (m *BlockPageChange) Reset()         { *m = BlockPageChange{} }
-func (m *BlockPageChange) String() string { return proto.CompactTextString(m) }
-func (*BlockPageChange) ProtoMessage()    {}
-func (*BlockPageChange) Descriptor() ([]byte, []int) {
+func (m *BlockContentPageChange) Reset()         { *m = BlockContentPageChange{} }
+func (m *BlockContentPageChange) String() string { return proto.CompactTextString(m) }
+func (*BlockContentPageChange) ProtoMessage()    {}
+func (*BlockContentPageChange) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{10}
 }
-func (m *BlockPageChange) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentPageChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockPageChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentPageChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockPageChange.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentPageChange.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1032,72 +1040,72 @@ func (m *BlockPageChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *BlockPageChange) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockPageChange.Merge(m, src)
+func (m *BlockContentPageChange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentPageChange.Merge(m, src)
 }
-func (m *BlockPageChange) XXX_Size() int {
+func (m *BlockContentPageChange) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockPageChange) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockPageChange.DiscardUnknown(m)
+func (m *BlockContentPageChange) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentPageChange.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockPageChange proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentPageChange proto.InternalMessageInfo
 
-type isBlockPageChange_Change interface {
-	isBlockPageChange_Change()
+type isBlockContentPageChange_Change interface {
+	isBlockContentPageChange_Change()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type BlockPageChange_Style struct {
-	Style BlockPage_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockPage_Style,oneof" json:"style,omitempty"`
+type BlockContentPageChange_Style struct {
+	Style BlockContentPage_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockContentPage_Style,oneof" json:"style,omitempty"`
 }
-type BlockPageChange_Structure struct {
+type BlockContentPageChange_Structure struct {
 	Structure *BlockConnectionsList `protobuf:"bytes,2,opt,name=structure,proto3,oneof" json:"structure,omitempty"`
 }
-type BlockPageChange_Blocks struct {
+type BlockContentPageChange_Blocks struct {
 	Blocks *BlocksList `protobuf:"bytes,3,opt,name=blocks,proto3,oneof" json:"blocks,omitempty"`
 }
 
-func (*BlockPageChange_Style) isBlockPageChange_Change()     {}
-func (*BlockPageChange_Structure) isBlockPageChange_Change() {}
-func (*BlockPageChange_Blocks) isBlockPageChange_Change()    {}
+func (*BlockContentPageChange_Style) isBlockContentPageChange_Change()     {}
+func (*BlockContentPageChange_Structure) isBlockContentPageChange_Change() {}
+func (*BlockContentPageChange_Blocks) isBlockContentPageChange_Change()    {}
 
-func (m *BlockPageChange) GetChange() isBlockPageChange_Change {
+func (m *BlockContentPageChange) GetChange() isBlockContentPageChange_Change {
 	if m != nil {
 		return m.Change
 	}
 	return nil
 }
 
-func (m *BlockPageChange) GetStyle() BlockPage_Style {
-	if x, ok := m.GetChange().(*BlockPageChange_Style); ok {
+func (m *BlockContentPageChange) GetStyle() BlockContentPage_Style {
+	if x, ok := m.GetChange().(*BlockContentPageChange_Style); ok {
 		return x.Style
 	}
-	return BlockPage_EMPTY
+	return BlockContentPage_EMPTY
 }
 
-func (m *BlockPageChange) GetStructure() *BlockConnectionsList {
-	if x, ok := m.GetChange().(*BlockPageChange_Structure); ok {
+func (m *BlockContentPageChange) GetStructure() *BlockConnectionsList {
+	if x, ok := m.GetChange().(*BlockContentPageChange_Structure); ok {
 		return x.Structure
 	}
 	return nil
 }
 
-func (m *BlockPageChange) GetBlocks() *BlocksList {
-	if x, ok := m.GetChange().(*BlockPageChange_Blocks); ok {
+func (m *BlockContentPageChange) GetBlocks() *BlocksList {
+	if x, ok := m.GetChange().(*BlockContentPageChange_Blocks); ok {
 		return x.Blocks
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*BlockPageChange) XXX_OneofWrappers() []interface{} {
+func (*BlockContentPageChange) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*BlockPageChange_Style)(nil),
-		(*BlockPageChange_Structure)(nil),
-		(*BlockPageChange_Blocks)(nil),
+		(*BlockContentPageChange_Style)(nil),
+		(*BlockContentPageChange_Structure)(nil),
+		(*BlockContentPageChange_Blocks)(nil),
 	}
 }
 
@@ -1163,7 +1171,7 @@ type BlockHeaderChange_Icon struct {
 	Icon string `protobuf:"bytes,4,opt,name=icon,proto3,oneof" json:"icon,omitempty"`
 }
 type BlockHeaderChange_Permissions struct {
-	Permissions *Permissions `protobuf:"bytes,5,opt,name=permissions,proto3,oneof" json:"permissions,omitempty"`
+	Permissions *BlockPermissions `protobuf:"bytes,5,opt,name=permissions,proto3,oneof" json:"permissions,omitempty"`
 }
 
 func (*BlockHeaderChange_Id) isBlockHeaderChange_Change()          {}
@@ -1207,7 +1215,7 @@ func (m *BlockHeaderChange) GetIcon() string {
 	return ""
 }
 
-func (m *BlockHeaderChange) GetPermissions() *Permissions {
+func (m *BlockHeaderChange) GetPermissions() *BlockPermissions {
 	if x, ok := m.GetChange().(*BlockHeaderChange_Permissions); ok {
 		return x.Permissions
 	}
@@ -1225,26 +1233,26 @@ func (*BlockHeaderChange) XXX_OneofWrappers() []interface{} {
 	}
 }
 
-type BlockDashboardChange struct {
+type BlockContentDashboardChange struct {
 	// Types that are valid to be assigned to Change:
-	//	*BlockDashboardChange_Style
-	//	*BlockDashboardChange_Structure
-	//	*BlockDashboardChange_Headers
-	Change isBlockDashboardChange_Change `protobuf_oneof:"change"`
+	//	*BlockContentDashboardChange_Style
+	//	*BlockContentDashboardChange_Structure
+	//	*BlockContentDashboardChange_Headers
+	Change isBlockContentDashboardChange_Change `protobuf_oneof:"change"`
 }
 
-func (m *BlockDashboardChange) Reset()         { *m = BlockDashboardChange{} }
-func (m *BlockDashboardChange) String() string { return proto.CompactTextString(m) }
-func (*BlockDashboardChange) ProtoMessage()    {}
-func (*BlockDashboardChange) Descriptor() ([]byte, []int) {
+func (m *BlockContentDashboardChange) Reset()         { *m = BlockContentDashboardChange{} }
+func (m *BlockContentDashboardChange) String() string { return proto.CompactTextString(m) }
+func (*BlockContentDashboardChange) ProtoMessage()    {}
+func (*BlockContentDashboardChange) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{12}
 }
-func (m *BlockDashboardChange) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentDashboardChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockDashboardChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentDashboardChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockDashboardChange.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentDashboardChange.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1254,72 +1262,72 @@ func (m *BlockDashboardChange) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return b[:n], nil
 	}
 }
-func (m *BlockDashboardChange) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockDashboardChange.Merge(m, src)
+func (m *BlockContentDashboardChange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentDashboardChange.Merge(m, src)
 }
-func (m *BlockDashboardChange) XXX_Size() int {
+func (m *BlockContentDashboardChange) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockDashboardChange) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockDashboardChange.DiscardUnknown(m)
+func (m *BlockContentDashboardChange) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentDashboardChange.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockDashboardChange proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentDashboardChange proto.InternalMessageInfo
 
-type isBlockDashboardChange_Change interface {
-	isBlockDashboardChange_Change()
+type isBlockContentDashboardChange_Change interface {
+	isBlockContentDashboardChange_Change()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type BlockDashboardChange_Style struct {
-	Style BlockDashboard_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockDashboard_Style,oneof" json:"style,omitempty"`
+type BlockContentDashboardChange_Style struct {
+	Style BlockContentDashboard_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockContentDashboard_Style,oneof" json:"style,omitempty"`
 }
-type BlockDashboardChange_Structure struct {
+type BlockContentDashboardChange_Structure struct {
 	Structure *BlockConnectionsList `protobuf:"bytes,2,opt,name=structure,proto3,oneof" json:"structure,omitempty"`
 }
-type BlockDashboardChange_Headers struct {
+type BlockContentDashboardChange_Headers struct {
 	Headers *BlockHeadersList `protobuf:"bytes,3,opt,name=headers,proto3,oneof" json:"headers,omitempty"`
 }
 
-func (*BlockDashboardChange_Style) isBlockDashboardChange_Change()     {}
-func (*BlockDashboardChange_Structure) isBlockDashboardChange_Change() {}
-func (*BlockDashboardChange_Headers) isBlockDashboardChange_Change()   {}
+func (*BlockContentDashboardChange_Style) isBlockContentDashboardChange_Change()     {}
+func (*BlockContentDashboardChange_Structure) isBlockContentDashboardChange_Change() {}
+func (*BlockContentDashboardChange_Headers) isBlockContentDashboardChange_Change()   {}
 
-func (m *BlockDashboardChange) GetChange() isBlockDashboardChange_Change {
+func (m *BlockContentDashboardChange) GetChange() isBlockContentDashboardChange_Change {
 	if m != nil {
 		return m.Change
 	}
 	return nil
 }
 
-func (m *BlockDashboardChange) GetStyle() BlockDashboard_Style {
-	if x, ok := m.GetChange().(*BlockDashboardChange_Style); ok {
+func (m *BlockContentDashboardChange) GetStyle() BlockContentDashboard_Style {
+	if x, ok := m.GetChange().(*BlockContentDashboardChange_Style); ok {
 		return x.Style
 	}
-	return BlockDashboard_MAIN_SCREEN
+	return BlockContentDashboard_MAIN_SCREEN
 }
 
-func (m *BlockDashboardChange) GetStructure() *BlockConnectionsList {
-	if x, ok := m.GetChange().(*BlockDashboardChange_Structure); ok {
+func (m *BlockContentDashboardChange) GetStructure() *BlockConnectionsList {
+	if x, ok := m.GetChange().(*BlockContentDashboardChange_Structure); ok {
 		return x.Structure
 	}
 	return nil
 }
 
-func (m *BlockDashboardChange) GetHeaders() *BlockHeadersList {
-	if x, ok := m.GetChange().(*BlockDashboardChange_Headers); ok {
+func (m *BlockContentDashboardChange) GetHeaders() *BlockHeadersList {
+	if x, ok := m.GetChange().(*BlockContentDashboardChange_Headers); ok {
 		return x.Headers
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*BlockDashboardChange) XXX_OneofWrappers() []interface{} {
+func (*BlockContentDashboardChange) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*BlockDashboardChange_Style)(nil),
-		(*BlockDashboardChange_Structure)(nil),
-		(*BlockDashboardChange_Headers)(nil),
+		(*BlockContentDashboardChange_Style)(nil),
+		(*BlockContentDashboardChange_Structure)(nil),
+		(*BlockContentDashboardChange_Headers)(nil),
 	}
 }
 
@@ -1373,16 +1381,16 @@ type isBlockAtomicChange_Change interface {
 }
 
 type BlockAtomicChange_Text struct {
-	Text *BlockTextChange `protobuf:"bytes,2,opt,name=text,proto3,oneof" json:"text,omitempty"`
+	Text *BlockContentTextChange `protobuf:"bytes,2,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
 type BlockAtomicChange_BlockHeader struct {
 	BlockHeader *BlockHeaderChange `protobuf:"bytes,3,opt,name=blockHeader,proto3,oneof" json:"blockHeader,omitempty"`
 }
 type BlockAtomicChange_Page struct {
-	Page *BlockPageChange `protobuf:"bytes,4,opt,name=page,proto3,oneof" json:"page,omitempty"`
+	Page *BlockContentPageChange `protobuf:"bytes,4,opt,name=page,proto3,oneof" json:"page,omitempty"`
 }
 type BlockAtomicChange_Dashboard struct {
-	Dashboard *BlockDashboardChange `protobuf:"bytes,5,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
+	Dashboard *BlockContentDashboardChange `protobuf:"bytes,5,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
 }
 
 func (*BlockAtomicChange_Text) isBlockAtomicChange_Change()        {}
@@ -1404,7 +1412,7 @@ func (m *BlockAtomicChange) GetId() string {
 	return ""
 }
 
-func (m *BlockAtomicChange) GetText() *BlockTextChange {
+func (m *BlockAtomicChange) GetText() *BlockContentTextChange {
 	if x, ok := m.GetChange().(*BlockAtomicChange_Text); ok {
 		return x.Text
 	}
@@ -1418,14 +1426,14 @@ func (m *BlockAtomicChange) GetBlockHeader() *BlockHeaderChange {
 	return nil
 }
 
-func (m *BlockAtomicChange) GetPage() *BlockPageChange {
+func (m *BlockAtomicChange) GetPage() *BlockContentPageChange {
 	if x, ok := m.GetChange().(*BlockAtomicChange_Page); ok {
 		return x.Page
 	}
 	return nil
 }
 
-func (m *BlockAtomicChange) GetDashboard() *BlockDashboardChange {
+func (m *BlockAtomicChange) GetDashboard() *BlockContentDashboardChange {
 	if x, ok := m.GetChange().(*BlockAtomicChange_Dashboard); ok {
 		return x.Dashboard
 	}
@@ -1537,19 +1545,19 @@ type isBlock_Content interface {
 }
 
 type Block_Dashboard struct {
-	Dashboard *BlockDashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
+	Dashboard *BlockContentDashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
 }
 type Block_Page struct {
-	Page *BlockPage `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
+	Page *BlockContentPage `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
 }
 type Block_Dataview struct {
-	Dataview *BlockDataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
+	Dataview *BlockContentDataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
 }
 type Block_Text struct {
-	Text *BlockText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
+	Text *BlockContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
 type Block_Media struct {
-	Media *BlockMedia `protobuf:"bytes,15,opt,name=media,proto3,oneof" json:"media,omitempty"`
+	Media *BlockContentMedia `protobuf:"bytes,15,opt,name=media,proto3,oneof" json:"media,omitempty"`
 }
 
 func (*Block_Dashboard) isBlock_Content() {}
@@ -1572,35 +1580,35 @@ func (m *Block) GetHeader() *BlockHeader {
 	return nil
 }
 
-func (m *Block) GetDashboard() *BlockDashboard {
+func (m *Block) GetDashboard() *BlockContentDashboard {
 	if x, ok := m.GetContent().(*Block_Dashboard); ok {
 		return x.Dashboard
 	}
 	return nil
 }
 
-func (m *Block) GetPage() *BlockPage {
+func (m *Block) GetPage() *BlockContentPage {
 	if x, ok := m.GetContent().(*Block_Page); ok {
 		return x.Page
 	}
 	return nil
 }
 
-func (m *Block) GetDataview() *BlockDataview {
+func (m *Block) GetDataview() *BlockContentDataview {
 	if x, ok := m.GetContent().(*Block_Dataview); ok {
 		return x.Dataview
 	}
 	return nil
 }
 
-func (m *Block) GetText() *BlockText {
+func (m *Block) GetText() *BlockContentText {
 	if x, ok := m.GetContent().(*Block_Text); ok {
 		return x.Text
 	}
 	return nil
 }
 
-func (m *Block) GetMedia() *BlockMedia {
+func (m *Block) GetMedia() *BlockContentMedia {
 	if x, ok := m.GetContent().(*Block_Media); ok {
 		return x.Media
 	}
@@ -1619,11 +1627,10 @@ func (*Block) XXX_OneofWrappers() []interface{} {
 }
 
 type BlockHeader struct {
-	Id          string       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type        BlockType    `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.BlockType" json:"type,omitempty"`
-	Name        string       `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Icon        string       `protobuf:"bytes,4,opt,name=icon,proto3" json:"icon,omitempty"`
-	Permissions *Permissions `protobuf:"bytes,5,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	Id          string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type        BlockType         `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.BlockType" json:"type,omitempty"`
+	Fields      *Struct           `protobuf:"bytes,3,opt,name=fields,proto3" json:"fields,omitempty"`
+	Permissions *BlockPermissions `protobuf:"bytes,4,opt,name=permissions,proto3" json:"permissions,omitempty"`
 }
 
 func (m *BlockHeader) Reset()         { *m = BlockHeader{} }
@@ -1673,47 +1680,40 @@ func (m *BlockHeader) GetType() BlockType {
 	return BlockType_DASHBOARD
 }
 
-func (m *BlockHeader) GetName() string {
+func (m *BlockHeader) GetFields() *Struct {
 	if m != nil {
-		return m.Name
+		return m.Fields
 	}
-	return ""
+	return nil
 }
 
-func (m *BlockHeader) GetIcon() string {
-	if m != nil {
-		return m.Icon
-	}
-	return ""
-}
-
-func (m *BlockHeader) GetPermissions() *Permissions {
+func (m *BlockHeader) GetPermissions() *BlockPermissions {
 	if m != nil {
 		return m.Permissions
 	}
 	return nil
 }
 
-type Permissions struct {
-	Editable  bool `protobuf:"varint,1,opt,name=editable,proto3" json:"editable,omitempty"`
-	Removable bool `protobuf:"varint,2,opt,name=removable,proto3" json:"removable,omitempty"`
-	Readable  bool `protobuf:"varint,3,opt,name=readable,proto3" json:"readable,omitempty"`
-	Draggable bool `protobuf:"varint,4,opt,name=draggable,proto3" json:"draggable,omitempty"`
-	Droppable bool `protobuf:"varint,5,opt,name=droppable,proto3" json:"droppable,omitempty"`
+type BlockPermissions struct {
+	Read   bool `protobuf:"varint,1,opt,name=read,proto3" json:"read,omitempty"`
+	Edit   bool `protobuf:"varint,2,opt,name=edit,proto3" json:"edit,omitempty"`
+	Remove bool `protobuf:"varint,3,opt,name=remove,proto3" json:"remove,omitempty"`
+	Drag   bool `protobuf:"varint,4,opt,name=drag,proto3" json:"drag,omitempty"`
+	DropOn bool `protobuf:"varint,5,opt,name=dropOn,proto3" json:"dropOn,omitempty"`
 }
 
-func (m *Permissions) Reset()         { *m = Permissions{} }
-func (m *Permissions) String() string { return proto.CompactTextString(m) }
-func (*Permissions) ProtoMessage()    {}
-func (*Permissions) Descriptor() ([]byte, []int) {
+func (m *BlockPermissions) Reset()         { *m = BlockPermissions{} }
+func (m *BlockPermissions) String() string { return proto.CompactTextString(m) }
+func (*BlockPermissions) ProtoMessage()    {}
+func (*BlockPermissions) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{17}
 }
-func (m *Permissions) XXX_Unmarshal(b []byte) error {
+func (m *BlockPermissions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Permissions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockPermissions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Permissions.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockPermissions.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1723,49 +1723,49 @@ func (m *Permissions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Permissions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Permissions.Merge(m, src)
+func (m *BlockPermissions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockPermissions.Merge(m, src)
 }
-func (m *Permissions) XXX_Size() int {
+func (m *BlockPermissions) XXX_Size() int {
 	return m.Size()
 }
-func (m *Permissions) XXX_DiscardUnknown() {
-	xxx_messageInfo_Permissions.DiscardUnknown(m)
+func (m *BlockPermissions) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockPermissions.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Permissions proto.InternalMessageInfo
+var xxx_messageInfo_BlockPermissions proto.InternalMessageInfo
 
-func (m *Permissions) GetEditable() bool {
+func (m *BlockPermissions) GetRead() bool {
 	if m != nil {
-		return m.Editable
+		return m.Read
 	}
 	return false
 }
 
-func (m *Permissions) GetRemovable() bool {
+func (m *BlockPermissions) GetEdit() bool {
 	if m != nil {
-		return m.Removable
+		return m.Edit
 	}
 	return false
 }
 
-func (m *Permissions) GetReadable() bool {
+func (m *BlockPermissions) GetRemove() bool {
 	if m != nil {
-		return m.Readable
+		return m.Remove
 	}
 	return false
 }
 
-func (m *Permissions) GetDraggable() bool {
+func (m *BlockPermissions) GetDrag() bool {
 	if m != nil {
-		return m.Draggable
+		return m.Drag
 	}
 	return false
 }
 
-func (m *Permissions) GetDroppable() bool {
+func (m *BlockPermissions) GetDropOn() bool {
 	if m != nil {
-		return m.Droppable
+		return m.DropOn
 	}
 	return false
 }
@@ -1978,24 +1978,24 @@ func (m *BlocksList) GetBlocks() []*Block {
 	return nil
 }
 
-type BlockPage struct {
-	Style     BlockPage_Style       `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockPage_Style" json:"style,omitempty"`
-	Structure *BlockConnectionsList `protobuf:"bytes,2,opt,name=structure,proto3" json:"structure,omitempty"`
-	Blocks    *BlocksList           `protobuf:"bytes,3,opt,name=blocks,proto3" json:"blocks,omitempty"`
+type BlockContentPage struct {
+	Style     BlockContentPage_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockContentPage_Style" json:"style,omitempty"`
+	Structure *BlockConnectionsList  `protobuf:"bytes,2,opt,name=structure,proto3" json:"structure,omitempty"`
+	Blocks    *BlocksList            `protobuf:"bytes,3,opt,name=blocks,proto3" json:"blocks,omitempty"`
 }
 
-func (m *BlockPage) Reset()         { *m = BlockPage{} }
-func (m *BlockPage) String() string { return proto.CompactTextString(m) }
-func (*BlockPage) ProtoMessage()    {}
-func (*BlockPage) Descriptor() ([]byte, []int) {
+func (m *BlockContentPage) Reset()         { *m = BlockContentPage{} }
+func (m *BlockContentPage) String() string { return proto.CompactTextString(m) }
+func (*BlockContentPage) ProtoMessage()    {}
+func (*BlockContentPage) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{22}
 }
-func (m *BlockPage) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentPage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockPage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentPage.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2005,57 +2005,57 @@ func (m *BlockPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *BlockPage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockPage.Merge(m, src)
+func (m *BlockContentPage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentPage.Merge(m, src)
 }
-func (m *BlockPage) XXX_Size() int {
+func (m *BlockContentPage) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockPage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockPage.DiscardUnknown(m)
+func (m *BlockContentPage) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentPage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockPage proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentPage proto.InternalMessageInfo
 
-func (m *BlockPage) GetStyle() BlockPage_Style {
+func (m *BlockContentPage) GetStyle() BlockContentPage_Style {
 	if m != nil {
 		return m.Style
 	}
-	return BlockPage_EMPTY
+	return BlockContentPage_EMPTY
 }
 
-func (m *BlockPage) GetStructure() *BlockConnectionsList {
+func (m *BlockContentPage) GetStructure() *BlockConnectionsList {
 	if m != nil {
 		return m.Structure
 	}
 	return nil
 }
 
-func (m *BlockPage) GetBlocks() *BlocksList {
+func (m *BlockContentPage) GetBlocks() *BlocksList {
 	if m != nil {
 		return m.Blocks
 	}
 	return nil
 }
 
-type BlockDashboard struct {
-	Style     BlockDashboard_Style  `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockDashboard_Style" json:"style,omitempty"`
-	Structure *BlockConnectionsList `protobuf:"bytes,2,opt,name=structure,proto3" json:"structure,omitempty"`
-	Headers   *BlockHeadersList     `protobuf:"bytes,3,opt,name=headers,proto3" json:"headers,omitempty"`
+type BlockContentDashboard struct {
+	Style     BlockContentDashboard_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.BlockContentDashboard_Style" json:"style,omitempty"`
+	Structure *BlockConnectionsList       `protobuf:"bytes,2,opt,name=structure,proto3" json:"structure,omitempty"`
+	Headers   *BlockHeadersList           `protobuf:"bytes,3,opt,name=headers,proto3" json:"headers,omitempty"`
 }
 
-func (m *BlockDashboard) Reset()         { *m = BlockDashboard{} }
-func (m *BlockDashboard) String() string { return proto.CompactTextString(m) }
-func (*BlockDashboard) ProtoMessage()    {}
-func (*BlockDashboard) Descriptor() ([]byte, []int) {
+func (m *BlockContentDashboard) Reset()         { *m = BlockContentDashboard{} }
+func (m *BlockContentDashboard) String() string { return proto.CompactTextString(m) }
+func (*BlockContentDashboard) ProtoMessage()    {}
+func (*BlockContentDashboard) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{23}
 }
-func (m *BlockDashboard) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentDashboard) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockDashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentDashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockDashboard.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentDashboard.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2065,54 +2065,54 @@ func (m *BlockDashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return b[:n], nil
 	}
 }
-func (m *BlockDashboard) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockDashboard.Merge(m, src)
+func (m *BlockContentDashboard) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentDashboard.Merge(m, src)
 }
-func (m *BlockDashboard) XXX_Size() int {
+func (m *BlockContentDashboard) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockDashboard) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockDashboard.DiscardUnknown(m)
+func (m *BlockContentDashboard) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentDashboard.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockDashboard proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentDashboard proto.InternalMessageInfo
 
-func (m *BlockDashboard) GetStyle() BlockDashboard_Style {
+func (m *BlockContentDashboard) GetStyle() BlockContentDashboard_Style {
 	if m != nil {
 		return m.Style
 	}
-	return BlockDashboard_MAIN_SCREEN
+	return BlockContentDashboard_MAIN_SCREEN
 }
 
-func (m *BlockDashboard) GetStructure() *BlockConnectionsList {
+func (m *BlockContentDashboard) GetStructure() *BlockConnectionsList {
 	if m != nil {
 		return m.Structure
 	}
 	return nil
 }
 
-func (m *BlockDashboard) GetHeaders() *BlockHeadersList {
+func (m *BlockContentDashboard) GetHeaders() *BlockHeadersList {
 	if m != nil {
 		return m.Headers
 	}
 	return nil
 }
 
-type BlockDataview struct {
+type BlockContentDataview struct {
 }
 
-func (m *BlockDataview) Reset()         { *m = BlockDataview{} }
-func (m *BlockDataview) String() string { return proto.CompactTextString(m) }
-func (*BlockDataview) ProtoMessage()    {}
-func (*BlockDataview) Descriptor() ([]byte, []int) {
+func (m *BlockContentDataview) Reset()         { *m = BlockContentDataview{} }
+func (m *BlockContentDataview) String() string { return proto.CompactTextString(m) }
+func (*BlockContentDataview) ProtoMessage()    {}
+func (*BlockContentDataview) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{24}
 }
-func (m *BlockDataview) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentDataview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockDataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentDataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockDataview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentDataview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2122,40 +2122,40 @@ func (m *BlockDataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error
 		return b[:n], nil
 	}
 }
-func (m *BlockDataview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockDataview.Merge(m, src)
+func (m *BlockContentDataview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentDataview.Merge(m, src)
 }
-func (m *BlockDataview) XXX_Size() int {
+func (m *BlockContentDataview) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockDataview) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockDataview.DiscardUnknown(m)
+func (m *BlockContentDataview) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentDataview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockDataview proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentDataview proto.InternalMessageInfo
 
-type BlockText struct {
-	Text       string               `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	Style      BlockText_Style      `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.BlockText_Style" json:"style,omitempty"`
-	MarksList  *BlockText_Marks     `protobuf:"bytes,3,opt,name=marksList,proto3" json:"marksList,omitempty"`
-	Toggleable bool                 `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
-	MarkerType BlockText_MarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.BlockText_MarkerType" json:"markerType,omitempty"`
-	Checkable  bool                 `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
-	Checked    bool                 `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
+type BlockContentText struct {
+	Text       string                      `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Style      BlockContentText_Style      `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.BlockContentText_Style" json:"style,omitempty"`
+	MarksList  *BlockContentText_Marks     `protobuf:"bytes,3,opt,name=marksList,proto3" json:"marksList,omitempty"`
+	Toggleable bool                        `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
+	MarkerType BlockContentText_MarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.BlockContentText_MarkerType" json:"markerType,omitempty"`
+	Checkable  bool                        `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
+	Checked    bool                        `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
 }
 
-func (m *BlockText) Reset()         { *m = BlockText{} }
-func (m *BlockText) String() string { return proto.CompactTextString(m) }
-func (*BlockText) ProtoMessage()    {}
-func (*BlockText) Descriptor() ([]byte, []int) {
+func (m *BlockContentText) Reset()         { *m = BlockContentText{} }
+func (m *BlockContentText) String() string { return proto.CompactTextString(m) }
+func (*BlockContentText) ProtoMessage()    {}
+func (*BlockContentText) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{25}
 }
-func (m *BlockText) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockText.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentText.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2165,83 +2165,83 @@ func (m *BlockText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *BlockText) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockText.Merge(m, src)
+func (m *BlockContentText) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentText.Merge(m, src)
 }
-func (m *BlockText) XXX_Size() int {
+func (m *BlockContentText) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockText) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockText.DiscardUnknown(m)
+func (m *BlockContentText) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentText.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockText proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentText proto.InternalMessageInfo
 
-func (m *BlockText) GetText() string {
+func (m *BlockContentText) GetText() string {
 	if m != nil {
 		return m.Text
 	}
 	return ""
 }
 
-func (m *BlockText) GetStyle() BlockText_Style {
+func (m *BlockContentText) GetStyle() BlockContentText_Style {
 	if m != nil {
 		return m.Style
 	}
-	return BlockText_p
+	return BlockContentText_p
 }
 
-func (m *BlockText) GetMarksList() *BlockText_Marks {
+func (m *BlockContentText) GetMarksList() *BlockContentText_Marks {
 	if m != nil {
 		return m.MarksList
 	}
 	return nil
 }
 
-func (m *BlockText) GetToggleable() bool {
+func (m *BlockContentText) GetToggleable() bool {
 	if m != nil {
 		return m.Toggleable
 	}
 	return false
 }
 
-func (m *BlockText) GetMarkerType() BlockText_MarkerType {
+func (m *BlockContentText) GetMarkerType() BlockContentText_MarkerType {
 	if m != nil {
 		return m.MarkerType
 	}
-	return BlockText_none
+	return BlockContentText_none
 }
 
-func (m *BlockText) GetCheckable() bool {
+func (m *BlockContentText) GetCheckable() bool {
 	if m != nil {
 		return m.Checkable
 	}
 	return false
 }
 
-func (m *BlockText) GetChecked() bool {
+func (m *BlockContentText) GetChecked() bool {
 	if m != nil {
 		return m.Checked
 	}
 	return false
 }
 
-type BlockText_Marks struct {
-	Marks []*BlockText_Mark `protobuf:"bytes,1,rep,name=marks,proto3" json:"marks,omitempty"`
+type BlockContentText_Marks struct {
+	Marks []*BlockContentText_Mark `protobuf:"bytes,1,rep,name=marks,proto3" json:"marks,omitempty"`
 }
 
-func (m *BlockText_Marks) Reset()         { *m = BlockText_Marks{} }
-func (m *BlockText_Marks) String() string { return proto.CompactTextString(m) }
-func (*BlockText_Marks) ProtoMessage()    {}
-func (*BlockText_Marks) Descriptor() ([]byte, []int) {
+func (m *BlockContentText_Marks) Reset()         { *m = BlockContentText_Marks{} }
+func (m *BlockContentText_Marks) String() string { return proto.CompactTextString(m) }
+func (*BlockContentText_Marks) ProtoMessage()    {}
+func (*BlockContentText_Marks) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{25, 0}
 }
-func (m *BlockText_Marks) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentText_Marks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockText_Marks) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentText_Marks) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockText_Marks.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentText_Marks.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2251,42 +2251,43 @@ func (m *BlockText_Marks) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *BlockText_Marks) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockText_Marks.Merge(m, src)
+func (m *BlockContentText_Marks) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentText_Marks.Merge(m, src)
 }
-func (m *BlockText_Marks) XXX_Size() int {
+func (m *BlockContentText_Marks) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockText_Marks) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockText_Marks.DiscardUnknown(m)
+func (m *BlockContentText_Marks) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentText_Marks.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockText_Marks proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentText_Marks proto.InternalMessageInfo
 
-func (m *BlockText_Marks) GetMarks() []*BlockText_Mark {
+func (m *BlockContentText_Marks) GetMarks() []*BlockContentText_Mark {
 	if m != nil {
 		return m.Marks
 	}
 	return nil
 }
 
-type BlockText_Mark struct {
-	Range *BlockText_Mark_Range `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
-	Type  BlockText_Mark_Type   `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.BlockText_Mark_Type" json:"type,omitempty"`
+type BlockContentText_Mark struct {
+	Range *Range                     `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
+	Type  BlockContentText_Mark_Type `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.BlockContentText_Mark_Type" json:"type,omitempty"`
+	Param string                     `protobuf:"bytes,3,opt,name=param,proto3" json:"param,omitempty"`
 }
 
-func (m *BlockText_Mark) Reset()         { *m = BlockText_Mark{} }
-func (m *BlockText_Mark) String() string { return proto.CompactTextString(m) }
-func (*BlockText_Mark) ProtoMessage()    {}
-func (*BlockText_Mark) Descriptor() ([]byte, []int) {
+func (m *BlockContentText_Mark) Reset()         { *m = BlockContentText_Mark{} }
+func (m *BlockContentText_Mark) String() string { return proto.CompactTextString(m) }
+func (*BlockContentText_Mark) ProtoMessage()    {}
+func (*BlockContentText_Mark) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{25, 1}
 }
-func (m *BlockText_Mark) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentText_Mark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockText_Mark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentText_Mark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockText_Mark.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentText_Mark.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2296,101 +2297,55 @@ func (m *BlockText_Mark) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return b[:n], nil
 	}
 }
-func (m *BlockText_Mark) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockText_Mark.Merge(m, src)
+func (m *BlockContentText_Mark) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentText_Mark.Merge(m, src)
 }
-func (m *BlockText_Mark) XXX_Size() int {
+func (m *BlockContentText_Mark) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockText_Mark) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockText_Mark.DiscardUnknown(m)
+func (m *BlockContentText_Mark) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentText_Mark.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockText_Mark proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentText_Mark proto.InternalMessageInfo
 
-func (m *BlockText_Mark) GetRange() *BlockText_Mark_Range {
+func (m *BlockContentText_Mark) GetRange() *Range {
 	if m != nil {
 		return m.Range
 	}
 	return nil
 }
 
-func (m *BlockText_Mark) GetType() BlockText_Mark_Type {
+func (m *BlockContentText_Mark) GetType() BlockContentText_Mark_Type {
 	if m != nil {
 		return m.Type
 	}
-	return BlockText_Mark_S
+	return BlockContentText_Mark_STRIKETHROUGH
 }
 
-type BlockText_Mark_Range struct {
-	From int32 `protobuf:"varint,1,opt,name=from,proto3" json:"from,omitempty"`
-	To   int32 `protobuf:"varint,2,opt,name=to,proto3" json:"to,omitempty"`
-}
-
-func (m *BlockText_Mark_Range) Reset()         { *m = BlockText_Mark_Range{} }
-func (m *BlockText_Mark_Range) String() string { return proto.CompactTextString(m) }
-func (*BlockText_Mark_Range) ProtoMessage()    {}
-func (*BlockText_Mark_Range) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{25, 1, 0}
-}
-func (m *BlockText_Mark_Range) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockText_Mark_Range) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockText_Mark_Range.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockText_Mark_Range) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockText_Mark_Range.Merge(m, src)
-}
-func (m *BlockText_Mark_Range) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockText_Mark_Range) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockText_Mark_Range.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockText_Mark_Range proto.InternalMessageInfo
-
-func (m *BlockText_Mark_Range) GetFrom() int32 {
+func (m *BlockContentText_Mark) GetParam() string {
 	if m != nil {
-		return m.From
+		return m.Param
 	}
-	return 0
+	return ""
 }
 
-func (m *BlockText_Mark_Range) GetTo() int32 {
-	if m != nil {
-		return m.To
-	}
-	return 0
+type BlockContentMedia struct {
+	Link string `protobuf:"bytes,1,opt,name=link,proto3" json:"link,omitempty"`
 }
 
-type BlockMedia struct {
-	Link string          `protobuf:"bytes,1,opt,name=link,proto3" json:"link,omitempty"`
-	Meta *BlockMediaMeta `protobuf:"bytes,2,opt,name=meta,proto3" json:"meta,omitempty"`
-}
-
-func (m *BlockMedia) Reset()         { *m = BlockMedia{} }
-func (m *BlockMedia) String() string { return proto.CompactTextString(m) }
-func (*BlockMedia) ProtoMessage()    {}
-func (*BlockMedia) Descriptor() ([]byte, []int) {
+func (m *BlockContentMedia) Reset()         { *m = BlockContentMedia{} }
+func (m *BlockContentMedia) String() string { return proto.CompactTextString(m) }
+func (*BlockContentMedia) ProtoMessage()    {}
+func (*BlockContentMedia) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{26}
 }
-func (m *BlockMedia) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentMedia) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockMedia) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentMedia) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockMedia.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentMedia.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2400,51 +2355,42 @@ func (m *BlockMedia) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *BlockMedia) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockMedia.Merge(m, src)
+func (m *BlockContentMedia) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentMedia.Merge(m, src)
 }
-func (m *BlockMedia) XXX_Size() int {
+func (m *BlockContentMedia) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockMedia) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockMedia.DiscardUnknown(m)
+func (m *BlockContentMedia) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentMedia.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockMedia proto.InternalMessageInfo
+var xxx_messageInfo_BlockContentMedia proto.InternalMessageInfo
 
-func (m *BlockMedia) GetLink() string {
+func (m *BlockContentMedia) GetLink() string {
 	if m != nil {
 		return m.Link
 	}
 	return ""
 }
 
-func (m *BlockMedia) GetMeta() *BlockMediaMeta {
-	if m != nil {
-		return m.Meta
-	}
-	return nil
+type Range struct {
+	From int32 `protobuf:"varint,1,opt,name=from,proto3" json:"from,omitempty"`
+	To   int32 `protobuf:"varint,2,opt,name=to,proto3" json:"to,omitempty"`
 }
 
-type BlockMediaMeta struct {
-	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	DateAdded   string `protobuf:"bytes,2,opt,name=dateAdded,proto3" json:"dateAdded,omitempty"`
-	Size_       int32  `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
-	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-}
-
-func (m *BlockMediaMeta) Reset()         { *m = BlockMediaMeta{} }
-func (m *BlockMediaMeta) String() string { return proto.CompactTextString(m) }
-func (*BlockMediaMeta) ProtoMessage()    {}
-func (*BlockMediaMeta) Descriptor() ([]byte, []int) {
+func (m *Range) Reset()         { *m = Range{} }
+func (m *Range) String() string { return proto.CompactTextString(m) }
+func (*Range) ProtoMessage()    {}
+func (*Range) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{27}
 }
-func (m *BlockMediaMeta) XXX_Unmarshal(b []byte) error {
+func (m *Range) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockMediaMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Range) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockMediaMeta.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Range.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2454,44 +2400,30 @@ func (m *BlockMediaMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return b[:n], nil
 	}
 }
-func (m *BlockMediaMeta) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockMediaMeta.Merge(m, src)
+func (m *Range) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Range.Merge(m, src)
 }
-func (m *BlockMediaMeta) XXX_Size() int {
+func (m *Range) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockMediaMeta) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockMediaMeta.DiscardUnknown(m)
+func (m *Range) XXX_DiscardUnknown() {
+	xxx_messageInfo_Range.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockMediaMeta proto.InternalMessageInfo
+var xxx_messageInfo_Range proto.InternalMessageInfo
 
-func (m *BlockMediaMeta) GetName() string {
+func (m *Range) GetFrom() int32 {
 	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *BlockMediaMeta) GetDateAdded() string {
-	if m != nil {
-		return m.DateAdded
-	}
-	return ""
-}
-
-func (m *BlockMediaMeta) GetSize_() int32 {
-	if m != nil {
-		return m.Size_
+		return m.From
 	}
 	return 0
 }
 
-func (m *BlockMediaMeta) GetDescription() string {
+func (m *Range) GetTo() int32 {
 	if m != nil {
-		return m.Description
+		return m.To
 	}
-	return ""
+	return 0
 }
 
 func init() {
@@ -2499,11 +2431,11 @@ func init() {
 	proto.RegisterEnum("anytype.BlockOpenResponse_Error_Code", BlockOpenResponse_Error_Code_name, BlockOpenResponse_Error_Code_value)
 	proto.RegisterEnum("anytype.BlockCreateResponse_Error_Code", BlockCreateResponse_Error_Code_name, BlockCreateResponse_Error_Code_value)
 	proto.RegisterEnum("anytype.BlockUpdateResponse_Error_Code", BlockUpdateResponse_Error_Code_name, BlockUpdateResponse_Error_Code_value)
-	proto.RegisterEnum("anytype.BlockPage_Style", BlockPage_Style_name, BlockPage_Style_value)
-	proto.RegisterEnum("anytype.BlockDashboard_Style", BlockDashboard_Style_name, BlockDashboard_Style_value)
-	proto.RegisterEnum("anytype.BlockText_Style", BlockText_Style_name, BlockText_Style_value)
-	proto.RegisterEnum("anytype.BlockText_MarkerType", BlockText_MarkerType_name, BlockText_MarkerType_value)
-	proto.RegisterEnum("anytype.BlockText_Mark_Type", BlockText_Mark_Type_name, BlockText_Mark_Type_value)
+	proto.RegisterEnum("anytype.BlockContentPage_Style", BlockContentPage_Style_name, BlockContentPage_Style_value)
+	proto.RegisterEnum("anytype.BlockContentDashboard_Style", BlockContentDashboard_Style_name, BlockContentDashboard_Style_value)
+	proto.RegisterEnum("anytype.BlockContentText_Style", BlockContentText_Style_name, BlockContentText_Style_value)
+	proto.RegisterEnum("anytype.BlockContentText_MarkerType", BlockContentText_MarkerType_name, BlockContentText_MarkerType_value)
+	proto.RegisterEnum("anytype.BlockContentText_Mark_Type", BlockContentText_Mark_Type_name, BlockContentText_Mark_Type_value)
 	proto.RegisterType((*BlockOpenRequest)(nil), "anytype.BlockOpenRequest")
 	proto.RegisterType((*BlockOpenResponse)(nil), "anytype.BlockOpenResponse")
 	proto.RegisterType((*BlockOpenResponse_Error)(nil), "anytype.BlockOpenResponse.Error")
@@ -2516,136 +2448,136 @@ func init() {
 	proto.RegisterType((*BlockShow)(nil), "anytype.BlockShow")
 	proto.RegisterType((*BlockUpdate)(nil), "anytype.BlockUpdate")
 	proto.RegisterType((*BlockCreate)(nil), "anytype.BlockCreate")
-	proto.RegisterType((*BlockTextChange)(nil), "anytype.BlockTextChange")
-	proto.RegisterType((*BlockPageChange)(nil), "anytype.BlockPageChange")
+	proto.RegisterType((*BlockContentTextChange)(nil), "anytype.BlockContentTextChange")
+	proto.RegisterType((*BlockContentPageChange)(nil), "anytype.BlockContentPageChange")
 	proto.RegisterType((*BlockHeaderChange)(nil), "anytype.BlockHeaderChange")
-	proto.RegisterType((*BlockDashboardChange)(nil), "anytype.BlockDashboardChange")
+	proto.RegisterType((*BlockContentDashboardChange)(nil), "anytype.BlockContentDashboardChange")
 	proto.RegisterType((*BlockAtomicChange)(nil), "anytype.BlockAtomicChange")
 	proto.RegisterType((*BlockChanges)(nil), "anytype.BlockChanges")
 	proto.RegisterType((*Block)(nil), "anytype.Block")
 	proto.RegisterType((*BlockHeader)(nil), "anytype.BlockHeader")
-	proto.RegisterType((*Permissions)(nil), "anytype.Permissions")
+	proto.RegisterType((*BlockPermissions)(nil), "anytype.BlockPermissions")
 	proto.RegisterType((*BlockConnections)(nil), "anytype.BlockConnections")
 	proto.RegisterType((*BlockConnectionsList)(nil), "anytype.BlockConnectionsList")
 	proto.RegisterType((*BlockHeadersList)(nil), "anytype.BlockHeadersList")
 	proto.RegisterType((*BlocksList)(nil), "anytype.BlocksList")
-	proto.RegisterType((*BlockPage)(nil), "anytype.BlockPage")
-	proto.RegisterType((*BlockDashboard)(nil), "anytype.BlockDashboard")
-	proto.RegisterType((*BlockDataview)(nil), "anytype.BlockDataview")
-	proto.RegisterType((*BlockText)(nil), "anytype.BlockText")
-	proto.RegisterType((*BlockText_Marks)(nil), "anytype.BlockText.Marks")
-	proto.RegisterType((*BlockText_Mark)(nil), "anytype.BlockText.Mark")
-	proto.RegisterType((*BlockText_Mark_Range)(nil), "anytype.BlockText.Mark.Range")
-	proto.RegisterType((*BlockMedia)(nil), "anytype.BlockMedia")
-	proto.RegisterType((*BlockMediaMeta)(nil), "anytype.BlockMediaMeta")
+	proto.RegisterType((*BlockContentPage)(nil), "anytype.BlockContentPage")
+	proto.RegisterType((*BlockContentDashboard)(nil), "anytype.BlockContentDashboard")
+	proto.RegisterType((*BlockContentDataview)(nil), "anytype.BlockContentDataview")
+	proto.RegisterType((*BlockContentText)(nil), "anytype.BlockContentText")
+	proto.RegisterType((*BlockContentText_Marks)(nil), "anytype.BlockContentText.Marks")
+	proto.RegisterType((*BlockContentText_Mark)(nil), "anytype.BlockContentText.Mark")
+	proto.RegisterType((*BlockContentMedia)(nil), "anytype.BlockContentMedia")
+	proto.RegisterType((*Range)(nil), "anytype.Range")
 }
 
 func init() { proto.RegisterFile("block.proto", fileDescriptor_8e550b1f5926e92d) }
 
 var fileDescriptor_8e550b1f5926e92d = []byte{
-	// 1629 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x58, 0x4b, 0x6f, 0x1b, 0x47,
-	0x12, 0x9e, 0x19, 0x72, 0x28, 0xb1, 0xa8, 0xc7, 0xb8, 0xad, 0x5d, 0xd3, 0x82, 0x96, 0x10, 0x06,
-	0xbb, 0x5e, 0x63, 0xb5, 0xe6, 0xda, 0x92, 0xac, 0xb5, 0xe1, 0xb5, 0x17, 0xa4, 0xc8, 0x5d, 0x0a,
-	0x7a, 0x50, 0x68, 0x51, 0x76, 0x92, 0x43, 0x8c, 0x11, 0xa7, 0x43, 0x0d, 0x44, 0xce, 0xd0, 0xc3,
-	0x96, 0x2d, 0xe5, 0x2f, 0xc4, 0x87, 0x1c, 0x83, 0x5c, 0x72, 0xca, 0x3d, 0x87, 0xdc, 0x72, 0xc8,
-	0x31, 0xb9, 0x04, 0x70, 0x6e, 0x41, 0x4e, 0x81, 0x0d, 0xe4, 0x94, 0x1f, 0x11, 0x54, 0x4f, 0xcf,
-	0x8b, 0x22, 0x21, 0x29, 0xb0, 0x4f, 0x9c, 0xee, 0xaa, 0xea, 0xae, 0xfa, 0xaa, 0xeb, 0xab, 0x92,
-	0xa0, 0x70, 0xd0, 0xf5, 0xda, 0x47, 0xe5, 0xbe, 0xef, 0x71, 0x8f, 0x4c, 0x58, 0xee, 0x29, 0x3f,
-	0xed, 0x33, 0xd3, 0x04, 0xa3, 0x8a, 0xfb, 0xcd, 0x3e, 0x73, 0x29, 0x7b, 0x76, 0xcc, 0x06, 0x9c,
-	0xcc, 0x80, 0xe6, 0xd8, 0x45, 0x75, 0x51, 0xbd, 0x99, 0xa7, 0x9a, 0x63, 0x9b, 0xbf, 0xaa, 0x70,
-	0x25, 0xa1, 0x34, 0xe8, 0x7b, 0xee, 0x80, 0x91, 0x35, 0xd0, 0x99, 0xef, 0x7b, 0xbe, 0x50, 0x2c,
-	0x2c, 0x2f, 0x96, 0xe5, 0x91, 0xe5, 0x33, 0xaa, 0xe5, 0x3a, 0xea, 0xd1, 0x40, 0x7d, 0xfe, 0x33,
-	0x15, 0x74, 0xb1, 0x41, 0xee, 0x43, 0xb6, 0xed, 0xd9, 0x4c, 0x1c, 0x30, 0xb3, 0xfc, 0xb7, 0xf3,
-	0x0e, 0x28, 0xaf, 0x7b, 0x36, 0xa3, 0xc2, 0x84, 0x2c, 0x42, 0xc1, 0x66, 0x83, 0xb6, 0xef, 0xf4,
-	0xb9, 0xe3, 0xb9, 0x45, 0x4d, 0xf8, 0x9a, 0xdc, 0x32, 0x97, 0x21, 0x8b, 0xfa, 0x64, 0x12, 0xb2,
-	0x3b, 0xfb, 0x5b, 0x5b, 0x86, 0x42, 0xae, 0xc0, 0xf4, 0xfe, 0xce, 0xe6, 0x4e, 0xf3, 0xc9, 0xce,
-	0xd3, 0x3a, 0xa5, 0x4d, 0x6a, 0xa8, 0x64, 0x1a, 0xf2, 0xd5, 0x4a, 0xed, 0xe9, 0xc6, 0xce, 0xee,
-	0x7e, 0xcb, 0xd0, 0xcc, 0xff, 0x00, 0x11, 0x77, 0xaf, 0xfb, 0xcc, 0xe2, 0x2c, 0x84, 0xe3, 0x06,
-	0x64, 0xd1, 0x2d, 0xe9, 0x26, 0x49, 0xbb, 0xd9, 0x3a, 0xed, 0x33, 0x2a, 0xe4, 0xe6, 0x6f, 0x2a,
-	0x5c, 0x4d, 0x99, 0x4b, 0xa0, 0xee, 0xa5, 0x81, 0x32, 0xd3, 0x07, 0xa4, 0x95, 0xd3, 0x50, 0x7d,
-	0x1e, 0x41, 0xf5, 0x20, 0x05, 0xd5, 0xdf, 0xcf, 0x3f, 0xe2, 0xdd, 0x83, 0x55, 0x97, 0x60, 0xed,
-	0xf7, 0xed, 0x04, 0x58, 0xff, 0x82, 0x89, 0xf6, 0xa1, 0xe5, 0x76, 0xd8, 0x40, 0x86, 0xfb, 0xa7,
-	0x21, 0x5f, 0x03, 0x21, 0x0d, 0xb5, 0x62, 0xd4, 0xc2, 0x73, 0x2e, 0x84, 0x5a, 0x5a, 0xf9, 0x0f,
-	0xa1, 0x36, 0xea, 0x88, 0x77, 0x8f, 0xda, 0x1d, 0xc8, 0x8b, 0xdb, 0xf7, 0x0e, 0xbd, 0x17, 0xe4,
-	0xaf, 0xa0, 0x8b, 0xa2, 0x94, 0x31, 0xce, 0xa4, 0x1d, 0xa4, 0x81, 0xd0, 0x7c, 0x04, 0x85, 0x84,
-	0xc3, 0x97, 0x47, 0x78, 0x45, 0xda, 0x07, 0xcf, 0xe4, 0x82, 0x97, 0x7e, 0xad, 0xc1, 0x6c, 0xf0,
-	0xc0, 0xd9, 0x09, 0x0f, 0x8e, 0x24, 0x73, 0x90, 0xe5, 0xec, 0x84, 0x07, 0xcc, 0xd0, 0x50, 0xa8,
-	0x58, 0x91, 0xdb, 0xa0, 0x0f, 0xf8, 0x69, 0x97, 0x09, 0x84, 0x66, 0x96, 0x8b, 0x43, 0xf5, 0xc1,
-	0x4e, 0x78, 0x79, 0x0f, 0xe5, 0x0d, 0x85, 0x06, 0x8a, 0x68, 0xd1, 0xb3, 0xfc, 0xa3, 0x41, 0x31,
-	0x23, 0x3c, 0x18, 0x65, 0xb1, 0x8d, 0x72, 0xb4, 0x10, 0x8a, 0x64, 0x11, 0x80, 0x7b, 0x9d, 0x4e,
-	0x97, 0x59, 0x07, 0x5d, 0x56, 0xcc, 0x2e, 0xaa, 0x37, 0x27, 0x1b, 0x0a, 0x4d, 0xec, 0x91, 0xff,
-	0x02, 0xa0, 0x2a, 0xf3, 0xb1, 0x20, 0x8b, 0xba, 0x70, 0xe5, 0x2f, 0x63, 0x0e, 0x0e, 0x94, 0xf0,
-	0x80, 0xd8, 0x84, 0x94, 0x20, 0xdf, 0x3e, 0x64, 0xed, 0x23, 0x71, 0x43, 0x4e, 0xde, 0x10, 0x6f,
-	0x91, 0x79, 0x84, 0x9d, 0xb5, 0x8f, 0x98, 0x5d, 0x9c, 0x90, 0xd2, 0x70, 0xa3, 0x3a, 0x09, 0xb9,
-	0x00, 0x6c, 0xf3, 0x1b, 0x55, 0xc2, 0xb6, 0x6b, 0x75, 0x98, 0x84, 0x2d, 0x02, 0x48, 0x1d, 0x05,
-	0x10, 0x2a, 0x0e, 0x03, 0xf4, 0x10, 0xf2, 0x03, 0xee, 0x1f, 0xb7, 0xf9, 0xb1, 0x1f, 0xc0, 0x5a,
-	0x18, 0x8e, 0x65, 0xdd, 0x73, 0x5d, 0xd6, 0xc6, 0x57, 0x38, 0xd8, 0x72, 0x06, 0x1c, 0x5d, 0x8d,
-	0x2c, 0xc8, 0x2d, 0xc8, 0x89, 0x24, 0x86, 0x00, 0x5f, 0x4d, 0xdb, 0x86, 0x16, 0x52, 0x29, 0xe1,
-	0xfd, 0xb7, 0x21, 0xd1, 0x37, 0x98, 0x65, 0x33, 0x5f, 0xfa, 0x6f, 0xc4, 0xed, 0xa0, 0xa1, 0x60,
-	0x43, 0x20, 0x37, 0x25, 0x23, 0x6a, 0xe3, 0x18, 0x51, 0x3c, 0x0e, 0x44, 0x75, 0x0e, 0xb2, 0xae,
-	0xd5, 0x63, 0xc2, 0x11, 0xf1, 0x64, 0x70, 0x85, 0xbb, 0x4e, 0xdb, 0x73, 0x45, 0x22, 0xc5, 0x2e,
-	0xae, 0xc8, 0x3d, 0x28, 0xf4, 0x99, 0xdf, 0x73, 0x06, 0x03, 0x0c, 0x4b, 0xe4, 0xb0, 0xb0, 0x3c,
-	0x17, 0x1d, 0xbe, 0x1b, 0xcb, 0x1a, 0x0a, 0x4d, 0xaa, 0x26, 0x22, 0xf8, 0x41, 0x85, 0x39, 0xe1,
-	0x45, 0xcd, 0x1a, 0x1c, 0x1e, 0x78, 0x96, 0x6f, 0xcb, 0x20, 0xee, 0xa6, 0x93, 0x30, 0x04, 0x67,
-	0xa4, 0xfd, 0x96, 0x33, 0x71, 0x17, 0x26, 0x0e, 0x05, 0x94, 0x61, 0x2a, 0xae, 0xa7, 0x8d, 0x03,
-	0x9c, 0x43, 0xc3, 0x50, 0x37, 0x11, 0xcf, 0x4b, 0x4d, 0x66, 0xa4, 0xc2, 0xbd, 0x9e, 0xd3, 0x96,
-	0xc1, 0x0c, 0x35, 0x68, 0x52, 0x96, 0x85, 0xa9, 0x8d, 0xab, 0xa7, 0xc0, 0x2e, 0x2a, 0xd9, 0x47,
-	0x72, 0x18, 0x08, 0xae, 0x97, 0xae, 0xcd, 0x8f, 0x72, 0x2d, 0x32, 0x4c, 0x1a, 0xe0, 0x7d, 0x7d,
-	0xab, 0x13, 0x14, 0x62, 0x61, 0xd4, 0x83, 0x8e, 0xef, 0x43, 0x3d, 0x44, 0xd1, 0x0e, 0x11, 0x96,
-	0x79, 0x1d, 0x97, 0x80, 0xc8, 0x32, 0xb6, 0x48, 0xc0, 0x51, 0x83, 0xa9, 0x24, 0xc7, 0x91, 0xd5,
-	0x24, 0x17, 0x66, 0xce, 0x06, 0x91, 0x44, 0x2d, 0x26, 0xc4, 0xaf, 0x34, 0xd0, 0x85, 0x98, 0xfc,
-	0x13, 0x72, 0x01, 0xe6, 0x92, 0x0c, 0xe7, 0x46, 0x61, 0x40, 0xa5, 0x0e, 0xf9, 0x77, 0x32, 0x8c,
-	0x82, 0x30, 0xb8, 0x36, 0x26, 0x8c, 0x54, 0x00, 0x58, 0x2f, 0x02, 0xaf, 0x29, 0x61, 0x43, 0xce,
-	0xe2, 0x15, 0x21, 0xb5, 0x0a, 0x93, 0xb6, 0xc5, 0xad, 0xe7, 0x0e, 0x7b, 0x51, 0x9c, 0x16, 0xda,
-	0x7f, 0x1e, 0xbe, 0x21, 0x90, 0x36, 0x14, 0x1a, 0x69, 0x8a, 0x7a, 0xc4, 0xfc, 0xcf, 0x8c, 0x3a,
-	0x1f, 0xf3, 0x1f, 0x65, 0x7e, 0x09, 0xf4, 0x1e, 0xb3, 0x1d, 0xab, 0x38, 0x3b, 0x8a, 0x19, 0xb6,
-	0x51, 0x24, 0x58, 0x17, 0x3f, 0xaa, 0x79, 0x98, 0x68, 0x7b, 0x2e, 0x67, 0x2e, 0x37, 0xbf, 0x54,
-	0x65, 0x13, 0x91, 0x2f, 0x60, 0xf8, 0x05, 0xde, 0x38, 0x8f, 0x11, 0x24, 0x1f, 0x90, 0x24, 0x1f,
-	0x48, 0x36, 0x20, 0x49, 0x36, 0x90, 0x5c, 0xb0, 0x76, 0x61, 0x2e, 0x48, 0x31, 0x81, 0xf9, 0x85,
-	0x0a, 0x85, 0x84, 0x90, 0xcc, 0xc3, 0x24, 0xb3, 0x1d, 0x2e, 0x48, 0x1d, 0xbd, 0x9d, 0xa4, 0xd1,
-	0x9a, 0x2c, 0x40, 0xde, 0x67, 0x3d, 0xef, 0xb9, 0x10, 0x6a, 0x42, 0x18, 0x6f, 0xa0, 0xa5, 0xcf,
-	0x2c, 0x5b, 0x08, 0x33, 0x81, 0x65, 0xb8, 0x46, 0x4b, 0xdb, 0xb7, 0x3a, 0x9d, 0xb8, 0x1b, 0xd1,
-	0x78, 0x23, 0x90, 0x7a, 0xfd, 0xbe, 0x90, 0xea, 0xa1, 0x54, 0x6e, 0x98, 0x2f, 0x55, 0x39, 0x71,
-	0x27, 0x88, 0xe3, 0x0c, 0x9c, 0x08, 0x53, 0x58, 0xd0, 0x08, 0x13, 0xa6, 0xce, 0x84, 0xa9, 0xb6,
-	0xd7, 0x3d, 0xee, 0xb9, 0x55, 0x8f, 0x73, 0xaf, 0x27, 0x21, 0x4c, 0xed, 0x09, 0xa7, 0xbd, 0x17,
-	0xd4, 0xe9, 0x1c, 0x72, 0x09, 0x67, 0xb4, 0x26, 0x73, 0xa0, 0x3b, 0xae, 0xcb, 0x7c, 0xe1, 0x52,
-	0x9e, 0x06, 0x0b, 0xb3, 0x29, 0xf9, 0x72, 0x88, 0xc6, 0xf0, 0xad, 0xc7, 0xc4, 0x17, 0xd4, 0xd6,
-	0xf5, 0xb1, 0xc4, 0x97, 0xa0, 0x3c, 0xb3, 0x2a, 0xc3, 0x4b, 0x50, 0x1b, 0x29, 0xc7, 0x34, 0x18,
-	0x1c, 0x35, 0xba, 0xce, 0x42, 0x25, 0x73, 0x15, 0x20, 0xee, 0x54, 0xe4, 0x46, 0xd4, 0xce, 0x02,
-	0xe3, 0xe1, 0x89, 0x45, 0x4a, 0xcd, 0x9f, 0x55, 0x39, 0x5b, 0x61, 0x45, 0x91, 0xf2, 0x05, 0xbb,
-	0x6e, 0xc8, 0xf4, 0x0f, 0x2e, 0xcb, 0xf4, 0x49, 0x9e, 0x5f, 0xba, 0x40, 0xc7, 0x8d, 0xfc, 0x5c,
-	0x01, 0x5d, 0xdc, 0x4c, 0xf2, 0xa0, 0xd7, 0xb7, 0x77, 0x5b, 0xef, 0x1b, 0x0a, 0x8e, 0x90, 0xad,
-	0xca, 0xde, 0xa6, 0xa1, 0x92, 0x29, 0x98, 0xac, 0x36, 0x9b, 0x9b, 0xdb, 0x15, 0xba, 0x69, 0x68,
-	0x64, 0x02, 0x32, 0x7b, 0xf5, 0x96, 0x91, 0x31, 0x7f, 0x54, 0x61, 0x26, 0x4d, 0x31, 0x64, 0xe5,
-	0x32, 0x2d, 0xed, 0xad, 0x84, 0xb9, 0x72, 0xf1, 0x76, 0x16, 0x27, 0xb3, 0x18, 0x86, 0x3b, 0x0b,
-	0x85, 0xed, 0xca, 0xc6, 0xce, 0xd3, 0xbd, 0x75, 0x5a, 0xaf, 0xef, 0x18, 0x8a, 0x39, 0x0b, 0xd3,
-	0x29, 0x4e, 0x33, 0x3f, 0xd1, 0x65, 0x06, 0x91, 0xb3, 0xb0, 0x08, 0xe2, 0x71, 0x53, 0xf2, 0x57,
-	0xf9, 0x82, 0xc3, 0x66, 0x18, 0xee, 0x1a, 0xe4, 0xc5, 0x04, 0x89, 0x2e, 0x9d, 0x37, 0x6e, 0xd2,
-	0x58, 0x95, 0x94, 0xce, 0x0e, 0x9c, 0xa9, 0x71, 0xf3, 0xe1, 0xa5, 0xc7, 0xcd, 0xd4, 0xb0, 0xb9,
-	0x70, 0x66, 0xd8, 0x4c, 0x8e, 0x9a, 0xc5, 0xa1, 0x51, 0x33, 0x1a, 0x34, 0xe7, 0xd7, 0x40, 0x17,
-	0xae, 0x92, 0x5b, 0xe1, 0x08, 0x1d, 0x94, 0xc4, 0xb5, 0x31, 0x57, 0xcb, 0xf9, 0x79, 0xfe, 0x3b,
-	0x15, 0xb2, 0xb8, 0xc6, 0x37, 0xe3, 0x63, 0x13, 0x94, 0xfd, 0x6e, 0x9c, 0xcb, 0x65, 0x2a, 0x3a,
-	0x66, 0xa0, 0x4b, 0x6e, 0xa7, 0xc8, 0x7d, 0x61, 0x9c, 0x4d, 0x4c, 0xf3, 0xf3, 0x4b, 0xa0, 0x8b,
-	0x13, 0x30, 0x87, 0x1f, 0xf9, 0x5e, 0x4f, 0x5c, 0xa7, 0x53, 0xf1, 0x8d, 0x64, 0xc7, 0x3d, 0x71,
-	0x98, 0x4e, 0x35, 0xee, 0x99, 0x4b, 0x90, 0x15, 0xa0, 0xe8, 0xa0, 0xee, 0x19, 0x0a, 0x3e, 0xf9,
-	0xcd, 0x6a, 0xcd, 0x50, 0x71, 0xbd, 0x61, 0x68, 0xf8, 0x53, 0x35, 0x32, 0xf8, 0x53, 0x31, 0xb2,
-	0xe6, 0xfd, 0xf0, 0x35, 0xe9, 0xa0, 0xf6, 0x0d, 0x85, 0xe4, 0x40, 0x3b, 0xbc, 0x63, 0xa8, 0xe2,
-	0x77, 0xd9, 0xd0, 0xc4, 0xef, 0x8a, 0x91, 0x11, 0xbf, 0xab, 0x46, 0x16, 0x6b, 0xec, 0xd9, 0xb1,
-	0xc7, 0x99, 0xa1, 0x9b, 0x65, 0x80, 0x38, 0x1d, 0x58, 0x71, 0xae, 0xe7, 0x32, 0x43, 0x21, 0x00,
-	0x39, 0xf7, 0xb8, 0x77, 0xc0, 0x7c, 0x43, 0xc5, 0xef, 0x83, 0xe3, 0x6e, 0x97, 0x71, 0x43, 0x33,
-	0xb7, 0x25, 0x0b, 0x89, 0xae, 0x88, 0x91, 0x74, 0x1d, 0xf7, 0x28, 0x7c, 0x8d, 0xf8, 0x4d, 0x96,
-	0x20, 0xdb, 0x63, 0xdc, 0x92, 0x75, 0x74, 0x6d, 0x44, 0x33, 0xdd, 0x66, 0xdc, 0xa2, 0x42, 0xc9,
-	0x3c, 0x91, 0x05, 0x1c, 0xed, 0x47, 0xcd, 0x50, 0x4d, 0x34, 0x43, 0x6c, 0x1e, 0x16, 0x67, 0x15,
-	0xdb, 0x66, 0xb6, 0xa4, 0xff, 0x78, 0x03, 0x2d, 0x06, 0xce, 0xc7, 0x41, 0x43, 0xd2, 0xa9, 0xf8,
-	0x1e, 0xfe, 0x3b, 0x35, 0x7b, 0xe6, 0xef, 0xd4, 0x7f, 0x7c, 0x18, 0x56, 0x15, 0xc6, 0x3d, 0x0d,
-	0xf9, 0x5a, 0x65, 0xaf, 0x51, 0x6d, 0x56, 0x68, 0x2d, 0x20, 0x9e, 0xdd, 0xca, 0xff, 0xeb, 0x01,
-	0xf1, 0xd4, 0x2a, 0xad, 0xca, 0xe3, 0x8d, 0xfa, 0x13, 0x43, 0x13, 0x84, 0x54, 0x7f, 0xaf, 0x65,
-	0x64, 0xf0, 0xeb, 0x7f, 0x1b, 0x5b, 0x75, 0x23, 0x4b, 0x0a, 0x30, 0xb1, 0xbb, 0xb1, 0xde, 0xda,
-	0xa7, 0x75, 0x43, 0x47, 0x60, 0x1f, 0x6f, 0xd4, 0xea, 0x4d, 0x23, 0x57, 0x5d, 0xf8, 0xfe, 0x75,
-	0x49, 0x7d, 0xf5, 0xba, 0xa4, 0xfe, 0xf2, 0xba, 0xa4, 0x7e, 0xfa, 0xa6, 0xa4, 0xbc, 0x7a, 0x53,
-	0x52, 0x7e, 0x7a, 0x53, 0x52, 0x3e, 0xd0, 0xfa, 0x07, 0x07, 0x39, 0xf1, 0x1f, 0xa7, 0x95, 0xdf,
-	0x03, 0x00, 0x00, 0xff, 0xff, 0x91, 0x40, 0x9e, 0xe5, 0x80, 0x12, 0x00, 0x00,
+	// 1633 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x58, 0x4f, 0x6f, 0x13, 0xd7,
+	0x16, 0xf7, 0x4c, 0x3c, 0x8e, 0x7d, 0x9c, 0x84, 0xe1, 0x12, 0x90, 0xf1, 0xe3, 0xf9, 0x45, 0xf3,
+	0x28, 0xa0, 0xd2, 0x1a, 0x91, 0x3f, 0x50, 0x1a, 0x40, 0xb2, 0xe3, 0x01, 0x5b, 0x49, 0xec, 0xe8,
+	0xda, 0x81, 0xd2, 0x45, 0xd1, 0xc4, 0x73, 0x49, 0x46, 0xb1, 0x67, 0xcc, 0x78, 0x02, 0x64, 0xd3,
+	0x4f, 0xd0, 0x45, 0x97, 0x55, 0x17, 0x95, 0xba, 0xe6, 0x6b, 0xb0, 0x68, 0x77, 0x48, 0xdd, 0x54,
+	0xea, 0xa2, 0x15, 0x6c, 0xba, 0xe8, 0x87, 0xa8, 0xee, 0x9f, 0x99, 0xb9, 0x93, 0x18, 0x27, 0x41,
+	0xb0, 0xca, 0xdc, 0x7b, 0xcf, 0xb9, 0xe7, 0x9c, 0xdf, 0x3d, 0xe7, 0x77, 0x8e, 0x03, 0xf9, 0xad,
+	0x9e, 0xd7, 0xdd, 0x2d, 0x0f, 0x7c, 0x2f, 0xf0, 0xd0, 0xa4, 0xe5, 0xee, 0x07, 0xfb, 0x03, 0x52,
+	0x9c, 0x1a, 0x06, 0xfe, 0x5e, 0x37, 0xe0, 0xdb, 0x86, 0x01, 0x7a, 0x95, 0x4a, 0xb5, 0x06, 0xc4,
+	0xc5, 0xe4, 0xe9, 0x1e, 0x19, 0x06, 0x68, 0x06, 0x54, 0xc7, 0x2e, 0x28, 0x73, 0xca, 0x95, 0x1c,
+	0x56, 0x1d, 0xdb, 0xf8, 0x49, 0x85, 0xd3, 0x92, 0xd0, 0x70, 0xe0, 0xb9, 0x43, 0x82, 0x6e, 0x80,
+	0x46, 0x7c, 0xdf, 0xf3, 0x99, 0x60, 0x7e, 0x7e, 0xae, 0x2c, 0x0c, 0x94, 0x0f, 0x89, 0x96, 0x4d,
+	0x2a, 0x87, 0xb9, 0x38, 0xba, 0x21, 0xfc, 0xaa, 0x13, 0xcb, 0x26, 0x7e, 0x41, 0x65, 0xda, 0xb3,
+	0x49, 0x6d, 0x7e, 0x86, 0x65, 0xc1, 0xe2, 0x0f, 0x0a, 0x68, 0xec, 0x22, 0x74, 0x0b, 0xd2, 0x5d,
+	0xcf, 0x26, 0xcc, 0xf0, 0xcc, 0xfc, 0x27, 0x47, 0x19, 0x2e, 0xaf, 0x78, 0x36, 0xc1, 0x4c, 0x05,
+	0xcd, 0x41, 0xde, 0x26, 0xc3, 0xae, 0xef, 0x0c, 0x02, 0xc7, 0x73, 0x99, 0xf1, 0x1c, 0x96, 0xb7,
+	0x8c, 0x79, 0x48, 0x53, 0x79, 0x94, 0x85, 0x74, 0x73, 0x73, 0x6d, 0x4d, 0x4f, 0xa1, 0xd3, 0x30,
+	0xbd, 0xd9, 0x5c, 0x6d, 0xb6, 0x1e, 0x36, 0x1f, 0x9b, 0x18, 0xb7, 0xb0, 0xae, 0xa0, 0x69, 0xc8,
+	0x55, 0x2b, 0xb5, 0xc7, 0x8d, 0xe6, 0xc6, 0x66, 0x47, 0x57, 0x8d, 0xdb, 0x80, 0x98, 0xed, 0x15,
+	0x9f, 0x58, 0x01, 0x09, 0x61, 0xbc, 0x04, 0x69, 0xea, 0x96, 0x70, 0x13, 0x25, 0xdd, 0xec, 0xec,
+	0x0f, 0x08, 0x66, 0xe7, 0xc6, 0x3f, 0x0a, 0x9c, 0x49, 0xa8, 0x0b, 0x80, 0xbf, 0x48, 0x02, 0x6c,
+	0x24, 0x2f, 0x48, 0x0a, 0x27, 0x20, 0x2e, 0xfe, 0x18, 0x41, 0xb5, 0x9c, 0x80, 0xea, 0xf2, 0xd1,
+	0x57, 0x7c, 0x7c, 0xb0, 0x4c, 0x01, 0xd6, 0xe6, 0xc0, 0x96, 0xc0, 0xba, 0x06, 0x93, 0xdd, 0x1d,
+	0xcb, 0xdd, 0x26, 0x43, 0x11, 0xee, 0xd9, 0x03, 0xbe, 0xf2, 0x43, 0x1c, 0x4a, 0xc5, 0xa8, 0x85,
+	0xf7, 0x1c, 0x0b, 0xb5, 0xa4, 0xf0, 0x7b, 0xa1, 0x36, 0xea, 0x8a, 0x8f, 0x8f, 0xda, 0x75, 0xc8,
+	0x31, 0xeb, 0xed, 0x1d, 0xef, 0x39, 0xba, 0x08, 0x1a, 0xab, 0x0c, 0x11, 0xe3, 0x4c, 0xd2, 0x41,
+	0xcc, 0x0f, 0x8d, 0xbb, 0x90, 0x97, 0x1c, 0x3e, 0x39, 0xc2, 0x0b, 0x42, 0x9f, 0xa7, 0xc9, 0x31,
+	0x8d, 0xbe, 0x56, 0xe1, 0x1c, 0xd7, 0xf2, 0xdc, 0x80, 0xb8, 0x41, 0x87, 0xbc, 0x08, 0xf8, 0xcd,
+	0x68, 0x16, 0xd2, 0x01, 0x79, 0x11, 0x70, 0x62, 0xa9, 0xa7, 0x30, 0x5b, 0xa1, 0x9b, 0xa0, 0x0d,
+	0x83, 0xfd, 0x1e, 0x61, 0x40, 0xcd, 0xcc, 0xff, 0xef, 0x80, 0x53, 0xf1, 0x2d, 0xe5, 0x36, 0x15,
+	0xab, 0xa7, 0x30, 0x97, 0xa7, 0x8a, 0x7d, 0xcb, 0xdf, 0x1d, 0x16, 0x26, 0x98, 0x3f, 0x63, 0x14,
+	0xd7, 0xa9, 0x18, 0x55, 0x64, 0xf2, 0x68, 0x0e, 0x20, 0xf0, 0xb6, 0xb7, 0x7b, 0xc4, 0xda, 0xea,
+	0x91, 0x42, 0x7a, 0x4e, 0xb9, 0x92, 0xad, 0xa7, 0xb0, 0xb4, 0x87, 0xee, 0x01, 0x50, 0x51, 0xe2,
+	0xd3, 0x2a, 0x2d, 0x68, 0xcc, 0xb1, 0x8b, 0xe3, 0xef, 0xe7, 0xb2, 0xf4, 0x9e, 0x58, 0x13, 0x95,
+	0x20, 0xd7, 0xdd, 0x21, 0xdd, 0x5d, 0x66, 0x28, 0x23, 0x0c, 0xc5, 0x5b, 0xa8, 0x48, 0x9f, 0x84,
+	0x74, 0x77, 0x89, 0x5d, 0x98, 0x14, 0xa7, 0xe1, 0x46, 0x35, 0x0b, 0x19, 0xfe, 0x10, 0xc6, 0xaf,
+	0x4a, 0x12, 0xd2, 0x0d, 0x6b, 0x9b, 0x08, 0x48, 0x23, 0xf0, 0x94, 0x31, 0xe0, 0x51, 0xf9, 0x83,
+	0xe0, 0xdd, 0x81, 0x1c, 0x6f, 0x03, 0x7b, 0x3e, 0x11, 0x14, 0xfc, 0xdf, 0x43, 0xca, 0x2e, 0xe9,
+	0xd2, 0x7c, 0x1d, 0xae, 0x39, 0xc3, 0x80, 0x3a, 0x1e, 0x69, 0xa0, 0xcf, 0x21, 0xc3, 0x9e, 0x3b,
+	0x04, 0xff, 0x4c, 0x52, 0x37, 0xd4, 0x10, 0x42, 0x52, 0x2c, 0xaf, 0x14, 0xd1, 0x4a, 0x38, 0xa9,
+	0x8b, 0x30, 0xf4, 0xb8, 0xe1, 0xd4, 0x53, 0xb4, 0xe5, 0xa0, 0x2b, 0x82, 0x3b, 0xd5, 0x77, 0x71,
+	0x27, 0xcb, 0x1f, 0x8a, 0xf1, 0x2c, 0xa4, 0x5d, 0xab, 0x4f, 0x98, 0x23, 0x2c, 0xab, 0xe8, 0x8a,
+	0xee, 0x3a, 0x5d, 0xcf, 0x65, 0xaf, 0xcb, 0x76, 0xe9, 0x0a, 0xdd, 0x81, 0xfc, 0x80, 0xf8, 0x7d,
+	0x67, 0x38, 0xa4, 0x61, 0xb1, 0x87, 0xcd, 0xcf, 0x9f, 0x4f, 0x5e, 0xbe, 0x11, 0x0b, 0xd4, 0x53,
+	0x58, 0x96, 0x97, 0xc2, 0xf8, 0x43, 0x81, 0xff, 0xc8, 0x10, 0xd7, 0xac, 0xe1, 0xce, 0x96, 0x67,
+	0xf9, 0xb6, 0x08, 0xe8, 0x76, 0xf2, 0x5d, 0x46, 0xe7, 0x4e, 0xa4, 0xf4, 0x81, 0x1f, 0x67, 0x09,
+	0x26, 0x77, 0x18, 0xba, 0xe1, 0xeb, 0x9c, 0x1f, 0xd5, 0x5c, 0x43, 0xc5, 0x50, 0x56, 0x8a, 0xee,
+	0xe7, 0xb0, 0xdf, 0x57, 0x02, 0xaf, 0xef, 0x74, 0x45, 0x4c, 0x07, 0xa6, 0x02, 0xb4, 0x24, 0xca,
+	0x59, 0x3d, 0xa2, 0xfc, 0xb8, 0x7a, 0x54, 0xef, 0x77, 0x93, 0xed, 0x9f, 0x7b, 0x58, 0x1c, 0xe5,
+	0x61, 0xa4, 0x28, 0x2b, 0x50, 0xb3, 0x03, 0x6b, 0x9b, 0xd7, 0x6d, 0x7e, 0x4c, 0xc6, 0xc7, 0x66,
+	0xa9, 0x38, 0xaa, 0x41, 0xce, 0x0e, 0xf1, 0x16, 0x0f, 0x7f, 0xc4, 0xab, 0x44, 0x17, 0xc4, 0x8a,
+	0x12, 0x46, 0x35, 0x98, 0x92, 0x59, 0x13, 0x2d, 0xca, 0xec, 0x3a, 0x71, 0x38, 0x24, 0x19, 0xca,
+	0x98, 0x62, 0x7f, 0x53, 0x41, 0x63, 0xc7, 0xe8, 0x33, 0xc8, 0xf0, 0x87, 0x10, 0xf4, 0x3a, 0x7a,
+	0x20, 0x12, 0x32, 0xe8, 0xae, 0x1c, 0x4d, 0x9e, 0x29, 0x94, 0xc6, 0x47, 0x93, 0x88, 0x03, 0x5d,
+	0x13, 0x20, 0x4e, 0x8d, 0xca, 0x0f, 0x09, 0xc4, 0x08, 0xbe, 0x65, 0xc8, 0xda, 0x56, 0x60, 0x3d,
+	0x73, 0xc8, 0xf3, 0xc2, 0xf4, 0x3b, 0x32, 0x92, 0xdb, 0xe3, 0x42, 0xf5, 0x14, 0x8e, 0x14, 0xa8,
+	0x35, 0x96, 0x29, 0x33, 0x63, 0xac, 0xd1, 0x4c, 0x89, 0x72, 0x64, 0x1e, 0xb4, 0x3e, 0xb1, 0x1d,
+	0xab, 0x70, 0x6a, 0x54, 0x76, 0x08, 0x8d, 0x75, 0x2a, 0xc1, 0x58, 0x9d, 0x7e, 0x54, 0x73, 0x30,
+	0xd9, 0xe5, 0x07, 0xc6, 0x4b, 0x45, 0x74, 0x2e, 0x91, 0x32, 0x07, 0x33, 0xf7, 0xd2, 0x51, 0xe4,
+	0x22, 0xa8, 0xe5, 0x32, 0x64, 0x9e, 0x38, 0xa4, 0x67, 0x87, 0x75, 0x74, 0x2a, 0x92, 0x6c, 0xb3,
+	0x62, 0xc3, 0xe2, 0x18, 0x2d, 0x27, 0x79, 0x25, 0x7d, 0x04, 0xaf, 0x24, 0x58, 0xc5, 0xf8, 0x56,
+	0x4c, 0xe0, 0x92, 0x00, 0x42, 0x90, 0xf6, 0x89, 0xc5, 0x7d, 0xce, 0x62, 0xf6, 0x4d, 0xf7, 0x88,
+	0xed, 0xf0, 0x7a, 0xcb, 0x62, 0xf6, 0x8d, 0xce, 0x41, 0xc6, 0x27, 0x7d, 0xef, 0x19, 0xa7, 0xbf,
+	0x2c, 0x16, 0x2b, 0x2a, 0x6b, 0xfb, 0xd6, 0x36, 0x6f, 0x6e, 0x98, 0x7d, 0x53, 0x59, 0xdb, 0xf7,
+	0x06, 0x2d, 0x97, 0xa5, 0x7f, 0x16, 0x8b, 0x95, 0xf1, 0x9d, 0x22, 0x1c, 0x90, 0x48, 0xe5, 0x10,
+	0x64, 0x08, 0xd2, 0x6e, 0x58, 0xec, 0x39, 0xcc, 0xbe, 0x91, 0x01, 0x53, 0x5d, 0xaf, 0xb7, 0xd7,
+	0x77, 0xab, 0x5e, 0x10, 0x78, 0x7d, 0xce, 0xc0, 0x38, 0xb1, 0x87, 0x8a, 0x90, 0xf5, 0xbd, 0xe7,
+	0xd8, 0xd9, 0xde, 0x09, 0x38, 0x17, 0xe3, 0x68, 0x8d, 0x66, 0x41, 0x73, 0x5c, 0x97, 0xf8, 0xcc,
+	0x9f, 0x1c, 0xe6, 0x0b, 0xa3, 0x05, 0xb3, 0xa3, 0x28, 0x0e, 0xdd, 0x94, 0x49, 0x91, 0x97, 0xd8,
+	0xf9, 0x77, 0x92, 0xa2, 0x44, 0x87, 0x46, 0x55, 0x84, 0x27, 0xd1, 0x1e, 0x2a, 0xc7, 0x14, 0xc9,
+	0xaf, 0x1a, 0x5d, 0x6e, 0xa1, 0x90, 0xb1, 0x08, 0x10, 0x37, 0x36, 0x74, 0x29, 0xea, 0x7e, 0x5c,
+	0xf9, 0xe0, 0x28, 0x24, 0x4e, 0x8d, 0xbf, 0x25, 0x64, 0xc3, 0x8a, 0x42, 0x4b, 0x27, 0x6b, 0xd9,
+	0x61, 0x4f, 0x58, 0x3e, 0x69, 0x4f, 0x90, 0x3b, 0xc2, 0xd5, 0x63, 0xb4, 0xeb, 0xc8, 0xeb, 0x05,
+	0xd0, 0x98, 0x65, 0x94, 0x03, 0xcd, 0x5c, 0xdf, 0xe8, 0x3c, 0xd2, 0x53, 0x74, 0x52, 0xed, 0x54,
+	0xda, 0xab, 0xba, 0x82, 0xa6, 0x20, 0x5b, 0x6d, 0xb5, 0x56, 0xd7, 0x2b, 0x78, 0x55, 0x57, 0xd1,
+	0x24, 0x4c, 0xb4, 0xcd, 0x8e, 0x3e, 0x61, 0xfc, 0xa9, 0xc0, 0xd9, 0x91, 0xbc, 0x83, 0xbe, 0x7c,
+	0x8f, 0x56, 0xf8, 0x41, 0x82, 0x5e, 0x38, 0x7e, 0x1b, 0x8c, 0x1f, 0xba, 0x10, 0x06, 0x7f, 0x0a,
+	0xf2, 0xeb, 0x95, 0x46, 0xf3, 0x71, 0x7b, 0x05, 0x9b, 0x66, 0x53, 0x4f, 0x19, 0xe7, 0xe2, 0xbc,
+	0x94, 0x89, 0xce, 0x78, 0xa9, 0x25, 0x1f, 0x99, 0x12, 0x19, 0x2d, 0x97, 0x78, 0xd4, 0x15, 0xa4,
+	0xb6, 0x74, 0xb2, 0x41, 0x57, 0x1a, 0x06, 0xd8, 0xd8, 0x4a, 0xfd, 0x3c, 0xe6, 0xa8, 0x8b, 0x63,
+	0x0d, 0x54, 0x3a, 0x3c, 0xec, 0x26, 0x46, 0xdd, 0xda, 0xfb, 0x8e, 0xba, 0x89, 0x41, 0xf7, 0xc2,
+	0xa1, 0x41, 0x57, 0x1e, 0x73, 0x0b, 0x07, 0xc6, 0xdc, 0x68, 0xc8, 0x2d, 0xde, 0x01, 0x8d, 0x79,
+	0x8c, 0x16, 0xc3, 0x61, 0x9e, 0x57, 0x54, 0x69, 0xbc, 0x07, 0x62, 0x92, 0x2f, 0xbe, 0x52, 0x20,
+	0x4d, 0xd7, 0xf4, 0xb7, 0x89, 0x4f, 0x3b, 0xea, 0xa1, 0xdf, 0x26, 0x98, 0xf5, 0x5b, 0x7e, 0x88,
+	0x6e, 0x26, 0x78, 0xff, 0xff, 0xe3, 0x6d, 0x94, 0xa5, 0x46, 0x30, 0x0b, 0xda, 0xc0, 0xf2, 0xad,
+	0x90, 0xe2, 0xf8, 0xc2, 0xb8, 0x0f, 0x69, 0x16, 0xfc, 0x69, 0x98, 0x6e, 0x77, 0x70, 0x63, 0xd5,
+	0xec, 0xd4, 0x71, 0x6b, 0xf3, 0x7e, 0x5d, 0x4f, 0xd1, 0x2a, 0x59, 0x35, 0x1f, 0x55, 0x5b, 0x15,
+	0x5c, 0xd3, 0x15, 0x04, 0x90, 0x69, 0x74, 0x2a, 0x6b, 0x8d, 0x15, 0x5d, 0xa5, 0x95, 0x54, 0x6d,
+	0xad, 0xd5, 0xf4, 0x09, 0xfa, 0xb5, 0xd6, 0x68, 0xae, 0xea, 0x69, 0xe3, 0x56, 0x98, 0x74, 0x1a,
+	0x28, 0x03, 0x3d, 0x85, 0x32, 0xa0, 0xee, 0x5c, 0xd7, 0x15, 0xf6, 0x77, 0x5e, 0x57, 0xd9, 0xdf,
+	0x05, 0x7d, 0x82, 0xfd, 0x5d, 0xd4, 0xd3, 0xb4, 0x30, 0x9f, 0xee, 0x79, 0x01, 0xd1, 0x35, 0xa3,
+	0x0c, 0x10, 0x3f, 0x09, 0xbd, 0xd2, 0xf5, 0x5c, 0xa2, 0xa7, 0xa8, 0x49, 0x77, 0xaf, 0xbf, 0x45,
+	0x7c, 0x6e, 0x7e, 0x6b, 0xaf, 0xd7, 0x23, 0x81, 0xae, 0x1a, 0x97, 0xc5, 0x64, 0x27, 0xf7, 0x50,
+	0x9a, 0xad, 0x3d, 0xc7, 0xdd, 0x0d, 0xb3, 0x95, 0x7e, 0x1b, 0x57, 0x41, 0x63, 0xd8, 0xd1, 0xc3,
+	0x27, 0xbe, 0xd7, 0x67, 0x87, 0x1a, 0x66, 0xdf, 0xb4, 0x3b, 0x04, 0x1e, 0x83, 0x51, 0xc3, 0x6a,
+	0xe0, 0x7d, 0xfa, 0x8d, 0xf8, 0x71, 0xca, 0x9c, 0x98, 0x86, 0x5c, 0xad, 0xd2, 0xae, 0xf3, 0xe0,
+	0x19, 0x75, 0x6c, 0x54, 0xee, 0x9b, 0x9c, 0x3a, 0x6a, 0x95, 0x4e, 0xe5, 0x41, 0xc3, 0x7c, 0xc8,
+	0x81, 0xe8, 0x98, 0x5f, 0x75, 0x38, 0x10, 0xf7, 0x1a, 0x6b, 0xa6, 0x9e, 0x46, 0x79, 0x98, 0xdc,
+	0x68, 0xac, 0x74, 0x36, 0xb1, 0xa9, 0x6b, 0x34, 0xca, 0x07, 0x8d, 0x9a, 0xd9, 0xd2, 0x33, 0xd5,
+	0x0b, 0xbf, 0xbc, 0x29, 0x29, 0xaf, 0xdf, 0x94, 0x94, 0xbf, 0xde, 0x94, 0x94, 0xef, 0xdf, 0x96,
+	0x52, 0xaf, 0xdf, 0x96, 0x52, 0xbf, 0xbf, 0x2d, 0xa5, 0xbe, 0x56, 0x07, 0x5b, 0x5b, 0x19, 0xf6,
+	0x9f, 0xac, 0x85, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x79, 0x56, 0x82, 0xe1, 0xef, 0x12, 0x00,
+	0x00,
 }
 
 func (m *BlockOpenRequest) Marshal() (dAtA []byte, err error) {
@@ -2698,6 +2630,18 @@ func (m *BlockOpenResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.BlockHeader != nil {
+		{
+			size, err := m.BlockHeader.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintBlock(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.Error != nil {
 		{
 			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
@@ -3056,7 +3000,7 @@ func (m *BlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockTextChange) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentTextChange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3066,12 +3010,12 @@ func (m *BlockTextChange) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockTextChange) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3088,12 +3032,12 @@ func (m *BlockTextChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockTextChange_Text) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Text) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange_Text) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Text) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i -= len(m.Text)
 	copy(dAtA[i:], m.Text)
@@ -3102,24 +3046,24 @@ func (m *BlockTextChange_Text) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
-func (m *BlockTextChange_Style) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Style) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange_Style) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Style) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i = encodeVarintBlock(dAtA, i, uint64(m.Style))
 	i--
 	dAtA[i] = 0x10
 	return len(dAtA) - i, nil
 }
-func (m *BlockTextChange_Marks) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Marks) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Marks != nil {
 		{
@@ -3135,12 +3079,12 @@ func (m *BlockTextChange_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockTextChange_Toggleable) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Toggleable) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange_Toggleable) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Toggleable) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i--
 	if m.Toggleable {
@@ -3152,24 +3096,24 @@ func (m *BlockTextChange_Toggleable) MarshalToSizedBuffer(dAtA []byte) (int, err
 	dAtA[i] = 0x20
 	return len(dAtA) - i, nil
 }
-func (m *BlockTextChange_MarkerType) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_MarkerType) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange_MarkerType) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_MarkerType) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i = encodeVarintBlock(dAtA, i, uint64(m.MarkerType))
 	i--
 	dAtA[i] = 0x28
 	return len(dAtA) - i, nil
 }
-func (m *BlockTextChange_Checkable) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Checkable) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange_Checkable) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Checkable) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i--
 	if m.Checkable {
@@ -3181,12 +3125,12 @@ func (m *BlockTextChange_Checkable) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	dAtA[i] = 0x30
 	return len(dAtA) - i, nil
 }
-func (m *BlockTextChange_Checked) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Checked) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockTextChange_Checked) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentTextChange_Checked) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i--
 	if m.Checked {
@@ -3198,7 +3142,7 @@ func (m *BlockTextChange_Checked) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	dAtA[i] = 0x38
 	return len(dAtA) - i, nil
 }
-func (m *BlockPageChange) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentPageChange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3208,12 +3152,12 @@ func (m *BlockPageChange) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockPageChange) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockPageChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3230,24 +3174,24 @@ func (m *BlockPageChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockPageChange_Style) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange_Style) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockPageChange_Style) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange_Style) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i = encodeVarintBlock(dAtA, i, uint64(m.Style))
 	i--
 	dAtA[i] = 0x8
 	return len(dAtA) - i, nil
 }
-func (m *BlockPageChange_Structure) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange_Structure) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockPageChange_Structure) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange_Structure) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Structure != nil {
 		{
@@ -3263,12 +3207,12 @@ func (m *BlockPageChange_Structure) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockPageChange_Blocks) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange_Blocks) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockPageChange_Blocks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentPageChange_Blocks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Blocks != nil {
 		{
@@ -3391,7 +3335,7 @@ func (m *BlockHeaderChange_Permissions) MarshalToSizedBuffer(dAtA []byte) (int, 
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockDashboardChange) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentDashboardChange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3401,12 +3345,12 @@ func (m *BlockDashboardChange) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockDashboardChange) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockDashboardChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3423,24 +3367,24 @@ func (m *BlockDashboardChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockDashboardChange_Style) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange_Style) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockDashboardChange_Style) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange_Style) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i = encodeVarintBlock(dAtA, i, uint64(m.Style))
 	i--
 	dAtA[i] = 0x8
 	return len(dAtA) - i, nil
 }
-func (m *BlockDashboardChange_Structure) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange_Structure) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockDashboardChange_Structure) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange_Structure) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Structure != nil {
 		{
@@ -3456,12 +3400,12 @@ func (m *BlockDashboardChange_Structure) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockDashboardChange_Headers) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange_Headers) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockDashboardChange_Headers) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentDashboardChange_Headers) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Headers != nil {
 		{
@@ -3816,19 +3760,17 @@ func (m *BlockHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			i = encodeVarintBlock(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x2a
-	}
-	if len(m.Icon) > 0 {
-		i -= len(m.Icon)
-		copy(dAtA[i:], m.Icon)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Icon)))
-		i--
 		dAtA[i] = 0x22
 	}
-	if len(m.Name) > 0 {
-		i -= len(m.Name)
-		copy(dAtA[i:], m.Name)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Name)))
+	if m.Fields != nil {
+		{
+			size, err := m.Fields.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintBlock(dAtA, i, uint64(size))
+		}
 		i--
 		dAtA[i] = 0x1a
 	}
@@ -3847,7 +3789,7 @@ func (m *BlockHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Permissions) Marshal() (dAtA []byte, err error) {
+func (m *BlockPermissions) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3857,19 +3799,19 @@ func (m *Permissions) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Permissions) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockPermissions) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Permissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockPermissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Droppable {
+	if m.DropOn {
 		i--
-		if m.Droppable {
+		if m.DropOn {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -3877,9 +3819,9 @@ func (m *Permissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x28
 	}
-	if m.Draggable {
+	if m.Drag {
 		i--
-		if m.Draggable {
+		if m.Drag {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -3887,9 +3829,9 @@ func (m *Permissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x20
 	}
-	if m.Readable {
+	if m.Remove {
 		i--
-		if m.Readable {
+		if m.Remove {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -3897,9 +3839,9 @@ func (m *Permissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x18
 	}
-	if m.Removable {
+	if m.Edit {
 		i--
-		if m.Removable {
+		if m.Edit {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -3907,9 +3849,9 @@ func (m *Permissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x10
 	}
-	if m.Editable {
+	if m.Read {
 		i--
-		if m.Editable {
+		if m.Read {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -4089,7 +4031,7 @@ func (m *BlocksList) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockPage) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentPage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4099,12 +4041,12 @@ func (m *BlockPage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockPage) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentPage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4141,7 +4083,7 @@ func (m *BlockPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockDashboard) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentDashboard) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4151,12 +4093,12 @@ func (m *BlockDashboard) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockDashboard) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentDashboard) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4193,7 +4135,7 @@ func (m *BlockDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockDataview) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentDataview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4203,12 +4145,12 @@ func (m *BlockDataview) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockDataview) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentDataview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4216,7 +4158,7 @@ func (m *BlockDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockText) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentText) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4226,12 +4168,12 @@ func (m *BlockText) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockText) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentText) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4298,7 +4240,7 @@ func (m *BlockText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockText_Marks) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentText_Marks) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4308,12 +4250,12 @@ func (m *BlockText_Marks) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockText_Marks) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentText_Marks) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockText_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentText_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4335,7 +4277,7 @@ func (m *BlockText_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockText_Mark) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentText_Mark) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4345,16 +4287,23 @@ func (m *BlockText_Mark) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockText_Mark) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentText_Mark) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockText_Mark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentText_Mark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if len(m.Param) > 0 {
+		i -= len(m.Param)
+		copy(dAtA[i:], m.Param)
+		i = encodeVarintBlock(dAtA, i, uint64(len(m.Param)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if m.Type != 0 {
 		i = encodeVarintBlock(dAtA, i, uint64(m.Type))
 		i--
@@ -4375,7 +4324,7 @@ func (m *BlockText_Mark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockText_Mark_Range) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentMedia) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4385,12 +4334,42 @@ func (m *BlockText_Mark_Range) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockText_Mark_Range) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentMedia) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockText_Mark_Range) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentMedia) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Link) > 0 {
+		i -= len(m.Link)
+		copy(dAtA[i:], m.Link)
+		i = encodeVarintBlock(dAtA, i, uint64(len(m.Link)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Range) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Range) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Range) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4404,97 +4383,6 @@ func (m *BlockText_Mark_Range) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i = encodeVarintBlock(dAtA, i, uint64(m.From))
 		i--
 		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockMedia) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockMedia) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockMedia) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Meta != nil {
-		{
-			size, err := m.Meta.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintBlock(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Link) > 0 {
-		i -= len(m.Link)
-		copy(dAtA[i:], m.Link)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Link)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockMediaMeta) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockMediaMeta) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockMediaMeta) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x22
-	}
-	if m.Size_ != 0 {
-		i = encodeVarintBlock(dAtA, i, uint64(m.Size_))
-		i--
-		dAtA[i] = 0x18
-	}
-	if len(m.DateAdded) > 0 {
-		i -= len(m.DateAdded)
-		copy(dAtA[i:], m.DateAdded)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.DateAdded)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Name) > 0 {
-		i -= len(m.Name)
-		copy(dAtA[i:], m.Name)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Name)))
-		i--
-		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -4531,6 +4419,10 @@ func (m *BlockOpenResponse) Size() (n int) {
 	_ = l
 	if m.Error != nil {
 		l = m.Error.Size()
+		n += 1 + l + sovBlock(uint64(l))
+	}
+	if m.BlockHeader != nil {
+		l = m.BlockHeader.Size()
 		n += 1 + l + sovBlock(uint64(l))
 	}
 	return n
@@ -4674,7 +4566,7 @@ func (m *BlockCreate) Size() (n int) {
 	return n
 }
 
-func (m *BlockTextChange) Size() (n int) {
+func (m *BlockContentTextChange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4686,7 +4578,7 @@ func (m *BlockTextChange) Size() (n int) {
 	return n
 }
 
-func (m *BlockTextChange_Text) Size() (n int) {
+func (m *BlockContentTextChange_Text) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4696,7 +4588,7 @@ func (m *BlockTextChange_Text) Size() (n int) {
 	n += 1 + l + sovBlock(uint64(l))
 	return n
 }
-func (m *BlockTextChange_Style) Size() (n int) {
+func (m *BlockContentTextChange_Style) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4705,7 +4597,7 @@ func (m *BlockTextChange_Style) Size() (n int) {
 	n += 1 + sovBlock(uint64(m.Style))
 	return n
 }
-func (m *BlockTextChange_Marks) Size() (n int) {
+func (m *BlockContentTextChange_Marks) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4717,7 +4609,7 @@ func (m *BlockTextChange_Marks) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockTextChange_Toggleable) Size() (n int) {
+func (m *BlockContentTextChange_Toggleable) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4726,7 +4618,7 @@ func (m *BlockTextChange_Toggleable) Size() (n int) {
 	n += 2
 	return n
 }
-func (m *BlockTextChange_MarkerType) Size() (n int) {
+func (m *BlockContentTextChange_MarkerType) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4735,7 +4627,7 @@ func (m *BlockTextChange_MarkerType) Size() (n int) {
 	n += 1 + sovBlock(uint64(m.MarkerType))
 	return n
 }
-func (m *BlockTextChange_Checkable) Size() (n int) {
+func (m *BlockContentTextChange_Checkable) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4744,7 +4636,7 @@ func (m *BlockTextChange_Checkable) Size() (n int) {
 	n += 2
 	return n
 }
-func (m *BlockTextChange_Checked) Size() (n int) {
+func (m *BlockContentTextChange_Checked) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4753,7 +4645,7 @@ func (m *BlockTextChange_Checked) Size() (n int) {
 	n += 2
 	return n
 }
-func (m *BlockPageChange) Size() (n int) {
+func (m *BlockContentPageChange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4765,7 +4657,7 @@ func (m *BlockPageChange) Size() (n int) {
 	return n
 }
 
-func (m *BlockPageChange_Style) Size() (n int) {
+func (m *BlockContentPageChange_Style) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4774,7 +4666,7 @@ func (m *BlockPageChange_Style) Size() (n int) {
 	n += 1 + sovBlock(uint64(m.Style))
 	return n
 }
-func (m *BlockPageChange_Structure) Size() (n int) {
+func (m *BlockContentPageChange_Structure) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4786,7 +4678,7 @@ func (m *BlockPageChange_Structure) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockPageChange_Blocks) Size() (n int) {
+func (m *BlockContentPageChange_Blocks) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4861,7 +4753,7 @@ func (m *BlockHeaderChange_Permissions) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockDashboardChange) Size() (n int) {
+func (m *BlockContentDashboardChange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4873,7 +4765,7 @@ func (m *BlockDashboardChange) Size() (n int) {
 	return n
 }
 
-func (m *BlockDashboardChange_Style) Size() (n int) {
+func (m *BlockContentDashboardChange_Style) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4882,7 +4774,7 @@ func (m *BlockDashboardChange_Style) Size() (n int) {
 	n += 1 + sovBlock(uint64(m.Style))
 	return n
 }
-func (m *BlockDashboardChange_Structure) Size() (n int) {
+func (m *BlockContentDashboardChange_Structure) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4894,7 +4786,7 @@ func (m *BlockDashboardChange_Structure) Size() (n int) {
 	}
 	return n
 }
-func (m *BlockDashboardChange_Headers) Size() (n int) {
+func (m *BlockContentDashboardChange_Headers) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5074,12 +4966,8 @@ func (m *BlockHeader) Size() (n int) {
 	if m.Type != 0 {
 		n += 1 + sovBlock(uint64(m.Type))
 	}
-	l = len(m.Name)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	l = len(m.Icon)
-	if l > 0 {
+	if m.Fields != nil {
+		l = m.Fields.Size()
 		n += 1 + l + sovBlock(uint64(l))
 	}
 	if m.Permissions != nil {
@@ -5089,25 +4977,25 @@ func (m *BlockHeader) Size() (n int) {
 	return n
 }
 
-func (m *Permissions) Size() (n int) {
+func (m *BlockPermissions) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Editable {
+	if m.Read {
 		n += 2
 	}
-	if m.Removable {
+	if m.Edit {
 		n += 2
 	}
-	if m.Readable {
+	if m.Remove {
 		n += 2
 	}
-	if m.Draggable {
+	if m.Drag {
 		n += 2
 	}
-	if m.Droppable {
+	if m.DropOn {
 		n += 2
 	}
 	return n
@@ -5187,7 +5075,7 @@ func (m *BlocksList) Size() (n int) {
 	return n
 }
 
-func (m *BlockPage) Size() (n int) {
+func (m *BlockContentPage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5207,7 +5095,7 @@ func (m *BlockPage) Size() (n int) {
 	return n
 }
 
-func (m *BlockDashboard) Size() (n int) {
+func (m *BlockContentDashboard) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5227,7 +5115,7 @@ func (m *BlockDashboard) Size() (n int) {
 	return n
 }
 
-func (m *BlockDataview) Size() (n int) {
+func (m *BlockContentDataview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5236,7 +5124,7 @@ func (m *BlockDataview) Size() (n int) {
 	return n
 }
 
-func (m *BlockText) Size() (n int) {
+func (m *BlockContentText) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5268,7 +5156,7 @@ func (m *BlockText) Size() (n int) {
 	return n
 }
 
-func (m *BlockText_Marks) Size() (n int) {
+func (m *BlockContentText_Marks) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5283,7 +5171,7 @@ func (m *BlockText_Marks) Size() (n int) {
 	return n
 }
 
-func (m *BlockText_Mark) Size() (n int) {
+func (m *BlockContentText_Mark) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5296,10 +5184,27 @@ func (m *BlockText_Mark) Size() (n int) {
 	if m.Type != 0 {
 		n += 1 + sovBlock(uint64(m.Type))
 	}
+	l = len(m.Param)
+	if l > 0 {
+		n += 1 + l + sovBlock(uint64(l))
+	}
 	return n
 }
 
-func (m *BlockText_Mark_Range) Size() (n int) {
+func (m *BlockContentMedia) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Link)
+	if l > 0 {
+		n += 1 + l + sovBlock(uint64(l))
+	}
+	return n
+}
+
+func (m *Range) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5310,47 +5215,6 @@ func (m *BlockText_Mark_Range) Size() (n int) {
 	}
 	if m.To != 0 {
 		n += 1 + sovBlock(uint64(m.To))
-	}
-	return n
-}
-
-func (m *BlockMedia) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Link)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	if m.Meta != nil {
-		l = m.Meta.Size()
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockMediaMeta) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Name)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	l = len(m.DateAdded)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	if m.Size_ != 0 {
-		n += 1 + sovBlock(uint64(m.Size_))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
 	}
 	return n
 }
@@ -5508,6 +5372,42 @@ func (m *BlockOpenResponse) Unmarshal(dAtA []byte) error {
 				m.Error = &BlockOpenResponse_Error{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockHeader", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.BlockHeader == nil {
+				m.BlockHeader = &BlockHeader{}
+			}
+			if err := m.BlockHeader.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -6453,7 +6353,7 @@ func (m *BlockCreate) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
+func (m *BlockContentTextChange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6476,10 +6376,10 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockTextChange: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockContentTextChange: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockTextChange: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockContentTextChange: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -6512,13 +6412,13 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Change = &BlockTextChange_Text{string(dAtA[iNdEx:postIndex])}
+			m.Change = &BlockContentTextChange_Text{string(dAtA[iNdEx:postIndex])}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Style", wireType)
 			}
-			var v BlockText_Style
+			var v BlockContentText_Style
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBlock
@@ -6528,12 +6428,12 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= BlockText_Style(b&0x7F) << shift
+				v |= BlockContentText_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Change = &BlockTextChange_Style{v}
+			m.Change = &BlockContentTextChange_Style{v}
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Marks", wireType)
@@ -6563,11 +6463,11 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockText_Marks{}
+			v := &BlockContentText_Marks{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlockTextChange_Marks{v}
+			m.Change = &BlockContentTextChange_Marks{v}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
@@ -6589,12 +6489,12 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 				}
 			}
 			b := bool(v != 0)
-			m.Change = &BlockTextChange_Toggleable{b}
+			m.Change = &BlockContentTextChange_Toggleable{b}
 		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MarkerType", wireType)
 			}
-			var v BlockText_MarkerType
+			var v BlockContentText_MarkerType
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBlock
@@ -6604,12 +6504,12 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= BlockText_MarkerType(b&0x7F) << shift
+				v |= BlockContentText_MarkerType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Change = &BlockTextChange_MarkerType{v}
+			m.Change = &BlockContentTextChange_MarkerType{v}
 		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Checkable", wireType)
@@ -6630,7 +6530,7 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 				}
 			}
 			b := bool(v != 0)
-			m.Change = &BlockTextChange_Checkable{b}
+			m.Change = &BlockContentTextChange_Checkable{b}
 		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Checked", wireType)
@@ -6651,7 +6551,7 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 				}
 			}
 			b := bool(v != 0)
-			m.Change = &BlockTextChange_Checked{b}
+			m.Change = &BlockContentTextChange_Checked{b}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipBlock(dAtA[iNdEx:])
@@ -6676,7 +6576,7 @@ func (m *BlockTextChange) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockPageChange) Unmarshal(dAtA []byte) error {
+func (m *BlockContentPageChange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6699,17 +6599,17 @@ func (m *BlockPageChange) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockPageChange: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockContentPageChange: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockPageChange: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockContentPageChange: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Style", wireType)
 			}
-			var v BlockPage_Style
+			var v BlockContentPage_Style
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBlock
@@ -6719,12 +6619,12 @@ func (m *BlockPageChange) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= BlockPage_Style(b&0x7F) << shift
+				v |= BlockContentPage_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Change = &BlockPageChange_Style{v}
+			m.Change = &BlockContentPageChange_Style{v}
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Structure", wireType)
@@ -6758,7 +6658,7 @@ func (m *BlockPageChange) Unmarshal(dAtA []byte) error {
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlockPageChange_Structure{v}
+			m.Change = &BlockContentPageChange_Structure{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -6793,7 +6693,7 @@ func (m *BlockPageChange) Unmarshal(dAtA []byte) error {
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlockPageChange_Blocks{v}
+			m.Change = &BlockContentPageChange_Blocks{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6993,7 +6893,7 @@ func (m *BlockHeaderChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Permissions{}
+			v := &BlockPermissions{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7023,7 +6923,7 @@ func (m *BlockHeaderChange) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockDashboardChange) Unmarshal(dAtA []byte) error {
+func (m *BlockContentDashboardChange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7046,17 +6946,17 @@ func (m *BlockDashboardChange) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockDashboardChange: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockContentDashboardChange: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockDashboardChange: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockContentDashboardChange: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Style", wireType)
 			}
-			var v BlockDashboard_Style
+			var v BlockContentDashboard_Style
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBlock
@@ -7066,12 +6966,12 @@ func (m *BlockDashboardChange) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= BlockDashboard_Style(b&0x7F) << shift
+				v |= BlockContentDashboard_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Change = &BlockDashboardChange_Style{v}
+			m.Change = &BlockContentDashboardChange_Style{v}
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Structure", wireType)
@@ -7105,7 +7005,7 @@ func (m *BlockDashboardChange) Unmarshal(dAtA []byte) error {
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlockDashboardChange_Structure{v}
+			m.Change = &BlockContentDashboardChange_Structure{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -7140,7 +7040,7 @@ func (m *BlockDashboardChange) Unmarshal(dAtA []byte) error {
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlockDashboardChange_Headers{v}
+			m.Change = &BlockContentDashboardChange_Headers{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -7256,7 +7156,7 @@ func (m *BlockAtomicChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockTextChange{}
+			v := &BlockContentTextChange{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7326,7 +7226,7 @@ func (m *BlockAtomicChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockPageChange{}
+			v := &BlockContentPageChange{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7361,7 +7261,7 @@ func (m *BlockAtomicChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockDashboardChange{}
+			v := &BlockContentDashboardChange{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7572,7 +7472,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockDashboard{}
+			v := &BlockContentDashboard{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7607,7 +7507,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockPage{}
+			v := &BlockContentPage{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7642,7 +7542,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockDataview{}
+			v := &BlockContentDataview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7677,7 +7577,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockText{}
+			v := &BlockContentText{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7712,7 +7612,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockMedia{}
+			v := &BlockContentMedia{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -7824,9 +7724,9 @@ func (m *BlockHeader) Unmarshal(dAtA []byte) error {
 			}
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Fields", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBlock
@@ -7836,57 +7736,29 @@ func (m *BlockHeader) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthBlock
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthBlock
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(dAtA[iNdEx:postIndex])
+			if m.Fields == nil {
+				m.Fields = &Struct{}
+			}
+			if err := m.Fields.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Icon", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Icon = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Permissions", wireType)
 			}
@@ -7916,7 +7788,7 @@ func (m *BlockHeader) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Permissions == nil {
-				m.Permissions = &Permissions{}
+				m.Permissions = &BlockPermissions{}
 			}
 			if err := m.Permissions.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -7946,7 +7818,7 @@ func (m *BlockHeader) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Permissions) Unmarshal(dAtA []byte) error {
+func (m *BlockPermissions) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7969,15 +7841,15 @@ func (m *Permissions) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Permissions: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockPermissions: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Permissions: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockPermissions: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Editable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Read", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -7994,10 +7866,10 @@ func (m *Permissions) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Editable = bool(v != 0)
+			m.Read = bool(v != 0)
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Removable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Edit", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -8014,10 +7886,10 @@ func (m *Permissions) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Removable = bool(v != 0)
+			m.Edit = bool(v != 0)
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Readable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Remove", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -8034,10 +7906,10 @@ func (m *Permissions) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Readable = bool(v != 0)
+			m.Remove = bool(v != 0)
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Draggable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Drag", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -8054,10 +7926,10 @@ func (m *Permissions) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Draggable = bool(v != 0)
+			m.Drag = bool(v != 0)
 		case 5:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Droppable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field DropOn", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -8074,7 +7946,7 @@ func (m *Permissions) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-			m.Droppable = bool(v != 0)
+			m.DropOn = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipBlock(dAtA[iNdEx:])
@@ -8573,7 +8445,7 @@ func (m *BlocksList) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockPage) Unmarshal(dAtA []byte) error {
+func (m *BlockContentPage) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8596,10 +8468,10 @@ func (m *BlockPage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockPage: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockContentPage: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockPage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockContentPage: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -8616,7 +8488,7 @@ func (m *BlockPage) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= BlockPage_Style(b&0x7F) << shift
+				m.Style |= BlockContentPage_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -8717,7 +8589,7 @@ func (m *BlockPage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockDashboard) Unmarshal(dAtA []byte) error {
+func (m *BlockContentDashboard) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8740,10 +8612,10 @@ func (m *BlockDashboard) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockDashboard: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockContentDashboard: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockDashboard: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockContentDashboard: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -8760,7 +8632,7 @@ func (m *BlockDashboard) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= BlockDashboard_Style(b&0x7F) << shift
+				m.Style |= BlockContentDashboard_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -8861,7 +8733,7 @@ func (m *BlockDashboard) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockDataview) Unmarshal(dAtA []byte) error {
+func (m *BlockContentDataview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8884,10 +8756,10 @@ func (m *BlockDataview) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockDataview: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockContentDataview: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockDataview: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockContentDataview: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -8914,7 +8786,7 @@ func (m *BlockDataview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockText) Unmarshal(dAtA []byte) error {
+func (m *BlockContentText) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8937,10 +8809,10 @@ func (m *BlockText) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockText: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockContentText: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockText: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockContentText: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -8989,7 +8861,7 @@ func (m *BlockText) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= BlockText_Style(b&0x7F) << shift
+				m.Style |= BlockContentText_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -9024,7 +8896,7 @@ func (m *BlockText) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.MarksList == nil {
-				m.MarksList = &BlockText_Marks{}
+				m.MarksList = &BlockContentText_Marks{}
 			}
 			if err := m.MarksList.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -9064,7 +8936,7 @@ func (m *BlockText) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.MarkerType |= BlockText_MarkerType(b&0x7F) << shift
+				m.MarkerType |= BlockContentText_MarkerType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -9133,7 +9005,7 @@ func (m *BlockText) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockText_Marks) Unmarshal(dAtA []byte) error {
+func (m *BlockContentText_Marks) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9191,7 +9063,7 @@ func (m *BlockText_Marks) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Marks = append(m.Marks, &BlockText_Mark{})
+			m.Marks = append(m.Marks, &BlockContentText_Mark{})
 			if err := m.Marks[len(m.Marks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -9220,7 +9092,7 @@ func (m *BlockText_Marks) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockText_Mark) Unmarshal(dAtA []byte) error {
+func (m *BlockContentText_Mark) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9279,7 +9151,7 @@ func (m *BlockText_Mark) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Range == nil {
-				m.Range = &BlockText_Mark_Range{}
+				m.Range = &Range{}
 			}
 			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -9299,11 +9171,43 @@ func (m *BlockText_Mark) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= BlockText_Mark_Type(b&0x7F) << shift
+				m.Type |= BlockContentText_Mark_Type(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Param", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Param = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipBlock(dAtA[iNdEx:])
@@ -9328,7 +9232,92 @@ func (m *BlockText_Mark) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockText_Mark_Range) Unmarshal(dAtA []byte) error {
+func (m *BlockContentMedia) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowBlock
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockContentMedia: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockContentMedia: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Link", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Link = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipBlock(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Range) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9395,295 +9384,6 @@ func (m *BlockText_Mark_Range) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockMedia) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockMedia: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockMedia: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Link", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Link = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Meta", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Meta == nil {
-				m.Meta = &BlockMediaMeta{}
-			}
-			if err := m.Meta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockMediaMeta) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockMediaMeta: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockMediaMeta: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Name = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DateAdded", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.DateAdded = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Size_", wireType)
-			}
-			m.Size_ = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Size_ |= int32(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipBlock(dAtA[iNdEx:])
