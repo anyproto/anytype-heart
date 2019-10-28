@@ -1,0 +1,30 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+import "block.proto";
+import "account.proto";
+
+message UserBlockTextRange {
+    Account account = 1;
+    string blockId = 2;
+    Range range = 3;
+}
+
+message UserBlockJoin {
+    Account account = 1;
+}
+
+message UserBlockLeft {
+    Account account = 1;
+}
+
+message UserBlockSelectRange {
+    Account account = 1;
+    repeated string blockIdsArray = 2;
+}
+
+message UserBlockFocus {
+    Account account = 1;
+    string blockId = 2;
+}
