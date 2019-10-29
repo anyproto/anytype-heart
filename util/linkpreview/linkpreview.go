@@ -41,10 +41,13 @@ func (l *linkPreview) Fetch(ctx context.Context, url string) (pb.LinkPreviewResp
 }
 
 func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i pb.LinkPreviewResponse) {
+	og.ToAbsURL()
 	i = pb.LinkPreviewResponse{
+		Url:         og.URL.String(),
 		Title:       og.Title,
 		Description: og.Description,
 		Type:        pb.LinkPreviewResponse_PAGE,
+		FaviconUrl:  og.Favicon,
 	}
 	if len(og.Image) != 0 {
 		i.ImageUrl = og.Image[0].URL
@@ -54,6 +57,7 @@ func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i pb.LinkPreview
 
 func (l *linkPreview) makeNonHtml(url string, resp *http.Response) (i pb.LinkPreviewResponse, err error) {
 	ct := resp.Header.Get("Content-Type")
+	i.Url = url
 	i.Title = filepath.Base(url)
 	if strings.HasPrefix(ct, "image/") {
 		i.Type = pb.LinkPreviewResponse_IMAGE

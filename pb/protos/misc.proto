@@ -65,7 +65,9 @@ message LinkPreviewResponse {
     string title = 2;
     string description = 3;
     string imageUrl = 4;
-    Type type = 5;
+    string url = 5;
+    string faviconUrl = 6;
+    Type type = 7;
 
     message Error {
         Code code = 1;
