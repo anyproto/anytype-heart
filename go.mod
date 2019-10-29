@@ -5,7 +5,7 @@ go 1.12
 require (
 	github.com/anytypeio/go-anytype-library v0.0.0-20191019100520-f545fa654778
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.3.2 // indirect
+	github.com/golang/protobuf v1.3.2
 	github.com/ipfs/go-log v0.0.1
 	github.com/otiai10/opengraph v1.1.0
 	github.com/stretchr/testify v1.3.0

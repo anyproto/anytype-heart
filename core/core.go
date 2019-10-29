@@ -17,7 +17,15 @@ func NewMiddleware() *Middleware {
 	}
 }
 
+type MiddlewareState struct {
+	// client-state: blocks range, text range, focus, screen position, etc
+	// history list
+	// request list
+	// computed state
+}
+
 type Middleware struct {
+	state               MiddlewareState
 	rootPath            string
 	pin                 string
 	mnemonic            string
