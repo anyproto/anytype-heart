@@ -131,12 +131,14 @@ message AccountRecoverResponse {
         enum Code {
             NULL = 0; // No error;
             UNKNOWN_ERROR = 1; // Any other errors
+            BAD_INPUT = 2;
 
             NO_ACCOUNTS_FOUND = 101;
             NEED_TO_RECOVER_WALLET_FIRST = 102;
             FAILED_TO_CREATE_LOCAL_REPO = 103;
             LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104; 
             FAILED_TO_RUN_NODE = 105;
+            WALLET_RECOVER_NOT_PERFORMED = 106;
         }
     }
 }

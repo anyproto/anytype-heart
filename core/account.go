@@ -136,7 +136,7 @@ func (mw *Middleware) AccountRecover(_ *pb.AccountRecoverRequest) *pb.AccountRec
 	// now let's start the first account to perform cafe contacts search queries
 	account, err := core.WalletAccountAt(mw.mnemonic, 0, "")
 	if err != nil {
-		return response(pb.AccountRecoverResponse_Error_BAD_INPUT, err)
+		return response(pb.AccountRecoverResponse_Error_WALLET_RECOVER_NOT_PERFORMED, err)
 	}
 
 	err = core.WalletInitRepo(mw.rootPath, account.Seed())
@@ -190,7 +190,7 @@ func (mw *Middleware) AccountRecover(_ *pb.AccountRecoverRequest) *pb.AccountRec
 		// todo: add goroutine to query multiple accounts at once
 		account, err := core.WalletAccountAt(mw.mnemonic, index, "")
 		if err != nil {
-			return response(pb.AccountRecoverResponse_Error_BAD_INPUT, err)
+			return response(pb.AccountRecoverResponse_Error_WALLET_RECOVER_NOT_PERFORMED, err)
 		}
 
 		var ctx context.Context
