@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/otiai10/opengraph"
 )
 
@@ -16,30 +17,17 @@ func New() LinkPreview {
 type LinkType string
 
 const (
-	LinkTypeHtml       LinkType = "html"
-	LinkTypeImage      LinkType = "image"
-	LinkTypeVideo      LinkType = "video"
-	LinkTypeText       LinkType = "text"
-	LinkTypeUnexpected LinkType = "unexpected"
-
 	// read no more than 400 kb
 	maxBytesToRead = 400000
 )
 
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (Info, error)
-}
-
-type Info struct {
-	Title       string
-	Description string
-	ImageUrl    string
-	Type        LinkType
+	Fetch(ctx context.Context, url string) (pb.LinkPreviewResponse, error)
 }
 
 type linkPreview struct{}
 
-func (l *linkPreview) Fetch(ctx context.Context, url string) (Info, error) {
+func (l *linkPreview) Fetch(ctx context.Context, url string) (pb.LinkPreviewResponse, error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
 	og, err := opengraph.FetchWithContext(ctx, url, client)
@@ -47,16 +35,16 @@ func (l *linkPreview) Fetch(ctx context.Context, url string) (Info, error) {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
 			return l.makeNonHtml(url, resp)
 		}
-		return Info{}, err
+		return pb.LinkPreviewResponse{}, err
 	}
 	return l.convertOGToInfo(og), nil
 }
 
-func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i Info) {
-	i = Info{
+func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i pb.LinkPreviewResponse) {
+	i = pb.LinkPreviewResponse{
 		Title:       og.Title,
 		Description: og.Description,
-		Type:        LinkTypeHtml,
+		Type:        pb.LinkPreviewResponse_PAGE,
 	}
 	if len(og.Image) != 0 {
 		i.ImageUrl = og.Image[0].URL
@@ -64,16 +52,16 @@ func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i Info) {
 	return
 }
 
-func (l *linkPreview) makeNonHtml(url string, resp *http.Response) (i Info, err error) {
+func (l *linkPreview) makeNonHtml(url string, resp *http.Response) (i pb.LinkPreviewResponse, err error) {
 	ct := resp.Header.Get("Content-Type")
 	i.Title = filepath.Base(url)
 	if strings.HasPrefix(ct, "image/") {
-		i.Type = LinkTypeImage
+		i.Type = pb.LinkPreviewResponse_IMAGE
 		i.ImageUrl = url
 	} else if strings.HasPrefix(ct, "text/") {
-		i.Type = LinkTypeText
+		i.Type = pb.LinkPreviewResponse_TEXT
 	} else {
-		i.Type = LinkTypeUnexpected
+		i.Type = pb.LinkPreviewResponse_UNEXPECTED
 	}
 	return
 }

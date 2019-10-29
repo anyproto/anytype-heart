@@ -130,6 +130,68 @@ func (LogSendResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_2d3ba2f07ad357c5, []int{3, 0, 0}
 }
 
+type LinkPreviewResponse_Type int32
+
+const (
+	LinkPreviewResponse_PAGE       LinkPreviewResponse_Type = 0
+	LinkPreviewResponse_IMAGE      LinkPreviewResponse_Type = 1
+	LinkPreviewResponse_TEXT       LinkPreviewResponse_Type = 2
+	LinkPreviewResponse_UNEXPECTED LinkPreviewResponse_Type = 3
+)
+
+var LinkPreviewResponse_Type_name = map[int32]string{
+	0: "PAGE",
+	1: "IMAGE",
+	2: "TEXT",
+	3: "UNEXPECTED",
+}
+
+var LinkPreviewResponse_Type_value = map[string]int32{
+	"PAGE":       0,
+	"IMAGE":      1,
+	"TEXT":       2,
+	"UNEXPECTED": 3,
+}
+
+func (x LinkPreviewResponse_Type) String() string {
+	return proto.EnumName(LinkPreviewResponse_Type_name, int32(x))
+}
+
+func (LinkPreviewResponse_Type) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_2d3ba2f07ad357c5, []int{5, 0}
+}
+
+type LinkPreviewResponse_Error_Code int32
+
+const (
+	LinkPreviewResponse_Error_NULL          LinkPreviewResponse_Error_Code = 0
+	LinkPreviewResponse_Error_UNKNOWN_ERROR LinkPreviewResponse_Error_Code = 1
+	LinkPreviewResponse_Error_BAD_INPUT     LinkPreviewResponse_Error_Code = 2
+	LinkPreviewResponse_Error_TIMEOUT       LinkPreviewResponse_Error_Code = 102
+)
+
+var LinkPreviewResponse_Error_Code_name = map[int32]string{
+	0:   "NULL",
+	1:   "UNKNOWN_ERROR",
+	2:   "BAD_INPUT",
+	102: "TIMEOUT",
+}
+
+var LinkPreviewResponse_Error_Code_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+	"TIMEOUT":       102,
+}
+
+func (x LinkPreviewResponse_Error_Code) String() string {
+	return proto.EnumName(LinkPreviewResponse_Error_Code_name, int32(x))
+}
+
+func (LinkPreviewResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_2d3ba2f07ad357c5, []int{5, 0, 0}
+}
+
 type VersionGetRequest struct {
 }
 
@@ -418,51 +480,237 @@ func (m *LogSendResponse_Error) GetDescription() string {
 	return ""
 }
 
+type LinkPreviewRequest struct {
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+}
+
+func (m *LinkPreviewRequest) Reset()         { *m = LinkPreviewRequest{} }
+func (m *LinkPreviewRequest) String() string { return proto.CompactTextString(m) }
+func (*LinkPreviewRequest) ProtoMessage()    {}
+func (*LinkPreviewRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2d3ba2f07ad357c5, []int{4}
+}
+func (m *LinkPreviewRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LinkPreviewRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LinkPreviewRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *LinkPreviewRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LinkPreviewRequest.Merge(m, src)
+}
+func (m *LinkPreviewRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LinkPreviewRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LinkPreviewRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LinkPreviewRequest proto.InternalMessageInfo
+
+func (m *LinkPreviewRequest) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+type LinkPreviewResponse struct {
+	Error       *LinkPreviewResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Title       string                     `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description string                     `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	ImageUrl    string                     `protobuf:"bytes,4,opt,name=imageUrl,proto3" json:"imageUrl,omitempty"`
+	Type        LinkPreviewResponse_Type   `protobuf:"varint,5,opt,name=type,proto3,enum=anytype.LinkPreviewResponse_Type" json:"type,omitempty"`
+}
+
+func (m *LinkPreviewResponse) Reset()         { *m = LinkPreviewResponse{} }
+func (m *LinkPreviewResponse) String() string { return proto.CompactTextString(m) }
+func (*LinkPreviewResponse) ProtoMessage()    {}
+func (*LinkPreviewResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2d3ba2f07ad357c5, []int{5}
+}
+func (m *LinkPreviewResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LinkPreviewResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LinkPreviewResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *LinkPreviewResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LinkPreviewResponse.Merge(m, src)
+}
+func (m *LinkPreviewResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LinkPreviewResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LinkPreviewResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LinkPreviewResponse proto.InternalMessageInfo
+
+func (m *LinkPreviewResponse) GetError() *LinkPreviewResponse_Error {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (m *LinkPreviewResponse) GetTitle() string {
+	if m != nil {
+		return m.Title
+	}
+	return ""
+}
+
+func (m *LinkPreviewResponse) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+func (m *LinkPreviewResponse) GetImageUrl() string {
+	if m != nil {
+		return m.ImageUrl
+	}
+	return ""
+}
+
+func (m *LinkPreviewResponse) GetType() LinkPreviewResponse_Type {
+	if m != nil {
+		return m.Type
+	}
+	return LinkPreviewResponse_PAGE
+}
+
+type LinkPreviewResponse_Error struct {
+	Code        LinkPreviewResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.LinkPreviewResponse_Error_Code" json:"code,omitempty"`
+	Description string                         `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *LinkPreviewResponse_Error) Reset()         { *m = LinkPreviewResponse_Error{} }
+func (m *LinkPreviewResponse_Error) String() string { return proto.CompactTextString(m) }
+func (*LinkPreviewResponse_Error) ProtoMessage()    {}
+func (*LinkPreviewResponse_Error) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2d3ba2f07ad357c5, []int{5, 0}
+}
+func (m *LinkPreviewResponse_Error) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LinkPreviewResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LinkPreviewResponse_Error.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *LinkPreviewResponse_Error) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LinkPreviewResponse_Error.Merge(m, src)
+}
+func (m *LinkPreviewResponse_Error) XXX_Size() int {
+	return m.Size()
+}
+func (m *LinkPreviewResponse_Error) XXX_DiscardUnknown() {
+	xxx_messageInfo_LinkPreviewResponse_Error.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LinkPreviewResponse_Error proto.InternalMessageInfo
+
+func (m *LinkPreviewResponse_Error) GetCode() LinkPreviewResponse_Error_Code {
+	if m != nil {
+		return m.Code
+	}
+	return LinkPreviewResponse_Error_NULL
+}
+
+func (m *LinkPreviewResponse_Error) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterEnum("anytype.VersionGetResponse_Error_Code", VersionGetResponse_Error_Code_name, VersionGetResponse_Error_Code_value)
 	proto.RegisterEnum("anytype.LogSendRequest_Level", LogSendRequest_Level_name, LogSendRequest_Level_value)
 	proto.RegisterEnum("anytype.LogSendResponse_Error_Code", LogSendResponse_Error_Code_name, LogSendResponse_Error_Code_value)
+	proto.RegisterEnum("anytype.LinkPreviewResponse_Type", LinkPreviewResponse_Type_name, LinkPreviewResponse_Type_value)
+	proto.RegisterEnum("anytype.LinkPreviewResponse_Error_Code", LinkPreviewResponse_Error_Code_name, LinkPreviewResponse_Error_Code_value)
 	proto.RegisterType((*VersionGetRequest)(nil), "anytype.VersionGetRequest")
 	proto.RegisterType((*VersionGetResponse)(nil), "anytype.VersionGetResponse")
 	proto.RegisterType((*VersionGetResponse_Error)(nil), "anytype.VersionGetResponse.Error")
 	proto.RegisterType((*LogSendRequest)(nil), "anytype.LogSendRequest")
 	proto.RegisterType((*LogSendResponse)(nil), "anytype.LogSendResponse")
 	proto.RegisterType((*LogSendResponse_Error)(nil), "anytype.LogSendResponse.Error")
+	proto.RegisterType((*LinkPreviewRequest)(nil), "anytype.LinkPreviewRequest")
+	proto.RegisterType((*LinkPreviewResponse)(nil), "anytype.LinkPreviewResponse")
+	proto.RegisterType((*LinkPreviewResponse_Error)(nil), "anytype.LinkPreviewResponse.Error")
 }
 
 func init() { proto.RegisterFile("misc.proto", fileDescriptor_2d3ba2f07ad357c5) }
 
 var fileDescriptor_2d3ba2f07ad357c5 = []byte{
-	// 452 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x93, 0x41, 0x6f, 0xd3, 0x30,
-	0x14, 0xc7, 0xe3, 0xac, 0xa1, 0xe4, 0x55, 0x2b, 0x9e, 0xe1, 0x50, 0x4d, 0x10, 0x95, 0x20, 0xa1,
-	0x9d, 0x72, 0xe8, 0x90, 0x26, 0x71, 0x4b, 0xd7, 0xb4, 0x0a, 0x64, 0x4e, 0xe5, 0x26, 0x9b, 0xe0,
-	0x12, 0x6d, 0x8d, 0x99, 0x2a, 0x6d, 0x75, 0x88, 0xc3, 0xa4, 0x7d, 0x0b, 0xbe, 0x07, 0x37, 0x24,
-	0xbe, 0x03, 0x12, 0x97, 0x1d, 0x39, 0xa2, 0xf6, 0x6b, 0x70, 0x40, 0x4e, 0xda, 0xb2, 0x6a, 0xa8,
-	0x08, 0x6e, 0x79, 0x4f, 0x3f, 0x3f, 0xbf, 0x7f, 0x7e, 0x32, 0xc0, 0xe5, 0x44, 0x8e, 0x9d, 0x2c,
-	0x17, 0x85, 0x20, 0xf5, 0xd3, 0xe9, 0x75, 0x71, 0x9d, 0x71, 0xfb, 0x21, 0xec, 0x1c, 0xf3, 0x5c,
-	0x4e, 0xc4, 0x74, 0xc0, 0x0b, 0xc6, 0xdf, 0x7f, 0xe0, 0xb2, 0xb0, 0xbf, 0xe8, 0x40, 0x6e, 0x77,
-	0x65, 0x26, 0xa6, 0x92, 0x93, 0x03, 0x30, 0x78, 0x9e, 0x8b, 0xbc, 0x85, 0xda, 0x68, 0xaf, 0xd1,
-	0x79, 0xea, 0x2c, 0x86, 0x38, 0x77, 0x59, 0xc7, 0x53, 0x20, 0xab, 0x78, 0xd2, 0x82, 0xfa, 0x55,
-	0x85, 0xb4, 0xf4, 0x36, 0xda, 0x33, 0xd9, 0xb2, 0xdc, 0xfd, 0x86, 0xc0, 0x28, 0x51, 0xf2, 0x12,
-	0x6a, 0x63, 0x91, 0xf2, 0x72, 0x76, 0xb3, 0xf3, 0xfc, 0xaf, 0xb3, 0x9d, 0x43, 0x91, 0x72, 0x56,
-	0x9e, 0x21, 0x6d, 0x68, 0xa4, 0x5c, 0x8e, 0xf3, 0x49, 0x56, 0xfc, 0xbe, 0xe3, 0x76, 0xcb, 0x4e,
-	0xa1, 0xa6, 0x78, 0x72, 0x1f, 0x6a, 0x34, 0x0e, 0x02, 0xac, 0x91, 0x1d, 0xd8, 0x8e, 0xe9, 0x6b,
-	0x1a, 0x9e, 0xd0, 0xc4, 0x63, 0x2c, 0x64, 0x18, 0x91, 0x6d, 0x30, 0xbb, 0x6e, 0x2f, 0xf1, 0xe9,
-	0x30, 0x8e, 0xb0, 0x4e, 0x1e, 0x01, 0x3e, 0xf6, 0xd8, 0xc8, 0x0f, 0x69, 0xe2, 0x8f, 0x12, 0xef,
-	0x68, 0x18, 0xbd, 0xc1, 0x5b, 0x0a, 0xa2, 0x61, 0x94, 0xf4, 0xc3, 0x98, 0xf6, 0x30, 0x27, 0x0d,
-	0xa8, 0x47, 0xfe, 0x91, 0x17, 0xc6, 0x11, 0x7e, 0x67, 0x7f, 0x42, 0xd0, 0x0c, 0xc4, 0xf9, 0x88,
-	0x4f, 0xd3, 0xc5, 0xaf, 0x54, 0xd1, 0x2f, 0xb9, 0x94, 0xa7, 0xe7, 0x55, 0x32, 0x93, 0x2d, 0x4b,
-	0xb2, 0x0f, 0xc6, 0x05, 0xbf, 0xe2, 0x17, 0xe5, 0xba, 0xcd, 0xce, 0x93, 0x55, 0xe2, 0xf5, 0x09,
-	0x4e, 0xa0, 0x20, 0x56, 0xb1, 0xf6, 0x2b, 0x30, 0xca, 0x9a, 0x98, 0x60, 0xf4, 0xbc, 0x6e, 0x3c,
-	0xc0, 0x9a, 0xfa, 0x5c, 0x26, 0x30, 0xc1, 0xe8, 0xbb, 0x91, 0x1b, 0x60, 0x5d, 0x25, 0xf5, 0x69,
-	0x3f, 0xc4, 0x5b, 0xaa, 0x39, 0x74, 0xa9, 0x7f, 0x88, 0x6b, 0x6a, 0xdb, 0x13, 0x97, 0x51, 0x9f,
-	0x0e, 0xb0, 0x61, 0xff, 0x44, 0xf0, 0x60, 0x75, 0xd7, 0x42, 0xf1, 0x8b, 0x75, 0xc5, 0xd6, 0xdd,
-	0xa5, 0xfe, 0xe0, 0x77, 0xf7, 0xf3, 0xca, 0xe2, 0xc1, 0x9a, 0xc5, 0x67, 0x9b, 0x8f, 0xff, 0x9b,
-	0x42, 0xfa, 0x1f, 0x0a, 0x37, 0xc8, 0xea, 0x3e, 0xfe, 0x3a, 0xb3, 0xd0, 0xcd, 0xcc, 0x42, 0x3f,
-	0x66, 0x16, 0xfa, 0x38, 0xb7, 0xb4, 0x9b, 0xb9, 0xa5, 0x7d, 0x9f, 0x5b, 0xda, 0x5b, 0x3d, 0x3b,
-	0x3b, 0xbb, 0x57, 0xbe, 0x93, 0xfd, 0x5f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x39, 0x57, 0x42, 0x0b,
-	0x35, 0x03, 0x00, 0x00,
+	// 600 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x94, 0xc1, 0x4e, 0xdb, 0x4c,
+	0x10, 0xc7, 0xe3, 0xd8, 0xfe, 0x20, 0x83, 0xc8, 0xb7, 0x2c, 0x1c, 0xa2, 0xa8, 0xb5, 0xc0, 0x95,
+	0x28, 0x27, 0x1f, 0xa0, 0x88, 0xaa, 0x3d, 0x54, 0x86, 0x98, 0xc8, 0xad, 0x59, 0x5b, 0x8b, 0x0d,
+	0xb4, 0x97, 0x08, 0xc8, 0x16, 0x59, 0x4d, 0x62, 0xd7, 0x36, 0xa9, 0xf2, 0x16, 0x7d, 0x8b, 0x1e,
+	0x7a, 0xab, 0xd4, 0x53, 0x5f, 0xa0, 0x52, 0x2f, 0x1c, 0x7b, 0xac, 0x92, 0xd7, 0xe8, 0xa1, 0x5a,
+	0xdb, 0x09, 0xb8, 0xa9, 0x82, 0xe0, 0xb6, 0x33, 0xfe, 0xef, 0xcc, 0xfc, 0xe7, 0x67, 0x1b, 0xa0,
+	0xeb, 0xc7, 0xe7, 0x5a, 0x18, 0x05, 0x49, 0x80, 0xe7, 0x4e, 0x7b, 0x83, 0x64, 0x10, 0x32, 0x75,
+	0x19, 0x96, 0x8e, 0x58, 0x14, 0xfb, 0x41, 0xaf, 0xc9, 0x12, 0xca, 0xde, 0x5f, 0xb2, 0x38, 0x51,
+	0xbf, 0x96, 0x01, 0xdf, 0xcc, 0xc6, 0x61, 0xd0, 0x8b, 0x19, 0xde, 0x01, 0x99, 0x45, 0x51, 0x10,
+	0xd5, 0x84, 0x55, 0x61, 0x63, 0x61, 0x73, 0x4d, 0xcb, 0x8b, 0x68, 0xd3, 0x5a, 0xcd, 0xe0, 0x42,
+	0x9a, 0xe9, 0x71, 0x0d, 0xe6, 0xfa, 0x99, 0xa4, 0x56, 0x5e, 0x15, 0x36, 0x2a, 0x74, 0x1c, 0xd6,
+	0x7f, 0x08, 0x20, 0xa7, 0x52, 0xfc, 0x0c, 0xa4, 0xf3, 0xa0, 0xcd, 0xd2, 0xda, 0xd5, 0xcd, 0xf5,
+	0x5b, 0x6b, 0x6b, 0x7b, 0x41, 0x9b, 0xd1, 0xf4, 0x0e, 0x5e, 0x85, 0x85, 0x36, 0x8b, 0xcf, 0x23,
+	0x3f, 0x4c, 0xae, 0x7b, 0xdc, 0x4c, 0xa9, 0x6d, 0x90, 0xb8, 0x1e, 0xcf, 0x83, 0x44, 0x3c, 0xcb,
+	0x42, 0x25, 0xbc, 0x04, 0x8b, 0x1e, 0x79, 0x45, 0xec, 0x63, 0xd2, 0x32, 0x28, 0xb5, 0x29, 0x12,
+	0xf0, 0x22, 0x54, 0x76, 0xf5, 0x46, 0xcb, 0x24, 0x8e, 0xe7, 0xa2, 0x32, 0x5e, 0x01, 0x74, 0x64,
+	0xd0, 0x43, 0xd3, 0x26, 0x2d, 0xf3, 0xb0, 0x65, 0x1c, 0x38, 0xee, 0x6b, 0x24, 0x72, 0x11, 0xb1,
+	0xdd, 0xd6, 0xbe, 0xed, 0x91, 0x06, 0x62, 0x78, 0x01, 0xe6, 0x5c, 0xf3, 0xc0, 0xb0, 0x3d, 0x17,
+	0xbd, 0x55, 0x3f, 0x0b, 0x50, 0xb5, 0x82, 0x8b, 0x43, 0xd6, 0x6b, 0xe7, 0xab, 0xe4, 0xd6, 0xbb,
+	0x2c, 0x8e, 0x4f, 0x2f, 0x32, 0x67, 0x15, 0x3a, 0x0e, 0xf1, 0x16, 0xc8, 0x1d, 0xd6, 0x67, 0x9d,
+	0x74, 0xdc, 0xea, 0xe6, 0xc3, 0x89, 0xe3, 0x62, 0x05, 0xcd, 0xe2, 0x22, 0x9a, 0x69, 0xd5, 0x97,
+	0x20, 0xa7, 0x31, 0xae, 0x80, 0xdc, 0x30, 0x76, 0xbd, 0x26, 0x2a, 0xf1, 0xe3, 0xd8, 0x41, 0x05,
+	0xe4, 0x7d, 0xdd, 0xd5, 0x2d, 0x54, 0xe6, 0x4e, 0x4d, 0xb2, 0x6f, 0x23, 0x91, 0x27, 0x1d, 0x9d,
+	0x98, 0x7b, 0x48, 0xe2, 0xd3, 0x1e, 0xeb, 0x94, 0x98, 0xa4, 0x89, 0x64, 0xf5, 0xb7, 0x00, 0xff,
+	0x4f, 0x7a, 0xe5, 0x88, 0x9f, 0x14, 0x11, 0x2b, 0xd3, 0x43, 0xfd, 0x83, 0x6f, 0xfd, 0xcb, 0x84,
+	0xe2, 0x4e, 0x81, 0xe2, 0xa3, 0xd9, 0xd7, 0xef, 0x86, 0x90, 0xdc, 0x03, 0xe1, 0x2c, 0x58, 0xeb,
+	0x80, 0x2d, 0xbf, 0xf7, 0xce, 0x89, 0x58, 0xdf, 0x67, 0x1f, 0xc6, 0xbc, 0x10, 0x88, 0x97, 0x51,
+	0x27, 0x67, 0xc5, 0x8f, 0xea, 0x37, 0x11, 0x96, 0x0b, 0xc2, 0x7c, 0x55, 0x4f, 0x8b, 0xab, 0x52,
+	0xaf, 0xbd, 0x4e, 0x8b, 0x8b, 0x9f, 0xc3, 0x0a, 0xc8, 0x89, 0x9f, 0x74, 0x58, 0xee, 0x32, 0x0b,
+	0xfe, 0xde, 0x80, 0x38, 0xb5, 0x01, 0x5c, 0x87, 0x79, 0xbf, 0x7b, 0x7a, 0xc1, 0xbc, 0xa8, 0x53,
+	0x93, 0xd2, 0xc7, 0x93, 0x18, 0x6f, 0x83, 0xc4, 0x9b, 0xd7, 0xe4, 0x74, 0xf1, 0x6b, 0x33, 0x87,
+	0x71, 0x07, 0x21, 0xa3, 0xa9, 0xbc, 0xfe, 0x69, 0x42, 0xee, 0x79, 0x81, 0xdc, 0xe3, 0xdb, 0xdd,
+	0xdc, 0x8d, 0xde, 0x8b, 0x7b, 0xd0, 0x2b, 0xe0, 0xda, 0x06, 0x89, 0xcf, 0xcd, 0x0b, 0x38, 0x7a,
+	0xd3, 0xc8, 0xde, 0x7b, 0xf3, 0x80, 0x1f, 0x05, 0x9e, 0x74, 0x8d, 0x13, 0x7e, 0xa7, 0x0a, 0xe0,
+	0x11, 0xe3, 0xc4, 0x31, 0xf6, 0x5c, 0xa3, 0x81, 0xc4, 0xdd, 0x07, 0xdf, 0x87, 0x8a, 0x70, 0x35,
+	0x54, 0x84, 0x5f, 0x43, 0x45, 0xf8, 0x38, 0x52, 0x4a, 0x57, 0x23, 0xa5, 0xf4, 0x73, 0xa4, 0x94,
+	0xde, 0x94, 0xc3, 0xb3, 0xb3, 0xff, 0xd2, 0xbf, 0xe1, 0xd6, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff,
+	0x56, 0x36, 0x32, 0xd1, 0x1b, 0x05, 0x00, 0x00,
 }
 
 func (m *VersionGetRequest) Marshal() (dAtA []byte, err error) {
@@ -670,6 +918,132 @@ func (m *LogSendResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *LinkPreviewRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *LinkPreviewRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *LinkPreviewRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Url) > 0 {
+		i -= len(m.Url)
+		copy(dAtA[i:], m.Url)
+		i = encodeVarintMisc(dAtA, i, uint64(len(m.Url)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *LinkPreviewResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *LinkPreviewResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *LinkPreviewResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Type != 0 {
+		i = encodeVarintMisc(dAtA, i, uint64(m.Type))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.ImageUrl) > 0 {
+		i -= len(m.ImageUrl)
+		copy(dAtA[i:], m.ImageUrl)
+		i = encodeVarintMisc(dAtA, i, uint64(len(m.ImageUrl)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintMisc(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Title) > 0 {
+		i -= len(m.Title)
+		copy(dAtA[i:], m.Title)
+		i = encodeVarintMisc(dAtA, i, uint64(len(m.Title)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintMisc(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *LinkPreviewResponse_Error) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *LinkPreviewResponse_Error) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *LinkPreviewResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintMisc(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintMisc(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintMisc(dAtA []byte, offset int, v uint64) int {
 	offset -= sovMisc(v)
 	base := offset
@@ -753,6 +1127,63 @@ func (m *LogSendResponse) Size() (n int) {
 }
 
 func (m *LogSendResponse_Error) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovMisc(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovMisc(uint64(l))
+	}
+	return n
+}
+
+func (m *LinkPreviewRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Url)
+	if l > 0 {
+		n += 1 + l + sovMisc(uint64(l))
+	}
+	return n
+}
+
+func (m *LinkPreviewResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovMisc(uint64(l))
+	}
+	l = len(m.Title)
+	if l > 0 {
+		n += 1 + l + sovMisc(uint64(l))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovMisc(uint64(l))
+	}
+	l = len(m.ImageUrl)
+	if l > 0 {
+		n += 1 + l + sovMisc(uint64(l))
+	}
+	if m.Type != 0 {
+		n += 1 + sovMisc(uint64(m.Type))
+	}
+	return n
+}
+
+func (m *LinkPreviewResponse_Error) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1289,6 +1720,399 @@ func (m *LogSendResponse_Error) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Code |= LogSendResponse_Error_Code(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMisc
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMisc(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *LinkPreviewRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMisc
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LinkPreviewRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LinkPreviewRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMisc
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Url = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMisc(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *LinkPreviewResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMisc
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LinkPreviewResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LinkPreviewResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMisc
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &LinkPreviewResponse_Error{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Title", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMisc
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Title = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMisc
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ImageUrl", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMisc
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ImageUrl = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			m.Type = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Type |= LinkPreviewResponse_Type(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMisc(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthMisc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *LinkPreviewResponse_Error) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMisc
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMisc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= LinkPreviewResponse_Error_Code(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

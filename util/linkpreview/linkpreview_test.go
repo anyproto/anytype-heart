@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,11 +23,11 @@ func TestLinkPreview_Fetch(t *testing.T) {
 
 		info, err := lp.Fetch(ctx, ts.URL)
 		require.NoError(t, err)
-		assert.Equal(t, Info{
+		assert.Equal(t, pb.LinkPreviewResponse{
 			Title:       "Title",
 			Description: "Description",
 			ImageUrl:    "http://site.com/images/example.jpg",
-			Type:        LinkTypeHtml,
+			Type:        pb.LinkPreviewResponse_PAGE,
 		}, info)
 	})
 
@@ -38,10 +39,10 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
-		assert.Equal(t, Info{
+		assert.Equal(t, pb.LinkPreviewResponse{
 			Title:    "filename.jpg",
 			ImageUrl: url,
-			Type:     LinkTypeImage,
+			Type:     pb.LinkPreviewResponse_IMAGE,
 		}, info)
 		assert.True(t, int(tr) <= maxBytesToRead)
 	})
@@ -54,9 +55,9 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
-		assert.Equal(t, Info{
+		assert.Equal(t, pb.LinkPreviewResponse{
 			Title: "filename.jpg",
-			Type:  LinkTypeUnexpected,
+			Type:  pb.LinkPreviewResponse_UNEXPECTED,
 		}, info)
 		assert.True(t, int(tr) <= maxBytesToRead)
 	})

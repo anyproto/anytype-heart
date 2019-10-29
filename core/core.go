@@ -5,10 +5,17 @@ import (
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("anytype-mw")
+
+func NewMiddleware() *Middleware {
+	return &Middleware{
+		linkPreview: linkpreview.New(),
+	}
+}
 
 type Middleware struct {
 	rootPath            string
@@ -17,6 +24,7 @@ type Middleware struct {
 	accountSearchCancel context.CancelFunc
 	localAccounts       []*pb.Account
 	SendEvent           func(event *pb.Event)
+	linkPreview         linkpreview.LinkPreview
 	*libCore.Anytype
 }
 

@@ -22,4 +22,6 @@ service ClientCommands {
     rpc BlockOpen (BlockOpenRequest) returns (BlockOpenResponse);
     rpc BlockCreate (BlockCreateRequest) returns (BlockCreateResponse);
     rpc BlockUpdate (BlockUpdateRequest) returns (BlockUpdateResponse);
+
+    rpc LinkPreview (LinkPreviewRequest) returns (LinkPreviewResponse);
 }
