@@ -7,6 +7,30 @@ import "struct.proto";
 
 // commands
 //
+
+message BlockHistoryMoveRequest {
+    string id = 1;
+    string contextBlockId = 2;
+    bool moveForward = 3;
+}
+
+message BlockHistoryMoveResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            CAN_NOT_MOVE = 3;
+            // ...
+        }
+    }    
+}
+
 message BlockOpenRequest {
     string id = 1;
 }
@@ -295,6 +319,7 @@ message Range {
     int32 from = 1;
     int32 to = 2;
 }
+
 /*
 message Scheme {
     oneof scheme {
