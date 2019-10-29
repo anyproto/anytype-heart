@@ -101,7 +101,7 @@ message BlockContentTextChange {
 message BlockContentPageChange {
     oneof change {
         BlockContentPage.Style style = 1;
-        BlockConnectionsList structure = 2;
+        BlockStructure structure = 2;
         BlocksList blocks = 3;
     }
 }
@@ -120,7 +120,7 @@ message BlockHeaderChange {
 message BlockContentDashboardChange {
     oneof change {
         BlockContentDashboard.Style style = 1;
-        BlockConnectionsList structure = 2;
+        BlockStructure structure = 2;
         BlockHeadersList headers = 3;
     }
 }
@@ -179,18 +179,9 @@ enum BlockType {
     FILE = 4;
     PICTURE = 5;
     VIDEO = 6;
-}
 
-message BlockConnections {
-    string id = 1;
-    string next = 2;
-    string columnBottom = 3;
-    string rowRight = 4;
-    string inner = 5;
-}
-
-message BlockConnectionsList {
-    repeated BlockConnections structure = 1;
+    ROW = 7;
+    COLUMN = 8;
 }
 
 message BlockHeadersList {
@@ -211,8 +202,16 @@ message BlockContentPage {
     }
 
     Style style = 1;
-    BlockConnectionsList structure = 2;
+    BlockStructure structure = 2;
     BlocksList blocks = 3;
+}
+
+message BlockStructure {
+    map<string, BlockChildren> children = 1;
+}
+
+message BlockChildren {
+    repeated string children = 1;
 }
 
 message BlockContentDashboard {
@@ -222,7 +221,7 @@ message BlockContentDashboard {
     }
 
     Style style = 1;
-    BlockConnectionsList structure = 2;
+    BlockStructure structure = 2;
     BlockHeadersList headers = 3;
 }
 
@@ -298,7 +297,7 @@ message DataviewScheme {
 
 message PageScheme {
     BlockHeader header = 1;
-    BlockConnectionsList structure = 2;
+    BlockChildrenList structure = 2;
     BlockHeadersList headers = 3;
 }
 
