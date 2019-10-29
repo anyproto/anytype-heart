@@ -158,6 +158,7 @@ message Block {
 
         BlockContentText text = 14;
         BlockContentMedia media = 15;
+        BlockLayout layout = 16;
     }
 }
 
@@ -166,6 +167,11 @@ message BlockHeader {
     BlockType type = 2;
     Struct fields = 3;
     BlockPermissions permissions = 4;
+}
+
+// row/column type specified in the header
+message BlockLayout {
+    string id = 1;
 }
 
 message BlockPermissions {
