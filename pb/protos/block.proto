@@ -30,6 +30,7 @@ message BlockOpenResponse {
 
 message BlockCreateRequest {
     BlockType type = 1;
+    string contextBlockId = 2;
 }
 
 message BlockCreateResponse {
@@ -84,6 +85,11 @@ message BlockCreate {
     Block block = 1;
 }
 
+message BlockStructureChange {
+    string id = 1;
+    BlockChildren children = 2;
+}
+
 message BlockContentTextChange {
     oneof change {
         string text = 1;
@@ -101,8 +107,8 @@ message BlockContentTextChange {
 message BlockContentPageChange {
     oneof change {
         BlockContentPage.Style style = 1;
-        BlockStructure structure = 2;
-        BlocksList blocks = 3;
+        BlockStructureChange structureChange = 2;
+        Block block = 3;
     }
 }
 
@@ -120,8 +126,8 @@ message BlockHeaderChange {
 message BlockContentDashboardChange {
     oneof change {
         BlockContentDashboard.Style style = 1;
-        BlockStructure structure = 2;
-        BlockHeadersList headers = 3;
+        BlockStructureChange structureChange = 2;
+        BlockHeader header = 3;
     }
 }
 
@@ -207,11 +213,11 @@ message BlockContentPage {
 }
 
 message BlockStructure {
-    map<string, BlockChildren> children = 1;
+    map<string, BlockChildren> blockIdToBlockChildren = 1;
 }
 
 message BlockChildren {
-    repeated string children = 1;
+    repeated string children = 2;
 }
 
 message BlockContentDashboard {
