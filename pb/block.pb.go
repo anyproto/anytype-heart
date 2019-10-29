@@ -68,121 +68,6 @@ func (BlockType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8e550b1f5926e92d, []int{0}
 }
 
-type BlockHistoryMoveResponse_Error_Code int32
-
-const (
-	BlockHistoryMoveResponse_Error_NULL          BlockHistoryMoveResponse_Error_Code = 0
-	BlockHistoryMoveResponse_Error_UNKNOWN_ERROR BlockHistoryMoveResponse_Error_Code = 1
-	BlockHistoryMoveResponse_Error_BAD_INPUT     BlockHistoryMoveResponse_Error_Code = 2
-	BlockHistoryMoveResponse_Error_CAN_NOT_MOVE  BlockHistoryMoveResponse_Error_Code = 3
-)
-
-var BlockHistoryMoveResponse_Error_Code_name = map[int32]string{
-	0: "NULL",
-	1: "UNKNOWN_ERROR",
-	2: "BAD_INPUT",
-	3: "CAN_NOT_MOVE",
-}
-
-var BlockHistoryMoveResponse_Error_Code_value = map[string]int32{
-	"NULL":          0,
-	"UNKNOWN_ERROR": 1,
-	"BAD_INPUT":     2,
-	"CAN_NOT_MOVE":  3,
-}
-
-func (x BlockHistoryMoveResponse_Error_Code) String() string {
-	return proto.EnumName(BlockHistoryMoveResponse_Error_Code_name, int32(x))
-}
-
-func (BlockHistoryMoveResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{1, 0, 0}
-}
-
-type BlockOpenResponse_Error_Code int32
-
-const (
-	BlockOpenResponse_Error_NULL          BlockOpenResponse_Error_Code = 0
-	BlockOpenResponse_Error_UNKNOWN_ERROR BlockOpenResponse_Error_Code = 1
-	BlockOpenResponse_Error_BAD_INPUT     BlockOpenResponse_Error_Code = 2
-)
-
-var BlockOpenResponse_Error_Code_name = map[int32]string{
-	0: "NULL",
-	1: "UNKNOWN_ERROR",
-	2: "BAD_INPUT",
-}
-
-var BlockOpenResponse_Error_Code_value = map[string]int32{
-	"NULL":          0,
-	"UNKNOWN_ERROR": 1,
-	"BAD_INPUT":     2,
-}
-
-func (x BlockOpenResponse_Error_Code) String() string {
-	return proto.EnumName(BlockOpenResponse_Error_Code_name, int32(x))
-}
-
-func (BlockOpenResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{3, 0, 0}
-}
-
-type BlockCreateResponse_Error_Code int32
-
-const (
-	BlockCreateResponse_Error_NULL          BlockCreateResponse_Error_Code = 0
-	BlockCreateResponse_Error_UNKNOWN_ERROR BlockCreateResponse_Error_Code = 1
-	BlockCreateResponse_Error_BAD_INPUT     BlockCreateResponse_Error_Code = 2
-)
-
-var BlockCreateResponse_Error_Code_name = map[int32]string{
-	0: "NULL",
-	1: "UNKNOWN_ERROR",
-	2: "BAD_INPUT",
-}
-
-var BlockCreateResponse_Error_Code_value = map[string]int32{
-	"NULL":          0,
-	"UNKNOWN_ERROR": 1,
-	"BAD_INPUT":     2,
-}
-
-func (x BlockCreateResponse_Error_Code) String() string {
-	return proto.EnumName(BlockCreateResponse_Error_Code_name, int32(x))
-}
-
-func (BlockCreateResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{5, 0, 0}
-}
-
-type BlockUpdateResponse_Error_Code int32
-
-const (
-	BlockUpdateResponse_Error_NULL          BlockUpdateResponse_Error_Code = 0
-	BlockUpdateResponse_Error_UNKNOWN_ERROR BlockUpdateResponse_Error_Code = 1
-	BlockUpdateResponse_Error_BAD_INPUT     BlockUpdateResponse_Error_Code = 2
-)
-
-var BlockUpdateResponse_Error_Code_name = map[int32]string{
-	0: "NULL",
-	1: "UNKNOWN_ERROR",
-	2: "BAD_INPUT",
-}
-
-var BlockUpdateResponse_Error_Code_value = map[string]int32{
-	"NULL":          0,
-	"UNKNOWN_ERROR": 1,
-	"BAD_INPUT":     2,
-}
-
-func (x BlockUpdateResponse_Error_Code) String() string {
-	return proto.EnumName(BlockUpdateResponse_Error_Code_name, int32(x))
-}
-
-func (BlockUpdateResponse_Error_Code) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{7, 0, 0}
-}
-
 type BlockContentPage_Style int32
 
 const (
@@ -211,7 +96,7 @@ func (x BlockContentPage_Style) String() string {
 }
 
 func (BlockContentPage_Style) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{24, 0}
+	return fileDescriptor_8e550b1f5926e92d, []int{16, 0}
 }
 
 type BlockContentDashboard_Style int32
@@ -233,7 +118,7 @@ func (x BlockContentDashboard_Style) String() string {
 }
 
 func (BlockContentDashboard_Style) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{27, 0}
+	return fileDescriptor_8e550b1f5926e92d, []int{19, 0}
 }
 
 type BlockContentText_Style int32
@@ -270,7 +155,7 @@ func (x BlockContentText_Style) String() string {
 }
 
 func (BlockContentText_Style) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{29, 0}
+	return fileDescriptor_8e550b1f5926e92d, []int{21, 0}
 }
 
 type BlockContentText_MarkerType int32
@@ -298,7 +183,7 @@ func (x BlockContentText_MarkerType) String() string {
 }
 
 func (BlockContentText_MarkerType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{29, 1}
+	return fileDescriptor_8e550b1f5926e92d, []int{21, 1}
 }
 
 type BlockContentText_Mark_Type int32
@@ -332,599 +217,7 @@ func (x BlockContentText_Mark_Type) String() string {
 }
 
 func (BlockContentText_Mark_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{29, 1, 0}
-}
-
-type BlockHistoryMoveRequest struct {
-	Id             string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ContextBlockId string `protobuf:"bytes,2,opt,name=contextBlockId,proto3" json:"contextBlockId,omitempty"`
-	MoveForward    bool   `protobuf:"varint,3,opt,name=moveForward,proto3" json:"moveForward,omitempty"`
-}
-
-func (m *BlockHistoryMoveRequest) Reset()         { *m = BlockHistoryMoveRequest{} }
-func (m *BlockHistoryMoveRequest) String() string { return proto.CompactTextString(m) }
-func (*BlockHistoryMoveRequest) ProtoMessage()    {}
-func (*BlockHistoryMoveRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{0}
-}
-func (m *BlockHistoryMoveRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockHistoryMoveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockHistoryMoveRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockHistoryMoveRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockHistoryMoveRequest.Merge(m, src)
-}
-func (m *BlockHistoryMoveRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockHistoryMoveRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockHistoryMoveRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockHistoryMoveRequest proto.InternalMessageInfo
-
-func (m *BlockHistoryMoveRequest) GetId() string {
-	if m != nil {
-		return m.Id
-	}
-	return ""
-}
-
-func (m *BlockHistoryMoveRequest) GetContextBlockId() string {
-	if m != nil {
-		return m.ContextBlockId
-	}
-	return ""
-}
-
-func (m *BlockHistoryMoveRequest) GetMoveForward() bool {
-	if m != nil {
-		return m.MoveForward
-	}
-	return false
-}
-
-type BlockHistoryMoveResponse struct {
-	Error *BlockHistoryMoveResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *BlockHistoryMoveResponse) Reset()         { *m = BlockHistoryMoveResponse{} }
-func (m *BlockHistoryMoveResponse) String() string { return proto.CompactTextString(m) }
-func (*BlockHistoryMoveResponse) ProtoMessage()    {}
-func (*BlockHistoryMoveResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{1}
-}
-func (m *BlockHistoryMoveResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockHistoryMoveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockHistoryMoveResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockHistoryMoveResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockHistoryMoveResponse.Merge(m, src)
-}
-func (m *BlockHistoryMoveResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockHistoryMoveResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockHistoryMoveResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockHistoryMoveResponse proto.InternalMessageInfo
-
-func (m *BlockHistoryMoveResponse) GetError() *BlockHistoryMoveResponse_Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type BlockHistoryMoveResponse_Error struct {
-	Code        BlockHistoryMoveResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.BlockHistoryMoveResponse_Error_Code" json:"code,omitempty"`
-	Description string                              `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-}
-
-func (m *BlockHistoryMoveResponse_Error) Reset()         { *m = BlockHistoryMoveResponse_Error{} }
-func (m *BlockHistoryMoveResponse_Error) String() string { return proto.CompactTextString(m) }
-func (*BlockHistoryMoveResponse_Error) ProtoMessage()    {}
-func (*BlockHistoryMoveResponse_Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{1, 0}
-}
-func (m *BlockHistoryMoveResponse_Error) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockHistoryMoveResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockHistoryMoveResponse_Error.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockHistoryMoveResponse_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockHistoryMoveResponse_Error.Merge(m, src)
-}
-func (m *BlockHistoryMoveResponse_Error) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockHistoryMoveResponse_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockHistoryMoveResponse_Error.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockHistoryMoveResponse_Error proto.InternalMessageInfo
-
-func (m *BlockHistoryMoveResponse_Error) GetCode() BlockHistoryMoveResponse_Error_Code {
-	if m != nil {
-		return m.Code
-	}
-	return BlockHistoryMoveResponse_Error_NULL
-}
-
-func (m *BlockHistoryMoveResponse_Error) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
-type BlockOpenRequest struct {
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-}
-
-func (m *BlockOpenRequest) Reset()         { *m = BlockOpenRequest{} }
-func (m *BlockOpenRequest) String() string { return proto.CompactTextString(m) }
-func (*BlockOpenRequest) ProtoMessage()    {}
-func (*BlockOpenRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{2}
-}
-func (m *BlockOpenRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockOpenRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockOpenRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockOpenRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockOpenRequest.Merge(m, src)
-}
-func (m *BlockOpenRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockOpenRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockOpenRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockOpenRequest proto.InternalMessageInfo
-
-func (m *BlockOpenRequest) GetId() string {
-	if m != nil {
-		return m.Id
-	}
-	return ""
-}
-
-type BlockOpenResponse struct {
-	Error       *BlockOpenResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	BlockHeader *BlockHeader             `protobuf:"bytes,2,opt,name=blockHeader,proto3" json:"blockHeader,omitempty"`
-}
-
-func (m *BlockOpenResponse) Reset()         { *m = BlockOpenResponse{} }
-func (m *BlockOpenResponse) String() string { return proto.CompactTextString(m) }
-func (*BlockOpenResponse) ProtoMessage()    {}
-func (*BlockOpenResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{3}
-}
-func (m *BlockOpenResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockOpenResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockOpenResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockOpenResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockOpenResponse.Merge(m, src)
-}
-func (m *BlockOpenResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockOpenResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockOpenResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockOpenResponse proto.InternalMessageInfo
-
-func (m *BlockOpenResponse) GetError() *BlockOpenResponse_Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-func (m *BlockOpenResponse) GetBlockHeader() *BlockHeader {
-	if m != nil {
-		return m.BlockHeader
-	}
-	return nil
-}
-
-type BlockOpenResponse_Error struct {
-	Code        BlockOpenResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.BlockOpenResponse_Error_Code" json:"code,omitempty"`
-	Description string                       `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-}
-
-func (m *BlockOpenResponse_Error) Reset()         { *m = BlockOpenResponse_Error{} }
-func (m *BlockOpenResponse_Error) String() string { return proto.CompactTextString(m) }
-func (*BlockOpenResponse_Error) ProtoMessage()    {}
-func (*BlockOpenResponse_Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{3, 0}
-}
-func (m *BlockOpenResponse_Error) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockOpenResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockOpenResponse_Error.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockOpenResponse_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockOpenResponse_Error.Merge(m, src)
-}
-func (m *BlockOpenResponse_Error) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockOpenResponse_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockOpenResponse_Error.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockOpenResponse_Error proto.InternalMessageInfo
-
-func (m *BlockOpenResponse_Error) GetCode() BlockOpenResponse_Error_Code {
-	if m != nil {
-		return m.Code
-	}
-	return BlockOpenResponse_Error_NULL
-}
-
-func (m *BlockOpenResponse_Error) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
-type BlockCreateRequest struct {
-	Type           BlockType `protobuf:"varint,1,opt,name=type,proto3,enum=anytype.BlockType" json:"type,omitempty"`
-	ContextBlockId string    `protobuf:"bytes,2,opt,name=contextBlockId,proto3" json:"contextBlockId,omitempty"`
-}
-
-func (m *BlockCreateRequest) Reset()         { *m = BlockCreateRequest{} }
-func (m *BlockCreateRequest) String() string { return proto.CompactTextString(m) }
-func (*BlockCreateRequest) ProtoMessage()    {}
-func (*BlockCreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{4}
-}
-func (m *BlockCreateRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockCreateRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockCreateRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockCreateRequest.Merge(m, src)
-}
-func (m *BlockCreateRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockCreateRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockCreateRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockCreateRequest proto.InternalMessageInfo
-
-func (m *BlockCreateRequest) GetType() BlockType {
-	if m != nil {
-		return m.Type
-	}
-	return BlockType_DASHBOARD
-}
-
-func (m *BlockCreateRequest) GetContextBlockId() string {
-	if m != nil {
-		return m.ContextBlockId
-	}
-	return ""
-}
-
-type BlockCreateResponse struct {
-	Error *BlockCreateResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *BlockCreateResponse) Reset()         { *m = BlockCreateResponse{} }
-func (m *BlockCreateResponse) String() string { return proto.CompactTextString(m) }
-func (*BlockCreateResponse) ProtoMessage()    {}
-func (*BlockCreateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{5}
-}
-func (m *BlockCreateResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockCreateResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockCreateResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockCreateResponse.Merge(m, src)
-}
-func (m *BlockCreateResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockCreateResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockCreateResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockCreateResponse proto.InternalMessageInfo
-
-func (m *BlockCreateResponse) GetError() *BlockCreateResponse_Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type BlockCreateResponse_Error struct {
-	Code        BlockCreateResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.BlockCreateResponse_Error_Code" json:"code,omitempty"`
-	Description string                         `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-}
-
-func (m *BlockCreateResponse_Error) Reset()         { *m = BlockCreateResponse_Error{} }
-func (m *BlockCreateResponse_Error) String() string { return proto.CompactTextString(m) }
-func (*BlockCreateResponse_Error) ProtoMessage()    {}
-func (*BlockCreateResponse_Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{5, 0}
-}
-func (m *BlockCreateResponse_Error) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockCreateResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockCreateResponse_Error.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockCreateResponse_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockCreateResponse_Error.Merge(m, src)
-}
-func (m *BlockCreateResponse_Error) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockCreateResponse_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockCreateResponse_Error.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockCreateResponse_Error proto.InternalMessageInfo
-
-func (m *BlockCreateResponse_Error) GetCode() BlockCreateResponse_Error_Code {
-	if m != nil {
-		return m.Code
-	}
-	return BlockCreateResponse_Error_NULL
-}
-
-func (m *BlockCreateResponse_Error) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
-type BlockUpdateRequest struct {
-	Changes *BlockChanges `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
-}
-
-func (m *BlockUpdateRequest) Reset()         { *m = BlockUpdateRequest{} }
-func (m *BlockUpdateRequest) String() string { return proto.CompactTextString(m) }
-func (*BlockUpdateRequest) ProtoMessage()    {}
-func (*BlockUpdateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{6}
-}
-func (m *BlockUpdateRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockUpdateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockUpdateRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockUpdateRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockUpdateRequest.Merge(m, src)
-}
-func (m *BlockUpdateRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockUpdateRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockUpdateRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockUpdateRequest proto.InternalMessageInfo
-
-func (m *BlockUpdateRequest) GetChanges() *BlockChanges {
-	if m != nil {
-		return m.Changes
-	}
-	return nil
-}
-
-type BlockUpdateResponse struct {
-	Error *BlockUpdateResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *BlockUpdateResponse) Reset()         { *m = BlockUpdateResponse{} }
-func (m *BlockUpdateResponse) String() string { return proto.CompactTextString(m) }
-func (*BlockUpdateResponse) ProtoMessage()    {}
-func (*BlockUpdateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{7}
-}
-func (m *BlockUpdateResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockUpdateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockUpdateResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockUpdateResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockUpdateResponse.Merge(m, src)
-}
-func (m *BlockUpdateResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockUpdateResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockUpdateResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockUpdateResponse proto.InternalMessageInfo
-
-func (m *BlockUpdateResponse) GetError() *BlockUpdateResponse_Error {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type BlockUpdateResponse_Error struct {
-	Code        BlockUpdateResponse_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.BlockUpdateResponse_Error_Code" json:"code,omitempty"`
-	Description string                         `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-}
-
-func (m *BlockUpdateResponse_Error) Reset()         { *m = BlockUpdateResponse_Error{} }
-func (m *BlockUpdateResponse_Error) String() string { return proto.CompactTextString(m) }
-func (*BlockUpdateResponse_Error) ProtoMessage()    {}
-func (*BlockUpdateResponse_Error) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{7, 0}
-}
-func (m *BlockUpdateResponse_Error) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockUpdateResponse_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockUpdateResponse_Error.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockUpdateResponse_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockUpdateResponse_Error.Merge(m, src)
-}
-func (m *BlockUpdateResponse_Error) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockUpdateResponse_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockUpdateResponse_Error.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockUpdateResponse_Error proto.InternalMessageInfo
-
-func (m *BlockUpdateResponse_Error) GetCode() BlockUpdateResponse_Error_Code {
-	if m != nil {
-		return m.Code
-	}
-	return BlockUpdateResponse_Error_NULL
-}
-
-func (m *BlockUpdateResponse_Error) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
+	return fileDescriptor_8e550b1f5926e92d, []int{21, 1, 0}
 }
 
 // call
@@ -936,7 +229,7 @@ func (m *BlockShow) Reset()         { *m = BlockShow{} }
 func (m *BlockShow) String() string { return proto.CompactTextString(m) }
 func (*BlockShow) ProtoMessage()    {}
 func (*BlockShow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{8}
+	return fileDescriptor_8e550b1f5926e92d, []int{0}
 }
 func (m *BlockShow) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -980,7 +273,7 @@ func (m *BlockUpdate) Reset()         { *m = BlockUpdate{} }
 func (m *BlockUpdate) String() string { return proto.CompactTextString(m) }
 func (*BlockUpdate) ProtoMessage()    {}
 func (*BlockUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{9}
+	return fileDescriptor_8e550b1f5926e92d, []int{1}
 }
 func (m *BlockUpdate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1024,7 +317,7 @@ func (m *BlockCreate) Reset()         { *m = BlockCreate{} }
 func (m *BlockCreate) String() string { return proto.CompactTextString(m) }
 func (*BlockCreate) ProtoMessage()    {}
 func (*BlockCreate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{10}
+	return fileDescriptor_8e550b1f5926e92d, []int{2}
 }
 func (m *BlockCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1069,7 +362,7 @@ func (m *BlockStructureChange) Reset()         { *m = BlockStructureChange{} }
 func (m *BlockStructureChange) String() string { return proto.CompactTextString(m) }
 func (*BlockStructureChange) ProtoMessage()    {}
 func (*BlockStructureChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{11}
+	return fileDescriptor_8e550b1f5926e92d, []int{3}
 }
 func (m *BlockStructureChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1128,7 +421,7 @@ func (m *BlockContentTextChange) Reset()         { *m = BlockContentTextChange{}
 func (m *BlockContentTextChange) String() string { return proto.CompactTextString(m) }
 func (*BlockContentTextChange) ProtoMessage()    {}
 func (*BlockContentTextChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{12}
+	return fileDescriptor_8e550b1f5926e92d, []int{4}
 }
 func (m *BlockContentTextChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1274,7 +567,7 @@ func (m *BlockContentPageChange) Reset()         { *m = BlockContentPageChange{}
 func (m *BlockContentPageChange) String() string { return proto.CompactTextString(m) }
 func (*BlockContentPageChange) ProtoMessage()    {}
 func (*BlockContentPageChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{13}
+	return fileDescriptor_8e550b1f5926e92d, []int{5}
 }
 func (m *BlockContentPageChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1374,7 +667,7 @@ func (m *BlockHeaderChange) Reset()         { *m = BlockHeaderChange{} }
 func (m *BlockHeaderChange) String() string { return proto.CompactTextString(m) }
 func (*BlockHeaderChange) ProtoMessage()    {}
 func (*BlockHeaderChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{14}
+	return fileDescriptor_8e550b1f5926e92d, []int{6}
 }
 func (m *BlockHeaderChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1496,7 +789,7 @@ func (m *BlockContentDashboardChange) Reset()         { *m = BlockContentDashboa
 func (m *BlockContentDashboardChange) String() string { return proto.CompactTextString(m) }
 func (*BlockContentDashboardChange) ProtoMessage()    {}
 func (*BlockContentDashboardChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{15}
+	return fileDescriptor_8e550b1f5926e92d, []int{7}
 }
 func (m *BlockContentDashboardChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1596,7 +889,7 @@ func (m *BlockAtomicChange) Reset()         { *m = BlockAtomicChange{} }
 func (m *BlockAtomicChange) String() string { return proto.CompactTextString(m) }
 func (*BlockAtomicChange) ProtoMessage()    {}
 func (*BlockAtomicChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{16}
+	return fileDescriptor_8e550b1f5926e92d, []int{8}
 }
 func (m *BlockAtomicChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1709,7 +1002,7 @@ func (m *BlockChanges) Reset()         { *m = BlockChanges{} }
 func (m *BlockChanges) String() string { return proto.CompactTextString(m) }
 func (*BlockChanges) ProtoMessage()    {}
 func (*BlockChanges) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{17}
+	return fileDescriptor_8e550b1f5926e92d, []int{9}
 }
 func (m *BlockChanges) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1761,7 +1054,7 @@ func (m *Block) Reset()         { *m = Block{} }
 func (m *Block) String() string { return proto.CompactTextString(m) }
 func (*Block) ProtoMessage()    {}
 func (*Block) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{18}
+	return fileDescriptor_8e550b1f5926e92d, []int{10}
 }
 func (m *Block) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1901,7 +1194,7 @@ func (m *BlockHeader) Reset()         { *m = BlockHeader{} }
 func (m *BlockHeader) String() string { return proto.CompactTextString(m) }
 func (*BlockHeader) ProtoMessage()    {}
 func (*BlockHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{19}
+	return fileDescriptor_8e550b1f5926e92d, []int{11}
 }
 func (m *BlockHeader) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1967,7 +1260,7 @@ func (m *BlockLayout) Reset()         { *m = BlockLayout{} }
 func (m *BlockLayout) String() string { return proto.CompactTextString(m) }
 func (*BlockLayout) ProtoMessage()    {}
 func (*BlockLayout) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{20}
+	return fileDescriptor_8e550b1f5926e92d, []int{12}
 }
 func (m *BlockLayout) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2015,7 +1308,7 @@ func (m *BlockPermissions) Reset()         { *m = BlockPermissions{} }
 func (m *BlockPermissions) String() string { return proto.CompactTextString(m) }
 func (*BlockPermissions) ProtoMessage()    {}
 func (*BlockPermissions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{21}
+	return fileDescriptor_8e550b1f5926e92d, []int{13}
 }
 func (m *BlockPermissions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2087,7 +1380,7 @@ func (m *BlockHeadersList) Reset()         { *m = BlockHeadersList{} }
 func (m *BlockHeadersList) String() string { return proto.CompactTextString(m) }
 func (*BlockHeadersList) ProtoMessage()    {}
 func (*BlockHeadersList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{22}
+	return fileDescriptor_8e550b1f5926e92d, []int{14}
 }
 func (m *BlockHeadersList) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2131,7 +1424,7 @@ func (m *BlocksList) Reset()         { *m = BlocksList{} }
 func (m *BlocksList) String() string { return proto.CompactTextString(m) }
 func (*BlocksList) ProtoMessage()    {}
 func (*BlocksList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{23}
+	return fileDescriptor_8e550b1f5926e92d, []int{15}
 }
 func (m *BlocksList) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2177,7 +1470,7 @@ func (m *BlockContentPage) Reset()         { *m = BlockContentPage{} }
 func (m *BlockContentPage) String() string { return proto.CompactTextString(m) }
 func (*BlockContentPage) ProtoMessage()    {}
 func (*BlockContentPage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{24}
+	return fileDescriptor_8e550b1f5926e92d, []int{16}
 }
 func (m *BlockContentPage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2235,7 +1528,7 @@ func (m *BlockStructure) Reset()         { *m = BlockStructure{} }
 func (m *BlockStructure) String() string { return proto.CompactTextString(m) }
 func (*BlockStructure) ProtoMessage()    {}
 func (*BlockStructure) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{25}
+	return fileDescriptor_8e550b1f5926e92d, []int{17}
 }
 func (m *BlockStructure) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2279,7 +1572,7 @@ func (m *BlockChildren) Reset()         { *m = BlockChildren{} }
 func (m *BlockChildren) String() string { return proto.CompactTextString(m) }
 func (*BlockChildren) ProtoMessage()    {}
 func (*BlockChildren) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{26}
+	return fileDescriptor_8e550b1f5926e92d, []int{18}
 }
 func (m *BlockChildren) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2325,7 +1618,7 @@ func (m *BlockContentDashboard) Reset()         { *m = BlockContentDashboard{} }
 func (m *BlockContentDashboard) String() string { return proto.CompactTextString(m) }
 func (*BlockContentDashboard) ProtoMessage()    {}
 func (*BlockContentDashboard) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{27}
+	return fileDescriptor_8e550b1f5926e92d, []int{19}
 }
 func (m *BlockContentDashboard) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2382,7 +1675,7 @@ func (m *BlockContentDataview) Reset()         { *m = BlockContentDataview{} }
 func (m *BlockContentDataview) String() string { return proto.CompactTextString(m) }
 func (*BlockContentDataview) ProtoMessage()    {}
 func (*BlockContentDataview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{28}
+	return fileDescriptor_8e550b1f5926e92d, []int{20}
 }
 func (m *BlockContentDataview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2425,7 +1718,7 @@ func (m *BlockContentText) Reset()         { *m = BlockContentText{} }
 func (m *BlockContentText) String() string { return proto.CompactTextString(m) }
 func (*BlockContentText) ProtoMessage()    {}
 func (*BlockContentText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{29}
+	return fileDescriptor_8e550b1f5926e92d, []int{21}
 }
 func (m *BlockContentText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2511,7 +1804,7 @@ func (m *BlockContentText_Marks) Reset()         { *m = BlockContentText_Marks{}
 func (m *BlockContentText_Marks) String() string { return proto.CompactTextString(m) }
 func (*BlockContentText_Marks) ProtoMessage()    {}
 func (*BlockContentText_Marks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{29, 0}
+	return fileDescriptor_8e550b1f5926e92d, []int{21, 0}
 }
 func (m *BlockContentText_Marks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2557,7 +1850,7 @@ func (m *BlockContentText_Mark) Reset()         { *m = BlockContentText_Mark{} }
 func (m *BlockContentText_Mark) String() string { return proto.CompactTextString(m) }
 func (*BlockContentText_Mark) ProtoMessage()    {}
 func (*BlockContentText_Mark) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{29, 1}
+	return fileDescriptor_8e550b1f5926e92d, []int{21, 1}
 }
 func (m *BlockContentText_Mark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2615,7 +1908,7 @@ func (m *BlockContentMedia) Reset()         { *m = BlockContentMedia{} }
 func (m *BlockContentMedia) String() string { return proto.CompactTextString(m) }
 func (*BlockContentMedia) ProtoMessage()    {}
 func (*BlockContentMedia) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{30}
+	return fileDescriptor_8e550b1f5926e92d, []int{22}
 }
 func (m *BlockContentMedia) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2660,7 +1953,7 @@ func (m *Range) Reset()         { *m = Range{} }
 func (m *Range) String() string { return proto.CompactTextString(m) }
 func (*Range) ProtoMessage()    {}
 func (*Range) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8e550b1f5926e92d, []int{31}
+	return fileDescriptor_8e550b1f5926e92d, []int{23}
 }
 func (m *Range) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2705,27 +1998,11 @@ func (m *Range) GetTo() int32 {
 
 func init() {
 	proto.RegisterEnum("anytype.BlockType", BlockType_name, BlockType_value)
-	proto.RegisterEnum("anytype.BlockHistoryMoveResponse_Error_Code", BlockHistoryMoveResponse_Error_Code_name, BlockHistoryMoveResponse_Error_Code_value)
-	proto.RegisterEnum("anytype.BlockOpenResponse_Error_Code", BlockOpenResponse_Error_Code_name, BlockOpenResponse_Error_Code_value)
-	proto.RegisterEnum("anytype.BlockCreateResponse_Error_Code", BlockCreateResponse_Error_Code_name, BlockCreateResponse_Error_Code_value)
-	proto.RegisterEnum("anytype.BlockUpdateResponse_Error_Code", BlockUpdateResponse_Error_Code_name, BlockUpdateResponse_Error_Code_value)
 	proto.RegisterEnum("anytype.BlockContentPage_Style", BlockContentPage_Style_name, BlockContentPage_Style_value)
 	proto.RegisterEnum("anytype.BlockContentDashboard_Style", BlockContentDashboard_Style_name, BlockContentDashboard_Style_value)
 	proto.RegisterEnum("anytype.BlockContentText_Style", BlockContentText_Style_name, BlockContentText_Style_value)
 	proto.RegisterEnum("anytype.BlockContentText_MarkerType", BlockContentText_MarkerType_name, BlockContentText_MarkerType_value)
 	proto.RegisterEnum("anytype.BlockContentText_Mark_Type", BlockContentText_Mark_Type_name, BlockContentText_Mark_Type_value)
-	proto.RegisterType((*BlockHistoryMoveRequest)(nil), "anytype.BlockHistoryMoveRequest")
-	proto.RegisterType((*BlockHistoryMoveResponse)(nil), "anytype.BlockHistoryMoveResponse")
-	proto.RegisterType((*BlockHistoryMoveResponse_Error)(nil), "anytype.BlockHistoryMoveResponse.Error")
-	proto.RegisterType((*BlockOpenRequest)(nil), "anytype.BlockOpenRequest")
-	proto.RegisterType((*BlockOpenResponse)(nil), "anytype.BlockOpenResponse")
-	proto.RegisterType((*BlockOpenResponse_Error)(nil), "anytype.BlockOpenResponse.Error")
-	proto.RegisterType((*BlockCreateRequest)(nil), "anytype.BlockCreateRequest")
-	proto.RegisterType((*BlockCreateResponse)(nil), "anytype.BlockCreateResponse")
-	proto.RegisterType((*BlockCreateResponse_Error)(nil), "anytype.BlockCreateResponse.Error")
-	proto.RegisterType((*BlockUpdateRequest)(nil), "anytype.BlockUpdateRequest")
-	proto.RegisterType((*BlockUpdateResponse)(nil), "anytype.BlockUpdateResponse")
-	proto.RegisterType((*BlockUpdateResponse_Error)(nil), "anytype.BlockUpdateResponse.Error")
 	proto.RegisterType((*BlockShow)(nil), "anytype.BlockShow")
 	proto.RegisterType((*BlockUpdate)(nil), "anytype.BlockUpdate")
 	proto.RegisterType((*BlockCreate)(nil), "anytype.BlockCreate")
@@ -2758,560 +2035,100 @@ func init() {
 func init() { proto.RegisterFile("block.proto", fileDescriptor_8e550b1f5926e92d) }
 
 var fileDescriptor_8e550b1f5926e92d = []byte{
-	// 1819 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x58, 0x4f, 0x73, 0xdb, 0xc6,
-	0x15, 0x07, 0x40, 0x82, 0x22, 0x1f, 0x25, 0x79, 0xbd, 0x51, 0x14, 0x96, 0x4d, 0x58, 0x0d, 0x9a,
-	0xda, 0x9e, 0xda, 0xc3, 0x4c, 0x28, 0x3b, 0xff, 0x5c, 0x7b, 0x4a, 0x8a, 0xb0, 0xc9, 0x11, 0x45,
-	0x6a, 0x56, 0x94, 0xdd, 0xe4, 0xa2, 0x81, 0x88, 0x8d, 0x84, 0x11, 0x09, 0x30, 0x00, 0x64, 0x87,
-	0x97, 0x5e, 0x7a, 0xee, 0x4c, 0x8f, 0x9d, 0x1e, 0x3a, 0xd3, 0x73, 0x4e, 0xfd, 0x0e, 0x39, 0xf4,
-	0xd4, 0xf1, 0xb1, 0xbd, 0x65, 0xec, 0x6b, 0x3f, 0x44, 0x67, 0xff, 0x00, 0x04, 0x28, 0x92, 0x92,
-	0x9c, 0xf1, 0x89, 0x8b, 0xdd, 0xf7, 0xf6, 0xbd, 0xf7, 0xdb, 0xdf, 0xbe, 0xf7, 0x96, 0x50, 0x3c,
-	0x1e, 0x7a, 0x83, 0xb3, 0xea, 0xd8, 0xf7, 0x42, 0x0f, 0xaf, 0x58, 0xee, 0x24, 0x9c, 0x8c, 0x69,
-	0x79, 0x35, 0x08, 0xfd, 0xf3, 0x41, 0x28, 0xa6, 0x8d, 0x00, 0x3e, 0x68, 0x30, 0xa9, 0x96, 0x13,
-	0x84, 0x9e, 0x3f, 0xd9, 0xf3, 0x5e, 0x50, 0x42, 0xbf, 0x3b, 0xa7, 0x41, 0x88, 0xd7, 0x41, 0x73,
-	0xec, 0x92, 0xba, 0xa5, 0xde, 0x29, 0x10, 0xcd, 0xb1, 0xf1, 0x2d, 0x58, 0x1f, 0x78, 0x6e, 0x48,
-	0xbf, 0x0f, 0xb9, 0x46, 0xdb, 0x2e, 0x69, 0x7c, 0x6d, 0x66, 0x16, 0x6f, 0x41, 0x71, 0xe4, 0xbd,
-	0xa0, 0x4f, 0x3c, 0xff, 0xa5, 0xe5, 0xdb, 0xa5, 0xcc, 0x96, 0x7a, 0x27, 0x4f, 0x92, 0x53, 0xc6,
-	0x9f, 0x35, 0x28, 0x5d, 0xb4, 0x1a, 0x8c, 0x3d, 0x37, 0xa0, 0xf8, 0x11, 0xe8, 0xd4, 0xf7, 0x3d,
-	0x9f, 0x5b, 0x2e, 0xd6, 0x6e, 0x57, 0xa5, 0xe3, 0xd5, 0x45, 0x1a, 0x55, 0x93, 0x89, 0x13, 0xa1,
-	0x55, 0xfe, 0xa7, 0x0a, 0x3a, 0x9f, 0xc0, 0xbf, 0x87, 0xec, 0xc0, 0xb3, 0x29, 0xdf, 0x67, 0xbd,
-	0x76, 0xef, 0x8a, 0xfb, 0x54, 0x77, 0x3c, 0x9b, 0x12, 0xae, 0xc9, 0x22, 0xb1, 0x69, 0x30, 0xf0,
-	0x9d, 0x71, 0xe8, 0x78, 0xae, 0x0c, 0x37, 0x39, 0x65, 0x34, 0x21, 0xcb, 0xe4, 0x71, 0x1e, 0xb2,
-	0xdd, 0xc3, 0x4e, 0x07, 0x29, 0xf8, 0x26, 0xac, 0x1d, 0x76, 0x77, 0xbb, 0xbd, 0xe7, 0xdd, 0x23,
-	0x93, 0x90, 0x1e, 0x41, 0x2a, 0x5e, 0x83, 0x42, 0xa3, 0xde, 0x3c, 0x6a, 0x77, 0xf7, 0x0f, 0xfb,
-	0x48, 0xc3, 0x08, 0x56, 0x77, 0xea, 0xdd, 0xa3, 0x6e, 0xaf, 0x7f, 0xb4, 0xd7, 0x7b, 0x66, 0xa2,
-	0x8c, 0x61, 0x00, 0xe2, 0x4e, 0xf5, 0xc6, 0xd4, 0x5d, 0x80, 0xbe, 0xf1, 0x77, 0x0d, 0x6e, 0x26,
-	0x84, 0x24, 0x58, 0x9f, 0xa5, 0xc1, 0xda, 0x4a, 0x07, 0x99, 0x14, 0x4d, 0xa1, 0x84, 0x3f, 0x93,
-	0xe4, 0x68, 0x51, 0xcb, 0xa6, 0x3e, 0x8f, 0xac, 0x58, 0xdb, 0x98, 0x81, 0x88, 0xaf, 0x91, 0xa4,
-	0x60, 0xf9, 0xaf, 0x31, 0xba, 0x5f, 0xa6, 0xd0, 0xfd, 0xcd, 0x65, 0x86, 0xaf, 0x07, 0x6b, 0xed,
-	0xfa, 0xb0, 0x1a, 0x36, 0x60, 0x6e, 0x7b, 0xc7, 0xa7, 0x56, 0x18, 0x93, 0xf8, 0x16, 0x64, 0x99,
-	0x5b, 0xd2, 0x4d, 0x9c, 0x76, 0xb3, 0x3f, 0x19, 0x53, 0xc2, 0xd7, 0xaf, 0x4a, 0x6e, 0xe3, 0x7f,
-	0x2a, 0xbc, 0x97, 0x32, 0x23, 0x0f, 0xe2, 0x8b, 0xf4, 0x41, 0x18, 0x69, 0x43, 0x69, 0xe1, 0x34,
-	0x61, 0xff, 0x16, 0x43, 0xfa, 0x30, 0x05, 0xe9, 0xed, 0xcb, 0xb7, 0x78, 0xf7, 0xa0, 0x9a, 0x12,
-	0xd4, 0xc3, 0xb1, 0x9d, 0x00, 0xf5, 0x13, 0x58, 0x19, 0x9c, 0x5a, 0xee, 0x09, 0x0d, 0x64, 0xb8,
-	0xef, 0xcf, 0xf8, 0x2a, 0x16, 0x49, 0x24, 0x35, 0x45, 0x2d, 0xda, 0xe7, 0x4a, 0xa8, 0xa5, 0x85,
-	0xdf, 0x0a, 0xb5, 0x79, 0x5b, 0xbc, 0x7b, 0xd4, 0x3e, 0x85, 0x02, 0xb7, 0x7e, 0x70, 0xea, 0xbd,
-	0xc4, 0x1f, 0x83, 0xce, 0x6f, 0x90, 0x8c, 0x71, 0x3d, 0xed, 0x20, 0x11, 0x8b, 0xc6, 0x63, 0x28,
-	0x26, 0x1c, 0xbe, 0x3e, 0xc2, 0xdb, 0x52, 0x5f, 0xd0, 0xe4, 0x8a, 0x46, 0xbf, 0x81, 0x0d, 0xe1,
-	0x27, 0xaf, 0x08, 0xe7, 0x3e, 0x15, 0xdb, 0x5e, 0xc8, 0xfc, 0x35, 0xc8, 0x0f, 0x4e, 0x9d, 0xa1,
-	0xed, 0x53, 0x57, 0xa6, 0x8a, 0xcd, 0x59, 0x77, 0xc4, 0x2a, 0x89, 0xe5, 0x8c, 0x57, 0x1a, 0x6c,
-	0x8a, 0x35, 0x76, 0x81, 0xdc, 0xb0, 0x4f, 0xbf, 0x0f, 0xe5, 0xf6, 0x1b, 0x90, 0x65, 0x57, 0x4a,
-	0x18, 0x68, 0x29, 0x84, 0x7f, 0xe1, 0xcf, 0x41, 0x0f, 0xc2, 0xc9, 0x90, 0x72, 0x0b, 0xeb, 0xb5,
-	0x5f, 0xcd, 0x58, 0x98, 0xee, 0x52, 0x3d, 0x60, 0x62, 0x2d, 0x85, 0x08, 0x79, 0xa6, 0x38, 0xb2,
-	0xfc, 0xb3, 0x80, 0x57, 0x9a, 0xe2, 0x32, 0xc5, 0x3d, 0x26, 0xc6, 0x14, 0xb9, 0x3c, 0xde, 0x02,
-	0x08, 0xbd, 0x93, 0x93, 0x21, 0xb5, 0x8e, 0x87, 0xb4, 0x94, 0x65, 0x75, 0xaa, 0xa5, 0x90, 0xc4,
-	0x1c, 0x7e, 0x02, 0xc0, 0x44, 0xa9, 0xcf, 0x32, 0x45, 0x49, 0xe7, 0x8e, 0x7d, 0xbc, 0x7c, 0x7f,
-	0x21, 0xcb, 0xf6, 0x99, 0x6a, 0xe2, 0x0a, 0x14, 0x06, 0xa7, 0x74, 0x70, 0xc6, 0x0d, 0xe5, 0xa4,
-	0xa1, 0xe9, 0x14, 0x2e, 0xb3, 0xe3, 0xa6, 0x83, 0x33, 0x6a, 0x97, 0x56, 0xe4, 0x6a, 0x34, 0xd1,
-	0xc8, 0x43, 0x4e, 0x1c, 0xb2, 0xf1, 0x6f, 0x35, 0x0d, 0xe9, 0xbe, 0x75, 0x12, 0x9d, 0x58, 0x0c,
-	0x9e, 0xba, 0x04, 0x3c, 0x26, 0x3f, 0x0b, 0x5e, 0x1b, 0x6e, 0x04, 0xe9, 0xd3, 0x97, 0x27, 0xfc,
-	0x51, 0x7a, 0x8b, 0x19, 0x8a, 0xb4, 0x14, 0x32, 0xab, 0x87, 0x6f, 0x45, 0x9c, 0xcb, 0xcc, 0xe3,
-	0x1c, 0x33, 0xc9, 0x97, 0x13, 0x01, 0xfd, 0xa8, 0xca, 0x9a, 0x26, 0xaa, 0x8b, 0xdc, 0x07, 0x4d,
-	0xd9, 0xd7, 0x52, 0x38, 0xff, 0xee, 0xc8, 0x24, 0xae, 0x2d, 0x4a, 0xe2, 0x9c, 0x44, 0x0c, 0xe8,
-	0x0d, 0xc8, 0xba, 0xd6, 0x88, 0x72, 0x17, 0x38, 0xb5, 0xd8, 0x17, 0x9b, 0x75, 0x06, 0x9e, 0xcb,
-	0x8f, 0x98, 0xcf, 0xb2, 0x2f, 0xfc, 0x08, 0x8a, 0x63, 0xea, 0x8f, 0x9c, 0x20, 0x70, 0x3c, 0x37,
-	0xe0, 0xa7, 0x5b, 0xac, 0xfd, 0x22, 0xbd, 0xf9, 0xfe, 0x54, 0xa0, 0xa5, 0x90, 0xa4, 0x7c, 0x22,
-	0x8c, 0x9f, 0x54, 0xf8, 0x65, 0x12, 0xe7, 0xa6, 0x15, 0x9c, 0x1e, 0x7b, 0x96, 0x6f, 0xcb, 0x80,
-	0x7e, 0x97, 0x3e, 0x9c, 0xf9, 0x04, 0x8a, 0x95, 0xde, 0xe1, 0x09, 0x55, 0x21, 0x77, 0x2a, 0x0a,
-	0x7e, 0x66, 0x71, 0xc1, 0x6f, 0x29, 0x44, 0x4a, 0x25, 0x42, 0xfc, 0x47, 0xd4, 0x7d, 0xd4, 0x43,
-	0x6f, 0xe4, 0x0c, 0x16, 0xe4, 0x89, 0x07, 0xf2, 0x62, 0x6b, 0x97, 0x5c, 0xc4, 0xd8, 0x43, 0x71,
-	0xf3, 0x1f, 0xa7, 0x9b, 0x11, 0xe1, 0x5b, 0x79, 0x9e, 0x6f, 0xb1, 0x62, 0x52, 0x81, 0x99, 0x1d,
-	0x5b, 0x27, 0xe2, 0x06, 0x17, 0x97, 0x70, 0x7f, 0x6a, 0x96, 0x89, 0xe3, 0x26, 0x14, 0xec, 0x08,
-	0x74, 0x79, 0xfa, 0x97, 0x1c, 0x4d, 0xbc, 0xc1, 0x54, 0x31, 0x81, 0x51, 0x13, 0x56, 0x93, 0xb9,
-	0x19, 0xdf, 0x4f, 0xe6, 0xf0, 0xcc, 0xc5, 0x90, 0x92, 0x50, 0x4e, 0x13, 0xf9, 0x9f, 0x32, 0xa0,
-	0xf3, 0x65, 0x7c, 0x2f, 0x3e, 0x2d, 0x75, 0x49, 0x7b, 0x26, 0x65, 0xf0, 0xe3, 0x64, 0x34, 0x45,
-	0xae, 0x50, 0x59, 0x1e, 0x4d, 0x2a, 0x0e, 0xfc, 0x89, 0x04, 0x71, 0x75, 0xde, 0x35, 0x48, 0x80,
-	0x18, 0xc3, 0xf7, 0x10, 0xf2, 0xb6, 0x15, 0x5a, 0x2f, 0x1c, 0xfa, 0xb2, 0xb4, 0x36, 0x8f, 0x90,
-	0xb1, 0x3d, 0x21, 0xd4, 0x52, 0x48, 0xac, 0xc0, 0xac, 0x71, 0xa6, 0xac, 0x2f, 0xb1, 0xc6, 0x98,
-	0x12, 0x73, 0xa4, 0x06, 0xfa, 0x88, 0xda, 0x8e, 0x55, 0xba, 0x31, 0x8f, 0x1d, 0x52, 0x63, 0x8f,
-	0x49, 0xf0, 0xfc, 0xce, 0x06, 0x8c, 0xee, 0x43, 0x6b, 0xe2, 0x9d, 0x87, 0x25, 0x34, 0x0f, 0xc0,
-	0x0e, 0x5f, 0x63, 0x74, 0x17, 0x52, 0x8d, 0x02, 0xac, 0x0c, 0xc4, 0x46, 0xc6, 0x0f, 0xaa, 0xac,
-	0xa7, 0x92, 0x62, 0x17, 0xdf, 0x42, 0x97, 0x64, 0x24, 0x99, 0x8f, 0x6e, 0x43, 0xee, 0x5b, 0x87,
-	0x0e, 0xed, 0xa8, 0x38, 0xdd, 0x88, 0x25, 0xc5, 0x75, 0x25, 0x72, 0x19, 0x3f, 0x4c, 0x27, 0xa3,
-	0xec, 0x25, 0xc9, 0x28, 0x95, 0x8a, 0x8c, 0x8f, 0xa4, 0xb3, 0x22, 0xa2, 0x0b, 0x4f, 0x87, 0x3f,
-	0xca, 0xe7, 0x45, 0x42, 0x1f, 0x63, 0xc8, 0xfa, 0xd4, 0x12, 0x52, 0x79, 0xc2, 0xc7, 0x6c, 0x8e,
-	0xda, 0x8e, 0xb8, 0xbe, 0x79, 0xc2, 0xc7, 0x78, 0x13, 0x72, 0x3e, 0x65, 0x6f, 0x37, 0xf9, 0x8e,
-	0x93, 0x5f, 0x4c, 0xd6, 0xf6, 0xad, 0x13, 0x51, 0x35, 0x09, 0x1f, 0x33, 0x59, 0xdb, 0xf7, 0xc6,
-	0x3d, 0x97, 0xdf, 0xa6, 0x3c, 0x91, 0x5f, 0x46, 0x43, 0xda, 0x17, 0x58, 0x06, 0x1d, 0x27, 0x08,
-	0x71, 0x15, 0x56, 0x04, 0x71, 0xa3, 0xcb, 0x31, 0x9f, 0xdd, 0x91, 0x90, 0x71, 0x1f, 0x80, 0xcf,
-	0x0b, 0xed, 0x5b, 0x90, 0xe3, 0x09, 0x20, 0x52, 0x9e, 0xed, 0x6f, 0xe4, 0xaa, 0xf1, 0x5a, 0x95,
-	0xa6, 0x13, 0x04, 0xc6, 0x0f, 0xae, 0x57, 0x2b, 0xa3, 0x3c, 0xfc, 0x00, 0x0a, 0x71, 0x3e, 0x95,
-	0x19, 0xee, 0x83, 0x05, 0x19, 0x98, 0x4c, 0x25, 0xf1, 0xdd, 0xd8, 0x55, 0xc1, 0x80, 0xf7, 0xd2,
-	0x3a, 0x3c, 0x9e, 0xd8, 0xdf, 0x6d, 0xd0, 0xb9, 0x4d, 0x5c, 0x00, 0xdd, 0xdc, 0xdb, 0xef, 0x7f,
-	0x8d, 0x14, 0xd6, 0x78, 0xf6, 0xeb, 0x07, 0xbb, 0x48, 0xc5, 0xab, 0x90, 0x6f, 0xf4, 0x7a, 0xbb,
-	0x7b, 0x75, 0xb2, 0x8b, 0x34, 0xbc, 0x02, 0x99, 0x03, 0xb3, 0x8f, 0x32, 0xac, 0xfc, 0xac, 0xa7,
-	0xed, 0xe3, 0x33, 0xd8, 0x3c, 0x16, 0x0f, 0x96, 0xbe, 0x97, 0x6a, 0xd0, 0x24, 0x5e, 0xdb, 0x0b,
-	0x1c, 0xaf, 0x36, 0xe6, 0x6a, 0x99, 0x6e, 0xe8, 0x4f, 0xc8, 0x82, 0x2d, 0xcb, 0x96, 0xac, 0x7e,
-	0xf3, 0xd5, 0x30, 0x82, 0xcc, 0x19, 0x9d, 0x48, 0x3a, 0xb2, 0x21, 0xbe, 0x07, 0xfa, 0x0b, 0x6b,
-	0x78, 0x4e, 0x2f, 0xe9, 0x25, 0x85, 0xd0, 0x57, 0xda, 0x17, 0xaa, 0x71, 0x17, 0xd6, 0x52, 0x6b,
-	0xb8, 0x9c, 0xea, 0x48, 0x33, 0x77, 0x0a, 0x89, 0xce, 0xf3, 0xbf, 0x2a, 0xbc, 0x3f, 0x37, 0xe1,
-	0xe1, 0xaf, 0xde, 0xa2, 0x10, 0xff, 0xcc, 0xe3, 0xdf, 0x9e, 0xf2, 0x3c, 0x33, 0xef, 0x4e, 0x27,
-	0xee, 0xc4, 0x94, 0xec, 0xa5, 0x88, 0x06, 0x37, 0xa0, 0xb8, 0x57, 0x6f, 0x77, 0x8f, 0x0e, 0x76,
-	0x88, 0x69, 0x76, 0x91, 0x62, 0x6c, 0xca, 0x8e, 0x7d, 0x26, 0xb7, 0x1a, 0x3f, 0xe8, 0x69, 0xa2,
-	0xb3, 0xdc, 0xc9, 0xee, 0xe8, 0xb4, 0xcf, 0x96, 0x79, 0xf4, 0xc1, 0xf5, 0xba, 0xec, 0x28, 0xfa,
-	0x47, 0x50, 0xe0, 0x3d, 0x33, 0xf3, 0xf3, 0x8a, 0x7d, 0x36, 0x99, 0x6a, 0xe0, 0xca, 0xc5, 0x4e,
-	0x3b, 0xd5, 0x67, 0x37, 0xdf, 0xb6, 0xcf, 0x4e, 0x75, 0xd9, 0x1f, 0x5e, 0xe8, 0xb2, 0x93, 0x3d,
-	0x76, 0x69, 0xa6, 0xc7, 0x8e, 0x3b, 0xec, 0xf2, 0x23, 0xd0, 0xb9, 0xc7, 0xf8, 0x7e, 0xf4, 0x92,
-	0x10, 0xb7, 0xa4, 0xb2, 0xdc, 0x03, 0xf9, 0x8c, 0x28, 0xff, 0xa8, 0x42, 0x96, 0x7d, 0xb3, 0x47,
-	0x97, 0xcf, 0xfb, 0xb3, 0xd9, 0x47, 0x17, 0xe1, 0x25, 0x5e, 0x2c, 0xe2, 0xcf, 0x53, 0xa5, 0xe3,
-	0xd7, 0xcb, 0x6d, 0x54, 0x13, 0xb5, 0x64, 0x03, 0xf4, 0xb1, 0xe5, 0x5b, 0x23, 0xd1, 0xdc, 0x12,
-	0xf1, 0x61, 0x3c, 0x85, 0x2c, 0x0f, 0xfe, 0x26, 0xac, 0x1d, 0xf4, 0x49, 0x7b, 0xd7, 0xec, 0xb7,
-	0x48, 0xef, 0xf0, 0x69, 0x0b, 0x29, 0x2c, 0x5f, 0xec, 0x9a, 0x5f, 0x37, 0x7a, 0x75, 0xd2, 0x44,
-	0x2a, 0x06, 0xc8, 0xb5, 0xfb, 0xf5, 0x4e, 0x7b, 0x07, 0x69, 0x2c, 0xa7, 0x34, 0x7a, 0x9d, 0x26,
-	0xca, 0xb0, 0x51, 0xa7, 0xdd, 0xdd, 0x45, 0x59, 0xe3, 0xcb, 0x88, 0x74, 0x3a, 0xa8, 0x63, 0xa4,
-	0xe0, 0x1c, 0x68, 0xa7, 0x9f, 0x22, 0x95, 0xff, 0xd6, 0x90, 0xc6, 0x7f, 0xb7, 0x51, 0x86, 0xff,
-	0xde, 0x47, 0x59, 0x96, 0xa2, 0xbe, 0x3b, 0xf7, 0x42, 0x8a, 0x74, 0xa3, 0x0a, 0x30, 0x3d, 0x12,
-	0xb6, 0xa5, 0xeb, 0xb9, 0x14, 0x29, 0xcc, 0xa4, 0x7b, 0x3e, 0x3a, 0xa6, 0xbe, 0x30, 0x7f, 0x7c,
-	0x3e, 0x1c, 0xd2, 0x10, 0x69, 0xc6, 0x6d, 0xd9, 0x4c, 0x26, 0xcb, 0x36, 0x63, 0xeb, 0xd0, 0x71,
-	0xcf, 0x22, 0xb6, 0xb2, 0xb1, 0x71, 0x17, 0x74, 0x8e, 0x1d, 0x5b, 0xfc, 0xd6, 0xf7, 0x46, 0x7c,
-	0x51, 0x27, 0x7c, 0xcc, 0xca, 0x5c, 0xe8, 0x71, 0x18, 0x75, 0xa2, 0x85, 0xde, 0x6f, 0x03, 0xf9,
-	0xea, 0xe6, 0x4e, 0xac, 0x41, 0xa1, 0x59, 0x3f, 0x68, 0x89, 0xe0, 0x79, 0x12, 0xdd, 0xaf, 0x3f,
-	0x35, 0x45, 0x12, 0x6d, 0xd6, 0xfb, 0xf5, 0x67, 0x6d, 0xf3, 0xb9, 0x00, 0xa2, 0x6f, 0xfe, 0xa1,
-	0x2f, 0x80, 0x78, 0xd2, 0xee, 0x98, 0x28, 0x8b, 0x8b, 0xb0, 0xb2, 0xdf, 0xde, 0xe9, 0x1f, 0x12,
-	0x13, 0xe9, 0x2c, 0xca, 0x67, 0xed, 0xa6, 0xd9, 0x43, 0x39, 0x96, 0x70, 0x49, 0xef, 0x39, 0x5a,
-	0x61, 0xa1, 0xec, 0xf4, 0x3a, 0x87, 0x7b, 0x5d, 0x94, 0x6f, 0x7c, 0xf8, 0xaf, 0xd7, 0x15, 0xf5,
-	0xd5, 0xeb, 0x8a, 0xfa, 0xd3, 0xeb, 0x8a, 0xfa, 0x97, 0x37, 0x15, 0xe5, 0xd5, 0x9b, 0x8a, 0xf2,
-	0x9f, 0x37, 0x15, 0xe5, 0x1b, 0x6d, 0x7c, 0x7c, 0x9c, 0xe3, 0x7f, 0xb2, 0x6e, 0xff, 0x3f, 0x00,
-	0x00, 0xff, 0xff, 0xe5, 0xe7, 0x9a, 0x8a, 0x8a, 0x15, 0x00, 0x00,
-}
-
-func (m *BlockHistoryMoveRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockHistoryMoveRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockHistoryMoveRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.MoveForward {
-		i--
-		if m.MoveForward {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i--
-		dAtA[i] = 0x18
-	}
-	if len(m.ContextBlockId) > 0 {
-		i -= len(m.ContextBlockId)
-		copy(dAtA[i:], m.ContextBlockId)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.ContextBlockId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Id) > 0 {
-		i -= len(m.Id)
-		copy(dAtA[i:], m.Id)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Id)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockHistoryMoveResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockHistoryMoveResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockHistoryMoveResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintBlock(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockHistoryMoveResponse_Error) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockHistoryMoveResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockHistoryMoveResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = encodeVarintBlock(dAtA, i, uint64(m.Code))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockOpenRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockOpenRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockOpenRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Id) > 0 {
-		i -= len(m.Id)
-		copy(dAtA[i:], m.Id)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Id)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockOpenResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockOpenResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockOpenResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.BlockHeader != nil {
-		{
-			size, err := m.BlockHeader.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintBlock(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintBlock(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockOpenResponse_Error) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockOpenResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockOpenResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = encodeVarintBlock(dAtA, i, uint64(m.Code))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockCreateRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockCreateRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.ContextBlockId) > 0 {
-		i -= len(m.ContextBlockId)
-		copy(dAtA[i:], m.ContextBlockId)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.ContextBlockId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Type != 0 {
-		i = encodeVarintBlock(dAtA, i, uint64(m.Type))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockCreateResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockCreateResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintBlock(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockCreateResponse_Error) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockCreateResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockCreateResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = encodeVarintBlock(dAtA, i, uint64(m.Code))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockUpdateRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockUpdateRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockUpdateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Changes != nil {
-		{
-			size, err := m.Changes.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintBlock(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockUpdateResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockUpdateResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockUpdateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintBlock(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockUpdateResponse_Error) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockUpdateResponse_Error) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockUpdateResponse_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintBlock(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = encodeVarintBlock(dAtA, i, uint64(m.Code))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
+	// 1485 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x58, 0x4b, 0x93, 0x12, 0x57,
+	0x14, 0xee, 0x6e, 0x68, 0x1e, 0x87, 0x79, 0xb4, 0x37, 0xe3, 0x84, 0x10, 0x25, 0x56, 0xc7, 0xd2,
+	0xa9, 0x68, 0x61, 0x39, 0x8f, 0x32, 0xd1, 0x68, 0x15, 0x0c, 0x28, 0xd4, 0x30, 0xc3, 0xd4, 0x85,
+	0xd1, 0xe8, 0x26, 0xd5, 0xd0, 0xd7, 0x81, 0x02, 0xba, 0x49, 0xd3, 0xa8, 0x6c, 0xb2, 0xc9, 0x1f,
+	0xc8, 0x5f, 0xc8, 0xda, 0xbf, 0xe1, 0x22, 0xab, 0x94, 0xcb, 0x64, 0x67, 0xcd, 0xfc, 0x91, 0xd4,
+	0x7d, 0xf4, 0x8b, 0x61, 0x18, 0x35, 0x95, 0x15, 0xf7, 0xde, 0xf3, 0x3e, 0xe7, 0xbb, 0xe7, 0x9e,
+	0x06, 0x32, 0xed, 0x81, 0xdd, 0xe9, 0x17, 0x46, 0x8e, 0xed, 0xda, 0x28, 0x69, 0x58, 0x53, 0x77,
+	0x3a, 0x22, 0xb9, 0xa5, 0xb1, 0xeb, 0x4c, 0x3a, 0x2e, 0x3f, 0xd6, 0xef, 0x42, 0xba, 0x44, 0xb9,
+	0x9a, 0x5d, 0xfb, 0x35, 0xba, 0x0e, 0x2a, 0x13, 0xc9, 0xca, 0xd7, 0xe4, 0x8d, 0xcc, 0xe6, 0x4a,
+	0x41, 0xc8, 0x14, 0x18, 0x0b, 0xe6, 0x44, 0xfd, 0x11, 0x64, 0xd8, 0xfe, 0x68, 0x64, 0x1a, 0x2e,
+	0x41, 0x77, 0x20, 0xd9, 0xe9, 0x1a, 0xd6, 0x31, 0x19, 0x0b, 0xb1, 0xcb, 0x51, 0xb1, 0x5d, 0x4e,
+	0xc4, 0x1e, 0x97, 0xbe, 0x25, 0xe4, 0x77, 0x1d, 0x42, 0xe5, 0x3f, 0xce, 0xe8, 0x0b, 0x58, 0xe3,
+	0x7e, 0x32, 0xe7, 0x27, 0x0e, 0xe1, 0x6a, 0xd1, 0x0a, 0x28, 0x3d, 0x93, 0x89, 0xa6, 0xb1, 0xd2,
+	0x33, 0xd1, 0x26, 0xa4, 0x3a, 0xdd, 0xde, 0xc0, 0x74, 0x88, 0x95, 0x55, 0x98, 0xc2, 0xf5, 0x59,
+	0x77, 0x38, 0x15, 0xfb, 0x7c, 0xfa, 0x7b, 0x05, 0xd6, 0x39, 0xcd, 0xb6, 0x5c, 0x62, 0xb9, 0x2d,
+	0xf2, 0xc6, 0x15, 0xea, 0xd7, 0x20, 0xee, 0x92, 0x37, 0x2e, 0x37, 0x50, 0x95, 0x30, 0xdb, 0xa1,
+	0x7b, 0xa0, 0x8e, 0xdd, 0xe9, 0x80, 0x30, 0x0b, 0x2b, 0x9b, 0xdf, 0xcc, 0x58, 0x08, 0xb4, 0x14,
+	0x9a, 0x94, 0xad, 0x2a, 0x61, 0xce, 0x4f, 0x05, 0x87, 0x86, 0xd3, 0x1f, 0x67, 0x63, 0xcc, 0xb5,
+	0x05, 0x82, 0xfb, 0x94, 0x8d, 0x0a, 0x32, 0x7e, 0x74, 0x0d, 0xc0, 0xb5, 0x8f, 0x8f, 0x07, 0xc4,
+	0x68, 0x0f, 0x48, 0x36, 0x7e, 0x4d, 0xde, 0x48, 0x55, 0x25, 0x1c, 0x3a, 0x43, 0x8f, 0x01, 0x28,
+	0x2b, 0x71, 0x5a, 0xd3, 0x11, 0xc9, 0xaa, 0xcc, 0xb1, 0xeb, 0x8b, 0xf5, 0x73, 0x5e, 0xaa, 0x27,
+	0x90, 0x44, 0x79, 0x48, 0x77, 0xba, 0xa4, 0xd3, 0x67, 0x86, 0x12, 0xc2, 0x50, 0x70, 0x84, 0x72,
+	0xb4, 0xdc, 0xa4, 0xd3, 0x27, 0x66, 0x36, 0x29, 0xa8, 0xde, 0x41, 0x29, 0x05, 0x09, 0x5e, 0x64,
+	0xfd, 0x2f, 0x39, 0x9a, 0xd2, 0x43, 0xe3, 0xd8, 0xab, 0x98, 0x9f, 0x3c, 0x79, 0x41, 0xf2, 0x28,
+	0xff, 0x6c, 0xf2, 0x6a, 0xb0, 0x3a, 0x8e, 0x56, 0x5f, 0x54, 0xf8, 0x6a, 0x54, 0xc5, 0x0c, 0x44,
+	0xaa, 0x12, 0x9e, 0x95, 0x43, 0x37, 0x3c, 0xcc, 0xc5, 0xe6, 0x61, 0x8e, 0x9a, 0x64, 0xe4, 0x50,
+	0x40, 0xef, 0x64, 0xb8, 0xc4, 0x89, 0xc4, 0x30, 0x89, 0x23, 0xf4, 0x68, 0x01, 0xfa, 0xaa, 0x12,
+	0xc3, 0xdf, 0x06, 0xc4, 0xa9, 0x22, 0x81, 0x0c, 0x14, 0x55, 0x2c, 0xd2, 0xcd, 0x38, 0x28, 0xb4,
+	0x2c, 0x63, 0x48, 0x98, 0x0b, 0x0c, 0x5a, 0x74, 0x47, 0x4f, 0x7b, 0x1d, 0xdb, 0x62, 0x25, 0x66,
+	0xa7, 0x74, 0x87, 0x1e, 0x42, 0x66, 0x44, 0x9c, 0x61, 0x6f, 0x3c, 0xee, 0xd9, 0xd6, 0x98, 0x55,
+	0x37, 0xb3, 0xf9, 0x55, 0x54, 0xf9, 0x61, 0xc0, 0x50, 0x95, 0x70, 0x98, 0x3f, 0x14, 0xc6, 0x07,
+	0x19, 0xbe, 0x0e, 0xe7, 0xb9, 0x6c, 0x8c, 0xbb, 0x6d, 0xdb, 0x70, 0x4c, 0x11, 0xd0, 0x8f, 0xd1,
+	0xe2, 0xcc, 0x07, 0x90, 0x2f, 0xf4, 0x3f, 0x56, 0xa8, 0x00, 0x89, 0x2e, 0xcb, 0xb4, 0x28, 0xd1,
+	0xda, 0x4c, 0x89, 0x18, 0xad, 0x2a, 0x61, 0xc1, 0x15, 0x0a, 0xf1, 0x0f, 0x45, 0x54, 0xaa, 0xe8,
+	0xda, 0xc3, 0x5e, 0xe7, 0x9c, 0x3e, 0xb1, 0x23, 0x2e, 0xb6, 0x72, 0xc1, 0x45, 0xf4, 0x3d, 0xe4,
+	0x37, 0xff, 0x91, 0x68, 0xaa, 0xd5, 0xb0, 0x6f, 0xb9, 0x79, 0xbe, 0xf9, 0x82, 0x61, 0x01, 0x6a,
+	0x76, 0x64, 0x1c, 0xf3, 0x1b, 0x9c, 0x59, 0x80, 0xfd, 0xc0, 0x2c, 0x65, 0x47, 0x65, 0x48, 0x9b,
+	0x5e, 0xd2, 0x45, 0xf5, 0x2f, 0x28, 0x8d, 0xaf, 0x20, 0x10, 0x0c, 0xe5, 0xa8, 0x0c, 0x4b, 0xe1,
+	0xde, 0x8c, 0xb6, 0xc3, 0x3d, 0x3c, 0x76, 0x36, 0xa4, 0x70, 0x2a, 0x83, 0x46, 0xfe, 0x5b, 0x0c,
+	0x54, 0x46, 0x46, 0xb7, 0xfd, 0x6a, 0xc9, 0xe7, 0x57, 0xcb, 0xab, 0x15, 0x7a, 0x14, 0x8e, 0x26,
+	0xc3, 0x04, 0xf2, 0x8b, 0xa3, 0x89, 0xc4, 0x81, 0xee, 0x88, 0x24, 0x2e, 0xcd, 0xbb, 0x06, 0xa1,
+	0x24, 0xfa, 0xe9, 0x7b, 0x00, 0x29, 0xd3, 0x70, 0x8d, 0x57, 0x3d, 0xf2, 0x3a, 0xbb, 0x3c, 0x0f,
+	0x90, 0xbe, 0x3d, 0xce, 0x54, 0x95, 0xb0, 0x2f, 0x40, 0xad, 0x31, 0xa4, 0xac, 0x2c, 0xb0, 0x46,
+	0x91, 0xe2, 0x63, 0x64, 0x13, 0xd4, 0x21, 0x31, 0x7b, 0x46, 0x76, 0x75, 0x1e, 0x3a, 0x84, 0xc4,
+	0x3e, 0xe5, 0x60, 0xfd, 0x9d, 0x2e, 0x28, 0xdc, 0x07, 0xc6, 0xd4, 0x9e, 0xb8, 0x59, 0x6d, 0x5e,
+	0x02, 0xeb, 0x8c, 0x46, 0xe1, 0xce, 0xb9, 0x4a, 0x69, 0x48, 0x76, 0xb8, 0x22, 0xfd, 0xad, 0x2c,
+	0xde, 0x53, 0x01, 0xb1, 0x59, 0xa4, 0xdf, 0xb8, 0xa8, 0x23, 0x89, 0x7e, 0x74, 0x13, 0x12, 0x2f,
+	0x7b, 0x64, 0x60, 0x7a, 0x8f, 0xd3, 0xaa, 0xcf, 0xc9, 0xaf, 0x2b, 0x16, 0x64, 0xf4, 0x20, 0xda,
+	0x8c, 0xe2, 0x17, 0x34, 0xa3, 0x48, 0x2b, 0xd2, 0xaf, 0x0a, 0x67, 0x79, 0x44, 0xb3, 0xce, 0xea,
+	0xbf, 0x82, 0x36, 0x2b, 0x8f, 0x10, 0xc4, 0x1d, 0x62, 0x70, 0xae, 0x14, 0x66, 0x6b, 0x7a, 0x46,
+	0xcc, 0x1e, 0xbf, 0xbe, 0x29, 0xcc, 0xd6, 0x68, 0x1d, 0x12, 0x0e, 0x19, 0xda, 0xaf, 0x78, 0x4b,
+	0x4d, 0x61, 0xb1, 0xa3, 0xbc, 0xa6, 0x63, 0x1c, 0xf3, 0x57, 0x13, 0xb3, 0x35, 0xe5, 0x35, 0x1d,
+	0x7b, 0xd4, 0xb0, 0xd8, 0x6d, 0x4a, 0x61, 0xb1, 0xd3, 0x4b, 0xc2, 0x3e, 0xcf, 0xe5, 0xb8, 0xde,
+	0x1b, 0xbb, 0xa8, 0x00, 0x49, 0x0e, 0x5c, 0xef, 0x72, 0xcc, 0x47, 0xb7, 0xc7, 0xa4, 0x6f, 0x03,
+	0xb0, 0x73, 0x2e, 0x7d, 0x03, 0x12, 0xac, 0x01, 0x78, 0xc2, 0xb3, 0xf3, 0x8d, 0xa0, 0xea, 0x27,
+	0xb2, 0x30, 0x1d, 0x02, 0x30, 0xda, 0xf9, 0xb4, 0xb7, 0xd2, 0xeb, 0xc3, 0x3b, 0x90, 0xf6, 0xfb,
+	0xa9, 0xe8, 0x70, 0x5f, 0x9e, 0xd3, 0x81, 0x71, 0xc0, 0x89, 0x6e, 0xf9, 0xae, 0x72, 0x04, 0x7c,
+	0x11, 0x95, 0x61, 0xf1, 0xf8, 0xfe, 0x6e, 0x81, 0xca, 0x6c, 0xa2, 0x34, 0xa8, 0x95, 0xfd, 0xc3,
+	0xd6, 0x73, 0x4d, 0x42, 0x29, 0x88, 0xb7, 0x8a, 0xcd, 0x3d, 0x4d, 0x46, 0x4b, 0x90, 0x2a, 0x35,
+	0x1a, 0x7b, 0xfb, 0x45, 0xbc, 0xa7, 0x29, 0x28, 0x09, 0xb1, 0x66, 0xa5, 0xa5, 0xc5, 0xe8, 0xf3,
+	0xb3, 0x12, 0xb5, 0x8f, 0xfa, 0xb0, 0xce, 0x34, 0xd6, 0xcc, 0x96, 0x1d, 0x19, 0xd0, 0x44, 0xbe,
+	0xb6, 0xce, 0x71, 0x9c, 0x6f, 0xcf, 0x48, 0x55, 0x2c, 0xd7, 0x99, 0xe2, 0x73, 0x54, 0xe6, 0x0c,
+	0xf1, 0xfa, 0xcd, 0x17, 0x43, 0x1a, 0xc4, 0xfa, 0x64, 0x2a, 0xe0, 0x48, 0x97, 0xe8, 0x36, 0xa8,
+	0xaf, 0x8c, 0xc1, 0x84, 0x5c, 0x30, 0x4b, 0x72, 0xa6, 0xfb, 0xca, 0xf7, 0xb2, 0x7e, 0x0b, 0x96,
+	0x23, 0x34, 0x94, 0x8b, 0x4c, 0xa4, 0xb1, 0x8d, 0x74, 0x68, 0xf2, 0xfc, 0x47, 0x86, 0xcb, 0x73,
+	0x1b, 0x1e, 0xba, 0xff, 0x19, 0x0f, 0xf1, 0x7f, 0x2c, 0xff, 0x56, 0x80, 0xf3, 0xd8, 0xbc, 0x3b,
+	0x1d, 0xba, 0x13, 0x01, 0xd8, 0xb3, 0x1e, 0x0c, 0x56, 0x21, 0xb3, 0x5f, 0xac, 0x1d, 0xfc, 0xdc,
+	0xdc, 0xc5, 0x95, 0xca, 0x81, 0x26, 0xe9, 0xeb, 0x62, 0x62, 0x9f, 0xe9, 0xad, 0xfa, 0x5b, 0x35,
+	0x0a, 0x74, 0xda, 0x3b, 0xe9, 0x1d, 0x0d, 0xe6, 0x6c, 0xd1, 0x47, 0x77, 0x3e, 0x6d, 0xca, 0xf6,
+	0xa2, 0x7f, 0x08, 0x69, 0x36, 0x33, 0x53, 0x3f, 0x3f, 0x72, 0xce, 0xc6, 0x81, 0x04, 0xca, 0x9f,
+	0x9d, 0xb4, 0x23, 0x73, 0x76, 0xf9, 0x73, 0xe7, 0xec, 0xc8, 0x94, 0x7d, 0xe5, 0xcc, 0x94, 0x1d,
+	0x9e, 0xb1, 0xb3, 0x33, 0x33, 0xb6, 0x3f, 0x61, 0xe7, 0x1e, 0x82, 0xca, 0x3c, 0x46, 0xdb, 0xde,
+	0x97, 0x04, 0xbf, 0x25, 0xf9, 0xc5, 0x1e, 0x88, 0xcf, 0x88, 0xdc, 0x3b, 0x19, 0xe2, 0x74, 0x4f,
+	0x3f, 0xba, 0x1c, 0x36, 0x9f, 0xcd, 0x7e, 0x74, 0x61, 0xf6, 0xc4, 0x73, 0x22, 0xba, 0x17, 0x79,
+	0x3a, 0xbe, 0x5d, 0x6c, 0xa3, 0x10, 0x7a, 0x4b, 0xd6, 0x40, 0x1d, 0x19, 0x8e, 0x31, 0xe4, 0xc3,
+	0x2d, 0xe6, 0x1b, 0xfd, 0x09, 0xc4, 0x59, 0xf0, 0x97, 0x60, 0xb9, 0xd9, 0xc2, 0xb5, 0xbd, 0x4a,
+	0xab, 0x8a, 0x1b, 0x47, 0x4f, 0xaa, 0x9a, 0x44, 0xfb, 0xc5, 0x5e, 0xe5, 0x79, 0xa9, 0x51, 0xc4,
+	0x65, 0x4d, 0x46, 0x00, 0x89, 0x5a, 0xab, 0x58, 0xaf, 0xed, 0x6a, 0x0a, 0xed, 0x29, 0xa5, 0x46,
+	0xbd, 0xac, 0xc5, 0xe8, 0xaa, 0x5e, 0x3b, 0xd8, 0xd3, 0xe2, 0xfa, 0x0f, 0x1e, 0xe8, 0x54, 0x90,
+	0x47, 0x9a, 0x84, 0x12, 0xa0, 0x74, 0xef, 0x6a, 0x32, 0xfb, 0xdd, 0xd4, 0x14, 0xf6, 0xbb, 0xa5,
+	0xc5, 0xd8, 0xef, 0xb6, 0x16, 0xa7, 0x2d, 0xea, 0x97, 0x89, 0xed, 0x12, 0x4d, 0xd5, 0x0b, 0x00,
+	0x41, 0x49, 0xa8, 0x4a, 0xcb, 0xb6, 0x88, 0x26, 0x51, 0x93, 0xd6, 0x64, 0xd8, 0x26, 0x0e, 0x37,
+	0xdf, 0x9e, 0x0c, 0x06, 0xc4, 0xd5, 0x14, 0xfd, 0xa6, 0x18, 0x26, 0xc3, 0xcf, 0x36, 0x45, 0xeb,
+	0xa0, 0x67, 0xf5, 0x3d, 0xb4, 0xd2, 0xb5, 0x7e, 0x0b, 0x54, 0x96, 0x3b, 0x4a, 0x7c, 0xe9, 0xd8,
+	0x43, 0x46, 0x54, 0x31, 0x5b, 0xd3, 0x67, 0xce, 0xb5, 0x59, 0x1a, 0x55, 0xac, 0xb8, 0xf6, 0x77,
+	0x63, 0xf1, 0xd5, 0xcd, 0x9c, 0x58, 0x86, 0x74, 0xb9, 0xd8, 0xac, 0xf2, 0xe0, 0x59, 0x13, 0x3d,
+	0x2c, 0x3e, 0xa9, 0xf0, 0x26, 0x5a, 0x2e, 0xb6, 0x8a, 0x4f, 0x6b, 0x95, 0x67, 0x3c, 0x11, 0xad,
+	0xca, 0x4f, 0x2d, 0x9e, 0x88, 0xc7, 0xb5, 0x7a, 0x45, 0x8b, 0xa3, 0x0c, 0x24, 0x0f, 0x6b, 0xbb,
+	0xad, 0x23, 0x5c, 0xd1, 0x54, 0x1a, 0xe5, 0xd3, 0x5a, 0xb9, 0xd2, 0xd0, 0x12, 0xb4, 0xe1, 0xe2,
+	0xc6, 0x33, 0x2d, 0x49, 0x43, 0xd9, 0x6d, 0xd4, 0x8f, 0xf6, 0x0f, 0xb4, 0x54, 0xe9, 0xca, 0x9f,
+	0x27, 0x79, 0xf9, 0xfd, 0x49, 0x5e, 0xfe, 0x70, 0x92, 0x97, 0x7f, 0x3f, 0xcd, 0x4b, 0xef, 0x4f,
+	0xf3, 0xd2, 0xdf, 0xa7, 0x79, 0xe9, 0x85, 0x32, 0x6a, 0xb7, 0x13, 0xec, 0xff, 0x80, 0xad, 0x7f,
+	0x03, 0x00, 0x00, 0xff, 0xff, 0xd3, 0xe5, 0xd9, 0xf5, 0x35, 0x10, 0x00, 0x00,
 }
 
 func (m *BlockShow) Marshal() (dAtA []byte, err error) {
@@ -4898,188 +3715,6 @@ func encodeVarintBlock(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *BlockHistoryMoveRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Id)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	l = len(m.ContextBlockId)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	if m.MoveForward {
-		n += 2
-	}
-	return n
-}
-
-func (m *BlockHistoryMoveResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockHistoryMoveResponse_Error) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + sovBlock(uint64(m.Code))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockOpenRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Id)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockOpenResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	if m.BlockHeader != nil {
-		l = m.BlockHeader.Size()
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockOpenResponse_Error) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + sovBlock(uint64(m.Code))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockCreateRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Type != 0 {
-		n += 1 + sovBlock(uint64(m.Type))
-	}
-	l = len(m.ContextBlockId)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockCreateResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockCreateResponse_Error) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + sovBlock(uint64(m.Code))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockUpdateRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Changes != nil {
-		l = m.Changes.Size()
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockUpdateResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
-func (m *BlockUpdateResponse_Error) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + sovBlock(uint64(m.Code))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovBlock(uint64(l))
-	}
-	return n
-}
-
 func (m *BlockShow) Size() (n int) {
 	if m == nil {
 		return 0
@@ -5812,1229 +4447,6 @@ func sovBlock(x uint64) (n int) {
 }
 func sozBlock(x uint64) (n int) {
 	return sovBlock(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *BlockHistoryMoveRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockHistoryMoveRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockHistoryMoveRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Id = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ContextBlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ContextBlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MoveForward", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.MoveForward = bool(v != 0)
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockHistoryMoveResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockHistoryMoveResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockHistoryMoveResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &BlockHistoryMoveResponse_Error{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockHistoryMoveResponse_Error) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Error: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= BlockHistoryMoveResponse_Error_Code(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockOpenRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockOpenRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockOpenRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Id = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockOpenResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockOpenResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockOpenResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &BlockOpenResponse_Error{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockHeader", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.BlockHeader == nil {
-				m.BlockHeader = &BlockHeader{}
-			}
-			if err := m.BlockHeader.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockOpenResponse_Error) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Error: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= BlockOpenResponse_Error_Code(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockCreateRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockCreateRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockCreateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
-			}
-			m.Type = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Type |= BlockType(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ContextBlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ContextBlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockCreateResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockCreateResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockCreateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &BlockCreateResponse_Error{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockCreateResponse_Error) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Error: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= BlockCreateResponse_Error_Code(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockUpdateRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockUpdateRequest: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockUpdateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Changes", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Changes == nil {
-				m.Changes = &BlockChanges{}
-			}
-			if err := m.Changes.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockUpdateResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BlockUpdateResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockUpdateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &BlockUpdateResponse_Error{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockUpdateResponse_Error) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBlock
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Error: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= BlockUpdateResponse_Error_Code(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBlock
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthBlock
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBlock(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthBlock
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *BlockShow) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

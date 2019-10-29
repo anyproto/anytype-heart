@@ -22,6 +22,109 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+//*
+//  Middleware to front end event message, that will be sent in this scenario:
+// Precondition: user A opened a block
+// 1. User B opens the same block
+// 2. User A receives a message about p.1
+type UserBlockJoin struct {
+	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+}
+
+func (m *UserBlockJoin) Reset()         { *m = UserBlockJoin{} }
+func (m *UserBlockJoin) String() string { return proto.CompactTextString(m) }
+func (*UserBlockJoin) ProtoMessage()    {}
+func (*UserBlockJoin) Descriptor() ([]byte, []int) {
+	return fileDescriptor_f5013c7d48f38d97, []int{0}
+}
+func (m *UserBlockJoin) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UserBlockJoin) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UserBlockJoin.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *UserBlockJoin) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UserBlockJoin.Merge(m, src)
+}
+func (m *UserBlockJoin) XXX_Size() int {
+	return m.Size()
+}
+func (m *UserBlockJoin) XXX_DiscardUnknown() {
+	xxx_messageInfo_UserBlockJoin.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UserBlockJoin proto.InternalMessageInfo
+
+func (m *UserBlockJoin) GetAccount() *Account {
+	if m != nil {
+		return m.Account
+	}
+	return nil
+}
+
+//*
+//  Middleware to front end event message, that will be sent in this scenario:
+// Precondition: user A and user B opened the same block
+// 1. User B closes the block
+// 2. User A receives a message about p.1
+type UserBlockLeft struct {
+	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+}
+
+func (m *UserBlockLeft) Reset()         { *m = UserBlockLeft{} }
+func (m *UserBlockLeft) String() string { return proto.CompactTextString(m) }
+func (*UserBlockLeft) ProtoMessage()    {}
+func (*UserBlockLeft) Descriptor() ([]byte, []int) {
+	return fileDescriptor_f5013c7d48f38d97, []int{1}
+}
+func (m *UserBlockLeft) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UserBlockLeft) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UserBlockLeft.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *UserBlockLeft) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UserBlockLeft.Merge(m, src)
+}
+func (m *UserBlockLeft) XXX_Size() int {
+	return m.Size()
+}
+func (m *UserBlockLeft) XXX_DiscardUnknown() {
+	xxx_messageInfo_UserBlockLeft.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UserBlockLeft proto.InternalMessageInfo
+
+func (m *UserBlockLeft) GetAccount() *Account {
+	if m != nil {
+		return m.Account
+	}
+	return nil
+}
+
+//*
+// Middleware to front end event message, that will be sent in this scenario:
+// Precondition: user A and user B opened the same block
+// 1. User B sets cursor or selects a text region into a text block
+// 2. User A receives a message about p.1
 type UserBlockTextRange struct {
 	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 	BlockId string   `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
@@ -32,7 +135,7 @@ func (m *UserBlockTextRange) Reset()         { *m = UserBlockTextRange{} }
 func (m *UserBlockTextRange) String() string { return proto.CompactTextString(m) }
 func (*UserBlockTextRange) ProtoMessage()    {}
 func (*UserBlockTextRange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_f5013c7d48f38d97, []int{0}
+	return fileDescriptor_f5013c7d48f38d97, []int{2}
 }
 func (m *UserBlockTextRange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -82,94 +185,11 @@ func (m *UserBlockTextRange) GetRange() *Range {
 	return nil
 }
 
-type UserBlockJoin struct {
-	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-}
-
-func (m *UserBlockJoin) Reset()         { *m = UserBlockJoin{} }
-func (m *UserBlockJoin) String() string { return proto.CompactTextString(m) }
-func (*UserBlockJoin) ProtoMessage()    {}
-func (*UserBlockJoin) Descriptor() ([]byte, []int) {
-	return fileDescriptor_f5013c7d48f38d97, []int{1}
-}
-func (m *UserBlockJoin) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *UserBlockJoin) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_UserBlockJoin.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *UserBlockJoin) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UserBlockJoin.Merge(m, src)
-}
-func (m *UserBlockJoin) XXX_Size() int {
-	return m.Size()
-}
-func (m *UserBlockJoin) XXX_DiscardUnknown() {
-	xxx_messageInfo_UserBlockJoin.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_UserBlockJoin proto.InternalMessageInfo
-
-func (m *UserBlockJoin) GetAccount() *Account {
-	if m != nil {
-		return m.Account
-	}
-	return nil
-}
-
-type UserBlockLeft struct {
-	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-}
-
-func (m *UserBlockLeft) Reset()         { *m = UserBlockLeft{} }
-func (m *UserBlockLeft) String() string { return proto.CompactTextString(m) }
-func (*UserBlockLeft) ProtoMessage()    {}
-func (*UserBlockLeft) Descriptor() ([]byte, []int) {
-	return fileDescriptor_f5013c7d48f38d97, []int{2}
-}
-func (m *UserBlockLeft) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *UserBlockLeft) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_UserBlockLeft.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *UserBlockLeft) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UserBlockLeft.Merge(m, src)
-}
-func (m *UserBlockLeft) XXX_Size() int {
-	return m.Size()
-}
-func (m *UserBlockLeft) XXX_DiscardUnknown() {
-	xxx_messageInfo_UserBlockLeft.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_UserBlockLeft proto.InternalMessageInfo
-
-func (m *UserBlockLeft) GetAccount() *Account {
-	if m != nil {
-		return m.Account
-	}
-	return nil
-}
-
+//*
+// Middleware to front end event message, that will be sent in this scenario:
+// Precondition: user A and user B opened the same block
+// 1. User B selects some inner blocks
+// 2. User A receives a message about p.1
 type UserBlockSelectRange struct {
 	Account       *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 	BlockIdsArray []string `protobuf:"bytes,2,rep,name=blockIdsArray,proto3" json:"blockIdsArray,omitempty"`
@@ -222,140 +242,32 @@ func (m *UserBlockSelectRange) GetBlockIdsArray() []string {
 	return nil
 }
 
-type UserBlockFocus struct {
-	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	BlockId string   `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-}
-
-func (m *UserBlockFocus) Reset()         { *m = UserBlockFocus{} }
-func (m *UserBlockFocus) String() string { return proto.CompactTextString(m) }
-func (*UserBlockFocus) ProtoMessage()    {}
-func (*UserBlockFocus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_f5013c7d48f38d97, []int{4}
-}
-func (m *UserBlockFocus) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *UserBlockFocus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_UserBlockFocus.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *UserBlockFocus) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UserBlockFocus.Merge(m, src)
-}
-func (m *UserBlockFocus) XXX_Size() int {
-	return m.Size()
-}
-func (m *UserBlockFocus) XXX_DiscardUnknown() {
-	xxx_messageInfo_UserBlockFocus.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_UserBlockFocus proto.InternalMessageInfo
-
-func (m *UserBlockFocus) GetAccount() *Account {
-	if m != nil {
-		return m.Account
-	}
-	return nil
-}
-
-func (m *UserBlockFocus) GetBlockId() string {
-	if m != nil {
-		return m.BlockId
-	}
-	return ""
-}
-
 func init() {
-	proto.RegisterType((*UserBlockTextRange)(nil), "anytype.UserBlockTextRange")
 	proto.RegisterType((*UserBlockJoin)(nil), "anytype.UserBlockJoin")
 	proto.RegisterType((*UserBlockLeft)(nil), "anytype.UserBlockLeft")
+	proto.RegisterType((*UserBlockTextRange)(nil), "anytype.UserBlockTextRange")
 	proto.RegisterType((*UserBlockSelectRange)(nil), "anytype.UserBlockSelectRange")
-	proto.RegisterType((*UserBlockFocus)(nil), "anytype.UserBlockFocus")
 }
 
 func init() { proto.RegisterFile("edit.proto", fileDescriptor_f5013c7d48f38d97) }
 
 var fileDescriptor_f5013c7d48f38d97 = []byte{
-	// 250 bytes of a gzipped FileDescriptorProto
+	// 236 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4a, 0x4d, 0xc9, 0x2c,
 	0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x4f, 0xcc, 0xab, 0x2c, 0xa9, 0x2c, 0x48, 0x95,
 	0xe2, 0x4e, 0xca, 0xc9, 0x4f, 0xce, 0x86, 0x88, 0x4a, 0xf1, 0x26, 0x26, 0x27, 0xe7, 0x97, 0xe6,
-	0x41, 0x15, 0x29, 0x35, 0x30, 0x72, 0x09, 0x85, 0x16, 0xa7, 0x16, 0x39, 0x81, 0x94, 0x84, 0xa4,
-	0x56, 0x94, 0x04, 0x25, 0xe6, 0xa5, 0xa7, 0x0a, 0x69, 0x71, 0xb1, 0x43, 0xd5, 0x49, 0x30, 0x2a,
-	0x30, 0x6a, 0x70, 0x1b, 0x09, 0xe8, 0x41, 0x4d, 0xd3, 0x73, 0x84, 0x88, 0x07, 0xc1, 0x14, 0x08,
-	0x49, 0x70, 0xb1, 0x83, 0x2d, 0xf0, 0x4c, 0x91, 0x60, 0x52, 0x60, 0xd4, 0xe0, 0x0c, 0x82, 0x71,
-	0x85, 0x54, 0xb8, 0x58, 0x8b, 0x40, 0xc6, 0x49, 0x30, 0x83, 0xcd, 0xe0, 0x83, 0x9b, 0x01, 0xb6,
-	0x24, 0x08, 0x22, 0xa9, 0x64, 0xcd, 0xc5, 0x0b, 0x77, 0x81, 0x57, 0x7e, 0x66, 0x1e, 0x29, 0x96,
-	0xa3, 0x68, 0xf6, 0x49, 0x4d, 0x2b, 0x21, 0x49, 0x73, 0x06, 0x97, 0x08, 0x5c, 0x73, 0x70, 0x6a,
-	0x4e, 0x6a, 0x32, 0x19, 0xbe, 0x57, 0xe1, 0xe2, 0x85, 0x7a, 0xb7, 0xd8, 0xb1, 0xa8, 0x28, 0xb1,
-	0x52, 0x82, 0x49, 0x81, 0x59, 0x83, 0x33, 0x08, 0x55, 0x50, 0x29, 0x8c, 0x8b, 0x0f, 0x6e, 0x93,
-	0x5b, 0x7e, 0x72, 0x69, 0x31, 0x75, 0x42, 0xd8, 0x49, 0xe6, 0xc4, 0x23, 0x39, 0xc6, 0x0b, 0x8f,
-	0xe4, 0x18, 0x1f, 0x3c, 0x92, 0x63, 0x9c, 0xf0, 0x58, 0x8e, 0xe1, 0xc2, 0x63, 0x39, 0x86, 0x1b,
-	0x8f, 0xe5, 0x18, 0xa2, 0x98, 0x0a, 0x92, 0x92, 0xd8, 0xc0, 0x71, 0x6c, 0x0c, 0x08, 0x00, 0x00,
-	0xff, 0xff, 0x2e, 0xa0, 0x3b, 0x82, 0x16, 0x02, 0x00, 0x00,
-}
-
-func (m *UserBlockTextRange) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *UserBlockTextRange) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *UserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Range != nil {
-		{
-			size, err := m.Range.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEdit(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.BlockId) > 0 {
-		i -= len(m.BlockId)
-		copy(dAtA[i:], m.BlockId)
-		i = encodeVarintEdit(dAtA, i, uint64(len(m.BlockId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Account != nil {
-		{
-			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEdit(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
+	0x41, 0x15, 0x29, 0x59, 0x73, 0xf1, 0x86, 0x16, 0xa7, 0x16, 0x39, 0x81, 0x54, 0x78, 0xe5, 0x67,
+	0xe6, 0x09, 0x69, 0x71, 0xb1, 0x43, 0x55, 0x48, 0x30, 0x2a, 0x30, 0x6a, 0x70, 0x1b, 0x09, 0xe8,
+	0x41, 0xcd, 0xd1, 0x73, 0x84, 0x88, 0x07, 0xc1, 0x14, 0xa0, 0x68, 0xf6, 0x49, 0x4d, 0x2b, 0x21,
+	0x49, 0x73, 0x03, 0x23, 0x97, 0x10, 0x5c, 0x77, 0x48, 0x6a, 0x45, 0x49, 0x50, 0x62, 0x5e, 0x7a,
+	0x2a, 0x29, 0x46, 0x08, 0x49, 0x70, 0xb1, 0x83, 0xbd, 0xe6, 0x99, 0x22, 0xc1, 0xa4, 0xc0, 0xa8,
+	0xc1, 0x19, 0x04, 0xe3, 0x0a, 0xa9, 0x70, 0xb1, 0x16, 0x81, 0x8c, 0x93, 0x60, 0x06, 0x9b, 0xc1,
+	0x07, 0x37, 0x03, 0x6c, 0x49, 0x10, 0x44, 0x52, 0x29, 0x83, 0x4b, 0x04, 0xee, 0x82, 0xe0, 0xd4,
+	0x9c, 0xd4, 0x64, 0x32, 0xdc, 0xa0, 0xc2, 0xc5, 0x0b, 0xb5, 0xb4, 0xd8, 0xb1, 0xa8, 0x28, 0xb1,
+	0x52, 0x82, 0x49, 0x81, 0x59, 0x83, 0x33, 0x08, 0x55, 0xd0, 0x49, 0xe6, 0xc4, 0x23, 0x39, 0xc6,
+	0x0b, 0x8f, 0xe4, 0x18, 0x1f, 0x3c, 0x92, 0x63, 0x9c, 0xf0, 0x58, 0x8e, 0xe1, 0xc2, 0x63, 0x39,
+	0x86, 0x1b, 0x8f, 0xe5, 0x18, 0xa2, 0x98, 0x0a, 0x92, 0x92, 0xd8, 0xc0, 0x71, 0x61, 0x0c, 0x08,
+	0x00, 0x00, 0xff, 0xff, 0x13, 0x3c, 0x53, 0x4b, 0xbe, 0x01, 0x00, 0x00,
 }
 
 func (m *UserBlockJoin) Marshal() (dAtA []byte, err error) {
@@ -428,6 +340,60 @@ func (m *UserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *UserBlockTextRange) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UserBlockTextRange) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *UserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Range != nil {
+		{
+			size, err := m.Range.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEdit(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintEdit(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Account != nil {
+		{
+			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEdit(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *UserBlockSelectRange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -472,48 +438,6 @@ func (m *UserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *UserBlockFocus) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *UserBlockFocus) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *UserBlockFocus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.BlockId) > 0 {
-		i -= len(m.BlockId)
-		copy(dAtA[i:], m.BlockId)
-		i = encodeVarintEdit(dAtA, i, uint64(len(m.BlockId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Account != nil {
-		{
-			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEdit(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
 func encodeVarintEdit(dAtA []byte, offset int, v uint64) int {
 	offset -= sovEdit(v)
 	base := offset
@@ -525,27 +449,6 @@ func encodeVarintEdit(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *UserBlockTextRange) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Account != nil {
-		l = m.Account.Size()
-		n += 1 + l + sovEdit(uint64(l))
-	}
-	l = len(m.BlockId)
-	if l > 0 {
-		n += 1 + l + sovEdit(uint64(l))
-	}
-	if m.Range != nil {
-		l = m.Range.Size()
-		n += 1 + l + sovEdit(uint64(l))
-	}
-	return n
-}
-
 func (m *UserBlockJoin) Size() (n int) {
 	if m == nil {
 		return 0
@@ -572,6 +475,27 @@ func (m *UserBlockLeft) Size() (n int) {
 	return n
 }
 
+func (m *UserBlockTextRange) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Account != nil {
+		l = m.Account.Size()
+		n += 1 + l + sovEdit(uint64(l))
+	}
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovEdit(uint64(l))
+	}
+	if m.Range != nil {
+		l = m.Range.Size()
+		n += 1 + l + sovEdit(uint64(l))
+	}
+	return n
+}
+
 func (m *UserBlockSelectRange) Size() (n int) {
 	if m == nil {
 		return 0
@@ -591,185 +515,11 @@ func (m *UserBlockSelectRange) Size() (n int) {
 	return n
 }
 
-func (m *UserBlockFocus) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Account != nil {
-		l = m.Account.Size()
-		n += 1 + l + sovEdit(uint64(l))
-	}
-	l = len(m.BlockId)
-	if l > 0 {
-		n += 1 + l + sovEdit(uint64(l))
-	}
-	return n
-}
-
 func sovEdit(x uint64) (n int) {
 	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozEdit(x uint64) (n int) {
 	return sovEdit(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *UserBlockTextRange) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEdit
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UserBlockTextRange: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UserBlockTextRange: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Account", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEdit
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEdit
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Account == nil {
-				m.Account = &Account{}
-			}
-			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEdit
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthEdit
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Range", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEdit
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEdit
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Range == nil {
-				m.Range = &Range{}
-			}
-			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEdit(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *UserBlockJoin) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
@@ -949,6 +699,163 @@ func (m *UserBlockLeft) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *UserBlockTextRange) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEdit
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UserBlockTextRange: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UserBlockTextRange: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Account", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEdit
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEdit
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Account == nil {
+				m.Account = &Account{}
+			}
+			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEdit
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEdit
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Range", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEdit
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEdit
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Range == nil {
+				m.Range = &Range{}
+			}
+			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEdit(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *UserBlockSelectRange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1045,127 +952,6 @@ func (m *UserBlockSelectRange) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.BlockIdsArray = append(m.BlockIdsArray, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEdit(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *UserBlockFocus) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEdit
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: UserBlockFocus: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UserBlockFocus: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Account", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEdit
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEdit
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Account == nil {
-				m.Account = &Account{}
-			}
-			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEdit
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthEdit
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthEdit
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

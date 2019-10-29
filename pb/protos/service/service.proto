@@ -5,7 +5,8 @@ option go_package = "lib";
 import "account.proto";
 import "file.proto";
 import "misc.proto";
-import "block.proto";
+import "block-commands.proto";
+
 
 service ClientCommands {
     rpc WalletCreate (anytype.WalletCreateRequest) returns (anytype.WalletCreateResponse);

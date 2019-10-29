@@ -5,26 +5,45 @@ option go_package = "pb";
 import "block.proto";
 import "account.proto";
 
-message UserBlockTextRange {
-    Account account = 1;
-    string blockId = 2;
-    Range range = 3;
-}
-
+/**
+ *  Middleware to front end event message, that will be sent in this scenario:
+ * Precondition: user A opened a block
+ * 1. User B opens the same block
+ * 2. User A receives a message about p.1
+*/
 message UserBlockJoin {
-    Account account = 1;
+    Account account = 1; // Account of the user, that opened a block
 }
 
+/**
+ *  Middleware to front end event message, that will be sent in this scenario:
+ * Precondition: user A and user B opened the same block
+ * 1. User B closes the block
+ * 2. User A receives a message about p.1
+*/
 message UserBlockLeft {
-    Account account = 1;
+    Account account = 1; // Account of the user, that left the block
 }
 
+/**
+ * Middleware to front end event message, that will be sent in this scenario:
+ * Precondition: user A and user B opened the same block
+ * 1. User B sets cursor or selects a text region into a text block 
+ * 2. User A receives a message about p.1
+*/
+message UserBlockTextRange {
+    Account account = 1; // Account of the user, that selected a text
+    string blockId = 2; // Id of the text block, that have a selection
+    Range range = 3; // Range of the selection
+}
+
+/**
+ * Middleware to front end event message, that will be sent in this scenario:
+ * Precondition: user A and user B opened the same block
+ * 1. User B selects some inner blocks
+ * 2. User A receives a message about p.1
+*/
 message UserBlockSelectRange {
-    Account account = 1;
-    repeated string blockIdsArray = 2;
-}
-
-message UserBlockFocus {
-    Account account = 1;
-    string blockId = 2;
+    Account account = 1; // Account of the user, that selected blocks
+    repeated string blockIdsArray = 2; // Ids of selected blocks.
 }

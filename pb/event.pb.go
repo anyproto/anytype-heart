@@ -28,6 +28,10 @@ type Event struct {
 	//	*Event_BlockShow
 	//	*Event_BlockUpdate
 	//	*Event_BlockCreate
+	//	*Event_UserBlockTextRange
+	//	*Event_UserBlockJoin
+	//	*Event_UserBlockLeft
+	//	*Event_UserBlockSelectRange
 	Message isEvent_Message `protobuf_oneof:"message"`
 }
 
@@ -82,11 +86,27 @@ type Event_BlockUpdate struct {
 type Event_BlockCreate struct {
 	BlockCreate *BlockCreate `protobuf:"bytes,4,opt,name=blockCreate,proto3,oneof" json:"blockCreate,omitempty"`
 }
+type Event_UserBlockTextRange struct {
+	UserBlockTextRange *UserBlockTextRange `protobuf:"bytes,5,opt,name=userBlockTextRange,proto3,oneof" json:"userBlockTextRange,omitempty"`
+}
+type Event_UserBlockJoin struct {
+	UserBlockJoin *UserBlockJoin `protobuf:"bytes,6,opt,name=userBlockJoin,proto3,oneof" json:"userBlockJoin,omitempty"`
+}
+type Event_UserBlockLeft struct {
+	UserBlockLeft *UserBlockLeft `protobuf:"bytes,7,opt,name=userBlockLeft,proto3,oneof" json:"userBlockLeft,omitempty"`
+}
+type Event_UserBlockSelectRange struct {
+	UserBlockSelectRange *UserBlockSelectRange `protobuf:"bytes,8,opt,name=userBlockSelectRange,proto3,oneof" json:"userBlockSelectRange,omitempty"`
+}
 
-func (*Event_AccountShow) isEvent_Message() {}
-func (*Event_BlockShow) isEvent_Message()   {}
-func (*Event_BlockUpdate) isEvent_Message() {}
-func (*Event_BlockCreate) isEvent_Message() {}
+func (*Event_AccountShow) isEvent_Message()          {}
+func (*Event_BlockShow) isEvent_Message()            {}
+func (*Event_BlockUpdate) isEvent_Message()          {}
+func (*Event_BlockCreate) isEvent_Message()          {}
+func (*Event_UserBlockTextRange) isEvent_Message()   {}
+func (*Event_UserBlockJoin) isEvent_Message()        {}
+func (*Event_UserBlockLeft) isEvent_Message()        {}
+func (*Event_UserBlockSelectRange) isEvent_Message() {}
 
 func (m *Event) GetMessage() isEvent_Message {
 	if m != nil {
@@ -123,6 +143,34 @@ func (m *Event) GetBlockCreate() *BlockCreate {
 	return nil
 }
 
+func (m *Event) GetUserBlockTextRange() *UserBlockTextRange {
+	if x, ok := m.GetMessage().(*Event_UserBlockTextRange); ok {
+		return x.UserBlockTextRange
+	}
+	return nil
+}
+
+func (m *Event) GetUserBlockJoin() *UserBlockJoin {
+	if x, ok := m.GetMessage().(*Event_UserBlockJoin); ok {
+		return x.UserBlockJoin
+	}
+	return nil
+}
+
+func (m *Event) GetUserBlockLeft() *UserBlockLeft {
+	if x, ok := m.GetMessage().(*Event_UserBlockLeft); ok {
+		return x.UserBlockLeft
+	}
+	return nil
+}
+
+func (m *Event) GetUserBlockSelectRange() *UserBlockSelectRange {
+	if x, ok := m.GetMessage().(*Event_UserBlockSelectRange); ok {
+		return x.UserBlockSelectRange
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*Event) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -130,6 +178,10 @@ func (*Event) XXX_OneofWrappers() []interface{} {
 		(*Event_BlockShow)(nil),
 		(*Event_BlockUpdate)(nil),
 		(*Event_BlockCreate)(nil),
+		(*Event_UserBlockTextRange)(nil),
+		(*Event_UserBlockJoin)(nil),
+		(*Event_UserBlockLeft)(nil),
+		(*Event_UserBlockSelectRange)(nil),
 	}
 }
 
@@ -140,21 +192,27 @@ func init() {
 func init() { proto.RegisterFile("event.proto", fileDescriptor_2d17a9d3f0ddf27e) }
 
 var fileDescriptor_2d17a9d3f0ddf27e = []byte{
-	// 209 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4e, 0x2d, 0x4b, 0xcd,
-	0x2b, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x4f, 0xcc, 0xab, 0x2c, 0xa9, 0x2c, 0x48,
-	0x95, 0xe2, 0x4d, 0x4c, 0x4e, 0xce, 0x2f, 0x85, 0x89, 0x4b, 0x71, 0x27, 0xe5, 0xe4, 0x27, 0x67,
-	0x43, 0x38, 0x4a, 0x5f, 0x18, 0xb9, 0x58, 0x5d, 0x41, 0x9a, 0x84, 0x2c, 0xb8, 0xb8, 0xa1, 0xea,
-	0x82, 0x33, 0xf2, 0xcb, 0x25, 0x18, 0x15, 0x18, 0x35, 0xb8, 0x8d, 0x44, 0xf4, 0xa0, 0x86, 0xe8,
-	0x39, 0x22, 0xe4, 0x3c, 0x18, 0x82, 0x90, 0x95, 0x0a, 0x19, 0x71, 0x71, 0x82, 0x8d, 0x04, 0xeb,
-	0x63, 0x02, 0xeb, 0x13, 0x82, 0xeb, 0x73, 0x82, 0xc9, 0x78, 0x30, 0x04, 0x21, 0x94, 0x81, 0x6c,
-	0x03, 0x73, 0x42, 0x0b, 0x52, 0x12, 0x4b, 0x52, 0x25, 0x98, 0xd1, 0x6c, 0x73, 0x42, 0xc8, 0x81,
-	0x6c, 0x43, 0x52, 0x0a, 0xd7, 0xe9, 0x5c, 0x94, 0x0a, 0xd2, 0xc9, 0x82, 0x4d, 0x27, 0x44, 0x0e,
-	0xae, 0x13, 0xc2, 0x75, 0xe2, 0xe4, 0x62, 0xcf, 0x4d, 0x2d, 0x2e, 0x4e, 0x4c, 0x4f, 0x75, 0x92,
-	0x39, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x27, 0x3c, 0x96,
-	0x63, 0xb8, 0xf0, 0x58, 0x8e, 0xe1, 0xc6, 0x63, 0x39, 0x86, 0x28, 0xa6, 0x82, 0xa4, 0x24, 0x36,
-	0x70, 0xd8, 0x18, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0x58, 0xcc, 0xa8, 0x8c, 0x4f, 0x01, 0x00,
-	0x00,
+	// 316 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x92, 0xbd, 0x4e, 0xf3, 0x30,
+	0x14, 0x86, 0x9d, 0x7e, 0xfd, 0xf9, 0xea, 0xa8, 0x8b, 0x55, 0xa1, 0xa8, 0x80, 0x85, 0x98, 0x98,
+	0x3a, 0x94, 0x85, 0x09, 0x89, 0x20, 0xa4, 0x08, 0xc1, 0xe2, 0xd0, 0x85, 0x2d, 0x49, 0x0f, 0xa5,
+	0xa2, 0xc4, 0x51, 0xe2, 0x02, 0xbd, 0x0b, 0x46, 0x2e, 0x89, 0xb1, 0x23, 0x23, 0x4a, 0x6e, 0x04,
+	0xd9, 0x4d, 0x9d, 0x84, 0x84, 0xf1, 0x9c, 0xf7, 0x7d, 0x9e, 0x23, 0x4b, 0xc6, 0x26, 0xbc, 0x40,
+	0x28, 0xc6, 0x51, 0xcc, 0x05, 0x27, 0x3d, 0x2f, 0x5c, 0x8b, 0x75, 0x04, 0xa3, 0x81, 0x17, 0x04,
+	0x7c, 0xb5, 0xdb, 0x8f, 0x4c, 0x7f, 0xc9, 0x83, 0xa7, 0x7c, 0xc0, 0x30, 0x5b, 0xe4, 0xc1, 0xf1,
+	0x47, 0x1b, 0x77, 0xae, 0xa4, 0x80, 0x9c, 0x61, 0x33, 0x67, 0xdc, 0x47, 0xfe, 0x6a, 0x19, 0x47,
+	0xc6, 0x89, 0x39, 0x19, 0x8e, 0x73, 0xe1, 0xf8, 0xa2, 0xc8, 0x1c, 0xc4, 0xca, 0x55, 0x32, 0xc1,
+	0x7d, 0xa5, 0x57, 0x5c, 0x4b, 0x71, 0x44, 0x73, 0xf6, 0x2e, 0x71, 0x10, 0x2b, 0x6a, 0xf2, 0x9a,
+	0x1a, 0xa6, 0xd1, 0xcc, 0x13, 0x60, 0xfd, 0xfb, 0x75, 0xcd, 0x2e, 0x32, 0x79, 0xad, 0x54, 0xd5,
+	0xe4, 0x65, 0x0c, 0x92, 0x6c, 0x37, 0x91, 0xdb, 0x4c, 0x93, 0xdb, 0x91, 0xdc, 0x62, 0xb2, 0x4a,
+	0x20, 0x56, 0x8d, 0x3b, 0x78, 0x13, 0xcc, 0x0b, 0xe7, 0x60, 0x75, 0x94, 0x60, 0x5f, 0x0b, 0xa6,
+	0xb5, 0x8a, 0x83, 0x58, 0x03, 0x48, 0xce, 0xf1, 0x40, 0x6f, 0xaf, 0xf9, 0x22, 0xb4, 0xba, 0xca,
+	0xb4, 0x57, 0x37, 0xc9, 0xd4, 0x41, 0xac, 0x5a, 0xaf, 0xf0, 0x37, 0xf0, 0x20, 0xac, 0xde, 0x5f,
+	0xbc, 0x4c, 0x2b, 0xbc, 0x5c, 0x10, 0x17, 0x0f, 0xf5, 0xc2, 0x85, 0x25, 0x04, 0xf9, 0x83, 0xfe,
+	0x2b, 0xcd, 0x61, 0x5d, 0x53, 0x2a, 0x39, 0x88, 0x35, 0xc2, 0x76, 0x1f, 0xf7, 0x9e, 0x21, 0x49,
+	0xbc, 0x39, 0xd8, 0x07, 0x9f, 0x29, 0x35, 0x36, 0x29, 0x35, 0xbe, 0x53, 0x6a, 0xbc, 0x67, 0x14,
+	0x6d, 0x32, 0x8a, 0xbe, 0x32, 0x8a, 0xee, 0x5b, 0x91, 0xef, 0x77, 0xd5, 0xff, 0x39, 0xfd, 0x09,
+	0x00, 0x00, 0xff, 0xff, 0x03, 0x6a, 0xb5, 0x84, 0x7f, 0x02, 0x00, 0x00,
 }
 
 func (m *Event) Marshal() (dAtA []byte, err error) {
@@ -273,6 +331,90 @@ func (m *Event_BlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
+func (m *Event_UserBlockTextRange) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Event_UserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.UserBlockTextRange != nil {
+		{
+			size, err := m.UserBlockTextRange.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvent(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Event_UserBlockJoin) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Event_UserBlockJoin) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.UserBlockJoin != nil {
+		{
+			size, err := m.UserBlockJoin.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvent(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Event_UserBlockLeft) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Event_UserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.UserBlockLeft != nil {
+		{
+			size, err := m.UserBlockLeft.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvent(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x3a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Event_UserBlockSelectRange) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Event_UserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.UserBlockSelectRange != nil {
+		{
+			size, err := m.UserBlockSelectRange.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvent(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x42
+	}
+	return len(dAtA) - i, nil
+}
 func encodeVarintEvent(dAtA []byte, offset int, v uint64) int {
 	offset -= sovEvent(v)
 	base := offset
@@ -340,6 +482,54 @@ func (m *Event_BlockCreate) Size() (n int) {
 	_ = l
 	if m.BlockCreate != nil {
 		l = m.BlockCreate.Size()
+		n += 1 + l + sovEvent(uint64(l))
+	}
+	return n
+}
+func (m *Event_UserBlockTextRange) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.UserBlockTextRange != nil {
+		l = m.UserBlockTextRange.Size()
+		n += 1 + l + sovEvent(uint64(l))
+	}
+	return n
+}
+func (m *Event_UserBlockJoin) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.UserBlockJoin != nil {
+		l = m.UserBlockJoin.Size()
+		n += 1 + l + sovEvent(uint64(l))
+	}
+	return n
+}
+func (m *Event_UserBlockLeft) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.UserBlockLeft != nil {
+		l = m.UserBlockLeft.Size()
+		n += 1 + l + sovEvent(uint64(l))
+	}
+	return n
+}
+func (m *Event_UserBlockSelectRange) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.UserBlockSelectRange != nil {
+		l = m.UserBlockSelectRange.Size()
 		n += 1 + l + sovEvent(uint64(l))
 	}
 	return n
@@ -519,6 +709,146 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Message = &Event_BlockCreate{v}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockTextRange", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvent
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvent
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &UserBlockTextRange{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Message = &Event_UserBlockTextRange{v}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockJoin", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvent
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvent
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &UserBlockJoin{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Message = &Event_UserBlockJoin{v}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockLeft", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvent
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvent
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &UserBlockLeft{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Message = &Event_UserBlockLeft{v}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockSelectRange", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvent
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvent
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvent
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &UserBlockSelectRange{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Message = &Event_UserBlockSelectRange{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

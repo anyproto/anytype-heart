@@ -4,20 +4,18 @@ option go_package = "pb";
 
 import "account.proto";
 import "block.proto";
+import "edit.proto";
 
 message Event {
-    oneof message {
-        // show wallet's accounts that were loaded from local or remote source
-        AccountShow accountShow  = 1;
+    oneof message {    
+        AccountShow accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
         BlockShow blockShow = 2;
         BlockUpdate blockUpdate = 3;
         BlockCreate blockCreate = 4;
 
-        // unit was rearranged. Need to update the position
-       // UnitMoved unitMoved = 104;
-
-        // unit was renamed or icon was changed
-        //UnitRenamed unitRenamed = 105;
-
+        UserBlockTextRange userBlockTextRange = 5;
+        UserBlockJoin userBlockJoin = 6;
+        UserBlockLeft userBlockLeft = 7;
+        UserBlockSelectRange userBlockSelectRange = 8;
     }
 }

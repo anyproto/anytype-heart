@@ -1,0 +1,90 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+import "block.proto";
+
+message BlockHistoryMoveRequest {
+    string id = 1;
+    string contextBlockId = 2;
+    bool moveForward = 3;
+}
+
+message BlockHistoryMoveResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            CAN_NOT_MOVE = 3;
+            // ...
+        }
+    }    
+}
+
+message BlockOpenRequest {
+    string id = 1;
+}
+
+message BlockOpenResponse {
+    Error error = 1;
+    BlockHeader blockHeader = 2;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+        }
+    }
+}
+
+message BlockCreateRequest {
+    BlockType type = 1;
+    string contextBlockId = 2;
+}
+
+message BlockCreateResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+        }
+    }
+}
+
+message BlockUpdateRequest {
+    BlockChanges changes = 1;
+}
+
+message BlockUpdateResponse {
+    Error error = 1;
+
+    message Error {
+        Code code = 1;
+        string description = 2;
+
+        enum Code {
+            NULL = 0;
+            UNKNOWN_ERROR = 1;
+            BAD_INPUT = 2;
+            // ...
+        }
+    }
+}
