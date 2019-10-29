@@ -5,29 +5,29 @@ option go_package = "pb";
 import "file.proto";
 
 /**
- * Avatar of a user's acount. It could be image or color
+ * Avatar of a user's account. It could be an image or color
 */
 message Avatar {
     oneof avatar {
-        Image image = 1; // Image of an avatar. Contains hash and size
-        string color = 2; // Color of an avatar, if no image
+        Image image = 1; // Image of the avatar. Contains hash and size
+        string color = 2; // Color of the avatar, if no image
     }
 }
 
 /**
- * Account contains basic information about user's account.
+ * The Account message contains basic information about a user's account
 */
 message Account {
     string id = 1; // User's thread id
-    string name = 2; // User name, that asociated with this account
-    Avatar avatar = 3; // Avator of user's account
+    string name = 2; // User name, that associated with this account
+    Avatar avatar = 3; // Avatar of a user's account
 }
 
 /**
- * Front end to middleware request for create a new wallet
+ * Front end to middleware request to create a new wallet
 */
 message WalletCreateRequest {
-    string rootPath = 1; // TODO: what is that?
+    string rootPath = 1; // 
 }
 
 /**
@@ -35,25 +35,25 @@ message WalletCreateRequest {
 */
 message WalletCreateResponse {
     Error error = 1; // Error on a middleware, that happened while trying to create a wallet
-    string mnemonic = 2; // Mnemonic of a new account (sequence of a words, divided by spaces)
+    string mnemonic = 2; // Mnemonic of a new account (sequence of words, divided by spaces)
 
     message Error {
-        Code code = 1; // One of an error codes, presented below // One of an error codes, presented below
-        string description = 2; // Description of an error, error message // Description of an error, error message
+        Code code = 1;
+        string description = 2;
 
         enum Code {
             NULL = 0; // No error; mnemonic should be non-empty
             UNKNOWN_ERROR = 1; // Any other errors
-            BAD_INPUT = 2; // Rootpath is wrong
+            BAD_INPUT = 2; // Root path is wrong
 
-            FAILED_TO_CREATE_LOCAL_REPO = 101; // TODO: decompose it. Why failed?
+            FAILED_TO_CREATE_LOCAL_REPO = 101;
             // ...
         }
     }
 }
 
 /**
- * Front end to middleware request for recover a wallet with this mnemonic and a rootPath
+ * Front end to middleware request to recover a wallet with this mnemonic and a rootPath
 */
 message WalletRecoverRequest {
     string rootPath = 1; // TODO: what is that?
@@ -66,27 +66,27 @@ message WalletRecoverRequest {
 message WalletRecoverResponse {
     Error error = 1; // Error on a middleware, that happened while trying to recover a wallet
     message Error {
-        Code code = 1; // One of an error codes, presented below
-        string description = 2; // Description of an error, error message 
+        Code code = 1;
+        string description = 2;
 
         enum Code {
             NULL = 0; // No error; wallet successfully recovered
             UNKNOWN_ERROR = 1; // Any other errors
-            BAD_INPUT = 2; // Rootpath or mnemonic is wrong
+            BAD_INPUT = 2; // Root path or mnemonic is wrong
 
-            FAILED_TO_CREATE_LOCAL_REPO = 101; // Failed to create a local repo
+            FAILED_TO_CREATE_LOCAL_REPO = 101;
         }
     }
 }
 
 /**
- * Front end to middleware request for create an account 
+ * Front end to middleware request to create an account 
 */
 message AccountCreateRequest {
     string name = 1; // Name of an account (username)
     oneof avatar {
         string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
-        string avatarColor = 3; // You can set a color of an avatar, if you don't want to use an image
+        string avatarColor = 3; // You can set a color of an avatar if you don't want to use an image
     }
 }
 
@@ -95,20 +95,20 @@ message AccountCreateRequest {
 */
 message AccountCreateResponse {
     Error error = 1; // Error on a middleware, that happened while trying to create an account
-    Account account = 2; // Newly created account; If error is non-NULL, account be a structure with an empty fields
+    Account account = 2; // Newly created account; If the error is non-NULL, account be a structure with an empty fields
 
     message Error {
-        Code code = 1; // One of an error codes, presented below
-        string description = 2; // Description of an error, error message
+        Code code = 1;
+        string description = 2;
 
         enum Code {
-            NULL = 0; // No error;
+            NULL = 0; // No error; Account should be non-empty
             UNKNOWN_ERROR = 1; // Any other errors
             BAD_INPUT = 2; // Avatar or name is not correct
 
-            ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE = 101; // Account created but failed to start a node
-            ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME = 102; // Account created but failed to set a name
-            ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR = 103; // Account created but failed to set an avatar
+            ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE = 101;
+            ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME = 102;
+            ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR = 103;
         }
     }
 }
@@ -125,24 +125,24 @@ message AccountRecoverRequest {}
 message AccountRecoverResponse {
     Error error = 1; // Error on a middleware, that happened while trying to create a wallet
     message Error {
-        Code code = 1; // One of an error codes, presented below
-        string description = 2; // Description of an error, error message
+        Code code = 1;
+        string description = 2;
 
         enum Code {
             NULL = 0; // No error;
             UNKNOWN_ERROR = 1; // Any other errors
 
-            NO_ACCOUNTS_FOUND = 101; // No accounts found in a searching period
-            NEED_TO_RECOVER_WALLET_FIRST = 102; // Wallet is not recovered yet
-            FAILED_TO_CREATE_LOCAL_REPO = 103; // Failed to create a local repo
-            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104; // Local repo corrupted
-            FAILED_TO_RUN_NODE = 105; // Failed to run a node
+            NO_ACCOUNTS_FOUND = 101;
+            NEED_TO_RECOVER_WALLET_FIRST = 102;
+            FAILED_TO_CREATE_LOCAL_REPO = 103;
+            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104; 
+            FAILED_TO_RUN_NODE = 105;
         }
     }
 }
 
 /**
- * Front end to middleware request to select an account with this id and a rootpath
+ * Front end to middleware request to select an account with this id and a root path
  * User can select an account from those, that came with an AccountAdd events
 */
 message AccountSelectRequest {
@@ -158,52 +158,19 @@ message AccountSelectResponse {
     Account account = 2; // Selected account
 
     message Error {
-        Code code = 1; // One of an error codes, presented below
-        string description = 2; // Description of an error, error message
+        Code code = 1;
+        string description = 2;
 
         enum Code {
             NULL = 0; // No error;
             UNKNOWN_ERROR = 1; // Any other errors
-            BAD_INPUT = 2; // Id or rootpath is wrong
+            BAD_INPUT = 2; // Id or root path is wrong
 
-            FAILED_TO_CREATE_LOCAL_REPO = 101; // Failed to create a local repo
-            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102; // Local repo exists but corrupted
-            FAILED_TO_RUN_NODE = 103; // Failed to run a node
-            FAILED_TO_FIND_ACCOUNT_INFO = 104; // Failed to find an account info
-            LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET = 105; // Local repo not exists but mnemonic was not set
-
-        }
-    }
-}
-
-/**
- * Front end to middleware request to start use an account with this id
-*/
-message AccountStartRequest {
-    string id = 1;
-}
-
-/**
- * Middleware to front end response to an account start request, that can contain a NULL error and selected account or a non-NULL error and an empty account
-*/
-message AccountStartResponse {
-    Error error = 1; // Error on a middleware, that happened while trying to start an account
-    Account account = 2; // Selected account to start
-
-    message Error {
-        Code code = 1; // One of an error codes, presented below
-        string description = 2; // Description of an error, error message
-
-        enum Code {
-            NULL = 0; // No error;
-            UNKNOWN_ERROR = 1; // Any other errors
-            BAD_INPUT = 2;  // Account id is not correct
-            // ...
-
-            LOCAL_REPO_DOESNT_EXIST = 101; // Local repo doesnt exist
-            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102; // Local repo exists but corrupted
-            FAILED_TO_RUN_NODE = 103; // Failed to run node
-            FAILED_TO_FIND_ACCOUNT_INFO = 104; // Failed to find account info
+            FAILED_TO_CREATE_LOCAL_REPO = 101;
+            LOCAL_REPO_EXISTS_BUT_CORRUPTED = 102;
+            FAILED_TO_RUN_NODE = 103;
+            FAILED_TO_FIND_ACCOUNT_INFO = 104;
+            LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET = 105;
         }
     }
 }
@@ -213,5 +180,5 @@ message AccountStartResponse {
 */
 message AccountShow {
     int64  index  = 1; // Number of an account in an all found accounts list
-    Account account = 2; // Account, that have been found
+    Account account = 2; // An Account, that has been found for the mnemonic
 }
