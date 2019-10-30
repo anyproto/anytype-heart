@@ -17,5 +17,7 @@ message Event {
         UserBlockJoin userBlockJoin = 6;
         UserBlockLeft userBlockLeft = 7;
         UserBlockSelectRange userBlockSelectRange = 8;
+
+        FilesUpload filesUpload = 9;
     }
 }

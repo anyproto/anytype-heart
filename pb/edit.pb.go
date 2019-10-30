@@ -242,17 +242,76 @@ func (m *UserBlockSelectRange) GetBlockIdsArray() []string {
 	return nil
 }
 
+//*
+// Middleware to front end event message, that will be sent on one of this scenarios:
+// Precondition: user A opened a block
+// 1. User A drops a set of files/pictures/videos
+// 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
+//
+type FilesUpload struct {
+	FilePath []string `protobuf:"bytes,1,rep,name=filePath,proto3" json:"filePath,omitempty"`
+	BlockId  string   `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+}
+
+func (m *FilesUpload) Reset()         { *m = FilesUpload{} }
+func (m *FilesUpload) String() string { return proto.CompactTextString(m) }
+func (*FilesUpload) ProtoMessage()    {}
+func (*FilesUpload) Descriptor() ([]byte, []int) {
+	return fileDescriptor_f5013c7d48f38d97, []int{4}
+}
+func (m *FilesUpload) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *FilesUpload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_FilesUpload.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *FilesUpload) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FilesUpload.Merge(m, src)
+}
+func (m *FilesUpload) XXX_Size() int {
+	return m.Size()
+}
+func (m *FilesUpload) XXX_DiscardUnknown() {
+	xxx_messageInfo_FilesUpload.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_FilesUpload proto.InternalMessageInfo
+
+func (m *FilesUpload) GetFilePath() []string {
+	if m != nil {
+		return m.FilePath
+	}
+	return nil
+}
+
+func (m *FilesUpload) GetBlockId() string {
+	if m != nil {
+		return m.BlockId
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*UserBlockJoin)(nil), "anytype.UserBlockJoin")
 	proto.RegisterType((*UserBlockLeft)(nil), "anytype.UserBlockLeft")
 	proto.RegisterType((*UserBlockTextRange)(nil), "anytype.UserBlockTextRange")
 	proto.RegisterType((*UserBlockSelectRange)(nil), "anytype.UserBlockSelectRange")
+	proto.RegisterType((*FilesUpload)(nil), "anytype.FilesUpload")
 }
 
 func init() { proto.RegisterFile("edit.proto", fileDescriptor_f5013c7d48f38d97) }
 
 var fileDescriptor_f5013c7d48f38d97 = []byte{
-	// 236 bytes of a gzipped FileDescriptorProto
+	// 271 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4a, 0x4d, 0xc9, 0x2c,
 	0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x4f, 0xcc, 0xab, 0x2c, 0xa9, 0x2c, 0x48, 0x95,
 	0xe2, 0x4e, 0xca, 0xc9, 0x4f, 0xce, 0x86, 0x88, 0x4a, 0xf1, 0x26, 0x26, 0x27, 0xe7, 0x97, 0xe6,
@@ -264,10 +323,12 @@ var fileDescriptor_f5013c7d48f38d97 = []byte{
 	0xc1, 0x19, 0x04, 0xe3, 0x0a, 0xa9, 0x70, 0xb1, 0x16, 0x81, 0x8c, 0x93, 0x60, 0x06, 0x9b, 0xc1,
 	0x07, 0x37, 0x03, 0x6c, 0x49, 0x10, 0x44, 0x52, 0x29, 0x83, 0x4b, 0x04, 0xee, 0x82, 0xe0, 0xd4,
 	0x9c, 0xd4, 0x64, 0x32, 0xdc, 0xa0, 0xc2, 0xc5, 0x0b, 0xb5, 0xb4, 0xd8, 0xb1, 0xa8, 0x28, 0xb1,
-	0x52, 0x82, 0x49, 0x81, 0x59, 0x83, 0x33, 0x08, 0x55, 0xd0, 0x49, 0xe6, 0xc4, 0x23, 0x39, 0xc6,
-	0x0b, 0x8f, 0xe4, 0x18, 0x1f, 0x3c, 0x92, 0x63, 0x9c, 0xf0, 0x58, 0x8e, 0xe1, 0xc2, 0x63, 0x39,
-	0x86, 0x1b, 0x8f, 0xe5, 0x18, 0xa2, 0x98, 0x0a, 0x92, 0x92, 0xd8, 0xc0, 0x71, 0x61, 0x0c, 0x08,
-	0x00, 0x00, 0xff, 0xff, 0x13, 0x3c, 0x53, 0x4b, 0xbe, 0x01, 0x00, 0x00,
+	0x52, 0x82, 0x49, 0x81, 0x59, 0x83, 0x33, 0x08, 0x55, 0x50, 0xc9, 0x99, 0x8b, 0xdb, 0x2d, 0x33,
+	0x27, 0xb5, 0x38, 0xb4, 0x20, 0x27, 0x3f, 0x31, 0x45, 0x48, 0x8a, 0x8b, 0x23, 0x2d, 0x33, 0x27,
+	0x35, 0x20, 0xb1, 0x24, 0x43, 0x82, 0x11, 0xac, 0x1e, 0xce, 0xc7, 0xed, 0x29, 0x27, 0x99, 0x13,
+	0x8f, 0xe4, 0x18, 0x2f, 0x3c, 0x92, 0x63, 0x7c, 0xf0, 0x48, 0x8e, 0x71, 0xc2, 0x63, 0x39, 0x86,
+	0x0b, 0x8f, 0xe5, 0x18, 0x6e, 0x3c, 0x96, 0x63, 0x88, 0x62, 0x2a, 0x48, 0x4a, 0x62, 0x03, 0x47,
+	0xa8, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0x7f, 0x7c, 0x5f, 0xf5, 0x03, 0x02, 0x00, 0x00,
 }
 
 func (m *UserBlockJoin) Marshal() (dAtA []byte, err error) {
@@ -438,6 +499,45 @@ func (m *UserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *FilesUpload) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FilesUpload) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *FilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintEdit(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.FilePath) > 0 {
+		for iNdEx := len(m.FilePath) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.FilePath[iNdEx])
+			copy(dAtA[i:], m.FilePath[iNdEx])
+			i = encodeVarintEdit(dAtA, i, uint64(len(m.FilePath[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintEdit(dAtA []byte, offset int, v uint64) int {
 	offset -= sovEdit(v)
 	base := offset
@@ -511,6 +611,25 @@ func (m *UserBlockSelectRange) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovEdit(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *FilesUpload) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.FilePath) > 0 {
+		for _, s := range m.FilePath {
+			l = len(s)
+			n += 1 + l + sovEdit(uint64(l))
+		}
+	}
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovEdit(uint64(l))
 	}
 	return n
 }
@@ -952,6 +1071,123 @@ func (m *UserBlockSelectRange) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.BlockIdsArray = append(m.BlockIdsArray, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEdit(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *FilesUpload) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEdit
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FilesUpload: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FilesUpload: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FilePath", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEdit
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEdit
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FilePath = append(m.FilePath, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEdit
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEdit
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEdit
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

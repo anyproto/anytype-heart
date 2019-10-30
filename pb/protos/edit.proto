@@ -47,3 +47,15 @@ message UserBlockSelectRange {
     Account account = 1; // Account of the user, that selected blocks
     repeated string blockIdsArray = 2; // Ids of selected blocks.
 }
+
+/**
+ * Middleware to front end event message, that will be sent on one of this scenarios:
+ * Precondition: user A opened a block
+ * 1. User A drops a set of files/pictures/videos
+ * 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
+*/
+message FilesUpload {
+    repeated string filePath = 1; // filepaths to the files
+    string blockId = 2; // if empty => create new blocks
+}
+

@@ -63,6 +63,13 @@ message BlockContentDashboardChange {
     }
 }
 
+message BlockContentMediaChange {
+    oneof change {
+        string link = 1;
+        BlockContentMedia.State state = 2;
+    }
+}
+
 message BlockAtomicChange {
     string id = 1;
     oneof change {
@@ -70,6 +77,7 @@ message BlockAtomicChange {
         BlockHeaderChange blockHeader = 3;
         BlockContentPageChange page = 4;
         BlockContentDashboardChange dashboard = 5;
+        BlockContentMediaChange media = 6;
     }
 }
 
@@ -119,13 +127,14 @@ enum BlockType {
     PAGE = 1;
     DATAVIEW = 2;
 
-    TEXT = 3;
-    FILE = 4;
-    PICTURE = 5;
-    VIDEO = 6;
+    TEXT = 101;
+    FILE = 102;
+    PICTURE = 103;
+    VIDEO = 104;
+    BOOKMARK = 105;
 
-    ROW = 7;
-    COLUMN = 8;
+    ROW = 201;
+    COLUMN = 202;
 }
 
 message BlockHeadersList {
@@ -181,6 +190,7 @@ message BlockContentText {
         h3 = 3;
         h4 = 4;
         quote = 5;
+        code = 6;
     }
 
     enum MarkerType {
@@ -221,6 +231,15 @@ message BlockContentText {
 
 message BlockContentMedia {
     string link = 1;
+    State state = 2;
+
+    enum State {
+        EMPTY = 0;
+        UPLOADING = 1;
+        PREVIEW = 2;
+        DOWNLOADING = 3;
+        DONE = 4;
+    }
 }
 
 message Range {
