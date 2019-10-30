@@ -69,8 +69,10 @@ jobs:
             - go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
             - go-pkg-v2-{{ arch }}
       - run:
-          name: install patched gox
+          name: install node and patched gox
           command: |
+            curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+            sudo apt install nodejs
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             mkdir -p $GOPATH/src/github.com/mitchellh
             cd $GOPATH/src/github.com/mitchellh
