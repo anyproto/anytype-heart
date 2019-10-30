@@ -6,7 +6,9 @@ message VersionGetRequest {}
 
 message VersionGetResponse {
     Error error = 1;
+    // version is generate by git describe
     string version = 2;
+    string details = 3;
 
     message Error {
         Code code = 1;
