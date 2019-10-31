@@ -360,7 +360,7 @@ func (m *Account) GetAvatar() *Avatar {
 }
 
 //*
-// Front end to middleware request to create a new wallet
+// Front-end-to-middleware request to create a new wallet
 type WalletCreateRequest struct {
 	RootPath string `protobuf:"bytes,1,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
 }
@@ -406,7 +406,7 @@ func (m *WalletCreateRequest) GetRootPath() string {
 }
 
 //*
-// Middleware to front end response, that can contain mnemonic of a created account and a NULL error or an empty mnemonic and a non-NULL error
+// Middleware-to-front-end response, that can contain mnemonic of a created account and a NULL error or an empty mnemonic and a non-NULL error
 type WalletCreateResponse struct {
 	Error    *WalletCreateResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Mnemonic string                      `protobuf:"bytes,2,opt,name=mnemonic,proto3" json:"mnemonic,omitempty"`
@@ -512,7 +512,7 @@ func (m *WalletCreateResponse_Error) GetDescription() string {
 }
 
 //*
-// Front end to middleware request to recover a wallet with this mnemonic and a rootPath
+// Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
 type WalletRecoverRequest struct {
 	RootPath string `protobuf:"bytes,1,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
 	Mnemonic string `protobuf:"bytes,2,opt,name=mnemonic,proto3" json:"mnemonic,omitempty"`
@@ -566,7 +566,7 @@ func (m *WalletRecoverRequest) GetMnemonic() string {
 }
 
 //*
-// Middleware to front end response, that can contain a NULL error or a non-NULL error
+// Middleware-to-front-end response, that can contain a NULL error or a non-NULL error
 type WalletRecoverResponse struct {
 	Error *WalletRecoverResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
@@ -664,7 +664,7 @@ func (m *WalletRecoverResponse_Error) GetDescription() string {
 }
 
 //*
-// Front end to middleware request to create an account
+// Front end to middleware request-to-create-an account
 type AccountCreateRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Types that are valid to be assigned to Avatar:
@@ -759,7 +759,7 @@ func (*AccountCreateRequest) XXX_OneofWrappers() []interface{} {
 }
 
 //*
-// Middleware to front end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
+// Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
 type AccountCreateResponse struct {
 	Error   *AccountCreateResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Account *Account                     `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
@@ -865,7 +865,7 @@ func (m *AccountCreateResponse_Error) GetDescription() string {
 }
 
 //*
-// Front end to middleware request to start search of an accounts for a recovered mnemonic.
+// Front end to middleware request-to-start-search of an accounts for a recovered mnemonic.
 // Each of an account that would be found will come with an AccountAdd event
 type AccountRecoverRequest struct {
 }
@@ -904,7 +904,7 @@ func (m *AccountRecoverRequest) XXX_DiscardUnknown() {
 var xxx_messageInfo_AccountRecoverRequest proto.InternalMessageInfo
 
 //*
-// Middleware to front end response to an account recover request, that can contain a NULL error and created account or a non-NULL error and an empty account
+// Middleware-to-front-end response to an account recover request, that can contain a NULL error and created account or a non-NULL error and an empty account
 type AccountRecoverResponse struct {
 	Error *AccountRecoverResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
@@ -1002,7 +1002,7 @@ func (m *AccountRecoverResponse_Error) GetDescription() string {
 }
 
 //*
-// Front end to middleware request to select an account with this id and a root path
+// Front end to middleware request-to-launch-a specific account using account id and a root path
 // User can select an account from those, that came with an AccountAdd events
 type AccountSelectRequest struct {
 	Id       string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1057,7 +1057,7 @@ func (m *AccountSelectRequest) GetRootPath() string {
 }
 
 //*
-// Middleware to front end response for an account select request, that can contain a NULL error and selected account or a non-NULL error and an empty account
+// Middleware-to-front-end response for an account select request, that can contain a NULL error and selected account or a non-NULL error and an empty account
 type AccountSelectResponse struct {
 	Error   *AccountSelectResponse_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Account *Account                     `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`

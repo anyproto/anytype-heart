@@ -24,17 +24,17 @@ message Account {
 }
 
 /**
- * Front end to middleware request to create a new wallet
+ * Front-end-to-middleware request to create a new wallet
 */
 message WalletCreateRequest {
-    string rootPath = 1; // 
+    string rootPath = 1; // Path to a wallet directory
 }
 
 /**
- * Middleware to front end response, that can contain mnemonic of a created account and a NULL error or an empty mnemonic and a non-NULL error
+ * Middleware-to-front-end response, that can contain mnemonic of a created account and a NULL error or an empty mnemonic and a non-NULL error
 */
 message WalletCreateResponse {
-    Error error = 1; // Error on a middleware, that happened while trying to create a wallet
+    Error error = 1;
     string mnemonic = 2; // Mnemonic of a new account (sequence of words, divided by spaces)
 
     message Error {
@@ -53,18 +53,18 @@ message WalletCreateResponse {
 }
 
 /**
- * Front end to middleware request to recover a wallet with this mnemonic and a rootPath
+ * Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
 */
 message WalletRecoverRequest {
-    string rootPath = 1; // TODO: what is that?
+    string rootPath = 1; // Path to a wallet directory
     string mnemonic = 2; // Mnemonic of a wallet to recover
 }
 
 /**
- * Middleware to front end response, that can contain a NULL error or a non-NULL error
+ * Middleware-to-front-end response, that can contain a NULL error or a non-NULL error
 */
 message WalletRecoverResponse {
-    Error error = 1; // Error on a middleware, that happened while trying to recover a wallet
+    Error error = 1; // Error while trying to recover a wallet
     message Error {
         Code code = 1;
         string description = 2;
@@ -80,22 +80,22 @@ message WalletRecoverResponse {
 }
 
 /**
- * Front end to middleware request to create an account 
+ * Front end to middleware request-to-create-an account 
 */
 message AccountCreateRequest {
-    string name = 1; // Name of an account (username)
+    string name = 1; // Account name
     oneof avatar {
         string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
-        string avatarColor = 3; // You can set a color of an avatar if you don't want to use an image
+        string avatarColor = 3; // Avatar color as an alternative for avatar image
     }
 }
 
 /**
- * Middleware to front end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
+ * Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
 */
 message AccountCreateResponse {
-    Error error = 1; // Error on a middleware, that happened while trying to create an account
-    Account account = 2; // Newly created account; If the error is non-NULL, account be a structure with an empty fields
+    Error error = 1; // Error while trying to create an account
+    Account account = 2; // A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields
 
     message Error {
         Code code = 1;
@@ -114,16 +114,16 @@ message AccountCreateResponse {
 }
 
 /**
- * Front end to middleware request to start search of an accounts for a recovered mnemonic. 
+ * Front end to middleware request-to-start-search of an accounts for a recovered mnemonic. 
  * Each of an account that would be found will come with an AccountAdd event
 */
 message AccountRecoverRequest {}
 
 /**
- * Middleware to front end response to an account recover request, that can contain a NULL error and created account or a non-NULL error and an empty account
+ * Middleware-to-front-end response to an account recover request, that can contain a NULL error and created account or a non-NULL error and an empty account
 */
 message AccountRecoverResponse {
-    Error error = 1; // Error on a middleware, that happened while trying to create a wallet
+    Error error = 1; // Error while trying to recover an account
     message Error {
         Code code = 1;
         string description = 2;
@@ -144,19 +144,19 @@ message AccountRecoverResponse {
 }
 
 /**
- * Front end to middleware request to select an account with this id and a root path
+ * Front end to middleware request-to-launch-a specific account using account id and a root path
  * User can select an account from those, that came with an AccountAdd events
 */
 message AccountSelectRequest {
-    string id = 1; // id of a selected account
-    string rootPath = 2; // rootPath is optional, set if this is a first request
+    string id = 1; // Id of a selected account
+    string rootPath = 2; // Root path is optional, set if this is a first request
 }
 
 /**
- * Middleware to front end response for an account select request, that can contain a NULL error and selected account or a non-NULL error and an empty account
+ * Middleware-to-front-end response for an account select request, that can contain a NULL error and selected account or a non-NULL error and an empty account
 */
 message AccountSelectResponse {
-    Error error = 1; // Error on a middleware, that happened while trying to select an account
+    Error error = 1; // Error while trying to launch/select an account
     Account account = 2; // Selected account
 
     message Error {
@@ -164,7 +164,7 @@ message AccountSelectResponse {
         string description = 2;
 
         enum Code {
-            NULL = 0; // No error;
+            NULL = 0; // No error
             UNKNOWN_ERROR = 1; // Any other errors
             BAD_INPUT = 2; // Id or root path is wrong
 
