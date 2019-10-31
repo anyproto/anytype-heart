@@ -98,7 +98,7 @@ message Block {
 
         BlockContentText text = 14;
         BlockContentMedia media = 15;
-        BlockLayout layout = 16;
+        BlockContentLayout layout = 16;
     }
 }
 
@@ -110,7 +110,7 @@ message BlockHeader {
 }
 
 // row/column type specified in the header
-message BlockLayout {
+message BlockContentLayout {
     Style style = 1;
     
     enum Style {
