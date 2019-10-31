@@ -247,7 +247,6 @@ func (m *UserBlockSelectRange) GetBlockIdsArray() []string {
 // Precondition: user A opened a block
 // 1. User A drops a set of files/pictures/videos
 // 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
-//
 type FilesUpload struct {
 	FilePath []string `protobuf:"bytes,1,rep,name=filePath,proto3" json:"filePath,omitempty"`
 	BlockId  string   `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`

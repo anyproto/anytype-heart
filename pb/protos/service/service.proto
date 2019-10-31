@@ -7,7 +7,6 @@ import "file.proto";
 import "misc.proto";
 import "block-commands.proto";
 
-
 service ClientCommands {
     rpc WalletCreate (anytype.WalletCreateRequest) returns (anytype.WalletCreateResponse);
     rpc WalletRecover (anytype.WalletRecoverRequest) returns (anytype.WalletRecoverResponse);
@@ -24,4 +23,5 @@ service ClientCommands {
     rpc BlockCreate (BlockCreateRequest) returns (BlockCreateResponse);
     rpc BlockUpdate (BlockUpdateRequest) returns (BlockUpdateResponse);
     rpc BlockHistoryMove (BlockHistoryMoveRequest) returns (BlockHistoryMoveResponse);
+    // rpc BlockFilesUpload (BlockHistoryMoveRequest) returns (BlockHistoryMoveResponse);
 }

@@ -229,9 +229,32 @@ message BlockContentText {
     bool checked = 7;
 }
 
+message VideoPreview {
+    bytes thumbnail = 1;
+    string name = 2;
+    int32 width = 3;
+}
+
+message ImagePreview {
+    bytes thumbnail = 1;
+    string name = 2;
+    int32 width = 3;
+}
+
+message FilePreview {
+    string name = 1;
+    string icon = 2;
+}
+
 message BlockContentMedia {
-    string link = 1;
+    bytes content = 1;
     State state = 2;
+
+    oneof preview {
+        VideoPreview video = 101;
+        ImagePreview image = 102;
+        FilePreview file = 103;
+    }
 
     enum State {
         EMPTY = 0;
