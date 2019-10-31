@@ -89,7 +89,7 @@ jobs:
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             export GO111MODULE=on
-            go build -o dist/lib.a -ldflags "$(FLAGS) -w -s" -buildmode=c-archive -v ./lib/clib
+            go build -o linux-amd64.a -ldflags "$(FLAGS) -w -s" -buildmode=c-archive -v ./lib/clib
       - save_cache:
           key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
           paths:
@@ -126,6 +126,8 @@ jobs:
                 VERSION=${CIRCLE_TAG}
             fi
             OUT=~/dist/lib
+            cp ~/project/linux-amd64.a  ./dist/lib.a
+            cp ~/project/linux-amd64.a ./dist/lib.h
             make build-js
 
             npm install
