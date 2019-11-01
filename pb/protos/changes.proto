@@ -1,0 +1,79 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+import "models.proto";
+
+
+message Change {
+    message Block {
+        message Header {
+            oneof change {
+                string id = 1;
+                Model.Block.Header.Type type = 2;
+                string name = 3;
+                string icon = 4;
+
+                Model.Block.Header.Permissions permissions = 5;
+            }
+        }   
+
+        message Children {
+            repeated string children = 1;
+        }
+
+        message Content {
+            
+            message Page {
+                oneof change {
+                    Model.Block.ContentPage.Style style = 1;
+                    Block block = 2;
+                }
+            } 
+
+            message Dashboard {
+                oneof change {
+                    Model.Block.ContentDashboard.Style style = 1;
+                    Block.Header header = 2; // not a dashboard header – one of children
+                }
+            }
+
+            message Media {
+                oneof change {
+                    string link = 1;
+                    Model.Block.ContentMedia.State state = 2;
+                }
+            }  
+
+            message Text {
+                oneof change {
+                    string text = 1;
+                    Model.Block.ContentText.Style style = 2;
+                    Model.Block.ContentText.Marks marks = 3;
+
+                    bool toggleable = 4;
+                    Model.Block.ContentText.MarkerType markerType = 5;
+
+                    bool checkable = 6;
+                    bool checked = 7;
+                }
+            }   
+        }
+    }
+
+
+}
+message BlocksListSingleChange {
+    repeated string id = 1;
+    oneof change {
+        Change.Block.Content.Text text = 2;
+        Change.Block.Header blockHeader = 3;
+        Change.Block.Children blockChildren = 4;
+        Change.Block.Content.Page page = 5;
+        Change.Block.Content.Dashboard dashboard = 6;
+        Change.Block.Content.Media media = 7;
+    }
+}
+
+message BlockChanges {
+    repeated BlocksListSingleChange changes = 1;
+}

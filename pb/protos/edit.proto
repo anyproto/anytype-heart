@@ -2,8 +2,9 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-import "general-models.proto";
+import "models.proto";
 import "account.proto";
+
 
 /**
  *  Middleware to front end event message, that will be sent in this scenario:
@@ -34,7 +35,7 @@ message UserBlockLeft {
 message UserBlockTextRange {
     Account account = 1; // Account of the user, that selected a text
     string blockId = 2; // Id of the text block, that have a selection
-    Range range = 3; // Range of the selection
+    Model.Range range = 3; // Range of the selection
 }
 
 /**

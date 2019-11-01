@@ -1,9 +1,0 @@
-syntax="proto3";
-package anytype;
-option go_package = "pb";
-
-
-message Range {
-    int32 from = 1;
-    int32 to = 2;
-}

@@ -2,8 +2,8 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-import "block-content.proto";
-import "block-changes.proto";
+import "models.proto";
+import "changes.proto";
 
 message BlockHistoryMoveRequest {
     string id = 1;
@@ -34,7 +34,7 @@ message BlockOpenRequest {
 
 message BlockOpenResponse {
     Error error = 1;
-    Block.Header blockHeader = 2;
+    Model.Block.Header blockHeader = 2;
 
     message Error {
         Code code = 1;
@@ -50,7 +50,7 @@ message BlockOpenResponse {
 }
 
 message BlockCreateRequest {
-    Block.Header.Type type = 1;
+    Model.Block.Header.Type type = 1;
     string contextBlockId = 2;
 }
 

@@ -14,7 +14,7 @@ func (mw *Middleware) BlockCreate(req *pb.BlockCreateRequest) *pb.BlockCreateRes
 		return m
 	}
 
-	block := &pb.Block{} // TODO
+	block := &pb.Model_Block{} // TODO
 
 	m := &pb.Event{Message: &pb.Event_BlockCreate{&pb.BlockCreate{Block: block}}}
 
@@ -35,7 +35,7 @@ func (mw *Middleware) BlockOpen(req *pb.BlockOpenRequest) *pb.BlockOpenResponse 
 		return m
 	}
 
-	block := &pb.Block{} // TODO
+	block := &pb.Model_Block{} // TODO
 
 	m := &pb.Event{Message: &pb.Event_BlockShow{&pb.BlockShow{Block: block}}}
 
