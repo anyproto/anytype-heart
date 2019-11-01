@@ -1,0 +1,19 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+import "block-content.proto";
+import "block-changes.proto";
+
+
+message BlockShow {
+    Block block = 1;
+}
+
+message BlockUpdate {
+    BlockChanges changes = 1;
+}
+
+message BlockCreate {
+    Block block = 1;
+}

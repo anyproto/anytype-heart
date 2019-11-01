@@ -1,0 +1,173 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+import "struct.proto";
+import "general-models.proto";
+
+message Block {
+    Header header = 1;
+    repeated string children = 2;
+
+    oneof content {
+        ContentDashboard dashboard = 11;
+        ContentPage page = 12;
+        ContentDataview dataview = 13;
+
+        ContentText text = 14;
+        ContentMedia media = 15;
+        ContentLayout layout = 16;
+        ContentDiv div = 17;
+    }
+
+    message Header {
+        string id = 1;
+        Type type = 2;
+        Struct fields = 3;
+        Permissions permissions = 4;
+
+        message Permissions {
+            bool read = 1;
+            bool edit = 2;
+            bool remove = 3;
+            bool drag = 4;
+            bool dropOn = 5;
+        }
+
+        enum Type {
+            DASHBOARD = 0;
+            PAGE = 1;
+            DATAVIEW = 2;
+
+            TEXT = 3;
+            FILE = 4;
+            PICTURE = 5;
+            VIDEO = 6;
+            BOOKMARK = 7;
+
+            LAYOUT = 8;
+            DIV = 9;
+        }    
+    }
+
+    message ContentLayout {
+        Style style = 1;
+        
+        enum Style {
+            ROW = 0;
+            COLUMN = 1;
+        }    
+    }
+
+    message ContentDiv {}
+
+    message ContentDashboard {
+        enum Style {
+            MAIN_SCREEN = 0;
+            // ...
+        }
+
+        Style style = 1;
+        repeated Header headers = 2;
+    }
+
+    message ContentDataview {
+        // ...
+    }
+
+    message ContentText {
+        enum Style {
+            p = 0;
+            h1 = 1;
+            h2 = 2;
+            h3 = 3;
+            h4 = 4;
+            quote = 5;
+            code = 6;
+        }
+
+        enum MarkerType {
+            none = 0;
+            number = 1;
+            bullet = 2;
+        }
+
+        message Marks {
+            repeated Mark marks = 1;
+        }
+
+        message Mark {
+
+            enum Type {
+                STRIKETHROUGH = 0;
+                KEYBOARD = 1;
+                ITALIC = 2;
+                BOLD = 3;
+                LINK = 4;
+            }
+
+            Range range = 1;
+            Type type = 2;
+            string param = 3; // link, color, etc
+        }
+
+        string text = 1;
+        Style style = 2;
+        Marks marksList = 3;
+
+        bool toggleable = 4;
+        MarkerType markerType = 5;
+
+        bool checkable = 6;
+        bool checked = 7;
+    }
+
+    message ContentMedia {
+        bytes content = 1;
+        State state = 2;
+
+        oneof preview {
+            VideoPreview video = 101;
+            ImagePreview image = 102;
+            FilePreview file = 103;
+        }
+
+        message VideoPreview {
+            bytes thumbnail = 1;
+            string name = 2;
+            int32 width = 3;
+        }
+
+        message ImagePreview {
+            bytes thumbnail = 1;
+            string name = 2;
+            int32 width = 3;
+        }
+
+        message FilePreview {
+            string name = 1;
+            string icon = 2;
+        }    
+
+        enum State {
+            EMPTY = 0;
+            UPLOADING = 1;
+            PREVIEW = 2;
+            DOWNLOADING = 3;
+            DONE = 4;
+        }
+    }
+
+    message ContentPage {
+        enum Style {
+            EMPTY = 0;
+            TASK = 1;
+            BOOKMARK = 2;
+            SET = 3;
+            // ...
+        }
+
+        Style style = 1;
+        repeated Block blocks = 2;
+    } 
+}   

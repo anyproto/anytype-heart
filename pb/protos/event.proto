@@ -3,7 +3,7 @@ package anytype;
 option go_package = "pb";
 
 import "account.proto";
-import "block.proto";
+import "block-events.proto";
 import "edit.proto";
 
 message Event {

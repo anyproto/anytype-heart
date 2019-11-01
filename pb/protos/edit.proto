@@ -2,7 +2,7 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-import "block.proto";
+import "general-models.proto";
 import "account.proto";
 
 /**
