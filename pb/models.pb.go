@@ -71,66 +71,66 @@ func (Model_Block_Header_Type) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 0, 0}
 }
 
-type Model_Block_ContentLayout_Style int32
+type Model_Block_Content_Layout_Style int32
 
 const (
-	Model_Block_ContentLayout_ROW    Model_Block_ContentLayout_Style = 0
-	Model_Block_ContentLayout_COLUMN Model_Block_ContentLayout_Style = 1
+	Model_Block_Content_Layout_ROW    Model_Block_Content_Layout_Style = 0
+	Model_Block_Content_Layout_COLUMN Model_Block_Content_Layout_Style = 1
 )
 
-var Model_Block_ContentLayout_Style_name = map[int32]string{
+var Model_Block_Content_Layout_Style_name = map[int32]string{
 	0: "ROW",
 	1: "COLUMN",
 }
 
-var Model_Block_ContentLayout_Style_value = map[string]int32{
+var Model_Block_Content_Layout_Style_value = map[string]int32{
 	"ROW":    0,
 	"COLUMN": 1,
 }
 
-func (x Model_Block_ContentLayout_Style) String() string {
-	return proto.EnumName(Model_Block_ContentLayout_Style_name, int32(x))
+func (x Model_Block_Content_Layout_Style) String() string {
+	return proto.EnumName(Model_Block_Content_Layout_Style_name, int32(x))
 }
 
-func (Model_Block_ContentLayout_Style) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 0}
+func (Model_Block_Content_Layout_Style) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 0, 0}
 }
 
-type Model_Block_ContentDashboard_Style int32
+type Model_Block_Content_Dashboard_Style int32
 
 const (
-	Model_Block_ContentDashboard_MAIN_SCREEN Model_Block_ContentDashboard_Style = 0
+	Model_Block_Content_Dashboard_MAIN_SCREEN Model_Block_Content_Dashboard_Style = 0
 )
 
-var Model_Block_ContentDashboard_Style_name = map[int32]string{
+var Model_Block_Content_Dashboard_Style_name = map[int32]string{
 	0: "MAIN_SCREEN",
 }
 
-var Model_Block_ContentDashboard_Style_value = map[string]int32{
+var Model_Block_Content_Dashboard_Style_value = map[string]int32{
 	"MAIN_SCREEN": 0,
 }
 
-func (x Model_Block_ContentDashboard_Style) String() string {
-	return proto.EnumName(Model_Block_ContentDashboard_Style_name, int32(x))
+func (x Model_Block_Content_Dashboard_Style) String() string {
+	return proto.EnumName(Model_Block_Content_Dashboard_Style_name, int32(x))
 }
 
-func (Model_Block_ContentDashboard_Style) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 3, 0}
+func (Model_Block_Content_Dashboard_Style) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 2, 0}
 }
 
-type Model_Block_ContentText_Style int32
+type Model_Block_Content_Text_Style int32
 
 const (
-	Model_Block_ContentText_p     Model_Block_ContentText_Style = 0
-	Model_Block_ContentText_h1    Model_Block_ContentText_Style = 1
-	Model_Block_ContentText_h2    Model_Block_ContentText_Style = 2
-	Model_Block_ContentText_h3    Model_Block_ContentText_Style = 3
-	Model_Block_ContentText_h4    Model_Block_ContentText_Style = 4
-	Model_Block_ContentText_quote Model_Block_ContentText_Style = 5
-	Model_Block_ContentText_code  Model_Block_ContentText_Style = 6
+	Model_Block_Content_Text_p     Model_Block_Content_Text_Style = 0
+	Model_Block_Content_Text_h1    Model_Block_Content_Text_Style = 1
+	Model_Block_Content_Text_h2    Model_Block_Content_Text_Style = 2
+	Model_Block_Content_Text_h3    Model_Block_Content_Text_Style = 3
+	Model_Block_Content_Text_h4    Model_Block_Content_Text_Style = 4
+	Model_Block_Content_Text_quote Model_Block_Content_Text_Style = 5
+	Model_Block_Content_Text_code  Model_Block_Content_Text_Style = 6
 )
 
-var Model_Block_ContentText_Style_name = map[int32]string{
+var Model_Block_Content_Text_Style_name = map[int32]string{
 	0: "p",
 	1: "h1",
 	2: "h2",
@@ -140,7 +140,7 @@ var Model_Block_ContentText_Style_name = map[int32]string{
 	6: "code",
 }
 
-var Model_Block_ContentText_Style_value = map[string]int32{
+var Model_Block_Content_Text_Style_value = map[string]int32{
 	"p":     0,
 	"h1":    1,
 	"h2":    2,
@@ -150,53 +150,53 @@ var Model_Block_ContentText_Style_value = map[string]int32{
 	"code":  6,
 }
 
-func (x Model_Block_ContentText_Style) String() string {
-	return proto.EnumName(Model_Block_ContentText_Style_name, int32(x))
+func (x Model_Block_Content_Text_Style) String() string {
+	return proto.EnumName(Model_Block_Content_Text_Style_name, int32(x))
 }
 
-func (Model_Block_ContentText_Style) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 5, 0}
+func (Model_Block_Content_Text_Style) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 0}
 }
 
-type Model_Block_ContentText_MarkerType int32
+type Model_Block_Content_Text_MarkerType int32
 
 const (
-	Model_Block_ContentText_none   Model_Block_ContentText_MarkerType = 0
-	Model_Block_ContentText_number Model_Block_ContentText_MarkerType = 1
-	Model_Block_ContentText_bullet Model_Block_ContentText_MarkerType = 2
+	Model_Block_Content_Text_none   Model_Block_Content_Text_MarkerType = 0
+	Model_Block_Content_Text_number Model_Block_Content_Text_MarkerType = 1
+	Model_Block_Content_Text_bullet Model_Block_Content_Text_MarkerType = 2
 )
 
-var Model_Block_ContentText_MarkerType_name = map[int32]string{
+var Model_Block_Content_Text_MarkerType_name = map[int32]string{
 	0: "none",
 	1: "number",
 	2: "bullet",
 }
 
-var Model_Block_ContentText_MarkerType_value = map[string]int32{
+var Model_Block_Content_Text_MarkerType_value = map[string]int32{
 	"none":   0,
 	"number": 1,
 	"bullet": 2,
 }
 
-func (x Model_Block_ContentText_MarkerType) String() string {
-	return proto.EnumName(Model_Block_ContentText_MarkerType_name, int32(x))
+func (x Model_Block_Content_Text_MarkerType) String() string {
+	return proto.EnumName(Model_Block_Content_Text_MarkerType_name, int32(x))
 }
 
-func (Model_Block_ContentText_MarkerType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 5, 1}
+func (Model_Block_Content_Text_MarkerType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 1}
 }
 
-type Model_Block_ContentText_Mark_Type int32
+type Model_Block_Content_Text_Mark_Type int32
 
 const (
-	Model_Block_ContentText_Mark_STRIKETHROUGH Model_Block_ContentText_Mark_Type = 0
-	Model_Block_ContentText_Mark_KEYBOARD      Model_Block_ContentText_Mark_Type = 1
-	Model_Block_ContentText_Mark_ITALIC        Model_Block_ContentText_Mark_Type = 2
-	Model_Block_ContentText_Mark_BOLD          Model_Block_ContentText_Mark_Type = 3
-	Model_Block_ContentText_Mark_LINK          Model_Block_ContentText_Mark_Type = 4
+	Model_Block_Content_Text_Mark_STRIKETHROUGH Model_Block_Content_Text_Mark_Type = 0
+	Model_Block_Content_Text_Mark_KEYBOARD      Model_Block_Content_Text_Mark_Type = 1
+	Model_Block_Content_Text_Mark_ITALIC        Model_Block_Content_Text_Mark_Type = 2
+	Model_Block_Content_Text_Mark_BOLD          Model_Block_Content_Text_Mark_Type = 3
+	Model_Block_Content_Text_Mark_LINK          Model_Block_Content_Text_Mark_Type = 4
 )
 
-var Model_Block_ContentText_Mark_Type_name = map[int32]string{
+var Model_Block_Content_Text_Mark_Type_name = map[int32]string{
 	0: "STRIKETHROUGH",
 	1: "KEYBOARD",
 	2: "ITALIC",
@@ -204,7 +204,7 @@ var Model_Block_ContentText_Mark_Type_name = map[int32]string{
 	4: "LINK",
 }
 
-var Model_Block_ContentText_Mark_Type_value = map[string]int32{
+var Model_Block_Content_Text_Mark_Type_value = map[string]int32{
 	"STRIKETHROUGH": 0,
 	"KEYBOARD":      1,
 	"ITALIC":        2,
@@ -212,25 +212,25 @@ var Model_Block_ContentText_Mark_Type_value = map[string]int32{
 	"LINK":          4,
 }
 
-func (x Model_Block_ContentText_Mark_Type) String() string {
-	return proto.EnumName(Model_Block_ContentText_Mark_Type_name, int32(x))
+func (x Model_Block_Content_Text_Mark_Type) String() string {
+	return proto.EnumName(Model_Block_Content_Text_Mark_Type_name, int32(x))
 }
 
-func (Model_Block_ContentText_Mark_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 5, 1, 0}
+func (Model_Block_Content_Text_Mark_Type) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 1, 0}
 }
 
-type Model_Block_ContentMedia_State int32
+type Model_Block_Content_Media_State int32
 
 const (
-	Model_Block_ContentMedia_EMPTY       Model_Block_ContentMedia_State = 0
-	Model_Block_ContentMedia_UPLOADING   Model_Block_ContentMedia_State = 1
-	Model_Block_ContentMedia_PREVIEW     Model_Block_ContentMedia_State = 2
-	Model_Block_ContentMedia_DOWNLOADING Model_Block_ContentMedia_State = 3
-	Model_Block_ContentMedia_DONE        Model_Block_ContentMedia_State = 4
+	Model_Block_Content_Media_EMPTY       Model_Block_Content_Media_State = 0
+	Model_Block_Content_Media_UPLOADING   Model_Block_Content_Media_State = 1
+	Model_Block_Content_Media_PREVIEW     Model_Block_Content_Media_State = 2
+	Model_Block_Content_Media_DOWNLOADING Model_Block_Content_Media_State = 3
+	Model_Block_Content_Media_DONE        Model_Block_Content_Media_State = 4
 )
 
-var Model_Block_ContentMedia_State_name = map[int32]string{
+var Model_Block_Content_Media_State_name = map[int32]string{
 	0: "EMPTY",
 	1: "UPLOADING",
 	2: "PREVIEW",
@@ -238,7 +238,7 @@ var Model_Block_ContentMedia_State_name = map[int32]string{
 	4: "DONE",
 }
 
-var Model_Block_ContentMedia_State_value = map[string]int32{
+var Model_Block_Content_Media_State_value = map[string]int32{
 	"EMPTY":       0,
 	"UPLOADING":   1,
 	"PREVIEW":     2,
@@ -246,43 +246,43 @@ var Model_Block_ContentMedia_State_value = map[string]int32{
 	"DONE":        4,
 }
 
-func (x Model_Block_ContentMedia_State) String() string {
-	return proto.EnumName(Model_Block_ContentMedia_State_name, int32(x))
+func (x Model_Block_Content_Media_State) String() string {
+	return proto.EnumName(Model_Block_Content_Media_State_name, int32(x))
 }
 
-func (Model_Block_ContentMedia_State) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 6, 0}
+func (Model_Block_Content_Media_State) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 0}
 }
 
-type Model_Block_ContentPage_Style int32
+type Model_Block_Content_Page_Style int32
 
 const (
-	Model_Block_ContentPage_EMPTY    Model_Block_ContentPage_Style = 0
-	Model_Block_ContentPage_TASK     Model_Block_ContentPage_Style = 1
-	Model_Block_ContentPage_BOOKMARK Model_Block_ContentPage_Style = 2
-	Model_Block_ContentPage_SET      Model_Block_ContentPage_Style = 3
+	Model_Block_Content_Page_EMPTY    Model_Block_Content_Page_Style = 0
+	Model_Block_Content_Page_TASK     Model_Block_Content_Page_Style = 1
+	Model_Block_Content_Page_BOOKMARK Model_Block_Content_Page_Style = 2
+	Model_Block_Content_Page_SET      Model_Block_Content_Page_Style = 3
 )
 
-var Model_Block_ContentPage_Style_name = map[int32]string{
+var Model_Block_Content_Page_Style_name = map[int32]string{
 	0: "EMPTY",
 	1: "TASK",
 	2: "BOOKMARK",
 	3: "SET",
 }
 
-var Model_Block_ContentPage_Style_value = map[string]int32{
+var Model_Block_Content_Page_Style_value = map[string]int32{
 	"EMPTY":    0,
 	"TASK":     1,
 	"BOOKMARK": 2,
 	"SET":      3,
 }
 
-func (x Model_Block_ContentPage_Style) String() string {
-	return proto.EnumName(Model_Block_ContentPage_Style_name, int32(x))
+func (x Model_Block_Content_Page_Style) String() string {
+	return proto.EnumName(Model_Block_Content_Page_Style_name, int32(x))
 }
 
-func (Model_Block_ContentPage_Style) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 7, 0}
+func (Model_Block_Content_Page_Style) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 6, 0}
 }
 
 type Model struct {
@@ -375,25 +375,25 @@ type isModel_Block_Content interface {
 }
 
 type Model_Block_Dashboard struct {
-	Dashboard *Model_Block_ContentDashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
+	Dashboard *Model_Block_Content_Dashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
 }
 type Model_Block_Page struct {
-	Page *Model_Block_ContentPage `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
+	Page *Model_Block_Content_Page `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
 }
 type Model_Block_Dataview struct {
-	Dataview *Model_Block_ContentDataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
+	Dataview *Model_Block_Content_Dataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
 }
 type Model_Block_Text struct {
-	Text *Model_Block_ContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
+	Text *Model_Block_Content_Text `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
 type Model_Block_Media struct {
-	Media *Model_Block_ContentMedia `protobuf:"bytes,15,opt,name=media,proto3,oneof" json:"media,omitempty"`
+	Media *Model_Block_Content_Media `protobuf:"bytes,15,opt,name=media,proto3,oneof" json:"media,omitempty"`
 }
 type Model_Block_Layout struct {
-	Layout *Model_Block_ContentLayout `protobuf:"bytes,16,opt,name=layout,proto3,oneof" json:"layout,omitempty"`
+	Layout *Model_Block_Content_Layout `protobuf:"bytes,16,opt,name=layout,proto3,oneof" json:"layout,omitempty"`
 }
 type Model_Block_Div struct {
-	Div *Model_Block_ContentDiv `protobuf:"bytes,17,opt,name=div,proto3,oneof" json:"div,omitempty"`
+	Div *Model_Block_Content_Div `protobuf:"bytes,17,opt,name=div,proto3,oneof" json:"div,omitempty"`
 }
 
 func (*Model_Block_Dashboard) isModel_Block_Content() {}
@@ -425,49 +425,49 @@ func (m *Model_Block) GetChildren() []string {
 	return nil
 }
 
-func (m *Model_Block) GetDashboard() *Model_Block_ContentDashboard {
+func (m *Model_Block) GetDashboard() *Model_Block_Content_Dashboard {
 	if x, ok := m.GetContent().(*Model_Block_Dashboard); ok {
 		return x.Dashboard
 	}
 	return nil
 }
 
-func (m *Model_Block) GetPage() *Model_Block_ContentPage {
+func (m *Model_Block) GetPage() *Model_Block_Content_Page {
 	if x, ok := m.GetContent().(*Model_Block_Page); ok {
 		return x.Page
 	}
 	return nil
 }
 
-func (m *Model_Block) GetDataview() *Model_Block_ContentDataview {
+func (m *Model_Block) GetDataview() *Model_Block_Content_Dataview {
 	if x, ok := m.GetContent().(*Model_Block_Dataview); ok {
 		return x.Dataview
 	}
 	return nil
 }
 
-func (m *Model_Block) GetText() *Model_Block_ContentText {
+func (m *Model_Block) GetText() *Model_Block_Content_Text {
 	if x, ok := m.GetContent().(*Model_Block_Text); ok {
 		return x.Text
 	}
 	return nil
 }
 
-func (m *Model_Block) GetMedia() *Model_Block_ContentMedia {
+func (m *Model_Block) GetMedia() *Model_Block_Content_Media {
 	if x, ok := m.GetContent().(*Model_Block_Media); ok {
 		return x.Media
 	}
 	return nil
 }
 
-func (m *Model_Block) GetLayout() *Model_Block_ContentLayout {
+func (m *Model_Block) GetLayout() *Model_Block_Content_Layout {
 	if x, ok := m.GetContent().(*Model_Block_Layout); ok {
 		return x.Layout
 	}
 	return nil
 }
 
-func (m *Model_Block) GetDiv() *Model_Block_ContentDiv {
+func (m *Model_Block) GetDiv() *Model_Block_Content_Div {
 	if x, ok := m.GetContent().(*Model_Block_Div); ok {
 		return x.Div
 	}
@@ -631,22 +631,21 @@ func (m *Model_Block_Header_Permissions) GetDropOn() bool {
 	return false
 }
 
-type Model_Block_ContentLayout struct {
-	Style Model_Block_ContentLayout_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_ContentLayout_Style" json:"style,omitempty"`
+type Model_Block_Content struct {
 }
 
-func (m *Model_Block_ContentLayout) Reset()         { *m = Model_Block_ContentLayout{} }
-func (m *Model_Block_ContentLayout) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentLayout) ProtoMessage()    {}
-func (*Model_Block_ContentLayout) Descriptor() ([]byte, []int) {
+func (m *Model_Block_Content) Reset()         { *m = Model_Block_Content{} }
+func (m *Model_Block_Content) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content) ProtoMessage()    {}
+func (*Model_Block_Content) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1}
 }
-func (m *Model_Block_ContentLayout) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentLayout) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentLayout.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -656,40 +655,77 @@ func (m *Model_Block_ContentLayout) XXX_Marshal(b []byte, deterministic bool) ([
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentLayout) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentLayout.Merge(m, src)
+func (m *Model_Block_Content) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content.Merge(m, src)
 }
-func (m *Model_Block_ContentLayout) XXX_Size() int {
+func (m *Model_Block_Content) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentLayout) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentLayout.DiscardUnknown(m)
+func (m *Model_Block_Content) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentLayout proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content proto.InternalMessageInfo
 
-func (m *Model_Block_ContentLayout) GetStyle() Model_Block_ContentLayout_Style {
+type Model_Block_Content_Layout struct {
+	Style Model_Block_Content_Layout_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_Content_Layout_Style" json:"style,omitempty"`
+}
+
+func (m *Model_Block_Content_Layout) Reset()         { *m = Model_Block_Content_Layout{} }
+func (m *Model_Block_Content_Layout) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Layout) ProtoMessage()    {}
+func (*Model_Block_Content_Layout) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 0}
+}
+func (m *Model_Block_Content_Layout) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Block_Content_Layout) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Block_Content_Layout.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Block_Content_Layout) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Layout.Merge(m, src)
+}
+func (m *Model_Block_Content_Layout) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Block_Content_Layout) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Layout.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Block_Content_Layout proto.InternalMessageInfo
+
+func (m *Model_Block_Content_Layout) GetStyle() Model_Block_Content_Layout_Style {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_ContentLayout_ROW
+	return Model_Block_Content_Layout_ROW
 }
 
-type Model_Block_ContentDiv struct {
+type Model_Block_Content_Div struct {
 }
 
-func (m *Model_Block_ContentDiv) Reset()         { *m = Model_Block_ContentDiv{} }
-func (m *Model_Block_ContentDiv) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentDiv) ProtoMessage()    {}
-func (*Model_Block_ContentDiv) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 2}
+func (m *Model_Block_Content_Div) Reset()         { *m = Model_Block_Content_Div{} }
+func (m *Model_Block_Content_Div) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Div) ProtoMessage()    {}
+func (*Model_Block_Content_Div) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 1}
 }
-func (m *Model_Block_ContentDiv) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Div) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentDiv) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Div) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentDiv.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Div.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -699,35 +735,35 @@ func (m *Model_Block_ContentDiv) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentDiv) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentDiv.Merge(m, src)
+func (m *Model_Block_Content_Div) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Div.Merge(m, src)
 }
-func (m *Model_Block_ContentDiv) XXX_Size() int {
+func (m *Model_Block_Content_Div) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentDiv) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentDiv.DiscardUnknown(m)
+func (m *Model_Block_Content_Div) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Div.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentDiv proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Div proto.InternalMessageInfo
 
-type Model_Block_ContentDashboard struct {
-	Style   Model_Block_ContentDashboard_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_ContentDashboard_Style" json:"style,omitempty"`
-	Headers []*Model_Block_Header              `protobuf:"bytes,2,rep,name=headers,proto3" json:"headers,omitempty"`
+type Model_Block_Content_Dashboard struct {
+	Style   Model_Block_Content_Dashboard_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_Content_Dashboard_Style" json:"style,omitempty"`
+	Headers []*Model_Block_Header               `protobuf:"bytes,2,rep,name=headers,proto3" json:"headers,omitempty"`
 }
 
-func (m *Model_Block_ContentDashboard) Reset()         { *m = Model_Block_ContentDashboard{} }
-func (m *Model_Block_ContentDashboard) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentDashboard) ProtoMessage()    {}
-func (*Model_Block_ContentDashboard) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 3}
+func (m *Model_Block_Content_Dashboard) Reset()         { *m = Model_Block_Content_Dashboard{} }
+func (m *Model_Block_Content_Dashboard) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Dashboard) ProtoMessage()    {}
+func (*Model_Block_Content_Dashboard) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 2}
 }
-func (m *Model_Block_ContentDashboard) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Dashboard) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentDashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Dashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentDashboard.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Dashboard.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -737,47 +773,47 @@ func (m *Model_Block_ContentDashboard) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentDashboard) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentDashboard.Merge(m, src)
+func (m *Model_Block_Content_Dashboard) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Dashboard.Merge(m, src)
 }
-func (m *Model_Block_ContentDashboard) XXX_Size() int {
+func (m *Model_Block_Content_Dashboard) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentDashboard) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentDashboard.DiscardUnknown(m)
+func (m *Model_Block_Content_Dashboard) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Dashboard.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentDashboard proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Dashboard proto.InternalMessageInfo
 
-func (m *Model_Block_ContentDashboard) GetStyle() Model_Block_ContentDashboard_Style {
+func (m *Model_Block_Content_Dashboard) GetStyle() Model_Block_Content_Dashboard_Style {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_ContentDashboard_MAIN_SCREEN
+	return Model_Block_Content_Dashboard_MAIN_SCREEN
 }
 
-func (m *Model_Block_ContentDashboard) GetHeaders() []*Model_Block_Header {
+func (m *Model_Block_Content_Dashboard) GetHeaders() []*Model_Block_Header {
 	if m != nil {
 		return m.Headers
 	}
 	return nil
 }
 
-type Model_Block_ContentDataview struct {
+type Model_Block_Content_Dataview struct {
 }
 
-func (m *Model_Block_ContentDataview) Reset()         { *m = Model_Block_ContentDataview{} }
-func (m *Model_Block_ContentDataview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentDataview) ProtoMessage()    {}
-func (*Model_Block_ContentDataview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 4}
+func (m *Model_Block_Content_Dataview) Reset()         { *m = Model_Block_Content_Dataview{} }
+func (m *Model_Block_Content_Dataview) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Dataview) ProtoMessage()    {}
+func (*Model_Block_Content_Dataview) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 3}
 }
-func (m *Model_Block_ContentDataview) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Dataview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentDataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Dataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentDataview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Dataview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -787,40 +823,40 @@ func (m *Model_Block_ContentDataview) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentDataview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentDataview.Merge(m, src)
+func (m *Model_Block_Content_Dataview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Dataview.Merge(m, src)
 }
-func (m *Model_Block_ContentDataview) XXX_Size() int {
+func (m *Model_Block_Content_Dataview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentDataview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentDataview.DiscardUnknown(m)
+func (m *Model_Block_Content_Dataview) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Dataview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentDataview proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Dataview proto.InternalMessageInfo
 
-type Model_Block_ContentText struct {
-	Text       string                             `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	Style      Model_Block_ContentText_Style      `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.Model_Block_ContentText_Style" json:"style,omitempty"`
-	MarksList  *Model_Block_ContentText_Marks     `protobuf:"bytes,3,opt,name=marksList,proto3" json:"marksList,omitempty"`
-	Toggleable bool                               `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
-	MarkerType Model_Block_ContentText_MarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.Model_Block_ContentText_MarkerType" json:"markerType,omitempty"`
-	Checkable  bool                               `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
-	Checked    bool                               `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
+type Model_Block_Content_Text struct {
+	Text       string                              `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Style      Model_Block_Content_Text_Style      `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.Model_Block_Content_Text_Style" json:"style,omitempty"`
+	MarksList  *Model_Block_Content_Text_Marks     `protobuf:"bytes,3,opt,name=marksList,proto3" json:"marksList,omitempty"`
+	Toggleable bool                                `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
+	MarkerType Model_Block_Content_Text_MarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.Model_Block_Content_Text_MarkerType" json:"markerType,omitempty"`
+	Checkable  bool                                `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
+	Checked    bool                                `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
 }
 
-func (m *Model_Block_ContentText) Reset()         { *m = Model_Block_ContentText{} }
-func (m *Model_Block_ContentText) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentText) ProtoMessage()    {}
-func (*Model_Block_ContentText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 5}
+func (m *Model_Block_Content_Text) Reset()         { *m = Model_Block_Content_Text{} }
+func (m *Model_Block_Content_Text) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Text) ProtoMessage()    {}
+func (*Model_Block_Content_Text) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4}
 }
-func (m *Model_Block_ContentText) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Text) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Text) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentText.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Text.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -830,83 +866,83 @@ func (m *Model_Block_ContentText) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentText) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentText.Merge(m, src)
+func (m *Model_Block_Content_Text) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Text.Merge(m, src)
 }
-func (m *Model_Block_ContentText) XXX_Size() int {
+func (m *Model_Block_Content_Text) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentText) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentText.DiscardUnknown(m)
+func (m *Model_Block_Content_Text) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Text.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentText proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Text proto.InternalMessageInfo
 
-func (m *Model_Block_ContentText) GetText() string {
+func (m *Model_Block_Content_Text) GetText() string {
 	if m != nil {
 		return m.Text
 	}
 	return ""
 }
 
-func (m *Model_Block_ContentText) GetStyle() Model_Block_ContentText_Style {
+func (m *Model_Block_Content_Text) GetStyle() Model_Block_Content_Text_Style {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_ContentText_p
+	return Model_Block_Content_Text_p
 }
 
-func (m *Model_Block_ContentText) GetMarksList() *Model_Block_ContentText_Marks {
+func (m *Model_Block_Content_Text) GetMarksList() *Model_Block_Content_Text_Marks {
 	if m != nil {
 		return m.MarksList
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentText) GetToggleable() bool {
+func (m *Model_Block_Content_Text) GetToggleable() bool {
 	if m != nil {
 		return m.Toggleable
 	}
 	return false
 }
 
-func (m *Model_Block_ContentText) GetMarkerType() Model_Block_ContentText_MarkerType {
+func (m *Model_Block_Content_Text) GetMarkerType() Model_Block_Content_Text_MarkerType {
 	if m != nil {
 		return m.MarkerType
 	}
-	return Model_Block_ContentText_none
+	return Model_Block_Content_Text_none
 }
 
-func (m *Model_Block_ContentText) GetCheckable() bool {
+func (m *Model_Block_Content_Text) GetCheckable() bool {
 	if m != nil {
 		return m.Checkable
 	}
 	return false
 }
 
-func (m *Model_Block_ContentText) GetChecked() bool {
+func (m *Model_Block_Content_Text) GetChecked() bool {
 	if m != nil {
 		return m.Checked
 	}
 	return false
 }
 
-type Model_Block_ContentText_Marks struct {
-	Marks []*Model_Block_ContentText_Mark `protobuf:"bytes,1,rep,name=marks,proto3" json:"marks,omitempty"`
+type Model_Block_Content_Text_Marks struct {
+	Marks []*Model_Block_Content_Text_Mark `protobuf:"bytes,1,rep,name=marks,proto3" json:"marks,omitempty"`
 }
 
-func (m *Model_Block_ContentText_Marks) Reset()         { *m = Model_Block_ContentText_Marks{} }
-func (m *Model_Block_ContentText_Marks) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentText_Marks) ProtoMessage()    {}
-func (*Model_Block_ContentText_Marks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 5, 0}
+func (m *Model_Block_Content_Text_Marks) Reset()         { *m = Model_Block_Content_Text_Marks{} }
+func (m *Model_Block_Content_Text_Marks) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Text_Marks) ProtoMessage()    {}
+func (*Model_Block_Content_Text_Marks) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 0}
 }
-func (m *Model_Block_ContentText_Marks) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Text_Marks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentText_Marks) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Text_Marks) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentText_Marks.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Text_Marks.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -916,43 +952,43 @@ func (m *Model_Block_ContentText_Marks) XXX_Marshal(b []byte, deterministic bool
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentText_Marks) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentText_Marks.Merge(m, src)
+func (m *Model_Block_Content_Text_Marks) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Text_Marks.Merge(m, src)
 }
-func (m *Model_Block_ContentText_Marks) XXX_Size() int {
+func (m *Model_Block_Content_Text_Marks) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentText_Marks) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentText_Marks.DiscardUnknown(m)
+func (m *Model_Block_Content_Text_Marks) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Text_Marks.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentText_Marks proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Text_Marks proto.InternalMessageInfo
 
-func (m *Model_Block_ContentText_Marks) GetMarks() []*Model_Block_ContentText_Mark {
+func (m *Model_Block_Content_Text_Marks) GetMarks() []*Model_Block_Content_Text_Mark {
 	if m != nil {
 		return m.Marks
 	}
 	return nil
 }
 
-type Model_Block_ContentText_Mark struct {
-	Range *Model_Range                      `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
-	Type  Model_Block_ContentText_Mark_Type `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.Model_Block_ContentText_Mark_Type" json:"type,omitempty"`
-	Param string                            `protobuf:"bytes,3,opt,name=param,proto3" json:"param,omitempty"`
+type Model_Block_Content_Text_Mark struct {
+	Range *Model_Range                       `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
+	Type  Model_Block_Content_Text_Mark_Type `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.Model_Block_Content_Text_Mark_Type" json:"type,omitempty"`
+	Param string                             `protobuf:"bytes,3,opt,name=param,proto3" json:"param,omitempty"`
 }
 
-func (m *Model_Block_ContentText_Mark) Reset()         { *m = Model_Block_ContentText_Mark{} }
-func (m *Model_Block_ContentText_Mark) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentText_Mark) ProtoMessage()    {}
-func (*Model_Block_ContentText_Mark) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 5, 1}
+func (m *Model_Block_Content_Text_Mark) Reset()         { *m = Model_Block_Content_Text_Mark{} }
+func (m *Model_Block_Content_Text_Mark) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Text_Mark) ProtoMessage()    {}
+func (*Model_Block_Content_Text_Mark) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 1}
 }
-func (m *Model_Block_ContentText_Mark) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Text_Mark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentText_Mark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Text_Mark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentText_Mark.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Text_Mark.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -962,61 +998,61 @@ func (m *Model_Block_ContentText_Mark) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentText_Mark) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentText_Mark.Merge(m, src)
+func (m *Model_Block_Content_Text_Mark) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Text_Mark.Merge(m, src)
 }
-func (m *Model_Block_ContentText_Mark) XXX_Size() int {
+func (m *Model_Block_Content_Text_Mark) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentText_Mark) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentText_Mark.DiscardUnknown(m)
+func (m *Model_Block_Content_Text_Mark) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Text_Mark.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentText_Mark proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Text_Mark proto.InternalMessageInfo
 
-func (m *Model_Block_ContentText_Mark) GetRange() *Model_Range {
+func (m *Model_Block_Content_Text_Mark) GetRange() *Model_Range {
 	if m != nil {
 		return m.Range
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentText_Mark) GetType() Model_Block_ContentText_Mark_Type {
+func (m *Model_Block_Content_Text_Mark) GetType() Model_Block_Content_Text_Mark_Type {
 	if m != nil {
 		return m.Type
 	}
-	return Model_Block_ContentText_Mark_STRIKETHROUGH
+	return Model_Block_Content_Text_Mark_STRIKETHROUGH
 }
 
-func (m *Model_Block_ContentText_Mark) GetParam() string {
+func (m *Model_Block_Content_Text_Mark) GetParam() string {
 	if m != nil {
 		return m.Param
 	}
 	return ""
 }
 
-type Model_Block_ContentMedia struct {
-	Content []byte                         `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	State   Model_Block_ContentMedia_State `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.Model_Block_ContentMedia_State" json:"state,omitempty"`
+type Model_Block_Content_Media struct {
+	Content []byte                          `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	State   Model_Block_Content_Media_State `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.Model_Block_Content_Media_State" json:"state,omitempty"`
 	// Types that are valid to be assigned to Preview:
-	//	*Model_Block_ContentMedia_Video
-	//	*Model_Block_ContentMedia_Image
-	//	*Model_Block_ContentMedia_File
-	Preview isModel_Block_ContentMedia_Preview `protobuf_oneof:"preview"`
+	//	*Model_Block_Content_Media_Video
+	//	*Model_Block_Content_Media_Image
+	//	*Model_Block_Content_Media_File
+	Preview isModel_Block_Content_Media_Preview `protobuf_oneof:"preview"`
 }
 
-func (m *Model_Block_ContentMedia) Reset()         { *m = Model_Block_ContentMedia{} }
-func (m *Model_Block_ContentMedia) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentMedia) ProtoMessage()    {}
-func (*Model_Block_ContentMedia) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 6}
+func (m *Model_Block_Content_Media) Reset()         { *m = Model_Block_Content_Media{} }
+func (m *Model_Block_Content_Media) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Media) ProtoMessage()    {}
+func (*Model_Block_Content_Media) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5}
 }
-func (m *Model_Block_ContentMedia) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Media) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentMedia) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Media) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentMedia.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Media.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1026,107 +1062,109 @@ func (m *Model_Block_ContentMedia) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentMedia) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentMedia.Merge(m, src)
+func (m *Model_Block_Content_Media) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Media.Merge(m, src)
 }
-func (m *Model_Block_ContentMedia) XXX_Size() int {
+func (m *Model_Block_Content_Media) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentMedia) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentMedia.DiscardUnknown(m)
+func (m *Model_Block_Content_Media) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Media.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentMedia proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Media proto.InternalMessageInfo
 
-type isModel_Block_ContentMedia_Preview interface {
-	isModel_Block_ContentMedia_Preview()
+type isModel_Block_Content_Media_Preview interface {
+	isModel_Block_Content_Media_Preview()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Model_Block_ContentMedia_Video struct {
-	Video *Model_Block_ContentMedia_VideoPreview `protobuf:"bytes,101,opt,name=video,proto3,oneof" json:"video,omitempty"`
+type Model_Block_Content_Media_Video struct {
+	Video *Model_Block_Content_Media_VideoPreview `protobuf:"bytes,101,opt,name=video,proto3,oneof" json:"video,omitempty"`
 }
-type Model_Block_ContentMedia_Image struct {
-	Image *Model_Block_ContentMedia_ImagePreview `protobuf:"bytes,102,opt,name=image,proto3,oneof" json:"image,omitempty"`
+type Model_Block_Content_Media_Image struct {
+	Image *Model_Block_Content_Media_ImagePreview `protobuf:"bytes,102,opt,name=image,proto3,oneof" json:"image,omitempty"`
 }
-type Model_Block_ContentMedia_File struct {
-	File *Model_Block_ContentMedia_FilePreview `protobuf:"bytes,103,opt,name=file,proto3,oneof" json:"file,omitempty"`
+type Model_Block_Content_Media_File struct {
+	File *Model_Block_Content_Media_FilePreview `protobuf:"bytes,103,opt,name=file,proto3,oneof" json:"file,omitempty"`
 }
 
-func (*Model_Block_ContentMedia_Video) isModel_Block_ContentMedia_Preview() {}
-func (*Model_Block_ContentMedia_Image) isModel_Block_ContentMedia_Preview() {}
-func (*Model_Block_ContentMedia_File) isModel_Block_ContentMedia_Preview()  {}
+func (*Model_Block_Content_Media_Video) isModel_Block_Content_Media_Preview() {}
+func (*Model_Block_Content_Media_Image) isModel_Block_Content_Media_Preview() {}
+func (*Model_Block_Content_Media_File) isModel_Block_Content_Media_Preview()  {}
 
-func (m *Model_Block_ContentMedia) GetPreview() isModel_Block_ContentMedia_Preview {
+func (m *Model_Block_Content_Media) GetPreview() isModel_Block_Content_Media_Preview {
 	if m != nil {
 		return m.Preview
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentMedia) GetContent() []byte {
+func (m *Model_Block_Content_Media) GetContent() []byte {
 	if m != nil {
 		return m.Content
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentMedia) GetState() Model_Block_ContentMedia_State {
+func (m *Model_Block_Content_Media) GetState() Model_Block_Content_Media_State {
 	if m != nil {
 		return m.State
 	}
-	return Model_Block_ContentMedia_EMPTY
+	return Model_Block_Content_Media_EMPTY
 }
 
-func (m *Model_Block_ContentMedia) GetVideo() *Model_Block_ContentMedia_VideoPreview {
-	if x, ok := m.GetPreview().(*Model_Block_ContentMedia_Video); ok {
+func (m *Model_Block_Content_Media) GetVideo() *Model_Block_Content_Media_VideoPreview {
+	if x, ok := m.GetPreview().(*Model_Block_Content_Media_Video); ok {
 		return x.Video
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentMedia) GetImage() *Model_Block_ContentMedia_ImagePreview {
-	if x, ok := m.GetPreview().(*Model_Block_ContentMedia_Image); ok {
+func (m *Model_Block_Content_Media) GetImage() *Model_Block_Content_Media_ImagePreview {
+	if x, ok := m.GetPreview().(*Model_Block_Content_Media_Image); ok {
 		return x.Image
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentMedia) GetFile() *Model_Block_ContentMedia_FilePreview {
-	if x, ok := m.GetPreview().(*Model_Block_ContentMedia_File); ok {
+func (m *Model_Block_Content_Media) GetFile() *Model_Block_Content_Media_FilePreview {
+	if x, ok := m.GetPreview().(*Model_Block_Content_Media_File); ok {
 		return x.File
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*Model_Block_ContentMedia) XXX_OneofWrappers() []interface{} {
+func (*Model_Block_Content_Media) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*Model_Block_ContentMedia_Video)(nil),
-		(*Model_Block_ContentMedia_Image)(nil),
-		(*Model_Block_ContentMedia_File)(nil),
+		(*Model_Block_Content_Media_Video)(nil),
+		(*Model_Block_Content_Media_Image)(nil),
+		(*Model_Block_Content_Media_File)(nil),
 	}
 }
 
-type Model_Block_ContentMedia_VideoPreview struct {
+type Model_Block_Content_Media_VideoPreview struct {
 	Thumbnail []byte `protobuf:"bytes,1,opt,name=thumbnail,proto3" json:"thumbnail,omitempty"`
 	Name      string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
-func (m *Model_Block_ContentMedia_VideoPreview) Reset()         { *m = Model_Block_ContentMedia_VideoPreview{} }
-func (m *Model_Block_ContentMedia_VideoPreview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentMedia_VideoPreview) ProtoMessage()    {}
-func (*Model_Block_ContentMedia_VideoPreview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 6, 0}
+func (m *Model_Block_Content_Media_VideoPreview) Reset() {
+	*m = Model_Block_Content_Media_VideoPreview{}
 }
-func (m *Model_Block_ContentMedia_VideoPreview) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Media_VideoPreview) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Media_VideoPreview) ProtoMessage()    {}
+func (*Model_Block_Content_Media_VideoPreview) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 0}
+}
+func (m *Model_Block_Content_Media_VideoPreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentMedia_VideoPreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Media_VideoPreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentMedia_VideoPreview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Media_VideoPreview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1136,57 +1174,59 @@ func (m *Model_Block_ContentMedia_VideoPreview) XXX_Marshal(b []byte, determinis
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentMedia_VideoPreview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentMedia_VideoPreview.Merge(m, src)
+func (m *Model_Block_Content_Media_VideoPreview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Media_VideoPreview.Merge(m, src)
 }
-func (m *Model_Block_ContentMedia_VideoPreview) XXX_Size() int {
+func (m *Model_Block_Content_Media_VideoPreview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentMedia_VideoPreview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentMedia_VideoPreview.DiscardUnknown(m)
+func (m *Model_Block_Content_Media_VideoPreview) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Media_VideoPreview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentMedia_VideoPreview proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Media_VideoPreview proto.InternalMessageInfo
 
-func (m *Model_Block_ContentMedia_VideoPreview) GetThumbnail() []byte {
+func (m *Model_Block_Content_Media_VideoPreview) GetThumbnail() []byte {
 	if m != nil {
 		return m.Thumbnail
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentMedia_VideoPreview) GetName() string {
+func (m *Model_Block_Content_Media_VideoPreview) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Model_Block_ContentMedia_VideoPreview) GetWidth() int32 {
+func (m *Model_Block_Content_Media_VideoPreview) GetWidth() int32 {
 	if m != nil {
 		return m.Width
 	}
 	return 0
 }
 
-type Model_Block_ContentMedia_ImagePreview struct {
+type Model_Block_Content_Media_ImagePreview struct {
 	Thumbnail []byte `protobuf:"bytes,1,opt,name=thumbnail,proto3" json:"thumbnail,omitempty"`
 	Name      string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
-func (m *Model_Block_ContentMedia_ImagePreview) Reset()         { *m = Model_Block_ContentMedia_ImagePreview{} }
-func (m *Model_Block_ContentMedia_ImagePreview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentMedia_ImagePreview) ProtoMessage()    {}
-func (*Model_Block_ContentMedia_ImagePreview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 6, 1}
+func (m *Model_Block_Content_Media_ImagePreview) Reset() {
+	*m = Model_Block_Content_Media_ImagePreview{}
 }
-func (m *Model_Block_ContentMedia_ImagePreview) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Media_ImagePreview) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Media_ImagePreview) ProtoMessage()    {}
+func (*Model_Block_Content_Media_ImagePreview) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 1}
+}
+func (m *Model_Block_Content_Media_ImagePreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentMedia_ImagePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Media_ImagePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentMedia_ImagePreview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Media_ImagePreview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1196,56 +1236,56 @@ func (m *Model_Block_ContentMedia_ImagePreview) XXX_Marshal(b []byte, determinis
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentMedia_ImagePreview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentMedia_ImagePreview.Merge(m, src)
+func (m *Model_Block_Content_Media_ImagePreview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Media_ImagePreview.Merge(m, src)
 }
-func (m *Model_Block_ContentMedia_ImagePreview) XXX_Size() int {
+func (m *Model_Block_Content_Media_ImagePreview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentMedia_ImagePreview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentMedia_ImagePreview.DiscardUnknown(m)
+func (m *Model_Block_Content_Media_ImagePreview) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Media_ImagePreview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentMedia_ImagePreview proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Media_ImagePreview proto.InternalMessageInfo
 
-func (m *Model_Block_ContentMedia_ImagePreview) GetThumbnail() []byte {
+func (m *Model_Block_Content_Media_ImagePreview) GetThumbnail() []byte {
 	if m != nil {
 		return m.Thumbnail
 	}
 	return nil
 }
 
-func (m *Model_Block_ContentMedia_ImagePreview) GetName() string {
+func (m *Model_Block_Content_Media_ImagePreview) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Model_Block_ContentMedia_ImagePreview) GetWidth() int32 {
+func (m *Model_Block_Content_Media_ImagePreview) GetWidth() int32 {
 	if m != nil {
 		return m.Width
 	}
 	return 0
 }
 
-type Model_Block_ContentMedia_FilePreview struct {
+type Model_Block_Content_Media_FilePreview struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Icon string `protobuf:"bytes,2,opt,name=icon,proto3" json:"icon,omitempty"`
 }
 
-func (m *Model_Block_ContentMedia_FilePreview) Reset()         { *m = Model_Block_ContentMedia_FilePreview{} }
-func (m *Model_Block_ContentMedia_FilePreview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentMedia_FilePreview) ProtoMessage()    {}
-func (*Model_Block_ContentMedia_FilePreview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 6, 2}
+func (m *Model_Block_Content_Media_FilePreview) Reset()         { *m = Model_Block_Content_Media_FilePreview{} }
+func (m *Model_Block_Content_Media_FilePreview) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Media_FilePreview) ProtoMessage()    {}
+func (*Model_Block_Content_Media_FilePreview) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 2}
 }
-func (m *Model_Block_ContentMedia_FilePreview) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Media_FilePreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentMedia_FilePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Media_FilePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentMedia_FilePreview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Media_FilePreview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1255,49 +1295,49 @@ func (m *Model_Block_ContentMedia_FilePreview) XXX_Marshal(b []byte, determinist
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentMedia_FilePreview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentMedia_FilePreview.Merge(m, src)
+func (m *Model_Block_Content_Media_FilePreview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Media_FilePreview.Merge(m, src)
 }
-func (m *Model_Block_ContentMedia_FilePreview) XXX_Size() int {
+func (m *Model_Block_Content_Media_FilePreview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentMedia_FilePreview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentMedia_FilePreview.DiscardUnknown(m)
+func (m *Model_Block_Content_Media_FilePreview) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Media_FilePreview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentMedia_FilePreview proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Media_FilePreview proto.InternalMessageInfo
 
-func (m *Model_Block_ContentMedia_FilePreview) GetName() string {
+func (m *Model_Block_Content_Media_FilePreview) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Model_Block_ContentMedia_FilePreview) GetIcon() string {
+func (m *Model_Block_Content_Media_FilePreview) GetIcon() string {
 	if m != nil {
 		return m.Icon
 	}
 	return ""
 }
 
-type Model_Block_ContentPage struct {
-	Style  Model_Block_ContentPage_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_ContentPage_Style" json:"style,omitempty"`
-	Blocks []*Model_Block                `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+type Model_Block_Content_Page struct {
+	Style  Model_Block_Content_Page_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_Content_Page_Style" json:"style,omitempty"`
+	Blocks []*Model_Block                 `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
 }
 
-func (m *Model_Block_ContentPage) Reset()         { *m = Model_Block_ContentPage{} }
-func (m *Model_Block_ContentPage) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_ContentPage) ProtoMessage()    {}
-func (*Model_Block_ContentPage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0b5431a010549573, []int{0, 0, 7}
+func (m *Model_Block_Content_Page) Reset()         { *m = Model_Block_Content_Page{} }
+func (m *Model_Block_Content_Page) String() string { return proto.CompactTextString(m) }
+func (*Model_Block_Content_Page) ProtoMessage()    {}
+func (*Model_Block_Content_Page) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 6}
 }
-func (m *Model_Block_ContentPage) XXX_Unmarshal(b []byte) error {
+func (m *Model_Block_Content_Page) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_ContentPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Model_Block_Content_Page) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_ContentPage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_Model_Block_Content_Page.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1307,26 +1347,26 @@ func (m *Model_Block_ContentPage) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_ContentPage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_ContentPage.Merge(m, src)
+func (m *Model_Block_Content_Page) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Block_Content_Page.Merge(m, src)
 }
-func (m *Model_Block_ContentPage) XXX_Size() int {
+func (m *Model_Block_Content_Page) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_ContentPage) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_ContentPage.DiscardUnknown(m)
+func (m *Model_Block_Content_Page) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Block_Content_Page.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_ContentPage proto.InternalMessageInfo
+var xxx_messageInfo_Model_Block_Content_Page proto.InternalMessageInfo
 
-func (m *Model_Block_ContentPage) GetStyle() Model_Block_ContentPage_Style {
+func (m *Model_Block_Content_Page) GetStyle() Model_Block_Content_Page_Style {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_ContentPage_EMPTY
+	return Model_Block_Content_Page_EMPTY
 }
 
-func (m *Model_Block_ContentPage) GetBlocks() []*Model_Block {
+func (m *Model_Block_Content_Page) GetBlocks() []*Model_Block {
 	if m != nil {
 		return m.Blocks
 	}
@@ -1387,116 +1427,118 @@ func (m *Model_Range) GetTo() int32 {
 
 func init() {
 	proto.RegisterEnum("anytype.Model_Block_Header_Type", Model_Block_Header_Type_name, Model_Block_Header_Type_value)
-	proto.RegisterEnum("anytype.Model_Block_ContentLayout_Style", Model_Block_ContentLayout_Style_name, Model_Block_ContentLayout_Style_value)
-	proto.RegisterEnum("anytype.Model_Block_ContentDashboard_Style", Model_Block_ContentDashboard_Style_name, Model_Block_ContentDashboard_Style_value)
-	proto.RegisterEnum("anytype.Model_Block_ContentText_Style", Model_Block_ContentText_Style_name, Model_Block_ContentText_Style_value)
-	proto.RegisterEnum("anytype.Model_Block_ContentText_MarkerType", Model_Block_ContentText_MarkerType_name, Model_Block_ContentText_MarkerType_value)
-	proto.RegisterEnum("anytype.Model_Block_ContentText_Mark_Type", Model_Block_ContentText_Mark_Type_name, Model_Block_ContentText_Mark_Type_value)
-	proto.RegisterEnum("anytype.Model_Block_ContentMedia_State", Model_Block_ContentMedia_State_name, Model_Block_ContentMedia_State_value)
-	proto.RegisterEnum("anytype.Model_Block_ContentPage_Style", Model_Block_ContentPage_Style_name, Model_Block_ContentPage_Style_value)
+	proto.RegisterEnum("anytype.Model_Block_Content_Layout_Style", Model_Block_Content_Layout_Style_name, Model_Block_Content_Layout_Style_value)
+	proto.RegisterEnum("anytype.Model_Block_Content_Dashboard_Style", Model_Block_Content_Dashboard_Style_name, Model_Block_Content_Dashboard_Style_value)
+	proto.RegisterEnum("anytype.Model_Block_Content_Text_Style", Model_Block_Content_Text_Style_name, Model_Block_Content_Text_Style_value)
+	proto.RegisterEnum("anytype.Model_Block_Content_Text_MarkerType", Model_Block_Content_Text_MarkerType_name, Model_Block_Content_Text_MarkerType_value)
+	proto.RegisterEnum("anytype.Model_Block_Content_Text_Mark_Type", Model_Block_Content_Text_Mark_Type_name, Model_Block_Content_Text_Mark_Type_value)
+	proto.RegisterEnum("anytype.Model_Block_Content_Media_State", Model_Block_Content_Media_State_name, Model_Block_Content_Media_State_value)
+	proto.RegisterEnum("anytype.Model_Block_Content_Page_Style", Model_Block_Content_Page_Style_name, Model_Block_Content_Page_Style_value)
 	proto.RegisterType((*Model)(nil), "anytype.Model")
 	proto.RegisterType((*Model_Block)(nil), "anytype.Model.Block")
 	proto.RegisterType((*Model_Block_Header)(nil), "anytype.Model.Block.Header")
 	proto.RegisterType((*Model_Block_Header_Permissions)(nil), "anytype.Model.Block.Header.Permissions")
-	proto.RegisterType((*Model_Block_ContentLayout)(nil), "anytype.Model.Block.ContentLayout")
-	proto.RegisterType((*Model_Block_ContentDiv)(nil), "anytype.Model.Block.ContentDiv")
-	proto.RegisterType((*Model_Block_ContentDashboard)(nil), "anytype.Model.Block.ContentDashboard")
-	proto.RegisterType((*Model_Block_ContentDataview)(nil), "anytype.Model.Block.ContentDataview")
-	proto.RegisterType((*Model_Block_ContentText)(nil), "anytype.Model.Block.ContentText")
-	proto.RegisterType((*Model_Block_ContentText_Marks)(nil), "anytype.Model.Block.ContentText.Marks")
-	proto.RegisterType((*Model_Block_ContentText_Mark)(nil), "anytype.Model.Block.ContentText.Mark")
-	proto.RegisterType((*Model_Block_ContentMedia)(nil), "anytype.Model.Block.ContentMedia")
-	proto.RegisterType((*Model_Block_ContentMedia_VideoPreview)(nil), "anytype.Model.Block.ContentMedia.VideoPreview")
-	proto.RegisterType((*Model_Block_ContentMedia_ImagePreview)(nil), "anytype.Model.Block.ContentMedia.ImagePreview")
-	proto.RegisterType((*Model_Block_ContentMedia_FilePreview)(nil), "anytype.Model.Block.ContentMedia.FilePreview")
-	proto.RegisterType((*Model_Block_ContentPage)(nil), "anytype.Model.Block.ContentPage")
+	proto.RegisterType((*Model_Block_Content)(nil), "anytype.Model.Block.Content")
+	proto.RegisterType((*Model_Block_Content_Layout)(nil), "anytype.Model.Block.Content.Layout")
+	proto.RegisterType((*Model_Block_Content_Div)(nil), "anytype.Model.Block.Content.Div")
+	proto.RegisterType((*Model_Block_Content_Dashboard)(nil), "anytype.Model.Block.Content.Dashboard")
+	proto.RegisterType((*Model_Block_Content_Dataview)(nil), "anytype.Model.Block.Content.Dataview")
+	proto.RegisterType((*Model_Block_Content_Text)(nil), "anytype.Model.Block.Content.Text")
+	proto.RegisterType((*Model_Block_Content_Text_Marks)(nil), "anytype.Model.Block.Content.Text.Marks")
+	proto.RegisterType((*Model_Block_Content_Text_Mark)(nil), "anytype.Model.Block.Content.Text.Mark")
+	proto.RegisterType((*Model_Block_Content_Media)(nil), "anytype.Model.Block.Content.Media")
+	proto.RegisterType((*Model_Block_Content_Media_VideoPreview)(nil), "anytype.Model.Block.Content.Media.VideoPreview")
+	proto.RegisterType((*Model_Block_Content_Media_ImagePreview)(nil), "anytype.Model.Block.Content.Media.ImagePreview")
+	proto.RegisterType((*Model_Block_Content_Media_FilePreview)(nil), "anytype.Model.Block.Content.Media.FilePreview")
+	proto.RegisterType((*Model_Block_Content_Page)(nil), "anytype.Model.Block.Content.Page")
 	proto.RegisterType((*Model_Range)(nil), "anytype.Model.Range")
 }
 
 func init() { proto.RegisterFile("models.proto", fileDescriptor_0b5431a010549573) }
 
 var fileDescriptor_0b5431a010549573 = []byte{
-	// 1274 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0x4d, 0x8f, 0xdb, 0x44,
-	0x18, 0xb6, 0x13, 0x3b, 0x1f, 0x6f, 0xb2, 0xbb, 0xd3, 0x51, 0x55, 0x59, 0xa6, 0x0a, 0x4b, 0x44,
-	0xe9, 0xaa, 0x85, 0x48, 0x74, 0x5b, 0x24, 0x44, 0xa9, 0x94, 0x0f, 0x77, 0x63, 0xe5, 0x53, 0x93,
-	0xec, 0x96, 0x72, 0x41, 0x4e, 0x3c, 0x9b, 0x58, 0x4d, 0xec, 0xe0, 0x78, 0xb7, 0x5d, 0x89, 0x9f,
-	0xc0, 0x81, 0x5f, 0xc1, 0x91, 0x3f, 0xc0, 0x91, 0x0b, 0xc7, 0x72, 0x83, 0x1b, 0x6a, 0x7f, 0x05,
-	0x37, 0x34, 0xef, 0x38, 0x89, 0xb7, 0x2a, 0x9b, 0x3d, 0x70, 0xf2, 0xbc, 0x33, 0xcf, 0xf3, 0x7e,
-	0xcc, 0xbc, 0x1f, 0x86, 0xe2, 0x3c, 0x70, 0xf9, 0x6c, 0x59, 0x59, 0x84, 0x41, 0x14, 0xd0, 0xac,
-	0xe3, 0x5f, 0x44, 0x17, 0x0b, 0x6e, 0x16, 0x97, 0x51, 0x78, 0x36, 0x8e, 0xe4, 0x76, 0xf9, 0xb7,
-	0x5b, 0xa0, 0x77, 0x04, 0xce, 0xfc, 0xf1, 0x16, 0xe8, 0xb5, 0x59, 0x30, 0x7e, 0x41, 0x0f, 0x21,
-	0x33, 0xe5, 0x8e, 0xcb, 0x43, 0x43, 0xdd, 0x57, 0x0f, 0x0a, 0x0f, 0x3e, 0xa8, 0xc4, 0xdc, 0x0a,
-	0x22, 0x2b, 0x88, 0xaa, 0x34, 0x11, 0xc2, 0x62, 0x28, 0x35, 0x21, 0x37, 0x9e, 0x7a, 0x33, 0x37,
-	0xe4, 0xbe, 0x91, 0xda, 0x4f, 0x1f, 0xe4, 0xd9, 0x5a, 0xa6, 0x16, 0xe4, 0x5d, 0x67, 0x39, 0x1d,
-	0x05, 0x4e, 0xe8, 0x1a, 0x05, 0xd4, 0x79, 0xe7, 0xbd, 0x3a, 0xeb, 0x81, 0x1f, 0x71, 0x3f, 0x6a,
-	0xac, 0xc0, 0x4d, 0x85, 0x6d, 0x98, 0xf4, 0x0b, 0xd0, 0x16, 0xce, 0x84, 0x1b, 0x45, 0xd4, 0xb0,
-	0x7f, 0x95, 0x86, 0xbe, 0x33, 0xe1, 0x4d, 0x85, 0x21, 0x9e, 0xd6, 0x20, 0xe7, 0x3a, 0x91, 0x73,
-	0xee, 0xf1, 0x97, 0xc6, 0x0e, 0x72, 0x3f, 0xbe, 0xda, 0xba, 0xc4, 0x36, 0x15, 0xb6, 0xe6, 0x09,
-	0xdb, 0x11, 0x7f, 0x15, 0x19, 0xbb, 0xdb, 0x6d, 0x0f, 0xf9, 0xab, 0x48, 0xd8, 0x16, 0x78, 0xfa,
-	0x25, 0xe8, 0x73, 0xee, 0x7a, 0x8e, 0xb1, 0x87, 0xc4, 0x8f, 0xae, 0x22, 0x76, 0x04, 0xb0, 0xa9,
-	0x30, 0xc9, 0xa0, 0x8f, 0x21, 0x33, 0x73, 0x2e, 0x82, 0xb3, 0xc8, 0x20, 0xc8, 0x2d, 0x5f, 0xc5,
-	0x6d, 0x23, 0xb2, 0xa9, 0xb0, 0x98, 0x43, 0x0f, 0x21, 0xed, 0x7a, 0xe7, 0xc6, 0x0d, 0xa4, 0x7e,
-	0x78, 0x65, 0xbc, 0xde, 0x79, 0x53, 0x61, 0x02, 0x6d, 0xfe, 0x9a, 0x86, 0x8c, 0x7c, 0x57, 0xba,
-	0x0b, 0x29, 0xcf, 0xc5, 0x04, 0xc8, 0xb3, 0x94, 0xe7, 0xd2, 0x87, 0xa0, 0x09, 0x05, 0x46, 0x6a,
-	0x5f, 0x3d, 0xd8, 0xfd, 0x8f, 0x0b, 0x90, 0xd4, 0xca, 0xf0, 0x62, 0xc1, 0x19, 0xa2, 0xe9, 0x5d,
-	0xc8, 0x9c, 0x7a, 0x7c, 0xe6, 0x2e, 0x8d, 0x34, 0x3a, 0xb2, 0xb7, 0xe6, 0x0d, 0x30, 0x0b, 0x59,
-	0x7c, 0x4c, 0x6d, 0x28, 0x2c, 0x78, 0x38, 0xf7, 0x96, 0x4b, 0x2f, 0xf0, 0x97, 0x86, 0x86, 0xe8,
-	0xbb, 0x57, 0x59, 0xe9, 0x6f, 0xe0, 0x2c, 0xc9, 0x35, 0x2f, 0xa0, 0x90, 0x38, 0xa3, 0x14, 0xb4,
-	0x90, 0x3b, 0x32, 0x94, 0x1c, 0xc3, 0xb5, 0xd8, 0xe3, 0xae, 0x17, 0x61, 0x30, 0x39, 0x86, 0x6b,
-	0x7a, 0x0b, 0x32, 0x21, 0x9f, 0x07, 0xe7, 0x1c, 0x5d, 0xcd, 0xb1, 0x58, 0x12, 0x58, 0x37, 0x74,
-	0x26, 0xe8, 0x52, 0x8e, 0xe1, 0x5a, 0x60, 0xdd, 0x30, 0x58, 0xf4, 0x7c, 0x43, 0x97, 0x58, 0x29,
-	0x95, 0x7f, 0x00, 0x4d, 0x04, 0x4f, 0x77, 0x20, 0xdf, 0xa8, 0x0e, 0x9a, 0xb5, 0x5e, 0x95, 0x35,
-	0x88, 0x42, 0x73, 0xa0, 0xf5, 0xab, 0x47, 0x16, 0x51, 0x69, 0x11, 0x72, 0x8d, 0xea, 0xb0, 0x7a,
-	0x62, 0x5b, 0xcf, 0x48, 0x4a, 0xec, 0x0f, 0xad, 0x6f, 0x86, 0x24, 0x2d, 0x56, 0x4f, 0xed, 0xb6,
-	0x45, 0x34, 0x5a, 0x80, 0x6c, 0xdf, 0xae, 0x0f, 0x8f, 0x99, 0x45, 0x74, 0x9a, 0x07, 0xfd, 0xc4,
-	0x6e, 0x58, 0x3d, 0x92, 0x11, 0xcc, 0x5a, 0xaf, 0xd7, 0xea, 0x54, 0x59, 0x8b, 0x64, 0x29, 0x40,
-	0xa6, 0x5d, 0x7d, 0xde, 0x3b, 0x1e, 0x92, 0x1c, 0xcd, 0x42, 0xba, 0x61, 0x9f, 0x90, 0xbc, 0x39,
-	0x87, 0x9d, 0x4b, 0xd9, 0x40, 0x9f, 0x80, 0xbe, 0x8c, 0x2e, 0x66, 0x1c, 0x63, 0xdf, 0x7d, 0x70,
-	0xb0, 0x3d, 0x81, 0x2a, 0x03, 0x81, 0x67, 0x92, 0x56, 0xbe, 0x0d, 0x3a, 0xca, 0xc2, 0x04, 0xeb,
-	0x3d, 0x23, 0x8a, 0xb0, 0x5b, 0xef, 0xb5, 0x8f, 0x3b, 0x5d, 0xa2, 0x9a, 0x45, 0x80, 0x4d, 0x06,
-	0x99, 0x3f, 0xab, 0x40, 0xde, 0x2d, 0x5f, 0x5a, 0xbd, 0xec, 0xc0, 0xfd, 0x6b, 0x15, 0xfd, 0x25,
-	0x1f, 0xe8, 0x23, 0xc8, 0xca, 0x0e, 0xb3, 0xc4, 0xb6, 0xb2, 0xa5, 0x1b, 0xad, 0xb0, 0x65, 0x63,
-	0xe5, 0xfa, 0x1e, 0x14, 0x3a, 0x55, 0xbb, 0xfb, 0xdd, 0xa0, 0xce, 0x2c, 0xab, 0x4b, 0x14, 0xf3,
-	0x06, 0xec, 0xbd, 0x53, 0xe8, 0xe6, 0x5f, 0x3a, 0x14, 0x12, 0xc5, 0x2b, 0x9e, 0x1c, 0x8b, 0x5d,
-	0x66, 0xbf, 0x2c, 0xe4, 0xc7, 0xab, 0x50, 0x64, 0x01, 0x7c, 0xb2, 0xad, 0x03, 0x5c, 0x8e, 0xa2,
-	0x01, 0xf9, 0xb9, 0x13, 0xbe, 0x58, 0xb6, 0xbd, 0x65, 0x14, 0x97, 0xc2, 0x76, 0x0d, 0x1d, 0xc1,
-	0x60, 0x1b, 0x22, 0x2d, 0x01, 0x44, 0xc1, 0x64, 0x32, 0xe3, 0xce, 0x68, 0xc6, 0xe3, 0x84, 0x4c,
-	0xec, 0xd0, 0x16, 0x80, 0x00, 0xf3, 0x50, 0x24, 0x21, 0xa6, 0xe6, 0x96, 0x3b, 0x5f, 0x9b, 0x91,
-	0x14, 0x96, 0xa0, 0xd3, 0xdb, 0x90, 0x1f, 0x4f, 0xf9, 0xf8, 0x05, 0xda, 0xca, 0xa0, 0xad, 0xcd,
-	0x06, 0x35, 0x20, 0x8b, 0x02, 0x77, 0x8d, 0x2c, 0x9e, 0xad, 0x44, 0xb3, 0x01, 0x3a, 0x3a, 0x4e,
-	0xbf, 0x02, 0x1d, 0x5d, 0x37, 0x54, 0x7c, 0xb7, 0x3b, 0xd7, 0x72, 0x84, 0x49, 0x8e, 0xf9, 0x87,
-	0x0a, 0x9a, 0x90, 0xe9, 0x3d, 0xd0, 0x43, 0xc7, 0x9f, 0xf0, 0x78, 0x16, 0xdd, 0x7c, 0x47, 0x0b,
-	0x13, 0x67, 0x4c, 0x42, 0xe8, 0x93, 0x4b, 0x3d, 0xea, 0xde, 0xb5, 0x0c, 0x26, 0xbb, 0xd5, 0x4d,
-	0xd0, 0x17, 0x4e, 0xe8, 0xcc, 0xf1, 0x85, 0xf2, 0x4c, 0x0a, 0xe5, 0xa3, 0xb8, 0xa8, 0x6f, 0xc0,
-	0xce, 0x60, 0xc8, 0xec, 0x96, 0x35, 0x6c, 0xb2, 0xde, 0xf1, 0x51, 0x93, 0x28, 0xa2, 0x28, 0x5b,
-	0xd6, 0x73, 0x59, 0xe6, 0xaa, 0x28, 0x0e, 0x7b, 0x58, 0x6d, 0xdb, 0x75, 0x59, 0xda, 0xb5, 0x5e,
-	0xbb, 0x21, 0x4b, 0xbb, 0x6d, 0x77, 0x5b, 0x44, 0x2b, 0xd7, 0x57, 0x39, 0xa9, 0x83, 0xba, 0x20,
-	0x0a, 0xcd, 0x40, 0x6a, 0xfa, 0x39, 0x51, 0xf1, 0xfb, 0x80, 0xa4, 0xf0, 0x7b, 0x48, 0xd2, 0xf8,
-	0x7d, 0x48, 0x34, 0x51, 0xfd, 0xdf, 0x9f, 0x05, 0x11, 0x27, 0xba, 0x50, 0x32, 0x0e, 0x5c, 0x4e,
-	0x32, 0xe5, 0x0a, 0xc0, 0xe6, 0xc1, 0xc4, 0xbe, 0x1f, 0xf8, 0x5c, 0x56, 0xa6, 0x7f, 0x36, 0x1f,
-	0xf1, 0x50, 0x3a, 0x32, 0x3a, 0x9b, 0xcd, 0x78, 0x44, 0x52, 0xe6, 0x3f, 0x1a, 0x14, 0x93, 0xf3,
-	0x05, 0x5f, 0x4e, 0xca, 0x78, 0xa5, 0x45, 0xb6, 0x12, 0xe9, 0xd7, 0x22, 0xc5, 0x9d, 0x68, 0x75,
-	0x7f, 0x77, 0xb7, 0xce, 0xaa, 0xca, 0x40, 0xc0, 0x99, 0x64, 0xd1, 0xa7, 0xa0, 0x9f, 0x7b, 0x2e,
-	0x0f, 0x0c, 0x8e, 0x2f, 0x55, 0xd9, 0x4e, 0x3f, 0x11, 0xf0, 0x7e, 0xc8, 0xe3, 0x69, 0x2b, 0xe9,
-	0x42, 0x8f, 0x37, 0x17, 0x73, 0xfe, 0xf4, 0xba, 0x7a, 0x6c, 0x01, 0x4f, 0xe8, 0x41, 0x3a, 0xad,
-	0x83, 0x76, 0xea, 0xcd, 0xb8, 0x31, 0x41, 0x35, 0x9f, 0x6d, 0x57, 0xf3, 0xd4, 0x9b, 0x25, 0xb4,
-	0x20, 0xd9, 0x3c, 0x81, 0x62, 0xd2, 0x4b, 0x51, 0x15, 0xd1, 0xf4, 0x6c, 0x3e, 0xf2, 0x1d, 0x6f,
-	0x16, 0xdf, 0xdf, 0x66, 0x43, 0x34, 0x0e, 0xdf, 0x99, 0xcb, 0x0b, 0xcc, 0x33, 0x5c, 0x8b, 0xa4,
-	0x7a, 0xe9, 0xb9, 0xd1, 0x14, 0x93, 0x4a, 0x67, 0x52, 0x10, 0x7a, 0x93, 0x5e, 0xff, 0x6f, 0x7a,
-	0x1f, 0x41, 0x21, 0x11, 0xc6, 0x9a, 0xa8, 0x26, 0x88, 0x14, 0x34, 0x6f, 0x1c, 0xf8, 0x2b, 0x65,
-	0x62, 0x5d, 0xb6, 0x45, 0x6a, 0x8a, 0x47, 0xcc, 0x83, 0x6e, 0x75, 0xfa, 0xc3, 0xe7, 0x44, 0x11,
-	0x43, 0xec, 0xb8, 0xdf, 0xee, 0x55, 0x1b, 0x76, 0xf7, 0x88, 0xa8, 0x38, 0x98, 0x98, 0x15, 0x4f,
-	0xae, 0x3d, 0x28, 0x34, 0x7a, 0xcf, 0xba, 0xab, 0x53, 0xcc, 0xf2, 0x46, 0xaf, 0x6b, 0x11, 0xad,
-	0x96, 0x87, 0xec, 0x42, 0x5a, 0x37, 0x7f, 0x51, 0xd7, 0x7d, 0x55, 0xfc, 0x90, 0x6d, 0x7a, 0xa8,
-	0xba, 0xbd, 0x87, 0x0a, 0xc2, 0xe5, 0x1e, 0xfa, 0x29, 0x64, 0x46, 0x02, 0xb1, 0x1a, 0x04, 0x37,
-	0xdf, 0x47, 0x67, 0x31, 0xa6, 0x7c, 0xb8, 0x2a, 0xb6, 0x44, 0x44, 0x62, 0xde, 0x56, 0x07, 0x2d,
-	0x39, 0x87, 0xd7, 0xd3, 0x34, 0x25, 0xc6, 0xdb, 0xc0, 0x1a, 0x92, 0xb4, 0xf0, 0x3d, 0x2e, 0x06,
-	0xf3, 0x3e, 0xe8, 0xd8, 0x5b, 0xc4, 0x75, 0x9d, 0x86, 0xc1, 0x1c, 0x7d, 0xd6, 0x19, 0xae, 0xc5,
-	0xcf, 0x51, 0x14, 0xe0, 0x05, 0xea, 0x2c, 0x15, 0x05, 0xb5, 0xdb, 0xbf, 0xbf, 0x29, 0xa9, 0xaf,
-	0xdf, 0x94, 0xd4, 0xbf, 0xdf, 0x94, 0xd4, 0x9f, 0xde, 0x96, 0x94, 0xd7, 0x6f, 0x4b, 0xca, 0x9f,
-	0x6f, 0x4b, 0xca, 0xb7, 0xa9, 0xc5, 0x68, 0x94, 0xc1, 0x5f, 0xed, 0xc3, 0x7f, 0x03, 0x00, 0x00,
-	0xff, 0xff, 0x0c, 0x3d, 0xcc, 0x16, 0x91, 0x0b, 0x00, 0x00,
+	// 1282 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0xcb, 0x6e, 0xdb, 0x46,
+	0x17, 0x26, 0x25, 0x52, 0x97, 0x23, 0xc7, 0x9e, 0x0c, 0xf2, 0x07, 0x04, 0xff, 0x40, 0x70, 0x55,
+	0x34, 0x71, 0x9b, 0x40, 0x45, 0xe3, 0x04, 0x05, 0x8a, 0xa6, 0x81, 0x2e, 0x8c, 0x45, 0x58, 0x37,
+	0x8c, 0x64, 0xa7, 0xe9, 0xa6, 0xa0, 0xc4, 0xb1, 0x44, 0x84, 0x22, 0x55, 0x8a, 0x76, 0x62, 0xa0,
+	0x0f, 0xd1, 0x47, 0xe8, 0xaa, 0xe8, 0xb6, 0xeb, 0xbe, 0x40, 0x97, 0x41, 0x37, 0xed, 0xb2, 0x88,
+	0xdf, 0xa1, 0x8b, 0xae, 0x8a, 0x39, 0x43, 0x4a, 0x72, 0x91, 0xda, 0x5a, 0x74, 0xc5, 0x39, 0x33,
+	0xdf, 0x77, 0xce, 0x99, 0x39, 0x37, 0xc2, 0xd6, 0x2c, 0x74, 0xb9, 0xbf, 0xa8, 0xce, 0xa3, 0x30,
+	0x0e, 0x69, 0xde, 0x09, 0xce, 0xe3, 0xf3, 0x39, 0x37, 0xb7, 0x16, 0x71, 0x74, 0x3a, 0x8e, 0xe5,
+	0x76, 0xe5, 0xa7, 0xdb, 0xa0, 0x77, 0x04, 0xce, 0xfc, 0xeb, 0x7f, 0xa0, 0xd7, 0xfd, 0x70, 0xfc,
+	0x92, 0xee, 0x43, 0x6e, 0xca, 0x1d, 0x97, 0x47, 0x86, 0xba, 0xab, 0xee, 0x95, 0x1e, 0xfe, 0xbf,
+	0x9a, 0x70, 0xab, 0x88, 0xac, 0x22, 0xaa, 0xda, 0x42, 0x08, 0x4b, 0xa0, 0xd4, 0x84, 0xc2, 0x78,
+	0xea, 0xf9, 0x6e, 0xc4, 0x03, 0x23, 0xb3, 0x9b, 0xdd, 0x2b, 0xb2, 0xa5, 0x4c, 0x9f, 0x41, 0xd1,
+	0x75, 0x16, 0xd3, 0x51, 0xe8, 0x44, 0xae, 0x51, 0x42, 0x9d, 0x77, 0xdf, 0xa9, 0xb3, 0x11, 0x06,
+	0x31, 0x0f, 0xe2, 0x6a, 0x33, 0x45, 0xb7, 0x14, 0xb6, 0xa2, 0xd2, 0x4f, 0x41, 0x9b, 0x3b, 0x13,
+	0x6e, 0x6c, 0xa1, 0x8a, 0xf7, 0xae, 0x54, 0xd1, 0x77, 0x26, 0xbc, 0xa5, 0x30, 0x24, 0xd0, 0x06,
+	0x14, 0x5c, 0x27, 0x76, 0xce, 0x3c, 0xfe, 0xca, 0xb8, 0x81, 0xe4, 0x0f, 0xae, 0xb1, 0x2f, 0xc1,
+	0x2d, 0x85, 0x2d, 0x89, 0xc2, 0x7a, 0xcc, 0x5f, 0xc7, 0xc6, 0xf6, 0x06, 0xd6, 0x87, 0xfc, 0x75,
+	0x2c, 0xac, 0x0b, 0x02, 0xfd, 0x0c, 0xf4, 0x19, 0x77, 0x3d, 0xc7, 0xd8, 0x41, 0x66, 0xe5, 0x4a,
+	0x66, 0x47, 0x20, 0x5b, 0x0a, 0x93, 0x14, 0xfa, 0x04, 0x72, 0xbe, 0x73, 0x1e, 0x9e, 0xc6, 0x06,
+	0x41, 0xf2, 0xfb, 0x57, 0x92, 0xdb, 0x08, 0x6d, 0x29, 0x2c, 0x21, 0xd1, 0x47, 0x90, 0x75, 0xbd,
+	0x33, 0xe3, 0x26, 0x72, 0x77, 0xaf, 0xbe, 0xb3, 0x77, 0xd6, 0x52, 0x98, 0x80, 0x9b, 0x3f, 0x67,
+	0x21, 0x27, 0xc3, 0x4b, 0xb7, 0x21, 0xe3, 0xb9, 0x98, 0x07, 0x45, 0x96, 0xf1, 0x5c, 0xfa, 0x08,
+	0x34, 0xa1, 0xc1, 0xc8, 0xec, 0xaa, 0x7b, 0xdb, 0xff, 0xa2, 0x51, 0x52, 0xab, 0xc3, 0xf3, 0x39,
+	0x67, 0x88, 0xa6, 0xf7, 0x20, 0x77, 0xe2, 0x71, 0xdf, 0x5d, 0x18, 0x59, 0xf4, 0x64, 0x67, 0xc9,
+	0x1b, 0x60, 0x32, 0xb2, 0xe4, 0x98, 0xda, 0x50, 0x9a, 0xf3, 0x68, 0xe6, 0x2d, 0x16, 0x5e, 0x18,
+	0x2c, 0x0c, 0x0d, 0xd1, 0xf7, 0xae, 0xb2, 0xd2, 0x5f, 0xc1, 0xd9, 0x3a, 0xd7, 0x3c, 0x87, 0xd2,
+	0xda, 0x19, 0xa5, 0xa0, 0x45, 0xdc, 0x91, 0x57, 0x29, 0x30, 0x5c, 0x8b, 0x3d, 0xee, 0x7a, 0x31,
+	0x5e, 0xa6, 0xc0, 0x70, 0x4d, 0x6f, 0x43, 0x2e, 0xe2, 0xb3, 0xf0, 0x8c, 0xa3, 0xab, 0x05, 0x96,
+	0x48, 0x02, 0xeb, 0x46, 0xce, 0x04, 0x5d, 0x2a, 0x30, 0x5c, 0x0b, 0xac, 0x1b, 0x85, 0xf3, 0x5e,
+	0x60, 0xe8, 0x12, 0x2b, 0xa5, 0xca, 0xb7, 0xa0, 0x89, 0xcb, 0xd3, 0x1b, 0x50, 0x6c, 0xd6, 0x06,
+	0xad, 0x7a, 0xaf, 0xc6, 0x9a, 0x44, 0xa1, 0x05, 0xd0, 0xfa, 0xb5, 0x03, 0x8b, 0xa8, 0x74, 0x0b,
+	0x0a, 0xcd, 0xda, 0xb0, 0x76, 0x6c, 0x5b, 0xcf, 0x49, 0x46, 0xec, 0x0f, 0xad, 0x2f, 0x87, 0x24,
+	0x2b, 0x56, 0xcf, 0xec, 0xb6, 0x45, 0x34, 0x5a, 0x82, 0x7c, 0xdf, 0x6e, 0x0c, 0x8f, 0x98, 0x45,
+	0x74, 0x5a, 0x04, 0xfd, 0xd8, 0x6e, 0x5a, 0x3d, 0x92, 0x13, 0xcc, 0x7a, 0xaf, 0x77, 0xd8, 0xa9,
+	0xb1, 0x43, 0x92, 0xa7, 0x00, 0xb9, 0x76, 0xed, 0x45, 0xef, 0x68, 0x48, 0x0a, 0x34, 0x0f, 0xd9,
+	0xa6, 0x7d, 0x4c, 0x8a, 0xe6, 0x0f, 0xdb, 0x90, 0x4f, 0x82, 0x6a, 0x4e, 0x20, 0x27, 0x73, 0x82,
+	0x3e, 0x05, 0x7d, 0x11, 0x9f, 0xfb, 0x1c, 0x1f, 0x60, 0xfb, 0xe1, 0x87, 0x1b, 0xe4, 0x51, 0x75,
+	0x20, 0x08, 0x4c, 0xf2, 0x2a, 0x77, 0x40, 0x47, 0x59, 0x18, 0x62, 0xbd, 0xe7, 0x44, 0x11, 0xd6,
+	0x1b, 0xbd, 0xf6, 0x51, 0xa7, 0x4b, 0x54, 0x53, 0x87, 0x6c, 0xd3, 0x3b, 0x33, 0xbf, 0x57, 0xa1,
+	0xb8, 0x2c, 0x5e, 0x5a, 0xbf, 0x6c, 0xf3, 0xc1, 0x66, 0x35, 0x7f, 0xc9, 0x2c, 0x7d, 0x0c, 0x79,
+	0xd9, 0x61, 0x16, 0xd8, 0x56, 0xae, 0xe9, 0x46, 0x29, 0xb6, 0x62, 0xa4, 0xde, 0xee, 0x40, 0xa9,
+	0x53, 0xb3, 0xbb, 0x5f, 0x0f, 0x1a, 0xcc, 0xb2, 0xba, 0x44, 0x31, 0x01, 0x0a, 0x69, 0x79, 0x9b,
+	0xbf, 0xe9, 0xa0, 0x89, 0x52, 0x15, 0xd1, 0xc5, 0xda, 0x96, 0x89, 0x2e, 0xcb, 0xf6, 0x49, 0xea,
+	0xbd, 0xcc, 0xf5, 0x7b, 0xd7, 0x16, 0xfc, 0x65, 0xc7, 0x2d, 0x28, 0xce, 0x9c, 0xe8, 0xe5, 0xa2,
+	0xed, 0x2d, 0xe2, 0x24, 0xed, 0x37, 0x50, 0xd1, 0x11, 0x14, 0xb6, 0x62, 0xd2, 0x32, 0x40, 0x1c,
+	0x4e, 0x26, 0x3e, 0x77, 0x46, 0x3e, 0x4f, 0xb2, 0x6f, 0x6d, 0x87, 0xb6, 0x01, 0x04, 0x98, 0x47,
+	0x22, 0xe3, 0x30, 0x0f, 0xaf, 0x7b, 0xe8, 0xa5, 0x1d, 0xc9, 0x61, 0x6b, 0x7c, 0x7a, 0x07, 0x8a,
+	0xe3, 0x29, 0x1f, 0xbf, 0x44, 0x63, 0x39, 0x34, 0xb6, 0xda, 0xa0, 0x06, 0xe4, 0x51, 0xe0, 0xae,
+	0x91, 0xc7, 0xb3, 0x54, 0x34, 0x2d, 0xd0, 0xd1, 0x73, 0xfa, 0x39, 0xe8, 0xe8, 0xbb, 0xa1, 0x62,
+	0xb0, 0xee, 0x6e, 0xe6, 0x09, 0x93, 0x24, 0xf3, 0x57, 0x15, 0x34, 0x21, 0xd3, 0x8f, 0x40, 0x8f,
+	0x9c, 0x60, 0xc2, 0x93, 0x09, 0x74, 0xeb, 0x1f, 0x6a, 0x98, 0x38, 0x63, 0x12, 0x42, 0x9f, 0x5e,
+	0x6a, 0x49, 0xf7, 0x37, 0xb3, 0xb8, 0xde, 0x9d, 0x6e, 0x81, 0x3e, 0x77, 0x22, 0x67, 0x86, 0x51,
+	0x2a, 0x32, 0x29, 0x54, 0x0e, 0x92, 0x22, 0xbe, 0x09, 0x37, 0x06, 0x43, 0x66, 0x1f, 0x5a, 0xc3,
+	0x16, 0xeb, 0x1d, 0x1d, 0xb4, 0x88, 0x22, 0x8a, 0xf0, 0xd0, 0x7a, 0x21, 0xcb, 0x5a, 0x15, 0x65,
+	0x60, 0x0f, 0x6b, 0x6d, 0xbb, 0x21, 0x4b, 0xb9, 0xde, 0x6b, 0x37, 0x65, 0x29, 0xb7, 0xed, 0xee,
+	0x21, 0xd1, 0x2a, 0x8d, 0x34, 0x15, 0x75, 0x50, 0xe7, 0x44, 0xa1, 0x39, 0xc8, 0x4c, 0x3f, 0x21,
+	0x2a, 0x7e, 0x1f, 0x92, 0x0c, 0x7e, 0xf7, 0x49, 0x16, 0xbf, 0x8f, 0x88, 0x26, 0xaa, 0xfd, 0x9b,
+	0xd3, 0x30, 0xe6, 0x44, 0x17, 0x4a, 0xc6, 0xa1, 0xcb, 0x49, 0xae, 0x52, 0x05, 0x58, 0x85, 0x4c,
+	0xec, 0x07, 0x61, 0xc0, 0x65, 0x0d, 0x06, 0xa7, 0xb3, 0x11, 0x8f, 0xa4, 0x23, 0xa3, 0x53, 0xdf,
+	0xe7, 0x31, 0xc9, 0x98, 0x7f, 0x6a, 0xa0, 0xe3, 0x28, 0xc1, 0xa0, 0xc9, 0xdb, 0xe3, 0x63, 0x6e,
+	0xb1, 0x54, 0xa4, 0x5f, 0x88, 0x04, 0x77, 0xe2, 0xf4, 0xe5, 0xf6, 0xae, 0x9f, 0x4b, 0xd5, 0x81,
+	0xc0, 0x33, 0x49, 0xa3, 0x07, 0xa0, 0x9f, 0x79, 0x2e, 0x0f, 0x0d, 0x8e, 0x41, 0xfa, 0x78, 0x03,
+	0xfe, 0xb1, 0xc0, 0xf7, 0x23, 0x9e, 0x0c, 0x57, 0xc9, 0x17, 0x8a, 0xbc, 0x99, 0x18, 0xec, 0x27,
+	0x1b, 0x2b, 0xb2, 0x05, 0x7e, 0x4d, 0x11, 0xf2, 0x69, 0x13, 0xb4, 0x13, 0xcf, 0xe7, 0xc6, 0x04,
+	0xf5, 0x54, 0x37, 0xd0, 0xf3, 0xcc, 0xf3, 0xd7, 0xd4, 0x20, 0xdb, 0x3c, 0x86, 0xad, 0x75, 0x3f,
+	0x45, 0x51, 0xc4, 0xd3, 0xd3, 0xd9, 0x28, 0x70, 0x3c, 0x3f, 0x79, 0xc3, 0xd5, 0x86, 0x68, 0x1d,
+	0x81, 0x33, 0x93, 0x8f, 0x58, 0x64, 0xb8, 0x16, 0x19, 0xf5, 0xca, 0x73, 0xe3, 0x29, 0x66, 0x94,
+	0xce, 0xa4, 0x20, 0xf4, 0xae, 0xbb, 0xfd, 0x9f, 0xe9, 0x7d, 0x0c, 0xa5, 0xb5, 0x6b, 0x2c, 0x89,
+	0xea, 0x1a, 0x91, 0x82, 0xe6, 0x8d, 0xc3, 0x20, 0x55, 0x26, 0xd6, 0x15, 0x5b, 0xe4, 0xa5, 0x88,
+	0x63, 0x11, 0x74, 0xab, 0xd3, 0x1f, 0xbe, 0x20, 0x8a, 0x98, 0x58, 0x47, 0xfd, 0x76, 0xaf, 0xd6,
+	0xb4, 0xbb, 0x07, 0x44, 0xc5, 0x29, 0xc4, 0xac, 0x64, 0x4c, 0xed, 0x40, 0xa9, 0xd9, 0x7b, 0xde,
+	0x4d, 0x4f, 0x31, 0xc5, 0x9b, 0xbd, 0xae, 0x45, 0xb4, 0x7a, 0x11, 0xf2, 0x73, 0x69, 0xdd, 0xfc,
+	0x51, 0x05, 0x4d, 0xfc, 0x7b, 0xad, 0xda, 0xa7, 0xba, 0x41, 0xfb, 0x14, 0x8c, 0xcb, 0xed, 0xf3,
+	0x01, 0xe4, 0x46, 0x02, 0x92, 0xb6, 0xfd, 0x5b, 0xef, 0xe2, 0xb3, 0x04, 0x53, 0xd9, 0x4f, 0x6b,
+	0x6c, 0xed, 0x2e, 0x62, 0xac, 0xd6, 0x06, 0x87, 0x72, 0xdc, 0x2e, 0x87, 0x66, 0x46, 0xcc, 0xaf,
+	0x81, 0x35, 0x24, 0x59, 0xe1, 0x75, 0x52, 0x0a, 0xe6, 0x7d, 0xd0, 0xb1, 0xa7, 0x88, 0x87, 0x3a,
+	0x89, 0xc2, 0x19, 0x3a, 0xad, 0x33, 0x5c, 0x8b, 0x7f, 0xa0, 0x38, 0xc4, 0xa7, 0xd3, 0x59, 0x26,
+	0x0e, 0xeb, 0x77, 0x7e, 0x79, 0x5b, 0x56, 0xdf, 0xbc, 0x2d, 0xab, 0x7f, 0xbc, 0x2d, 0xab, 0xdf,
+	0x5d, 0x94, 0x95, 0x37, 0x17, 0x65, 0xe5, 0xf7, 0x8b, 0xb2, 0xf2, 0x55, 0x66, 0x3e, 0x1a, 0xe5,
+	0xf0, 0xc7, 0x7a, 0xff, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff, 0x44, 0xbb, 0xc2, 0x3a, 0x7f, 0x0b,
+	0x00, 0x00,
 }
 
 func (m *Model) Marshal() (dAtA []byte, err error) {
@@ -1858,7 +1900,7 @@ func (m *Model_Block_Header_Permissions) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentLayout) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1868,12 +1910,35 @@ func (m *Model_Block_ContentLayout) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentLayout) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentLayout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *Model_Block_Content_Layout) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Block_Content_Layout) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Block_Content_Layout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1886,7 +1951,7 @@ func (m *Model_Block_ContentLayout) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentDiv) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Div) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1896,12 +1961,12 @@ func (m *Model_Block_ContentDiv) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentDiv) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Div) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentDiv) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Div) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1909,7 +1974,7 @@ func (m *Model_Block_ContentDiv) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentDashboard) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Dashboard) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1919,12 +1984,12 @@ func (m *Model_Block_ContentDashboard) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentDashboard) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Dashboard) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Dashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1951,7 +2016,7 @@ func (m *Model_Block_ContentDashboard) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentDataview) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Dataview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1961,12 +2026,12 @@ func (m *Model_Block_ContentDataview) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentDataview) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Dataview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Dataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1974,7 +2039,7 @@ func (m *Model_Block_ContentDataview) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentText) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Text) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1984,12 +2049,12 @@ func (m *Model_Block_ContentText) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentText) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Text) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Text) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2056,7 +2121,7 @@ func (m *Model_Block_ContentText) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentText_Marks) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Text_Marks) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2066,12 +2131,12 @@ func (m *Model_Block_ContentText_Marks) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentText_Marks) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Text_Marks) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentText_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Text_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2093,7 +2158,7 @@ func (m *Model_Block_ContentText_Marks) MarshalToSizedBuffer(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentText_Mark) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Text_Mark) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2103,12 +2168,12 @@ func (m *Model_Block_ContentText_Mark) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentText_Mark) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Text_Mark) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentText_Mark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Text_Mark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2140,7 +2205,7 @@ func (m *Model_Block_ContentText_Mark) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentMedia) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Media) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2150,12 +2215,12 @@ func (m *Model_Block_ContentMedia) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentMedia) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentMedia) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2184,12 +2249,12 @@ func (m *Model_Block_ContentMedia) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentMedia_Video) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_Video) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentMedia_Video) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_Video) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Video != nil {
 		{
@@ -2207,12 +2272,12 @@ func (m *Model_Block_ContentMedia_Video) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_ContentMedia_Image) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_Image) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentMedia_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Image != nil {
 		{
@@ -2230,12 +2295,12 @@ func (m *Model_Block_ContentMedia_Image) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_ContentMedia_File) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_File) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentMedia_File) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_File) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.File != nil {
 		{
@@ -2253,7 +2318,7 @@ func (m *Model_Block_ContentMedia_File) MarshalToSizedBuffer(dAtA []byte) (int, 
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_ContentMedia_VideoPreview) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Media_VideoPreview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2263,12 +2328,12 @@ func (m *Model_Block_ContentMedia_VideoPreview) Marshal() (dAtA []byte, err erro
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentMedia_VideoPreview) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_VideoPreview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentMedia_VideoPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_VideoPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2295,7 +2360,7 @@ func (m *Model_Block_ContentMedia_VideoPreview) MarshalToSizedBuffer(dAtA []byte
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentMedia_ImagePreview) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Media_ImagePreview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2305,12 +2370,12 @@ func (m *Model_Block_ContentMedia_ImagePreview) Marshal() (dAtA []byte, err erro
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentMedia_ImagePreview) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_ImagePreview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentMedia_ImagePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_ImagePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2337,7 +2402,7 @@ func (m *Model_Block_ContentMedia_ImagePreview) MarshalToSizedBuffer(dAtA []byte
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentMedia_FilePreview) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Media_FilePreview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2347,12 +2412,12 @@ func (m *Model_Block_ContentMedia_FilePreview) Marshal() (dAtA []byte, err error
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentMedia_FilePreview) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_FilePreview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentMedia_FilePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Media_FilePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2374,7 +2439,7 @@ func (m *Model_Block_ContentMedia_FilePreview) MarshalToSizedBuffer(dAtA []byte)
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_ContentPage) Marshal() (dAtA []byte, err error) {
+func (m *Model_Block_Content_Page) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2384,12 +2449,12 @@ func (m *Model_Block_ContentPage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_ContentPage) MarshalTo(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Page) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_ContentPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Model_Block_Content_Page) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2623,7 +2688,16 @@ func (m *Model_Block_Header_Permissions) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentLayout) Size() (n int) {
+func (m *Model_Block_Content) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *Model_Block_Content_Layout) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2635,7 +2709,7 @@ func (m *Model_Block_ContentLayout) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentDiv) Size() (n int) {
+func (m *Model_Block_Content_Div) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2644,7 +2718,7 @@ func (m *Model_Block_ContentDiv) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentDashboard) Size() (n int) {
+func (m *Model_Block_Content_Dashboard) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2662,7 +2736,7 @@ func (m *Model_Block_ContentDashboard) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentDataview) Size() (n int) {
+func (m *Model_Block_Content_Dataview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2671,7 +2745,7 @@ func (m *Model_Block_ContentDataview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentText) Size() (n int) {
+func (m *Model_Block_Content_Text) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2703,7 +2777,7 @@ func (m *Model_Block_ContentText) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentText_Marks) Size() (n int) {
+func (m *Model_Block_Content_Text_Marks) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2718,7 +2792,7 @@ func (m *Model_Block_ContentText_Marks) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentText_Mark) Size() (n int) {
+func (m *Model_Block_Content_Text_Mark) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2738,7 +2812,7 @@ func (m *Model_Block_ContentText_Mark) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentMedia) Size() (n int) {
+func (m *Model_Block_Content_Media) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2757,7 +2831,7 @@ func (m *Model_Block_ContentMedia) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentMedia_Video) Size() (n int) {
+func (m *Model_Block_Content_Media_Video) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2769,7 +2843,7 @@ func (m *Model_Block_ContentMedia_Video) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_ContentMedia_Image) Size() (n int) {
+func (m *Model_Block_Content_Media_Image) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2781,7 +2855,7 @@ func (m *Model_Block_ContentMedia_Image) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_ContentMedia_File) Size() (n int) {
+func (m *Model_Block_Content_Media_File) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2793,7 +2867,7 @@ func (m *Model_Block_ContentMedia_File) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_ContentMedia_VideoPreview) Size() (n int) {
+func (m *Model_Block_Content_Media_VideoPreview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2813,7 +2887,7 @@ func (m *Model_Block_ContentMedia_VideoPreview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentMedia_ImagePreview) Size() (n int) {
+func (m *Model_Block_Content_Media_ImagePreview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2833,7 +2907,7 @@ func (m *Model_Block_ContentMedia_ImagePreview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentMedia_FilePreview) Size() (n int) {
+func (m *Model_Block_Content_Media_FilePreview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2850,7 +2924,7 @@ func (m *Model_Block_ContentMedia_FilePreview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_ContentPage) Size() (n int) {
+func (m *Model_Block_Content_Page) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3068,7 +3142,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentDashboard{}
+			v := &Model_Block_Content_Dashboard{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3103,7 +3177,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentPage{}
+			v := &Model_Block_Content_Page{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3138,7 +3212,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentDataview{}
+			v := &Model_Block_Content_Dataview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3173,7 +3247,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentText{}
+			v := &Model_Block_Content_Text{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3208,7 +3282,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentMedia{}
+			v := &Model_Block_Content_Media{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3243,7 +3317,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentLayout{}
+			v := &Model_Block_Content_Layout{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3278,7 +3352,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentDiv{}
+			v := &Model_Block_Content_Div{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3637,7 +3711,7 @@ func (m *Model_Block_Header_Permissions) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentLayout) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3660,10 +3734,63 @@ func (m *Model_Block_ContentLayout) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ContentLayout: wiretype end group for non-group")
+			return fmt.Errorf("proto: Content: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContentLayout: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Content: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Block_Content_Layout) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Layout: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Layout: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3680,7 +3807,7 @@ func (m *Model_Block_ContentLayout) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_ContentLayout_Style(b&0x7F) << shift
+				m.Style |= Model_Block_Content_Layout_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -3709,7 +3836,7 @@ func (m *Model_Block_ContentLayout) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentDiv) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Div) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3732,10 +3859,10 @@ func (m *Model_Block_ContentDiv) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ContentDiv: wiretype end group for non-group")
+			return fmt.Errorf("proto: Div: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContentDiv: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Div: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -3762,7 +3889,7 @@ func (m *Model_Block_ContentDiv) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentDashboard) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Dashboard) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3785,10 +3912,10 @@ func (m *Model_Block_ContentDashboard) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ContentDashboard: wiretype end group for non-group")
+			return fmt.Errorf("proto: Dashboard: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContentDashboard: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Dashboard: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3805,7 +3932,7 @@ func (m *Model_Block_ContentDashboard) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_ContentDashboard_Style(b&0x7F) << shift
+				m.Style |= Model_Block_Content_Dashboard_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -3868,7 +3995,7 @@ func (m *Model_Block_ContentDashboard) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentDataview) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Dataview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3891,10 +4018,10 @@ func (m *Model_Block_ContentDataview) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ContentDataview: wiretype end group for non-group")
+			return fmt.Errorf("proto: Dataview: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContentDataview: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Dataview: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -3921,7 +4048,7 @@ func (m *Model_Block_ContentDataview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentText) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Text) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3944,10 +4071,10 @@ func (m *Model_Block_ContentText) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ContentText: wiretype end group for non-group")
+			return fmt.Errorf("proto: Text: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContentText: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Text: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3996,7 +4123,7 @@ func (m *Model_Block_ContentText) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_ContentText_Style(b&0x7F) << shift
+				m.Style |= Model_Block_Content_Text_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4031,7 +4158,7 @@ func (m *Model_Block_ContentText) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.MarksList == nil {
-				m.MarksList = &Model_Block_ContentText_Marks{}
+				m.MarksList = &Model_Block_Content_Text_Marks{}
 			}
 			if err := m.MarksList.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -4071,7 +4198,7 @@ func (m *Model_Block_ContentText) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.MarkerType |= Model_Block_ContentText_MarkerType(b&0x7F) << shift
+				m.MarkerType |= Model_Block_Content_Text_MarkerType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4140,7 +4267,7 @@ func (m *Model_Block_ContentText) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentText_Marks) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Text_Marks) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4198,7 +4325,7 @@ func (m *Model_Block_ContentText_Marks) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Marks = append(m.Marks, &Model_Block_ContentText_Mark{})
+			m.Marks = append(m.Marks, &Model_Block_Content_Text_Mark{})
 			if err := m.Marks[len(m.Marks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -4227,7 +4354,7 @@ func (m *Model_Block_ContentText_Marks) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentText_Mark) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Text_Mark) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4306,7 +4433,7 @@ func (m *Model_Block_ContentText_Mark) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= Model_Block_ContentText_Mark_Type(b&0x7F) << shift
+				m.Type |= Model_Block_Content_Text_Mark_Type(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4367,7 +4494,7 @@ func (m *Model_Block_ContentText_Mark) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentMedia) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Media) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4390,10 +4517,10 @@ func (m *Model_Block_ContentMedia) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ContentMedia: wiretype end group for non-group")
+			return fmt.Errorf("proto: Media: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContentMedia: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Media: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4444,7 +4571,7 @@ func (m *Model_Block_ContentMedia) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.State |= Model_Block_ContentMedia_State(b&0x7F) << shift
+				m.State |= Model_Block_Content_Media_State(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4478,11 +4605,11 @@ func (m *Model_Block_ContentMedia) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentMedia_VideoPreview{}
+			v := &Model_Block_Content_Media_VideoPreview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Preview = &Model_Block_ContentMedia_Video{v}
+			m.Preview = &Model_Block_Content_Media_Video{v}
 			iNdEx = postIndex
 		case 102:
 			if wireType != 2 {
@@ -4513,11 +4640,11 @@ func (m *Model_Block_ContentMedia) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentMedia_ImagePreview{}
+			v := &Model_Block_Content_Media_ImagePreview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Preview = &Model_Block_ContentMedia_Image{v}
+			m.Preview = &Model_Block_Content_Media_Image{v}
 			iNdEx = postIndex
 		case 103:
 			if wireType != 2 {
@@ -4548,11 +4675,11 @@ func (m *Model_Block_ContentMedia) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_ContentMedia_FilePreview{}
+			v := &Model_Block_Content_Media_FilePreview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Preview = &Model_Block_ContentMedia_File{v}
+			m.Preview = &Model_Block_Content_Media_File{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4578,7 +4705,7 @@ func (m *Model_Block_ContentMedia) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentMedia_VideoPreview) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Media_VideoPreview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4716,7 +4843,7 @@ func (m *Model_Block_ContentMedia_VideoPreview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentMedia_ImagePreview) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Media_ImagePreview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4854,7 +4981,7 @@ func (m *Model_Block_ContentMedia_ImagePreview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentMedia_FilePreview) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Media_FilePreview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4971,7 +5098,7 @@ func (m *Model_Block_ContentMedia_FilePreview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_ContentPage) Unmarshal(dAtA []byte) error {
+func (m *Model_Block_Content_Page) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4994,10 +5121,10 @@ func (m *Model_Block_ContentPage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ContentPage: wiretype end group for non-group")
+			return fmt.Errorf("proto: Page: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ContentPage: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Page: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -5014,7 +5141,7 @@ func (m *Model_Block_ContentPage) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_ContentPage_Style(b&0x7F) << shift
+				m.Style |= Model_Block_Content_Page_Style(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

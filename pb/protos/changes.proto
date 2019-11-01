@@ -25,33 +25,33 @@ message Change {
             
             message Page {
                 oneof change {
-                    Model.Block.ContentPage.Style style = 1;
-                    Block block = 2;
+                    Model.Block.Content.Page.Style style = 1;
+                    Model.Block block = 2;
                 }
             } 
 
             message Dashboard {
                 oneof change {
-                    Model.Block.ContentDashboard.Style style = 1;
-                    Block.Header header = 2; // not a dashboard header – one of children
+                    Model.Block.Content.Dashboard.Style style = 1;
+                    Model.Block.Header header = 2; // not a dashboard header – one of children
                 }
             }
 
             message Media {
                 oneof change {
                     string link = 1;
-                    Model.Block.ContentMedia.State state = 2;
+                    Model.Block.Content.Media.State state = 2;
                 }
             }  
 
             message Text {
                 oneof change {
                     string text = 1;
-                    Model.Block.ContentText.Style style = 2;
-                    Model.Block.ContentText.Marks marks = 3;
+                    Model.Block.Content.Text.Style style = 2;
+                    Model.Block.Content.Text.Marks marks = 3;
 
                     bool toggleable = 4;
-                    Model.Block.ContentText.MarkerType markerType = 5;
+                    Model.Block.Content.Text.MarkerType markerType = 5;
 
                     bool checkable = 6;
                     bool checked = 7;
