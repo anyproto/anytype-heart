@@ -12,6 +12,7 @@ require (
 	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/mr-tron/base58 v1.1.2
 	github.com/multiformats/go-multihash v0.0.5
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/segmentio/ksuid v1.0.2
 	github.com/textileio/go-textile v0.7.2-0.20190907000013-95a885123536
 )

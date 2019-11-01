@@ -15,6 +15,7 @@ lint:
 
 protos:
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp)
+	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/golang/protobuf/ptypes/struct)
 	$(eval P_ANY := Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any)
-	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_ANY))
-	cd pb/protos; protoc --gogofaster_out=$(PKGMAP):.. *.proto
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_ANY))
+	cd core; protoc --gogofaster_out=$(PKGMAP):. *.proto

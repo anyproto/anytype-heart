@@ -3,7 +3,6 @@ package core
 import (
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -20,8 +19,7 @@ var BootstrapNodes = []string{
 }
 
 type Anytype struct {
-	Textile        *tmobile.Mobile
-	documentsCache map[string]*Document
+	Textile *tmobile.Mobile
 }
 
 func New(repoPath string, account string) (*Anytype, error) {
@@ -75,26 +73,14 @@ func (a *Anytype) Run() error {
 		}
 	}()
 
-	return err
+	err = a.createPredefinedThreads()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (a *Anytype) Stop() error {
 	return a.Textile.Node().Stop()
-}
-
-func pbValForEnumString(vals map[string]int32, str string) int32 {
-	for v, i := range vals {
-		if strings.ToLower(v) == strings.ToLower(str) {
-			return i
-		}
-	}
-	return 0
-}
-
-func shortId(id string) string {
-	if len(id) < 8 {
-		return id
-	}
-
-	return id[len(id)-8:]
 }

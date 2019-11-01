@@ -1,5 +1,12 @@
 package core
 
+/*
+import (
+	"fmt"
+	"strings"
+)
+
+
 import (
 	"crypto/rand"
 	"fmt"
@@ -14,12 +21,12 @@ import (
 	tpb "github.com/textileio/go-textile/pb"
 )
 
-var errorDocumentCantFindParent = fmt.Errorf("can't find parent")
+var errorPageCantFindParent = fmt.Errorf("can't find parent")
 
-const documentIconAndNameSeperator = "\uF102"
+const pageIconAndNameSeperator = "\uF102"
 
 func getIconAndNameFromPackedThreadName(joined string) (icon string, name string) {
-	parts := strings.Split(joined, documentIconAndNameSeperator)
+	parts := strings.Split(joined, pageIconAndNameSeperator)
 
 	if len(parts) == 0 {
 		return "", ""
@@ -34,7 +41,7 @@ func getIconAndNameFromPackedThreadName(joined string) (icon string, name string
 
 /*
 // RemoveThread removes a thread
-func (t *Textile) DuplicateDocument(id string, parentId string) (mh.Multihash, error) {
+func (t *Textile) DuplicatePage(id string, parentId string) (mh.Multihash, error) {
 	var thrdToDuplicate, parentThrd *Thread
 	if parentId == t.config.Account.Thread {
 		parentThrd = t.ThreadByKey(t.config.Account.Address)
@@ -150,7 +157,7 @@ func (t *Textile) DuplicateDocument(id string, parentId string) (mh.Multihash, e
 		}
 
 		if len(files.Items) == 0 || len(files.Items[0].Files) == 0 {
-			log.Errorf("DuplicateDocument: empty files for thread %s", thrd.Id)
+			log.Errorf("DuplicatePage: empty files for thread %s", thrd.Id)
 			continue
 		}
 
@@ -204,34 +211,34 @@ func (t *Textile) DuplicateDocument(id string, parentId string) (mh.Multihash, e
 
 	return mh.FromB58String(newThreadId.Id)
 }
-*/
-func (a *Anytype) DocumentView(id string) (*pb.Document, error) {
+
+func (a *Anytype) PageView(id string) (*pb.Page, error) {
 	t, err := a.Textile.Node().ThreadView(id)
 	if err != nil {
 		return nil, err
 	}
 
-	if t.Schema != documentSchema {
-		return nil, fmt.Errorf("not a document")
+	if t.Schema != smartBlockSchema {
+		return nil, fmt.Errorf("not a page")
 	}
 
 	icon, name := getIconAndNameFromPackedThreadName(t.Name)
 
-	doc := &pb.Document{
+	page := &pb.Page{
 		Id:        t.Id,
 		Name:      name,
 		Initiator: t.Initiator,
-		Type:      pb.Document_Type(t.Type),
+		Type:      pb.Page_Type(t.Type),
 		Icon:      icon,
 		Archived:  false,
 	}
 
-	return doc, nil
+	return page, nil
 }
 
-func (a *Anytype) Document(id string) (*Document, error) {
-	if doc, exists := a.documentsCache[id]; exists {
-		return doc, nil
+func (a *Anytype) Page(id string) (*Page, error) {
+	if page, exists := a.pagesCache[id]; exists {
+		return page, nil
 	}
 
 	t := a.Textile.Node().Thread(id)
@@ -241,13 +248,13 @@ func (a *Anytype) Document(id string) (*Document, error) {
 		return nil, err
 	}
 
-	doc := &Document{
+	page := &Page{
 		thread: t,
-		Document: &pb.Document{
+		Page: &pb.Page{
 			Id:        t.Id,
 			Name:      name,
 			Initiator: tv.Initiator,
-			Type:      pb.Document_Type(tv.Type),
+			Type:      pb.Page_Type(tv.Type),
 			Icon:      icon,
 			Archived:  false,
 			Children:  nil,
@@ -255,64 +262,64 @@ func (a *Anytype) Document(id string) (*Document, error) {
 		node: a,
 	}
 
-	return doc, nil
+	return page, nil
 }
 
-func (a *Anytype) Documents() ([]*Document, error) {
-	var docs []*Document
+func (a *Anytype) Pages() ([]*Page, error) {
+	var pages []*Page
 	// todo: optimise memory
 	for _, thrd := range a.Textile.Node().Threads() {
-		doc, err := a.Document(thrd.Id)
+		page, err := a.Page(thrd.Id)
 		if err != nil {
 			continue
 		}
 
-		docs = append(docs, doc)
+		pages = append(pages, page)
 	}
 
-	return docs, nil
+	return pages, nil
 }
 
-func (a *Anytype) traverseDocumentsTree(childrenIds []string) ([]*pb.Document, error) {
-	var children []*pb.Document
+func (a *Anytype) traversePagesTree(childrenIds []string) ([]*pb.Page, error) {
+	var children []*pb.Page
 
 	for _, childId := range childrenIds {
-		doc, err := a.Document(childId)
+		page, err := a.Page(childId)
 		if err != nil {
 			// todo: maybe should skip instead of return?
 			return nil, err
 		}
 
-		ver, err := doc.GetLastVersion()
+		ver, err := page.GetLastVersion()
 		if err != nil {
 			// todo: maybe should skip instead of return?
 			return nil, err
 		}
 
-		if doc.Children == nil {
+		if page.Children == nil {
 			childrenIds := ver.ChildrenIds()
-			doc.Children, err = a.traverseDocumentsTree(childrenIds)
+			page.Children, err = a.traversePagesTree(childrenIds)
 			if err != nil {
 				// todo: maybe should skip instead of return?
 				return nil, err
 			}
 		}
 
-		children = append(children, doc.Document)
+		children = append(children, page.Page)
 	}
 
 	return children, nil
 }
 
-func (a *Anytype) RootDocuments() ([]*Document, error) {
+func (a *Anytype) RootPages() ([]*Page, error) {
 	var hasParents = make(map[string]struct{})
-	docs, err := a.Documents()
+	pages, err := a.Pages()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, doc := range docs {
-		children, err := doc.ChildrenIds()
+	for _, page := range pages {
+		children, err := page.ChildrenIds()
 		if err != nil {
 			return nil, err
 		}
@@ -321,99 +328,39 @@ func (a *Anytype) RootDocuments() ([]*Document, error) {
 		}
 	}
 
-	var rootDocs []*Document
-	for _, doc := range docs {
-		if _, exists := hasParents[doc.Id]; !exists {
-			rootDocs = append(rootDocs, doc)
+	var rootDocs []*Page
+	for _, page := range pages {
+		if _, exists := hasParents[page.Id]; !exists {
+			rootDocs = append(rootDocs, page)
 		}
 	}
 
 	return rootDocs, nil
 }
 
-func (a *Anytype) DocumentsTree() ([]*pb.Document, error) {
-	rootDocs, err := a.RootDocuments()
+func (a *Anytype) PagesTree() ([]*pb.Page, error) {
+	rootDocs, err := a.RootPages()
 	if err != nil {
 		return nil, err
 	}
 
-	var rootDocsPb []*pb.Document
+	var rootDocsPb []*pb.Page
 	for _, rootDoc := range rootDocs {
 		childrenIds, err := rootDoc.ChildrenIds()
 		if err != nil {
 			return nil, err
 		}
 
-		rootDoc.Children, _ = a.traverseDocumentsTree(childrenIds)
-		rootDocsPb = append(rootDocsPb, rootDoc.Document)
+		rootDoc.Children, _ = a.traversePagesTree(childrenIds)
+		rootDocsPb = append(rootDocsPb, rootDoc.Page)
 	}
 
 	return rootDocsPb, nil
 }
 
-// AddDocument adds a document with a given name and secret key
-func (a *Anytype) AddDocument(conf pb.AddDocumentConfig) (*Document, error) {
-	if conf.Name == "" {
-		conf.Name = defaultDocName
-	}
-
-	config := tpb.AddThreadConfig{
-		Name: conf.Icon + documentIconAndNameSeperator + conf.Name,
-		Key:  ksuid.New().String(),
-		Schema: &tpb.AddThreadConfig_Schema{
-			Id: documentSchema,
-		},
-		Sharing: tpb.Thread_Sharing(pbValForEnumString(tpb.Thread_Sharing_value, conf.Sharing)),
-		Type:    tpb.Thread_Type(pbValForEnumString(tpb.Thread_Type_value, conf.Type)),
-	}
-
-	// make a new secret
-	sk, _, err := libp2pc.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-
-	var parentThread *tcore.Thread
-	var thrd *tcore.Thread
-
-	if conf.ParentToAddChild != "" {
-		if conf.ParentToAddChild == "root" {
-			parentThread = a.Textile.Node().ThreadByKey(a.Textile.Node().Config().Account.Address)
-		} else {
-			parentThread = a.Textile.Node().Thread(conf.ParentToAddChild)
-		}
-		if parentThread == nil {
-			return nil, errorDocumentCantFindParent
-		}
-
-		defer func() {
-			if thrd == nil {
-				// thread wasn't created so no need to update parent
-				return
-			}
-			parentDoc, err := a.Document(parentThread.Id)
-			if err != nil {
-				log.Errorf("failed to convert parent thread to doc: %s", err.Error())
-				return
-			}
-			err = parentDoc.AddChild(thrd.Id, true)
-			if err != nil {
-				log.Errorf("Can't add document to the parent thread: %s", err.Error())
-			}
-		}()
-	}
-
-	thrd, err = a.Textile.Node().AddThread(config, sk, a.Textile.Node().Account().Address(), true, true)
-	if err != nil {
-		return nil, err
-	}
-
-	return a.Document(thrd.Id)
-}
-
-/*func documentsView(docs []*Document) []*pb.Document{
-	var pbDocs []*pb.Document
-	for _, doc := range docs {
-		//pbDocs = append(pbDocs, doc.)
+/*func pagesView(pages []*Page) []*pb.Page{
+	var pbDocs []*pb.Page
+	for _, page := range pages {
+		//pbDocs = append(pbDocs, page.)
 	}
 }*/
