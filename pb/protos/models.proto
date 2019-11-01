@@ -2,8 +2,6 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-import "struct.proto";
-
 message Model {
     message Block {
         Header header = 1;
@@ -177,6 +175,80 @@ message Model {
     message Range {
         int32 from = 1;
         int32 to = 2;
-    }  
+    } 
+
+    message Struct {
+        // Unordered map of dynamically typed values.
+        map<string, Value> fields = 1;
+
+        // `Value` represents a dynamically typed value which can be either
+        // null, a number, a string, a boolean, a recursive struct value, or a
+        // list of values. A producer of value is expected to set one of that
+        // variants, absence of any variant indicates an error.
+        message Value {
+            oneof kind { // The kind of value.
+                NullValue null_value = 1; // Represents a null value.
+                double number_value = 2; // Represents a double value.
+                string string_value = 3; // Represents a string value.
+                bool bool_value = 4; // Represents a boolean value.
+                Struct struct_value = 5; // Represents a structured value.
+                ListValue list_value = 6;  // Represents a repeated `Value`.
+            }
+        }
+
+        // `NullValue` is a singleton enumeration to represent the null value for the
+        enum NullValue {
+            NULL_VALUE = 0;
+        }
+
+        // `ListValue` is a wrapper around a repeated field of values.
+        message ListValue {
+            repeated Value values = 1;
+        }  
+    }
+
+    /**
+    * Contains basic information about user account
+    */
+    message Account {
+        string id = 1; // User's thread id
+        string name = 2; // User name, that associated with this account
+        Avatar avatar = 3; // Avatar of a user's account
+
+        /**
+        * Avatar of a user's account. It could be an image or color
+        */
+        message Avatar {
+            oneof avatar {
+                Image image = 1; // Image of the avatar. Contains hash and size
+                string color = 2; // Color of the avatar, if no image
+            }
+        }
+    } 
+
+    message Image {
+        string id = 1;
+        repeated Size sizes = 2;
+
+        enum Size {
+            LARGE = 0;
+            SMALL = 1;
+            THUMB = 2;
+        }    
+    }
+
+    message Video {
+        string id = 1;
+        repeated Size sizes = 2;
+
+        enum Size {
+            SD_360p = 0;
+            SD_480p = 1;
+            HD_720p = 2;
+            HD_1080p = 3;
+            UHD_1440p = 4;
+            UHD_2160p = 5;
+        }    
+    }       
 }
 

@@ -1,0 +1,105 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+import "models.proto";
+import "changes.proto";
+
+message Event {
+    oneof message {    
+        Account.Show accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
+        Block.Show blockShow = 2;
+        Block.Update blockUpdate = 3;
+        Block.Create blockCreate = 4;
+
+        User.Block.TextRange userBlockTextRange = 5;
+        User.Block.Join userBlockJoin = 6;
+        User.Block.Left userBlockLeft = 7;
+        User.Block.SelectRange userBlockSelectRange = 8;
+
+        Block.FilesUpload filesUpload = 9;
+    }
+
+    message Account {  
+        /**
+        * Message, that will be sent to the front on each account found after an AccountRecoverRequest
+        */
+        message Show {
+            int64  index  = 1; // Number of an account in an all found accounts list
+            Account account = 2; // An Account, that has been found for the mnemonic
+        }
+    }
+
+    message Block {
+        message Show {
+            Model.Block block = 1;
+        }
+
+        message Update {
+            BlockChanges changes = 1;
+        }
+
+        message Create {
+            Model.Block block = 1;
+        }
+
+        /**
+        * Middleware to front end event message, that will be sent on one of this scenarios:
+        * Precondition: user A opened a block
+        * 1. User A drops a set of files/pictures/videos
+        * 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
+        */
+        message FilesUpload {
+            repeated string filePath = 1; // filepaths to the files
+            string blockId = 2; // if empty => create new blocks
+        }        
+    }
+
+    message User {
+        message Block {
+
+            /**
+            *  Middleware to front end event message, that will be sent in this scenario:
+            * Precondition: user A opened a block
+            * 1. User B opens the same block
+            * 2. User A receives a message about p.1
+            */        
+            message Join {
+                Account account = 1; // Account of the user, that opened a block
+            }
+
+            /**
+            *  Middleware to front end event message, that will be sent in this scenario:
+            * Precondition: user A and user B opened the same block
+            * 1. User B closes the block
+            * 2. User A receives a message about p.1
+            */
+            message Left {
+                Account account = 1; // Account of the user, that left the block
+            }
+
+            /**
+            * Middleware to front end event message, that will be sent in this scenario:
+            * Precondition: user A and user B opened the same block
+            * 1. User B sets cursor or selects a text region into a text block 
+            * 2. User A receives a message about p.1
+            */
+            message TextRange {
+                Account account = 1; // Account of the user, that selected a text
+                string blockId = 2; // Id of the text block, that have a selection
+                Model.Range range = 3; // Range of the selection
+            }
+
+            /**
+            * Middleware to front end event message, that will be sent in this scenario:
+            * Precondition: user A and user B opened the same block
+            * 1. User B selects some inner blocks
+            * 2. User A receives a message about p.1
+            */
+            message SelectRange {
+                Account account = 1; // Account of the user, that selected blocks
+                repeated string blockIdsArray = 2; // Ids of selected blocks.
+            }
+        }
+    }
+}

@@ -4,6 +4,7 @@
 package pb
 
 import (
+	encoding_binary "encoding/binary"
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
@@ -285,6 +286,94 @@ func (Model_Block_Content_Page_Style) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 6, 0}
 }
 
+// `NullValue` is a singleton enumeration to represent the null value for the
+type Model_Struct_NullValue int32
+
+const (
+	Model_Struct_NULL_VALUE Model_Struct_NullValue = 0
+)
+
+var Model_Struct_NullValue_name = map[int32]string{
+	0: "NULL_VALUE",
+}
+
+var Model_Struct_NullValue_value = map[string]int32{
+	"NULL_VALUE": 0,
+}
+
+func (x Model_Struct_NullValue) String() string {
+	return proto.EnumName(Model_Struct_NullValue_name, int32(x))
+}
+
+func (Model_Struct_NullValue) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 2, 0}
+}
+
+type Model_Image_Size int32
+
+const (
+	Model_Image_LARGE Model_Image_Size = 0
+	Model_Image_SMALL Model_Image_Size = 1
+	Model_Image_THUMB Model_Image_Size = 2
+)
+
+var Model_Image_Size_name = map[int32]string{
+	0: "LARGE",
+	1: "SMALL",
+	2: "THUMB",
+}
+
+var Model_Image_Size_value = map[string]int32{
+	"LARGE": 0,
+	"SMALL": 1,
+	"THUMB": 2,
+}
+
+func (x Model_Image_Size) String() string {
+	return proto.EnumName(Model_Image_Size_name, int32(x))
+}
+
+func (Model_Image_Size) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 4, 0}
+}
+
+type Model_Video_Size int32
+
+const (
+	Model_Video_SD_360p   Model_Video_Size = 0
+	Model_Video_SD_480p   Model_Video_Size = 1
+	Model_Video_HD_720p   Model_Video_Size = 2
+	Model_Video_HD_1080p  Model_Video_Size = 3
+	Model_Video_UHD_1440p Model_Video_Size = 4
+	Model_Video_UHD_2160p Model_Video_Size = 5
+)
+
+var Model_Video_Size_name = map[int32]string{
+	0: "SD_360p",
+	1: "SD_480p",
+	2: "HD_720p",
+	3: "HD_1080p",
+	4: "UHD_1440p",
+	5: "UHD_2160p",
+}
+
+var Model_Video_Size_value = map[string]int32{
+	"SD_360p":   0,
+	"SD_480p":   1,
+	"HD_720p":   2,
+	"HD_1080p":  3,
+	"UHD_1440p": 4,
+	"UHD_2160p": 5,
+}
+
+func (x Model_Video_Size) String() string {
+	return proto.EnumName(Model_Video_Size_name, int32(x))
+}
+
+func (Model_Video_Size) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 5, 0}
+}
+
 type Model struct {
 }
 
@@ -490,7 +579,7 @@ func (*Model_Block) XXX_OneofWrappers() []interface{} {
 type Model_Block_Header struct {
 	Id          string                          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Type        Model_Block_Header_Type         `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.Model_Block_Header_Type" json:"type,omitempty"`
-	Fields      *Struct                         `protobuf:"bytes,3,opt,name=fields,proto3" json:"fields,omitempty"`
+	Fields      *Model_Struct                   `protobuf:"bytes,3,opt,name=fields,proto3" json:"fields,omitempty"`
 	Permissions *Model_Block_Header_Permissions `protobuf:"bytes,4,opt,name=permissions,proto3" json:"permissions,omitempty"`
 }
 
@@ -541,7 +630,7 @@ func (m *Model_Block_Header) GetType() Model_Block_Header_Type {
 	return Model_Block_Header_DASHBOARD
 }
 
-func (m *Model_Block_Header) GetFields() *Struct {
+func (m *Model_Block_Header) GetFields() *Model_Struct {
 	if m != nil {
 		return m.Fields
 	}
@@ -1425,6 +1514,490 @@ func (m *Model_Range) GetTo() int32 {
 	return 0
 }
 
+type Model_Struct struct {
+	// Unordered map of dynamically typed values.
+	Fields map[string]*Model_Struct_Value `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *Model_Struct) Reset()         { *m = Model_Struct{} }
+func (m *Model_Struct) String() string { return proto.CompactTextString(m) }
+func (*Model_Struct) ProtoMessage()    {}
+func (*Model_Struct) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 2}
+}
+func (m *Model_Struct) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Struct) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Struct.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Struct) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Struct.Merge(m, src)
+}
+func (m *Model_Struct) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Struct) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Struct.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Struct proto.InternalMessageInfo
+
+func (m *Model_Struct) GetFields() map[string]*Model_Struct_Value {
+	if m != nil {
+		return m.Fields
+	}
+	return nil
+}
+
+// `Value` represents a dynamically typed value which can be either
+// null, a number, a string, a boolean, a recursive struct value, or a
+// list of values. A producer of value is expected to set one of that
+// variants, absence of any variant indicates an error.
+type Model_Struct_Value struct {
+	// Types that are valid to be assigned to Kind:
+	//	*Model_Struct_Value_NullValue
+	//	*Model_Struct_Value_NumberValue
+	//	*Model_Struct_Value_StringValue
+	//	*Model_Struct_Value_BoolValue
+	//	*Model_Struct_Value_StructValue
+	//	*Model_Struct_Value_ListValue
+	Kind isModel_Struct_Value_Kind `protobuf_oneof:"kind"`
+}
+
+func (m *Model_Struct_Value) Reset()         { *m = Model_Struct_Value{} }
+func (m *Model_Struct_Value) String() string { return proto.CompactTextString(m) }
+func (*Model_Struct_Value) ProtoMessage()    {}
+func (*Model_Struct_Value) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 2, 1}
+}
+func (m *Model_Struct_Value) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Struct_Value) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Struct_Value.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Struct_Value) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Struct_Value.Merge(m, src)
+}
+func (m *Model_Struct_Value) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Struct_Value) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Struct_Value.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Struct_Value proto.InternalMessageInfo
+
+type isModel_Struct_Value_Kind interface {
+	isModel_Struct_Value_Kind()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type Model_Struct_Value_NullValue struct {
+	NullValue Model_Struct_NullValue `protobuf:"varint,1,opt,name=null_value,json=nullValue,proto3,enum=anytype.Model_Struct_NullValue,oneof" json:"null_value,omitempty"`
+}
+type Model_Struct_Value_NumberValue struct {
+	NumberValue float64 `protobuf:"fixed64,2,opt,name=number_value,json=numberValue,proto3,oneof" json:"number_value,omitempty"`
+}
+type Model_Struct_Value_StringValue struct {
+	StringValue string `protobuf:"bytes,3,opt,name=string_value,json=stringValue,proto3,oneof" json:"string_value,omitempty"`
+}
+type Model_Struct_Value_BoolValue struct {
+	BoolValue bool `protobuf:"varint,4,opt,name=bool_value,json=boolValue,proto3,oneof" json:"bool_value,omitempty"`
+}
+type Model_Struct_Value_StructValue struct {
+	StructValue *Model_Struct `protobuf:"bytes,5,opt,name=struct_value,json=structValue,proto3,oneof" json:"struct_value,omitempty"`
+}
+type Model_Struct_Value_ListValue struct {
+	ListValue *Model_Struct_ListValue `protobuf:"bytes,6,opt,name=list_value,json=listValue,proto3,oneof" json:"list_value,omitempty"`
+}
+
+func (*Model_Struct_Value_NullValue) isModel_Struct_Value_Kind()   {}
+func (*Model_Struct_Value_NumberValue) isModel_Struct_Value_Kind() {}
+func (*Model_Struct_Value_StringValue) isModel_Struct_Value_Kind() {}
+func (*Model_Struct_Value_BoolValue) isModel_Struct_Value_Kind()   {}
+func (*Model_Struct_Value_StructValue) isModel_Struct_Value_Kind() {}
+func (*Model_Struct_Value_ListValue) isModel_Struct_Value_Kind()   {}
+
+func (m *Model_Struct_Value) GetKind() isModel_Struct_Value_Kind {
+	if m != nil {
+		return m.Kind
+	}
+	return nil
+}
+
+func (m *Model_Struct_Value) GetNullValue() Model_Struct_NullValue {
+	if x, ok := m.GetKind().(*Model_Struct_Value_NullValue); ok {
+		return x.NullValue
+	}
+	return Model_Struct_NULL_VALUE
+}
+
+func (m *Model_Struct_Value) GetNumberValue() float64 {
+	if x, ok := m.GetKind().(*Model_Struct_Value_NumberValue); ok {
+		return x.NumberValue
+	}
+	return 0
+}
+
+func (m *Model_Struct_Value) GetStringValue() string {
+	if x, ok := m.GetKind().(*Model_Struct_Value_StringValue); ok {
+		return x.StringValue
+	}
+	return ""
+}
+
+func (m *Model_Struct_Value) GetBoolValue() bool {
+	if x, ok := m.GetKind().(*Model_Struct_Value_BoolValue); ok {
+		return x.BoolValue
+	}
+	return false
+}
+
+func (m *Model_Struct_Value) GetStructValue() *Model_Struct {
+	if x, ok := m.GetKind().(*Model_Struct_Value_StructValue); ok {
+		return x.StructValue
+	}
+	return nil
+}
+
+func (m *Model_Struct_Value) GetListValue() *Model_Struct_ListValue {
+	if x, ok := m.GetKind().(*Model_Struct_Value_ListValue); ok {
+		return x.ListValue
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*Model_Struct_Value) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*Model_Struct_Value_NullValue)(nil),
+		(*Model_Struct_Value_NumberValue)(nil),
+		(*Model_Struct_Value_StringValue)(nil),
+		(*Model_Struct_Value_BoolValue)(nil),
+		(*Model_Struct_Value_StructValue)(nil),
+		(*Model_Struct_Value_ListValue)(nil),
+	}
+}
+
+// `ListValue` is a wrapper around a repeated field of values.
+type Model_Struct_ListValue struct {
+	Values []*Model_Struct_Value `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+}
+
+func (m *Model_Struct_ListValue) Reset()         { *m = Model_Struct_ListValue{} }
+func (m *Model_Struct_ListValue) String() string { return proto.CompactTextString(m) }
+func (*Model_Struct_ListValue) ProtoMessage()    {}
+func (*Model_Struct_ListValue) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 2, 2}
+}
+func (m *Model_Struct_ListValue) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Struct_ListValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Struct_ListValue.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Struct_ListValue) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Struct_ListValue.Merge(m, src)
+}
+func (m *Model_Struct_ListValue) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Struct_ListValue) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Struct_ListValue.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Struct_ListValue proto.InternalMessageInfo
+
+func (m *Model_Struct_ListValue) GetValues() []*Model_Struct_Value {
+	if m != nil {
+		return m.Values
+	}
+	return nil
+}
+
+//*
+// Contains basic information about user account
+type Model_Account struct {
+	Id     string                `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name   string                `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Avatar *Model_Account_Avatar `protobuf:"bytes,3,opt,name=avatar,proto3" json:"avatar,omitempty"`
+}
+
+func (m *Model_Account) Reset()         { *m = Model_Account{} }
+func (m *Model_Account) String() string { return proto.CompactTextString(m) }
+func (*Model_Account) ProtoMessage()    {}
+func (*Model_Account) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 3}
+}
+func (m *Model_Account) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Account.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Account) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Account.Merge(m, src)
+}
+func (m *Model_Account) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Account) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Account.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Account proto.InternalMessageInfo
+
+func (m *Model_Account) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *Model_Account) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Model_Account) GetAvatar() *Model_Account_Avatar {
+	if m != nil {
+		return m.Avatar
+	}
+	return nil
+}
+
+//*
+// Avatar of a user's account. It could be an image or color
+type Model_Account_Avatar struct {
+	// Types that are valid to be assigned to Avatar:
+	//	*Model_Account_Avatar_Image
+	//	*Model_Account_Avatar_Color
+	Avatar isModel_Account_Avatar_Avatar `protobuf_oneof:"avatar"`
+}
+
+func (m *Model_Account_Avatar) Reset()         { *m = Model_Account_Avatar{} }
+func (m *Model_Account_Avatar) String() string { return proto.CompactTextString(m) }
+func (*Model_Account_Avatar) ProtoMessage()    {}
+func (*Model_Account_Avatar) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 3, 0}
+}
+func (m *Model_Account_Avatar) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Account_Avatar) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Account_Avatar.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Account_Avatar) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Account_Avatar.Merge(m, src)
+}
+func (m *Model_Account_Avatar) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Account_Avatar) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Account_Avatar.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Account_Avatar proto.InternalMessageInfo
+
+type isModel_Account_Avatar_Avatar interface {
+	isModel_Account_Avatar_Avatar()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type Model_Account_Avatar_Image struct {
+	Image *Model_Image `protobuf:"bytes,1,opt,name=image,proto3,oneof" json:"image,omitempty"`
+}
+type Model_Account_Avatar_Color struct {
+	Color string `protobuf:"bytes,2,opt,name=color,proto3,oneof" json:"color,omitempty"`
+}
+
+func (*Model_Account_Avatar_Image) isModel_Account_Avatar_Avatar() {}
+func (*Model_Account_Avatar_Color) isModel_Account_Avatar_Avatar() {}
+
+func (m *Model_Account_Avatar) GetAvatar() isModel_Account_Avatar_Avatar {
+	if m != nil {
+		return m.Avatar
+	}
+	return nil
+}
+
+func (m *Model_Account_Avatar) GetImage() *Model_Image {
+	if x, ok := m.GetAvatar().(*Model_Account_Avatar_Image); ok {
+		return x.Image
+	}
+	return nil
+}
+
+func (m *Model_Account_Avatar) GetColor() string {
+	if x, ok := m.GetAvatar().(*Model_Account_Avatar_Color); ok {
+		return x.Color
+	}
+	return ""
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*Model_Account_Avatar) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*Model_Account_Avatar_Image)(nil),
+		(*Model_Account_Avatar_Color)(nil),
+	}
+}
+
+type Model_Image struct {
+	Id    string             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Sizes []Model_Image_Size `protobuf:"varint,2,rep,packed,name=sizes,proto3,enum=anytype.Model_Image_Size" json:"sizes,omitempty"`
+}
+
+func (m *Model_Image) Reset()         { *m = Model_Image{} }
+func (m *Model_Image) String() string { return proto.CompactTextString(m) }
+func (*Model_Image) ProtoMessage()    {}
+func (*Model_Image) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 4}
+}
+func (m *Model_Image) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Image) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Image.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Image) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Image.Merge(m, src)
+}
+func (m *Model_Image) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Image) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Image.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Image proto.InternalMessageInfo
+
+func (m *Model_Image) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *Model_Image) GetSizes() []Model_Image_Size {
+	if m != nil {
+		return m.Sizes
+	}
+	return nil
+}
+
+type Model_Video struct {
+	Id    string             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Sizes []Model_Video_Size `protobuf:"varint,2,rep,packed,name=sizes,proto3,enum=anytype.Model_Video_Size" json:"sizes,omitempty"`
+}
+
+func (m *Model_Video) Reset()         { *m = Model_Video{} }
+func (m *Model_Video) String() string { return proto.CompactTextString(m) }
+func (*Model_Video) ProtoMessage()    {}
+func (*Model_Video) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0b5431a010549573, []int{0, 5}
+}
+func (m *Model_Video) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Model_Video) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Model_Video.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Model_Video) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Model_Video.Merge(m, src)
+}
+func (m *Model_Video) XXX_Size() int {
+	return m.Size()
+}
+func (m *Model_Video) XXX_DiscardUnknown() {
+	xxx_messageInfo_Model_Video.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Model_Video proto.InternalMessageInfo
+
+func (m *Model_Video) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *Model_Video) GetSizes() []Model_Video_Size {
+	if m != nil {
+		return m.Sizes
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterEnum("anytype.Model_Block_Header_Type", Model_Block_Header_Type_name, Model_Block_Header_Type_value)
 	proto.RegisterEnum("anytype.Model_Block_Content_Layout_Style", Model_Block_Content_Layout_Style_name, Model_Block_Content_Layout_Style_value)
@@ -1434,6 +2007,9 @@ func init() {
 	proto.RegisterEnum("anytype.Model_Block_Content_Text_Mark_Type", Model_Block_Content_Text_Mark_Type_name, Model_Block_Content_Text_Mark_Type_value)
 	proto.RegisterEnum("anytype.Model_Block_Content_Media_State", Model_Block_Content_Media_State_name, Model_Block_Content_Media_State_value)
 	proto.RegisterEnum("anytype.Model_Block_Content_Page_Style", Model_Block_Content_Page_Style_name, Model_Block_Content_Page_Style_value)
+	proto.RegisterEnum("anytype.Model_Struct_NullValue", Model_Struct_NullValue_name, Model_Struct_NullValue_value)
+	proto.RegisterEnum("anytype.Model_Image_Size", Model_Image_Size_name, Model_Image_Size_value)
+	proto.RegisterEnum("anytype.Model_Video_Size", Model_Video_Size_name, Model_Video_Size_value)
 	proto.RegisterType((*Model)(nil), "anytype.Model")
 	proto.RegisterType((*Model_Block)(nil), "anytype.Model.Block")
 	proto.RegisterType((*Model_Block_Header)(nil), "anytype.Model.Block.Header")
@@ -1452,93 +2028,126 @@ func init() {
 	proto.RegisterType((*Model_Block_Content_Media_FilePreview)(nil), "anytype.Model.Block.Content.Media.FilePreview")
 	proto.RegisterType((*Model_Block_Content_Page)(nil), "anytype.Model.Block.Content.Page")
 	proto.RegisterType((*Model_Range)(nil), "anytype.Model.Range")
+	proto.RegisterType((*Model_Struct)(nil), "anytype.Model.Struct")
+	proto.RegisterMapType((map[string]*Model_Struct_Value)(nil), "anytype.Model.Struct.FieldsEntry")
+	proto.RegisterType((*Model_Struct_Value)(nil), "anytype.Model.Struct.Value")
+	proto.RegisterType((*Model_Struct_ListValue)(nil), "anytype.Model.Struct.ListValue")
+	proto.RegisterType((*Model_Account)(nil), "anytype.Model.Account")
+	proto.RegisterType((*Model_Account_Avatar)(nil), "anytype.Model.Account.Avatar")
+	proto.RegisterType((*Model_Image)(nil), "anytype.Model.Image")
+	proto.RegisterType((*Model_Video)(nil), "anytype.Model.Video")
 }
 
 func init() { proto.RegisterFile("models.proto", fileDescriptor_0b5431a010549573) }
 
 var fileDescriptor_0b5431a010549573 = []byte{
-	// 1282 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0xcb, 0x6e, 0xdb, 0x46,
-	0x17, 0x26, 0x25, 0x52, 0x97, 0x23, 0xc7, 0x9e, 0x0c, 0xf2, 0x07, 0x04, 0xff, 0x40, 0x70, 0x55,
-	0x34, 0x71, 0x9b, 0x40, 0x45, 0xe3, 0x04, 0x05, 0x8a, 0xa6, 0x81, 0x2e, 0x8c, 0x45, 0x58, 0x37,
-	0x8c, 0x64, 0xa7, 0xe9, 0xa6, 0xa0, 0xc4, 0xb1, 0x44, 0x84, 0x22, 0x55, 0x8a, 0x76, 0x62, 0xa0,
-	0x0f, 0xd1, 0x47, 0xe8, 0xaa, 0xe8, 0xb6, 0xeb, 0xbe, 0x40, 0x97, 0x41, 0x37, 0xed, 0xb2, 0x88,
-	0xdf, 0xa1, 0x8b, 0xae, 0x8a, 0x39, 0x43, 0x4a, 0x72, 0x91, 0xda, 0x5a, 0x74, 0xc5, 0x39, 0x33,
-	0xdf, 0x77, 0xce, 0x99, 0x39, 0x37, 0xc2, 0xd6, 0x2c, 0x74, 0xb9, 0xbf, 0xa8, 0xce, 0xa3, 0x30,
-	0x0e, 0x69, 0xde, 0x09, 0xce, 0xe3, 0xf3, 0x39, 0x37, 0xb7, 0x16, 0x71, 0x74, 0x3a, 0x8e, 0xe5,
-	0x76, 0xe5, 0xa7, 0xdb, 0xa0, 0x77, 0x04, 0xce, 0xfc, 0xeb, 0x7f, 0xa0, 0xd7, 0xfd, 0x70, 0xfc,
-	0x92, 0xee, 0x43, 0x6e, 0xca, 0x1d, 0x97, 0x47, 0x86, 0xba, 0xab, 0xee, 0x95, 0x1e, 0xfe, 0xbf,
-	0x9a, 0x70, 0xab, 0x88, 0xac, 0x22, 0xaa, 0xda, 0x42, 0x08, 0x4b, 0xa0, 0xd4, 0x84, 0xc2, 0x78,
-	0xea, 0xf9, 0x6e, 0xc4, 0x03, 0x23, 0xb3, 0x9b, 0xdd, 0x2b, 0xb2, 0xa5, 0x4c, 0x9f, 0x41, 0xd1,
-	0x75, 0x16, 0xd3, 0x51, 0xe8, 0x44, 0xae, 0x51, 0x42, 0x9d, 0x77, 0xdf, 0xa9, 0xb3, 0x11, 0x06,
-	0x31, 0x0f, 0xe2, 0x6a, 0x33, 0x45, 0xb7, 0x14, 0xb6, 0xa2, 0xd2, 0x4f, 0x41, 0x9b, 0x3b, 0x13,
-	0x6e, 0x6c, 0xa1, 0x8a, 0xf7, 0xae, 0x54, 0xd1, 0x77, 0x26, 0xbc, 0xa5, 0x30, 0x24, 0xd0, 0x06,
-	0x14, 0x5c, 0x27, 0x76, 0xce, 0x3c, 0xfe, 0xca, 0xb8, 0x81, 0xe4, 0x0f, 0xae, 0xb1, 0x2f, 0xc1,
-	0x2d, 0x85, 0x2d, 0x89, 0xc2, 0x7a, 0xcc, 0x5f, 0xc7, 0xc6, 0xf6, 0x06, 0xd6, 0x87, 0xfc, 0x75,
-	0x2c, 0xac, 0x0b, 0x02, 0xfd, 0x0c, 0xf4, 0x19, 0x77, 0x3d, 0xc7, 0xd8, 0x41, 0x66, 0xe5, 0x4a,
-	0x66, 0x47, 0x20, 0x5b, 0x0a, 0x93, 0x14, 0xfa, 0x04, 0x72, 0xbe, 0x73, 0x1e, 0x9e, 0xc6, 0x06,
-	0x41, 0xf2, 0xfb, 0x57, 0x92, 0xdb, 0x08, 0x6d, 0x29, 0x2c, 0x21, 0xd1, 0x47, 0x90, 0x75, 0xbd,
-	0x33, 0xe3, 0x26, 0x72, 0x77, 0xaf, 0xbe, 0xb3, 0x77, 0xd6, 0x52, 0x98, 0x80, 0x9b, 0x3f, 0x67,
-	0x21, 0x27, 0xc3, 0x4b, 0xb7, 0x21, 0xe3, 0xb9, 0x98, 0x07, 0x45, 0x96, 0xf1, 0x5c, 0xfa, 0x08,
-	0x34, 0xa1, 0xc1, 0xc8, 0xec, 0xaa, 0x7b, 0xdb, 0xff, 0xa2, 0x51, 0x52, 0xab, 0xc3, 0xf3, 0x39,
-	0x67, 0x88, 0xa6, 0xf7, 0x20, 0x77, 0xe2, 0x71, 0xdf, 0x5d, 0x18, 0x59, 0xf4, 0x64, 0x67, 0xc9,
-	0x1b, 0x60, 0x32, 0xb2, 0xe4, 0x98, 0xda, 0x50, 0x9a, 0xf3, 0x68, 0xe6, 0x2d, 0x16, 0x5e, 0x18,
-	0x2c, 0x0c, 0x0d, 0xd1, 0xf7, 0xae, 0xb2, 0xd2, 0x5f, 0xc1, 0xd9, 0x3a, 0xd7, 0x3c, 0x87, 0xd2,
-	0xda, 0x19, 0xa5, 0xa0, 0x45, 0xdc, 0x91, 0x57, 0x29, 0x30, 0x5c, 0x8b, 0x3d, 0xee, 0x7a, 0x31,
-	0x5e, 0xa6, 0xc0, 0x70, 0x4d, 0x6f, 0x43, 0x2e, 0xe2, 0xb3, 0xf0, 0x8c, 0xa3, 0xab, 0x05, 0x96,
-	0x48, 0x02, 0xeb, 0x46, 0xce, 0x04, 0x5d, 0x2a, 0x30, 0x5c, 0x0b, 0xac, 0x1b, 0x85, 0xf3, 0x5e,
-	0x60, 0xe8, 0x12, 0x2b, 0xa5, 0xca, 0xb7, 0xa0, 0x89, 0xcb, 0xd3, 0x1b, 0x50, 0x6c, 0xd6, 0x06,
-	0xad, 0x7a, 0xaf, 0xc6, 0x9a, 0x44, 0xa1, 0x05, 0xd0, 0xfa, 0xb5, 0x03, 0x8b, 0xa8, 0x74, 0x0b,
-	0x0a, 0xcd, 0xda, 0xb0, 0x76, 0x6c, 0x5b, 0xcf, 0x49, 0x46, 0xec, 0x0f, 0xad, 0x2f, 0x87, 0x24,
-	0x2b, 0x56, 0xcf, 0xec, 0xb6, 0x45, 0x34, 0x5a, 0x82, 0x7c, 0xdf, 0x6e, 0x0c, 0x8f, 0x98, 0x45,
-	0x74, 0x5a, 0x04, 0xfd, 0xd8, 0x6e, 0x5a, 0x3d, 0x92, 0x13, 0xcc, 0x7a, 0xaf, 0x77, 0xd8, 0xa9,
-	0xb1, 0x43, 0x92, 0xa7, 0x00, 0xb9, 0x76, 0xed, 0x45, 0xef, 0x68, 0x48, 0x0a, 0x34, 0x0f, 0xd9,
-	0xa6, 0x7d, 0x4c, 0x8a, 0xe6, 0x0f, 0xdb, 0x90, 0x4f, 0x82, 0x6a, 0x4e, 0x20, 0x27, 0x73, 0x82,
-	0x3e, 0x05, 0x7d, 0x11, 0x9f, 0xfb, 0x1c, 0x1f, 0x60, 0xfb, 0xe1, 0x87, 0x1b, 0xe4, 0x51, 0x75,
-	0x20, 0x08, 0x4c, 0xf2, 0x2a, 0x77, 0x40, 0x47, 0x59, 0x18, 0x62, 0xbd, 0xe7, 0x44, 0x11, 0xd6,
-	0x1b, 0xbd, 0xf6, 0x51, 0xa7, 0x4b, 0x54, 0x53, 0x87, 0x6c, 0xd3, 0x3b, 0x33, 0xbf, 0x57, 0xa1,
-	0xb8, 0x2c, 0x5e, 0x5a, 0xbf, 0x6c, 0xf3, 0xc1, 0x66, 0x35, 0x7f, 0xc9, 0x2c, 0x7d, 0x0c, 0x79,
-	0xd9, 0x61, 0x16, 0xd8, 0x56, 0xae, 0xe9, 0x46, 0x29, 0xb6, 0x62, 0xa4, 0xde, 0xee, 0x40, 0xa9,
-	0x53, 0xb3, 0xbb, 0x5f, 0x0f, 0x1a, 0xcc, 0xb2, 0xba, 0x44, 0x31, 0x01, 0x0a, 0x69, 0x79, 0x9b,
-	0xbf, 0xe9, 0xa0, 0x89, 0x52, 0x15, 0xd1, 0xc5, 0xda, 0x96, 0x89, 0x2e, 0xcb, 0xf6, 0x49, 0xea,
-	0xbd, 0xcc, 0xf5, 0x7b, 0xd7, 0x16, 0xfc, 0x65, 0xc7, 0x2d, 0x28, 0xce, 0x9c, 0xe8, 0xe5, 0xa2,
-	0xed, 0x2d, 0xe2, 0x24, 0xed, 0x37, 0x50, 0xd1, 0x11, 0x14, 0xb6, 0x62, 0xd2, 0x32, 0x40, 0x1c,
-	0x4e, 0x26, 0x3e, 0x77, 0x46, 0x3e, 0x4f, 0xb2, 0x6f, 0x6d, 0x87, 0xb6, 0x01, 0x04, 0x98, 0x47,
-	0x22, 0xe3, 0x30, 0x0f, 0xaf, 0x7b, 0xe8, 0xa5, 0x1d, 0xc9, 0x61, 0x6b, 0x7c, 0x7a, 0x07, 0x8a,
-	0xe3, 0x29, 0x1f, 0xbf, 0x44, 0x63, 0x39, 0x34, 0xb6, 0xda, 0xa0, 0x06, 0xe4, 0x51, 0xe0, 0xae,
-	0x91, 0xc7, 0xb3, 0x54, 0x34, 0x2d, 0xd0, 0xd1, 0x73, 0xfa, 0x39, 0xe8, 0xe8, 0xbb, 0xa1, 0x62,
-	0xb0, 0xee, 0x6e, 0xe6, 0x09, 0x93, 0x24, 0xf3, 0x57, 0x15, 0x34, 0x21, 0xd3, 0x8f, 0x40, 0x8f,
-	0x9c, 0x60, 0xc2, 0x93, 0x09, 0x74, 0xeb, 0x1f, 0x6a, 0x98, 0x38, 0x63, 0x12, 0x42, 0x9f, 0x5e,
-	0x6a, 0x49, 0xf7, 0x37, 0xb3, 0xb8, 0xde, 0x9d, 0x6e, 0x81, 0x3e, 0x77, 0x22, 0x67, 0x86, 0x51,
-	0x2a, 0x32, 0x29, 0x54, 0x0e, 0x92, 0x22, 0xbe, 0x09, 0x37, 0x06, 0x43, 0x66, 0x1f, 0x5a, 0xc3,
-	0x16, 0xeb, 0x1d, 0x1d, 0xb4, 0x88, 0x22, 0x8a, 0xf0, 0xd0, 0x7a, 0x21, 0xcb, 0x5a, 0x15, 0x65,
-	0x60, 0x0f, 0x6b, 0x6d, 0xbb, 0x21, 0x4b, 0xb9, 0xde, 0x6b, 0x37, 0x65, 0x29, 0xb7, 0xed, 0xee,
-	0x21, 0xd1, 0x2a, 0x8d, 0x34, 0x15, 0x75, 0x50, 0xe7, 0x44, 0xa1, 0x39, 0xc8, 0x4c, 0x3f, 0x21,
-	0x2a, 0x7e, 0x1f, 0x92, 0x0c, 0x7e, 0xf7, 0x49, 0x16, 0xbf, 0x8f, 0x88, 0x26, 0xaa, 0xfd, 0x9b,
-	0xd3, 0x30, 0xe6, 0x44, 0x17, 0x4a, 0xc6, 0xa1, 0xcb, 0x49, 0xae, 0x52, 0x05, 0x58, 0x85, 0x4c,
-	0xec, 0x07, 0x61, 0xc0, 0x65, 0x0d, 0x06, 0xa7, 0xb3, 0x11, 0x8f, 0xa4, 0x23, 0xa3, 0x53, 0xdf,
-	0xe7, 0x31, 0xc9, 0x98, 0x7f, 0x6a, 0xa0, 0xe3, 0x28, 0xc1, 0xa0, 0xc9, 0xdb, 0xe3, 0x63, 0x6e,
-	0xb1, 0x54, 0xa4, 0x5f, 0x88, 0x04, 0x77, 0xe2, 0xf4, 0xe5, 0xf6, 0xae, 0x9f, 0x4b, 0xd5, 0x81,
-	0xc0, 0x33, 0x49, 0xa3, 0x07, 0xa0, 0x9f, 0x79, 0x2e, 0x0f, 0x0d, 0x8e, 0x41, 0xfa, 0x78, 0x03,
-	0xfe, 0xb1, 0xc0, 0xf7, 0x23, 0x9e, 0x0c, 0x57, 0xc9, 0x17, 0x8a, 0xbc, 0x99, 0x18, 0xec, 0x27,
-	0x1b, 0x2b, 0xb2, 0x05, 0x7e, 0x4d, 0x11, 0xf2, 0x69, 0x13, 0xb4, 0x13, 0xcf, 0xe7, 0xc6, 0x04,
-	0xf5, 0x54, 0x37, 0xd0, 0xf3, 0xcc, 0xf3, 0xd7, 0xd4, 0x20, 0xdb, 0x3c, 0x86, 0xad, 0x75, 0x3f,
-	0x45, 0x51, 0xc4, 0xd3, 0xd3, 0xd9, 0x28, 0x70, 0x3c, 0x3f, 0x79, 0xc3, 0xd5, 0x86, 0x68, 0x1d,
-	0x81, 0x33, 0x93, 0x8f, 0x58, 0x64, 0xb8, 0x16, 0x19, 0xf5, 0xca, 0x73, 0xe3, 0x29, 0x66, 0x94,
-	0xce, 0xa4, 0x20, 0xf4, 0xae, 0xbb, 0xfd, 0x9f, 0xe9, 0x7d, 0x0c, 0xa5, 0xb5, 0x6b, 0x2c, 0x89,
-	0xea, 0x1a, 0x91, 0x82, 0xe6, 0x8d, 0xc3, 0x20, 0x55, 0x26, 0xd6, 0x15, 0x5b, 0xe4, 0xa5, 0x88,
-	0x63, 0x11, 0x74, 0xab, 0xd3, 0x1f, 0xbe, 0x20, 0x8a, 0x98, 0x58, 0x47, 0xfd, 0x76, 0xaf, 0xd6,
-	0xb4, 0xbb, 0x07, 0x44, 0xc5, 0x29, 0xc4, 0xac, 0x64, 0x4c, 0xed, 0x40, 0xa9, 0xd9, 0x7b, 0xde,
-	0x4d, 0x4f, 0x31, 0xc5, 0x9b, 0xbd, 0xae, 0x45, 0xb4, 0x7a, 0x11, 0xf2, 0x73, 0x69, 0xdd, 0xfc,
-	0x51, 0x05, 0x4d, 0xfc, 0x7b, 0xad, 0xda, 0xa7, 0xba, 0x41, 0xfb, 0x14, 0x8c, 0xcb, 0xed, 0xf3,
-	0x01, 0xe4, 0x46, 0x02, 0x92, 0xb6, 0xfd, 0x5b, 0xef, 0xe2, 0xb3, 0x04, 0x53, 0xd9, 0x4f, 0x6b,
-	0x6c, 0xed, 0x2e, 0x62, 0xac, 0xd6, 0x06, 0x87, 0x72, 0xdc, 0x2e, 0x87, 0x66, 0x46, 0xcc, 0xaf,
-	0x81, 0x35, 0x24, 0x59, 0xe1, 0x75, 0x52, 0x0a, 0xe6, 0x7d, 0xd0, 0xb1, 0xa7, 0x88, 0x87, 0x3a,
-	0x89, 0xc2, 0x19, 0x3a, 0xad, 0x33, 0x5c, 0x8b, 0x7f, 0xa0, 0x38, 0xc4, 0xa7, 0xd3, 0x59, 0x26,
-	0x0e, 0xeb, 0x77, 0x7e, 0x79, 0x5b, 0x56, 0xdf, 0xbc, 0x2d, 0xab, 0x7f, 0xbc, 0x2d, 0xab, 0xdf,
-	0x5d, 0x94, 0x95, 0x37, 0x17, 0x65, 0xe5, 0xf7, 0x8b, 0xb2, 0xf2, 0x55, 0x66, 0x3e, 0x1a, 0xe5,
-	0xf0, 0xc7, 0x7a, 0xff, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff, 0x44, 0xbb, 0xc2, 0x3a, 0x7f, 0x0b,
-	0x00, 0x00,
+	// 1692 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x57, 0x5f, 0x6f, 0xdb, 0xd6,
+	0x15, 0x27, 0x25, 0x92, 0x92, 0x8e, 0x1c, 0xe7, 0xf6, 0x22, 0x0b, 0x38, 0x36, 0x73, 0x53, 0x15,
+	0x6b, 0xb2, 0x35, 0x53, 0x1d, 0xdb, 0x59, 0xbb, 0x60, 0x5d, 0x2b, 0x59, 0x8c, 0x25, 0x98, 0x92,
+	0x8c, 0x2b, 0xd9, 0x69, 0xf6, 0x62, 0x50, 0xe2, 0xb5, 0x4c, 0x98, 0x22, 0x55, 0x8a, 0x72, 0xeb,
+	0x62, 0x0f, 0xfb, 0x08, 0xfb, 0x08, 0x03, 0x06, 0x0c, 0xfb, 0x06, 0x03, 0xf6, 0x30, 0x60, 0x6f,
+	0x03, 0xf6, 0x52, 0xec, 0x65, 0x7b, 0x1c, 0x92, 0xef, 0xb0, 0xe7, 0xe1, 0xdc, 0x4b, 0x4a, 0x72,
+	0xe2, 0xd8, 0x1a, 0xd0, 0x27, 0xdd, 0x73, 0xf9, 0xfb, 0x9d, 0x73, 0xee, 0x3d, 0xff, 0xae, 0x60,
+	0x6d, 0x1c, 0x79, 0x3c, 0x98, 0x56, 0x27, 0x71, 0x94, 0x44, 0xb4, 0xe0, 0x86, 0x17, 0xc9, 0xc5,
+	0x84, 0x57, 0xfe, 0xb1, 0x01, 0x7a, 0x1b, 0xbf, 0x58, 0xbf, 0xbd, 0x0b, 0x7a, 0x3d, 0x88, 0x86,
+	0x67, 0x74, 0x1b, 0x8c, 0x53, 0xee, 0x7a, 0x3c, 0x36, 0xd5, 0xfb, 0xea, 0xc3, 0xf2, 0xd6, 0xbb,
+	0xd5, 0x14, 0x5d, 0x15, 0xc8, 0xaa, 0x40, 0x55, 0x9b, 0x02, 0xc2, 0x52, 0x28, 0xb5, 0xa0, 0x38,
+	0x3c, 0xf5, 0x03, 0x2f, 0xe6, 0xa1, 0x99, 0xbb, 0x9f, 0x7f, 0x58, 0x62, 0x73, 0x99, 0x3e, 0x83,
+	0x92, 0xe7, 0x4e, 0x4f, 0x07, 0x91, 0x1b, 0x7b, 0x66, 0x59, 0xe8, 0xfc, 0xf0, 0x4a, 0x9d, 0xbb,
+	0x51, 0x98, 0xf0, 0x30, 0xa9, 0x36, 0x32, 0x74, 0x53, 0x61, 0x0b, 0x2a, 0xfd, 0x04, 0xb4, 0x89,
+	0x3b, 0xe2, 0xe6, 0x9a, 0x50, 0xf1, 0xfe, 0xb5, 0x2a, 0x0e, 0xdc, 0x11, 0x6f, 0x2a, 0x4c, 0x10,
+	0xe8, 0x2e, 0x14, 0x3d, 0x37, 0x71, 0xcf, 0x7d, 0xfe, 0xb5, 0x79, 0x4b, 0x90, 0x7f, 0x7c, 0x83,
+	0x7d, 0x09, 0x6e, 0x2a, 0x6c, 0x4e, 0x44, 0xeb, 0x09, 0xff, 0x26, 0x31, 0xd7, 0x57, 0xb0, 0xde,
+	0xe7, 0xdf, 0x24, 0x68, 0x1d, 0x09, 0xf4, 0x29, 0xe8, 0x63, 0xee, 0xf9, 0xae, 0x79, 0x5b, 0x30,
+	0x2b, 0xd7, 0x32, 0xdb, 0x88, 0x6c, 0x2a, 0x4c, 0x52, 0xe8, 0x67, 0x60, 0x04, 0xee, 0x45, 0x34,
+	0x4b, 0x4c, 0x22, 0xc8, 0x1f, 0x5c, 0x4b, 0x76, 0x04, 0xb4, 0xa9, 0xb0, 0x94, 0x44, 0x77, 0x20,
+	0xef, 0xf9, 0xe7, 0xe6, 0x3b, 0x82, 0x7b, 0xff, 0xfa, 0x33, 0xfb, 0xe7, 0x4d, 0x85, 0x21, 0xdc,
+	0xfa, 0x5b, 0x1e, 0x0c, 0x19, 0x5e, 0xba, 0x0e, 0x39, 0xdf, 0x13, 0x79, 0x50, 0x62, 0x39, 0xdf,
+	0xa3, 0x3b, 0xa0, 0xa1, 0x06, 0x33, 0x77, 0x5f, 0x7d, 0xb8, 0xfe, 0x16, 0x8d, 0x92, 0x5a, 0xed,
+	0x5f, 0x4c, 0x38, 0x13, 0x68, 0xfa, 0x33, 0x30, 0x4e, 0x7c, 0x1e, 0x78, 0x53, 0x33, 0x2f, 0x3c,
+	0xf9, 0xc1, 0x6b, 0xbc, 0x5e, 0x12, 0xcf, 0x86, 0x09, 0x4b, 0x41, 0xb4, 0x05, 0xe5, 0x09, 0x8f,
+	0xc7, 0xfe, 0x74, 0xea, 0x47, 0xe1, 0xd4, 0xd4, 0x04, 0xe7, 0xc1, 0x75, 0xb6, 0x0e, 0x16, 0x70,
+	0xb6, 0xcc, 0xb5, 0x2e, 0xa0, 0xbc, 0xf4, 0x8d, 0x52, 0xd0, 0x62, 0xee, 0xca, 0x03, 0x15, 0x99,
+	0x58, 0xe3, 0x1e, 0xf7, 0xfc, 0x44, 0x1c, 0xa9, 0xc8, 0xc4, 0x9a, 0xde, 0x05, 0x23, 0xe6, 0xe3,
+	0xe8, 0x9c, 0x0b, 0x87, 0x8b, 0x2c, 0x95, 0x10, 0xeb, 0xc5, 0xee, 0x48, 0xb8, 0x54, 0x64, 0x62,
+	0x8d, 0x58, 0x2f, 0x8e, 0x26, 0xdd, 0xd0, 0xd4, 0x25, 0x56, 0x4a, 0x95, 0xdf, 0x80, 0x86, 0x57,
+	0x40, 0x6f, 0x41, 0xa9, 0x51, 0xeb, 0x35, 0xeb, 0xdd, 0x1a, 0x6b, 0x10, 0x85, 0x16, 0x41, 0x3b,
+	0xa8, 0xed, 0xd9, 0x44, 0xa5, 0x6b, 0x50, 0x6c, 0xd4, 0xfa, 0xb5, 0xa3, 0x96, 0xfd, 0x9c, 0xe4,
+	0x70, 0xbf, 0x6f, 0x7f, 0xd9, 0x27, 0x79, 0x5c, 0x3d, 0x6b, 0x39, 0x36, 0xd1, 0x68, 0x19, 0x0a,
+	0x07, 0xad, 0xdd, 0xfe, 0x21, 0xb3, 0x89, 0x4e, 0x4b, 0xa0, 0x1f, 0xb5, 0x1a, 0x76, 0x97, 0x18,
+	0xc8, 0xac, 0x77, 0xbb, 0xfb, 0xed, 0x1a, 0xdb, 0x27, 0x05, 0x0a, 0x60, 0x38, 0xb5, 0x17, 0xdd,
+	0xc3, 0x3e, 0x29, 0xd2, 0x02, 0xe4, 0x1b, 0xad, 0x23, 0x52, 0xb2, 0xfe, 0xb8, 0x0e, 0x85, 0x34,
+	0xb4, 0xd6, 0x08, 0x0c, 0x99, 0x19, 0xf4, 0x73, 0xd0, 0xa7, 0xc9, 0x45, 0xc0, 0xc5, 0x05, 0xac,
+	0x6f, 0xfd, 0x64, 0x85, 0x6c, 0xaa, 0xf6, 0x90, 0xc0, 0x24, 0xaf, 0x72, 0x0f, 0x74, 0x21, 0xa3,
+	0x21, 0xd6, 0x7d, 0x4e, 0x14, 0xb4, 0xbe, 0xdb, 0x75, 0x0e, 0xdb, 0x1d, 0xa2, 0x5a, 0x3a, 0xe4,
+	0x1b, 0xfe, 0xb9, 0xf5, 0x7b, 0x15, 0x4a, 0xf3, 0x12, 0xa6, 0xf5, 0xcb, 0x36, 0x1f, 0xad, 0x56,
+	0xf9, 0x97, 0xcc, 0xd2, 0x27, 0x50, 0x90, 0x7d, 0x66, 0x2a, 0x9a, 0xcb, 0x0d, 0x3d, 0x29, 0xc3,
+	0x56, 0xcc, 0xcc, 0xdb, 0xdb, 0x50, 0x6e, 0xd7, 0x5a, 0x9d, 0xe3, 0xde, 0x2e, 0xb3, 0xed, 0x0e,
+	0x51, 0x2c, 0x80, 0x62, 0x56, 0xe4, 0xd6, 0xbf, 0x74, 0xd0, 0xb0, 0x60, 0x31, 0xba, 0xa2, 0xc2,
+	0x65, 0xba, 0xcb, 0xe2, 0xfd, 0x2c, 0xf3, 0x5e, 0x66, 0xfc, 0x83, 0x1b, 0xcb, 0xfe, 0xb2, 0xe3,
+	0x36, 0x94, 0xc6, 0x6e, 0x7c, 0x36, 0x75, 0xfc, 0x69, 0x92, 0x26, 0xff, 0x0a, 0x2a, 0xda, 0x48,
+	0x61, 0x0b, 0x26, 0xdd, 0x00, 0x48, 0xa2, 0xd1, 0x28, 0xe0, 0xee, 0x20, 0xe0, 0x69, 0xf6, 0x2d,
+	0xed, 0x50, 0x07, 0x00, 0xc1, 0x3c, 0xc6, 0x8c, 0x13, 0x79, 0x78, 0xd3, 0x45, 0xcf, 0xed, 0x48,
+	0x0e, 0x5b, 0xe2, 0xd3, 0x7b, 0x50, 0x1a, 0x9e, 0xf2, 0xe1, 0x99, 0x30, 0x66, 0x08, 0x63, 0x8b,
+	0x0d, 0x6a, 0x42, 0x41, 0x08, 0xdc, 0x33, 0x0b, 0xe2, 0x5b, 0x26, 0x5a, 0x36, 0xe8, 0xc2, 0x73,
+	0xfa, 0x4b, 0xd0, 0x85, 0xef, 0xa6, 0x2a, 0x82, 0xf5, 0xe1, 0x6a, 0x9e, 0x30, 0x49, 0xb2, 0xfe,
+	0xa9, 0x82, 0x86, 0x32, 0xfd, 0x29, 0xe8, 0xb1, 0x1b, 0x8e, 0x78, 0x3a, 0x87, 0xee, 0xbc, 0xa6,
+	0x86, 0xe1, 0x37, 0x26, 0x21, 0xf4, 0xf3, 0x4b, 0x8d, 0xe9, 0xa3, 0xd5, 0x2c, 0x2e, 0xf7, 0xa8,
+	0x3b, 0xa0, 0x4f, 0xdc, 0xd8, 0x1d, 0x8b, 0x28, 0x95, 0x98, 0x14, 0x2a, 0x7b, 0x69, 0x11, 0xbf,
+	0x03, 0xb7, 0x7a, 0x7d, 0xd6, 0xda, 0xb7, 0xfb, 0x4d, 0xd6, 0x3d, 0xdc, 0x6b, 0x12, 0x05, 0x8b,
+	0x70, 0xdf, 0x7e, 0x21, 0xcb, 0x5a, 0xc5, 0x32, 0x68, 0xf5, 0x6b, 0x4e, 0x6b, 0x57, 0x96, 0x72,
+	0xbd, 0xeb, 0x34, 0x64, 0x29, 0x3b, 0xad, 0xce, 0x3e, 0xd1, 0x2a, 0xbb, 0x59, 0x2a, 0xea, 0xa0,
+	0x4e, 0x88, 0x42, 0x0d, 0xc8, 0x9d, 0x3e, 0x26, 0xaa, 0xf8, 0xdd, 0x22, 0x39, 0xf1, 0xbb, 0x4d,
+	0xf2, 0xe2, 0x77, 0x87, 0x68, 0x58, 0xed, 0x5f, 0xcd, 0xa2, 0x84, 0x13, 0x1d, 0x95, 0x0c, 0x23,
+	0x8f, 0x13, 0xa3, 0x52, 0x05, 0x58, 0x84, 0x0c, 0xf7, 0xc3, 0x28, 0xe4, 0xb2, 0x06, 0xc3, 0xd9,
+	0x78, 0xc0, 0x63, 0xe9, 0xc8, 0x60, 0x16, 0x04, 0x3c, 0x21, 0x39, 0xeb, 0xbf, 0x1a, 0xe8, 0x62,
+	0xa0, 0x88, 0xa0, 0xc9, 0xd3, 0x8b, 0xcb, 0x5c, 0x63, 0x99, 0x48, 0x7f, 0x85, 0x09, 0xee, 0x26,
+	0xd9, 0xcd, 0x3d, 0xbc, 0x79, 0x3a, 0x55, 0x7b, 0x88, 0x67, 0x92, 0x46, 0xf7, 0x40, 0x3f, 0xf7,
+	0x3d, 0x1e, 0x99, 0x5c, 0x04, 0xe9, 0xe3, 0x15, 0xf8, 0x47, 0x88, 0x3f, 0x88, 0x79, 0x3a, 0x62,
+	0x25, 0x1f, 0x15, 0xf9, 0x63, 0x1c, 0xef, 0x27, 0x2b, 0x2b, 0x6a, 0x21, 0x7e, 0x49, 0x91, 0xe0,
+	0xd3, 0x06, 0x68, 0x27, 0x7e, 0xc0, 0xcd, 0x91, 0xd0, 0x53, 0x5d, 0x41, 0xcf, 0x33, 0x3f, 0x58,
+	0x52, 0x23, 0xd8, 0xd6, 0x11, 0xac, 0x2d, 0xfb, 0x89, 0x45, 0x91, 0x9c, 0xce, 0xc6, 0x83, 0xd0,
+	0xf5, 0x83, 0xf4, 0x0e, 0x17, 0x1b, 0xd8, 0x3a, 0x42, 0x77, 0x2c, 0x2f, 0xb1, 0xc4, 0xc4, 0x1a,
+	0x33, 0xea, 0x6b, 0xdf, 0x4b, 0x4e, 0x45, 0x46, 0xe9, 0x4c, 0x0a, 0xa8, 0x77, 0xd9, 0xed, 0xef,
+	0x4d, 0xef, 0x13, 0x28, 0x2f, 0x1d, 0x63, 0x4e, 0x54, 0x97, 0x88, 0x14, 0x34, 0x7f, 0x18, 0x85,
+	0x99, 0x32, 0x5c, 0x57, 0x5a, 0x98, 0x97, 0x18, 0xc7, 0x12, 0xe8, 0x76, 0xfb, 0xa0, 0xff, 0x82,
+	0x28, 0x38, 0xb1, 0x0e, 0x0f, 0x9c, 0x6e, 0xad, 0xd1, 0xea, 0xec, 0x11, 0x55, 0x4c, 0x21, 0x66,
+	0xa7, 0x63, 0xea, 0x36, 0x94, 0x1b, 0xdd, 0xe7, 0x9d, 0xec, 0xab, 0x48, 0xf1, 0x46, 0xb7, 0x63,
+	0x13, 0xad, 0x5e, 0x82, 0xc2, 0x44, 0x5a, 0xb7, 0xfe, 0xa4, 0x82, 0x86, 0x2f, 0xb0, 0x45, 0xfb,
+	0x54, 0x57, 0x68, 0x9f, 0xc8, 0xb8, 0xdc, 0x3e, 0x1f, 0x81, 0x31, 0x40, 0x48, 0xd6, 0xf6, 0xef,
+	0x5c, 0xc5, 0x67, 0x29, 0xa6, 0xb2, 0x9d, 0xd5, 0xd8, 0xd2, 0x59, 0x70, 0xac, 0xd6, 0x7a, 0xfb,
+	0x72, 0xdc, 0xce, 0x87, 0x66, 0x0e, 0xe7, 0x57, 0xcf, 0xee, 0x93, 0x3c, 0x7a, 0x9d, 0x96, 0x82,
+	0xf5, 0x11, 0xe8, 0xa2, 0xa7, 0xe0, 0x45, 0x9d, 0xc4, 0xd1, 0x58, 0x38, 0xad, 0x33, 0xb1, 0xc6,
+	0x97, 0x50, 0x12, 0x89, 0xab, 0xd3, 0x59, 0x2e, 0x89, 0xac, 0x3f, 0x6b, 0x60, 0xc8, 0x77, 0x0b,
+	0xfd, 0xc5, 0xfc, 0x79, 0x23, 0xfb, 0xdd, 0xfb, 0x57, 0x3e, 0x6f, 0xaa, 0xcf, 0x04, 0xc6, 0x0e,
+	0x93, 0xf8, 0x22, 0x7b, 0xea, 0x58, 0x47, 0x18, 0xb5, 0xf9, 0x36, 0x25, 0x90, 0x3f, 0xe3, 0x17,
+	0x69, 0xd0, 0x70, 0x49, 0x1f, 0x83, 0x7e, 0xee, 0x06, 0x33, 0x99, 0x01, 0x6f, 0xce, 0xbd, 0x54,
+	0xf5, 0x11, 0x42, 0x98, 0x44, 0x3e, 0xcd, 0x7d, 0xaa, 0x5a, 0x7f, 0xc9, 0x81, 0x2e, 0x36, 0xe9,
+	0x17, 0x00, 0xe1, 0x2c, 0x08, 0x8e, 0xa5, 0x16, 0x19, 0x86, 0xf7, 0xae, 0xd6, 0xd2, 0x99, 0x05,
+	0x81, 0x20, 0xe1, 0xb3, 0x3b, 0xcc, 0x04, 0xfa, 0x01, 0xac, 0xc9, 0xee, 0x72, 0xbc, 0xf0, 0x44,
+	0x6d, 0x2a, 0xac, 0x2c, 0x77, 0xe7, 0xa0, 0x69, 0x12, 0xfb, 0xe1, 0x28, 0x05, 0x89, 0x2e, 0x8a,
+	0x20, 0xb9, 0x2b, 0x41, 0xef, 0x01, 0x0c, 0xa2, 0x28, 0xf3, 0x45, 0x8c, 0x31, 0x34, 0x85, 0x7b,
+	0x12, 0xf0, 0x54, 0x68, 0x99, 0x0d, 0x93, 0x14, 0xa2, 0x5f, 0xf3, 0x5c, 0x4c, 0x95, 0xcf, 0x86,
+	0xc9, 0xfc, 0xa0, 0x81, 0x3f, 0xcd, 0x98, 0x86, 0x60, 0xbe, 0xe5, 0xa0, 0x38, 0x53, 0xe7, 0x07,
+	0x0d, 0x32, 0xa1, 0x6e, 0x80, 0x76, 0xe6, 0x87, 0x9e, 0xf5, 0x05, 0x94, 0xe6, 0x08, 0xfc, 0x37,
+	0x24, 0x34, 0x66, 0xc1, 0xbd, 0x36, 0x02, 0x29, 0xb4, 0xf2, 0x2e, 0x94, 0xe6, 0x97, 0x49, 0xd7,
+	0x01, 0x3a, 0x87, 0x8e, 0x73, 0x7c, 0x54, 0x73, 0x0e, 0x6d, 0xa2, 0x58, 0x7f, 0x55, 0xa1, 0x50,
+	0x1b, 0x0e, 0xa3, 0x59, 0x98, 0xbc, 0xf1, 0xbe, 0xbe, 0xaa, 0xde, 0x9f, 0x80, 0xe1, 0x9e, 0xbb,
+	0x89, 0x1b, 0xa7, 0x0f, 0x88, 0x1f, 0xbd, 0xe6, 0x41, 0xaa, 0xab, 0x5a, 0x13, 0x20, 0x96, 0x82,
+	0xad, 0x2f, 0xc1, 0x90, 0x3b, 0xf4, 0x51, 0xd6, 0x59, 0xaf, 0x9e, 0xa3, 0xa2, 0x1d, 0x2d, 0xda,
+	0xe7, 0x5d, 0xd0, 0x87, 0x51, 0x10, 0xc5, 0xd2, 0x07, 0xdc, 0x17, 0x62, 0xbd, 0x98, 0xb9, 0x61,
+	0x7d, 0x05, 0xba, 0xe0, 0xbc, 0xe1, 0xfd, 0xc7, 0xa0, 0x4f, 0xfd, 0x6f, 0xb9, 0xac, 0xd6, 0xf5,
+	0xad, 0x1f, 0x5e, 0x65, 0xa8, 0xda, 0xf3, 0xbf, 0xc5, 0xfa, 0x46, 0x5c, 0xe5, 0x01, 0x68, 0x28,
+	0x62, 0xc1, 0x3a, 0x35, 0xb6, 0x67, 0x13, 0x05, 0x97, 0xbd, 0x76, 0xcd, 0x71, 0x88, 0x8a, 0xcb,
+	0x7e, 0xf3, 0xb0, 0x5d, 0x27, 0x39, 0xeb, 0x0f, 0x2a, 0xe8, 0xa2, 0x1d, 0xff, 0xbf, 0x36, 0x05,
+	0xe9, 0x92, 0xcd, 0x17, 0xa9, 0xcd, 0x32, 0x14, 0x7a, 0x8d, 0xe3, 0xed, 0x9f, 0x6f, 0xe2, 0x38,
+	0x96, 0xc2, 0xce, 0xa7, 0x9b, 0x13, 0xd9, 0xf0, 0x9a, 0x8d, 0xe3, 0x4f, 0xb6, 0x36, 0x27, 0x24,
+	0x87, 0x6d, 0xa3, 0xd9, 0x38, 0x7e, 0xbc, 0x89, 0x9f, 0xf2, 0xa2, 0x35, 0xa2, 0xb8, 0xb3, 0xb3,
+	0x39, 0x21, 0x5a, 0x26, 0x6e, 0x3d, 0x46, 0x2d, 0x7a, 0xfd, 0xde, 0xdf, 0x5f, 0x6e, 0xa8, 0xdf,
+	0xbd, 0xdc, 0x50, 0xff, 0xf3, 0x72, 0x43, 0xfd, 0xdd, 0xab, 0x0d, 0xe5, 0xbb, 0x57, 0x1b, 0xca,
+	0xbf, 0x5f, 0x6d, 0x28, 0xbf, 0xce, 0x4d, 0x06, 0x03, 0x43, 0xfc, 0xf7, 0xde, 0xfe, 0x5f, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0x44, 0x64, 0x03, 0x7e, 0x8b, 0x0f, 0x00, 0x00,
 }
 
 func (m *Model) Marshal() (dAtA []byte, err error) {
@@ -2514,6 +3123,434 @@ func (m *Model_Range) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *Model_Struct) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Struct) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Fields) > 0 {
+		for k := range m.Fields {
+			v := m.Fields[k]
+			baseI := i
+			if v != nil {
+				{
+					size, err := v.MarshalToSizedBuffer(dAtA[:i])
+					if err != nil {
+						return 0, err
+					}
+					i -= size
+					i = encodeVarintModels(dAtA, i, uint64(size))
+				}
+				i--
+				dAtA[i] = 0x12
+			}
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintModels(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintModels(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Model_Struct_Value) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Struct_Value) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_Value) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Kind != nil {
+		{
+			size := m.Kind.Size()
+			i -= size
+			if _, err := m.Kind.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Model_Struct_Value_NullValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_Value_NullValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i = encodeVarintModels(dAtA, i, uint64(m.NullValue))
+	i--
+	dAtA[i] = 0x8
+	return len(dAtA) - i, nil
+}
+func (m *Model_Struct_Value_NumberValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_Value_NumberValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= 8
+	encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.NumberValue))))
+	i--
+	dAtA[i] = 0x11
+	return len(dAtA) - i, nil
+}
+func (m *Model_Struct_Value_StringValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_Value_StringValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.StringValue)
+	copy(dAtA[i:], m.StringValue)
+	i = encodeVarintModels(dAtA, i, uint64(len(m.StringValue)))
+	i--
+	dAtA[i] = 0x1a
+	return len(dAtA) - i, nil
+}
+func (m *Model_Struct_Value_BoolValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_Value_BoolValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i--
+	if m.BoolValue {
+		dAtA[i] = 1
+	} else {
+		dAtA[i] = 0
+	}
+	i--
+	dAtA[i] = 0x20
+	return len(dAtA) - i, nil
+}
+func (m *Model_Struct_Value_StructValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_Value_StructValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.StructValue != nil {
+		{
+			size, err := m.StructValue.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Model_Struct_Value_ListValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_Value_ListValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.ListValue != nil {
+		{
+			size, err := m.ListValue.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Model_Struct_ListValue) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Struct_ListValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Struct_ListValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Values) > 0 {
+		for iNdEx := len(m.Values) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Values[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintModels(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Model_Account) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Account) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Avatar != nil {
+		{
+			size, err := m.Avatar.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Model_Account_Avatar) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Account_Avatar) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Account_Avatar) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Avatar != nil {
+		{
+			size := m.Avatar.Size()
+			i -= size
+			if _, err := m.Avatar.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Model_Account_Avatar_Image) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Account_Avatar_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Image != nil {
+		{
+			size, err := m.Image.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Model_Account_Avatar_Color) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Account_Avatar_Color) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Color)
+	copy(dAtA[i:], m.Color)
+	i = encodeVarintModels(dAtA, i, uint64(len(m.Color)))
+	i--
+	dAtA[i] = 0x12
+	return len(dAtA) - i, nil
+}
+func (m *Model_Image) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Image) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Sizes) > 0 {
+		dAtA22 := make([]byte, len(m.Sizes)*10)
+		var j21 int
+		for _, num := range m.Sizes {
+			for num >= 1<<7 {
+				dAtA22[j21] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j21++
+			}
+			dAtA22[j21] = uint8(num)
+			j21++
+		}
+		i -= j21
+		copy(dAtA[i:], dAtA22[:j21])
+		i = encodeVarintModels(dAtA, i, uint64(j21))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Model_Video) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Model_Video) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Model_Video) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Sizes) > 0 {
+		dAtA24 := make([]byte, len(m.Sizes)*10)
+		var j23 int
+		for _, num := range m.Sizes {
+			for num >= 1<<7 {
+				dAtA24[j23] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j23++
+			}
+			dAtA24[j23] = uint8(num)
+			j23++
+		}
+		i -= j23
+		copy(dAtA[i:], dAtA24[:j23])
+		i = encodeVarintModels(dAtA, i, uint64(j23))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintModels(dAtA []byte, offset int, v uint64) int {
 	offset -= sovModels(v)
 	base := offset
@@ -2953,6 +3990,211 @@ func (m *Model_Range) Size() (n int) {
 	}
 	if m.To != 0 {
 		n += 1 + sovModels(uint64(m.To))
+	}
+	return n
+}
+
+func (m *Model_Struct) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Fields) > 0 {
+		for k, v := range m.Fields {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovModels(uint64(l))
+			}
+			mapEntrySize := 1 + len(k) + sovModels(uint64(len(k))) + l
+			n += mapEntrySize + 1 + sovModels(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *Model_Struct_Value) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Kind != nil {
+		n += m.Kind.Size()
+	}
+	return n
+}
+
+func (m *Model_Struct_Value_NullValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += 1 + sovModels(uint64(m.NullValue))
+	return n
+}
+func (m *Model_Struct_Value_NumberValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += 9
+	return n
+}
+func (m *Model_Struct_Value_StringValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.StringValue)
+	n += 1 + l + sovModels(uint64(l))
+	return n
+}
+func (m *Model_Struct_Value_BoolValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += 2
+	return n
+}
+func (m *Model_Struct_Value_StructValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.StructValue != nil {
+		l = m.StructValue.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *Model_Struct_Value_ListValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.ListValue != nil {
+		l = m.ListValue.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *Model_Struct_ListValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Values) > 0 {
+		for _, e := range m.Values {
+			l = e.Size()
+			n += 1 + l + sovModels(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Model_Account) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	if m.Avatar != nil {
+		l = m.Avatar.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+
+func (m *Model_Account_Avatar) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Avatar != nil {
+		n += m.Avatar.Size()
+	}
+	return n
+}
+
+func (m *Model_Account_Avatar_Image) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Image != nil {
+		l = m.Image.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *Model_Account_Avatar_Color) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Color)
+	n += 1 + l + sovModels(uint64(l))
+	return n
+}
+func (m *Model_Image) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	if len(m.Sizes) > 0 {
+		l = 0
+		for _, e := range m.Sizes {
+			l += sovModels(uint64(e))
+		}
+		n += 1 + sovModels(uint64(l)) + l
+	}
+	return n
+}
+
+func (m *Model_Video) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	if len(m.Sizes) > 0 {
+		l = 0
+		for _, e := range m.Sizes {
+			l += sovModels(uint64(e))
+		}
+		n += 1 + sovModels(uint64(l)) + l
 	}
 	return n
 }
@@ -3492,7 +4734,7 @@ func (m *Model_Block_Header) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Fields == nil {
-				m.Fields = &Struct{}
+				m.Fields = &Model_Struct{}
 			}
 			if err := m.Fields.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5270,6 +6512,1063 @@ func (m *Model_Range) Unmarshal(dAtA []byte) error {
 				if b < 0x80 {
 					break
 				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Struct) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Struct: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Struct: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Fields", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Fields == nil {
+				m.Fields = make(map[string]*Model_Struct_Value)
+			}
+			var mapkey string
+			var mapvalue *Model_Struct_Value
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowModels
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowModels
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthModels
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey < 0 {
+						return ErrInvalidLengthModels
+					}
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowModels
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= int(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthModels
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if postmsgIndex < 0 {
+						return ErrInvalidLengthModels
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &Model_Struct_Value{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipModels(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthModels
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Fields[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Value: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Value: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NullValue", wireType)
+			}
+			var v Model_Struct_NullValue
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= Model_Struct_NullValue(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Kind = &Model_Struct_Value_NullValue{v}
+		case 2:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NumberValue", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.Kind = &Model_Struct_Value_NumberValue{float64(math.Float64frombits(v))}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StringValue", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Kind = &Model_Struct_Value_StringValue{string(dAtA[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BoolValue", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			b := bool(v != 0)
+			m.Kind = &Model_Struct_Value_BoolValue{b}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StructValue", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Model_Struct{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Kind = &Model_Struct_Value_StructValue{v}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ListValue", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Model_Struct_ListValue{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Kind = &Model_Struct_Value_ListValue{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Struct_ListValue) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListValue: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListValue: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Values", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Values = append(m.Values, &Model_Struct_Value{})
+			if err := m.Values[len(m.Values)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Account) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Account: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Account: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Avatar", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Avatar == nil {
+				m.Avatar = &Model_Account_Avatar{}
+			}
+			if err := m.Avatar.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Account_Avatar) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Avatar: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Avatar: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Image", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Model_Image{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Avatar = &Model_Account_Avatar_Image{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Color", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Avatar = &Model_Account_Avatar_Color{string(dAtA[iNdEx:postIndex])}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Image) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Image: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Image: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType == 0 {
+				var v Model_Image_Size
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowModels
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= Model_Image_Size(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Sizes = append(m.Sizes, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowModels
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLengthModels
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return ErrInvalidLengthModels
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				if elementCount != 0 && len(m.Sizes) == 0 {
+					m.Sizes = make([]Model_Image_Size, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v Model_Image_Size
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowModels
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= Model_Image_Size(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Sizes = append(m.Sizes, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sizes", wireType)
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Model_Video) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Video: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Video: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType == 0 {
+				var v Model_Video_Size
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowModels
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= Model_Video_Size(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Sizes = append(m.Sizes, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowModels
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLengthModels
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return ErrInvalidLengthModels
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				if elementCount != 0 && len(m.Sizes) == 0 {
+					m.Sizes = make([]Model_Video_Size, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v Model_Video_Size
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowModels
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= Model_Video_Size(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Sizes = append(m.Sizes, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sizes", wireType)
 			}
 		default:
 			iNdEx = preIndex

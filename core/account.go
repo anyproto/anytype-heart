@@ -93,7 +93,7 @@ func (mw *Middleware) AccountRecover(_ *pb.AccountRecoverRequest) *pb.AccountRec
 	}
 
 	sendAccountAddEvent := func(index int, account *pb.Account) {
-		m := &pb.Event{Message: &pb.Event_AccountShow{AccountShow: &pb.AccountShow{Index: int64(index), Account: account}}}
+		m := &pb.Event{Message: &pb.Event_Account_Show{Index: int64(index), Account: account}}
 		if mw.SendEvent != nil {
 			mw.SendEvent(m)
 		}
