@@ -23,7 +23,7 @@ type Middleware struct {
 	pin                 string
 	mnemonic            string
 	accountSearchCancel context.CancelFunc
-	localAccounts       []*pb.Account
+	localAccounts       []*pb.Model_Account
 	SendEvent           func(event *pb.Event)
 	*libCore.Anytype
 }

@@ -11,9 +11,9 @@ import (
 )
 
 func Test_Unpack(t *testing.T) {
-	b, _ := proto.Marshal(&pb.WalletRecoverResponse{})
+	b, _ := proto.Marshal(&pb.Rpc_Wallet_Recover_Response{})
 
-	var msg pb.WalletRecoverResponse
+	var msg pb.Rpc_Wallet_Recover_Response
 	err := proto.Unmarshal(b, &msg)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -27,7 +27,7 @@ func Test_EventHandler(t *testing.T) {
 		eventReceived = event
 	})
 
-	eventSent := &pb.Event{Message: &pb.Event_AccountShow{AccountShow: &pb.AccountShow{Index: 0, Account: &pb.Account{Id: "1", Name: "name"}}}}
+	eventSent := &pb.Event{Message: &pb.Event_AccountShow{AccountShow: &pb.Event_Account_Show{Index: 0, Account: &pb.Model_Account{Id: "1", Name: "name"}}}}
 	mw.SendEvent(eventSent)
 
 	require.Equal(t, eventSent, eventReceived, "eventReceived not equal to eventSent: %s %s", eventSent, eventReceived)

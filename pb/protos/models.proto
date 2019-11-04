@@ -1,0 +1,253 @@
+syntax="proto3";
+package anytype;
+option go_package = "pb";
+
+message Model {
+    message Block {
+        Header header = 1;
+        repeated string children = 2;
+
+        oneof content {
+            Content.Dashboard dashboard = 11;
+            Content.Page page = 12;
+            Content.Dataview dataview = 13;
+
+            Content.Text text = 14;
+            Content.Media media = 15;
+            Content.Layout layout = 16;
+            Content.Div div = 17;
+        }
+
+        message Header {
+            string id = 1;
+            Type type = 2;
+            Struct fields = 3;
+            Permissions permissions = 4;
+
+            message Permissions {
+                bool read = 1;
+                bool edit = 2;
+                bool remove = 3;
+                bool drag = 4;
+                bool dropOn = 5;
+            }
+
+            enum Type {
+                DASHBOARD = 0;
+                PAGE = 1;
+                DATAVIEW = 2;
+
+                TEXT = 3;
+                FILE = 4;
+                PICTURE = 5;
+                VIDEO = 6;
+                BOOKMARK = 7;
+
+                LAYOUT = 8;
+                DIV = 9;
+            }    
+        }
+
+        message Content {
+            message Layout {
+                Style style = 1;
+                
+                enum Style {
+                    ROW = 0;
+                    COLUMN = 1;
+                }    
+            }
+
+            message Div {}
+
+            message Dashboard {
+                enum Style {
+                    MAIN_SCREEN = 0;
+                    // ...
+                }
+
+                Style style = 1;
+                repeated Header headers = 2;
+            }
+
+            message Dataview {
+                // ...
+            }
+
+            message Text {
+                enum Style {
+                    p = 0;
+                    h1 = 1;
+                    h2 = 2;
+                    h3 = 3;
+                    h4 = 4;
+                    quote = 5;
+                    code = 6;
+                }
+
+                enum MarkerType {
+                    none = 0;
+                    number = 1;
+                    bullet = 2;
+                }
+
+                message Marks {
+                    repeated Mark marks = 1;
+                }
+
+                message Mark {
+
+                    enum Type {
+                        STRIKETHROUGH = 0;
+                        KEYBOARD = 1;
+                        ITALIC = 2;
+                        BOLD = 3;
+                        LINK = 4;
+                    }
+
+                    Range range = 1;
+                    Type type = 2;
+                    string param = 3; // link, color, etc
+                }
+
+                string text = 1;
+                Style style = 2;
+                Marks marksList = 3;
+
+                bool toggleable = 4;
+                MarkerType markerType = 5;
+
+                bool checkable = 6;
+                bool checked = 7;
+            }
+
+            message Media {
+                bytes content = 1;
+                State state = 2;
+
+                oneof preview {
+                    VideoPreview video = 101;
+                    ImagePreview image = 102;
+                    FilePreview file = 103;
+                }
+
+                message VideoPreview {
+                    bytes thumbnail = 1;
+                    string name = 2;
+                    int32 width = 3;
+                }
+
+                message ImagePreview {
+                    bytes thumbnail = 1;
+                    string name = 2;
+                    int32 width = 3;
+                }
+
+                message FilePreview {
+                    string name = 1;
+                    string icon = 2;
+                }    
+
+                enum State {
+                    EMPTY = 0;
+                    UPLOADING = 1;
+                    PREVIEW = 2;
+                    DOWNLOADING = 3;
+                    DONE = 4;
+                }
+            }
+
+            message Page {
+                enum Style {
+                    EMPTY = 0;
+                    TASK = 1;
+                    BOOKMARK = 2;
+                    SET = 3;
+                    // ...
+                }
+
+                Style style = 1;
+            } 
+        } 
+    }
+
+    message Range {
+        int32 from = 1;
+        int32 to = 2;
+    } 
+
+    message Struct {
+        // Unordered map of dynamically typed values.
+        map<string, Value> fields = 1;
+
+        // `Value` represents a dynamically typed value which can be either
+        // null, a number, a string, a boolean, a recursive struct value, or a
+        // list of values. A producer of value is expected to set one of that
+        // variants, absence of any variant indicates an error.
+        message Value {
+            oneof kind { // The kind of value.
+                NullValue null_value = 1; // Represents a null value.
+                double number_value = 2; // Represents a double value.
+                string string_value = 3; // Represents a string value.
+                bool bool_value = 4; // Represents a boolean value.
+                Struct struct_value = 5; // Represents a structured value.
+                ListValue list_value = 6;  // Represents a repeated `Value`.
+            }
+        }
+
+        // `NullValue` is a singleton enumeration to represent the null value for the
+        enum NullValue {
+            NULL_VALUE = 0;
+        }
+
+        // `ListValue` is a wrapper around a repeated field of values.
+        message ListValue {
+            repeated Value values = 1;
+        }  
+    }
+
+    /**
+    * Contains basic information about user account
+    */
+    message Account {
+        string id = 1; // User's thread id
+        string name = 2; // User name, that associated with this account
+        Avatar avatar = 3; // Avatar of a user's account
+
+        /**
+        * Avatar of a user's account. It could be an image or color
+        */
+        message Avatar {
+            oneof avatar {
+                Image image = 1; // Image of the avatar. Contains hash and size
+                string color = 2; // Color of the avatar, if no image
+            }
+        }
+    } 
+
+    message Image {
+        string id = 1;
+        repeated Size sizes = 2;
+
+        enum Size {
+            LARGE = 0;
+            SMALL = 1;
+            THUMB = 2;
+        }    
+    }
+
+    message Video {
+        string id = 1;
+        repeated Size sizes = 2;
+
+        enum Size {
+            SD_360p = 0;
+            SD_480p = 1;
+            HD_720p = 2;
+            HD_1080p = 3;
+            UHD_1440p = 4;
+            UHD_2160p = 5;
+        }    
+    }       
+}
+
