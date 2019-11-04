@@ -33,7 +33,7 @@ func Test_AccountCreate(t *testing.T) {
 	accountCreateResp := mw.AccountCreate(&pb.Rpc_Account_Create_Request{Name: "name_test", Avatar: &pb.Rpc_Account_Create_Request_AvatarLocalPath{"testdata/pic1.jpg"}})
 	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreate_Response has account with wrong name '%s'", accountCreateResp.Account.Name)
 
-	imageGetBlobResp := mw.ImageGetBlob(&pb.Rpc_Image_Get_Blob_Request{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: pb.ImageSize_SMALL})
+	imageGetBlobResp := mw.ImageGetBlob(&pb.Rpc_Image_Get_Blob_Request{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: pb.Model_Image_SMALL})
 	require.Equal(t, pb.Rpc_Image_Get_Blob_Response_Error_NULL, imageGetBlobResp.Error.Code, "ImageGetBlob_Response contains error: %+v", imageGetBlobResp.Error)
 	require.True(t, len(imageGetBlobResp.Blob) > 0, "ava size should be greater than 0")
 
@@ -52,7 +52,7 @@ func Test_AccountRecover_LocalWithoutRestart(t *testing.T) {
 
 	var accountCh = make(chan *pb.Model_Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_Account_Show); ok {
+		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -67,7 +67,7 @@ func Test_AccountRecover_LocalWithoutRestart(t *testing.T) {
 	accountRecoverResp := mw.AccountRecover(&pb.Rpc_Account_Recover_Request{})
 	require.Equal(t, pb.Rpc_Account_Recover_Response_Error_NULL, accountRecoverResp.Error.Code, "AccountRecover_Response contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.Rpc_Account_
+	var account *pb.Model_Account
 	select {
 	case account = <-accountCh:
 		break
@@ -96,7 +96,7 @@ func Test_AccountRecover_LocalAfterRestart(t *testing.T) {
 
 	var accountCh = make(chan *pb.Model_Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_Account_Show); ok {
+		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -111,7 +111,7 @@ func Test_AccountRecover_LocalAfterRestart(t *testing.T) {
 	accountRecoverResp := mw.AccountRecover(&pb.Rpc_Account_Recover_Request{})
 	require.Equal(t, pb.Rpc_Account_Recover_Response_Error_NULL, accountRecoverResp.Error.Code, "AccountRecover_Response contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.Rpc_Account_
+	var account *pb.Model_Account
 	select {
 	case account = <-accountCh:
 		break
@@ -128,9 +128,9 @@ func Test_AccountRecover_RemoteNotExisting(t *testing.T) {
 	mw := recoverWallet(t, "limit oxygen february destroy subway toddler umbrella nose praise shield afford eager")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
 
-	var account *pb.Rpc_Account_
+	var account *pb.Model_Account
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_Account_Show); ok {
+		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
 			account = aa.AccountShow.Account
 		}
 	}
@@ -150,7 +150,7 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 
 	var accountCh = make(chan *pb.Model_Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_Account_Show); ok {
+		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -162,7 +162,7 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 	accountRecoverResp := mw.AccountRecover(&pb.Rpc_Account_Recover_Request{})
 	require.Equal(t, pb.Rpc_Account_Recover_Response_Error_NULL, accountRecoverResp.Error.Code, "AccountRecover_Response contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.Rpc_Account_
+	var account *pb.Model_Account
 	select {
 	case account = <-accountCh:
 		break
