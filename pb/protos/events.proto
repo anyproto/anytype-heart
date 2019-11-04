@@ -26,7 +26,7 @@ message Event {
         */
         message Show {
             int64  index  = 1; // Number of an account in an all found accounts list
-            Account account = 2; // An Account, that has been found for the mnemonic
+            Model.Account account = 2; // An Account, that has been found for the mnemonic
         }
     }
 

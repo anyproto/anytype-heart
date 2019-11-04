@@ -4,9 +4,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) BlockHistoryMove(req *pb.BlockHistoryMoveRequest) *pb.BlockHistoryMoveResponse {
-	response := func(code pb.BlockHistoryMoveResponse_Error_Code, err error) *pb.BlockHistoryMoveResponse {
-		m := &pb.BlockHistoryMoveResponse{Error: &pb.BlockHistoryMoveResponse_Error{Code: code}}
+func (mw *Middleware) BlockHistoryMove(req *pb.Rpc_Block_History_Move_Request) *pb.Rpc_Block_History_Move_Response {
+	response := func(code pb.Rpc_Block_History_Move_Response_Error_Code, err error) *pb.Rpc_Block_History_Move_Response {
+		m := &pb.Rpc_Block_History_Move_Response{Error: &pb.Rpc_Block_History_Move_Response_Error{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -16,5 +16,5 @@ func (mw *Middleware) BlockHistoryMove(req *pb.BlockHistoryMoveRequest) *pb.Bloc
 
 	// TODO
 
-	return response(pb.BlockHistoryMoveResponse_Error_NULL, nil)
+	return response(pb.Rpc_Block_History_Move_Response_Error_NULL, nil)
 }
