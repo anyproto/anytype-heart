@@ -167,7 +167,6 @@ message Model {
                 }
 
                 Style style = 1;
-                repeated Block blocks = 2;
             } 
         } 
     }
