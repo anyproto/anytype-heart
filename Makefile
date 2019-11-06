@@ -54,10 +54,12 @@ build-android:
 	mkdir -p dist/android/ && mv mobile.aar mobile/dist/android/
 
 setup-protoc:
-	rm -rf $(GOPATH)/src/github.com/gogo/protobuf
+	rm -rf $(GOPATH)/src/github.com/gogo
 	mkdir -p $(GOPATH)/src/github.com/gogo
 	cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/anytypeio/protobuf
 	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
+	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
+	cd $(GOPATH); go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 	export PATH=$(PATH):$(GOROOT)/bin:$(GOPATH)/bin
 
 # protos: # libprotoc 3.9.1
@@ -66,5 +68,6 @@ setup-protoc:
 
 protos:
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/golang/protobuf/ptypes/struct)
-	cd pb/protos; protoc --gogofaster_out=$(P_STRUCT):.. *.proto
-	cd pb/protos/service; PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=.. -I=. --gogofast_out=plugins=gomobile:../../../lib service.proto
+	cd pb/protos; GOGO_NO_UNDERSCORE=1 protoc --gogofaster_out=$(P_STRUCT):.. *.proto
+	cd pb/protos/service; GOGO_NO_UNDERSCORE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=.. -I=. --gogofaster_out=plugins=gomobile:../../../lib service.proto
+	cd pb/protos; GOGO_NO_UNDERSCORE=1 protoc --doc_out=../../docs --doc_opt=markdown,proto.md service/*.proto *.proto

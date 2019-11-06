@@ -4,9 +4,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) LogSend(req *pb.LogSendRequest) *pb.LogSendResponse {
-	response := func(code pb.LogSendResponse_Error_Code, err error) *pb.LogSendResponse {
-		m := &pb.LogSendResponse{Error: &pb.LogSendResponse_Error{Code: code}}
+func (mw *Middleware) LogSend(req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
+	response := func(code pb.RpcLogSendResponseErrorCode, err error) *pb.RpcLogSendResponse {
+		m := &pb.RpcLogSendResponse{Error: &pb.RpcLogSendResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -15,19 +15,19 @@ func (mw *Middleware) LogSend(req *pb.LogSendRequest) *pb.LogSendResponse {
 	}
 
 	switch req.Level {
-	case pb.LogSendRequest_FATAL:
+	case pb.RpcLogSendRequest_FATAL:
 		log.Fatal(req.Message)
-	case pb.LogSendRequest_PANIC:
+	case pb.RpcLogSendRequest_PANIC:
 		log.Panic(req.Message)
-	case pb.LogSendRequest_DEBUG:
+	case pb.RpcLogSendRequest_DEBUG:
 		log.Debug(req.Message)
-	case pb.LogSendRequest_INFO:
+	case pb.RpcLogSendRequest_INFO:
 		log.Info(req.Message)
-	case pb.LogSendRequest_WARNING:
+	case pb.RpcLogSendRequest_WARNING:
 		log.Warning(req.Message)
-	case pb.LogSendRequest_ERROR:
+	case pb.RpcLogSendRequest_ERROR:
 		log.Error(req.Message)
 	}
 
-	return response(pb.LogSendResponse_Error_NULL, nil)
+	return response(pb.RpcLogSendResponseError_NULL, nil)
 }

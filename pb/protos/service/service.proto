@@ -2,26 +2,23 @@ syntax="proto3";
 package anytype;
 option go_package = "lib";
 
-import "account.proto";
-import "file.proto";
-import "misc.proto";
-import "block.proto";
+import "commands.proto";
 
 service ClientCommands {
-    rpc WalletCreate (anytype.WalletCreateRequest) returns (anytype.WalletCreateResponse);
-    rpc WalletRecover (anytype.WalletRecoverRequest) returns (anytype.WalletRecoverResponse);
-    rpc AccountRecover (anytype.AccountRecoverRequest) returns (anytype.AccountRecoverResponse);
-    rpc AccountCreate (anytype.AccountCreateRequest) returns (anytype.AccountCreateResponse);
-    rpc AccountSelect (anytype.AccountSelectRequest) returns (anytype.AccountSelectResponse);
+    rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
+    rpc WalletRecover (anytype.Rpc.Wallet.Recover.Request) returns (anytype.Rpc.Wallet.Recover.Response);
+    rpc AccountRecover (anytype.Rpc.Account.Recover.Request) returns (anytype.Rpc.Account.Recover.Response);
+    rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);
+    rpc AccountSelect (anytype.Rpc.Account.Select.Request) returns (anytype.Rpc.Account.Select.Response);
 
-    rpc ImageGetBlob (anytype.ImageGetBlobRequest) returns (anytype.ImageGetBlobResponse);
+    rpc ImageGetBlob (anytype.Rpc.Image.Get.Blob.Request) returns (anytype.Rpc.Image.Get.Blob.Response);
 
-    rpc VersionGet (VersionGetRequest) returns (VersionGetResponse);
-    rpc LogSend (LogSendRequest) returns (LogSendResponse);
+    rpc VersionGet (anytype.Rpc.Version.Get.Request) returns (anytype.Rpc.Version.Get.Response);
+    rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
-    rpc BlockOpen (BlockOpenRequest) returns (BlockOpenResponse);
-    rpc BlockCreate (BlockCreateRequest) returns (BlockCreateResponse);
-    rpc BlockUpdate (BlockUpdateRequest) returns (BlockUpdateResponse);
-
-    rpc LinkPreview (LinkPreviewRequest) returns (LinkPreviewResponse);
+    rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);
+    rpc BlockCreate (anytype.Rpc.Block.Create.Request) returns (anytype.Rpc.Block.Create.Response);
+    rpc BlockUpdate (anytype.Rpc.Block.Update.Request) returns (anytype.Rpc.Block.Update.Response);
+    rpc BlockHistoryMove (anytype.Rpc.Block.History.Move.Request) returns (anytype.Rpc.Block.History.Move.Response);
+    // rpc BlockFilesUpload (Block Rpc.History.Move.Request) returns (BlockRpc..History Move.Response);
 }

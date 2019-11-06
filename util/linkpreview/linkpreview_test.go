@@ -23,13 +23,13 @@ func TestLinkPreview_Fetch(t *testing.T) {
 
 		info, err := lp.Fetch(ctx, ts.URL)
 		require.NoError(t, err)
-		assert.Equal(t, pb.LinkPreviewResponse{
+		assert.Equal(t, pb.ModelPreviewLink{
 			Url:         ts.URL,
 			FaviconUrl:  ts.URL + "/favicon.ico",
 			Title:       "Title",
 			Description: "Description",
 			ImageUrl:    "http://site.com/images/example.jpg",
-			Type:        pb.LinkPreviewResponse_PAGE,
+			Type:        pb.ModelPreviewLink_PAGE,
 		}, info)
 	})
 
@@ -40,13 +40,13 @@ func TestLinkPreview_Fetch(t *testing.T) {
 
 		info, err := lp.Fetch(ctx, ts.URL)
 		require.NoError(t, err)
-		assert.Equal(t, pb.LinkPreviewResponse{
+		assert.Equal(t, pb.ModelPreviewLink{
 			Url:         ts.URL,
 			FaviconUrl:  ts.URL + "/favicon.ico",
 			Title:       "Title",
 			Description: "Sed ut perspiciatis, unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam eaque ipsa, quae ab illo inventore veritatis et quasi architecto beatae vitae dicta...",
 			ImageUrl:    "http://site.com/images/example.jpg",
-			Type:        pb.LinkPreviewResponse_PAGE,
+			Type:        pb.ModelPreviewLink_PAGE,
 		}, info)
 	})
 
@@ -58,11 +58,11 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
-		assert.Equal(t, pb.LinkPreviewResponse{
+		assert.Equal(t, pb.ModelPreviewLink{
 			Url:      url,
 			Title:    "filename.jpg",
 			ImageUrl: url,
-			Type:     pb.LinkPreviewResponse_IMAGE,
+			Type:     pb.ModelPreviewLink_IMAGE,
 		}, info)
 	})
 
@@ -74,10 +74,10 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
-		assert.Equal(t, pb.LinkPreviewResponse{
+		assert.Equal(t, pb.ModelPreviewLink{
 			Url:   url,
 			Title: "filename.jpg",
-			Type:  pb.LinkPreviewResponse_UNEXPECTED,
+			Type:  pb.ModelPreviewLink_UNEXPECTED,
 		}, info)
 	})
 }

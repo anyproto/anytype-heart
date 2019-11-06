@@ -4,9 +4,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) BlockCreate(req *pb.BlockCreateRequest) *pb.BlockCreateResponse {
-	response := func(code pb.BlockCreateResponse_Error_Code, err error) *pb.BlockCreateResponse {
-		m := &pb.BlockCreateResponse{Error: &pb.BlockCreateResponse_Error{Code: code}}
+func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
+	response := func(code pb.RpcBlockCreateResponseErrorCode, err error) *pb.RpcBlockCreateResponse {
+		m := &pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -14,20 +14,20 @@ func (mw *Middleware) BlockCreate(req *pb.BlockCreateRequest) *pb.BlockCreateRes
 		return m
 	}
 
-	block := &pb.Block{} // TODO
+	/*block := &pb.ModelBlock{} // TODO
 
-	m := &pb.Event{Message: &pb.Event_BlockCreate{&pb.BlockCreate{Block: block}}}
+	m := &pb.Event{Message: &pb.EventBlockCreate{&pb.RpcBlockCreate{Block: block}}}
 
 	if mw.SendEvent != nil {
 		mw.SendEvent(m)
-	}
+	}*/
 
-	return response(pb.BlockCreateResponse_Error_NULL, nil)
+	return response(pb.RpcBlockCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockOpen(req *pb.BlockOpenRequest) *pb.BlockOpenResponse {
-	response := func(code pb.BlockOpenResponse_Error_Code, err error) *pb.BlockOpenResponse {
-		m := &pb.BlockOpenResponse{Error: &pb.BlockOpenResponse_Error{Code: code}}
+func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
+	response := func(code pb.RpcBlockOpenResponseErrorCode, err error) *pb.RpcBlockOpenResponse {
+		m := &pb.RpcBlockOpenResponse{Error: &pb.RpcBlockOpenResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -35,20 +35,20 @@ func (mw *Middleware) BlockOpen(req *pb.BlockOpenRequest) *pb.BlockOpenResponse 
 		return m
 	}
 
-	block := &pb.Block{} // TODO
+	/*block := &pb.ModelBlock{} // TODO
 
-	m := &pb.Event{Message: &pb.Event_BlockShow{&pb.BlockShow{Block: block}}}
+	m := &pb.Event{Message: &pb.EventBlockShow{&pb.RpcBlockShow{Block: block}}}
 
 	if mw.SendEvent != nil {
 		mw.SendEvent(m)
-	}
+	}*/
 
-	return response(pb.BlockOpenResponse_Error_NULL, nil)
+	return response(pb.RpcBlockOpenResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockUpdate(req *pb.BlockUpdateRequest) *pb.BlockUpdateResponse {
-	response := func(code pb.BlockUpdateResponse_Error_Code, err error) *pb.BlockUpdateResponse {
-		m := &pb.BlockUpdateResponse{Error: &pb.BlockUpdateResponse_Error{Code: code}}
+func (mw *Middleware) BlockUpdate(req *pb.RpcBlockUpdateRequest) *pb.RpcBlockUpdateResponse {
+	response := func(code pb.RpcBlockUpdateResponseErrorCode, err error) *pb.RpcBlockUpdateResponse {
+		m := &pb.RpcBlockUpdateResponse{Error: &pb.RpcBlockUpdateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -56,13 +56,14 @@ func (mw *Middleware) BlockUpdate(req *pb.BlockUpdateRequest) *pb.BlockUpdateRes
 		return m
 	}
 
-	changes := &pb.BlockChanges{} // TODO
+	/*
+		 changes := &pb.RpcBlockChanges{} // TODO
 
-	m := &pb.Event{Message: &pb.Event_BlockUpdate{&pb.BlockUpdate{changes}}}
+		 m := &pb.Event{Message: &pb.EventBlockUpdate{&pb.RpcBlockUpdate{changes}}}
 
-	if mw.SendEvent != nil {
-		mw.SendEvent(m)
-	}
+		if mw.SendEvent != nil {
+			mw.SendEvent(m)
+		}*/
 
-	return response(pb.BlockUpdateResponse_Error_NULL, nil)
+	return response(pb.RpcBlockUpdateResponseError_NULL, nil)
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Log(t *testing.T) {
+func TestLog(t *testing.T) {
 	mw := Middleware{}
 	file, err := ioutil.TempFile("", "testlog")
 	require.NoError(t, err)
@@ -21,13 +21,13 @@ func Test_Log(t *testing.T) {
 	os.Setenv("GOLOG_FILE", file.Name())
 	logger.SetupLogging()
 	logger.SetDebugLogging()
-	for level, levelText := range map[pb.LogSendRequest_Level]string{
-		pb.LogSendRequest_ERROR:   "[31mERROR",
-		pb.LogSendRequest_WARNING: "[33mWARNI",
+	for level, levelText := range map[pb.RpcLogSendRequestLevel]string{
+		pb.RpcLogSendRequest_ERROR:   "[31mERROR",
+		pb.RpcLogSendRequest_WARNING: "[33mWARNI",
 	} {
 		text := fmt.Sprintf("test_log_%s", time.Now().String())
-		resp := mw.LogSend(&pb.LogSendRequest{Message: text, Level: level})
-		require.Equal(t, pb.LogSendResponse_Error_NULL, resp.Error.Code, "LogSendResponse contains error: %+v", resp.Error)
+		resp := mw.LogSend(&pb.RpcLogSendRequest{Message: text, Level: level})
+		require.Equal(t, pb.RpcLogSendResponseError_NULL, resp.Error.Code, "LogSendResponse contains error: %+v", resp.Error)
 
 		b, err := ioutil.ReadFile(file.Name())
 		require.NoError(t, err)
