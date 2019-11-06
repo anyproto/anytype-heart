@@ -5,23 +5,19 @@ import "models.proto";
 
 message Change {
     message Block {
-        message Header {
-            oneof change {
-                string id = 1;
-                Model.Block.Header.Type type = 2;
-                string name = 3;
-                string icon = 4;
+        message Fields {
+            Model.Struct fields = 1;
+        }
 
-                Model.Block.Header.Permissions permissions = 5;
-            }
-        }   
+        message Permissions {
+            Model.Block.Permissions permissions = 1;
+        }
 
         message Children {
             repeated string children = 1;
         }
 
-        message Content {
-            
+        message Content {        
             message Page {
                 oneof change {
                     Model.Block.Content.Page.Style style = 1;
@@ -32,7 +28,7 @@ message Change {
             message Dashboard {
                 oneof change {
                     Model.Block.Content.Dashboard.Style style = 1;
-                    Model.Block.Header header = 2; // not a dashboard header – one of children
+                    Model.Block block = 2;
                 }
             }
 

@@ -4,8 +4,33 @@ option go_package = "pb";
 
 message Model {
     message Block {
-        Header header = 1;
-        repeated string children = 2;
+        string id = 1;
+        Struct fields = 2;
+        Permissions permissions = 3;
+        repeated string children = 4;
+
+        enum Type {
+            DASHBOARD = 0;
+            PAGE = 1;
+            DATAVIEW = 2;
+
+            TEXT = 3;
+            FILE = 4;
+            PICTURE = 5;
+            VIDEO = 6;
+            BOOKMARK = 7;
+
+            LAYOUT = 8;
+            DIV = 9;
+        }
+
+        message Permissions {
+            bool read = 1;
+            bool edit = 2;
+            bool remove = 3;
+            bool drag = 4;
+            bool dropOn = 5;
+        }
 
         oneof content {
             Content.Dashboard dashboard = 11;
@@ -13,39 +38,11 @@ message Model {
             Content.Dataview dataview = 13;
 
             Content.Text text = 14;
-            Content.Media media = 15;
-            Content.Layout layout = 16;
-            Content.Div div = 17;
-        }
-
-        message Header {
-            string id = 1;
-            Type type = 2;
-            Struct fields = 3;
-            Permissions permissions = 4;
-
-            message Permissions {
-                bool read = 1;
-                bool edit = 2;
-                bool remove = 3;
-                bool drag = 4;
-                bool dropOn = 5;
-            }
-
-            enum Type {
-                DASHBOARD = 0;
-                PAGE = 1;
-                DATAVIEW = 2;
-
-                TEXT = 3;
-                FILE = 4;
-                PICTURE = 5;
-                VIDEO = 6;
-                BOOKMARK = 7;
-
-                LAYOUT = 8;
-                DIV = 9;
-            }
+            Content.Video video = 15;
+            Content.Image image = 16;
+            Content.File file = 17;
+            Content.Layout layout = 18;
+            Content.Div div = 19;
         }
 
         message Content {
@@ -67,7 +64,6 @@ message Model {
                 }
 
                 Style style = 1;
-                repeated Header headers = 2;
             }
 
             message Dataview {
@@ -121,29 +117,52 @@ message Model {
                 bool checked = 7;
             }
 
-            message Media {
+            message Video {
                 bytes content = 1;
                 State state = 2;
+                Preview preview = 3;
 
-                oneof preview {
-                    VideoPreview video = 101;
-                    ImagePreview image = 102;
-                    FilePreview file = 103;
-                }
-
-                message VideoPreview {
+                message Preview {
                     bytes thumbnail = 1;
                     string name = 2;
                     int32 width = 3;
                 }
 
-                message ImagePreview {
+                enum State {
+                    EMPTY = 0;
+                    UPLOADING = 1;
+                    PREVIEW = 2;
+                    DOWNLOADING = 3;
+                    DONE = 4;
+                }                
+            }
+
+            message Image {
+                bytes content = 1;
+                State state = 2;
+                Preview preview = 3;
+
+                message Preview {
                     bytes thumbnail = 1;
                     string name = 2;
                     int32 width = 3;
                 }
 
-                message FilePreview {
+                enum State {
+                    EMPTY = 0;
+                    UPLOADING = 1;
+                    PREVIEW = 2;
+                    DOWNLOADING = 3;
+                    DONE = 4;
+                }                
+            }
+
+            message File {
+                bytes content = 1;
+                State state = 2;
+                Preview preview = 3;
+
+                message Preview {
                     string name = 1;
                     string icon = 2;
                 }
@@ -154,9 +173,9 @@ message Model {
                     PREVIEW = 2;
                     DOWNLOADING = 3;
                     DONE = 4;
-                }
+                }                
             }
-
+            
             message Page {
                 enum Style {
                     EMPTY = 0;
