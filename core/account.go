@@ -11,11 +11,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-var avatarSizes = []pb.Model_Image_Size{pb.Model_Image_SMALL, pb.Model_Image_LARGE}
+var avatarSizes = []pb.ModelImageSize{pb.ModelImage_SMALL, pb.ModelImage_LARGE}
 
-func (mw *Middleware) AccountCreate(req *pb.Rpc_Account_Create_Request) *pb.Rpc_Account_Create_Response {
-	response := func(account *pb.Model_Account, code pb.Rpc_Account_Create_Response_Error_Code, err error) *pb.Rpc_Account_Create_Response {
-		m := &pb.Rpc_Account_Create_Response{Account: account, Error: &pb.Rpc_Account_Create_Response_Error{Code: code}}
+func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+	response := func(account *pb.ModelAccount, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
+		m := &pb.RpcAccountCreateResponse{Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -30,61 +30,61 @@ func (mw *Middleware) AccountCreate(req *pb.Rpc_Account_Create_Request) *pb.Rpc_
 
 	account, err := core.WalletAccountAt(mw.mnemonic, len(mw.localAccounts), "")
 	if err != nil {
-		return response(nil, pb.Rpc_Account_Create_Response_Error_UNKNOWN_ERROR, err)
+		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
 	err = core.WalletInitRepo(mw.rootPath, account.Seed())
 	if err != nil {
-		return response(nil, pb.Rpc_Account_Create_Response_Error_UNKNOWN_ERROR, err)
+		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
 	anytype, err := core.New(mw.rootPath, account.Address())
 	if err != nil {
-		return response(nil, pb.Rpc_Account_Create_Response_Error_UNKNOWN_ERROR, err)
+		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
 	mw.Anytype = anytype
-	newAcc := &pb.Model_Account{Id: account.Address()}
+	newAcc := &pb.ModelAccount{Id: account.Address()}
 
 	err = mw.Run()
 	if err != nil {
-		return response(newAcc, pb.Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
+		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
 	err = mw.AccountSetName(req.Name)
 	if err != nil {
-		return response(newAcc, pb.Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 	newAcc.Name, err = mw.Textile.Name()
 	if err != nil {
-		return response(newAcc, pb.Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
 	if req.GetAvatarLocalPath() != "" {
 		_, err := mw.AccountSetAvatar(req.GetAvatarLocalPath())
 		if err != nil {
-			return response(newAcc, pb.Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
+			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
 
 		hash, err := mw.Textile.Avatar()
 		if err != nil {
-			return response(newAcc, pb.Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
+			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
-		newAcc.Avatar = &pb.Model_Account_Avatar{Avatar: &pb.Model_Account_Avatar_Image{Image: &pb.Model_Image{hash, avatarSizes}}}
+		newAcc.Avatar = &pb.ModelAccountAvatar{Avatar: &pb.ModelAccountAvatarAvatarOfImage{Image: &pb.ModelImage{hash, avatarSizes}}}
 	} else if req.GetAvatarColor() != "" {
 		err := mw.AccountSetAvatarColor(req.GetAvatarColor())
 		if err != nil {
-			return response(newAcc, pb.Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
+			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
 	}
 
 	mw.localAccounts = append(mw.localAccounts, newAcc)
-	return response(newAcc, pb.Rpc_Account_Create_Response_Error_NULL, nil)
+	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) AccountRecover(_ *pb.Rpc_Account_Recover_Request) *pb.Rpc_Account_Recover_Response {
-	response := func(code pb.Rpc_Account_Recover_Response_Error_Code, err error) *pb.Rpc_Account_Recover_Response {
-		m := &pb.Rpc_Account_Recover_Response{Error: &pb.Rpc_Account_Recover_Response_Error{Code: code}}
+func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
+	response := func(code pb.RpcAccountRecoverResponseErrorCode, err error) *pb.RpcAccountRecoverResponse {
+		m := &pb.RpcAccountRecoverResponse{Error: &pb.RpcAccountRecoverResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -92,15 +92,15 @@ func (mw *Middleware) AccountRecover(_ *pb.Rpc_Account_Recover_Request) *pb.Rpc_
 		return m
 	}
 
-	sendAccountAddEvent := func(index int, account *pb.Model_Account) {
-		m := &pb.Event{Message: &pb.Event_AccountShow{AccountShow: &pb.Event_Account_Show{Index: int64(index), Account: account}}}
+	sendAccountAddEvent := func(index int, account *pb.ModelAccount) {
+		m := &pb.Event{Message: &pb.EventMessageOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int64(index), Account: account}}}
 		if mw.SendEvent != nil {
 			mw.SendEvent(m)
 		}
 	}
 
 	if mw.mnemonic == "" {
-		return response(pb.Rpc_Account_Recover_Response_Error_NEED_TO_RECOVER_WALLET_FIRST, nil)
+		return response(pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST, nil)
 	}
 
 	shouldCancel := false
@@ -129,32 +129,32 @@ func (mw *Middleware) AccountRecover(_ *pb.Rpc_Account_Recover_Request) *pb.Rpc_
 		sendAccountAddEvent(index, mw.localAccounts[index])
 		index++
 		if shouldCancel {
-			return response(pb.Rpc_Account_Recover_Response_Error_NULL, nil)
+			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
 	}
 
 	// now let's start the first account to perform cafe contacts search queries
 	account, err := core.WalletAccountAt(mw.mnemonic, 0, "")
 	if err != nil {
-		return response(pb.Rpc_Account_Recover_Response_Error_WALLET_RECOVER_NOT_PERFORMED, err)
+		return response(pb.RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED, err)
 	}
 
 	err = core.WalletInitRepo(mw.rootPath, account.Seed())
 	if err != nil && err != core.ErrRepoExists {
-		return response(pb.Rpc_Account_Recover_Response_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
 	anytype, err := core.New(mw.rootPath, account.Address())
 	if err != nil {
-		return response(pb.Rpc_Account_Recover_Response_Error_UNKNOWN_ERROR, err)
+		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
 	}
 	err = anytype.Run()
 	if err != nil {
 		if err == core.ErrRepoCorrupted {
-			return response(pb.Rpc_Account_Recover_Response_Error_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+			return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}
 
-		return response(pb.Rpc_Account_Recover_Response_Error_FAILED_TO_RUN_NODE, err)
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
 	defer func() {
@@ -165,7 +165,7 @@ func (mw *Middleware) AccountRecover(_ *pb.Rpc_Account_Recover_Request) *pb.Rpc_
 	}()
 
 	if shouldCancel {
-		return response(pb.Rpc_Account_Recover_Response_Error_NULL, nil)
+		return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 	}
 
 	for {
@@ -190,7 +190,7 @@ func (mw *Middleware) AccountRecover(_ *pb.Rpc_Account_Recover_Request) *pb.Rpc_
 		// todo: add goroutine to query multiple accounts at once
 		account, err := core.WalletAccountAt(mw.mnemonic, index, "")
 		if err != nil {
-			return response(pb.Rpc_Account_Recover_Response_Error_WALLET_RECOVER_NOT_PERFORMED, err)
+			return response(pb.RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED, err)
 		}
 
 		var ctx context.Context
@@ -199,20 +199,20 @@ func (mw *Middleware) AccountRecover(_ *pb.Rpc_Account_Recover_Request) *pb.Rpc_
 
 		if err != nil || contact == nil {
 			if index == 0 {
-				return response(pb.Rpc_Account_Recover_Response_Error_NO_ACCOUNTS_FOUND, err)
+				return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, err)
 			}
-			return response(pb.Rpc_Account_Recover_Response_Error_NULL, nil)
+			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
 
 		if contact.Name == "" {
 			if index == 0 {
-				return response(pb.Rpc_Account_Recover_Response_Error_NO_ACCOUNTS_FOUND, err)
+				return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, err)
 			}
 
-			return response(pb.Rpc_Account_Recover_Response_Error_NULL, nil)
+			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
 
-		newAcc := &pb.Model_Account{Id: account.Address(), Name: contact.Name}
+		newAcc := &pb.ModelAccount{Id: account.Address(), Name: contact.Name}
 
 		if contact.Avatar != "" {
 			newAcc.Avatar = getAvatarFromString(contact.Avatar)
@@ -222,15 +222,15 @@ func (mw *Middleware) AccountRecover(_ *pb.Rpc_Account_Recover_Request) *pb.Rpc_
 		mw.localAccounts = append(mw.localAccounts, newAcc)
 
 		if shouldCancel {
-			return response(pb.Rpc_Account_Recover_Response_Error_NULL, nil)
+			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
 		index++
 	}
 }
 
-func (mw *Middleware) AccountSelect(req *pb.Rpc_Account_Select_Request) *pb.Rpc_Account_Select_Response {
-	response := func(account *pb.Model_Account, code pb.Rpc_Account_Select_Response_Error_Code, err error) *pb.Rpc_Account_Select_Response {
-		m := &pb.Rpc_Account_Select_Response{Account: account, Error: &pb.Rpc_Account_Select_Response_Error{Code: code}}
+func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+	response := func(account *pb.ModelAccount, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
+		m := &pb.RpcAccountSelectResponse{Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -249,23 +249,23 @@ func (mw *Middleware) AccountSelect(req *pb.Rpc_Account_Select_Request) *pb.Rpc_
 
 	if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
 		if mw.mnemonic == "" {
-			return response(nil, pb.Rpc_Account_Select_Response_Error_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
+			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
 		}
 
 		account, err := core.WalletAccountAt(mw.mnemonic, len(mw.localAccounts), "")
 		if err != nil {
-			return response(nil, pb.Rpc_Account_Select_Response_Error_UNKNOWN_ERROR, err)
+			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}
 
 		err = core.WalletInitRepo(mw.rootPath, account.Seed())
 		if err != nil {
-			return response(nil, pb.Rpc_Account_Select_Response_Error_FAILED_TO_CREATE_LOCAL_REPO, err)
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 	}
 
 	anytype, err := core.New(mw.rootPath, req.Id)
 	if err != nil {
-		return response(nil, pb.Rpc_Account_Select_Response_Error_UNKNOWN_ERROR, err)
+		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 	}
 
 	mw.Anytype = anytype
@@ -273,22 +273,22 @@ func (mw *Middleware) AccountSelect(req *pb.Rpc_Account_Select_Request) *pb.Rpc_
 	err = mw.Run()
 	if err != nil {
 		if err == core.ErrRepoCorrupted {
-			return response(nil, pb.Rpc_Account_Select_Response_Error_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}
 
-		return response(nil, pb.Rpc_Account_Select_Response_Error_FAILED_TO_RUN_NODE, err)
+		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
-	acc := &pb.Model_Account{Id: req.Id}
+	acc := &pb.ModelAccount{Id: req.Id}
 
 	acc.Name, err = mw.Anytype.Textile.Name()
 	if err != nil {
-		return response(acc, pb.Rpc_Account_Select_Response_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
+		return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
 
 	avatarHashOrColor, err := mw.Anytype.Textile.Avatar()
 	if err != nil {
-		return response(acc, pb.Rpc_Account_Select_Response_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
+		return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
 
 	if acc.Name == "" && avatarHashOrColor == "" {
@@ -304,7 +304,7 @@ func (mw *Middleware) AccountSelect(req *pb.Rpc_Account_Select_Request) *pb.Rpc_
 
 		contact, err := anytype.AccountRequestStoredContact(context.Background(), req.Id)
 		if err != nil {
-			return response(acc, pb.Rpc_Account_Select_Response_Error_FAILED_TO_FIND_ACCOUNT_INFO, err)
+			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
 		}
 		acc.Name = contact.Name
 		avatarHashOrColor = contact.Avatar
@@ -314,13 +314,13 @@ func (mw *Middleware) AccountSelect(req *pb.Rpc_Account_Select_Request) *pb.Rpc_
 		acc.Avatar = getAvatarFromString(avatarHashOrColor)
 	}
 
-	return response(acc, pb.Rpc_Account_Select_Response_Error_NULL, nil)
+	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
-func getAvatarFromString(avatarHashOrColor string) *pb.Model_Account_Avatar {
+func getAvatarFromString(avatarHashOrColor string) *pb.ModelAccountAvatar {
 	if strings.HasPrefix(avatarHashOrColor, "#") {
-		return &pb.Model_Account_Avatar{&pb.Model_Account_Avatar_Color{avatarHashOrColor}}
+		return &pb.ModelAccountAvatar{&pb.ModelAccountAvatarAvatarOfColor{avatarHashOrColor}}
 	} else {
-		return &pb.Model_Account_Avatar{&pb.Model_Account_Avatar_Image{&pb.Model_Image{avatarHashOrColor, avatarSizes}}}
+		return &pb.ModelAccountAvatar{&pb.ModelAccountAvatarAvatarOfImage{&pb.ModelImage{avatarHashOrColor, avatarSizes}}}
 	}
 }

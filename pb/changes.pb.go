@@ -101,7 +101,7 @@ type Change_Block_Header struct {
 	//	*Change_Block_Header_Name
 	//	*Change_Block_Header_Icon
 	//	*Change_Block_Header_Permissions
-	Change isChange_Block_Header_Change `protobuf_oneof:"change"`
+	Change isChange_Block_HeaderChange `protobuf_oneof:"change"`
 }
 
 func (m *Change_Block_Header) Reset()         { *m = Change_Block_Header{} }
@@ -137,8 +137,8 @@ func (m *Change_Block_Header) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Change_Block_Header proto.InternalMessageInfo
 
-type isChange_Block_Header_Change interface {
-	isChange_Block_Header_Change()
+type isChange_Block_HeaderChange interface {
+	isChange_Block_HeaderChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -159,13 +159,13 @@ type Change_Block_Header_Permissions struct {
 	Permissions *Model_Block_Header_Permissions `protobuf:"bytes,5,opt,name=permissions,proto3,oneof" json:"permissions,omitempty"`
 }
 
-func (*Change_Block_Header_Id) isChange_Block_Header_Change()          {}
-func (*Change_Block_Header_Type) isChange_Block_Header_Change()        {}
-func (*Change_Block_Header_Name) isChange_Block_Header_Change()        {}
-func (*Change_Block_Header_Icon) isChange_Block_Header_Change()        {}
-func (*Change_Block_Header_Permissions) isChange_Block_Header_Change() {}
+func (*Change_Block_Header_Id) isChange_Block_HeaderChange()          {}
+func (*Change_Block_Header_Type) isChange_Block_HeaderChange()        {}
+func (*Change_Block_Header_Name) isChange_Block_HeaderChange()        {}
+func (*Change_Block_Header_Icon) isChange_Block_HeaderChange()        {}
+func (*Change_Block_Header_Permissions) isChange_Block_HeaderChange() {}
 
-func (m *Change_Block_Header) GetChange() isChange_Block_Header_Change {
+func (m *Change_Block_Header) GetChange() isChange_Block_HeaderChange {
 	if m != nil {
 		return m.Change
 	}
@@ -302,7 +302,7 @@ type Change_Block_Content_Page struct {
 	// Types that are valid to be assigned to Change:
 	//	*Change_Block_Content_Page_Style
 	//	*Change_Block_Content_Page_Block
-	Change isChange_Block_Content_Page_Change `protobuf_oneof:"change"`
+	Change isChange_Block_Content_PageChange `protobuf_oneof:"change"`
 }
 
 func (m *Change_Block_Content_Page) Reset()         { *m = Change_Block_Content_Page{} }
@@ -338,8 +338,8 @@ func (m *Change_Block_Content_Page) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Change_Block_Content_Page proto.InternalMessageInfo
 
-type isChange_Block_Content_Page_Change interface {
-	isChange_Block_Content_Page_Change()
+type isChange_Block_Content_PageChange interface {
+	isChange_Block_Content_PageChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -351,10 +351,10 @@ type Change_Block_Content_Page_Block struct {
 	Block *Model_Block `protobuf:"bytes,2,opt,name=block,proto3,oneof" json:"block,omitempty"`
 }
 
-func (*Change_Block_Content_Page_Style) isChange_Block_Content_Page_Change() {}
-func (*Change_Block_Content_Page_Block) isChange_Block_Content_Page_Change() {}
+func (*Change_Block_Content_Page_Style) isChange_Block_Content_PageChange() {}
+func (*Change_Block_Content_Page_Block) isChange_Block_Content_PageChange() {}
 
-func (m *Change_Block_Content_Page) GetChange() isChange_Block_Content_Page_Change {
+func (m *Change_Block_Content_Page) GetChange() isChange_Block_Content_PageChange {
 	if m != nil {
 		return m.Change
 	}
@@ -387,7 +387,7 @@ type Change_Block_Content_Dashboard struct {
 	// Types that are valid to be assigned to Change:
 	//	*Change_Block_Content_Dashboard_Style
 	//	*Change_Block_Content_Dashboard_Header
-	Change isChange_Block_Content_Dashboard_Change `protobuf_oneof:"change"`
+	Change isChange_Block_Content_DashboardChange `protobuf_oneof:"change"`
 }
 
 func (m *Change_Block_Content_Dashboard) Reset()         { *m = Change_Block_Content_Dashboard{} }
@@ -423,8 +423,8 @@ func (m *Change_Block_Content_Dashboard) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Change_Block_Content_Dashboard proto.InternalMessageInfo
 
-type isChange_Block_Content_Dashboard_Change interface {
-	isChange_Block_Content_Dashboard_Change()
+type isChange_Block_Content_DashboardChange interface {
+	isChange_Block_Content_DashboardChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -436,10 +436,10 @@ type Change_Block_Content_Dashboard_Header struct {
 	Header *Model_Block_Header `protobuf:"bytes,2,opt,name=header,proto3,oneof" json:"header,omitempty"`
 }
 
-func (*Change_Block_Content_Dashboard_Style) isChange_Block_Content_Dashboard_Change()  {}
-func (*Change_Block_Content_Dashboard_Header) isChange_Block_Content_Dashboard_Change() {}
+func (*Change_Block_Content_Dashboard_Style) isChange_Block_Content_DashboardChange()  {}
+func (*Change_Block_Content_Dashboard_Header) isChange_Block_Content_DashboardChange() {}
 
-func (m *Change_Block_Content_Dashboard) GetChange() isChange_Block_Content_Dashboard_Change {
+func (m *Change_Block_Content_Dashboard) GetChange() isChange_Block_Content_DashboardChange {
 	if m != nil {
 		return m.Change
 	}
@@ -472,7 +472,7 @@ type Change_Block_Content_Media struct {
 	// Types that are valid to be assigned to Change:
 	//	*Change_Block_Content_Media_Link
 	//	*Change_Block_Content_Media_State
-	Change isChange_Block_Content_Media_Change `protobuf_oneof:"change"`
+	Change isChange_Block_Content_MediaChange `protobuf_oneof:"change"`
 }
 
 func (m *Change_Block_Content_Media) Reset()         { *m = Change_Block_Content_Media{} }
@@ -508,8 +508,8 @@ func (m *Change_Block_Content_Media) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Change_Block_Content_Media proto.InternalMessageInfo
 
-type isChange_Block_Content_Media_Change interface {
-	isChange_Block_Content_Media_Change()
+type isChange_Block_Content_MediaChange interface {
+	isChange_Block_Content_MediaChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -521,10 +521,10 @@ type Change_Block_Content_Media_State struct {
 	State Model_Block_Content_Media_State `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.Model_Block_Content_Media_State,oneof" json:"state,omitempty"`
 }
 
-func (*Change_Block_Content_Media_Link) isChange_Block_Content_Media_Change()  {}
-func (*Change_Block_Content_Media_State) isChange_Block_Content_Media_Change() {}
+func (*Change_Block_Content_Media_Link) isChange_Block_Content_MediaChange()  {}
+func (*Change_Block_Content_Media_State) isChange_Block_Content_MediaChange() {}
 
-func (m *Change_Block_Content_Media) GetChange() isChange_Block_Content_Media_Change {
+func (m *Change_Block_Content_Media) GetChange() isChange_Block_Content_MediaChange {
 	if m != nil {
 		return m.Change
 	}
@@ -562,7 +562,7 @@ type Change_Block_Content_Text struct {
 	//	*Change_Block_Content_Text_MarkerType
 	//	*Change_Block_Content_Text_Checkable
 	//	*Change_Block_Content_Text_Checked
-	Change isChange_Block_Content_Text_Change `protobuf_oneof:"change"`
+	Change isChange_Block_Content_TextChange `protobuf_oneof:"change"`
 }
 
 func (m *Change_Block_Content_Text) Reset()         { *m = Change_Block_Content_Text{} }
@@ -598,8 +598,8 @@ func (m *Change_Block_Content_Text) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Change_Block_Content_Text proto.InternalMessageInfo
 
-type isChange_Block_Content_Text_Change interface {
-	isChange_Block_Content_Text_Change()
+type isChange_Block_Content_TextChange interface {
+	isChange_Block_Content_TextChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -626,15 +626,15 @@ type Change_Block_Content_Text_Checked struct {
 	Checked bool `protobuf:"varint,7,opt,name=checked,proto3,oneof" json:"checked,omitempty"`
 }
 
-func (*Change_Block_Content_Text_Text) isChange_Block_Content_Text_Change()       {}
-func (*Change_Block_Content_Text_Style) isChange_Block_Content_Text_Change()      {}
-func (*Change_Block_Content_Text_Marks) isChange_Block_Content_Text_Change()      {}
-func (*Change_Block_Content_Text_Toggleable) isChange_Block_Content_Text_Change() {}
-func (*Change_Block_Content_Text_MarkerType) isChange_Block_Content_Text_Change() {}
-func (*Change_Block_Content_Text_Checkable) isChange_Block_Content_Text_Change()  {}
-func (*Change_Block_Content_Text_Checked) isChange_Block_Content_Text_Change()    {}
+func (*Change_Block_Content_Text_Text) isChange_Block_Content_TextChange()       {}
+func (*Change_Block_Content_Text_Style) isChange_Block_Content_TextChange()      {}
+func (*Change_Block_Content_Text_Marks) isChange_Block_Content_TextChange()      {}
+func (*Change_Block_Content_Text_Toggleable) isChange_Block_Content_TextChange() {}
+func (*Change_Block_Content_Text_MarkerType) isChange_Block_Content_TextChange() {}
+func (*Change_Block_Content_Text_Checkable) isChange_Block_Content_TextChange()  {}
+func (*Change_Block_Content_Text_Checked) isChange_Block_Content_TextChange()    {}
 
-func (m *Change_Block_Content_Text) GetChange() isChange_Block_Content_Text_Change {
+func (m *Change_Block_Content_Text) GetChange() isChange_Block_Content_TextChange {
 	if m != nil {
 		return m.Change
 	}
@@ -712,7 +712,7 @@ type BlocksListSingleChange struct {
 	//	*BlocksListSingleChange_Page
 	//	*BlocksListSingleChange_Dashboard
 	//	*BlocksListSingleChange_Media
-	Change isBlocksListSingleChange_Change `protobuf_oneof:"change"`
+	Change isBlocksListSingleChangeChange `protobuf_oneof:"change"`
 }
 
 func (m *BlocksListSingleChange) Reset()         { *m = BlocksListSingleChange{} }
@@ -748,8 +748,8 @@ func (m *BlocksListSingleChange) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_BlocksListSingleChange proto.InternalMessageInfo
 
-type isBlocksListSingleChange_Change interface {
-	isBlocksListSingleChange_Change()
+type isBlocksListSingleChangeChange interface {
+	isBlocksListSingleChangeChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -773,14 +773,14 @@ type BlocksListSingleChange_Media struct {
 	Media *Change_Block_Content_Media `protobuf:"bytes,7,opt,name=media,proto3,oneof" json:"media,omitempty"`
 }
 
-func (*BlocksListSingleChange_Text) isBlocksListSingleChange_Change()          {}
-func (*BlocksListSingleChange_BlockHeader) isBlocksListSingleChange_Change()   {}
-func (*BlocksListSingleChange_BlockChildren) isBlocksListSingleChange_Change() {}
-func (*BlocksListSingleChange_Page) isBlocksListSingleChange_Change()          {}
-func (*BlocksListSingleChange_Dashboard) isBlocksListSingleChange_Change()     {}
-func (*BlocksListSingleChange_Media) isBlocksListSingleChange_Change()         {}
+func (*BlocksListSingleChange_Text) isBlocksListSingleChangeChange()          {}
+func (*BlocksListSingleChange_BlockHeader) isBlocksListSingleChangeChange()   {}
+func (*BlocksListSingleChange_BlockChildren) isBlocksListSingleChangeChange() {}
+func (*BlocksListSingleChange_Page) isBlocksListSingleChangeChange()          {}
+func (*BlocksListSingleChange_Dashboard) isBlocksListSingleChangeChange()     {}
+func (*BlocksListSingleChange_Media) isBlocksListSingleChangeChange()         {}
 
-func (m *BlocksListSingleChange) GetChange() isBlocksListSingleChange_Change {
+func (m *BlocksListSingleChange) GetChange() isBlocksListSingleChangeChange {
 	if m != nil {
 		return m.Change
 	}

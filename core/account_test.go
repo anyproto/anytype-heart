@@ -13,8 +13,8 @@ import (
 func createWallet(t *testing.T) *Middleware {
 	mw := &Middleware{}
 	rootPath := os.TempDir()
-	resp := mw.WalletCreate(&pb.Rpc_Wallet_Create_Request{RootPath: rootPath})
-	require.Equal(t, pb.Rpc_Wallet_Create_Response_Error_NULL, resp.Error.Code, resp.Error.Code, "WalletCreate error should be 0")
+	resp := mw.WalletCreate(&pb.RpcWalletCreateRequest{RootPath: rootPath})
+	require.Equal(t, pb.RpcWalletCreateResponseError_NULL, resp.Error.Code, resp.Error.Code, "WalletCreate error should be 0")
 	require.Equal(t, 12, len(strings.Split(resp.Mnemonic, " ")), "WalletCreate should return 12 words")
 	return mw
 }
@@ -22,37 +22,37 @@ func createWallet(t *testing.T) *Middleware {
 func recoverWallet(t *testing.T, mnemonic string) *Middleware {
 	mw := &Middleware{}
 	rootPath := os.TempDir()
-	resp := mw.WalletRecover(&pb.Rpc_Wallet_Recover_Request{RootPath: rootPath, Mnemonic: mnemonic})
-	require.Equal(t, pb.Rpc_Wallet_Recover_Response_Error_NULL, resp.Error.Code, "WalletRecover error should be 0")
+	resp := mw.WalletRecover(&pb.RpcWalletRecoverRequest{RootPath: rootPath, Mnemonic: mnemonic})
+	require.Equal(t, pb.RpcWalletRecoverResponseError_NULL, resp.Error.Code, "WalletRecover error should be 0")
 	return mw
 }
 
-func Test_AccountCreate(t *testing.T) {
+func TestAccountCreate(t *testing.T) {
 	mw := createWallet(t)
 
-	accountCreateResp := mw.AccountCreate(&pb.Rpc_Account_Create_Request{Name: "name_test", Avatar: &pb.Rpc_Account_Create_Request_AvatarLocalPath{"testdata/pic1.jpg"}})
-	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreate_Response has account with wrong name '%s'", accountCreateResp.Account.Name)
+	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_test", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
+	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
-	imageGetBlobResp := mw.ImageGetBlob(&pb.Rpc_Image_Get_Blob_Request{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: pb.Model_Image_SMALL})
-	require.Equal(t, pb.Rpc_Image_Get_Blob_Response_Error_NULL, imageGetBlobResp.Error.Code, "ImageGetBlob_Response contains error: %+v", imageGetBlobResp.Error)
+	imageGetBlobResp := mw.ImageGetBlob(&pb.RpcImageGetBlobRequest{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: pb.ModelImage_SMALL})
+	require.Equal(t, pb.RpcImageGetBlobResponseError_NULL, imageGetBlobResp.Error.Code, "ImageGetBlobResponse contains error: %+v", imageGetBlobResp.Error)
 	require.True(t, len(imageGetBlobResp.Blob) > 0, "ava size should be greater than 0")
 
 	err := mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
 }
 
-func Test_AccountRecover_LocalWithoutRestart(t *testing.T) {
+func TestAccountRecoverLocalWithoutRestart(t *testing.T) {
 	mw := createWallet(t)
 
-	accountCreateResp := mw.AccountCreate(&pb.Rpc_Account_Create_Request{Name: "name_to_test_recover", Avatar: &pb.Rpc_Account_Create_Request_AvatarLocalPath{"testdata/pic1.jpg"}})
-	require.Equal(t, "name_to_test_recover", accountCreateResp.Account.Name, "AccountCreate_Response has account with wrong name '%s'", accountCreateResp.Account.Name)
+	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_to_test_recover", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
+	require.Equal(t, "name_to_test_recover", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
 	err := mw.Stop()
 	require.NoError(t, err, "failed to stop node")
 
-	var accountCh = make(chan *pb.Model_Account, 10)
+	var accountCh = make(chan *pb.ModelAccount, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
+		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -61,13 +61,13 @@ func Test_AccountRecover_LocalWithoutRestart(t *testing.T) {
 		}
 	}
 
-	walletRecoverResp := mw.WalletRecover(&pb.Rpc_Wallet_Recover_Request{RootPath: mw.rootPath, Mnemonic: mw.mnemonic})
-	require.Equal(t, pb.Rpc_Wallet_Recover_Response_Error_NULL, walletRecoverResp.Error.Code, "WalletRecover_Response contains error: %+v", walletRecoverResp.Error)
+	walletRecoverResp := mw.WalletRecover(&pb.RpcWalletRecoverRequest{RootPath: mw.rootPath, Mnemonic: mw.mnemonic})
+	require.Equal(t, pb.RpcWalletRecoverResponseError_NULL, walletRecoverResp.Error.Code, "WalletRecoverResponse contains error: %+v", walletRecoverResp.Error)
 
-	accountRecoverResp := mw.AccountRecover(&pb.Rpc_Account_Recover_Request{})
-	require.Equal(t, pb.Rpc_Account_Recover_Response_Error_NULL, accountRecoverResp.Error.Code, "AccountRecover_Response contains error: %+v", accountRecoverResp.Error)
+	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
+	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.Model_Account
+	var account *pb.ModelAccount
 	select {
 	case account = <-accountCh:
 		break
@@ -80,11 +80,11 @@ func Test_AccountRecover_LocalWithoutRestart(t *testing.T) {
 	require.NoError(t, err, "failed to stop mw")
 }
 
-func Test_AccountRecover_LocalAfterRestart(t *testing.T) {
+func TestAccountRecoverLocalAfterRestart(t *testing.T) {
 	mw := createWallet(t)
 
-	accountCreateResp := mw.AccountCreate(&pb.Rpc_Account_Create_Request{Name: "name_to_test_recover", Avatar: &pb.Rpc_Account_Create_Request_AvatarLocalPath{"testdata/pic1.jpg"}})
-	require.Equal(t, "name_to_test_recover", accountCreateResp.Account.Name, "AccountCreate_Response has account with wrong name '%s'", accountCreateResp.Account.Name)
+	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_to_test_recover", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
+	require.Equal(t, "name_to_test_recover", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
 	err := mw.Stop()
 	require.NoError(t, err, "failed to stop node")
@@ -94,9 +94,9 @@ func Test_AccountRecover_LocalAfterRestart(t *testing.T) {
 	// reset singleton to emulate restart
 	mw = &Middleware{}
 
-	var accountCh = make(chan *pb.Model_Account, 10)
+	var accountCh = make(chan *pb.ModelAccount, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
+		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -105,13 +105,13 @@ func Test_AccountRecover_LocalAfterRestart(t *testing.T) {
 		}
 	}
 
-	walletRecoverResp := mw.WalletRecover(&pb.Rpc_Wallet_Recover_Request{RootPath: rootPath, Mnemonic: mnemonic})
-	require.Equal(t, pb.Rpc_Wallet_Recover_Response_Error_NULL, walletRecoverResp.Error.Code, "WalletRecover_Response contains error: %+v", walletRecoverResp.Error)
+	walletRecoverResp := mw.WalletRecover(&pb.RpcWalletRecoverRequest{RootPath: rootPath, Mnemonic: mnemonic})
+	require.Equal(t, pb.RpcWalletRecoverResponseError_NULL, walletRecoverResp.Error.Code, "WalletRecoverResponse contains error: %+v", walletRecoverResp.Error)
 
-	accountRecoverResp := mw.AccountRecover(&pb.Rpc_Account_Recover_Request{})
-	require.Equal(t, pb.Rpc_Account_Recover_Response_Error_NULL, accountRecoverResp.Error.Code, "AccountRecover_Response contains error: %+v", accountRecoverResp.Error)
+	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
+	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.Model_Account
+	var account *pb.ModelAccount
 	select {
 	case account = <-accountCh:
 		break
@@ -124,19 +124,19 @@ func Test_AccountRecover_LocalAfterRestart(t *testing.T) {
 	err = mw.Stop()
 }
 
-func Test_AccountRecover_RemoteNotExisting(t *testing.T) {
+func TestAccountRecoverRemoteNotExisting(t *testing.T) {
 	mw := recoverWallet(t, "limit oxygen february destroy subway toddler umbrella nose praise shield afford eager")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
 
-	var account *pb.Model_Account
+	var account *pb.ModelAccount
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
+		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			account = aa.AccountShow.Account
 		}
 	}
 
-	accountRecoverResp := mw.AccountRecover(&pb.Rpc_Account_Recover_Request{})
-	require.Equal(t, pb.Rpc_Account_Recover_Response_Error_NO_ACCOUNTS_FOUND, accountRecoverResp.Error.Code, "AccountRecover_Response contains error: %+v", accountRecoverResp.Error)
+	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
+	require.Equal(t, pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
 
 	require.Nil(t, account, "account shouldn't be recovered")
 
@@ -144,13 +144,13 @@ func Test_AccountRecover_RemoteNotExisting(t *testing.T) {
 	require.NoError(t, err, "failed to stop mw")
 }
 
-func Test_RecoverRemoteExisting(t *testing.T) {
+func TestRecoverRemoteExisting(t *testing.T) {
 	mw := recoverWallet(t, "input blame switch simple fatigue fragile grab goose unusual identify abuse use")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
 
-	var accountCh = make(chan *pb.Model_Account, 10)
+	var accountCh = make(chan *pb.ModelAccount, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.Event_AccountShow); ok {
+		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -159,10 +159,10 @@ func Test_RecoverRemoteExisting(t *testing.T) {
 		}
 	}
 
-	accountRecoverResp := mw.AccountRecover(&pb.Rpc_Account_Recover_Request{})
-	require.Equal(t, pb.Rpc_Account_Recover_Response_Error_NULL, accountRecoverResp.Error.Code, "AccountRecover_Response contains error: %+v", accountRecoverResp.Error)
+	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
+	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.Model_Account
+	var account *pb.ModelAccount
 	select {
 	case account = <-accountCh:
 		break

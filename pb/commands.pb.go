@@ -1870,7 +1870,7 @@ type Rpc_Account_Create_Request struct {
 	// Types that are valid to be assigned to Avatar:
 	//	*Rpc_Account_Create_Request_AvatarLocalPath
 	//	*Rpc_Account_Create_Request_AvatarColor
-	Avatar isRpc_Account_Create_Request_Avatar `protobuf_oneof:"avatar"`
+	Avatar isRpc_Account_Create_RequestAvatar `protobuf_oneof:"avatar"`
 }
 
 func (m *Rpc_Account_Create_Request) Reset()         { *m = Rpc_Account_Create_Request{} }
@@ -1906,8 +1906,8 @@ func (m *Rpc_Account_Create_Request) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Rpc_Account_Create_Request proto.InternalMessageInfo
 
-type isRpc_Account_Create_Request_Avatar interface {
-	isRpc_Account_Create_Request_Avatar()
+type isRpc_Account_Create_RequestAvatar interface {
+	isRpc_Account_Create_RequestAvatar()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -1919,10 +1919,10 @@ type Rpc_Account_Create_Request_AvatarColor struct {
 	AvatarColor string `protobuf:"bytes,3,opt,name=avatarColor,proto3,oneof" json:"avatarColor,omitempty"`
 }
 
-func (*Rpc_Account_Create_Request_AvatarLocalPath) isRpc_Account_Create_Request_Avatar() {}
-func (*Rpc_Account_Create_Request_AvatarColor) isRpc_Account_Create_Request_Avatar()     {}
+func (*Rpc_Account_Create_Request_AvatarLocalPath) isRpc_Account_Create_RequestAvatar() {}
+func (*Rpc_Account_Create_Request_AvatarColor) isRpc_Account_Create_RequestAvatar()     {}
 
-func (m *Rpc_Account_Create_Request) GetAvatar() isRpc_Account_Create_Request_Avatar {
+func (m *Rpc_Account_Create_Request) GetAvatar() isRpc_Account_Create_RequestAvatar {
 	if m != nil {
 		return m.Avatar
 	}

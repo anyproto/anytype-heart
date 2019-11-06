@@ -10,24 +10,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Unpack(t *testing.T) {
-	b, _ := proto.Marshal(&pb.Rpc_Wallet_Recover_Response{})
+func TestUnpack(t *testing.T) {
+	b, _ := proto.Marshal(&pb.RpcWalletRecoverResponse{})
 
-	var msg pb.Rpc_Wallet_Recover_Response
+	var msg pb.RpcWalletRecoverResponse
 	err := proto.Unmarshal(b, &msg)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 }
 
-func Test_EventHandler(t *testing.T) {
+func TestEventHandler(t *testing.T) {
 	var eventReceived *pb.Event
 	mw = &core.Middleware{}
 	SetEventHandler(func(event *pb.Event) {
 		eventReceived = event
 	})
 
-	eventSent := &pb.Event{Message: &pb.Event_AccountShow{AccountShow: &pb.Event_Account_Show{Index: 0, Account: &pb.Model_Account{Id: "1", Name: "name"}}}}
+	eventSent := &pb.Event{Message: &pb.EventMessageOfAccountShow{AccountShow: &pb.EventAccountShow{Index: 0, Account: &pb.ModelAccount{Id: "1", Name: "name"}}}}
 	mw.SendEvent(eventSent)
 
 	require.Equal(t, eventSent, eventReceived, "eventReceived not equal to eventSent: %s %s", eventSent, eventReceived)

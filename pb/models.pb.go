@@ -421,7 +421,7 @@ type Model_Block struct {
 	//	*Model_Block_Media
 	//	*Model_Block_Layout
 	//	*Model_Block_Div
-	Content isModel_Block_Content `protobuf_oneof:"content"`
+	Content isModel_BlockContent `protobuf_oneof:"content"`
 }
 
 func (m *Model_Block) Reset()         { *m = Model_Block{} }
@@ -457,8 +457,8 @@ func (m *Model_Block) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Model_Block proto.InternalMessageInfo
 
-type isModel_Block_Content interface {
-	isModel_Block_Content()
+type isModel_BlockContent interface {
+	isModel_BlockContent()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -485,15 +485,15 @@ type Model_Block_Div struct {
 	Div *Model_Block_Content_Div `protobuf:"bytes,17,opt,name=div,proto3,oneof" json:"div,omitempty"`
 }
 
-func (*Model_Block_Dashboard) isModel_Block_Content() {}
-func (*Model_Block_Page) isModel_Block_Content()      {}
-func (*Model_Block_Dataview) isModel_Block_Content()  {}
-func (*Model_Block_Text) isModel_Block_Content()      {}
-func (*Model_Block_Media) isModel_Block_Content()     {}
-func (*Model_Block_Layout) isModel_Block_Content()    {}
-func (*Model_Block_Div) isModel_Block_Content()       {}
+func (*Model_Block_Dashboard) isModel_BlockContent() {}
+func (*Model_Block_Page) isModel_BlockContent()      {}
+func (*Model_Block_Dataview) isModel_BlockContent()  {}
+func (*Model_Block_Text) isModel_BlockContent()      {}
+func (*Model_Block_Media) isModel_BlockContent()     {}
+func (*Model_Block_Layout) isModel_BlockContent()    {}
+func (*Model_Block_Div) isModel_BlockContent()       {}
 
-func (m *Model_Block) GetContent() isModel_Block_Content {
+func (m *Model_Block) GetContent() isModel_BlockContent {
 	if m != nil {
 		return m.Content
 	}
@@ -1127,7 +1127,7 @@ type Model_Block_Content_Media struct {
 	//	*Model_Block_Content_Media_Video
 	//	*Model_Block_Content_Media_Image
 	//	*Model_Block_Content_Media_File
-	Preview isModel_Block_Content_Media_Preview `protobuf_oneof:"preview"`
+	Preview isModel_Block_Content_MediaPreview `protobuf_oneof:"preview"`
 }
 
 func (m *Model_Block_Content_Media) Reset()         { *m = Model_Block_Content_Media{} }
@@ -1163,8 +1163,8 @@ func (m *Model_Block_Content_Media) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Model_Block_Content_Media proto.InternalMessageInfo
 
-type isModel_Block_Content_Media_Preview interface {
-	isModel_Block_Content_Media_Preview()
+type isModel_Block_Content_MediaPreview interface {
+	isModel_Block_Content_MediaPreview()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -1179,11 +1179,11 @@ type Model_Block_Content_Media_File struct {
 	File *Model_Block_Content_Media_FilePreview `protobuf:"bytes,103,opt,name=file,proto3,oneof" json:"file,omitempty"`
 }
 
-func (*Model_Block_Content_Media_Video) isModel_Block_Content_Media_Preview() {}
-func (*Model_Block_Content_Media_Image) isModel_Block_Content_Media_Preview() {}
-func (*Model_Block_Content_Media_File) isModel_Block_Content_Media_Preview()  {}
+func (*Model_Block_Content_Media_Video) isModel_Block_Content_MediaPreview() {}
+func (*Model_Block_Content_Media_Image) isModel_Block_Content_MediaPreview() {}
+func (*Model_Block_Content_Media_File) isModel_Block_Content_MediaPreview()  {}
 
-func (m *Model_Block_Content_Media) GetPreview() isModel_Block_Content_Media_Preview {
+func (m *Model_Block_Content_Media) GetPreview() isModel_Block_Content_MediaPreview {
 	if m != nil {
 		return m.Preview
 	}
@@ -1563,7 +1563,7 @@ type Model_Struct_Value struct {
 	//	*Model_Struct_Value_BoolValue
 	//	*Model_Struct_Value_StructValue
 	//	*Model_Struct_Value_ListValue
-	Kind isModel_Struct_Value_Kind `protobuf_oneof:"kind"`
+	Kind isModel_Struct_ValueKind `protobuf_oneof:"kind"`
 }
 
 func (m *Model_Struct_Value) Reset()         { *m = Model_Struct_Value{} }
@@ -1599,8 +1599,8 @@ func (m *Model_Struct_Value) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Model_Struct_Value proto.InternalMessageInfo
 
-type isModel_Struct_Value_Kind interface {
-	isModel_Struct_Value_Kind()
+type isModel_Struct_ValueKind interface {
+	isModel_Struct_ValueKind()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -1624,14 +1624,14 @@ type Model_Struct_Value_ListValue struct {
 	ListValue *Model_Struct_ListValue `protobuf:"bytes,6,opt,name=list_value,json=listValue,proto3,oneof" json:"list_value,omitempty"`
 }
 
-func (*Model_Struct_Value_NullValue) isModel_Struct_Value_Kind()   {}
-func (*Model_Struct_Value_NumberValue) isModel_Struct_Value_Kind() {}
-func (*Model_Struct_Value_StringValue) isModel_Struct_Value_Kind() {}
-func (*Model_Struct_Value_BoolValue) isModel_Struct_Value_Kind()   {}
-func (*Model_Struct_Value_StructValue) isModel_Struct_Value_Kind() {}
-func (*Model_Struct_Value_ListValue) isModel_Struct_Value_Kind()   {}
+func (*Model_Struct_Value_NullValue) isModel_Struct_ValueKind()   {}
+func (*Model_Struct_Value_NumberValue) isModel_Struct_ValueKind() {}
+func (*Model_Struct_Value_StringValue) isModel_Struct_ValueKind() {}
+func (*Model_Struct_Value_BoolValue) isModel_Struct_ValueKind()   {}
+func (*Model_Struct_Value_StructValue) isModel_Struct_ValueKind() {}
+func (*Model_Struct_Value_ListValue) isModel_Struct_ValueKind()   {}
 
-func (m *Model_Struct_Value) GetKind() isModel_Struct_Value_Kind {
+func (m *Model_Struct_Value) GetKind() isModel_Struct_ValueKind {
 	if m != nil {
 		return m.Kind
 	}
@@ -1805,7 +1805,7 @@ type Model_Account_Avatar struct {
 	// Types that are valid to be assigned to Avatar:
 	//	*Model_Account_Avatar_Image
 	//	*Model_Account_Avatar_Color
-	Avatar isModel_Account_Avatar_Avatar `protobuf_oneof:"avatar"`
+	Avatar isModel_Account_AvatarAvatar `protobuf_oneof:"avatar"`
 }
 
 func (m *Model_Account_Avatar) Reset()         { *m = Model_Account_Avatar{} }
@@ -1841,8 +1841,8 @@ func (m *Model_Account_Avatar) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Model_Account_Avatar proto.InternalMessageInfo
 
-type isModel_Account_Avatar_Avatar interface {
-	isModel_Account_Avatar_Avatar()
+type isModel_Account_AvatarAvatar interface {
+	isModel_Account_AvatarAvatar()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -1854,10 +1854,10 @@ type Model_Account_Avatar_Color struct {
 	Color string `protobuf:"bytes,2,opt,name=color,proto3,oneof" json:"color,omitempty"`
 }
 
-func (*Model_Account_Avatar_Image) isModel_Account_Avatar_Avatar() {}
-func (*Model_Account_Avatar_Color) isModel_Account_Avatar_Avatar() {}
+func (*Model_Account_Avatar_Image) isModel_Account_AvatarAvatar() {}
+func (*Model_Account_Avatar_Color) isModel_Account_AvatarAvatar() {}
 
-func (m *Model_Account_Avatar) GetAvatar() isModel_Account_Avatar_Avatar {
+func (m *Model_Account_Avatar) GetAvatar() isModel_Account_AvatarAvatar {
 	if m != nil {
 		return m.Avatar
 	}

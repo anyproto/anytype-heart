@@ -33,7 +33,7 @@ type Event struct {
 	//	*Event_UserBlockLeft
 	//	*Event_UserBlockSelectRange
 	//	*Event_FilesUpload
-	Message isEvent_Message `protobuf_oneof:"message"`
+	Message isEventMessage `protobuf_oneof:"message"`
 }
 
 func (m *Event) Reset()         { *m = Event{} }
@@ -69,8 +69,8 @@ func (m *Event) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Event proto.InternalMessageInfo
 
-type isEvent_Message interface {
-	isEvent_Message()
+type isEventMessage interface {
+	isEventMessage()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
@@ -103,17 +103,17 @@ type Event_FilesUpload struct {
 	FilesUpload *Event_Block_FilesUpload `protobuf:"bytes,9,opt,name=filesUpload,proto3,oneof" json:"filesUpload,omitempty"`
 }
 
-func (*Event_AccountShow) isEvent_Message()          {}
-func (*Event_BlockShow) isEvent_Message()            {}
-func (*Event_BlockUpdate) isEvent_Message()          {}
-func (*Event_BlockCreate) isEvent_Message()          {}
-func (*Event_UserBlockTextRange) isEvent_Message()   {}
-func (*Event_UserBlockJoin) isEvent_Message()        {}
-func (*Event_UserBlockLeft) isEvent_Message()        {}
-func (*Event_UserBlockSelectRange) isEvent_Message() {}
-func (*Event_FilesUpload) isEvent_Message()          {}
+func (*Event_AccountShow) isEventMessage()          {}
+func (*Event_BlockShow) isEventMessage()            {}
+func (*Event_BlockUpdate) isEventMessage()          {}
+func (*Event_BlockCreate) isEventMessage()          {}
+func (*Event_UserBlockTextRange) isEventMessage()   {}
+func (*Event_UserBlockJoin) isEventMessage()        {}
+func (*Event_UserBlockLeft) isEventMessage()        {}
+func (*Event_UserBlockSelectRange) isEventMessage() {}
+func (*Event_FilesUpload) isEventMessage()          {}
 
-func (m *Event) GetMessage() isEvent_Message {
+func (m *Event) GetMessage() isEventMessage {
 	if m != nil {
 		return m.Message
 	}

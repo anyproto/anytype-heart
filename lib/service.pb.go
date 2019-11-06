@@ -58,18 +58,18 @@ var fileDescriptor_a0b84a42fa06f626 = []byte{
 var clientCommandsHandler ClientCommandsHandler
 
 type ClientCommandsHandler interface {
-	WalletCreate(*pb.Rpc_Wallet_Create_Request) *pb.Rpc_Wallet_Create_Response
-	WalletRecover(*pb.Rpc_Wallet_Recover_Request) *pb.Rpc_Wallet_Recover_Response
-	AccountRecover(*pb.Rpc_Account_Recover_Request) *pb.Rpc_Account_Recover_Response
-	AccountCreate(*pb.Rpc_Account_Create_Request) *pb.Rpc_Account_Create_Response
-	AccountSelect(*pb.Rpc_Account_Select_Request) *pb.Rpc_Account_Select_Response
-	ImageGetBlob(*pb.Rpc_Image_Get_Blob_Request) *pb.Rpc_Image_Get_Blob_Response
-	VersionGet(*pb.Rpc_Version_Get_Request) *pb.Rpc_Version_Get_Response
-	LogSend(*pb.Rpc_Log_Send_Request) *pb.Rpc_Log_Send_Response
-	BlockOpen(*pb.Rpc_Block_Open_Request) *pb.Rpc_Block_Open_Response
-	BlockCreate(*pb.Rpc_Block_Create_Request) *pb.Rpc_Block_Create_Response
-	BlockUpdate(*pb.Rpc_Block_Update_Request) *pb.Rpc_Block_Update_Response
-	BlockHistoryMove(*pb.Rpc_Block_History_Move_Request) *pb.Rpc_Block_History_Move_Response
+	WalletCreate(*pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
+	WalletRecover(*pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
+	AccountRecover(*pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse
+	AccountCreate(*pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse
+	AccountSelect(*pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse
+	ImageGetBlob(*pb.RpcImageGetBlobRequest) *pb.RpcImageGetBlobResponse
+	VersionGet(*pb.RpcVersionGetRequest) *pb.RpcVersionGetResponse
+	LogSend(*pb.RpcLogSendRequest) *pb.RpcLogSendResponse
+	BlockOpen(*pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse
+	BlockCreate(*pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
+	BlockUpdate(*pb.RpcBlockUpdateRequest) *pb.RpcBlockUpdateResponse
+	BlockHistoryMove(*pb.RpcBlockHistoryMoveRequest) *pb.RpcBlockHistoryMoveResponse
 }
 
 func registerClientCommandsHandler(srv ClientCommandsHandler) {
@@ -77,9 +77,9 @@ func registerClientCommandsHandler(srv ClientCommandsHandler) {
 }
 
 func WalletCreate(b []byte) []byte {
-	in := new(pb.Rpc_Wallet_Create_Request)
+	in := new(pb.RpcWalletCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Wallet_Create_Response{Error: &pb.Rpc_Wallet_Create_Response_Error{Code: pb.Rpc_Wallet_Create_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWalletCreateResponse{Error: &pb.RpcWalletCreateResponseError{Code: pb.RpcWalletCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.WalletCreate(in).Marshal()
@@ -87,9 +87,9 @@ func WalletCreate(b []byte) []byte {
 }
 
 func WalletRecover(b []byte) []byte {
-	in := new(pb.Rpc_Wallet_Recover_Request)
+	in := new(pb.RpcWalletRecoverRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Wallet_Recover_Response{Error: &pb.Rpc_Wallet_Recover_Response_Error{Code: pb.Rpc_Wallet_Recover_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWalletRecoverResponse{Error: &pb.RpcWalletRecoverResponseError{Code: pb.RpcWalletRecoverResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.WalletRecover(in).Marshal()
@@ -97,9 +97,9 @@ func WalletRecover(b []byte) []byte {
 }
 
 func AccountRecover(b []byte) []byte {
-	in := new(pb.Rpc_Account_Recover_Request)
+	in := new(pb.RpcAccountRecoverRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Account_Recover_Response{Error: &pb.Rpc_Account_Recover_Response_Error{Code: pb.Rpc_Account_Recover_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountRecoverResponse{Error: &pb.RpcAccountRecoverResponseError{Code: pb.RpcAccountRecoverResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.AccountRecover(in).Marshal()
@@ -107,9 +107,9 @@ func AccountRecover(b []byte) []byte {
 }
 
 func AccountCreate(b []byte) []byte {
-	in := new(pb.Rpc_Account_Create_Request)
+	in := new(pb.RpcAccountCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Account_Create_Response{Error: &pb.Rpc_Account_Create_Response_Error{Code: pb.Rpc_Account_Create_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountCreateResponse{Error: &pb.RpcAccountCreateResponseError{Code: pb.RpcAccountCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.AccountCreate(in).Marshal()
@@ -117,9 +117,9 @@ func AccountCreate(b []byte) []byte {
 }
 
 func AccountSelect(b []byte) []byte {
-	in := new(pb.Rpc_Account_Select_Request)
+	in := new(pb.RpcAccountSelectRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Account_Select_Response{Error: &pb.Rpc_Account_Select_Response_Error{Code: pb.Rpc_Account_Select_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountSelectResponse{Error: &pb.RpcAccountSelectResponseError{Code: pb.RpcAccountSelectResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.AccountSelect(in).Marshal()
@@ -127,9 +127,9 @@ func AccountSelect(b []byte) []byte {
 }
 
 func ImageGetBlob(b []byte) []byte {
-	in := new(pb.Rpc_Image_Get_Blob_Request)
+	in := new(pb.RpcImageGetBlobRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Image_Get_Blob_Response{Error: &pb.Rpc_Image_Get_Blob_Response_Error{Code: pb.Rpc_Image_Get_Blob_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcImageGetBlobResponse{Error: &pb.RpcImageGetBlobResponseError{Code: pb.RpcImageGetBlobResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.ImageGetBlob(in).Marshal()
@@ -137,9 +137,9 @@ func ImageGetBlob(b []byte) []byte {
 }
 
 func VersionGet(b []byte) []byte {
-	in := new(pb.Rpc_Version_Get_Request)
+	in := new(pb.RpcVersionGetRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Version_Get_Response{Error: &pb.Rpc_Version_Get_Response_Error{Code: pb.Rpc_Version_Get_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcVersionGetResponse{Error: &pb.RpcVersionGetResponseError{Code: pb.RpcVersionGetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.VersionGet(in).Marshal()
@@ -147,9 +147,9 @@ func VersionGet(b []byte) []byte {
 }
 
 func LogSend(b []byte) []byte {
-	in := new(pb.Rpc_Log_Send_Request)
+	in := new(pb.RpcLogSendRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Log_Send_Response{Error: &pb.Rpc_Log_Send_Response_Error{Code: pb.Rpc_Log_Send_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcLogSendResponse{Error: &pb.RpcLogSendResponseError{Code: pb.RpcLogSendResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.LogSend(in).Marshal()
@@ -157,9 +157,9 @@ func LogSend(b []byte) []byte {
 }
 
 func BlockOpen(b []byte) []byte {
-	in := new(pb.Rpc_Block_Open_Request)
+	in := new(pb.RpcBlockOpenRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Block_Open_Response{Error: &pb.Rpc_Block_Open_Response_Error{Code: pb.Rpc_Block_Open_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockOpenResponse{Error: &pb.RpcBlockOpenResponseError{Code: pb.RpcBlockOpenResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.BlockOpen(in).Marshal()
@@ -167,9 +167,9 @@ func BlockOpen(b []byte) []byte {
 }
 
 func BlockCreate(b []byte) []byte {
-	in := new(pb.Rpc_Block_Create_Request)
+	in := new(pb.RpcBlockCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Block_Create_Response{Error: &pb.Rpc_Block_Create_Response_Error{Code: pb.Rpc_Block_Create_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: pb.RpcBlockCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.BlockCreate(in).Marshal()
@@ -177,9 +177,9 @@ func BlockCreate(b []byte) []byte {
 }
 
 func BlockUpdate(b []byte) []byte {
-	in := new(pb.Rpc_Block_Update_Request)
+	in := new(pb.RpcBlockUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Block_Update_Response{Error: &pb.Rpc_Block_Update_Response_Error{Code: pb.Rpc_Block_Update_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockUpdateResponse{Error: &pb.RpcBlockUpdateResponseError{Code: pb.RpcBlockUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.BlockUpdate(in).Marshal()
@@ -187,9 +187,9 @@ func BlockUpdate(b []byte) []byte {
 }
 
 func BlockHistoryMove(b []byte) []byte {
-	in := new(pb.Rpc_Block_History_Move_Request)
+	in := new(pb.RpcBlockHistoryMoveRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ := (&pb.Rpc_Block_History_Move_Response{Error: &pb.Rpc_Block_History_Move_Response_Error{Code: pb.Rpc_Block_History_Move_Response_Error_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockHistoryMoveResponse{Error: &pb.RpcBlockHistoryMoveResponseError{Code: pb.RpcBlockHistoryMoveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
 	resp, _ := clientCommandsHandler.BlockHistoryMove(in).Marshal()
