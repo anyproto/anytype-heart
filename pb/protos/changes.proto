@@ -5,23 +5,19 @@ import "models.proto";
 
 message Change {
     message Block {
-        message Header {
-            oneof change {
-                string id = 1;
-                Model.Block.Header.Type type = 2;
-                string name = 3;
-                string icon = 4;
-
-                Model.Block.Header.Permissions permissions = 5;
-            }
-        }   
-
-        message Children {
-            repeated string children = 1;
+        message Fields {
+            Model.Struct fields = 1;
         }
 
-        message Content {
-            
+        message Permissions {
+            Model.Block.Permissions permissions = 1;
+        }
+
+        message ChildrenIds {
+            repeated string childrenIds = 1;
+        }
+
+        message Content {        
             message Page {
                 oneof change {
                     Model.Block.Content.Page.Style style = 1;
@@ -32,16 +28,33 @@ message Change {
             message Dashboard {
                 oneof change {
                     Model.Block.Content.Dashboard.Style style = 1;
-                    Model.Block.Header header = 2; // not a dashboard header – one of children
+                    Model.Block block = 2;
                 }
             }
 
-            message Media {
+            message File {
                 oneof change {
-                    string link = 1;
-                    Model.Block.Content.Media.State state = 2;
+                   string content = 1;
+                   Model.Block.Content.File.State state = 2;
+                   Model.Block.Content.File.Preview preview = 3;
                 }
             }  
+
+            message Image {
+                oneof change {
+                   string content = 1;
+                   Model.Block.Content.Image.State state = 2;
+                   Model.Block.Content.Image.Preview preview = 3;
+                }
+            }  
+
+            message Video {
+                oneof change {
+                   string content = 1;
+                   Model.Block.Content.Video.State state = 2;
+                   Model.Block.Content.Video.Preview preview = 3;
+                }
+            } 
 
             message Text {
                 oneof change {
@@ -59,20 +72,27 @@ message Change {
         }
     }
 
-
-}
-message BlocksListSingleChange {
-    repeated string id = 1;
-    oneof change {
-        Change.Block.Content.Text text = 2;
-        Change.Block.Header blockHeader = 3;
-        Change.Block.Children blockChildren = 4;
-        Change.Block.Content.Page page = 5;
-        Change.Block.Content.Dashboard dashboard = 6;
-        Change.Block.Content.Media media = 7;
+    message Single {
+        message BlocksList {
+            repeated string id = 1;
+            oneof change {
+                Block.Content.Text text = 2;
+                Block.Fields fields = 3;
+                Block.Permissions premissions = 4;
+                Block.ChildrenIds childrenIds = 5;
+                Block.Content.Page page = 6;
+                Block.Content.Dashboard dashboard = 7;
+                Block.Content.Video video = 8;
+                Block.Content.Image image = 9;
+                Block.Content.File file = 10;
+            }
+        }
     }
-}
 
-message BlockChanges {
-    repeated BlocksListSingleChange changes = 1;
+    message Multiple {
+        message BlocksList {
+            repeated Single.BlocksList changes = 1;
+        }
+    }  
+
 }

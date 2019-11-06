@@ -94,28 +94,22 @@ func (m *ChangeBlock) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ChangeBlock proto.InternalMessageInfo
 
-type ChangeBlockHeader struct {
-	// Types that are valid to be assigned to Change:
-	//	*ChangeBlockHeaderChangeOfId
-	//	*ChangeBlockHeaderChangeOfType
-	//	*ChangeBlockHeaderChangeOfName
-	//	*ChangeBlockHeaderChangeOfIcon
-	//	*ChangeBlockHeaderChangeOfPermissions
-	Change isChangeBlockHeaderChange `protobuf_oneof:"change"`
+type ChangeBlockFields struct {
+	Fields *ModelStruct `protobuf:"bytes,1,opt,name=fields,proto3" json:"fields,omitempty"`
 }
 
-func (m *ChangeBlockHeader) Reset()         { *m = ChangeBlockHeader{} }
-func (m *ChangeBlockHeader) String() string { return proto.CompactTextString(m) }
-func (*ChangeBlockHeader) ProtoMessage()    {}
-func (*ChangeBlockHeader) Descriptor() ([]byte, []int) {
+func (m *ChangeBlockFields) Reset()         { *m = ChangeBlockFields{} }
+func (m *ChangeBlockFields) String() string { return proto.CompactTextString(m) }
+func (*ChangeBlockFields) ProtoMessage()    {}
+func (*ChangeBlockFields) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 0}
 }
-func (m *ChangeBlockHeader) XXX_Unmarshal(b []byte) error {
+func (m *ChangeBlockFields) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *ChangeBlockHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ChangeBlockFields) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_ChangeBlockHeader.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ChangeBlockFields.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -125,115 +119,41 @@ func (m *ChangeBlockHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *ChangeBlockHeader) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ChangeBlockHeader.Merge(m, src)
+func (m *ChangeBlockFields) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeBlockFields.Merge(m, src)
 }
-func (m *ChangeBlockHeader) XXX_Size() int {
+func (m *ChangeBlockFields) XXX_Size() int {
 	return m.Size()
 }
-func (m *ChangeBlockHeader) XXX_DiscardUnknown() {
-	xxx_messageInfo_ChangeBlockHeader.DiscardUnknown(m)
+func (m *ChangeBlockFields) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeBlockFields.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ChangeBlockHeader proto.InternalMessageInfo
+var xxx_messageInfo_ChangeBlockFields proto.InternalMessageInfo
 
-type isChangeBlockHeaderChange interface {
-	isChangeBlockHeaderChange()
-	MarshalTo([]byte) (int, error)
-	Size() int
-}
-
-type ChangeBlockHeaderChangeOfId struct {
-	Id string `protobuf:"bytes,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
-}
-type ChangeBlockHeaderChangeOfType struct {
-	Type ModelBlockHeaderType `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.ModelBlockHeaderType,oneof" json:"type,omitempty"`
-}
-type ChangeBlockHeaderChangeOfName struct {
-	Name string `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
-}
-type ChangeBlockHeaderChangeOfIcon struct {
-	Icon string `protobuf:"bytes,4,opt,name=icon,proto3,oneof" json:"icon,omitempty"`
-}
-type ChangeBlockHeaderChangeOfPermissions struct {
-	Permissions *ModelBlockHeaderPermissions `protobuf:"bytes,5,opt,name=permissions,proto3,oneof" json:"permissions,omitempty"`
-}
-
-func (*ChangeBlockHeaderChangeOfId) isChangeBlockHeaderChange()          {}
-func (*ChangeBlockHeaderChangeOfType) isChangeBlockHeaderChange()        {}
-func (*ChangeBlockHeaderChangeOfName) isChangeBlockHeaderChange()        {}
-func (*ChangeBlockHeaderChangeOfIcon) isChangeBlockHeaderChange()        {}
-func (*ChangeBlockHeaderChangeOfPermissions) isChangeBlockHeaderChange() {}
-
-func (m *ChangeBlockHeader) GetChange() isChangeBlockHeaderChange {
+func (m *ChangeBlockFields) GetFields() *ModelStruct {
 	if m != nil {
-		return m.Change
+		return m.Fields
 	}
 	return nil
 }
 
-func (m *ChangeBlockHeader) GetId() string {
-	if x, ok := m.GetChange().(*ChangeBlockHeaderChangeOfId); ok {
-		return x.Id
-	}
-	return ""
+type ChangeBlockPermissions struct {
+	Permissions *ModelBlockPermissions `protobuf:"bytes,1,opt,name=permissions,proto3" json:"permissions,omitempty"`
 }
 
-func (m *ChangeBlockHeader) GetType() ModelBlockHeaderType {
-	if x, ok := m.GetChange().(*ChangeBlockHeaderChangeOfType); ok {
-		return x.Type
-	}
-	return ModelBlockHeader_DASHBOARD
-}
-
-func (m *ChangeBlockHeader) GetName() string {
-	if x, ok := m.GetChange().(*ChangeBlockHeaderChangeOfName); ok {
-		return x.Name
-	}
-	return ""
-}
-
-func (m *ChangeBlockHeader) GetIcon() string {
-	if x, ok := m.GetChange().(*ChangeBlockHeaderChangeOfIcon); ok {
-		return x.Icon
-	}
-	return ""
-}
-
-func (m *ChangeBlockHeader) GetPermissions() *ModelBlockHeaderPermissions {
-	if x, ok := m.GetChange().(*ChangeBlockHeaderChangeOfPermissions); ok {
-		return x.Permissions
-	}
-	return nil
-}
-
-// XXX_OneofWrappers is for the internal use of the proto package.
-func (*ChangeBlockHeader) XXX_OneofWrappers() []interface{} {
-	return []interface{}{
-		(*ChangeBlockHeaderChangeOfId)(nil),
-		(*ChangeBlockHeaderChangeOfType)(nil),
-		(*ChangeBlockHeaderChangeOfName)(nil),
-		(*ChangeBlockHeaderChangeOfIcon)(nil),
-		(*ChangeBlockHeaderChangeOfPermissions)(nil),
-	}
-}
-
-type ChangeBlockChildren struct {
-	Children []string `protobuf:"bytes,1,rep,name=children,proto3" json:"children,omitempty"`
-}
-
-func (m *ChangeBlockChildren) Reset()         { *m = ChangeBlockChildren{} }
-func (m *ChangeBlockChildren) String() string { return proto.CompactTextString(m) }
-func (*ChangeBlockChildren) ProtoMessage()    {}
-func (*ChangeBlockChildren) Descriptor() ([]byte, []int) {
+func (m *ChangeBlockPermissions) Reset()         { *m = ChangeBlockPermissions{} }
+func (m *ChangeBlockPermissions) String() string { return proto.CompactTextString(m) }
+func (*ChangeBlockPermissions) ProtoMessage()    {}
+func (*ChangeBlockPermissions) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 1}
 }
-func (m *ChangeBlockChildren) XXX_Unmarshal(b []byte) error {
+func (m *ChangeBlockPermissions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *ChangeBlockChildren) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ChangeBlockPermissions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_ChangeBlockChildren.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ChangeBlockPermissions.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -243,21 +163,65 @@ func (m *ChangeBlockChildren) XXX_Marshal(b []byte, deterministic bool) ([]byte,
 		return b[:n], nil
 	}
 }
-func (m *ChangeBlockChildren) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ChangeBlockChildren.Merge(m, src)
+func (m *ChangeBlockPermissions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeBlockPermissions.Merge(m, src)
 }
-func (m *ChangeBlockChildren) XXX_Size() int {
+func (m *ChangeBlockPermissions) XXX_Size() int {
 	return m.Size()
 }
-func (m *ChangeBlockChildren) XXX_DiscardUnknown() {
-	xxx_messageInfo_ChangeBlockChildren.DiscardUnknown(m)
+func (m *ChangeBlockPermissions) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeBlockPermissions.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ChangeBlockChildren proto.InternalMessageInfo
+var xxx_messageInfo_ChangeBlockPermissions proto.InternalMessageInfo
 
-func (m *ChangeBlockChildren) GetChildren() []string {
+func (m *ChangeBlockPermissions) GetPermissions() *ModelBlockPermissions {
 	if m != nil {
-		return m.Children
+		return m.Permissions
+	}
+	return nil
+}
+
+type ChangeBlockChildrenIds struct {
+	ChildrenIds []string `protobuf:"bytes,1,rep,name=childrenIds,proto3" json:"childrenIds,omitempty"`
+}
+
+func (m *ChangeBlockChildrenIds) Reset()         { *m = ChangeBlockChildrenIds{} }
+func (m *ChangeBlockChildrenIds) String() string { return proto.CompactTextString(m) }
+func (*ChangeBlockChildrenIds) ProtoMessage()    {}
+func (*ChangeBlockChildrenIds) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 2}
+}
+func (m *ChangeBlockChildrenIds) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeBlockChildrenIds) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeBlockChildrenIds.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeBlockChildrenIds) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeBlockChildrenIds.Merge(m, src)
+}
+func (m *ChangeBlockChildrenIds) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeBlockChildrenIds) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeBlockChildrenIds.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeBlockChildrenIds proto.InternalMessageInfo
+
+func (m *ChangeBlockChildrenIds) GetChildrenIds() []string {
+	if m != nil {
+		return m.ChildrenIds
 	}
 	return nil
 }
@@ -269,7 +233,7 @@ func (m *ChangeBlockContent) Reset()         { *m = ChangeBlockContent{} }
 func (m *ChangeBlockContent) String() string { return proto.CompactTextString(m) }
 func (*ChangeBlockContent) ProtoMessage()    {}
 func (*ChangeBlockContent) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 2}
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 3}
 }
 func (m *ChangeBlockContent) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -309,7 +273,7 @@ func (m *ChangeBlockContentPage) Reset()         { *m = ChangeBlockContentPage{}
 func (m *ChangeBlockContentPage) String() string { return proto.CompactTextString(m) }
 func (*ChangeBlockContentPage) ProtoMessage()    {}
 func (*ChangeBlockContentPage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 2, 0}
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 3, 0}
 }
 func (m *ChangeBlockContentPage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -386,7 +350,7 @@ func (*ChangeBlockContentPage) XXX_OneofWrappers() []interface{} {
 type ChangeBlockContentDashboard struct {
 	// Types that are valid to be assigned to Change:
 	//	*ChangeBlockContentDashboardChangeOfStyle
-	//	*ChangeBlockContentDashboardChangeOfHeader
+	//	*ChangeBlockContentDashboardChangeOfBlock
 	Change isChangeBlockContentDashboardChange `protobuf_oneof:"change"`
 }
 
@@ -394,7 +358,7 @@ func (m *ChangeBlockContentDashboard) Reset()         { *m = ChangeBlockContentD
 func (m *ChangeBlockContentDashboard) String() string { return proto.CompactTextString(m) }
 func (*ChangeBlockContentDashboard) ProtoMessage()    {}
 func (*ChangeBlockContentDashboard) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 2, 1}
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 3, 1}
 }
 func (m *ChangeBlockContentDashboard) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -432,12 +396,12 @@ type isChangeBlockContentDashboardChange interface {
 type ChangeBlockContentDashboardChangeOfStyle struct {
 	Style ModelBlockContentDashboardStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.ModelBlockContentDashboardStyle,oneof" json:"style,omitempty"`
 }
-type ChangeBlockContentDashboardChangeOfHeader struct {
-	Header *ModelBlockHeader `protobuf:"bytes,2,opt,name=header,proto3,oneof" json:"header,omitempty"`
+type ChangeBlockContentDashboardChangeOfBlock struct {
+	Block *ModelBlock `protobuf:"bytes,2,opt,name=block,proto3,oneof" json:"block,omitempty"`
 }
 
-func (*ChangeBlockContentDashboardChangeOfStyle) isChangeBlockContentDashboardChange()  {}
-func (*ChangeBlockContentDashboardChangeOfHeader) isChangeBlockContentDashboardChange() {}
+func (*ChangeBlockContentDashboardChangeOfStyle) isChangeBlockContentDashboardChange() {}
+func (*ChangeBlockContentDashboardChangeOfBlock) isChangeBlockContentDashboardChange() {}
 
 func (m *ChangeBlockContentDashboard) GetChange() isChangeBlockContentDashboardChange {
 	if m != nil {
@@ -453,9 +417,9 @@ func (m *ChangeBlockContentDashboard) GetStyle() ModelBlockContentDashboardStyle
 	return ModelBlockContentDashboard_MAIN_SCREEN
 }
 
-func (m *ChangeBlockContentDashboard) GetHeader() *ModelBlockHeader {
-	if x, ok := m.GetChange().(*ChangeBlockContentDashboardChangeOfHeader); ok {
-		return x.Header
+func (m *ChangeBlockContentDashboard) GetBlock() *ModelBlock {
+	if x, ok := m.GetChange().(*ChangeBlockContentDashboardChangeOfBlock); ok {
+		return x.Block
 	}
 	return nil
 }
@@ -464,29 +428,30 @@ func (m *ChangeBlockContentDashboard) GetHeader() *ModelBlockHeader {
 func (*ChangeBlockContentDashboard) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
 		(*ChangeBlockContentDashboardChangeOfStyle)(nil),
-		(*ChangeBlockContentDashboardChangeOfHeader)(nil),
+		(*ChangeBlockContentDashboardChangeOfBlock)(nil),
 	}
 }
 
-type ChangeBlockContentMedia struct {
+type ChangeBlockContentFile struct {
 	// Types that are valid to be assigned to Change:
-	//	*ChangeBlockContentMediaChangeOfLink
-	//	*ChangeBlockContentMediaChangeOfState
-	Change isChangeBlockContentMediaChange `protobuf_oneof:"change"`
+	//	*ChangeBlockContentFileChangeOfContent
+	//	*ChangeBlockContentFileChangeOfState
+	//	*ChangeBlockContentFileChangeOfPreview
+	Change isChangeBlockContentFileChange `protobuf_oneof:"change"`
 }
 
-func (m *ChangeBlockContentMedia) Reset()         { *m = ChangeBlockContentMedia{} }
-func (m *ChangeBlockContentMedia) String() string { return proto.CompactTextString(m) }
-func (*ChangeBlockContentMedia) ProtoMessage()    {}
-func (*ChangeBlockContentMedia) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 2, 2}
+func (m *ChangeBlockContentFile) Reset()         { *m = ChangeBlockContentFile{} }
+func (m *ChangeBlockContentFile) String() string { return proto.CompactTextString(m) }
+func (*ChangeBlockContentFile) ProtoMessage()    {}
+func (*ChangeBlockContentFile) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 3, 2}
 }
-func (m *ChangeBlockContentMedia) XXX_Unmarshal(b []byte) error {
+func (m *ChangeBlockContentFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *ChangeBlockContentMedia) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ChangeBlockContentFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_ChangeBlockContentMedia.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ChangeBlockContentFile.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -496,60 +461,268 @@ func (m *ChangeBlockContentMedia) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *ChangeBlockContentMedia) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ChangeBlockContentMedia.Merge(m, src)
+func (m *ChangeBlockContentFile) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeBlockContentFile.Merge(m, src)
 }
-func (m *ChangeBlockContentMedia) XXX_Size() int {
+func (m *ChangeBlockContentFile) XXX_Size() int {
 	return m.Size()
 }
-func (m *ChangeBlockContentMedia) XXX_DiscardUnknown() {
-	xxx_messageInfo_ChangeBlockContentMedia.DiscardUnknown(m)
+func (m *ChangeBlockContentFile) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeBlockContentFile.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ChangeBlockContentMedia proto.InternalMessageInfo
+var xxx_messageInfo_ChangeBlockContentFile proto.InternalMessageInfo
 
-type isChangeBlockContentMediaChange interface {
-	isChangeBlockContentMediaChange()
+type isChangeBlockContentFileChange interface {
+	isChangeBlockContentFileChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type ChangeBlockContentMediaChangeOfLink struct {
-	Link string `protobuf:"bytes,1,opt,name=link,proto3,oneof" json:"link,omitempty"`
+type ChangeBlockContentFileChangeOfContent struct {
+	Content string `protobuf:"bytes,1,opt,name=content,proto3,oneof" json:"content,omitempty"`
 }
-type ChangeBlockContentMediaChangeOfState struct {
-	State ModelBlockContentMediaState `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.ModelBlockContentMediaState,oneof" json:"state,omitempty"`
+type ChangeBlockContentFileChangeOfState struct {
+	State ModelBlockContentFileState `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.ModelBlockContentFileState,oneof" json:"state,omitempty"`
+}
+type ChangeBlockContentFileChangeOfPreview struct {
+	Preview *ModelBlockContentFilePreview `protobuf:"bytes,3,opt,name=preview,proto3,oneof" json:"preview,omitempty"`
 }
 
-func (*ChangeBlockContentMediaChangeOfLink) isChangeBlockContentMediaChange()  {}
-func (*ChangeBlockContentMediaChangeOfState) isChangeBlockContentMediaChange() {}
+func (*ChangeBlockContentFileChangeOfContent) isChangeBlockContentFileChange() {}
+func (*ChangeBlockContentFileChangeOfState) isChangeBlockContentFileChange()   {}
+func (*ChangeBlockContentFileChangeOfPreview) isChangeBlockContentFileChange() {}
 
-func (m *ChangeBlockContentMedia) GetChange() isChangeBlockContentMediaChange {
+func (m *ChangeBlockContentFile) GetChange() isChangeBlockContentFileChange {
 	if m != nil {
 		return m.Change
 	}
 	return nil
 }
 
-func (m *ChangeBlockContentMedia) GetLink() string {
-	if x, ok := m.GetChange().(*ChangeBlockContentMediaChangeOfLink); ok {
-		return x.Link
+func (m *ChangeBlockContentFile) GetContent() string {
+	if x, ok := m.GetChange().(*ChangeBlockContentFileChangeOfContent); ok {
+		return x.Content
 	}
 	return ""
 }
 
-func (m *ChangeBlockContentMedia) GetState() ModelBlockContentMediaState {
-	if x, ok := m.GetChange().(*ChangeBlockContentMediaChangeOfState); ok {
+func (m *ChangeBlockContentFile) GetState() ModelBlockContentFileState {
+	if x, ok := m.GetChange().(*ChangeBlockContentFileChangeOfState); ok {
 		return x.State
 	}
-	return ModelBlockContentMedia_EMPTY
+	return ModelBlockContentFile_EMPTY
+}
+
+func (m *ChangeBlockContentFile) GetPreview() *ModelBlockContentFilePreview {
+	if x, ok := m.GetChange().(*ChangeBlockContentFileChangeOfPreview); ok {
+		return x.Preview
+	}
+	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*ChangeBlockContentMedia) XXX_OneofWrappers() []interface{} {
+func (*ChangeBlockContentFile) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*ChangeBlockContentMediaChangeOfLink)(nil),
-		(*ChangeBlockContentMediaChangeOfState)(nil),
+		(*ChangeBlockContentFileChangeOfContent)(nil),
+		(*ChangeBlockContentFileChangeOfState)(nil),
+		(*ChangeBlockContentFileChangeOfPreview)(nil),
+	}
+}
+
+type ChangeBlockContentImage struct {
+	// Types that are valid to be assigned to Change:
+	//	*ChangeBlockContentImageChangeOfContent
+	//	*ChangeBlockContentImageChangeOfState
+	//	*ChangeBlockContentImageChangeOfPreview
+	Change isChangeBlockContentImageChange `protobuf_oneof:"change"`
+}
+
+func (m *ChangeBlockContentImage) Reset()         { *m = ChangeBlockContentImage{} }
+func (m *ChangeBlockContentImage) String() string { return proto.CompactTextString(m) }
+func (*ChangeBlockContentImage) ProtoMessage()    {}
+func (*ChangeBlockContentImage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 3, 3}
+}
+func (m *ChangeBlockContentImage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeBlockContentImage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeBlockContentImage.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeBlockContentImage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeBlockContentImage.Merge(m, src)
+}
+func (m *ChangeBlockContentImage) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeBlockContentImage) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeBlockContentImage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeBlockContentImage proto.InternalMessageInfo
+
+type isChangeBlockContentImageChange interface {
+	isChangeBlockContentImageChange()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type ChangeBlockContentImageChangeOfContent struct {
+	Content string `protobuf:"bytes,1,opt,name=content,proto3,oneof" json:"content,omitempty"`
+}
+type ChangeBlockContentImageChangeOfState struct {
+	State ModelBlockContentImageState `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.ModelBlockContentImageState,oneof" json:"state,omitempty"`
+}
+type ChangeBlockContentImageChangeOfPreview struct {
+	Preview *ModelBlockContentImagePreview `protobuf:"bytes,3,opt,name=preview,proto3,oneof" json:"preview,omitempty"`
+}
+
+func (*ChangeBlockContentImageChangeOfContent) isChangeBlockContentImageChange() {}
+func (*ChangeBlockContentImageChangeOfState) isChangeBlockContentImageChange()   {}
+func (*ChangeBlockContentImageChangeOfPreview) isChangeBlockContentImageChange() {}
+
+func (m *ChangeBlockContentImage) GetChange() isChangeBlockContentImageChange {
+	if m != nil {
+		return m.Change
+	}
+	return nil
+}
+
+func (m *ChangeBlockContentImage) GetContent() string {
+	if x, ok := m.GetChange().(*ChangeBlockContentImageChangeOfContent); ok {
+		return x.Content
+	}
+	return ""
+}
+
+func (m *ChangeBlockContentImage) GetState() ModelBlockContentImageState {
+	if x, ok := m.GetChange().(*ChangeBlockContentImageChangeOfState); ok {
+		return x.State
+	}
+	return ModelBlockContentImage_EMPTY
+}
+
+func (m *ChangeBlockContentImage) GetPreview() *ModelBlockContentImagePreview {
+	if x, ok := m.GetChange().(*ChangeBlockContentImageChangeOfPreview); ok {
+		return x.Preview
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*ChangeBlockContentImage) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*ChangeBlockContentImageChangeOfContent)(nil),
+		(*ChangeBlockContentImageChangeOfState)(nil),
+		(*ChangeBlockContentImageChangeOfPreview)(nil),
+	}
+}
+
+type ChangeBlockContentVideo struct {
+	// Types that are valid to be assigned to Change:
+	//	*ChangeBlockContentVideoChangeOfContent
+	//	*ChangeBlockContentVideoChangeOfState
+	//	*ChangeBlockContentVideoChangeOfPreview
+	Change isChangeBlockContentVideoChange `protobuf_oneof:"change"`
+}
+
+func (m *ChangeBlockContentVideo) Reset()         { *m = ChangeBlockContentVideo{} }
+func (m *ChangeBlockContentVideo) String() string { return proto.CompactTextString(m) }
+func (*ChangeBlockContentVideo) ProtoMessage()    {}
+func (*ChangeBlockContentVideo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 3, 4}
+}
+func (m *ChangeBlockContentVideo) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeBlockContentVideo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeBlockContentVideo.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeBlockContentVideo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeBlockContentVideo.Merge(m, src)
+}
+func (m *ChangeBlockContentVideo) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeBlockContentVideo) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeBlockContentVideo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeBlockContentVideo proto.InternalMessageInfo
+
+type isChangeBlockContentVideoChange interface {
+	isChangeBlockContentVideoChange()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type ChangeBlockContentVideoChangeOfContent struct {
+	Content string `protobuf:"bytes,1,opt,name=content,proto3,oneof" json:"content,omitempty"`
+}
+type ChangeBlockContentVideoChangeOfState struct {
+	State ModelBlockContentVideoState `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.ModelBlockContentVideoState,oneof" json:"state,omitempty"`
+}
+type ChangeBlockContentVideoChangeOfPreview struct {
+	Preview *ModelBlockContentVideoPreview `protobuf:"bytes,3,opt,name=preview,proto3,oneof" json:"preview,omitempty"`
+}
+
+func (*ChangeBlockContentVideoChangeOfContent) isChangeBlockContentVideoChange() {}
+func (*ChangeBlockContentVideoChangeOfState) isChangeBlockContentVideoChange()   {}
+func (*ChangeBlockContentVideoChangeOfPreview) isChangeBlockContentVideoChange() {}
+
+func (m *ChangeBlockContentVideo) GetChange() isChangeBlockContentVideoChange {
+	if m != nil {
+		return m.Change
+	}
+	return nil
+}
+
+func (m *ChangeBlockContentVideo) GetContent() string {
+	if x, ok := m.GetChange().(*ChangeBlockContentVideoChangeOfContent); ok {
+		return x.Content
+	}
+	return ""
+}
+
+func (m *ChangeBlockContentVideo) GetState() ModelBlockContentVideoState {
+	if x, ok := m.GetChange().(*ChangeBlockContentVideoChangeOfState); ok {
+		return x.State
+	}
+	return ModelBlockContentVideo_EMPTY
+}
+
+func (m *ChangeBlockContentVideo) GetPreview() *ModelBlockContentVideoPreview {
+	if x, ok := m.GetChange().(*ChangeBlockContentVideoChangeOfPreview); ok {
+		return x.Preview
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*ChangeBlockContentVideo) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*ChangeBlockContentVideoChangeOfContent)(nil),
+		(*ChangeBlockContentVideoChangeOfState)(nil),
+		(*ChangeBlockContentVideoChangeOfPreview)(nil),
 	}
 }
 
@@ -569,7 +742,7 @@ func (m *ChangeBlockContentText) Reset()         { *m = ChangeBlockContentText{}
 func (m *ChangeBlockContentText) String() string { return proto.CompactTextString(m) }
 func (*ChangeBlockContentText) ProtoMessage()    {}
 func (*ChangeBlockContentText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 2, 3}
+	return fileDescriptor_b16a38c6509bd894, []int{0, 0, 3, 5}
 }
 func (m *ChangeBlockContentText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -703,30 +876,21 @@ func (*ChangeBlockContentText) XXX_OneofWrappers() []interface{} {
 	}
 }
 
-type BlocksListSingleChange struct {
-	Id []string `protobuf:"bytes,1,rep,name=id,proto3" json:"id,omitempty"`
-	// Types that are valid to be assigned to Change:
-	//	*BlocksListSingleChangeChangeOfText
-	//	*BlocksListSingleChangeChangeOfBlockHeader
-	//	*BlocksListSingleChangeChangeOfBlockChildren
-	//	*BlocksListSingleChangeChangeOfPage
-	//	*BlocksListSingleChangeChangeOfDashboard
-	//	*BlocksListSingleChangeChangeOfMedia
-	Change isBlocksListSingleChangeChange `protobuf_oneof:"change"`
+type ChangeSingle struct {
 }
 
-func (m *BlocksListSingleChange) Reset()         { *m = BlocksListSingleChange{} }
-func (m *BlocksListSingleChange) String() string { return proto.CompactTextString(m) }
-func (*BlocksListSingleChange) ProtoMessage()    {}
-func (*BlocksListSingleChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b16a38c6509bd894, []int{1}
+func (m *ChangeSingle) Reset()         { *m = ChangeSingle{} }
+func (m *ChangeSingle) String() string { return proto.CompactTextString(m) }
+func (*ChangeSingle) ProtoMessage()    {}
+func (*ChangeSingle) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 1}
 }
-func (m *BlocksListSingleChange) XXX_Unmarshal(b []byte) error {
+func (m *ChangeSingle) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlocksListSingleChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ChangeSingle) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlocksListSingleChange.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ChangeSingle.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -736,134 +900,217 @@ func (m *BlocksListSingleChange) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *BlocksListSingleChange) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlocksListSingleChange.Merge(m, src)
+func (m *ChangeSingle) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeSingle.Merge(m, src)
 }
-func (m *BlocksListSingleChange) XXX_Size() int {
+func (m *ChangeSingle) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlocksListSingleChange) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlocksListSingleChange.DiscardUnknown(m)
+func (m *ChangeSingle) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeSingle.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlocksListSingleChange proto.InternalMessageInfo
+var xxx_messageInfo_ChangeSingle proto.InternalMessageInfo
 
-type isBlocksListSingleChangeChange interface {
-	isBlocksListSingleChangeChange()
+type ChangeSingleBlocksList struct {
+	Id []string `protobuf:"bytes,1,rep,name=id,proto3" json:"id,omitempty"`
+	// Types that are valid to be assigned to Change:
+	//	*ChangeSingleBlocksListChangeOfText
+	//	*ChangeSingleBlocksListChangeOfFields
+	//	*ChangeSingleBlocksListChangeOfPremissions
+	//	*ChangeSingleBlocksListChangeOfChildrenIds
+	//	*ChangeSingleBlocksListChangeOfPage
+	//	*ChangeSingleBlocksListChangeOfDashboard
+	//	*ChangeSingleBlocksListChangeOfVideo
+	//	*ChangeSingleBlocksListChangeOfImage
+	//	*ChangeSingleBlocksListChangeOfFile
+	Change isChangeSingleBlocksListChange `protobuf_oneof:"change"`
+}
+
+func (m *ChangeSingleBlocksList) Reset()         { *m = ChangeSingleBlocksList{} }
+func (m *ChangeSingleBlocksList) String() string { return proto.CompactTextString(m) }
+func (*ChangeSingleBlocksList) ProtoMessage()    {}
+func (*ChangeSingleBlocksList) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 1, 0}
+}
+func (m *ChangeSingleBlocksList) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeSingleBlocksList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeSingleBlocksList.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeSingleBlocksList) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeSingleBlocksList.Merge(m, src)
+}
+func (m *ChangeSingleBlocksList) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeSingleBlocksList) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeSingleBlocksList.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeSingleBlocksList proto.InternalMessageInfo
+
+type isChangeSingleBlocksListChange interface {
+	isChangeSingleBlocksListChange()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type BlocksListSingleChangeChangeOfText struct {
+type ChangeSingleBlocksListChangeOfText struct {
 	Text *ChangeBlockContentText `protobuf:"bytes,2,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
-type BlocksListSingleChangeChangeOfBlockHeader struct {
-	BlockHeader *ChangeBlockHeader `protobuf:"bytes,3,opt,name=blockHeader,proto3,oneof" json:"blockHeader,omitempty"`
+type ChangeSingleBlocksListChangeOfFields struct {
+	Fields *ChangeBlockFields `protobuf:"bytes,3,opt,name=fields,proto3,oneof" json:"fields,omitempty"`
 }
-type BlocksListSingleChangeChangeOfBlockChildren struct {
-	BlockChildren *ChangeBlockChildren `protobuf:"bytes,4,opt,name=blockChildren,proto3,oneof" json:"blockChildren,omitempty"`
+type ChangeSingleBlocksListChangeOfPremissions struct {
+	Premissions *ChangeBlockPermissions `protobuf:"bytes,4,opt,name=premissions,proto3,oneof" json:"premissions,omitempty"`
 }
-type BlocksListSingleChangeChangeOfPage struct {
-	Page *ChangeBlockContentPage `protobuf:"bytes,5,opt,name=page,proto3,oneof" json:"page,omitempty"`
+type ChangeSingleBlocksListChangeOfChildrenIds struct {
+	ChildrenIds *ChangeBlockChildrenIds `protobuf:"bytes,5,opt,name=childrenIds,proto3,oneof" json:"childrenIds,omitempty"`
 }
-type BlocksListSingleChangeChangeOfDashboard struct {
-	Dashboard *ChangeBlockContentDashboard `protobuf:"bytes,6,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
+type ChangeSingleBlocksListChangeOfPage struct {
+	Page *ChangeBlockContentPage `protobuf:"bytes,6,opt,name=page,proto3,oneof" json:"page,omitempty"`
 }
-type BlocksListSingleChangeChangeOfMedia struct {
-	Media *ChangeBlockContentMedia `protobuf:"bytes,7,opt,name=media,proto3,oneof" json:"media,omitempty"`
+type ChangeSingleBlocksListChangeOfDashboard struct {
+	Dashboard *ChangeBlockContentDashboard `protobuf:"bytes,7,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
+}
+type ChangeSingleBlocksListChangeOfVideo struct {
+	Video *ChangeBlockContentVideo `protobuf:"bytes,8,opt,name=video,proto3,oneof" json:"video,omitempty"`
+}
+type ChangeSingleBlocksListChangeOfImage struct {
+	Image *ChangeBlockContentImage `protobuf:"bytes,9,opt,name=image,proto3,oneof" json:"image,omitempty"`
+}
+type ChangeSingleBlocksListChangeOfFile struct {
+	File *ChangeBlockContentFile `protobuf:"bytes,10,opt,name=file,proto3,oneof" json:"file,omitempty"`
 }
 
-func (*BlocksListSingleChangeChangeOfText) isBlocksListSingleChangeChange()          {}
-func (*BlocksListSingleChangeChangeOfBlockHeader) isBlocksListSingleChangeChange()   {}
-func (*BlocksListSingleChangeChangeOfBlockChildren) isBlocksListSingleChangeChange() {}
-func (*BlocksListSingleChangeChangeOfPage) isBlocksListSingleChangeChange()          {}
-func (*BlocksListSingleChangeChangeOfDashboard) isBlocksListSingleChangeChange()     {}
-func (*BlocksListSingleChangeChangeOfMedia) isBlocksListSingleChangeChange()         {}
+func (*ChangeSingleBlocksListChangeOfText) isChangeSingleBlocksListChange()        {}
+func (*ChangeSingleBlocksListChangeOfFields) isChangeSingleBlocksListChange()      {}
+func (*ChangeSingleBlocksListChangeOfPremissions) isChangeSingleBlocksListChange() {}
+func (*ChangeSingleBlocksListChangeOfChildrenIds) isChangeSingleBlocksListChange() {}
+func (*ChangeSingleBlocksListChangeOfPage) isChangeSingleBlocksListChange()        {}
+func (*ChangeSingleBlocksListChangeOfDashboard) isChangeSingleBlocksListChange()   {}
+func (*ChangeSingleBlocksListChangeOfVideo) isChangeSingleBlocksListChange()       {}
+func (*ChangeSingleBlocksListChangeOfImage) isChangeSingleBlocksListChange()       {}
+func (*ChangeSingleBlocksListChangeOfFile) isChangeSingleBlocksListChange()        {}
 
-func (m *BlocksListSingleChange) GetChange() isBlocksListSingleChangeChange {
+func (m *ChangeSingleBlocksList) GetChange() isChangeSingleBlocksListChange {
 	if m != nil {
 		return m.Change
 	}
 	return nil
 }
 
-func (m *BlocksListSingleChange) GetId() []string {
+func (m *ChangeSingleBlocksList) GetId() []string {
 	if m != nil {
 		return m.Id
 	}
 	return nil
 }
 
-func (m *BlocksListSingleChange) GetText() *ChangeBlockContentText {
-	if x, ok := m.GetChange().(*BlocksListSingleChangeChangeOfText); ok {
+func (m *ChangeSingleBlocksList) GetText() *ChangeBlockContentText {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfText); ok {
 		return x.Text
 	}
 	return nil
 }
 
-func (m *BlocksListSingleChange) GetBlockHeader() *ChangeBlockHeader {
-	if x, ok := m.GetChange().(*BlocksListSingleChangeChangeOfBlockHeader); ok {
-		return x.BlockHeader
+func (m *ChangeSingleBlocksList) GetFields() *ChangeBlockFields {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfFields); ok {
+		return x.Fields
 	}
 	return nil
 }
 
-func (m *BlocksListSingleChange) GetBlockChildren() *ChangeBlockChildren {
-	if x, ok := m.GetChange().(*BlocksListSingleChangeChangeOfBlockChildren); ok {
-		return x.BlockChildren
+func (m *ChangeSingleBlocksList) GetPremissions() *ChangeBlockPermissions {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfPremissions); ok {
+		return x.Premissions
 	}
 	return nil
 }
 
-func (m *BlocksListSingleChange) GetPage() *ChangeBlockContentPage {
-	if x, ok := m.GetChange().(*BlocksListSingleChangeChangeOfPage); ok {
+func (m *ChangeSingleBlocksList) GetChildrenIds() *ChangeBlockChildrenIds {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfChildrenIds); ok {
+		return x.ChildrenIds
+	}
+	return nil
+}
+
+func (m *ChangeSingleBlocksList) GetPage() *ChangeBlockContentPage {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfPage); ok {
 		return x.Page
 	}
 	return nil
 }
 
-func (m *BlocksListSingleChange) GetDashboard() *ChangeBlockContentDashboard {
-	if x, ok := m.GetChange().(*BlocksListSingleChangeChangeOfDashboard); ok {
+func (m *ChangeSingleBlocksList) GetDashboard() *ChangeBlockContentDashboard {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfDashboard); ok {
 		return x.Dashboard
 	}
 	return nil
 }
 
-func (m *BlocksListSingleChange) GetMedia() *ChangeBlockContentMedia {
-	if x, ok := m.GetChange().(*BlocksListSingleChangeChangeOfMedia); ok {
-		return x.Media
+func (m *ChangeSingleBlocksList) GetVideo() *ChangeBlockContentVideo {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfVideo); ok {
+		return x.Video
+	}
+	return nil
+}
+
+func (m *ChangeSingleBlocksList) GetImage() *ChangeBlockContentImage {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfImage); ok {
+		return x.Image
+	}
+	return nil
+}
+
+func (m *ChangeSingleBlocksList) GetFile() *ChangeBlockContentFile {
+	if x, ok := m.GetChange().(*ChangeSingleBlocksListChangeOfFile); ok {
+		return x.File
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*BlocksListSingleChange) XXX_OneofWrappers() []interface{} {
+func (*ChangeSingleBlocksList) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*BlocksListSingleChangeChangeOfText)(nil),
-		(*BlocksListSingleChangeChangeOfBlockHeader)(nil),
-		(*BlocksListSingleChangeChangeOfBlockChildren)(nil),
-		(*BlocksListSingleChangeChangeOfPage)(nil),
-		(*BlocksListSingleChangeChangeOfDashboard)(nil),
-		(*BlocksListSingleChangeChangeOfMedia)(nil),
+		(*ChangeSingleBlocksListChangeOfText)(nil),
+		(*ChangeSingleBlocksListChangeOfFields)(nil),
+		(*ChangeSingleBlocksListChangeOfPremissions)(nil),
+		(*ChangeSingleBlocksListChangeOfChildrenIds)(nil),
+		(*ChangeSingleBlocksListChangeOfPage)(nil),
+		(*ChangeSingleBlocksListChangeOfDashboard)(nil),
+		(*ChangeSingleBlocksListChangeOfVideo)(nil),
+		(*ChangeSingleBlocksListChangeOfImage)(nil),
+		(*ChangeSingleBlocksListChangeOfFile)(nil),
 	}
 }
 
-type BlockChanges struct {
-	Changes []*BlocksListSingleChange `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+type ChangeMultiple struct {
 }
 
-func (m *BlockChanges) Reset()         { *m = BlockChanges{} }
-func (m *BlockChanges) String() string { return proto.CompactTextString(m) }
-func (*BlockChanges) ProtoMessage()    {}
-func (*BlockChanges) Descriptor() ([]byte, []int) {
-	return fileDescriptor_b16a38c6509bd894, []int{2}
+func (m *ChangeMultiple) Reset()         { *m = ChangeMultiple{} }
+func (m *ChangeMultiple) String() string { return proto.CompactTextString(m) }
+func (*ChangeMultiple) ProtoMessage()    {}
+func (*ChangeMultiple) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 2}
 }
-func (m *BlockChanges) XXX_Unmarshal(b []byte) error {
+func (m *ChangeMultiple) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockChanges) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ChangeMultiple) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockChanges.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ChangeMultiple.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -873,19 +1120,56 @@ func (m *BlockChanges) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return b[:n], nil
 	}
 }
-func (m *BlockChanges) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockChanges.Merge(m, src)
+func (m *ChangeMultiple) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeMultiple.Merge(m, src)
 }
-func (m *BlockChanges) XXX_Size() int {
+func (m *ChangeMultiple) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockChanges) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockChanges.DiscardUnknown(m)
+func (m *ChangeMultiple) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeMultiple.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockChanges proto.InternalMessageInfo
+var xxx_messageInfo_ChangeMultiple proto.InternalMessageInfo
 
-func (m *BlockChanges) GetChanges() []*BlocksListSingleChange {
+type ChangeMultipleBlocksList struct {
+	Changes []*ChangeSingleBlocksList `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+}
+
+func (m *ChangeMultipleBlocksList) Reset()         { *m = ChangeMultipleBlocksList{} }
+func (m *ChangeMultipleBlocksList) String() string { return proto.CompactTextString(m) }
+func (*ChangeMultipleBlocksList) ProtoMessage()    {}
+func (*ChangeMultipleBlocksList) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b16a38c6509bd894, []int{0, 2, 0}
+}
+func (m *ChangeMultipleBlocksList) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeMultipleBlocksList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeMultipleBlocksList.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeMultipleBlocksList) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeMultipleBlocksList.Merge(m, src)
+}
+func (m *ChangeMultipleBlocksList) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeMultipleBlocksList) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeMultipleBlocksList.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeMultipleBlocksList proto.InternalMessageInfo
+
+func (m *ChangeMultipleBlocksList) GetChanges() []*ChangeSingleBlocksList {
 	if m != nil {
 		return m.Changes
 	}
@@ -895,64 +1179,74 @@ func (m *BlockChanges) GetChanges() []*BlocksListSingleChange {
 func init() {
 	proto.RegisterType((*Change)(nil), "anytype.Change")
 	proto.RegisterType((*ChangeBlock)(nil), "anytype.Change.Block")
-	proto.RegisterType((*ChangeBlockHeader)(nil), "anytype.Change.Block.Header")
-	proto.RegisterType((*ChangeBlockChildren)(nil), "anytype.Change.Block.Children")
+	proto.RegisterType((*ChangeBlockFields)(nil), "anytype.Change.Block.Fields")
+	proto.RegisterType((*ChangeBlockPermissions)(nil), "anytype.Change.Block.Permissions")
+	proto.RegisterType((*ChangeBlockChildrenIds)(nil), "anytype.Change.Block.ChildrenIds")
 	proto.RegisterType((*ChangeBlockContent)(nil), "anytype.Change.Block.Content")
 	proto.RegisterType((*ChangeBlockContentPage)(nil), "anytype.Change.Block.Content.Page")
 	proto.RegisterType((*ChangeBlockContentDashboard)(nil), "anytype.Change.Block.Content.Dashboard")
-	proto.RegisterType((*ChangeBlockContentMedia)(nil), "anytype.Change.Block.Content.Media")
+	proto.RegisterType((*ChangeBlockContentFile)(nil), "anytype.Change.Block.Content.File")
+	proto.RegisterType((*ChangeBlockContentImage)(nil), "anytype.Change.Block.Content.Image")
+	proto.RegisterType((*ChangeBlockContentVideo)(nil), "anytype.Change.Block.Content.Video")
 	proto.RegisterType((*ChangeBlockContentText)(nil), "anytype.Change.Block.Content.Text")
-	proto.RegisterType((*BlocksListSingleChange)(nil), "anytype.BlocksListSingleChange")
-	proto.RegisterType((*BlockChanges)(nil), "anytype.BlockChanges")
+	proto.RegisterType((*ChangeSingle)(nil), "anytype.Change.Single")
+	proto.RegisterType((*ChangeSingleBlocksList)(nil), "anytype.Change.Single.BlocksList")
+	proto.RegisterType((*ChangeMultiple)(nil), "anytype.Change.Multiple")
+	proto.RegisterType((*ChangeMultipleBlocksList)(nil), "anytype.Change.Multiple.BlocksList")
 }
 
 func init() { proto.RegisterFile("changes.proto", fileDescriptor_b16a38c6509bd894) }
 
 var fileDescriptor_b16a38c6509bd894 = []byte{
-	// 682 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x55, 0x3d, 0x6f, 0xd3, 0x50,
-	0x14, 0xb5, 0xd3, 0x38, 0x1f, 0xd7, 0x6d, 0x85, 0x9e, 0x2a, 0x64, 0x99, 0xca, 0x44, 0x45, 0x82,
-	0x0c, 0x95, 0x87, 0x20, 0x10, 0x88, 0xa1, 0x55, 0x5a, 0x81, 0x11, 0x14, 0x55, 0x6e, 0x27, 0xb6,
-	0x97, 0xf8, 0x29, 0xb1, 0xe2, 0xd8, 0x91, 0xfd, 0x86, 0x66, 0xe2, 0x2f, 0x20, 0x7e, 0x0c, 0xbf,
-	0x81, 0xb1, 0x0b, 0x88, 0x11, 0x35, 0x33, 0x3b, 0x23, 0xba, 0xd7, 0x2f, 0xb6, 0x5b, 0xa5, 0x69,
-	0x37, 0xdf, 0x97, 0x73, 0xce, 0x3d, 0xef, 0x7e, 0xbc, 0xc0, 0xd6, 0x70, 0xcc, 0xe3, 0x91, 0xc8,
-	0xdc, 0x59, 0x9a, 0xc8, 0x84, 0x35, 0x79, 0x3c, 0x97, 0xf3, 0x99, 0xb0, 0x37, 0xa7, 0x49, 0x20,
-	0x22, 0x75, 0xbc, 0xf7, 0xaf, 0x09, 0x8d, 0x23, 0x02, 0xda, 0x7f, 0x9b, 0x60, 0xf4, 0xa3, 0x64,
-	0x38, 0xb1, 0x7f, 0xea, 0xd0, 0xf0, 0x04, 0x0f, 0x44, 0xca, 0x1e, 0x40, 0x2d, 0x0c, 0x2c, 0xbd,
-	0xa3, 0x77, 0xdb, 0x9e, 0xe6, 0xd7, 0xc2, 0x80, 0xbd, 0x84, 0x3a, 0xea, 0x58, 0xb5, 0x8e, 0xde,
-	0xdd, 0xee, 0x75, 0x5c, 0xa5, 0xeb, 0x9e, 0xa0, 0xac, 0x4b, 0x02, 0x6e, 0x4e, 0x76, 0xcf, 0xe7,
-	0x33, 0xe1, 0x69, 0x3e, 0xe1, 0xd9, 0x0e, 0xd4, 0x63, 0x3e, 0x15, 0xd6, 0x86, 0xd2, 0xa2, 0x08,
-	0x4f, 0xc3, 0x61, 0x12, 0x5b, 0xf5, 0xe5, 0x29, 0x46, 0xec, 0x03, 0x98, 0x33, 0x91, 0x4e, 0xc3,
-	0x2c, 0x0b, 0x93, 0x38, 0xb3, 0x8c, 0x8e, 0xde, 0x35, 0x7b, 0xcf, 0xd6, 0xa5, 0x3a, 0x2d, 0xe1,
-	0x9e, 0xe6, 0x57, 0xd9, 0xfd, 0x16, 0x34, 0xf2, 0x52, 0xd8, 0x4f, 0xa1, 0x75, 0x34, 0x0e, 0xa3,
-	0x20, 0x15, 0x31, 0xb3, 0xa1, 0x35, 0x54, 0xdf, 0x96, 0xde, 0xd9, 0xe8, 0xb6, 0xfd, 0x22, 0xb6,
-	0x17, 0x06, 0x34, 0x8f, 0x92, 0x58, 0x8a, 0x58, 0xda, 0x5f, 0xa0, 0x7e, 0xca, 0x47, 0x82, 0x1d,
-	0x80, 0x91, 0xc9, 0x79, 0x24, 0xa8, 0x16, 0xdb, 0xb7, 0x98, 0x51, 0x24, 0x17, 0x19, 0xee, 0x19,
-	0xc2, 0x3d, 0xcd, 0xcf, 0x79, 0x6c, 0x1f, 0x8c, 0x01, 0x82, 0xa8, 0x70, 0x66, 0x6f, 0x67, 0x95,
-	0x00, 0xa2, 0x09, 0x54, 0x31, 0xfd, 0x4d, 0x87, 0xf6, 0x31, 0xcf, 0xc6, 0x83, 0x84, 0xa7, 0x01,
-	0x3b, 0xbe, 0x6e, 0x63, 0x7f, 0xad, 0x8d, 0x82, 0x76, 0xd3, 0xcb, 0x0b, 0x68, 0x8c, 0xa9, 0x6e,
-	0xca, 0xcc, 0xa3, 0x35, 0xa5, 0xf5, 0x34, 0x5f, 0x81, 0x2b, 0xa6, 0x42, 0x30, 0x4e, 0x44, 0x10,
-	0x72, 0xec, 0x5f, 0x14, 0xc6, 0x93, 0x62, 0x42, 0x28, 0x62, 0x87, 0xe8, 0x92, 0xcb, 0xe5, 0x90,
-	0x74, 0xd7, 0xba, 0x24, 0x21, 0xf7, 0x0c, 0xf1, 0xb9, 0x43, 0x2e, 0x45, 0x25, 0xd5, 0xaf, 0x1a,
-	0xd4, 0xcf, 0xc5, 0x85, 0xc4, 0x54, 0x52, 0x5c, 0xc8, 0x32, 0x15, 0x46, 0x65, 0x5f, 0x6a, 0xf7,
-	0xe8, 0x0b, 0xea, 0xdc, 0xac, 0xc5, 0x01, 0x18, 0x53, 0x9e, 0x4e, 0x32, 0x1a, 0x4c, 0xf3, 0x3e,
-	0x02, 0x27, 0x08, 0x47, 0x01, 0xe2, 0xb1, 0x0e, 0x80, 0x4c, 0x46, 0xa3, 0x48, 0xf0, 0x41, 0x24,
-	0x68, 0x90, 0x5b, 0x9e, 0xe6, 0x57, 0xce, 0xd8, 0x27, 0x00, 0x84, 0x8a, 0x14, 0x17, 0x82, 0xa6,
-	0xf9, 0xae, 0xce, 0x15, 0x79, 0x72, 0x0e, 0xea, 0x95, 0x0a, 0xcc, 0x81, 0xf6, 0x70, 0x2c, 0x86,
-	0x13, 0x4a, 0xd8, 0x50, 0x09, 0xcb, 0x23, 0x66, 0x43, 0x93, 0x02, 0x11, 0x58, 0x4d, 0xf5, 0xeb,
-	0xf2, 0xa0, 0x2c, 0xec, 0xde, 0xf7, 0x0d, 0x78, 0x48, 0x59, 0xb3, 0x8f, 0x61, 0x26, 0xcf, 0xc2,
-	0x78, 0x14, 0x89, 0xfc, 0x29, 0x60, 0xdb, 0x6a, 0xeb, 0x71, 0x2d, 0x70, 0xe7, 0x5f, 0xa9, 0xd2,
-	0xe7, 0xd3, 0xb2, 0x57, 0x58, 0xcf, 0xe1, 0x2b, 0xbc, 0x17, 0xed, 0x39, 0x04, 0x93, 0x06, 0x3a,
-	0x9f, 0x25, 0x55, 0xe3, 0xdd, 0xd5, 0x02, 0xc5, 0xbc, 0x55, 0x29, 0xec, 0x2d, 0x6c, 0x51, 0xb8,
-	0xdc, 0x5c, 0xaa, 0xb0, 0xd9, 0x73, 0x6e, 0x31, 0xa1, 0x50, 0x9e, 0xe6, 0x5f, 0xa7, 0xe1, 0x1d,
-	0x66, 0x7c, 0x24, 0xd4, 0x63, 0x72, 0xc7, 0x1d, 0x70, 0x81, 0xf1, 0x0e, 0xc8, 0x60, 0xef, 0xa0,
-	0x1d, 0x2c, 0x37, 0x89, 0xca, 0x5d, 0x9d, 0x92, 0x95, 0xf4, 0x62, 0xf1, 0xb0, 0x2f, 0x05, 0x97,
-	0xbd, 0x01, 0x63, 0x8a, 0xc3, 0x4e, 0x5d, 0x31, 0x7b, 0x4f, 0xd6, 0x8b, 0xd0, 0x5e, 0xd0, 0x98,
-	0xe1, 0x47, 0xa5, 0x71, 0xef, 0x61, 0xb3, 0x9f, 0x5f, 0x8d, 0x1e, 0x78, 0xf6, 0x1a, 0xdb, 0x4d,
-	0x9f, 0xd4, 0x32, 0xb3, 0xf7, 0xb8, 0x10, 0x5e, 0xdd, 0x5f, 0x7f, 0x89, 0xef, 0xef, 0xfe, 0xb8,
-	0x72, 0xf4, 0xcb, 0x2b, 0x47, 0xff, 0x73, 0xe5, 0xe8, 0x5f, 0x17, 0x8e, 0x76, 0xb9, 0x70, 0xb4,
-	0xdf, 0x0b, 0x47, 0xfb, 0x5c, 0x9b, 0x0d, 0x06, 0x0d, 0xfa, 0x8f, 0x78, 0xfe, 0x3f, 0x00, 0x00,
-	0xff, 0xff, 0x47, 0xbe, 0x47, 0xc0, 0x4b, 0x06, 0x00, 0x00,
+	// 759 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x96, 0xcf, 0x6e, 0xd3, 0x4a,
+	0x14, 0xc6, 0xed, 0xd4, 0xce, 0x9f, 0x93, 0x7b, 0xab, 0xab, 0x51, 0xaf, 0x64, 0x59, 0x55, 0x14,
+	0xca, 0x82, 0x80, 0x8a, 0x91, 0x8a, 0x04, 0x48, 0x5d, 0x14, 0xa5, 0x7f, 0x48, 0x25, 0x8a, 0x8a,
+	0x53, 0x58, 0xb0, 0x73, 0xe2, 0x69, 0x32, 0xaa, 0x63, 0x5b, 0xf6, 0xb4, 0x34, 0x2b, 0xd6, 0xec,
+	0x58, 0xf3, 0x10, 0xac, 0x90, 0x78, 0x05, 0x96, 0x5d, 0x21, 0x36, 0x48, 0xd0, 0x6e, 0x78, 0x0c,
+	0x74, 0x66, 0x1c, 0xdb, 0x8d, 0xac, 0x24, 0x12, 0xdd, 0x65, 0x26, 0xe7, 0xf7, 0xcd, 0x37, 0x33,
+	0x67, 0x3e, 0x19, 0xfe, 0xed, 0x0f, 0x1d, 0x7f, 0x40, 0x63, 0x2b, 0x8c, 0x02, 0x1e, 0x90, 0x8a,
+	0xe3, 0x8f, 0xf9, 0x38, 0xa4, 0xe6, 0x3f, 0xa3, 0xc0, 0xa5, 0x5e, 0x32, 0xbd, 0xf6, 0xe9, 0x3f,
+	0x28, 0x6f, 0x8b, 0x42, 0xf3, 0x17, 0x80, 0xde, 0xf6, 0x82, 0xfe, 0x89, 0xf9, 0x18, 0xca, 0x7b,
+	0x8c, 0x7a, 0x6e, 0x4c, 0xee, 0x43, 0xf9, 0x58, 0xfc, 0x32, 0xd4, 0xa6, 0xda, 0xaa, 0x6f, 0xfc,
+	0x6f, 0x25, 0x32, 0xd6, 0x01, 0xaa, 0x58, 0x5d, 0x1e, 0x9d, 0xf6, 0xb9, 0x9d, 0x14, 0x99, 0x2f,
+	0xa1, 0x7e, 0x48, 0xa3, 0x11, 0x8b, 0x63, 0x16, 0xf8, 0x31, 0x69, 0x43, 0x3d, 0xcc, 0x86, 0x89,
+	0x44, 0x73, 0x4a, 0x42, 0x2c, 0x69, 0xe5, 0x30, 0x3b, 0x0f, 0x99, 0x0f, 0xa0, 0xbe, 0x3d, 0x64,
+	0x9e, 0x1b, 0x51, 0x7f, 0xdf, 0x8d, 0x49, 0x13, 0xea, 0xfd, 0x6c, 0x68, 0xa8, 0xcd, 0xa5, 0x56,
+	0xcd, 0xce, 0x4f, 0x99, 0x1f, 0x6b, 0x50, 0xd9, 0x0e, 0x7c, 0x4e, 0x7d, 0x6e, 0xbe, 0x03, 0xed,
+	0xd0, 0x19, 0x50, 0xb2, 0x05, 0x7a, 0xcc, 0xc7, 0x1e, 0x15, 0x16, 0x96, 0x37, 0xee, 0x14, 0x5a,
+	0x48, 0x20, 0x0b, 0x09, 0xab, 0x8b, 0xe5, 0x1d, 0xc5, 0x96, 0x1c, 0x59, 0x07, 0xbd, 0x87, 0x45,
+	0x46, 0x49, 0xec, 0x61, 0xa5, 0x48, 0x00, 0xab, 0x45, 0x51, 0xbb, 0x0a, 0x65, 0x79, 0xf8, 0xe6,
+	0x7b, 0x15, 0x6a, 0x3b, 0x4e, 0x3c, 0xec, 0x05, 0x4e, 0xe4, 0x92, 0x9d, 0xeb, 0x36, 0xd6, 0x67,
+	0xda, 0x48, 0xb1, 0x9b, 0xf2, 0xf2, 0x59, 0x05, 0x6d, 0x8f, 0x79, 0x94, 0x98, 0x50, 0xe9, 0xcb,
+	0x45, 0x84, 0x91, 0x5a, 0x47, 0xb1, 0x27, 0x13, 0xf2, 0xa4, 0x1c, 0x4e, 0x85, 0xf8, 0xbc, 0x93,
+	0x42, 0x35, 0xab, 0x8b, 0xe5, 0xd2, 0x9d, 0xc3, 0x29, 0xd9, 0x85, 0x4a, 0x18, 0xd1, 0x33, 0x46,
+	0xdf, 0x1a, 0x4b, 0xc2, 0xdf, 0xdd, 0xf9, 0x12, 0x87, 0x12, 0x40, 0x1f, 0x09, 0x9b, 0xb3, 0xfd,
+	0x45, 0x05, 0x7d, 0x7f, 0x84, 0xb7, 0x38, 0xcb, 0xf7, 0xd3, 0xeb, 0xbe, 0x5b, 0x33, 0x17, 0x15,
+	0x72, 0xd3, 0xc6, 0xf7, 0xa6, 0x8d, 0xdf, 0x5b, 0x40, 0x63, 0xae, 0xf3, 0xd7, 0xcc, 0xa5, 0xc1,
+	0xcd, 0x39, 0x17, 0x72, 0x7f, 0xe9, 0x5c, 0x6a, 0xcc, 0x74, 0xfe, 0xad, 0x04, 0xda, 0x11, 0x3d,
+	0xe7, 0x64, 0x05, 0x34, 0x4e, 0xcf, 0x33, 0xd7, 0x62, 0x94, 0x3d, 0xa7, 0x45, 0x9a, 0x04, 0x75,
+	0xa6, 0x5b, 0x78, 0x0b, 0xf4, 0x91, 0x13, 0x9d, 0xc4, 0x89, 0xdf, 0x05, 0x04, 0x0e, 0xb0, 0x1c,
+	0x05, 0x04, 0x47, 0x9a, 0x00, 0x3c, 0x18, 0x0c, 0x3c, 0xea, 0xf4, 0x3c, 0x6a, 0x68, 0x4d, 0xb5,
+	0x55, 0xed, 0x28, 0x76, 0x6e, 0x8e, 0xbc, 0x00, 0xc0, 0x52, 0x1a, 0x1d, 0x8d, 0x43, 0x6a, 0xe8,
+	0x0b, 0x3c, 0xb8, 0x74, 0x1d, 0xc9, 0xa0, 0x5e, 0xa6, 0x40, 0x1a, 0x50, 0xeb, 0x0f, 0x69, 0xff,
+	0x44, 0x2c, 0x58, 0x4e, 0x16, 0xcc, 0xa6, 0xc4, 0x15, 0xe3, 0x80, 0xba, 0x46, 0x25, 0xf9, 0x77,
+	0x32, 0x91, 0x3b, 0xd8, 0xdf, 0x1a, 0x94, 0xbb, 0xcc, 0x1f, 0x78, 0xd4, 0xfc, 0xa1, 0x01, 0x08,
+	0x03, 0xf1, 0x73, 0x16, 0x73, 0xb2, 0x0c, 0x25, 0xe6, 0x26, 0x79, 0x56, 0x62, 0x2e, 0x79, 0x92,
+	0x9c, 0xbc, 0x7c, 0xe4, 0x6b, 0xa9, 0x73, 0x19, 0xd6, 0x05, 0xd6, 0xd3, 0xdb, 0x79, 0x94, 0x66,
+	0xb6, 0x3c, 0xdd, 0xd5, 0x62, 0x56, 0x26, 0x7c, 0x47, 0x99, 0x84, 0x37, 0xd9, 0x85, 0x7a, 0x18,
+	0xd1, 0x34, 0xad, 0x35, 0x01, 0xdf, 0x2a, 0x86, 0x73, 0x71, 0xdd, 0x51, 0xec, 0x3c, 0x87, 0x32,
+	0xf9, 0x84, 0xd6, 0x67, 0xc9, 0xe4, 0x92, 0x1d, 0x65, 0x72, 0x1c, 0xee, 0x3f, 0x74, 0x06, 0xf2,
+	0xa8, 0xe7, 0xee, 0x1f, 0x23, 0x1b, 0xf7, 0x8f, 0x04, 0x79, 0x06, 0x35, 0x77, 0x92, 0x9d, 0xe2,
+	0x2e, 0xf2, 0x0d, 0x56, 0x88, 0xa7, 0x51, 0x8b, 0x57, 0x9a, 0xb2, 0x64, 0x13, 0xf4, 0x33, 0x7c,
+	0x2b, 0x46, 0x55, 0x88, 0xdc, 0x9e, 0x2d, 0x22, 0x9e, 0x15, 0x76, 0xa8, 0x60, 0x10, 0x66, 0x18,
+	0x11, 0x46, 0x6d, 0x11, 0x58, 0xa4, 0x09, 0xc2, 0x82, 0xc1, 0xcd, 0x1f, 0x33, 0x8f, 0x1a, 0xb0,
+	0xc8, 0xe6, 0x31, 0x42, 0x71, 0xf3, 0x48, 0xe4, 0x5a, 0xed, 0x15, 0x54, 0x0f, 0x4e, 0x3d, 0xce,
+	0x42, 0x8f, 0x9a, 0xfb, 0xd7, 0x5a, 0x6d, 0x13, 0x5b, 0x55, 0x7c, 0x1b, 0x88, 0x7e, 0x2b, 0xb8,
+	0x1d, 0xd9, 0xa2, 0x56, 0xc6, 0xd8, 0x13, 0xa2, 0xbd, 0xfa, 0xf5, 0xb2, 0xa1, 0x5e, 0x5c, 0x36,
+	0xd4, 0x9f, 0x97, 0x0d, 0xf5, 0xc3, 0x55, 0x43, 0xb9, 0xb8, 0x6a, 0x28, 0xdf, 0xaf, 0x1a, 0xca,
+	0x9b, 0x52, 0xd8, 0xeb, 0x95, 0xc5, 0x57, 0xc5, 0xc3, 0x3f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x87,
+	0x43, 0x0e, 0x1e, 0x7d, 0x08, 0x00, 0x00,
 }
 
 func (m *Change) Marshal() (dAtA []byte, err error) {
@@ -1001,7 +1295,7 @@ func (m *ChangeBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *ChangeBlockHeader) Marshal() (dAtA []byte, err error) {
+func (m *ChangeBlockFields) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1011,89 +1305,51 @@ func (m *ChangeBlockHeader) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ChangeBlockHeader) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeBlockFields) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ChangeBlockHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeBlockFields) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Change != nil {
+	if m.Fields != nil {
 		{
-			size := m.Change.Size()
-			i -= size
-			if _, err := m.Change.MarshalTo(dAtA[i:]); err != nil {
+			size, err := m.Fields.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
 				return 0, err
 			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
 
-func (m *ChangeBlockHeaderChangeOfId) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeBlockPermissions) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeBlockPermissions) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ChangeBlockHeaderChangeOfId) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeBlockPermissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	i -= len(m.Id)
-	copy(dAtA[i:], m.Id)
-	i = encodeVarintChanges(dAtA, i, uint64(len(m.Id)))
-	i--
-	dAtA[i] = 0xa
-	return len(dAtA) - i, nil
-}
-func (m *ChangeBlockHeaderChangeOfType) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ChangeBlockHeaderChangeOfType) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	i = encodeVarintChanges(dAtA, i, uint64(m.Type))
-	i--
-	dAtA[i] = 0x10
-	return len(dAtA) - i, nil
-}
-func (m *ChangeBlockHeaderChangeOfName) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ChangeBlockHeaderChangeOfName) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	i -= len(m.Name)
-	copy(dAtA[i:], m.Name)
-	i = encodeVarintChanges(dAtA, i, uint64(len(m.Name)))
-	i--
-	dAtA[i] = 0x1a
-	return len(dAtA) - i, nil
-}
-func (m *ChangeBlockHeaderChangeOfIcon) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ChangeBlockHeaderChangeOfIcon) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	i -= len(m.Icon)
-	copy(dAtA[i:], m.Icon)
-	i = encodeVarintChanges(dAtA, i, uint64(len(m.Icon)))
-	i--
-	dAtA[i] = 0x22
-	return len(dAtA) - i, nil
-}
-func (m *ChangeBlockHeaderChangeOfPermissions) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ChangeBlockHeaderChangeOfPermissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
 	if m.Permissions != nil {
 		{
 			size, err := m.Permissions.MarshalToSizedBuffer(dAtA[:i])
@@ -1104,11 +1360,12 @@ func (m *ChangeBlockHeaderChangeOfPermissions) MarshalToSizedBuffer(dAtA []byte)
 			i = encodeVarintChanges(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x2a
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
-func (m *ChangeBlockChildren) Marshal() (dAtA []byte, err error) {
+
+func (m *ChangeBlockChildrenIds) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1118,21 +1375,21 @@ func (m *ChangeBlockChildren) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ChangeBlockChildren) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeBlockChildrenIds) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ChangeBlockChildren) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeBlockChildrenIds) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Children) > 0 {
-		for iNdEx := len(m.Children) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.Children[iNdEx])
-			copy(dAtA[i:], m.Children[iNdEx])
-			i = encodeVarintChanges(dAtA, i, uint64(len(m.Children[iNdEx])))
+	if len(m.ChildrenIds) > 0 {
+		for iNdEx := len(m.ChildrenIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ChildrenIds[iNdEx])
+			copy(dAtA[i:], m.ChildrenIds[iNdEx])
+			i = encodeVarintChanges(dAtA, i, uint64(len(m.ChildrenIds[iNdEx])))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -1272,16 +1529,16 @@ func (m *ChangeBlockContentDashboardChangeOfStyle) MarshalToSizedBuffer(dAtA []b
 	dAtA[i] = 0x8
 	return len(dAtA) - i, nil
 }
-func (m *ChangeBlockContentDashboardChangeOfHeader) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentDashboardChangeOfBlock) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ChangeBlockContentDashboardChangeOfHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentDashboardChangeOfBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.Header != nil {
+	if m.Block != nil {
 		{
-			size, err := m.Header.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Block.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1293,7 +1550,7 @@ func (m *ChangeBlockContentDashboardChangeOfHeader) MarshalToSizedBuffer(dAtA []
 	}
 	return len(dAtA) - i, nil
 }
-func (m *ChangeBlockContentMedia) Marshal() (dAtA []byte, err error) {
+func (m *ChangeBlockContentFile) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1303,12 +1560,12 @@ func (m *ChangeBlockContentMedia) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ChangeBlockContentMedia) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentFile) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ChangeBlockContentMedia) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1325,30 +1582,209 @@ func (m *ChangeBlockContentMedia) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *ChangeBlockContentMediaChangeOfLink) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentFileChangeOfContent) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ChangeBlockContentMediaChangeOfLink) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentFileChangeOfContent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	i -= len(m.Link)
-	copy(dAtA[i:], m.Link)
-	i = encodeVarintChanges(dAtA, i, uint64(len(m.Link)))
+	i -= len(m.Content)
+	copy(dAtA[i:], m.Content)
+	i = encodeVarintChanges(dAtA, i, uint64(len(m.Content)))
 	i--
 	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
-func (m *ChangeBlockContentMediaChangeOfState) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentFileChangeOfState) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ChangeBlockContentMediaChangeOfState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeBlockContentFileChangeOfState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i = encodeVarintChanges(dAtA, i, uint64(m.State))
 	i--
 	dAtA[i] = 0x10
+	return len(dAtA) - i, nil
+}
+func (m *ChangeBlockContentFileChangeOfPreview) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentFileChangeOfPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Preview != nil {
+		{
+			size, err := m.Preview.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeBlockContentImage) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeBlockContentImage) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Change != nil {
+		{
+			size := m.Change.Size()
+			i -= size
+			if _, err := m.Change.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeBlockContentImageChangeOfContent) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentImageChangeOfContent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Content)
+	copy(dAtA[i:], m.Content)
+	i = encodeVarintChanges(dAtA, i, uint64(len(m.Content)))
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
+}
+func (m *ChangeBlockContentImageChangeOfState) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentImageChangeOfState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i = encodeVarintChanges(dAtA, i, uint64(m.State))
+	i--
+	dAtA[i] = 0x10
+	return len(dAtA) - i, nil
+}
+func (m *ChangeBlockContentImageChangeOfPreview) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentImageChangeOfPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Preview != nil {
+		{
+			size, err := m.Preview.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeBlockContentVideo) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeBlockContentVideo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentVideo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Change != nil {
+		{
+			size := m.Change.Size()
+			i -= size
+			if _, err := m.Change.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeBlockContentVideoChangeOfContent) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentVideoChangeOfContent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Content)
+	copy(dAtA[i:], m.Content)
+	i = encodeVarintChanges(dAtA, i, uint64(len(m.Content)))
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
+}
+func (m *ChangeBlockContentVideoChangeOfState) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentVideoChangeOfState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i = encodeVarintChanges(dAtA, i, uint64(m.State))
+	i--
+	dAtA[i] = 0x10
+	return len(dAtA) - i, nil
+}
+func (m *ChangeBlockContentVideoChangeOfPreview) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeBlockContentVideoChangeOfPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Preview != nil {
+		{
+			size, err := m.Preview.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
 	return len(dAtA) - i, nil
 }
 func (m *ChangeBlockContentText) Marshal() (dAtA []byte, err error) {
@@ -1493,7 +1929,7 @@ func (m *ChangeBlockContentTextChangeOfChecked) MarshalToSizedBuffer(dAtA []byte
 	dAtA[i] = 0x38
 	return len(dAtA) - i, nil
 }
-func (m *BlocksListSingleChange) Marshal() (dAtA []byte, err error) {
+func (m *ChangeSingle) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1503,12 +1939,35 @@ func (m *BlocksListSingleChange) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlocksListSingleChange) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeSingle) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlocksListSingleChange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeSingle) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeSingleBlocksList) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeSingleBlocksList) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeSingleBlocksList) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1534,12 +1993,12 @@ func (m *BlocksListSingleChange) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *BlocksListSingleChangeChangeOfText) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfText) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlocksListSingleChangeChangeOfText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Text != nil {
 		{
@@ -1555,16 +2014,16 @@ func (m *BlocksListSingleChangeChangeOfText) MarshalToSizedBuffer(dAtA []byte) (
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlocksListSingleChangeChangeOfBlockHeader) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfFields) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlocksListSingleChangeChangeOfBlockHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfFields) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.BlockHeader != nil {
+	if m.Fields != nil {
 		{
-			size, err := m.BlockHeader.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Fields.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1576,16 +2035,16 @@ func (m *BlocksListSingleChangeChangeOfBlockHeader) MarshalToSizedBuffer(dAtA []
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlocksListSingleChangeChangeOfBlockChildren) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfPremissions) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlocksListSingleChangeChangeOfBlockChildren) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfPremissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.BlockChildren != nil {
+	if m.Premissions != nil {
 		{
-			size, err := m.BlockChildren.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Premissions.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1597,16 +2056,16 @@ func (m *BlocksListSingleChangeChangeOfBlockChildren) MarshalToSizedBuffer(dAtA 
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlocksListSingleChangeChangeOfPage) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfChildrenIds) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlocksListSingleChangeChangeOfPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfChildrenIds) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.Page != nil {
+	if m.ChildrenIds != nil {
 		{
-			size, err := m.Page.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.ChildrenIds.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1618,16 +2077,16 @@ func (m *BlocksListSingleChangeChangeOfPage) MarshalToSizedBuffer(dAtA []byte) (
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlocksListSingleChangeChangeOfDashboard) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfPage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlocksListSingleChangeChangeOfDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.Dashboard != nil {
+	if m.Page != nil {
 		{
-			size, err := m.Dashboard.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Page.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1639,16 +2098,16 @@ func (m *BlocksListSingleChangeChangeOfDashboard) MarshalToSizedBuffer(dAtA []by
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlocksListSingleChangeChangeOfMedia) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfDashboard) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlocksListSingleChangeChangeOfMedia) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeSingleBlocksListChangeOfDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.Media != nil {
+	if m.Dashboard != nil {
 		{
-			size, err := m.Media.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Dashboard.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1660,7 +2119,70 @@ func (m *BlocksListSingleChangeChangeOfMedia) MarshalToSizedBuffer(dAtA []byte) 
 	}
 	return len(dAtA) - i, nil
 }
-func (m *BlockChanges) Marshal() (dAtA []byte, err error) {
+func (m *ChangeSingleBlocksListChangeOfVideo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeSingleBlocksListChangeOfVideo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Video != nil {
+		{
+			size, err := m.Video.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x42
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeSingleBlocksListChangeOfImage) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeSingleBlocksListChangeOfImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Image != nil {
+		{
+			size, err := m.Image.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x4a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeSingleBlocksListChangeOfFile) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeSingleBlocksListChangeOfFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.File != nil {
+		{
+			size, err := m.File.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x52
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeMultiple) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1670,12 +2192,35 @@ func (m *BlockChanges) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockChanges) MarshalTo(dAtA []byte) (int, error) {
+func (m *ChangeMultiple) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockChanges) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ChangeMultiple) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeMultipleBlocksList) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeMultipleBlocksList) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeMultipleBlocksList) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1726,58 +2271,20 @@ func (m *ChangeBlock) Size() (n int) {
 	return n
 }
 
-func (m *ChangeBlockHeader) Size() (n int) {
+func (m *ChangeBlockFields) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Change != nil {
-		n += m.Change.Size()
+	if m.Fields != nil {
+		l = m.Fields.Size()
+		n += 1 + l + sovChanges(uint64(l))
 	}
 	return n
 }
 
-func (m *ChangeBlockHeaderChangeOfId) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Id)
-	n += 1 + l + sovChanges(uint64(l))
-	return n
-}
-func (m *ChangeBlockHeaderChangeOfType) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	n += 1 + sovChanges(uint64(m.Type))
-	return n
-}
-func (m *ChangeBlockHeaderChangeOfName) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Name)
-	n += 1 + l + sovChanges(uint64(l))
-	return n
-}
-func (m *ChangeBlockHeaderChangeOfIcon) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Icon)
-	n += 1 + l + sovChanges(uint64(l))
-	return n
-}
-func (m *ChangeBlockHeaderChangeOfPermissions) Size() (n int) {
+func (m *ChangeBlockPermissions) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1789,14 +2296,15 @@ func (m *ChangeBlockHeaderChangeOfPermissions) Size() (n int) {
 	}
 	return n
 }
-func (m *ChangeBlockChildren) Size() (n int) {
+
+func (m *ChangeBlockChildrenIds) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if len(m.Children) > 0 {
-		for _, s := range m.Children {
+	if len(m.ChildrenIds) > 0 {
+		for _, s := range m.ChildrenIds {
 			l = len(s)
 			n += 1 + l + sovChanges(uint64(l))
 		}
@@ -1867,19 +2375,19 @@ func (m *ChangeBlockContentDashboardChangeOfStyle) Size() (n int) {
 	n += 1 + sovChanges(uint64(m.Style))
 	return n
 }
-func (m *ChangeBlockContentDashboardChangeOfHeader) Size() (n int) {
+func (m *ChangeBlockContentDashboardChangeOfBlock) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Header != nil {
-		l = m.Header.Size()
+	if m.Block != nil {
+		l = m.Block.Size()
 		n += 1 + l + sovChanges(uint64(l))
 	}
 	return n
 }
-func (m *ChangeBlockContentMedia) Size() (n int) {
+func (m *ChangeBlockContentFile) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1891,23 +2399,121 @@ func (m *ChangeBlockContentMedia) Size() (n int) {
 	return n
 }
 
-func (m *ChangeBlockContentMediaChangeOfLink) Size() (n int) {
+func (m *ChangeBlockContentFileChangeOfContent) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	l = len(m.Link)
+	l = len(m.Content)
 	n += 1 + l + sovChanges(uint64(l))
 	return n
 }
-func (m *ChangeBlockContentMediaChangeOfState) Size() (n int) {
+func (m *ChangeBlockContentFileChangeOfState) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
 	n += 1 + sovChanges(uint64(m.State))
+	return n
+}
+func (m *ChangeBlockContentFileChangeOfPreview) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Preview != nil {
+		l = m.Preview.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeBlockContentImage) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Change != nil {
+		n += m.Change.Size()
+	}
+	return n
+}
+
+func (m *ChangeBlockContentImageChangeOfContent) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Content)
+	n += 1 + l + sovChanges(uint64(l))
+	return n
+}
+func (m *ChangeBlockContentImageChangeOfState) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += 1 + sovChanges(uint64(m.State))
+	return n
+}
+func (m *ChangeBlockContentImageChangeOfPreview) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Preview != nil {
+		l = m.Preview.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeBlockContentVideo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Change != nil {
+		n += m.Change.Size()
+	}
+	return n
+}
+
+func (m *ChangeBlockContentVideoChangeOfContent) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Content)
+	n += 1 + l + sovChanges(uint64(l))
+	return n
+}
+func (m *ChangeBlockContentVideoChangeOfState) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += 1 + sovChanges(uint64(m.State))
+	return n
+}
+func (m *ChangeBlockContentVideoChangeOfPreview) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Preview != nil {
+		l = m.Preview.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
 	return n
 }
 func (m *ChangeBlockContentText) Size() (n int) {
@@ -1989,7 +2595,16 @@ func (m *ChangeBlockContentTextChangeOfChecked) Size() (n int) {
 	n += 2
 	return n
 }
-func (m *BlocksListSingleChange) Size() (n int) {
+func (m *ChangeSingle) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *ChangeSingleBlocksList) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2007,7 +2622,7 @@ func (m *BlocksListSingleChange) Size() (n int) {
 	return n
 }
 
-func (m *BlocksListSingleChangeChangeOfText) Size() (n int) {
+func (m *ChangeSingleBlocksListChangeOfText) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2019,31 +2634,43 @@ func (m *BlocksListSingleChangeChangeOfText) Size() (n int) {
 	}
 	return n
 }
-func (m *BlocksListSingleChangeChangeOfBlockHeader) Size() (n int) {
+func (m *ChangeSingleBlocksListChangeOfFields) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.BlockHeader != nil {
-		l = m.BlockHeader.Size()
+	if m.Fields != nil {
+		l = m.Fields.Size()
 		n += 1 + l + sovChanges(uint64(l))
 	}
 	return n
 }
-func (m *BlocksListSingleChangeChangeOfBlockChildren) Size() (n int) {
+func (m *ChangeSingleBlocksListChangeOfPremissions) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.BlockChildren != nil {
-		l = m.BlockChildren.Size()
+	if m.Premissions != nil {
+		l = m.Premissions.Size()
 		n += 1 + l + sovChanges(uint64(l))
 	}
 	return n
 }
-func (m *BlocksListSingleChangeChangeOfPage) Size() (n int) {
+func (m *ChangeSingleBlocksListChangeOfChildrenIds) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.ChildrenIds != nil {
+		l = m.ChildrenIds.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeSingleBlocksListChangeOfPage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2055,7 +2682,7 @@ func (m *BlocksListSingleChangeChangeOfPage) Size() (n int) {
 	}
 	return n
 }
-func (m *BlocksListSingleChangeChangeOfDashboard) Size() (n int) {
+func (m *ChangeSingleBlocksListChangeOfDashboard) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2067,19 +2694,52 @@ func (m *BlocksListSingleChangeChangeOfDashboard) Size() (n int) {
 	}
 	return n
 }
-func (m *BlocksListSingleChangeChangeOfMedia) Size() (n int) {
+func (m *ChangeSingleBlocksListChangeOfVideo) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Media != nil {
-		l = m.Media.Size()
+	if m.Video != nil {
+		l = m.Video.Size()
 		n += 1 + l + sovChanges(uint64(l))
 	}
 	return n
 }
-func (m *BlockChanges) Size() (n int) {
+func (m *ChangeSingleBlocksListChangeOfImage) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Image != nil {
+		l = m.Image.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeSingleBlocksListChangeOfFile) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.File != nil {
+		l = m.File.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeMultiple) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *ChangeMultipleBlocksList) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2206,7 +2866,7 @@ func (m *ChangeBlock) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ChangeBlockHeader) Unmarshal(dAtA []byte) error {
+func (m *ChangeBlockFields) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2229,17 +2889,17 @@ func (m *ChangeBlockHeader) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Header: wiretype end group for non-group")
+			return fmt.Errorf("proto: Fields: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Header: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Fields: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Fields", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowChanges
@@ -2249,109 +2909,82 @@ func (m *ChangeBlockHeader) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthChanges
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Change = &ChangeBlockHeaderChangeOfId{string(dAtA[iNdEx:postIndex])}
+			if m.Fields == nil {
+				m.Fields = &ModelStruct{}
+			}
+			if err := m.Fields.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
 			}
-			var v ModelBlockHeaderType
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowChanges
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= ModelBlockHeaderType(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Change = &ChangeBlockHeaderChangeOfType{v}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowChanges
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if skippy < 0 {
 				return ErrInvalidLengthChanges
 			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
-			if postIndex > l {
+			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Change = &ChangeBlockHeaderChangeOfName{string(dAtA[iNdEx:postIndex])}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Icon", wireType)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeBlockPermissions) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
 			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowChanges
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthChanges
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthChanges
-			}
-			if postIndex > l {
+			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Change = &ChangeBlockHeaderChangeOfIcon{string(dAtA[iNdEx:postIndex])}
-			iNdEx = postIndex
-		case 5:
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Permissions: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Permissions: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Permissions", wireType)
 			}
@@ -2380,11 +3013,12 @@ func (m *ChangeBlockHeader) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &ModelBlockHeaderPermissions{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if m.Permissions == nil {
+				m.Permissions = &ModelBlockPermissions{}
+			}
+			if err := m.Permissions.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &ChangeBlockHeaderChangeOfPermissions{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2410,7 +3044,7 @@ func (m *ChangeBlockHeader) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ChangeBlockChildren) Unmarshal(dAtA []byte) error {
+func (m *ChangeBlockChildrenIds) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2433,15 +3067,15 @@ func (m *ChangeBlockChildren) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Children: wiretype end group for non-group")
+			return fmt.Errorf("proto: ChildrenIds: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Children: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ChildrenIds: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Children", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ChildrenIds", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -2469,7 +3103,7 @@ func (m *ChangeBlockChildren) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Children = append(m.Children, string(dAtA[iNdEx:postIndex]))
+			m.ChildrenIds = append(m.ChildrenIds, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2707,7 +3341,7 @@ func (m *ChangeBlockContentDashboard) Unmarshal(dAtA []byte) error {
 			m.Change = &ChangeBlockContentDashboardChangeOfStyle{v}
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Header", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Block", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2734,11 +3368,11 @@ func (m *ChangeBlockContentDashboard) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &ModelBlockHeader{}
+			v := &ModelBlock{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &ChangeBlockContentDashboardChangeOfHeader{v}
+			m.Change = &ChangeBlockContentDashboardChangeOfBlock{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2764,7 +3398,7 @@ func (m *ChangeBlockContentDashboard) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ChangeBlockContentMedia) Unmarshal(dAtA []byte) error {
+func (m *ChangeBlockContentFile) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2787,15 +3421,15 @@ func (m *ChangeBlockContentMedia) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Media: wiretype end group for non-group")
+			return fmt.Errorf("proto: File: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Media: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: File: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Link", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -2823,13 +3457,13 @@ func (m *ChangeBlockContentMedia) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Change = &ChangeBlockContentMediaChangeOfLink{string(dAtA[iNdEx:postIndex])}
+			m.Change = &ChangeBlockContentFileChangeOfContent{string(dAtA[iNdEx:postIndex])}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
 			}
-			var v ModelBlockContentMediaState
+			var v ModelBlockContentFileState
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowChanges
@@ -2839,12 +3473,327 @@ func (m *ChangeBlockContentMedia) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= ModelBlockContentMediaState(b&0x7F) << shift
+				v |= ModelBlockContentFileState(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Change = &ChangeBlockContentMediaChangeOfState{v}
+			m.Change = &ChangeBlockContentFileChangeOfState{v}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Preview", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ModelBlockContentFilePreview{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Change = &ChangeBlockContentFileChangeOfPreview{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeBlockContentImage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Image: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Image: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Change = &ChangeBlockContentImageChangeOfContent{string(dAtA[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
+			}
+			var v ModelBlockContentImageState
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= ModelBlockContentImageState(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Change = &ChangeBlockContentImageChangeOfState{v}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Preview", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ModelBlockContentImagePreview{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Change = &ChangeBlockContentImageChangeOfPreview{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeBlockContentVideo) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Video: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Video: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Change = &ChangeBlockContentVideoChangeOfContent{string(dAtA[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
+			}
+			var v ModelBlockContentVideoState
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= ModelBlockContentVideoState(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Change = &ChangeBlockContentVideoChangeOfState{v}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Preview", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ModelBlockContentVideoPreview{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Change = &ChangeBlockContentVideoChangeOfPreview{v}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipChanges(dAtA[iNdEx:])
@@ -3092,7 +4041,7 @@ func (m *ChangeBlockContentText) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
+func (m *ChangeSingle) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3115,10 +4064,63 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlocksListSingleChange: wiretype end group for non-group")
+			return fmt.Errorf("proto: Single: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlocksListSingleChange: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Single: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeSingleBlocksList) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlocksList: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlocksList: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3186,11 +4188,11 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlocksListSingleChangeChangeOfText{v}
+			m.Change = &ChangeSingleBlocksListChangeOfText{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockHeader", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Fields", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3217,15 +4219,15 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &ChangeBlockHeader{}
+			v := &ChangeBlockFields{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlocksListSingleChangeChangeOfBlockHeader{v}
+			m.Change = &ChangeSingleBlocksListChangeOfFields{v}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockChildren", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Premissions", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3252,13 +4254,48 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &ChangeBlockChildren{}
+			v := &ChangeBlockPermissions{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlocksListSingleChangeChangeOfBlockChildren{v}
+			m.Change = &ChangeSingleBlocksListChangeOfPremissions{v}
 			iNdEx = postIndex
 		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ChildrenIds", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeBlockChildrenIds{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Change = &ChangeSingleBlocksListChangeOfChildrenIds{v}
+			iNdEx = postIndex
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Page", wireType)
 			}
@@ -3291,9 +4328,9 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlocksListSingleChangeChangeOfPage{v}
+			m.Change = &ChangeSingleBlocksListChangeOfPage{v}
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Dashboard", wireType)
 			}
@@ -3326,11 +4363,11 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlocksListSingleChangeChangeOfDashboard{v}
+			m.Change = &ChangeSingleBlocksListChangeOfDashboard{v}
 			iNdEx = postIndex
-		case 7:
+		case 8:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Media", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Video", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3357,11 +4394,81 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &ChangeBlockContentMedia{}
+			v := &ChangeBlockContentVideo{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Change = &BlocksListSingleChangeChangeOfMedia{v}
+			m.Change = &ChangeSingleBlocksListChangeOfVideo{v}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Image", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeBlockContentImage{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Change = &ChangeSingleBlocksListChangeOfImage{v}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field File", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeBlockContentFile{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Change = &ChangeSingleBlocksListChangeOfFile{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3387,7 +4494,7 @@ func (m *BlocksListSingleChange) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockChanges) Unmarshal(dAtA []byte) error {
+func (m *ChangeMultiple) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3410,10 +4517,63 @@ func (m *BlockChanges) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockChanges: wiretype end group for non-group")
+			return fmt.Errorf("proto: Multiple: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockChanges: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Multiple: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeMultipleBlocksList) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlocksList: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlocksList: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3445,7 +4605,7 @@ func (m *BlockChanges) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Changes = append(m.Changes, &BlocksListSingleChange{})
+			m.Changes = append(m.Changes, &ChangeSingleBlocksList{})
 			if err := m.Changes[len(m.Changes)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}

@@ -41,7 +41,6 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                Model.Block.Header blockHeader = 2;
 
                 message Error {
                     Code code = 1;
@@ -59,7 +58,7 @@ message Rpc {
 
         message Create {
             message Request {
-                Model.Block.Header.Type type = 1;
+                Model.Block block = 1;
                 string contextBlockId = 2;
             }
 
@@ -82,7 +81,7 @@ message Rpc {
         
         message Update {
             message Request {
-                BlockChanges changes = 1;
+                Change.Multiple.BlocksList changes = 1;
             }
 
             message Response {

@@ -36,7 +36,7 @@ message Event {
         }
 
         message Update {
-            BlockChanges changes = 1;
+            Change.Multiple.BlocksList changes = 1;
         }
 
         message Create {
