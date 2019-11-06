@@ -11,17 +11,22 @@
   
 
 - [changes.proto](#changes.proto)
-    - [BlockChanges](#anytype.BlockChanges)
-    - [BlocksListSingleChange](#anytype.BlocksListSingleChange)
     - [Change](#anytype.Change)
     - [Change.Block](#anytype.Change.Block)
     - [Change.Block.Children](#anytype.Change.Block.Children)
     - [Change.Block.Content](#anytype.Change.Block.Content)
     - [Change.Block.Content.Dashboard](#anytype.Change.Block.Content.Dashboard)
-    - [Change.Block.Content.Media](#anytype.Change.Block.Content.Media)
+    - [Change.Block.Content.File](#anytype.Change.Block.Content.File)
+    - [Change.Block.Content.Image](#anytype.Change.Block.Content.Image)
     - [Change.Block.Content.Page](#anytype.Change.Block.Content.Page)
     - [Change.Block.Content.Text](#anytype.Change.Block.Content.Text)
-    - [Change.Block.Header](#anytype.Change.Block.Header)
+    - [Change.Block.Content.Video](#anytype.Change.Block.Content.Video)
+    - [Change.Block.Fields](#anytype.Change.Block.Fields)
+    - [Change.Block.Permissions](#anytype.Change.Block.Permissions)
+    - [Change.Multiple](#anytype.Change.Multiple)
+    - [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList)
+    - [Change.Single](#anytype.Change.Single)
+    - [Change.Single.BlocksList](#anytype.Change.Single.BlocksList)
   
   
   
@@ -144,17 +149,18 @@
     - [Model.Block.Content.Dashboard](#anytype.Model.Block.Content.Dashboard)
     - [Model.Block.Content.Dataview](#anytype.Model.Block.Content.Dataview)
     - [Model.Block.Content.Div](#anytype.Model.Block.Content.Div)
+    - [Model.Block.Content.File](#anytype.Model.Block.Content.File)
+    - [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview)
+    - [Model.Block.Content.Image](#anytype.Model.Block.Content.Image)
+    - [Model.Block.Content.Image.Preview](#anytype.Model.Block.Content.Image.Preview)
     - [Model.Block.Content.Layout](#anytype.Model.Block.Content.Layout)
-    - [Model.Block.Content.Media](#anytype.Model.Block.Content.Media)
-    - [Model.Block.Content.Media.FilePreview](#anytype.Model.Block.Content.Media.FilePreview)
-    - [Model.Block.Content.Media.ImagePreview](#anytype.Model.Block.Content.Media.ImagePreview)
-    - [Model.Block.Content.Media.VideoPreview](#anytype.Model.Block.Content.Media.VideoPreview)
     - [Model.Block.Content.Page](#anytype.Model.Block.Content.Page)
     - [Model.Block.Content.Text](#anytype.Model.Block.Content.Text)
     - [Model.Block.Content.Text.Mark](#anytype.Model.Block.Content.Text.Mark)
     - [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks)
-    - [Model.Block.Header](#anytype.Model.Block.Header)
-    - [Model.Block.Header.Permissions](#anytype.Model.Block.Header.Permissions)
+    - [Model.Block.Content.Video](#anytype.Model.Block.Content.Video)
+    - [Model.Block.Content.Video.Preview](#anytype.Model.Block.Content.Video.Preview)
+    - [Model.Block.Permissions](#anytype.Model.Block.Permissions)
     - [Model.Image](#anytype.Model.Image)
     - [Model.Range](#anytype.Model.Range)
     - [Model.Struct](#anytype.Model.Struct)
@@ -164,13 +170,15 @@
     - [Model.Video](#anytype.Model.Video)
   
     - [Model.Block.Content.Dashboard.Style](#anytype.Model.Block.Content.Dashboard.Style)
+    - [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State)
+    - [Model.Block.Content.Image.State](#anytype.Model.Block.Content.Image.State)
     - [Model.Block.Content.Layout.Style](#anytype.Model.Block.Content.Layout.Style)
-    - [Model.Block.Content.Media.State](#anytype.Model.Block.Content.Media.State)
     - [Model.Block.Content.Page.Style](#anytype.Model.Block.Content.Page.Style)
     - [Model.Block.Content.Text.Mark.Type](#anytype.Model.Block.Content.Text.Mark.Type)
     - [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType)
     - [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style)
-    - [Model.Block.Header.Type](#anytype.Model.Block.Header.Type)
+    - [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State)
+    - [Model.Block.Type](#anytype.Model.Block.Type)
     - [Model.Image.Size](#anytype.Model.Image.Size)
     - [Model.Struct.NullValue](#anytype.Model.Struct.NullValue)
     - [Model.Video.Size](#anytype.Model.Video.Size)
@@ -223,42 +231,6 @@
 <p align="right"><a href="#top">Top</a></p>
 
 ## changes.proto
-
-
-
-<a name="anytype.BlockChanges"></a>
-
-### BlockChanges
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| changes | [BlocksListSingleChange](#anytype.BlocksListSingleChange) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.BlocksListSingleChange"></a>
-
-### BlocksListSingleChange
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) | repeated |  |
-| text | [Change.Block.Content.Text](#anytype.Change.Block.Content.Text) |  |  |
-| blockHeader | [Change.Block.Header](#anytype.Change.Block.Header) |  |  |
-| blockChildren | [Change.Block.Children](#anytype.Change.Block.Children) |  |  |
-| page | [Change.Block.Content.Page](#anytype.Change.Block.Content.Page) |  |  |
-| dashboard | [Change.Block.Content.Dashboard](#anytype.Change.Block.Content.Dashboard) |  |  |
-| media | [Change.Block.Content.Media](#anytype.Change.Block.Content.Media) |  |  |
-
-
-
 
 
 
@@ -316,23 +288,41 @@
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | style | [Model.Block.Content.Dashboard.Style](#anytype.Model.Block.Content.Dashboard.Style) |  |  |
-| header | [Model.Block.Header](#anytype.Model.Block.Header) |  | not a dashboard header – one of children |
+| block | [Model.Block](#anytype.Model.Block) |  |  |
 
 
 
 
 
 
-<a name="anytype.Change.Block.Content.Media"></a>
+<a name="anytype.Change.Block.Content.File"></a>
 
-### Change.Block.Content.Media
+### Change.Block.Content.File
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| link | [string](#string) |  |  |
-| state | [Model.Block.Content.Media.State](#anytype.Model.Block.Content.Media.State) |  |  |
+| content | [string](#string) |  |  |
+| state | [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State) |  |  |
+| preview | [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.Block.Content.Image"></a>
+
+### Change.Block.Content.Image
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [string](#string) |  |  |
+| state | [Model.Block.Content.Image.State](#anytype.Model.Block.Content.Image.State) |  |  |
+| preview | [Model.Block.Content.Image.Preview](#anytype.Model.Block.Content.Image.Preview) |  |  |
 
 
 
@@ -376,19 +366,106 @@
 
 
 
-<a name="anytype.Change.Block.Header"></a>
+<a name="anytype.Change.Block.Content.Video"></a>
 
-### Change.Block.Header
+### Change.Block.Content.Video
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [Model.Block.Header.Type](#anytype.Model.Block.Header.Type) |  |  |
-| name | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
-| permissions | [Model.Block.Header.Permissions](#anytype.Model.Block.Header.Permissions) |  |  |
+| content | [string](#string) |  |  |
+| state | [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State) |  |  |
+| preview | [Model.Block.Content.Video.Preview](#anytype.Model.Block.Content.Video.Preview) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.Block.Fields"></a>
+
+### Change.Block.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fields | [Model.Struct](#anytype.Model.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.Block.Permissions"></a>
+
+### Change.Block.Permissions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| permissions | [Model.Block.Permissions](#anytype.Model.Block.Permissions) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.Multiple"></a>
+
+### Change.Multiple
+
+
+
+
+
+
+
+<a name="anytype.Change.Multiple.BlocksList"></a>
+
+### Change.Multiple.BlocksList
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changes | [Change.Single.BlocksList](#anytype.Change.Single.BlocksList) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Change.Single"></a>
+
+### Change.Single
+
+
+
+
+
+
+
+<a name="anytype.Change.Single.BlocksList"></a>
+
+### Change.Single.BlocksList
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) | repeated |  |
+| text | [Change.Block.Content.Text](#anytype.Change.Block.Content.Text) |  |  |
+| fields | [Change.Block.Fields](#anytype.Change.Block.Fields) |  |  |
+| premissions | [Change.Block.Permissions](#anytype.Change.Block.Permissions) |  |  |
+| children | [Change.Block.Children](#anytype.Change.Block.Children) |  |  |
+| page | [Change.Block.Content.Page](#anytype.Change.Block.Content.Page) |  |  |
+| dashboard | [Change.Block.Content.Dashboard](#anytype.Change.Block.Content.Dashboard) |  |  |
+| video | [Change.Block.Content.Video](#anytype.Change.Block.Content.Video) |  |  |
+| image | [Change.Block.Content.Image](#anytype.Change.Block.Content.Image) |  |  |
+| file | [Change.Block.Content.File](#anytype.Change.Block.Content.File) |  |  |
 
 
 
@@ -629,7 +706,7 @@ Middleware-to-front-end response for an account select request, that can contain
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| type | [Model.Block.Header.Type](#anytype.Model.Block.Header.Type) |  |  |
+| block | [Model.Block](#anytype.Model.Block) |  |  |
 | contextBlockId | [string](#string) |  |  |
 
 
@@ -770,7 +847,6 @@ Middleware-to-front-end response for an account select request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Open.Response.Error](#anytype.Rpc.Block.Open.Response.Error) |  |  |
-| blockHeader | [Model.Block.Header](#anytype.Model.Block.Header) |  |  |
 
 
 
@@ -811,7 +887,7 @@ Middleware-to-front-end response for an account select request, that can contain
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| changes | [BlockChanges](#anytype.BlockChanges) |  |  |
+| changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
 
 
 
@@ -1675,7 +1751,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| changes | [BlockChanges](#anytype.BlockChanges) |  |  |
+| changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
 
 
 
@@ -1844,13 +1920,17 @@ Avatar of a user&#39;s account. It could be an image or color
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| header | [Model.Block.Header](#anytype.Model.Block.Header) |  |  |
+| id | [string](#string) |  |  |
+| fields | [Model.Struct](#anytype.Model.Struct) |  |  |
+| permissions | [Model.Block.Permissions](#anytype.Model.Block.Permissions) |  |  |
 | children | [string](#string) | repeated |  |
 | dashboard | [Model.Block.Content.Dashboard](#anytype.Model.Block.Content.Dashboard) |  |  |
 | page | [Model.Block.Content.Page](#anytype.Model.Block.Content.Page) |  |  |
 | dataview | [Model.Block.Content.Dataview](#anytype.Model.Block.Content.Dataview) |  |  |
 | text | [Model.Block.Content.Text](#anytype.Model.Block.Content.Text) |  |  |
-| media | [Model.Block.Content.Media](#anytype.Model.Block.Content.Media) |  |  |
+| video | [Model.Block.Content.Video](#anytype.Model.Block.Content.Video) |  |  |
+| image | [Model.Block.Content.Image](#anytype.Model.Block.Content.Image) |  |  |
+| file | [Model.Block.Content.File](#anytype.Model.Block.Content.File) |  |  |
 | layout | [Model.Block.Content.Layout](#anytype.Model.Block.Content.Layout) |  |  |
 | div | [Model.Block.Content.Div](#anytype.Model.Block.Content.Div) |  |  |
 
@@ -1878,7 +1958,6 @@ Avatar of a user&#39;s account. It could be an image or color
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | style | [Model.Block.Content.Dashboard.Style](#anytype.Model.Block.Content.Dashboard.Style) |  |  |
-| headers | [Model.Block.Header](#anytype.Model.Block.Header) | repeated |  |
 
 
 
@@ -1905,43 +1984,26 @@ Avatar of a user&#39;s account. It could be an image or color
 
 
 
-<a name="anytype.Model.Block.Content.Layout"></a>
+<a name="anytype.Model.Block.Content.File"></a>
 
-### Model.Block.Content.Layout
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Model.Block.Content.Layout.Style](#anytype.Model.Block.Content.Layout.Style) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Media"></a>
-
-### Model.Block.Content.Media
+### Model.Block.Content.File
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| content | [bytes](#bytes) |  |  |
-| state | [Model.Block.Content.Media.State](#anytype.Model.Block.Content.Media.State) |  |  |
-| video | [Model.Block.Content.Media.VideoPreview](#anytype.Model.Block.Content.Media.VideoPreview) |  |  |
-| image | [Model.Block.Content.Media.ImagePreview](#anytype.Model.Block.Content.Media.ImagePreview) |  |  |
-| file | [Model.Block.Content.Media.FilePreview](#anytype.Model.Block.Content.Media.FilePreview) |  |  |
+| content | [string](#string) |  |  |
+| state | [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State) |  |  |
+| preview | [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview) |  |  |
 
 
 
 
 
 
-<a name="anytype.Model.Block.Content.Media.FilePreview"></a>
+<a name="anytype.Model.Block.Content.File.Preview"></a>
 
-### Model.Block.Content.Media.FilePreview
+### Model.Block.Content.File.Preview
 
 
 
@@ -1955,9 +2017,26 @@ Avatar of a user&#39;s account. It could be an image or color
 
 
 
-<a name="anytype.Model.Block.Content.Media.ImagePreview"></a>
+<a name="anytype.Model.Block.Content.Image"></a>
 
-### Model.Block.Content.Media.ImagePreview
+### Model.Block.Content.Image
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [string](#string) |  |  |
+| state | [Model.Block.Content.Image.State](#anytype.Model.Block.Content.Image.State) |  |  |
+| preview | [Model.Block.Content.Image.Preview](#anytype.Model.Block.Content.Image.Preview) |  |  |
+
+
+
+
+
+
+<a name="anytype.Model.Block.Content.Image.Preview"></a>
+
+### Model.Block.Content.Image.Preview
 
 
 
@@ -1972,17 +2051,15 @@ Avatar of a user&#39;s account. It could be an image or color
 
 
 
-<a name="anytype.Model.Block.Content.Media.VideoPreview"></a>
+<a name="anytype.Model.Block.Content.Layout"></a>
 
-### Model.Block.Content.Media.VideoPreview
+### Model.Block.Content.Layout
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| thumbnail | [bytes](#bytes) |  |  |
-| name | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
+| style | [Model.Block.Content.Layout.Style](#anytype.Model.Block.Content.Layout.Style) |  |  |
 
 
 
@@ -2057,27 +2134,43 @@ Avatar of a user&#39;s account. It could be an image or color
 
 
 
-<a name="anytype.Model.Block.Header"></a>
+<a name="anytype.Model.Block.Content.Video"></a>
 
-### Model.Block.Header
+### Model.Block.Content.Video
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [Model.Block.Header.Type](#anytype.Model.Block.Header.Type) |  |  |
-| fields | [Model.Struct](#anytype.Model.Struct) |  |  |
-| permissions | [Model.Block.Header.Permissions](#anytype.Model.Block.Header.Permissions) |  |  |
+| content | [string](#string) |  |  |
+| state | [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State) |  |  |
+| preview | [Model.Block.Content.Video.Preview](#anytype.Model.Block.Content.Video.Preview) |  |  |
 
 
 
 
 
 
-<a name="anytype.Model.Block.Header.Permissions"></a>
+<a name="anytype.Model.Block.Content.Video.Preview"></a>
 
-### Model.Block.Header.Permissions
+### Model.Block.Content.Video.Preview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| thumbnail | [bytes](#bytes) |  |  |
+| name | [string](#string) |  |  |
+| width | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Model.Block.Permissions"></a>
+
+### Model.Block.Permissions
 
 
 
@@ -2224,21 +2317,9 @@ variants, absence of any variant indicates an error.
 
 
 
-<a name="anytype.Model.Block.Content.Layout.Style"></a>
+<a name="anytype.Model.Block.Content.File.State"></a>
 
-### Model.Block.Content.Layout.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| ROW | 0 |  |
-| COLUMN | 1 |  |
-
-
-
-<a name="anytype.Model.Block.Content.Media.State"></a>
-
-### Model.Block.Content.Media.State
+### Model.Block.Content.File.State
 
 
 | Name | Number | Description |
@@ -2248,6 +2329,33 @@ variants, absence of any variant indicates an error.
 | PREVIEW | 2 |  |
 | DOWNLOADING | 3 |  |
 | DONE | 4 |  |
+
+
+
+<a name="anytype.Model.Block.Content.Image.State"></a>
+
+### Model.Block.Content.Image.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EMPTY | 0 |  |
+| UPLOADING | 1 |  |
+| PREVIEW | 2 |  |
+| DOWNLOADING | 3 |  |
+| DONE | 4 |  |
+
+
+
+<a name="anytype.Model.Block.Content.Layout.Style"></a>
+
+### Model.Block.Content.Layout.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ROW | 0 |  |
+| COLUMN | 1 |  |
 
 
 
@@ -2310,9 +2418,24 @@ variants, absence of any variant indicates an error.
 
 
 
-<a name="anytype.Model.Block.Header.Type"></a>
+<a name="anytype.Model.Block.Content.Video.State"></a>
 
-### Model.Block.Header.Type
+### Model.Block.Content.Video.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EMPTY | 0 |  |
+| UPLOADING | 1 |  |
+| PREVIEW | 2 |  |
+| DOWNLOADING | 3 |  |
+| DONE | 4 |  |
+
+
+
+<a name="anytype.Model.Block.Type"></a>
+
+### Model.Block.Type
 
 
 | Name | Number | Description |

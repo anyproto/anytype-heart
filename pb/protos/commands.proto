@@ -58,7 +58,7 @@ message Rpc {
 
         message Create {
             message Request {
-                Model.Block.Type type = 1;
+                Model.Block block = 1;
                 string contextBlockId = 2;
             }
 
@@ -81,7 +81,7 @@ message Rpc {
         
         message Update {
             message Request {
-                BlockChanges changes = 1;
+                Change.Multiple.BlocksList changes = 1;
             }
 
             message Response {
