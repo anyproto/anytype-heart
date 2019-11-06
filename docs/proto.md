@@ -1992,7 +1992,7 @@ Avatar of a user&#39;s account. It could be an image or color
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| content | [string](#string) |  |  |
+| localFilePath | [string](#string) |  |  |
 | state | [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State) |  |  |
 | preview | [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview) |  |  |
 
@@ -2025,7 +2025,7 @@ Avatar of a user&#39;s account. It could be an image or color
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| content | [string](#string) |  |  |
+| localFilePath | [string](#string) |  |  |
 | state | [Model.Block.Content.Image.State](#anytype.Model.Block.Content.Image.State) |  |  |
 | preview | [Model.Block.Content.Image.Preview](#anytype.Model.Block.Content.Image.Preview) |  |  |
 
@@ -2142,7 +2142,7 @@ Avatar of a user&#39;s account. It could be an image or color
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| content | [string](#string) |  |  |
+| localFilePath | [string](#string) |  |  |
 | state | [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State) |  |  |
 | preview | [Model.Block.Content.Video.Preview](#anytype.Model.Block.Content.Video.Preview) |  |  |
 
