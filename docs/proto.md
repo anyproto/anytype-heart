@@ -775,8 +775,7 @@ Middleware-to-front-end response for an account select request, that can contain
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| contextBlockId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | moveForward | [bool](#bool) |  |  |
 
 

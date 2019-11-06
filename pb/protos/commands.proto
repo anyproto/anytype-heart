@@ -10,9 +10,8 @@ message Rpc {
         message History {
             message Move { 
                 message Request {
-                    string id = 1;
-                    string contextBlockId = 2;
-                    bool moveForward = 3;
+                    string blockId = 1;
+                    bool moveForward = 2;
                 }
 
                 message Response {
