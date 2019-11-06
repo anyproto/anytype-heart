@@ -7,22 +7,7 @@ message Model {
         string id = 1;
         Struct fields = 2;
         Permissions permissions = 3;
-        repeated string children = 4;
-
-        enum Type {
-            DASHBOARD = 0;
-            PAGE = 1;
-            DATAVIEW = 2;
-
-            TEXT = 3;
-            FILE = 4;
-            PICTURE = 5;
-            VIDEO = 6;
-            BOOKMARK = 7;
-
-            LAYOUT = 8;
-            DIV = 9;
-        }
+        repeated string childrenIds = 4;
 
         message Permissions {
             bool read = 1;

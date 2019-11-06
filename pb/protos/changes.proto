@@ -13,8 +13,8 @@ message Change {
             Model.Block.Permissions permissions = 1;
         }
 
-        message Children {
-            repeated string children = 1;
+        message ChildrenIds {
+            repeated string childrenIds = 1;
         }
 
         message Content {        
@@ -79,7 +79,7 @@ message Change {
                 Block.Content.Text text = 2;
                 Block.Fields fields = 3;
                 Block.Permissions premissions = 4;
-                Block.Children children = 5;
+                Block.ChildrenIds childrenIds = 5;
                 Block.Content.Page page = 6;
                 Block.Content.Dashboard dashboard = 7;
                 Block.Content.Video video = 8;

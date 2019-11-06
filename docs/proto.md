@@ -13,7 +13,7 @@
 - [changes.proto](#changes.proto)
     - [Change](#anytype.Change)
     - [Change.Block](#anytype.Change.Block)
-    - [Change.Block.Children](#anytype.Change.Block.Children)
+    - [Change.Block.ChildrenIds](#anytype.Change.Block.ChildrenIds)
     - [Change.Block.Content](#anytype.Change.Block.Content)
     - [Change.Block.Content.Dashboard](#anytype.Change.Block.Content.Dashboard)
     - [Change.Block.Content.File](#anytype.Change.Block.Content.File)
@@ -178,7 +178,6 @@
     - [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType)
     - [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style)
     - [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State)
-    - [Model.Block.Type](#anytype.Model.Block.Type)
     - [Model.Image.Size](#anytype.Model.Image.Size)
     - [Model.Struct.NullValue](#anytype.Model.Struct.NullValue)
     - [Model.Video.Size](#anytype.Model.Video.Size)
@@ -254,15 +253,15 @@
 
 
 
-<a name="anytype.Change.Block.Children"></a>
+<a name="anytype.Change.Block.ChildrenIds"></a>
 
-### Change.Block.Children
+### Change.Block.ChildrenIds
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| children | [string](#string) | repeated |  |
+| childrenIds | [string](#string) | repeated |  |
 
 
 
@@ -460,7 +459,7 @@
 | text | [Change.Block.Content.Text](#anytype.Change.Block.Content.Text) |  |  |
 | fields | [Change.Block.Fields](#anytype.Change.Block.Fields) |  |  |
 | premissions | [Change.Block.Permissions](#anytype.Change.Block.Permissions) |  |  |
-| children | [Change.Block.Children](#anytype.Change.Block.Children) |  |  |
+| childrenIds | [Change.Block.ChildrenIds](#anytype.Change.Block.ChildrenIds) |  |  |
 | page | [Change.Block.Content.Page](#anytype.Change.Block.Content.Page) |  |  |
 | dashboard | [Change.Block.Content.Dashboard](#anytype.Change.Block.Content.Dashboard) |  |  |
 | video | [Change.Block.Content.Video](#anytype.Change.Block.Content.Video) |  |  |
@@ -1923,7 +1922,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | id | [string](#string) |  |  |
 | fields | [Model.Struct](#anytype.Model.Struct) |  |  |
 | permissions | [Model.Block.Permissions](#anytype.Model.Block.Permissions) |  |  |
-| children | [string](#string) | repeated |  |
+| childrenIds | [string](#string) | repeated |  |
 | dashboard | [Model.Block.Content.Dashboard](#anytype.Model.Block.Content.Dashboard) |  |  |
 | page | [Model.Block.Content.Page](#anytype.Model.Block.Content.Page) |  |  |
 | dataview | [Model.Block.Content.Dataview](#anytype.Model.Block.Content.Dataview) |  |  |
@@ -2430,26 +2429,6 @@ variants, absence of any variant indicates an error.
 | PREVIEW | 2 |  |
 | DOWNLOADING | 3 |  |
 | DONE | 4 |  |
-
-
-
-<a name="anytype.Model.Block.Type"></a>
-
-### Model.Block.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| DASHBOARD | 0 |  |
-| PAGE | 1 |  |
-| DATAVIEW | 2 |  |
-| TEXT | 3 |  |
-| FILE | 4 |  |
-| PICTURE | 5 |  |
-| VIDEO | 6 |  |
-| BOOKMARK | 7 |  |
-| LAYOUT | 8 |  |
-| DIV | 9 |  |
 
 
 
