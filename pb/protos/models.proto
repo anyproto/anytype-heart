@@ -17,6 +17,11 @@ message Model {
             bool dropOn = 5;
         }
 
+        enum Position {
+            BEFORE = 0;
+            AFTER = 1;
+        }
+
         oneof content {
             Content.Dashboard dashboard = 11;
             Content.Page page = 12;
@@ -28,6 +33,7 @@ message Model {
             Content.File file = 17;
             Content.Layout layout = 18;
             Content.Div div = 19;
+            Content.Bookmark bookmark = 20;
         }
 
         message Content {
@@ -41,6 +47,10 @@ message Model {
             }
 
             message Div {}
+
+            message Bookmark {
+                // Model.Link.Preview preview = 1;
+            }
 
             message Dashboard {
                 enum Style {

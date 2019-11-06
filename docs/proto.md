@@ -146,6 +146,7 @@
     - [Model.Account.Avatar](#anytype.Model.Account.Avatar)
     - [Model.Block](#anytype.Model.Block)
     - [Model.Block.Content](#anytype.Model.Block.Content)
+    - [Model.Block.Content.Bookmark](#anytype.Model.Block.Content.Bookmark)
     - [Model.Block.Content.Dashboard](#anytype.Model.Block.Content.Dashboard)
     - [Model.Block.Content.Dataview](#anytype.Model.Block.Content.Dataview)
     - [Model.Block.Content.Div](#anytype.Model.Block.Content.Div)
@@ -178,6 +179,7 @@
     - [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType)
     - [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style)
     - [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State)
+    - [Model.Block.Position](#anytype.Model.Block.Position)
     - [Model.Image.Size](#anytype.Model.Image.Size)
     - [Model.Struct.NullValue](#anytype.Model.Struct.NullValue)
     - [Model.Video.Size](#anytype.Model.Video.Size)
@@ -706,7 +708,8 @@ Middleware-to-front-end response for an account select request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | block | [Model.Block](#anytype.Model.Block) |  |  |
-| contextBlockId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| position | [Model.Block.Position](#anytype.Model.Block.Position) |  |  |
 
 
 
@@ -1932,6 +1935,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | file | [Model.Block.Content.File](#anytype.Model.Block.Content.File) |  |  |
 | layout | [Model.Block.Content.Layout](#anytype.Model.Block.Content.Layout) |  |  |
 | div | [Model.Block.Content.Div](#anytype.Model.Block.Content.Div) |  |  |
+| bookmark | [Model.Block.Content.Bookmark](#anytype.Model.Block.Content.Bookmark) |  |  |
 
 
 
@@ -1942,6 +1946,16 @@ Avatar of a user&#39;s account. It could be an image or color
 
 ### Model.Block.Content
 
+
+
+
+
+
+
+<a name="anytype.Model.Block.Content.Bookmark"></a>
+
+### Model.Block.Content.Bookmark
+Model.Link.Preview preview = 1;
 
 
 
@@ -2429,6 +2443,18 @@ variants, absence of any variant indicates an error.
 | PREVIEW | 2 |  |
 | DOWNLOADING | 3 |  |
 | DONE | 4 |  |
+
+
+
+<a name="anytype.Model.Block.Position"></a>
+
+### Model.Block.Position
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BEFORE | 0 |  |
+| AFTER | 1 |  |
 
 
 

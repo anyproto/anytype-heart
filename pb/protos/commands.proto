@@ -59,7 +59,8 @@ message Rpc {
         message Create {
             message Request {
                 Model.Block block = 1;
-                string contextBlockId = 2;
+                string targetId = 2;
+                Model.Block.Position position = 3;
             }
 
             message Response {
