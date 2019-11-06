@@ -24,15 +24,15 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type Event struct {
 	// Types that are valid to be assigned to Message:
-	//	*Event_AccountShow
-	//	*Event_BlockShow
-	//	*Event_BlockUpdate
-	//	*Event_BlockCreate
-	//	*Event_UserBlockTextRange
-	//	*Event_UserBlockJoin
-	//	*Event_UserBlockLeft
-	//	*Event_UserBlockSelectRange
-	//	*Event_FilesUpload
+	//	*EventMessageOfAccountShow
+	//	*EventMessageOfBlockShow
+	//	*EventMessageOfBlockUpdate
+	//	*EventMessageOfBlockCreate
+	//	*EventMessageOfUserBlockTextRange
+	//	*EventMessageOfUserBlockJoin
+	//	*EventMessageOfUserBlockLeft
+	//	*EventMessageOfUserBlockSelectRange
+	//	*EventMessageOfFilesUpload
 	Message isEventMessage `protobuf_oneof:"message"`
 }
 
@@ -75,43 +75,43 @@ type isEventMessage interface {
 	Size() int
 }
 
-type Event_AccountShow struct {
-	AccountShow *Event_Account_Show `protobuf:"bytes,1,opt,name=accountShow,proto3,oneof" json:"accountShow,omitempty"`
+type EventMessageOfAccountShow struct {
+	AccountShow *EventAccountShow `protobuf:"bytes,1,opt,name=accountShow,proto3,oneof" json:"accountShow,omitempty"`
 }
-type Event_BlockShow struct {
-	BlockShow *Event_Block_Show `protobuf:"bytes,2,opt,name=blockShow,proto3,oneof" json:"blockShow,omitempty"`
+type EventMessageOfBlockShow struct {
+	BlockShow *EventBlockShow `protobuf:"bytes,2,opt,name=blockShow,proto3,oneof" json:"blockShow,omitempty"`
 }
-type Event_BlockUpdate struct {
-	BlockUpdate *Event_Block_Update `protobuf:"bytes,3,opt,name=blockUpdate,proto3,oneof" json:"blockUpdate,omitempty"`
+type EventMessageOfBlockUpdate struct {
+	BlockUpdate *EventBlockUpdate `protobuf:"bytes,3,opt,name=blockUpdate,proto3,oneof" json:"blockUpdate,omitempty"`
 }
-type Event_BlockCreate struct {
-	BlockCreate *Event_Block_Create `protobuf:"bytes,4,opt,name=blockCreate,proto3,oneof" json:"blockCreate,omitempty"`
+type EventMessageOfBlockCreate struct {
+	BlockCreate *EventBlockCreate `protobuf:"bytes,4,opt,name=blockCreate,proto3,oneof" json:"blockCreate,omitempty"`
 }
-type Event_UserBlockTextRange struct {
-	UserBlockTextRange *Event_User_Block_TextRange `protobuf:"bytes,5,opt,name=userBlockTextRange,proto3,oneof" json:"userBlockTextRange,omitempty"`
+type EventMessageOfUserBlockTextRange struct {
+	UserBlockTextRange *EventUserBlockTextRange `protobuf:"bytes,5,opt,name=userBlockTextRange,proto3,oneof" json:"userBlockTextRange,omitempty"`
 }
-type Event_UserBlockJoin struct {
-	UserBlockJoin *Event_User_Block_Join `protobuf:"bytes,6,opt,name=userBlockJoin,proto3,oneof" json:"userBlockJoin,omitempty"`
+type EventMessageOfUserBlockJoin struct {
+	UserBlockJoin *EventUserBlockJoin `protobuf:"bytes,6,opt,name=userBlockJoin,proto3,oneof" json:"userBlockJoin,omitempty"`
 }
-type Event_UserBlockLeft struct {
-	UserBlockLeft *Event_User_Block_Left `protobuf:"bytes,7,opt,name=userBlockLeft,proto3,oneof" json:"userBlockLeft,omitempty"`
+type EventMessageOfUserBlockLeft struct {
+	UserBlockLeft *EventUserBlockLeft `protobuf:"bytes,7,opt,name=userBlockLeft,proto3,oneof" json:"userBlockLeft,omitempty"`
 }
-type Event_UserBlockSelectRange struct {
-	UserBlockSelectRange *Event_User_Block_SelectRange `protobuf:"bytes,8,opt,name=userBlockSelectRange,proto3,oneof" json:"userBlockSelectRange,omitempty"`
+type EventMessageOfUserBlockSelectRange struct {
+	UserBlockSelectRange *EventUserBlockSelectRange `protobuf:"bytes,8,opt,name=userBlockSelectRange,proto3,oneof" json:"userBlockSelectRange,omitempty"`
 }
-type Event_FilesUpload struct {
-	FilesUpload *Event_Block_FilesUpload `protobuf:"bytes,9,opt,name=filesUpload,proto3,oneof" json:"filesUpload,omitempty"`
+type EventMessageOfFilesUpload struct {
+	FilesUpload *EventBlockFilesUpload `protobuf:"bytes,9,opt,name=filesUpload,proto3,oneof" json:"filesUpload,omitempty"`
 }
 
-func (*Event_AccountShow) isEventMessage()          {}
-func (*Event_BlockShow) isEventMessage()            {}
-func (*Event_BlockUpdate) isEventMessage()          {}
-func (*Event_BlockCreate) isEventMessage()          {}
-func (*Event_UserBlockTextRange) isEventMessage()   {}
-func (*Event_UserBlockJoin) isEventMessage()        {}
-func (*Event_UserBlockLeft) isEventMessage()        {}
-func (*Event_UserBlockSelectRange) isEventMessage() {}
-func (*Event_FilesUpload) isEventMessage()          {}
+func (*EventMessageOfAccountShow) isEventMessage()          {}
+func (*EventMessageOfBlockShow) isEventMessage()            {}
+func (*EventMessageOfBlockUpdate) isEventMessage()          {}
+func (*EventMessageOfBlockCreate) isEventMessage()          {}
+func (*EventMessageOfUserBlockTextRange) isEventMessage()   {}
+func (*EventMessageOfUserBlockJoin) isEventMessage()        {}
+func (*EventMessageOfUserBlockLeft) isEventMessage()        {}
+func (*EventMessageOfUserBlockSelectRange) isEventMessage() {}
+func (*EventMessageOfFilesUpload) isEventMessage()          {}
 
 func (m *Event) GetMessage() isEventMessage {
 	if m != nil {
@@ -120,64 +120,64 @@ func (m *Event) GetMessage() isEventMessage {
 	return nil
 }
 
-func (m *Event) GetAccountShow() *Event_Account_Show {
-	if x, ok := m.GetMessage().(*Event_AccountShow); ok {
+func (m *Event) GetAccountShow() *EventAccountShow {
+	if x, ok := m.GetMessage().(*EventMessageOfAccountShow); ok {
 		return x.AccountShow
 	}
 	return nil
 }
 
-func (m *Event) GetBlockShow() *Event_Block_Show {
-	if x, ok := m.GetMessage().(*Event_BlockShow); ok {
+func (m *Event) GetBlockShow() *EventBlockShow {
+	if x, ok := m.GetMessage().(*EventMessageOfBlockShow); ok {
 		return x.BlockShow
 	}
 	return nil
 }
 
-func (m *Event) GetBlockUpdate() *Event_Block_Update {
-	if x, ok := m.GetMessage().(*Event_BlockUpdate); ok {
+func (m *Event) GetBlockUpdate() *EventBlockUpdate {
+	if x, ok := m.GetMessage().(*EventMessageOfBlockUpdate); ok {
 		return x.BlockUpdate
 	}
 	return nil
 }
 
-func (m *Event) GetBlockCreate() *Event_Block_Create {
-	if x, ok := m.GetMessage().(*Event_BlockCreate); ok {
+func (m *Event) GetBlockCreate() *EventBlockCreate {
+	if x, ok := m.GetMessage().(*EventMessageOfBlockCreate); ok {
 		return x.BlockCreate
 	}
 	return nil
 }
 
-func (m *Event) GetUserBlockTextRange() *Event_User_Block_TextRange {
-	if x, ok := m.GetMessage().(*Event_UserBlockTextRange); ok {
+func (m *Event) GetUserBlockTextRange() *EventUserBlockTextRange {
+	if x, ok := m.GetMessage().(*EventMessageOfUserBlockTextRange); ok {
 		return x.UserBlockTextRange
 	}
 	return nil
 }
 
-func (m *Event) GetUserBlockJoin() *Event_User_Block_Join {
-	if x, ok := m.GetMessage().(*Event_UserBlockJoin); ok {
+func (m *Event) GetUserBlockJoin() *EventUserBlockJoin {
+	if x, ok := m.GetMessage().(*EventMessageOfUserBlockJoin); ok {
 		return x.UserBlockJoin
 	}
 	return nil
 }
 
-func (m *Event) GetUserBlockLeft() *Event_User_Block_Left {
-	if x, ok := m.GetMessage().(*Event_UserBlockLeft); ok {
+func (m *Event) GetUserBlockLeft() *EventUserBlockLeft {
+	if x, ok := m.GetMessage().(*EventMessageOfUserBlockLeft); ok {
 		return x.UserBlockLeft
 	}
 	return nil
 }
 
-func (m *Event) GetUserBlockSelectRange() *Event_User_Block_SelectRange {
-	if x, ok := m.GetMessage().(*Event_UserBlockSelectRange); ok {
+func (m *Event) GetUserBlockSelectRange() *EventUserBlockSelectRange {
+	if x, ok := m.GetMessage().(*EventMessageOfUserBlockSelectRange); ok {
 		return x.UserBlockSelectRange
 	}
 	return nil
 }
 
-func (m *Event) GetFilesUpload() *Event_Block_FilesUpload {
-	if x, ok := m.GetMessage().(*Event_FilesUpload); ok {
+func (m *Event) GetFilesUpload() *EventBlockFilesUpload {
+	if x, ok := m.GetMessage().(*EventMessageOfFilesUpload); ok {
 		return x.FilesUpload
 	}
 	return nil
@@ -186,33 +186,33 @@ func (m *Event) GetFilesUpload() *Event_Block_FilesUpload {
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*Event) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*Event_AccountShow)(nil),
-		(*Event_BlockShow)(nil),
-		(*Event_BlockUpdate)(nil),
-		(*Event_BlockCreate)(nil),
-		(*Event_UserBlockTextRange)(nil),
-		(*Event_UserBlockJoin)(nil),
-		(*Event_UserBlockLeft)(nil),
-		(*Event_UserBlockSelectRange)(nil),
-		(*Event_FilesUpload)(nil),
+		(*EventMessageOfAccountShow)(nil),
+		(*EventMessageOfBlockShow)(nil),
+		(*EventMessageOfBlockUpdate)(nil),
+		(*EventMessageOfBlockCreate)(nil),
+		(*EventMessageOfUserBlockTextRange)(nil),
+		(*EventMessageOfUserBlockJoin)(nil),
+		(*EventMessageOfUserBlockLeft)(nil),
+		(*EventMessageOfUserBlockSelectRange)(nil),
+		(*EventMessageOfFilesUpload)(nil),
 	}
 }
 
-type Event_Account struct {
+type EventAccount struct {
 }
 
-func (m *Event_Account) Reset()         { *m = Event_Account{} }
-func (m *Event_Account) String() string { return proto.CompactTextString(m) }
-func (*Event_Account) ProtoMessage()    {}
-func (*Event_Account) Descriptor() ([]byte, []int) {
+func (m *EventAccount) Reset()         { *m = EventAccount{} }
+func (m *EventAccount) String() string { return proto.CompactTextString(m) }
+func (*EventAccount) ProtoMessage()    {}
+func (*EventAccount) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 0}
 }
-func (m *Event_Account) XXX_Unmarshal(b []byte) error {
+func (m *EventAccount) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventAccount) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_Account.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventAccount.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -222,37 +222,37 @@ func (m *Event_Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error
 		return b[:n], nil
 	}
 }
-func (m *Event_Account) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_Account.Merge(m, src)
+func (m *EventAccount) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventAccount.Merge(m, src)
 }
-func (m *Event_Account) XXX_Size() int {
+func (m *EventAccount) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_Account) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_Account.DiscardUnknown(m)
+func (m *EventAccount) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventAccount.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_Account proto.InternalMessageInfo
+var xxx_messageInfo_EventAccount proto.InternalMessageInfo
 
 //*
 // Message, that will be sent to the front on each account found after an AccountRecoverRequest
-type Event_Account_Show struct {
-	Index   int64          `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	Account *Model_Account `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+type EventAccountShow struct {
+	Index   int64         `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	Account *ModelAccount `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
 }
 
-func (m *Event_Account_Show) Reset()         { *m = Event_Account_Show{} }
-func (m *Event_Account_Show) String() string { return proto.CompactTextString(m) }
-func (*Event_Account_Show) ProtoMessage()    {}
-func (*Event_Account_Show) Descriptor() ([]byte, []int) {
+func (m *EventAccountShow) Reset()         { *m = EventAccountShow{} }
+func (m *EventAccountShow) String() string { return proto.CompactTextString(m) }
+func (*EventAccountShow) ProtoMessage()    {}
+func (*EventAccountShow) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 0, 0}
 }
-func (m *Event_Account_Show) XXX_Unmarshal(b []byte) error {
+func (m *EventAccountShow) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_Account_Show) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventAccountShow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_Account_Show.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventAccountShow.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -262,47 +262,47 @@ func (m *Event_Account_Show) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Event_Account_Show) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_Account_Show.Merge(m, src)
+func (m *EventAccountShow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventAccountShow.Merge(m, src)
 }
-func (m *Event_Account_Show) XXX_Size() int {
+func (m *EventAccountShow) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_Account_Show) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_Account_Show.DiscardUnknown(m)
+func (m *EventAccountShow) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventAccountShow.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_Account_Show proto.InternalMessageInfo
+var xxx_messageInfo_EventAccountShow proto.InternalMessageInfo
 
-func (m *Event_Account_Show) GetIndex() int64 {
+func (m *EventAccountShow) GetIndex() int64 {
 	if m != nil {
 		return m.Index
 	}
 	return 0
 }
 
-func (m *Event_Account_Show) GetAccount() *Model_Account {
+func (m *EventAccountShow) GetAccount() *ModelAccount {
 	if m != nil {
 		return m.Account
 	}
 	return nil
 }
 
-type Event_Block struct {
+type EventBlock struct {
 }
 
-func (m *Event_Block) Reset()         { *m = Event_Block{} }
-func (m *Event_Block) String() string { return proto.CompactTextString(m) }
-func (*Event_Block) ProtoMessage()    {}
-func (*Event_Block) Descriptor() ([]byte, []int) {
+func (m *EventBlock) Reset()         { *m = EventBlock{} }
+func (m *EventBlock) String() string { return proto.CompactTextString(m) }
+func (*EventBlock) ProtoMessage()    {}
+func (*EventBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 1}
 }
-func (m *Event_Block) XXX_Unmarshal(b []byte) error {
+func (m *EventBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_Block.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlock.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -312,34 +312,34 @@ func (m *Event_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Event_Block) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_Block.Merge(m, src)
+func (m *EventBlock) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlock.Merge(m, src)
 }
-func (m *Event_Block) XXX_Size() int {
+func (m *EventBlock) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_Block) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_Block.DiscardUnknown(m)
+func (m *EventBlock) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlock.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_Block proto.InternalMessageInfo
+var xxx_messageInfo_EventBlock proto.InternalMessageInfo
 
-type Event_Block_Show struct {
-	Block *Model_Block `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
+type EventBlockShow struct {
+	Block *ModelBlock `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
 }
 
-func (m *Event_Block_Show) Reset()         { *m = Event_Block_Show{} }
-func (m *Event_Block_Show) String() string { return proto.CompactTextString(m) }
-func (*Event_Block_Show) ProtoMessage()    {}
-func (*Event_Block_Show) Descriptor() ([]byte, []int) {
+func (m *EventBlockShow) Reset()         { *m = EventBlockShow{} }
+func (m *EventBlockShow) String() string { return proto.CompactTextString(m) }
+func (*EventBlockShow) ProtoMessage()    {}
+func (*EventBlockShow) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 0}
 }
-func (m *Event_Block_Show) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockShow) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_Block_Show) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockShow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_Block_Show.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockShow.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -349,41 +349,41 @@ func (m *Event_Block_Show) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return b[:n], nil
 	}
 }
-func (m *Event_Block_Show) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_Block_Show.Merge(m, src)
+func (m *EventBlockShow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockShow.Merge(m, src)
 }
-func (m *Event_Block_Show) XXX_Size() int {
+func (m *EventBlockShow) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_Block_Show) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_Block_Show.DiscardUnknown(m)
+func (m *EventBlockShow) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockShow.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_Block_Show proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockShow proto.InternalMessageInfo
 
-func (m *Event_Block_Show) GetBlock() *Model_Block {
+func (m *EventBlockShow) GetBlock() *ModelBlock {
 	if m != nil {
 		return m.Block
 	}
 	return nil
 }
 
-type Event_Block_Update struct {
+type EventBlockUpdate struct {
 	Changes *BlockChanges `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
 }
 
-func (m *Event_Block_Update) Reset()         { *m = Event_Block_Update{} }
-func (m *Event_Block_Update) String() string { return proto.CompactTextString(m) }
-func (*Event_Block_Update) ProtoMessage()    {}
-func (*Event_Block_Update) Descriptor() ([]byte, []int) {
+func (m *EventBlockUpdate) Reset()         { *m = EventBlockUpdate{} }
+func (m *EventBlockUpdate) String() string { return proto.CompactTextString(m) }
+func (*EventBlockUpdate) ProtoMessage()    {}
+func (*EventBlockUpdate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 1}
 }
-func (m *Event_Block_Update) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockUpdate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_Block_Update) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockUpdate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_Block_Update.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockUpdate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -393,41 +393,41 @@ func (m *Event_Block_Update) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Event_Block_Update) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_Block_Update.Merge(m, src)
+func (m *EventBlockUpdate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockUpdate.Merge(m, src)
 }
-func (m *Event_Block_Update) XXX_Size() int {
+func (m *EventBlockUpdate) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_Block_Update) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_Block_Update.DiscardUnknown(m)
+func (m *EventBlockUpdate) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockUpdate.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_Block_Update proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockUpdate proto.InternalMessageInfo
 
-func (m *Event_Block_Update) GetChanges() *BlockChanges {
+func (m *EventBlockUpdate) GetChanges() *BlockChanges {
 	if m != nil {
 		return m.Changes
 	}
 	return nil
 }
 
-type Event_Block_Create struct {
-	Block *Model_Block `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
+type EventBlockCreate struct {
+	Block *ModelBlock `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
 }
 
-func (m *Event_Block_Create) Reset()         { *m = Event_Block_Create{} }
-func (m *Event_Block_Create) String() string { return proto.CompactTextString(m) }
-func (*Event_Block_Create) ProtoMessage()    {}
-func (*Event_Block_Create) Descriptor() ([]byte, []int) {
+func (m *EventBlockCreate) Reset()         { *m = EventBlockCreate{} }
+func (m *EventBlockCreate) String() string { return proto.CompactTextString(m) }
+func (*EventBlockCreate) ProtoMessage()    {}
+func (*EventBlockCreate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 2}
 }
-func (m *Event_Block_Create) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_Block_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_Block_Create.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockCreate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -437,19 +437,19 @@ func (m *Event_Block_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Event_Block_Create) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_Block_Create.Merge(m, src)
+func (m *EventBlockCreate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockCreate.Merge(m, src)
 }
-func (m *Event_Block_Create) XXX_Size() int {
+func (m *EventBlockCreate) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_Block_Create) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_Block_Create.DiscardUnknown(m)
+func (m *EventBlockCreate) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockCreate.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_Block_Create proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockCreate proto.InternalMessageInfo
 
-func (m *Event_Block_Create) GetBlock() *Model_Block {
+func (m *EventBlockCreate) GetBlock() *ModelBlock {
 	if m != nil {
 		return m.Block
 	}
@@ -461,23 +461,23 @@ func (m *Event_Block_Create) GetBlock() *Model_Block {
 // Precondition: user A opened a block
 // 1. User A drops a set of files/pictures/videos
 // 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
-type Event_Block_FilesUpload struct {
+type EventBlockFilesUpload struct {
 	FilePath []string `protobuf:"bytes,1,rep,name=filePath,proto3" json:"filePath,omitempty"`
 	BlockId  string   `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 }
 
-func (m *Event_Block_FilesUpload) Reset()         { *m = Event_Block_FilesUpload{} }
-func (m *Event_Block_FilesUpload) String() string { return proto.CompactTextString(m) }
-func (*Event_Block_FilesUpload) ProtoMessage()    {}
-func (*Event_Block_FilesUpload) Descriptor() ([]byte, []int) {
+func (m *EventBlockFilesUpload) Reset()         { *m = EventBlockFilesUpload{} }
+func (m *EventBlockFilesUpload) String() string { return proto.CompactTextString(m) }
+func (*EventBlockFilesUpload) ProtoMessage()    {}
+func (*EventBlockFilesUpload) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 3}
 }
-func (m *Event_Block_FilesUpload) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockFilesUpload) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_Block_FilesUpload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockFilesUpload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_Block_FilesUpload.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockFilesUpload.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -487,47 +487,47 @@ func (m *Event_Block_FilesUpload) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *Event_Block_FilesUpload) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_Block_FilesUpload.Merge(m, src)
+func (m *EventBlockFilesUpload) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockFilesUpload.Merge(m, src)
 }
-func (m *Event_Block_FilesUpload) XXX_Size() int {
+func (m *EventBlockFilesUpload) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_Block_FilesUpload) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_Block_FilesUpload.DiscardUnknown(m)
+func (m *EventBlockFilesUpload) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockFilesUpload.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_Block_FilesUpload proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockFilesUpload proto.InternalMessageInfo
 
-func (m *Event_Block_FilesUpload) GetFilePath() []string {
+func (m *EventBlockFilesUpload) GetFilePath() []string {
 	if m != nil {
 		return m.FilePath
 	}
 	return nil
 }
 
-func (m *Event_Block_FilesUpload) GetBlockId() string {
+func (m *EventBlockFilesUpload) GetBlockId() string {
 	if m != nil {
 		return m.BlockId
 	}
 	return ""
 }
 
-type Event_User struct {
+type EventUser struct {
 }
 
-func (m *Event_User) Reset()         { *m = Event_User{} }
-func (m *Event_User) String() string { return proto.CompactTextString(m) }
-func (*Event_User) ProtoMessage()    {}
-func (*Event_User) Descriptor() ([]byte, []int) {
+func (m *EventUser) Reset()         { *m = EventUser{} }
+func (m *EventUser) String() string { return proto.CompactTextString(m) }
+func (*EventUser) ProtoMessage()    {}
+func (*EventUser) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 2}
 }
-func (m *Event_User) XXX_Unmarshal(b []byte) error {
+func (m *EventUser) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_User) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventUser) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_User.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventUser.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -537,33 +537,33 @@ func (m *Event_User) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Event_User) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_User.Merge(m, src)
+func (m *EventUser) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventUser.Merge(m, src)
 }
-func (m *Event_User) XXX_Size() int {
+func (m *EventUser) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_User) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_User.DiscardUnknown(m)
+func (m *EventUser) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventUser.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_User proto.InternalMessageInfo
+var xxx_messageInfo_EventUser proto.InternalMessageInfo
 
-type Event_User_Block struct {
+type EventUserBlock struct {
 }
 
-func (m *Event_User_Block) Reset()         { *m = Event_User_Block{} }
-func (m *Event_User_Block) String() string { return proto.CompactTextString(m) }
-func (*Event_User_Block) ProtoMessage()    {}
-func (*Event_User_Block) Descriptor() ([]byte, []int) {
+func (m *EventUserBlock) Reset()         { *m = EventUserBlock{} }
+func (m *EventUserBlock) String() string { return proto.CompactTextString(m) }
+func (*EventUserBlock) ProtoMessage()    {}
+func (*EventUserBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 2, 0}
 }
-func (m *Event_User_Block) XXX_Unmarshal(b []byte) error {
+func (m *EventUserBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_User_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventUserBlock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_User_Block.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventUserBlock.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -573,39 +573,39 @@ func (m *Event_User_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return b[:n], nil
 	}
 }
-func (m *Event_User_Block) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_User_Block.Merge(m, src)
+func (m *EventUserBlock) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventUserBlock.Merge(m, src)
 }
-func (m *Event_User_Block) XXX_Size() int {
+func (m *EventUserBlock) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_User_Block) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_User_Block.DiscardUnknown(m)
+func (m *EventUserBlock) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventUserBlock.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_User_Block proto.InternalMessageInfo
+var xxx_messageInfo_EventUserBlock proto.InternalMessageInfo
 
 //*
 //  Middleware to front end event message, that will be sent in this scenario:
 // Precondition: user A opened a block
 // 1. User B opens the same block
 // 2. User A receives a message about p.1
-type Event_User_Block_Join struct {
-	Account *Event_Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+type EventUserBlockJoin struct {
+	Account *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 }
 
-func (m *Event_User_Block_Join) Reset()         { *m = Event_User_Block_Join{} }
-func (m *Event_User_Block_Join) String() string { return proto.CompactTextString(m) }
-func (*Event_User_Block_Join) ProtoMessage()    {}
-func (*Event_User_Block_Join) Descriptor() ([]byte, []int) {
+func (m *EventUserBlockJoin) Reset()         { *m = EventUserBlockJoin{} }
+func (m *EventUserBlockJoin) String() string { return proto.CompactTextString(m) }
+func (*EventUserBlockJoin) ProtoMessage()    {}
+func (*EventUserBlockJoin) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 2, 0, 0}
 }
-func (m *Event_User_Block_Join) XXX_Unmarshal(b []byte) error {
+func (m *EventUserBlockJoin) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_User_Block_Join) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventUserBlockJoin) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_User_Block_Join.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventUserBlockJoin.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -615,19 +615,19 @@ func (m *Event_User_Block_Join) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *Event_User_Block_Join) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_User_Block_Join.Merge(m, src)
+func (m *EventUserBlockJoin) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventUserBlockJoin.Merge(m, src)
 }
-func (m *Event_User_Block_Join) XXX_Size() int {
+func (m *EventUserBlockJoin) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_User_Block_Join) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_User_Block_Join.DiscardUnknown(m)
+func (m *EventUserBlockJoin) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventUserBlockJoin.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_User_Block_Join proto.InternalMessageInfo
+var xxx_messageInfo_EventUserBlockJoin proto.InternalMessageInfo
 
-func (m *Event_User_Block_Join) GetAccount() *Event_Account {
+func (m *EventUserBlockJoin) GetAccount() *EventAccount {
 	if m != nil {
 		return m.Account
 	}
@@ -639,22 +639,22 @@ func (m *Event_User_Block_Join) GetAccount() *Event_Account {
 // Precondition: user A and user B opened the same block
 // 1. User B closes the block
 // 2. User A receives a message about p.1
-type Event_User_Block_Left struct {
-	Account *Event_Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+type EventUserBlockLeft struct {
+	Account *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 }
 
-func (m *Event_User_Block_Left) Reset()         { *m = Event_User_Block_Left{} }
-func (m *Event_User_Block_Left) String() string { return proto.CompactTextString(m) }
-func (*Event_User_Block_Left) ProtoMessage()    {}
-func (*Event_User_Block_Left) Descriptor() ([]byte, []int) {
+func (m *EventUserBlockLeft) Reset()         { *m = EventUserBlockLeft{} }
+func (m *EventUserBlockLeft) String() string { return proto.CompactTextString(m) }
+func (*EventUserBlockLeft) ProtoMessage()    {}
+func (*EventUserBlockLeft) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 2, 0, 1}
 }
-func (m *Event_User_Block_Left) XXX_Unmarshal(b []byte) error {
+func (m *EventUserBlockLeft) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_User_Block_Left) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventUserBlockLeft) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_User_Block_Left.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventUserBlockLeft.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -664,19 +664,19 @@ func (m *Event_User_Block_Left) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *Event_User_Block_Left) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_User_Block_Left.Merge(m, src)
+func (m *EventUserBlockLeft) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventUserBlockLeft.Merge(m, src)
 }
-func (m *Event_User_Block_Left) XXX_Size() int {
+func (m *EventUserBlockLeft) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_User_Block_Left) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_User_Block_Left.DiscardUnknown(m)
+func (m *EventUserBlockLeft) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventUserBlockLeft.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_User_Block_Left proto.InternalMessageInfo
+var xxx_messageInfo_EventUserBlockLeft proto.InternalMessageInfo
 
-func (m *Event_User_Block_Left) GetAccount() *Event_Account {
+func (m *EventUserBlockLeft) GetAccount() *EventAccount {
 	if m != nil {
 		return m.Account
 	}
@@ -688,24 +688,24 @@ func (m *Event_User_Block_Left) GetAccount() *Event_Account {
 // Precondition: user A and user B opened the same block
 // 1. User B sets cursor or selects a text region into a text block
 // 2. User A receives a message about p.1
-type Event_User_Block_TextRange struct {
-	Account *Event_Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	BlockId string         `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	Range   *Model_Range   `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
+type EventUserBlockTextRange struct {
+	Account *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	BlockId string        `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	Range   *ModelRange   `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
 }
 
-func (m *Event_User_Block_TextRange) Reset()         { *m = Event_User_Block_TextRange{} }
-func (m *Event_User_Block_TextRange) String() string { return proto.CompactTextString(m) }
-func (*Event_User_Block_TextRange) ProtoMessage()    {}
-func (*Event_User_Block_TextRange) Descriptor() ([]byte, []int) {
+func (m *EventUserBlockTextRange) Reset()         { *m = EventUserBlockTextRange{} }
+func (m *EventUserBlockTextRange) String() string { return proto.CompactTextString(m) }
+func (*EventUserBlockTextRange) ProtoMessage()    {}
+func (*EventUserBlockTextRange) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 2, 0, 2}
 }
-func (m *Event_User_Block_TextRange) XXX_Unmarshal(b []byte) error {
+func (m *EventUserBlockTextRange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_User_Block_TextRange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventUserBlockTextRange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_User_Block_TextRange.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventUserBlockTextRange.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -715,33 +715,33 @@ func (m *Event_User_Block_TextRange) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Event_User_Block_TextRange) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_User_Block_TextRange.Merge(m, src)
+func (m *EventUserBlockTextRange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventUserBlockTextRange.Merge(m, src)
 }
-func (m *Event_User_Block_TextRange) XXX_Size() int {
+func (m *EventUserBlockTextRange) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_User_Block_TextRange) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_User_Block_TextRange.DiscardUnknown(m)
+func (m *EventUserBlockTextRange) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventUserBlockTextRange.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_User_Block_TextRange proto.InternalMessageInfo
+var xxx_messageInfo_EventUserBlockTextRange proto.InternalMessageInfo
 
-func (m *Event_User_Block_TextRange) GetAccount() *Event_Account {
+func (m *EventUserBlockTextRange) GetAccount() *EventAccount {
 	if m != nil {
 		return m.Account
 	}
 	return nil
 }
 
-func (m *Event_User_Block_TextRange) GetBlockId() string {
+func (m *EventUserBlockTextRange) GetBlockId() string {
 	if m != nil {
 		return m.BlockId
 	}
 	return ""
 }
 
-func (m *Event_User_Block_TextRange) GetRange() *Model_Range {
+func (m *EventUserBlockTextRange) GetRange() *ModelRange {
 	if m != nil {
 		return m.Range
 	}
@@ -753,23 +753,23 @@ func (m *Event_User_Block_TextRange) GetRange() *Model_Range {
 // Precondition: user A and user B opened the same block
 // 1. User B selects some inner blocks
 // 2. User A receives a message about p.1
-type Event_User_Block_SelectRange struct {
-	Account       *Event_Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	BlockIdsArray []string       `protobuf:"bytes,2,rep,name=blockIdsArray,proto3" json:"blockIdsArray,omitempty"`
+type EventUserBlockSelectRange struct {
+	Account       *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	BlockIdsArray []string      `protobuf:"bytes,2,rep,name=blockIdsArray,proto3" json:"blockIdsArray,omitempty"`
 }
 
-func (m *Event_User_Block_SelectRange) Reset()         { *m = Event_User_Block_SelectRange{} }
-func (m *Event_User_Block_SelectRange) String() string { return proto.CompactTextString(m) }
-func (*Event_User_Block_SelectRange) ProtoMessage()    {}
-func (*Event_User_Block_SelectRange) Descriptor() ([]byte, []int) {
+func (m *EventUserBlockSelectRange) Reset()         { *m = EventUserBlockSelectRange{} }
+func (m *EventUserBlockSelectRange) String() string { return proto.CompactTextString(m) }
+func (*EventUserBlockSelectRange) ProtoMessage()    {}
+func (*EventUserBlockSelectRange) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 2, 0, 3}
 }
-func (m *Event_User_Block_SelectRange) XXX_Unmarshal(b []byte) error {
+func (m *EventUserBlockSelectRange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Event_User_Block_SelectRange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventUserBlockSelectRange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Event_User_Block_SelectRange.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventUserBlockSelectRange.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -779,26 +779,26 @@ func (m *Event_User_Block_SelectRange) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *Event_User_Block_SelectRange) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Event_User_Block_SelectRange.Merge(m, src)
+func (m *EventUserBlockSelectRange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventUserBlockSelectRange.Merge(m, src)
 }
-func (m *Event_User_Block_SelectRange) XXX_Size() int {
+func (m *EventUserBlockSelectRange) XXX_Size() int {
 	return m.Size()
 }
-func (m *Event_User_Block_SelectRange) XXX_DiscardUnknown() {
-	xxx_messageInfo_Event_User_Block_SelectRange.DiscardUnknown(m)
+func (m *EventUserBlockSelectRange) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventUserBlockSelectRange.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Event_User_Block_SelectRange proto.InternalMessageInfo
+var xxx_messageInfo_EventUserBlockSelectRange proto.InternalMessageInfo
 
-func (m *Event_User_Block_SelectRange) GetAccount() *Event_Account {
+func (m *EventUserBlockSelectRange) GetAccount() *EventAccount {
 	if m != nil {
 		return m.Account
 	}
 	return nil
 }
 
-func (m *Event_User_Block_SelectRange) GetBlockIdsArray() []string {
+func (m *EventUserBlockSelectRange) GetBlockIdsArray() []string {
 	if m != nil {
 		return m.BlockIdsArray
 	}
@@ -807,19 +807,19 @@ func (m *Event_User_Block_SelectRange) GetBlockIdsArray() []string {
 
 func init() {
 	proto.RegisterType((*Event)(nil), "anytype.Event")
-	proto.RegisterType((*Event_Account)(nil), "anytype.Event.Account")
-	proto.RegisterType((*Event_Account_Show)(nil), "anytype.Event.Account.Show")
-	proto.RegisterType((*Event_Block)(nil), "anytype.Event.Block")
-	proto.RegisterType((*Event_Block_Show)(nil), "anytype.Event.Block.Show")
-	proto.RegisterType((*Event_Block_Update)(nil), "anytype.Event.Block.Update")
-	proto.RegisterType((*Event_Block_Create)(nil), "anytype.Event.Block.Create")
-	proto.RegisterType((*Event_Block_FilesUpload)(nil), "anytype.Event.Block.FilesUpload")
-	proto.RegisterType((*Event_User)(nil), "anytype.Event.User")
-	proto.RegisterType((*Event_User_Block)(nil), "anytype.Event.User.Block")
-	proto.RegisterType((*Event_User_Block_Join)(nil), "anytype.Event.User.Block.Join")
-	proto.RegisterType((*Event_User_Block_Left)(nil), "anytype.Event.User.Block.Left")
-	proto.RegisterType((*Event_User_Block_TextRange)(nil), "anytype.Event.User.Block.TextRange")
-	proto.RegisterType((*Event_User_Block_SelectRange)(nil), "anytype.Event.User.Block.SelectRange")
+	proto.RegisterType((*EventAccount)(nil), "anytype.Event.Account")
+	proto.RegisterType((*EventAccountShow)(nil), "anytype.Event.Account.Show")
+	proto.RegisterType((*EventBlock)(nil), "anytype.Event.Block")
+	proto.RegisterType((*EventBlockShow)(nil), "anytype.Event.Block.Show")
+	proto.RegisterType((*EventBlockUpdate)(nil), "anytype.Event.Block.Update")
+	proto.RegisterType((*EventBlockCreate)(nil), "anytype.Event.Block.Create")
+	proto.RegisterType((*EventBlockFilesUpload)(nil), "anytype.Event.Block.FilesUpload")
+	proto.RegisterType((*EventUser)(nil), "anytype.Event.User")
+	proto.RegisterType((*EventUserBlock)(nil), "anytype.Event.User.Block")
+	proto.RegisterType((*EventUserBlockJoin)(nil), "anytype.Event.User.Block.Join")
+	proto.RegisterType((*EventUserBlockLeft)(nil), "anytype.Event.User.Block.Left")
+	proto.RegisterType((*EventUserBlockTextRange)(nil), "anytype.Event.User.Block.TextRange")
+	proto.RegisterType((*EventUserBlockSelectRange)(nil), "anytype.Event.User.Block.SelectRange")
 }
 
 func init() { proto.RegisterFile("events.proto", fileDescriptor_8f22242cb04491f9) }
@@ -896,12 +896,12 @@ func (m *Event) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_AccountShow) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfAccountShow) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_AccountShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfAccountShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.AccountShow != nil {
 		{
@@ -917,12 +917,12 @@ func (m *Event_AccountShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_BlockShow) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockShow) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_BlockShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.BlockShow != nil {
 		{
@@ -938,12 +938,12 @@ func (m *Event_BlockShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_BlockUpdate) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockUpdate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_BlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.BlockUpdate != nil {
 		{
@@ -959,12 +959,12 @@ func (m *Event_BlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_BlockCreate) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockCreate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_BlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.BlockCreate != nil {
 		{
@@ -980,12 +980,12 @@ func (m *Event_BlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_UserBlockTextRange) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockTextRange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_UserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.UserBlockTextRange != nil {
 		{
@@ -1001,12 +1001,12 @@ func (m *Event_UserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_UserBlockJoin) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockJoin) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_UserBlockJoin) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockJoin) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.UserBlockJoin != nil {
 		{
@@ -1022,12 +1022,12 @@ func (m *Event_UserBlockJoin) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_UserBlockLeft) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockLeft) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_UserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.UserBlockLeft != nil {
 		{
@@ -1043,12 +1043,12 @@ func (m *Event_UserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_UserBlockSelectRange) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockSelectRange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_UserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfUserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.UserBlockSelectRange != nil {
 		{
@@ -1064,12 +1064,12 @@ func (m *Event_UserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, err
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_FilesUpload) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfFilesUpload) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_FilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfFilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.FilesUpload != nil {
 		{
@@ -1085,7 +1085,7 @@ func (m *Event_FilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Event_Account) Marshal() (dAtA []byte, err error) {
+func (m *EventAccount) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1095,12 +1095,12 @@ func (m *Event_Account) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_Account) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventAccount) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventAccount) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1108,7 +1108,7 @@ func (m *Event_Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_Account_Show) Marshal() (dAtA []byte, err error) {
+func (m *EventAccountShow) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1118,12 +1118,12 @@ func (m *Event_Account_Show) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_Account_Show) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventAccountShow) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_Account_Show) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventAccountShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1148,7 +1148,7 @@ func (m *Event_Account_Show) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_Block) Marshal() (dAtA []byte, err error) {
+func (m *EventBlock) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1158,12 +1158,12 @@ func (m *Event_Block) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_Block) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlock) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1171,7 +1171,7 @@ func (m *Event_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_Block_Show) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockShow) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1181,12 +1181,12 @@ func (m *Event_Block_Show) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_Block_Show) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockShow) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_Block_Show) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1206,7 +1206,7 @@ func (m *Event_Block_Show) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_Block_Update) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockUpdate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1216,12 +1216,12 @@ func (m *Event_Block_Update) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_Block_Update) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockUpdate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_Block_Update) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1241,7 +1241,7 @@ func (m *Event_Block_Update) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_Block_Create) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockCreate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1251,12 +1251,12 @@ func (m *Event_Block_Create) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_Block_Create) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockCreate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_Block_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1276,7 +1276,7 @@ func (m *Event_Block_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_Block_FilesUpload) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockFilesUpload) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1286,12 +1286,12 @@ func (m *Event_Block_FilesUpload) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_Block_FilesUpload) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockFilesUpload) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_Block_FilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockFilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1315,7 +1315,7 @@ func (m *Event_Block_FilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_User) Marshal() (dAtA []byte, err error) {
+func (m *EventUser) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1325,12 +1325,12 @@ func (m *Event_User) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_User) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventUser) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_User) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventUser) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1338,7 +1338,7 @@ func (m *Event_User) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_User_Block) Marshal() (dAtA []byte, err error) {
+func (m *EventUserBlock) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1348,12 +1348,12 @@ func (m *Event_User_Block) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_User_Block) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventUserBlock) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_User_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventUserBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1361,7 +1361,7 @@ func (m *Event_User_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_User_Block_Join) Marshal() (dAtA []byte, err error) {
+func (m *EventUserBlockJoin) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1371,47 +1371,12 @@ func (m *Event_User_Block_Join) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_User_Block_Join) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventUserBlockJoin) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_User_Block_Join) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Account != nil {
-		{
-			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvents(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Event_User_Block_Left) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Event_User_Block_Left) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Event_User_Block_Left) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventUserBlockJoin) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1431,7 +1396,7 @@ func (m *Event_User_Block_Left) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_User_Block_TextRange) Marshal() (dAtA []byte, err error) {
+func (m *EventUserBlockLeft) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1441,12 +1406,47 @@ func (m *Event_User_Block_TextRange) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_User_Block_TextRange) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventUserBlockLeft) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_User_Block_TextRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventUserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Account != nil {
+		{
+			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventUserBlockTextRange) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventUserBlockTextRange) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventUserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1485,7 +1485,7 @@ func (m *Event_User_Block_TextRange) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Event_User_Block_SelectRange) Marshal() (dAtA []byte, err error) {
+func (m *EventUserBlockSelectRange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1495,12 +1495,12 @@ func (m *Event_User_Block_SelectRange) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Event_User_Block_SelectRange) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventUserBlockSelectRange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Event_User_Block_SelectRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventUserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1552,7 +1552,7 @@ func (m *Event) Size() (n int) {
 	return n
 }
 
-func (m *Event_AccountShow) Size() (n int) {
+func (m *EventMessageOfAccountShow) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1564,7 +1564,7 @@ func (m *Event_AccountShow) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_BlockShow) Size() (n int) {
+func (m *EventMessageOfBlockShow) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1576,7 +1576,7 @@ func (m *Event_BlockShow) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_BlockUpdate) Size() (n int) {
+func (m *EventMessageOfBlockUpdate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1588,7 +1588,7 @@ func (m *Event_BlockUpdate) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_BlockCreate) Size() (n int) {
+func (m *EventMessageOfBlockCreate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1600,7 +1600,7 @@ func (m *Event_BlockCreate) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_UserBlockTextRange) Size() (n int) {
+func (m *EventMessageOfUserBlockTextRange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1612,7 +1612,7 @@ func (m *Event_UserBlockTextRange) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_UserBlockJoin) Size() (n int) {
+func (m *EventMessageOfUserBlockJoin) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1624,7 +1624,7 @@ func (m *Event_UserBlockJoin) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_UserBlockLeft) Size() (n int) {
+func (m *EventMessageOfUserBlockLeft) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1636,7 +1636,7 @@ func (m *Event_UserBlockLeft) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_UserBlockSelectRange) Size() (n int) {
+func (m *EventMessageOfUserBlockSelectRange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1648,7 +1648,7 @@ func (m *Event_UserBlockSelectRange) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_FilesUpload) Size() (n int) {
+func (m *EventMessageOfFilesUpload) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1660,7 +1660,7 @@ func (m *Event_FilesUpload) Size() (n int) {
 	}
 	return n
 }
-func (m *Event_Account) Size() (n int) {
+func (m *EventAccount) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1669,7 +1669,7 @@ func (m *Event_Account) Size() (n int) {
 	return n
 }
 
-func (m *Event_Account_Show) Size() (n int) {
+func (m *EventAccountShow) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1685,7 +1685,7 @@ func (m *Event_Account_Show) Size() (n int) {
 	return n
 }
 
-func (m *Event_Block) Size() (n int) {
+func (m *EventBlock) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1694,7 +1694,7 @@ func (m *Event_Block) Size() (n int) {
 	return n
 }
 
-func (m *Event_Block_Show) Size() (n int) {
+func (m *EventBlockShow) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1707,7 +1707,7 @@ func (m *Event_Block_Show) Size() (n int) {
 	return n
 }
 
-func (m *Event_Block_Update) Size() (n int) {
+func (m *EventBlockUpdate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1720,7 +1720,7 @@ func (m *Event_Block_Update) Size() (n int) {
 	return n
 }
 
-func (m *Event_Block_Create) Size() (n int) {
+func (m *EventBlockCreate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1733,7 +1733,7 @@ func (m *Event_Block_Create) Size() (n int) {
 	return n
 }
 
-func (m *Event_Block_FilesUpload) Size() (n int) {
+func (m *EventBlockFilesUpload) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1752,7 +1752,7 @@ func (m *Event_Block_FilesUpload) Size() (n int) {
 	return n
 }
 
-func (m *Event_User) Size() (n int) {
+func (m *EventUser) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1761,7 +1761,7 @@ func (m *Event_User) Size() (n int) {
 	return n
 }
 
-func (m *Event_User_Block) Size() (n int) {
+func (m *EventUserBlock) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1770,20 +1770,7 @@ func (m *Event_User_Block) Size() (n int) {
 	return n
 }
 
-func (m *Event_User_Block_Join) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Account != nil {
-		l = m.Account.Size()
-		n += 1 + l + sovEvents(uint64(l))
-	}
-	return n
-}
-
-func (m *Event_User_Block_Left) Size() (n int) {
+func (m *EventUserBlockJoin) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1796,7 +1783,20 @@ func (m *Event_User_Block_Left) Size() (n int) {
 	return n
 }
 
-func (m *Event_User_Block_TextRange) Size() (n int) {
+func (m *EventUserBlockLeft) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Account != nil {
+		l = m.Account.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventUserBlockTextRange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1817,7 +1817,7 @@ func (m *Event_User_Block_TextRange) Size() (n int) {
 	return n
 }
 
-func (m *Event_User_Block_SelectRange) Size() (n int) {
+func (m *EventUserBlockSelectRange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1900,11 +1900,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_Account_Show{}
+			v := &EventAccountShow{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_AccountShow{v}
+			m.Message = &EventMessageOfAccountShow{v}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -1935,11 +1935,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_Block_Show{}
+			v := &EventBlockShow{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_BlockShow{v}
+			m.Message = &EventMessageOfBlockShow{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -1970,11 +1970,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_Block_Update{}
+			v := &EventBlockUpdate{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_BlockUpdate{v}
+			m.Message = &EventMessageOfBlockUpdate{v}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -2005,11 +2005,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_Block_Create{}
+			v := &EventBlockCreate{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_BlockCreate{v}
+			m.Message = &EventMessageOfBlockCreate{v}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -2040,11 +2040,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_User_Block_TextRange{}
+			v := &EventUserBlockTextRange{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_UserBlockTextRange{v}
+			m.Message = &EventMessageOfUserBlockTextRange{v}
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -2075,11 +2075,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_User_Block_Join{}
+			v := &EventUserBlockJoin{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_UserBlockJoin{v}
+			m.Message = &EventMessageOfUserBlockJoin{v}
 			iNdEx = postIndex
 		case 7:
 			if wireType != 2 {
@@ -2110,11 +2110,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_User_Block_Left{}
+			v := &EventUserBlockLeft{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_UserBlockLeft{v}
+			m.Message = &EventMessageOfUserBlockLeft{v}
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {
@@ -2145,11 +2145,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_User_Block_SelectRange{}
+			v := &EventUserBlockSelectRange{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_UserBlockSelectRange{v}
+			m.Message = &EventMessageOfUserBlockSelectRange{v}
 			iNdEx = postIndex
 		case 9:
 			if wireType != 2 {
@@ -2180,11 +2180,11 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Event_Block_FilesUpload{}
+			v := &EventBlockFilesUpload{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &Event_FilesUpload{v}
+			m.Message = &EventMessageOfFilesUpload{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2210,7 +2210,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_Account) Unmarshal(dAtA []byte) error {
+func (m *EventAccount) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2263,7 +2263,7 @@ func (m *Event_Account) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_Account_Show) Unmarshal(dAtA []byte) error {
+func (m *EventAccountShow) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2341,7 +2341,7 @@ func (m *Event_Account_Show) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Account == nil {
-				m.Account = &Model_Account{}
+				m.Account = &ModelAccount{}
 			}
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2371,7 +2371,7 @@ func (m *Event_Account_Show) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_Block) Unmarshal(dAtA []byte) error {
+func (m *EventBlock) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2424,7 +2424,7 @@ func (m *Event_Block) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_Block_Show) Unmarshal(dAtA []byte) error {
+func (m *EventBlockShow) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2483,7 +2483,7 @@ func (m *Event_Block_Show) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Block == nil {
-				m.Block = &Model_Block{}
+				m.Block = &ModelBlock{}
 			}
 			if err := m.Block.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2513,7 +2513,7 @@ func (m *Event_Block_Show) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_Block_Update) Unmarshal(dAtA []byte) error {
+func (m *EventBlockUpdate) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2602,7 +2602,7 @@ func (m *Event_Block_Update) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_Block_Create) Unmarshal(dAtA []byte) error {
+func (m *EventBlockCreate) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2661,7 +2661,7 @@ func (m *Event_Block_Create) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Block == nil {
-				m.Block = &Model_Block{}
+				m.Block = &ModelBlock{}
 			}
 			if err := m.Block.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -2691,7 +2691,7 @@ func (m *Event_Block_Create) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_Block_FilesUpload) Unmarshal(dAtA []byte) error {
+func (m *EventBlockFilesUpload) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2808,7 +2808,7 @@ func (m *Event_Block_FilesUpload) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_User) Unmarshal(dAtA []byte) error {
+func (m *EventUser) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2861,7 +2861,7 @@ func (m *Event_User) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_User_Block) Unmarshal(dAtA []byte) error {
+func (m *EventUserBlock) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2914,7 +2914,7 @@ func (m *Event_User_Block) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_User_Block_Join) Unmarshal(dAtA []byte) error {
+func (m *EventUserBlockJoin) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2973,7 +2973,7 @@ func (m *Event_User_Block_Join) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Account == nil {
-				m.Account = &Event_Account{}
+				m.Account = &EventAccount{}
 			}
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -3003,7 +3003,7 @@ func (m *Event_User_Block_Join) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_User_Block_Left) Unmarshal(dAtA []byte) error {
+func (m *EventUserBlockLeft) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3062,7 +3062,7 @@ func (m *Event_User_Block_Left) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Account == nil {
-				m.Account = &Event_Account{}
+				m.Account = &EventAccount{}
 			}
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -3092,7 +3092,7 @@ func (m *Event_User_Block_Left) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_User_Block_TextRange) Unmarshal(dAtA []byte) error {
+func (m *EventUserBlockTextRange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3151,7 +3151,7 @@ func (m *Event_User_Block_TextRange) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Account == nil {
-				m.Account = &Event_Account{}
+				m.Account = &EventAccount{}
 			}
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -3219,7 +3219,7 @@ func (m *Event_User_Block_TextRange) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Range == nil {
-				m.Range = &Model_Range{}
+				m.Range = &ModelRange{}
 			}
 			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -3249,7 +3249,7 @@ func (m *Event_User_Block_TextRange) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Event_User_Block_SelectRange) Unmarshal(dAtA []byte) error {
+func (m *EventUserBlockSelectRange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3308,7 +3308,7 @@ func (m *Event_User_Block_SelectRange) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Account == nil {
-				m.Account = &Event_Account{}
+				m.Account = &EventAccount{}
 			}
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err

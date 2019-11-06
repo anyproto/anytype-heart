@@ -22,195 +22,195 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type Rpc_Block_History_Move_Response_Error_Code int32
+type RpcBlockHistoryMoveResponseErrorCode int32
 
 const (
-	Rpc_Block_History_Move_Response_Error_NULL          Rpc_Block_History_Move_Response_Error_Code = 0
-	Rpc_Block_History_Move_Response_Error_UNKNOWN_ERROR Rpc_Block_History_Move_Response_Error_Code = 1
-	Rpc_Block_History_Move_Response_Error_BAD_INPUT     Rpc_Block_History_Move_Response_Error_Code = 2
-	Rpc_Block_History_Move_Response_Error_CAN_NOT_MOVE  Rpc_Block_History_Move_Response_Error_Code = 3
+	RpcBlockHistoryMoveResponseError_NULL          RpcBlockHistoryMoveResponseErrorCode = 0
+	RpcBlockHistoryMoveResponseError_UNKNOWN_ERROR RpcBlockHistoryMoveResponseErrorCode = 1
+	RpcBlockHistoryMoveResponseError_BAD_INPUT     RpcBlockHistoryMoveResponseErrorCode = 2
+	RpcBlockHistoryMoveResponseError_CAN_NOT_MOVE  RpcBlockHistoryMoveResponseErrorCode = 3
 )
 
-var Rpc_Block_History_Move_Response_Error_Code_name = map[int32]string{
+var RpcBlockHistoryMoveResponseErrorCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 	3: "CAN_NOT_MOVE",
 }
 
-var Rpc_Block_History_Move_Response_Error_Code_value = map[string]int32{
+var RpcBlockHistoryMoveResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 	"CAN_NOT_MOVE":  3,
 }
 
-func (x Rpc_Block_History_Move_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Block_History_Move_Response_Error_Code_name, int32(x))
+func (x RpcBlockHistoryMoveResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockHistoryMoveResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Block_History_Move_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcBlockHistoryMoveResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 0, 0, 1, 0, 0}
 }
 
-type Rpc_Block_Open_Response_Error_Code int32
+type RpcBlockOpenResponseErrorCode int32
 
 const (
-	Rpc_Block_Open_Response_Error_NULL          Rpc_Block_Open_Response_Error_Code = 0
-	Rpc_Block_Open_Response_Error_UNKNOWN_ERROR Rpc_Block_Open_Response_Error_Code = 1
-	Rpc_Block_Open_Response_Error_BAD_INPUT     Rpc_Block_Open_Response_Error_Code = 2
+	RpcBlockOpenResponseError_NULL          RpcBlockOpenResponseErrorCode = 0
+	RpcBlockOpenResponseError_UNKNOWN_ERROR RpcBlockOpenResponseErrorCode = 1
+	RpcBlockOpenResponseError_BAD_INPUT     RpcBlockOpenResponseErrorCode = 2
 )
 
-var Rpc_Block_Open_Response_Error_Code_name = map[int32]string{
+var RpcBlockOpenResponseErrorCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 }
 
-var Rpc_Block_Open_Response_Error_Code_value = map[string]int32{
+var RpcBlockOpenResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 }
 
-func (x Rpc_Block_Open_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Block_Open_Response_Error_Code_name, int32(x))
+func (x RpcBlockOpenResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockOpenResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Block_Open_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcBlockOpenResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 1, 1, 0, 0}
 }
 
-type Rpc_Block_Create_Response_Error_Code int32
+type RpcBlockCreateResponseErrorCode int32
 
 const (
-	Rpc_Block_Create_Response_Error_NULL          Rpc_Block_Create_Response_Error_Code = 0
-	Rpc_Block_Create_Response_Error_UNKNOWN_ERROR Rpc_Block_Create_Response_Error_Code = 1
-	Rpc_Block_Create_Response_Error_BAD_INPUT     Rpc_Block_Create_Response_Error_Code = 2
+	RpcBlockCreateResponseError_NULL          RpcBlockCreateResponseErrorCode = 0
+	RpcBlockCreateResponseError_UNKNOWN_ERROR RpcBlockCreateResponseErrorCode = 1
+	RpcBlockCreateResponseError_BAD_INPUT     RpcBlockCreateResponseErrorCode = 2
 )
 
-var Rpc_Block_Create_Response_Error_Code_name = map[int32]string{
+var RpcBlockCreateResponseErrorCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 }
 
-var Rpc_Block_Create_Response_Error_Code_value = map[string]int32{
+var RpcBlockCreateResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 }
 
-func (x Rpc_Block_Create_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Block_Create_Response_Error_Code_name, int32(x))
+func (x RpcBlockCreateResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockCreateResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Block_Create_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcBlockCreateResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 2, 1, 0, 0}
 }
 
-type Rpc_Block_Update_Response_Error_Code int32
+type RpcBlockUpdateResponseErrorCode int32
 
 const (
-	Rpc_Block_Update_Response_Error_NULL          Rpc_Block_Update_Response_Error_Code = 0
-	Rpc_Block_Update_Response_Error_UNKNOWN_ERROR Rpc_Block_Update_Response_Error_Code = 1
-	Rpc_Block_Update_Response_Error_BAD_INPUT     Rpc_Block_Update_Response_Error_Code = 2
+	RpcBlockUpdateResponseError_NULL          RpcBlockUpdateResponseErrorCode = 0
+	RpcBlockUpdateResponseError_UNKNOWN_ERROR RpcBlockUpdateResponseErrorCode = 1
+	RpcBlockUpdateResponseError_BAD_INPUT     RpcBlockUpdateResponseErrorCode = 2
 )
 
-var Rpc_Block_Update_Response_Error_Code_name = map[int32]string{
+var RpcBlockUpdateResponseErrorCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 }
 
-var Rpc_Block_Update_Response_Error_Code_value = map[string]int32{
+var RpcBlockUpdateResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 }
 
-func (x Rpc_Block_Update_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Block_Update_Response_Error_Code_name, int32(x))
+func (x RpcBlockUpdateResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockUpdateResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Block_Update_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcBlockUpdateResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 3, 1, 0, 0}
 }
 
-type Rpc_Wallet_Create_Response_Error_Code int32
+type RpcWalletCreateResponseErrorCode int32
 
 const (
-	Rpc_Wallet_Create_Response_Error_NULL                        Rpc_Wallet_Create_Response_Error_Code = 0
-	Rpc_Wallet_Create_Response_Error_UNKNOWN_ERROR               Rpc_Wallet_Create_Response_Error_Code = 1
-	Rpc_Wallet_Create_Response_Error_BAD_INPUT                   Rpc_Wallet_Create_Response_Error_Code = 2
-	Rpc_Wallet_Create_Response_Error_FAILED_TO_CREATE_LOCAL_REPO Rpc_Wallet_Create_Response_Error_Code = 101
+	RpcWalletCreateResponseError_NULL                        RpcWalletCreateResponseErrorCode = 0
+	RpcWalletCreateResponseError_UNKNOWN_ERROR               RpcWalletCreateResponseErrorCode = 1
+	RpcWalletCreateResponseError_BAD_INPUT                   RpcWalletCreateResponseErrorCode = 2
+	RpcWalletCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO RpcWalletCreateResponseErrorCode = 101
 )
 
-var Rpc_Wallet_Create_Response_Error_Code_name = map[int32]string{
+var RpcWalletCreateResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
 	101: "FAILED_TO_CREATE_LOCAL_REPO",
 }
 
-var Rpc_Wallet_Create_Response_Error_Code_value = map[string]int32{
+var RpcWalletCreateResponseErrorCode_value = map[string]int32{
 	"NULL":                        0,
 	"UNKNOWN_ERROR":               1,
 	"BAD_INPUT":                   2,
 	"FAILED_TO_CREATE_LOCAL_REPO": 101,
 }
 
-func (x Rpc_Wallet_Create_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Wallet_Create_Response_Error_Code_name, int32(x))
+func (x RpcWalletCreateResponseErrorCode) String() string {
+	return proto.EnumName(RpcWalletCreateResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Wallet_Create_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcWalletCreateResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 0, 1, 0, 0}
 }
 
-type Rpc_Wallet_Recover_Response_Error_Code int32
+type RpcWalletRecoverResponseErrorCode int32
 
 const (
-	Rpc_Wallet_Recover_Response_Error_NULL                        Rpc_Wallet_Recover_Response_Error_Code = 0
-	Rpc_Wallet_Recover_Response_Error_UNKNOWN_ERROR               Rpc_Wallet_Recover_Response_Error_Code = 1
-	Rpc_Wallet_Recover_Response_Error_BAD_INPUT                   Rpc_Wallet_Recover_Response_Error_Code = 2
-	Rpc_Wallet_Recover_Response_Error_FAILED_TO_CREATE_LOCAL_REPO Rpc_Wallet_Recover_Response_Error_Code = 101
+	RpcWalletRecoverResponseError_NULL                        RpcWalletRecoverResponseErrorCode = 0
+	RpcWalletRecoverResponseError_UNKNOWN_ERROR               RpcWalletRecoverResponseErrorCode = 1
+	RpcWalletRecoverResponseError_BAD_INPUT                   RpcWalletRecoverResponseErrorCode = 2
+	RpcWalletRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO RpcWalletRecoverResponseErrorCode = 101
 )
 
-var Rpc_Wallet_Recover_Response_Error_Code_name = map[int32]string{
+var RpcWalletRecoverResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
 	101: "FAILED_TO_CREATE_LOCAL_REPO",
 }
 
-var Rpc_Wallet_Recover_Response_Error_Code_value = map[string]int32{
+var RpcWalletRecoverResponseErrorCode_value = map[string]int32{
 	"NULL":                        0,
 	"UNKNOWN_ERROR":               1,
 	"BAD_INPUT":                   2,
 	"FAILED_TO_CREATE_LOCAL_REPO": 101,
 }
 
-func (x Rpc_Wallet_Recover_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Wallet_Recover_Response_Error_Code_name, int32(x))
+func (x RpcWalletRecoverResponseErrorCode) String() string {
+	return proto.EnumName(RpcWalletRecoverResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Wallet_Recover_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcWalletRecoverResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 1, 1, 0, 0}
 }
 
-type Rpc_Account_Create_Response_Error_Code int32
+type RpcAccountCreateResponseErrorCode int32
 
 const (
-	Rpc_Account_Create_Response_Error_NULL                                     Rpc_Account_Create_Response_Error_Code = 0
-	Rpc_Account_Create_Response_Error_UNKNOWN_ERROR                            Rpc_Account_Create_Response_Error_Code = 1
-	Rpc_Account_Create_Response_Error_BAD_INPUT                                Rpc_Account_Create_Response_Error_Code = 2
-	Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE Rpc_Account_Create_Response_Error_Code = 101
-	Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME   Rpc_Account_Create_Response_Error_Code = 102
-	Rpc_Account_Create_Response_Error_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR Rpc_Account_Create_Response_Error_Code = 103
+	RpcAccountCreateResponseError_NULL                                     RpcAccountCreateResponseErrorCode = 0
+	RpcAccountCreateResponseError_UNKNOWN_ERROR                            RpcAccountCreateResponseErrorCode = 1
+	RpcAccountCreateResponseError_BAD_INPUT                                RpcAccountCreateResponseErrorCode = 2
+	RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE RpcAccountCreateResponseErrorCode = 101
+	RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME   RpcAccountCreateResponseErrorCode = 102
+	RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR RpcAccountCreateResponseErrorCode = 103
 )
 
-var Rpc_Account_Create_Response_Error_Code_name = map[int32]string{
+var RpcAccountCreateResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -219,7 +219,7 @@ var Rpc_Account_Create_Response_Error_Code_name = map[int32]string{
 	103: "ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR",
 }
 
-var Rpc_Account_Create_Response_Error_Code_value = map[string]int32{
+var RpcAccountCreateResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -228,29 +228,29 @@ var Rpc_Account_Create_Response_Error_Code_value = map[string]int32{
 	"ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR": 103,
 }
 
-func (x Rpc_Account_Create_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Account_Create_Response_Error_Code_name, int32(x))
+func (x RpcAccountCreateResponseErrorCode) String() string {
+	return proto.EnumName(RpcAccountCreateResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Account_Create_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcAccountCreateResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 0, 1, 0, 0}
 }
 
-type Rpc_Account_Recover_Response_Error_Code int32
+type RpcAccountRecoverResponseErrorCode int32
 
 const (
-	Rpc_Account_Recover_Response_Error_NULL                            Rpc_Account_Recover_Response_Error_Code = 0
-	Rpc_Account_Recover_Response_Error_UNKNOWN_ERROR                   Rpc_Account_Recover_Response_Error_Code = 1
-	Rpc_Account_Recover_Response_Error_BAD_INPUT                       Rpc_Account_Recover_Response_Error_Code = 2
-	Rpc_Account_Recover_Response_Error_NO_ACCOUNTS_FOUND               Rpc_Account_Recover_Response_Error_Code = 101
-	Rpc_Account_Recover_Response_Error_NEED_TO_RECOVER_WALLET_FIRST    Rpc_Account_Recover_Response_Error_Code = 102
-	Rpc_Account_Recover_Response_Error_FAILED_TO_CREATE_LOCAL_REPO     Rpc_Account_Recover_Response_Error_Code = 103
-	Rpc_Account_Recover_Response_Error_LOCAL_REPO_EXISTS_BUT_CORRUPTED Rpc_Account_Recover_Response_Error_Code = 104
-	Rpc_Account_Recover_Response_Error_FAILED_TO_RUN_NODE              Rpc_Account_Recover_Response_Error_Code = 105
-	Rpc_Account_Recover_Response_Error_WALLET_RECOVER_NOT_PERFORMED    Rpc_Account_Recover_Response_Error_Code = 106
+	RpcAccountRecoverResponseError_NULL                            RpcAccountRecoverResponseErrorCode = 0
+	RpcAccountRecoverResponseError_UNKNOWN_ERROR                   RpcAccountRecoverResponseErrorCode = 1
+	RpcAccountRecoverResponseError_BAD_INPUT                       RpcAccountRecoverResponseErrorCode = 2
+	RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND               RpcAccountRecoverResponseErrorCode = 101
+	RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST    RpcAccountRecoverResponseErrorCode = 102
+	RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO     RpcAccountRecoverResponseErrorCode = 103
+	RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED RpcAccountRecoverResponseErrorCode = 104
+	RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE              RpcAccountRecoverResponseErrorCode = 105
+	RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED    RpcAccountRecoverResponseErrorCode = 106
 )
 
-var Rpc_Account_Recover_Response_Error_Code_name = map[int32]string{
+var RpcAccountRecoverResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -262,7 +262,7 @@ var Rpc_Account_Recover_Response_Error_Code_name = map[int32]string{
 	106: "WALLET_RECOVER_NOT_PERFORMED",
 }
 
-var Rpc_Account_Recover_Response_Error_Code_value = map[string]int32{
+var RpcAccountRecoverResponseErrorCode_value = map[string]int32{
 	"NULL":                            0,
 	"UNKNOWN_ERROR":                   1,
 	"BAD_INPUT":                       2,
@@ -274,28 +274,28 @@ var Rpc_Account_Recover_Response_Error_Code_value = map[string]int32{
 	"WALLET_RECOVER_NOT_PERFORMED":    106,
 }
 
-func (x Rpc_Account_Recover_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Account_Recover_Response_Error_Code_name, int32(x))
+func (x RpcAccountRecoverResponseErrorCode) String() string {
+	return proto.EnumName(RpcAccountRecoverResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Account_Recover_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcAccountRecoverResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 1, 1, 0, 0}
 }
 
-type Rpc_Account_Select_Response_Error_Code int32
+type RpcAccountSelectResponseErrorCode int32
 
 const (
-	Rpc_Account_Select_Response_Error_NULL                                       Rpc_Account_Select_Response_Error_Code = 0
-	Rpc_Account_Select_Response_Error_UNKNOWN_ERROR                              Rpc_Account_Select_Response_Error_Code = 1
-	Rpc_Account_Select_Response_Error_BAD_INPUT                                  Rpc_Account_Select_Response_Error_Code = 2
-	Rpc_Account_Select_Response_Error_FAILED_TO_CREATE_LOCAL_REPO                Rpc_Account_Select_Response_Error_Code = 101
-	Rpc_Account_Select_Response_Error_LOCAL_REPO_EXISTS_BUT_CORRUPTED            Rpc_Account_Select_Response_Error_Code = 102
-	Rpc_Account_Select_Response_Error_FAILED_TO_RUN_NODE                         Rpc_Account_Select_Response_Error_Code = 103
-	Rpc_Account_Select_Response_Error_FAILED_TO_FIND_ACCOUNT_INFO                Rpc_Account_Select_Response_Error_Code = 104
-	Rpc_Account_Select_Response_Error_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET Rpc_Account_Select_Response_Error_Code = 105
+	RpcAccountSelectResponseError_NULL                                       RpcAccountSelectResponseErrorCode = 0
+	RpcAccountSelectResponseError_UNKNOWN_ERROR                              RpcAccountSelectResponseErrorCode = 1
+	RpcAccountSelectResponseError_BAD_INPUT                                  RpcAccountSelectResponseErrorCode = 2
+	RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO                RpcAccountSelectResponseErrorCode = 101
+	RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED            RpcAccountSelectResponseErrorCode = 102
+	RpcAccountSelectResponseError_FAILED_TO_RUN_NODE                         RpcAccountSelectResponseErrorCode = 103
+	RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO                RpcAccountSelectResponseErrorCode = 104
+	RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET RpcAccountSelectResponseErrorCode = 105
 )
 
-var Rpc_Account_Select_Response_Error_Code_name = map[int32]string{
+var RpcAccountSelectResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -306,7 +306,7 @@ var Rpc_Account_Select_Response_Error_Code_name = map[int32]string{
 	105: "LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET",
 }
 
-var Rpc_Account_Select_Response_Error_Code_value = map[string]int32{
+var RpcAccountSelectResponseErrorCode_value = map[string]int32{
 	"NULL":                                       0,
 	"UNKNOWN_ERROR":                              1,
 	"BAD_INPUT":                                  2,
@@ -317,26 +317,26 @@ var Rpc_Account_Select_Response_Error_Code_value = map[string]int32{
 	"LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET": 105,
 }
 
-func (x Rpc_Account_Select_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Account_Select_Response_Error_Code_name, int32(x))
+func (x RpcAccountSelectResponseErrorCode) String() string {
+	return proto.EnumName(RpcAccountSelectResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Account_Select_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcAccountSelectResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 2, 1, 0, 0}
 }
 
-type Rpc_Version_Get_Response_Error_Code int32
+type RpcVersionGetResponseErrorCode int32
 
 const (
-	Rpc_Version_Get_Response_Error_NULL             Rpc_Version_Get_Response_Error_Code = 0
-	Rpc_Version_Get_Response_Error_UNKNOWN_ERROR    Rpc_Version_Get_Response_Error_Code = 1
-	Rpc_Version_Get_Response_Error_BAD_INPUT        Rpc_Version_Get_Response_Error_Code = 2
-	Rpc_Version_Get_Response_Error_VERSION_IS_EMPTY Rpc_Version_Get_Response_Error_Code = 3
-	Rpc_Version_Get_Response_Error_NOT_FOUND        Rpc_Version_Get_Response_Error_Code = 101
-	Rpc_Version_Get_Response_Error_TIMEOUT          Rpc_Version_Get_Response_Error_Code = 102
+	RpcVersionGetResponseError_NULL             RpcVersionGetResponseErrorCode = 0
+	RpcVersionGetResponseError_UNKNOWN_ERROR    RpcVersionGetResponseErrorCode = 1
+	RpcVersionGetResponseError_BAD_INPUT        RpcVersionGetResponseErrorCode = 2
+	RpcVersionGetResponseError_VERSION_IS_EMPTY RpcVersionGetResponseErrorCode = 3
+	RpcVersionGetResponseError_NOT_FOUND        RpcVersionGetResponseErrorCode = 101
+	RpcVersionGetResponseError_TIMEOUT          RpcVersionGetResponseErrorCode = 102
 )
 
-var Rpc_Version_Get_Response_Error_Code_name = map[int32]string{
+var RpcVersionGetResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -345,7 +345,7 @@ var Rpc_Version_Get_Response_Error_Code_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var Rpc_Version_Get_Response_Error_Code_value = map[string]int32{
+var RpcVersionGetResponseErrorCode_value = map[string]int32{
 	"NULL":             0,
 	"UNKNOWN_ERROR":    1,
 	"BAD_INPUT":        2,
@@ -354,26 +354,26 @@ var Rpc_Version_Get_Response_Error_Code_value = map[string]int32{
 	"TIMEOUT":          102,
 }
 
-func (x Rpc_Version_Get_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Version_Get_Response_Error_Code_name, int32(x))
+func (x RpcVersionGetResponseErrorCode) String() string {
+	return proto.EnumName(RpcVersionGetResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Version_Get_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcVersionGetResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1, 0, 0}
 }
 
-type Rpc_Log_Send_Request_Level int32
+type RpcLogSendRequestLevel int32
 
 const (
-	Rpc_Log_Send_Request_DEBUG   Rpc_Log_Send_Request_Level = 0
-	Rpc_Log_Send_Request_ERROR   Rpc_Log_Send_Request_Level = 1
-	Rpc_Log_Send_Request_FATAL   Rpc_Log_Send_Request_Level = 2
-	Rpc_Log_Send_Request_INFO    Rpc_Log_Send_Request_Level = 3
-	Rpc_Log_Send_Request_PANIC   Rpc_Log_Send_Request_Level = 4
-	Rpc_Log_Send_Request_WARNING Rpc_Log_Send_Request_Level = 5
+	RpcLogSendRequest_DEBUG   RpcLogSendRequestLevel = 0
+	RpcLogSendRequest_ERROR   RpcLogSendRequestLevel = 1
+	RpcLogSendRequest_FATAL   RpcLogSendRequestLevel = 2
+	RpcLogSendRequest_INFO    RpcLogSendRequestLevel = 3
+	RpcLogSendRequest_PANIC   RpcLogSendRequestLevel = 4
+	RpcLogSendRequest_WARNING RpcLogSendRequestLevel = 5
 )
 
-var Rpc_Log_Send_Request_Level_name = map[int32]string{
+var RpcLogSendRequestLevel_name = map[int32]string{
 	0: "DEBUG",
 	1: "ERROR",
 	2: "FATAL",
@@ -382,7 +382,7 @@ var Rpc_Log_Send_Request_Level_name = map[int32]string{
 	5: "WARNING",
 }
 
-var Rpc_Log_Send_Request_Level_value = map[string]int32{
+var RpcLogSendRequestLevel_value = map[string]int32{
 	"DEBUG":   0,
 	"ERROR":   1,
 	"FATAL":   2,
@@ -391,25 +391,25 @@ var Rpc_Log_Send_Request_Level_value = map[string]int32{
 	"WARNING": 5,
 }
 
-func (x Rpc_Log_Send_Request_Level) String() string {
-	return proto.EnumName(Rpc_Log_Send_Request_Level_name, int32(x))
+func (x RpcLogSendRequestLevel) String() string {
+	return proto.EnumName(RpcLogSendRequestLevel_name, int32(x))
 }
 
-func (Rpc_Log_Send_Request_Level) EnumDescriptor() ([]byte, []int) {
+func (RpcLogSendRequestLevel) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 0, 0}
 }
 
-type Rpc_Log_Send_Response_Error_Code int32
+type RpcLogSendResponseErrorCode int32
 
 const (
-	Rpc_Log_Send_Response_Error_NULL          Rpc_Log_Send_Response_Error_Code = 0
-	Rpc_Log_Send_Response_Error_UNKNOWN_ERROR Rpc_Log_Send_Response_Error_Code = 1
-	Rpc_Log_Send_Response_Error_BAD_INPUT     Rpc_Log_Send_Response_Error_Code = 2
-	Rpc_Log_Send_Response_Error_NOT_FOUND     Rpc_Log_Send_Response_Error_Code = 101
-	Rpc_Log_Send_Response_Error_TIMEOUT       Rpc_Log_Send_Response_Error_Code = 102
+	RpcLogSendResponseError_NULL          RpcLogSendResponseErrorCode = 0
+	RpcLogSendResponseError_UNKNOWN_ERROR RpcLogSendResponseErrorCode = 1
+	RpcLogSendResponseError_BAD_INPUT     RpcLogSendResponseErrorCode = 2
+	RpcLogSendResponseError_NOT_FOUND     RpcLogSendResponseErrorCode = 101
+	RpcLogSendResponseError_TIMEOUT       RpcLogSendResponseErrorCode = 102
 )
 
-var Rpc_Log_Send_Response_Error_Code_name = map[int32]string{
+var RpcLogSendResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -417,7 +417,7 @@ var Rpc_Log_Send_Response_Error_Code_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var Rpc_Log_Send_Response_Error_Code_value = map[string]int32{
+var RpcLogSendResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -425,25 +425,25 @@ var Rpc_Log_Send_Response_Error_Code_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x Rpc_Log_Send_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Log_Send_Response_Error_Code_name, int32(x))
+func (x RpcLogSendResponseErrorCode) String() string {
+	return proto.EnumName(RpcLogSendResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Log_Send_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcLogSendResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1, 0, 0}
 }
 
-type Rpc_Ipfs_Get_File_Response_Error_Code int32
+type RpcIpfsGetFileResponseErrorCode int32
 
 const (
-	Rpc_Ipfs_Get_File_Response_Error_NULL          Rpc_Ipfs_Get_File_Response_Error_Code = 0
-	Rpc_Ipfs_Get_File_Response_Error_UNKNOWN_ERROR Rpc_Ipfs_Get_File_Response_Error_Code = 1
-	Rpc_Ipfs_Get_File_Response_Error_BAD_INPUT     Rpc_Ipfs_Get_File_Response_Error_Code = 2
-	Rpc_Ipfs_Get_File_Response_Error_NOT_FOUND     Rpc_Ipfs_Get_File_Response_Error_Code = 101
-	Rpc_Ipfs_Get_File_Response_Error_TIMEOUT       Rpc_Ipfs_Get_File_Response_Error_Code = 102
+	RpcIpfsGetFileResponseError_NULL          RpcIpfsGetFileResponseErrorCode = 0
+	RpcIpfsGetFileResponseError_UNKNOWN_ERROR RpcIpfsGetFileResponseErrorCode = 1
+	RpcIpfsGetFileResponseError_BAD_INPUT     RpcIpfsGetFileResponseErrorCode = 2
+	RpcIpfsGetFileResponseError_NOT_FOUND     RpcIpfsGetFileResponseErrorCode = 101
+	RpcIpfsGetFileResponseError_TIMEOUT       RpcIpfsGetFileResponseErrorCode = 102
 )
 
-var Rpc_Ipfs_Get_File_Response_Error_Code_name = map[int32]string{
+var RpcIpfsGetFileResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -451,7 +451,7 @@ var Rpc_Ipfs_Get_File_Response_Error_Code_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var Rpc_Ipfs_Get_File_Response_Error_Code_value = map[string]int32{
+var RpcIpfsGetFileResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -459,25 +459,25 @@ var Rpc_Ipfs_Get_File_Response_Error_Code_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x Rpc_Ipfs_Get_File_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Ipfs_Get_File_Response_Error_Code_name, int32(x))
+func (x RpcIpfsGetFileResponseErrorCode) String() string {
+	return proto.EnumName(RpcIpfsGetFileResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Ipfs_Get_File_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcIpfsGetFileResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 1, 0, 0}
 }
 
-type Rpc_Image_Get_Blob_Response_Error_Code int32
+type RpcImageGetBlobResponseErrorCode int32
 
 const (
-	Rpc_Image_Get_Blob_Response_Error_NULL          Rpc_Image_Get_Blob_Response_Error_Code = 0
-	Rpc_Image_Get_Blob_Response_Error_UNKNOWN_ERROR Rpc_Image_Get_Blob_Response_Error_Code = 1
-	Rpc_Image_Get_Blob_Response_Error_BAD_INPUT     Rpc_Image_Get_Blob_Response_Error_Code = 2
-	Rpc_Image_Get_Blob_Response_Error_NOT_FOUND     Rpc_Image_Get_Blob_Response_Error_Code = 101
-	Rpc_Image_Get_Blob_Response_Error_TIMEOUT       Rpc_Image_Get_Blob_Response_Error_Code = 102
+	RpcImageGetBlobResponseError_NULL          RpcImageGetBlobResponseErrorCode = 0
+	RpcImageGetBlobResponseError_UNKNOWN_ERROR RpcImageGetBlobResponseErrorCode = 1
+	RpcImageGetBlobResponseError_BAD_INPUT     RpcImageGetBlobResponseErrorCode = 2
+	RpcImageGetBlobResponseError_NOT_FOUND     RpcImageGetBlobResponseErrorCode = 101
+	RpcImageGetBlobResponseError_TIMEOUT       RpcImageGetBlobResponseErrorCode = 102
 )
 
-var Rpc_Image_Get_Blob_Response_Error_Code_name = map[int32]string{
+var RpcImageGetBlobResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -485,7 +485,7 @@ var Rpc_Image_Get_Blob_Response_Error_Code_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var Rpc_Image_Get_Blob_Response_Error_Code_value = map[string]int32{
+var RpcImageGetBlobResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -493,25 +493,25 @@ var Rpc_Image_Get_Blob_Response_Error_Code_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x Rpc_Image_Get_Blob_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Image_Get_Blob_Response_Error_Code_name, int32(x))
+func (x RpcImageGetBlobResponseErrorCode) String() string {
+	return proto.EnumName(RpcImageGetBlobResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Image_Get_Blob_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcImageGetBlobResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 1, 0, 0}
 }
 
-type Rpc_Image_Get_File_Response_Error_Code int32
+type RpcImageGetFileResponseErrorCode int32
 
 const (
-	Rpc_Image_Get_File_Response_Error_NULL          Rpc_Image_Get_File_Response_Error_Code = 0
-	Rpc_Image_Get_File_Response_Error_UNKNOWN_ERROR Rpc_Image_Get_File_Response_Error_Code = 1
-	Rpc_Image_Get_File_Response_Error_BAD_INPUT     Rpc_Image_Get_File_Response_Error_Code = 2
-	Rpc_Image_Get_File_Response_Error_NOT_FOUND     Rpc_Image_Get_File_Response_Error_Code = 101
-	Rpc_Image_Get_File_Response_Error_TIMEOUT       Rpc_Image_Get_File_Response_Error_Code = 102
+	RpcImageGetFileResponseError_NULL          RpcImageGetFileResponseErrorCode = 0
+	RpcImageGetFileResponseError_UNKNOWN_ERROR RpcImageGetFileResponseErrorCode = 1
+	RpcImageGetFileResponseError_BAD_INPUT     RpcImageGetFileResponseErrorCode = 2
+	RpcImageGetFileResponseError_NOT_FOUND     RpcImageGetFileResponseErrorCode = 101
+	RpcImageGetFileResponseError_TIMEOUT       RpcImageGetFileResponseErrorCode = 102
 )
 
-var Rpc_Image_Get_File_Response_Error_Code_name = map[int32]string{
+var RpcImageGetFileResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -519,7 +519,7 @@ var Rpc_Image_Get_File_Response_Error_Code_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var Rpc_Image_Get_File_Response_Error_Code_value = map[string]int32{
+var RpcImageGetFileResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -527,11 +527,11 @@ var Rpc_Image_Get_File_Response_Error_Code_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x Rpc_Image_Get_File_Response_Error_Code) String() string {
-	return proto.EnumName(Rpc_Image_Get_File_Response_Error_Code_name, int32(x))
+func (x RpcImageGetFileResponseErrorCode) String() string {
+	return proto.EnumName(RpcImageGetFileResponseErrorCode_name, int32(x))
 }
 
-func (Rpc_Image_Get_File_Response_Error_Code) EnumDescriptor() ([]byte, []int) {
+func (RpcImageGetFileResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 1, 0, 0}
 }
 
@@ -571,21 +571,21 @@ func (m *Rpc) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Rpc proto.InternalMessageInfo
 
-type Rpc_Block struct {
+type RpcBlock struct {
 }
 
-func (m *Rpc_Block) Reset()         { *m = Rpc_Block{} }
-func (m *Rpc_Block) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block) ProtoMessage()    {}
-func (*Rpc_Block) Descriptor() ([]byte, []int) {
+func (m *RpcBlock) Reset()         { *m = RpcBlock{} }
+func (m *RpcBlock) String() string { return proto.CompactTextString(m) }
+func (*RpcBlock) ProtoMessage()    {}
+func (*RpcBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0}
 }
-func (m *Rpc_Block) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlock.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -595,33 +595,33 @@ func (m *Rpc_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block.Merge(m, src)
+func (m *RpcBlock) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlock.Merge(m, src)
 }
-func (m *Rpc_Block) XXX_Size() int {
+func (m *RpcBlock) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block.DiscardUnknown(m)
+func (m *RpcBlock) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlock.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlock proto.InternalMessageInfo
 
-type Rpc_Block_History struct {
+type RpcBlockHistory struct {
 }
 
-func (m *Rpc_Block_History) Reset()         { *m = Rpc_Block_History{} }
-func (m *Rpc_Block_History) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_History) ProtoMessage()    {}
-func (*Rpc_Block_History) Descriptor() ([]byte, []int) {
+func (m *RpcBlockHistory) Reset()         { *m = RpcBlockHistory{} }
+func (m *RpcBlockHistory) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockHistory) ProtoMessage()    {}
+func (*RpcBlockHistory) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 0}
 }
-func (m *Rpc_Block_History) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockHistory) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_History) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockHistory) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_History.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockHistory.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -631,33 +631,33 @@ func (m *Rpc_Block_History) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_History) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_History.Merge(m, src)
+func (m *RpcBlockHistory) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockHistory.Merge(m, src)
 }
-func (m *Rpc_Block_History) XXX_Size() int {
+func (m *RpcBlockHistory) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_History) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_History.DiscardUnknown(m)
+func (m *RpcBlockHistory) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockHistory.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_History proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockHistory proto.InternalMessageInfo
 
-type Rpc_Block_History_Move struct {
+type RpcBlockHistoryMove struct {
 }
 
-func (m *Rpc_Block_History_Move) Reset()         { *m = Rpc_Block_History_Move{} }
-func (m *Rpc_Block_History_Move) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_History_Move) ProtoMessage()    {}
-func (*Rpc_Block_History_Move) Descriptor() ([]byte, []int) {
+func (m *RpcBlockHistoryMove) Reset()         { *m = RpcBlockHistoryMove{} }
+func (m *RpcBlockHistoryMove) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockHistoryMove) ProtoMessage()    {}
+func (*RpcBlockHistoryMove) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 0, 0}
 }
-func (m *Rpc_Block_History_Move) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockHistoryMove) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_History_Move) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockHistoryMove) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_History_Move.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockHistoryMove.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -667,36 +667,36 @@ func (m *Rpc_Block_History_Move) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_History_Move) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_History_Move.Merge(m, src)
+func (m *RpcBlockHistoryMove) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockHistoryMove.Merge(m, src)
 }
-func (m *Rpc_Block_History_Move) XXX_Size() int {
+func (m *RpcBlockHistoryMove) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_History_Move) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_History_Move.DiscardUnknown(m)
+func (m *RpcBlockHistoryMove) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockHistoryMove.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_History_Move proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockHistoryMove proto.InternalMessageInfo
 
-type Rpc_Block_History_Move_Request struct {
+type RpcBlockHistoryMoveRequest struct {
 	Id             string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ContextBlockId string `protobuf:"bytes,2,opt,name=contextBlockId,proto3" json:"contextBlockId,omitempty"`
 	MoveForward    bool   `protobuf:"varint,3,opt,name=moveForward,proto3" json:"moveForward,omitempty"`
 }
 
-func (m *Rpc_Block_History_Move_Request) Reset()         { *m = Rpc_Block_History_Move_Request{} }
-func (m *Rpc_Block_History_Move_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_History_Move_Request) ProtoMessage()    {}
-func (*Rpc_Block_History_Move_Request) Descriptor() ([]byte, []int) {
+func (m *RpcBlockHistoryMoveRequest) Reset()         { *m = RpcBlockHistoryMoveRequest{} }
+func (m *RpcBlockHistoryMoveRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockHistoryMoveRequest) ProtoMessage()    {}
+func (*RpcBlockHistoryMoveRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 0, 0, 0}
 }
-func (m *Rpc_Block_History_Move_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockHistoryMoveRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_History_Move_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockHistoryMoveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_History_Move_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockHistoryMoveRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -706,55 +706,55 @@ func (m *Rpc_Block_History_Move_Request) XXX_Marshal(b []byte, deterministic boo
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_History_Move_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_History_Move_Request.Merge(m, src)
+func (m *RpcBlockHistoryMoveRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockHistoryMoveRequest.Merge(m, src)
 }
-func (m *Rpc_Block_History_Move_Request) XXX_Size() int {
+func (m *RpcBlockHistoryMoveRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_History_Move_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_History_Move_Request.DiscardUnknown(m)
+func (m *RpcBlockHistoryMoveRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockHistoryMoveRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_History_Move_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockHistoryMoveRequest proto.InternalMessageInfo
 
-func (m *Rpc_Block_History_Move_Request) GetId() string {
+func (m *RpcBlockHistoryMoveRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Rpc_Block_History_Move_Request) GetContextBlockId() string {
+func (m *RpcBlockHistoryMoveRequest) GetContextBlockId() string {
 	if m != nil {
 		return m.ContextBlockId
 	}
 	return ""
 }
 
-func (m *Rpc_Block_History_Move_Request) GetMoveForward() bool {
+func (m *RpcBlockHistoryMoveRequest) GetMoveForward() bool {
 	if m != nil {
 		return m.MoveForward
 	}
 	return false
 }
 
-type Rpc_Block_History_Move_Response struct {
-	Error *Rpc_Block_History_Move_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcBlockHistoryMoveResponse struct {
+	Error *RpcBlockHistoryMoveResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *Rpc_Block_History_Move_Response) Reset()         { *m = Rpc_Block_History_Move_Response{} }
-func (m *Rpc_Block_History_Move_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_History_Move_Response) ProtoMessage()    {}
-func (*Rpc_Block_History_Move_Response) Descriptor() ([]byte, []int) {
+func (m *RpcBlockHistoryMoveResponse) Reset()         { *m = RpcBlockHistoryMoveResponse{} }
+func (m *RpcBlockHistoryMoveResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockHistoryMoveResponse) ProtoMessage()    {}
+func (*RpcBlockHistoryMoveResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 0, 0, 1}
 }
-func (m *Rpc_Block_History_Move_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockHistoryMoveResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_History_Move_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockHistoryMoveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_History_Move_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockHistoryMoveResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -764,42 +764,42 @@ func (m *Rpc_Block_History_Move_Response) XXX_Marshal(b []byte, deterministic bo
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_History_Move_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_History_Move_Response.Merge(m, src)
+func (m *RpcBlockHistoryMoveResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockHistoryMoveResponse.Merge(m, src)
 }
-func (m *Rpc_Block_History_Move_Response) XXX_Size() int {
+func (m *RpcBlockHistoryMoveResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_History_Move_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_History_Move_Response.DiscardUnknown(m)
+func (m *RpcBlockHistoryMoveResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockHistoryMoveResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_History_Move_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockHistoryMoveResponse proto.InternalMessageInfo
 
-func (m *Rpc_Block_History_Move_Response) GetError() *Rpc_Block_History_Move_Response_Error {
+func (m *RpcBlockHistoryMoveResponse) GetError() *RpcBlockHistoryMoveResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type Rpc_Block_History_Move_Response_Error struct {
-	Code        Rpc_Block_History_Move_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Block_History_Move_Response_Error_Code" json:"code,omitempty"`
-	Description string                                     `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcBlockHistoryMoveResponseError struct {
+	Code        RpcBlockHistoryMoveResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockHistoryMoveResponseErrorCode" json:"code,omitempty"`
+	Description string                               `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Block_History_Move_Response_Error) Reset()         { *m = Rpc_Block_History_Move_Response_Error{} }
-func (m *Rpc_Block_History_Move_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_History_Move_Response_Error) ProtoMessage()    {}
-func (*Rpc_Block_History_Move_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcBlockHistoryMoveResponseError) Reset()         { *m = RpcBlockHistoryMoveResponseError{} }
+func (m *RpcBlockHistoryMoveResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockHistoryMoveResponseError) ProtoMessage()    {}
+func (*RpcBlockHistoryMoveResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 0, 0, 1, 0}
 }
-func (m *Rpc_Block_History_Move_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockHistoryMoveResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_History_Move_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockHistoryMoveResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_History_Move_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockHistoryMoveResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -809,47 +809,47 @@ func (m *Rpc_Block_History_Move_Response_Error) XXX_Marshal(b []byte, determinis
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_History_Move_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_History_Move_Response_Error.Merge(m, src)
+func (m *RpcBlockHistoryMoveResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockHistoryMoveResponseError.Merge(m, src)
 }
-func (m *Rpc_Block_History_Move_Response_Error) XXX_Size() int {
+func (m *RpcBlockHistoryMoveResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_History_Move_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_History_Move_Response_Error.DiscardUnknown(m)
+func (m *RpcBlockHistoryMoveResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockHistoryMoveResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_History_Move_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockHistoryMoveResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Block_History_Move_Response_Error) GetCode() Rpc_Block_History_Move_Response_Error_Code {
+func (m *RpcBlockHistoryMoveResponseError) GetCode() RpcBlockHistoryMoveResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Block_History_Move_Response_Error_NULL
+	return RpcBlockHistoryMoveResponseError_NULL
 }
 
-func (m *Rpc_Block_History_Move_Response_Error) GetDescription() string {
+func (m *RpcBlockHistoryMoveResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Block_Open struct {
+type RpcBlockOpen struct {
 }
 
-func (m *Rpc_Block_Open) Reset()         { *m = Rpc_Block_Open{} }
-func (m *Rpc_Block_Open) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Open) ProtoMessage()    {}
-func (*Rpc_Block_Open) Descriptor() ([]byte, []int) {
+func (m *RpcBlockOpen) Reset()         { *m = RpcBlockOpen{} }
+func (m *RpcBlockOpen) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockOpen) ProtoMessage()    {}
+func (*RpcBlockOpen) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 1}
 }
-func (m *Rpc_Block_Open) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockOpen) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Open) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockOpen) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Open.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockOpen.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -859,34 +859,34 @@ func (m *Rpc_Block_Open) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Open) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Open.Merge(m, src)
+func (m *RpcBlockOpen) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockOpen.Merge(m, src)
 }
-func (m *Rpc_Block_Open) XXX_Size() int {
+func (m *RpcBlockOpen) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Open) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Open.DiscardUnknown(m)
+func (m *RpcBlockOpen) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockOpen.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Open proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockOpen proto.InternalMessageInfo
 
-type Rpc_Block_Open_Request struct {
+type RpcBlockOpenRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (m *Rpc_Block_Open_Request) Reset()         { *m = Rpc_Block_Open_Request{} }
-func (m *Rpc_Block_Open_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Open_Request) ProtoMessage()    {}
-func (*Rpc_Block_Open_Request) Descriptor() ([]byte, []int) {
+func (m *RpcBlockOpenRequest) Reset()         { *m = RpcBlockOpenRequest{} }
+func (m *RpcBlockOpenRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockOpenRequest) ProtoMessage()    {}
+func (*RpcBlockOpenRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 1, 0}
 }
-func (m *Rpc_Block_Open_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockOpenRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Open_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockOpenRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Open_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockOpenRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -896,42 +896,42 @@ func (m *Rpc_Block_Open_Request) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Open_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Open_Request.Merge(m, src)
+func (m *RpcBlockOpenRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockOpenRequest.Merge(m, src)
 }
-func (m *Rpc_Block_Open_Request) XXX_Size() int {
+func (m *RpcBlockOpenRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Open_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Open_Request.DiscardUnknown(m)
+func (m *RpcBlockOpenRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockOpenRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Open_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockOpenRequest proto.InternalMessageInfo
 
-func (m *Rpc_Block_Open_Request) GetId() string {
+func (m *RpcBlockOpenRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-type Rpc_Block_Open_Response struct {
-	Error       *Rpc_Block_Open_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	BlockHeader *Model_Block_Header            `protobuf:"bytes,2,opt,name=blockHeader,proto3" json:"blockHeader,omitempty"`
+type RpcBlockOpenResponse struct {
+	Error       *RpcBlockOpenResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	BlockHeader *ModelBlockHeader          `protobuf:"bytes,2,opt,name=blockHeader,proto3" json:"blockHeader,omitempty"`
 }
 
-func (m *Rpc_Block_Open_Response) Reset()         { *m = Rpc_Block_Open_Response{} }
-func (m *Rpc_Block_Open_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Open_Response) ProtoMessage()    {}
-func (*Rpc_Block_Open_Response) Descriptor() ([]byte, []int) {
+func (m *RpcBlockOpenResponse) Reset()         { *m = RpcBlockOpenResponse{} }
+func (m *RpcBlockOpenResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockOpenResponse) ProtoMessage()    {}
+func (*RpcBlockOpenResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 1, 1}
 }
-func (m *Rpc_Block_Open_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockOpenResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Open_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockOpenResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Open_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockOpenResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -941,49 +941,49 @@ func (m *Rpc_Block_Open_Response) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Open_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Open_Response.Merge(m, src)
+func (m *RpcBlockOpenResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockOpenResponse.Merge(m, src)
 }
-func (m *Rpc_Block_Open_Response) XXX_Size() int {
+func (m *RpcBlockOpenResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Open_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Open_Response.DiscardUnknown(m)
+func (m *RpcBlockOpenResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockOpenResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Open_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockOpenResponse proto.InternalMessageInfo
 
-func (m *Rpc_Block_Open_Response) GetError() *Rpc_Block_Open_Response_Error {
+func (m *RpcBlockOpenResponse) GetError() *RpcBlockOpenResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Block_Open_Response) GetBlockHeader() *Model_Block_Header {
+func (m *RpcBlockOpenResponse) GetBlockHeader() *ModelBlockHeader {
 	if m != nil {
 		return m.BlockHeader
 	}
 	return nil
 }
 
-type Rpc_Block_Open_Response_Error struct {
-	Code        Rpc_Block_Open_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Block_Open_Response_Error_Code" json:"code,omitempty"`
-	Description string                             `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcBlockOpenResponseError struct {
+	Code        RpcBlockOpenResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockOpenResponseErrorCode" json:"code,omitempty"`
+	Description string                        `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Block_Open_Response_Error) Reset()         { *m = Rpc_Block_Open_Response_Error{} }
-func (m *Rpc_Block_Open_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Open_Response_Error) ProtoMessage()    {}
-func (*Rpc_Block_Open_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcBlockOpenResponseError) Reset()         { *m = RpcBlockOpenResponseError{} }
+func (m *RpcBlockOpenResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockOpenResponseError) ProtoMessage()    {}
+func (*RpcBlockOpenResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 1, 1, 0}
 }
-func (m *Rpc_Block_Open_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockOpenResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Open_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockOpenResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Open_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockOpenResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -993,47 +993,47 @@ func (m *Rpc_Block_Open_Response_Error) XXX_Marshal(b []byte, deterministic bool
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Open_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Open_Response_Error.Merge(m, src)
+func (m *RpcBlockOpenResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockOpenResponseError.Merge(m, src)
 }
-func (m *Rpc_Block_Open_Response_Error) XXX_Size() int {
+func (m *RpcBlockOpenResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Open_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Open_Response_Error.DiscardUnknown(m)
+func (m *RpcBlockOpenResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockOpenResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Open_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockOpenResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Block_Open_Response_Error) GetCode() Rpc_Block_Open_Response_Error_Code {
+func (m *RpcBlockOpenResponseError) GetCode() RpcBlockOpenResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Block_Open_Response_Error_NULL
+	return RpcBlockOpenResponseError_NULL
 }
 
-func (m *Rpc_Block_Open_Response_Error) GetDescription() string {
+func (m *RpcBlockOpenResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Block_Create struct {
+type RpcBlockCreate struct {
 }
 
-func (m *Rpc_Block_Create) Reset()         { *m = Rpc_Block_Create{} }
-func (m *Rpc_Block_Create) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Create) ProtoMessage()    {}
-func (*Rpc_Block_Create) Descriptor() ([]byte, []int) {
+func (m *RpcBlockCreate) Reset()         { *m = RpcBlockCreate{} }
+func (m *RpcBlockCreate) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCreate) ProtoMessage()    {}
+func (*RpcBlockCreate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 2}
 }
-func (m *Rpc_Block_Create) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Create.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockCreate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1043,35 +1043,35 @@ func (m *Rpc_Block_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Create) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Create.Merge(m, src)
+func (m *RpcBlockCreate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCreate.Merge(m, src)
 }
-func (m *Rpc_Block_Create) XXX_Size() int {
+func (m *RpcBlockCreate) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Create) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Create.DiscardUnknown(m)
+func (m *RpcBlockCreate) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCreate.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Create proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockCreate proto.InternalMessageInfo
 
-type Rpc_Block_Create_Request struct {
-	Type           Model_Block_Header_Type `protobuf:"varint,1,opt,name=type,proto3,enum=anytype.Model_Block_Header_Type" json:"type,omitempty"`
-	ContextBlockId string                  `protobuf:"bytes,2,opt,name=contextBlockId,proto3" json:"contextBlockId,omitempty"`
+type RpcBlockCreateRequest struct {
+	Type           ModelBlockHeaderType `protobuf:"varint,1,opt,name=type,proto3,enum=anytype.ModelBlockHeaderType" json:"type,omitempty"`
+	ContextBlockId string               `protobuf:"bytes,2,opt,name=contextBlockId,proto3" json:"contextBlockId,omitempty"`
 }
 
-func (m *Rpc_Block_Create_Request) Reset()         { *m = Rpc_Block_Create_Request{} }
-func (m *Rpc_Block_Create_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Create_Request) ProtoMessage()    {}
-func (*Rpc_Block_Create_Request) Descriptor() ([]byte, []int) {
+func (m *RpcBlockCreateRequest) Reset()         { *m = RpcBlockCreateRequest{} }
+func (m *RpcBlockCreateRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCreateRequest) ProtoMessage()    {}
+func (*RpcBlockCreateRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 2, 0}
 }
-func (m *Rpc_Block_Create_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockCreateRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Create_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Create_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockCreateRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1081,48 +1081,48 @@ func (m *Rpc_Block_Create_Request) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Create_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Create_Request.Merge(m, src)
+func (m *RpcBlockCreateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCreateRequest.Merge(m, src)
 }
-func (m *Rpc_Block_Create_Request) XXX_Size() int {
+func (m *RpcBlockCreateRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Create_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Create_Request.DiscardUnknown(m)
+func (m *RpcBlockCreateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCreateRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Create_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockCreateRequest proto.InternalMessageInfo
 
-func (m *Rpc_Block_Create_Request) GetType() Model_Block_Header_Type {
+func (m *RpcBlockCreateRequest) GetType() ModelBlockHeaderType {
 	if m != nil {
 		return m.Type
 	}
-	return Model_Block_Header_DASHBOARD
+	return ModelBlockHeader_DASHBOARD
 }
 
-func (m *Rpc_Block_Create_Request) GetContextBlockId() string {
+func (m *RpcBlockCreateRequest) GetContextBlockId() string {
 	if m != nil {
 		return m.ContextBlockId
 	}
 	return ""
 }
 
-type Rpc_Block_Create_Response struct {
-	Error *Rpc_Block_Create_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcBlockCreateResponse struct {
+	Error *RpcBlockCreateResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *Rpc_Block_Create_Response) Reset()         { *m = Rpc_Block_Create_Response{} }
-func (m *Rpc_Block_Create_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Create_Response) ProtoMessage()    {}
-func (*Rpc_Block_Create_Response) Descriptor() ([]byte, []int) {
+func (m *RpcBlockCreateResponse) Reset()         { *m = RpcBlockCreateResponse{} }
+func (m *RpcBlockCreateResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCreateResponse) ProtoMessage()    {}
+func (*RpcBlockCreateResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 2, 1}
 }
-func (m *Rpc_Block_Create_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockCreateResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Create_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Create_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockCreateResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1132,42 +1132,42 @@ func (m *Rpc_Block_Create_Response) XXX_Marshal(b []byte, deterministic bool) ([
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Create_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Create_Response.Merge(m, src)
+func (m *RpcBlockCreateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCreateResponse.Merge(m, src)
 }
-func (m *Rpc_Block_Create_Response) XXX_Size() int {
+func (m *RpcBlockCreateResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Create_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Create_Response.DiscardUnknown(m)
+func (m *RpcBlockCreateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCreateResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Create_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockCreateResponse proto.InternalMessageInfo
 
-func (m *Rpc_Block_Create_Response) GetError() *Rpc_Block_Create_Response_Error {
+func (m *RpcBlockCreateResponse) GetError() *RpcBlockCreateResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type Rpc_Block_Create_Response_Error struct {
-	Code        Rpc_Block_Create_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Block_Create_Response_Error_Code" json:"code,omitempty"`
-	Description string                               `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcBlockCreateResponseError struct {
+	Code        RpcBlockCreateResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockCreateResponseErrorCode" json:"code,omitempty"`
+	Description string                          `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Block_Create_Response_Error) Reset()         { *m = Rpc_Block_Create_Response_Error{} }
-func (m *Rpc_Block_Create_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Create_Response_Error) ProtoMessage()    {}
-func (*Rpc_Block_Create_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcBlockCreateResponseError) Reset()         { *m = RpcBlockCreateResponseError{} }
+func (m *RpcBlockCreateResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCreateResponseError) ProtoMessage()    {}
+func (*RpcBlockCreateResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 2, 1, 0}
 }
-func (m *Rpc_Block_Create_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockCreateResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Create_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockCreateResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Create_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockCreateResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1177,47 +1177,47 @@ func (m *Rpc_Block_Create_Response_Error) XXX_Marshal(b []byte, deterministic bo
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Create_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Create_Response_Error.Merge(m, src)
+func (m *RpcBlockCreateResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCreateResponseError.Merge(m, src)
 }
-func (m *Rpc_Block_Create_Response_Error) XXX_Size() int {
+func (m *RpcBlockCreateResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Create_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Create_Response_Error.DiscardUnknown(m)
+func (m *RpcBlockCreateResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCreateResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Create_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockCreateResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Block_Create_Response_Error) GetCode() Rpc_Block_Create_Response_Error_Code {
+func (m *RpcBlockCreateResponseError) GetCode() RpcBlockCreateResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Block_Create_Response_Error_NULL
+	return RpcBlockCreateResponseError_NULL
 }
 
-func (m *Rpc_Block_Create_Response_Error) GetDescription() string {
+func (m *RpcBlockCreateResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Block_Update struct {
+type RpcBlockUpdate struct {
 }
 
-func (m *Rpc_Block_Update) Reset()         { *m = Rpc_Block_Update{} }
-func (m *Rpc_Block_Update) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Update) ProtoMessage()    {}
-func (*Rpc_Block_Update) Descriptor() ([]byte, []int) {
+func (m *RpcBlockUpdate) Reset()         { *m = RpcBlockUpdate{} }
+func (m *RpcBlockUpdate) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockUpdate) ProtoMessage()    {}
+func (*RpcBlockUpdate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 3}
 }
-func (m *Rpc_Block_Update) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockUpdate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Update) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockUpdate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Update.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockUpdate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1227,34 +1227,34 @@ func (m *Rpc_Block_Update) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Update) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Update.Merge(m, src)
+func (m *RpcBlockUpdate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockUpdate.Merge(m, src)
 }
-func (m *Rpc_Block_Update) XXX_Size() int {
+func (m *RpcBlockUpdate) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Update) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Update.DiscardUnknown(m)
+func (m *RpcBlockUpdate) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockUpdate.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Update proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockUpdate proto.InternalMessageInfo
 
-type Rpc_Block_Update_Request struct {
+type RpcBlockUpdateRequest struct {
 	Changes *BlockChanges `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
 }
 
-func (m *Rpc_Block_Update_Request) Reset()         { *m = Rpc_Block_Update_Request{} }
-func (m *Rpc_Block_Update_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Update_Request) ProtoMessage()    {}
-func (*Rpc_Block_Update_Request) Descriptor() ([]byte, []int) {
+func (m *RpcBlockUpdateRequest) Reset()         { *m = RpcBlockUpdateRequest{} }
+func (m *RpcBlockUpdateRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockUpdateRequest) ProtoMessage()    {}
+func (*RpcBlockUpdateRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 3, 0}
 }
-func (m *Rpc_Block_Update_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockUpdateRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Update_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockUpdateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Update_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockUpdateRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1264,41 +1264,41 @@ func (m *Rpc_Block_Update_Request) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Update_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Update_Request.Merge(m, src)
+func (m *RpcBlockUpdateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockUpdateRequest.Merge(m, src)
 }
-func (m *Rpc_Block_Update_Request) XXX_Size() int {
+func (m *RpcBlockUpdateRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Update_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Update_Request.DiscardUnknown(m)
+func (m *RpcBlockUpdateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockUpdateRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Update_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockUpdateRequest proto.InternalMessageInfo
 
-func (m *Rpc_Block_Update_Request) GetChanges() *BlockChanges {
+func (m *RpcBlockUpdateRequest) GetChanges() *BlockChanges {
 	if m != nil {
 		return m.Changes
 	}
 	return nil
 }
 
-type Rpc_Block_Update_Response struct {
-	Error *Rpc_Block_Update_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcBlockUpdateResponse struct {
+	Error *RpcBlockUpdateResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *Rpc_Block_Update_Response) Reset()         { *m = Rpc_Block_Update_Response{} }
-func (m *Rpc_Block_Update_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Update_Response) ProtoMessage()    {}
-func (*Rpc_Block_Update_Response) Descriptor() ([]byte, []int) {
+func (m *RpcBlockUpdateResponse) Reset()         { *m = RpcBlockUpdateResponse{} }
+func (m *RpcBlockUpdateResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockUpdateResponse) ProtoMessage()    {}
+func (*RpcBlockUpdateResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 3, 1}
 }
-func (m *Rpc_Block_Update_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockUpdateResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Update_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockUpdateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Update_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockUpdateResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1308,42 +1308,42 @@ func (m *Rpc_Block_Update_Response) XXX_Marshal(b []byte, deterministic bool) ([
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Update_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Update_Response.Merge(m, src)
+func (m *RpcBlockUpdateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockUpdateResponse.Merge(m, src)
 }
-func (m *Rpc_Block_Update_Response) XXX_Size() int {
+func (m *RpcBlockUpdateResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Update_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Update_Response.DiscardUnknown(m)
+func (m *RpcBlockUpdateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockUpdateResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Update_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockUpdateResponse proto.InternalMessageInfo
 
-func (m *Rpc_Block_Update_Response) GetError() *Rpc_Block_Update_Response_Error {
+func (m *RpcBlockUpdateResponse) GetError() *RpcBlockUpdateResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type Rpc_Block_Update_Response_Error struct {
-	Code        Rpc_Block_Update_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Block_Update_Response_Error_Code" json:"code,omitempty"`
-	Description string                               `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcBlockUpdateResponseError struct {
+	Code        RpcBlockUpdateResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockUpdateResponseErrorCode" json:"code,omitempty"`
+	Description string                          `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Block_Update_Response_Error) Reset()         { *m = Rpc_Block_Update_Response_Error{} }
-func (m *Rpc_Block_Update_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Block_Update_Response_Error) ProtoMessage()    {}
-func (*Rpc_Block_Update_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcBlockUpdateResponseError) Reset()         { *m = RpcBlockUpdateResponseError{} }
+func (m *RpcBlockUpdateResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockUpdateResponseError) ProtoMessage()    {}
+func (*RpcBlockUpdateResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 3, 1, 0}
 }
-func (m *Rpc_Block_Update_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockUpdateResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Block_Update_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockUpdateResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Block_Update_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockUpdateResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1353,47 +1353,47 @@ func (m *Rpc_Block_Update_Response_Error) XXX_Marshal(b []byte, deterministic bo
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Block_Update_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Block_Update_Response_Error.Merge(m, src)
+func (m *RpcBlockUpdateResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockUpdateResponseError.Merge(m, src)
 }
-func (m *Rpc_Block_Update_Response_Error) XXX_Size() int {
+func (m *RpcBlockUpdateResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Block_Update_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Block_Update_Response_Error.DiscardUnknown(m)
+func (m *RpcBlockUpdateResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockUpdateResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Block_Update_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockUpdateResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Block_Update_Response_Error) GetCode() Rpc_Block_Update_Response_Error_Code {
+func (m *RpcBlockUpdateResponseError) GetCode() RpcBlockUpdateResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Block_Update_Response_Error_NULL
+	return RpcBlockUpdateResponseError_NULL
 }
 
-func (m *Rpc_Block_Update_Response_Error) GetDescription() string {
+func (m *RpcBlockUpdateResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Wallet struct {
+type RpcWallet struct {
 }
 
-func (m *Rpc_Wallet) Reset()         { *m = Rpc_Wallet{} }
-func (m *Rpc_Wallet) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet) ProtoMessage()    {}
-func (*Rpc_Wallet) Descriptor() ([]byte, []int) {
+func (m *RpcWallet) Reset()         { *m = RpcWallet{} }
+func (m *RpcWallet) String() string { return proto.CompactTextString(m) }
+func (*RpcWallet) ProtoMessage()    {}
+func (*RpcWallet) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1}
 }
-func (m *Rpc_Wallet) XXX_Unmarshal(b []byte) error {
+func (m *RpcWallet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWallet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWallet.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1403,33 +1403,33 @@ func (m *Rpc_Wallet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet.Merge(m, src)
+func (m *RpcWallet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWallet.Merge(m, src)
 }
-func (m *Rpc_Wallet) XXX_Size() int {
+func (m *RpcWallet) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet.DiscardUnknown(m)
+func (m *RpcWallet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWallet.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet proto.InternalMessageInfo
+var xxx_messageInfo_RpcWallet proto.InternalMessageInfo
 
-type Rpc_Wallet_Create struct {
+type RpcWalletCreate struct {
 }
 
-func (m *Rpc_Wallet_Create) Reset()         { *m = Rpc_Wallet_Create{} }
-func (m *Rpc_Wallet_Create) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Create) ProtoMessage()    {}
-func (*Rpc_Wallet_Create) Descriptor() ([]byte, []int) {
+func (m *RpcWalletCreate) Reset()         { *m = RpcWalletCreate{} }
+func (m *RpcWalletCreate) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletCreate) ProtoMessage()    {}
+func (*RpcWalletCreate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 0}
 }
-func (m *Rpc_Wallet_Create) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Create.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletCreate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1439,36 +1439,36 @@ func (m *Rpc_Wallet_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Create) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Create.Merge(m, src)
+func (m *RpcWalletCreate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletCreate.Merge(m, src)
 }
-func (m *Rpc_Wallet_Create) XXX_Size() int {
+func (m *RpcWalletCreate) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Create) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Create.DiscardUnknown(m)
+func (m *RpcWalletCreate) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletCreate.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Create proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletCreate proto.InternalMessageInfo
 
 //*
 // Front-end-to-middleware request to create a new wallet
-type Rpc_Wallet_Create_Request struct {
+type RpcWalletCreateRequest struct {
 	RootPath string `protobuf:"bytes,1,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
 }
 
-func (m *Rpc_Wallet_Create_Request) Reset()         { *m = Rpc_Wallet_Create_Request{} }
-func (m *Rpc_Wallet_Create_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Create_Request) ProtoMessage()    {}
-func (*Rpc_Wallet_Create_Request) Descriptor() ([]byte, []int) {
+func (m *RpcWalletCreateRequest) Reset()         { *m = RpcWalletCreateRequest{} }
+func (m *RpcWalletCreateRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletCreateRequest) ProtoMessage()    {}
+func (*RpcWalletCreateRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 0, 0}
 }
-func (m *Rpc_Wallet_Create_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletCreateRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Create_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Create_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletCreateRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1478,19 +1478,19 @@ func (m *Rpc_Wallet_Create_Request) XXX_Marshal(b []byte, deterministic bool) ([
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Create_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Create_Request.Merge(m, src)
+func (m *RpcWalletCreateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletCreateRequest.Merge(m, src)
 }
-func (m *Rpc_Wallet_Create_Request) XXX_Size() int {
+func (m *RpcWalletCreateRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Create_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Create_Request.DiscardUnknown(m)
+func (m *RpcWalletCreateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletCreateRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Create_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletCreateRequest proto.InternalMessageInfo
 
-func (m *Rpc_Wallet_Create_Request) GetRootPath() string {
+func (m *RpcWalletCreateRequest) GetRootPath() string {
 	if m != nil {
 		return m.RootPath
 	}
@@ -1499,23 +1499,23 @@ func (m *Rpc_Wallet_Create_Request) GetRootPath() string {
 
 //*
 // Middleware-to-front-end response, that can contain mnemonic of a created account and a NULL error or an empty mnemonic and a non-NULL error
-type Rpc_Wallet_Create_Response struct {
-	Error    *Rpc_Wallet_Create_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Mnemonic string                            `protobuf:"bytes,2,opt,name=mnemonic,proto3" json:"mnemonic,omitempty"`
+type RpcWalletCreateResponse struct {
+	Error    *RpcWalletCreateResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Mnemonic string                        `protobuf:"bytes,2,opt,name=mnemonic,proto3" json:"mnemonic,omitempty"`
 }
 
-func (m *Rpc_Wallet_Create_Response) Reset()         { *m = Rpc_Wallet_Create_Response{} }
-func (m *Rpc_Wallet_Create_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Create_Response) ProtoMessage()    {}
-func (*Rpc_Wallet_Create_Response) Descriptor() ([]byte, []int) {
+func (m *RpcWalletCreateResponse) Reset()         { *m = RpcWalletCreateResponse{} }
+func (m *RpcWalletCreateResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletCreateResponse) ProtoMessage()    {}
+func (*RpcWalletCreateResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 0, 1}
 }
-func (m *Rpc_Wallet_Create_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletCreateResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Create_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Create_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletCreateResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1525,49 +1525,49 @@ func (m *Rpc_Wallet_Create_Response) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Create_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Create_Response.Merge(m, src)
+func (m *RpcWalletCreateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletCreateResponse.Merge(m, src)
 }
-func (m *Rpc_Wallet_Create_Response) XXX_Size() int {
+func (m *RpcWalletCreateResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Create_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Create_Response.DiscardUnknown(m)
+func (m *RpcWalletCreateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletCreateResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Create_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletCreateResponse proto.InternalMessageInfo
 
-func (m *Rpc_Wallet_Create_Response) GetError() *Rpc_Wallet_Create_Response_Error {
+func (m *RpcWalletCreateResponse) GetError() *RpcWalletCreateResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Wallet_Create_Response) GetMnemonic() string {
+func (m *RpcWalletCreateResponse) GetMnemonic() string {
 	if m != nil {
 		return m.Mnemonic
 	}
 	return ""
 }
 
-type Rpc_Wallet_Create_Response_Error struct {
-	Code        Rpc_Wallet_Create_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Wallet_Create_Response_Error_Code" json:"code,omitempty"`
-	Description string                                `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcWalletCreateResponseError struct {
+	Code        RpcWalletCreateResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcWalletCreateResponseErrorCode" json:"code,omitempty"`
+	Description string                           `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Wallet_Create_Response_Error) Reset()         { *m = Rpc_Wallet_Create_Response_Error{} }
-func (m *Rpc_Wallet_Create_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Create_Response_Error) ProtoMessage()    {}
-func (*Rpc_Wallet_Create_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcWalletCreateResponseError) Reset()         { *m = RpcWalletCreateResponseError{} }
+func (m *RpcWalletCreateResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletCreateResponseError) ProtoMessage()    {}
+func (*RpcWalletCreateResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 0, 1, 0}
 }
-func (m *Rpc_Wallet_Create_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletCreateResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Create_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletCreateResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Create_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletCreateResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1577,47 +1577,47 @@ func (m *Rpc_Wallet_Create_Response_Error) XXX_Marshal(b []byte, deterministic b
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Create_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Create_Response_Error.Merge(m, src)
+func (m *RpcWalletCreateResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletCreateResponseError.Merge(m, src)
 }
-func (m *Rpc_Wallet_Create_Response_Error) XXX_Size() int {
+func (m *RpcWalletCreateResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Create_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Create_Response_Error.DiscardUnknown(m)
+func (m *RpcWalletCreateResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletCreateResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Create_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletCreateResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Wallet_Create_Response_Error) GetCode() Rpc_Wallet_Create_Response_Error_Code {
+func (m *RpcWalletCreateResponseError) GetCode() RpcWalletCreateResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Wallet_Create_Response_Error_NULL
+	return RpcWalletCreateResponseError_NULL
 }
 
-func (m *Rpc_Wallet_Create_Response_Error) GetDescription() string {
+func (m *RpcWalletCreateResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Wallet_Recover struct {
+type RpcWalletRecover struct {
 }
 
-func (m *Rpc_Wallet_Recover) Reset()         { *m = Rpc_Wallet_Recover{} }
-func (m *Rpc_Wallet_Recover) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Recover) ProtoMessage()    {}
-func (*Rpc_Wallet_Recover) Descriptor() ([]byte, []int) {
+func (m *RpcWalletRecover) Reset()         { *m = RpcWalletRecover{} }
+func (m *RpcWalletRecover) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletRecover) ProtoMessage()    {}
+func (*RpcWalletRecover) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 1}
 }
-func (m *Rpc_Wallet_Recover) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletRecover) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Recover) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletRecover) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Recover.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletRecover.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1627,37 +1627,37 @@ func (m *Rpc_Wallet_Recover) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Recover) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Recover.Merge(m, src)
+func (m *RpcWalletRecover) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletRecover.Merge(m, src)
 }
-func (m *Rpc_Wallet_Recover) XXX_Size() int {
+func (m *RpcWalletRecover) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Recover) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Recover.DiscardUnknown(m)
+func (m *RpcWalletRecover) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletRecover.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Recover proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletRecover proto.InternalMessageInfo
 
 //*
 // Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
-type Rpc_Wallet_Recover_Request struct {
+type RpcWalletRecoverRequest struct {
 	RootPath string `protobuf:"bytes,1,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
 	Mnemonic string `protobuf:"bytes,2,opt,name=mnemonic,proto3" json:"mnemonic,omitempty"`
 }
 
-func (m *Rpc_Wallet_Recover_Request) Reset()         { *m = Rpc_Wallet_Recover_Request{} }
-func (m *Rpc_Wallet_Recover_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Recover_Request) ProtoMessage()    {}
-func (*Rpc_Wallet_Recover_Request) Descriptor() ([]byte, []int) {
+func (m *RpcWalletRecoverRequest) Reset()         { *m = RpcWalletRecoverRequest{} }
+func (m *RpcWalletRecoverRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletRecoverRequest) ProtoMessage()    {}
+func (*RpcWalletRecoverRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 1, 0}
 }
-func (m *Rpc_Wallet_Recover_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletRecoverRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Recover_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletRecoverRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Recover_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletRecoverRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1667,26 +1667,26 @@ func (m *Rpc_Wallet_Recover_Request) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Recover_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Recover_Request.Merge(m, src)
+func (m *RpcWalletRecoverRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletRecoverRequest.Merge(m, src)
 }
-func (m *Rpc_Wallet_Recover_Request) XXX_Size() int {
+func (m *RpcWalletRecoverRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Recover_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Recover_Request.DiscardUnknown(m)
+func (m *RpcWalletRecoverRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletRecoverRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Recover_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletRecoverRequest proto.InternalMessageInfo
 
-func (m *Rpc_Wallet_Recover_Request) GetRootPath() string {
+func (m *RpcWalletRecoverRequest) GetRootPath() string {
 	if m != nil {
 		return m.RootPath
 	}
 	return ""
 }
 
-func (m *Rpc_Wallet_Recover_Request) GetMnemonic() string {
+func (m *RpcWalletRecoverRequest) GetMnemonic() string {
 	if m != nil {
 		return m.Mnemonic
 	}
@@ -1695,22 +1695,22 @@ func (m *Rpc_Wallet_Recover_Request) GetMnemonic() string {
 
 //*
 // Middleware-to-front-end response, that can contain a NULL error or a non-NULL error
-type Rpc_Wallet_Recover_Response struct {
-	Error *Rpc_Wallet_Recover_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcWalletRecoverResponse struct {
+	Error *RpcWalletRecoverResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *Rpc_Wallet_Recover_Response) Reset()         { *m = Rpc_Wallet_Recover_Response{} }
-func (m *Rpc_Wallet_Recover_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Recover_Response) ProtoMessage()    {}
-func (*Rpc_Wallet_Recover_Response) Descriptor() ([]byte, []int) {
+func (m *RpcWalletRecoverResponse) Reset()         { *m = RpcWalletRecoverResponse{} }
+func (m *RpcWalletRecoverResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletRecoverResponse) ProtoMessage()    {}
+func (*RpcWalletRecoverResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 1, 1}
 }
-func (m *Rpc_Wallet_Recover_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletRecoverResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Recover_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletRecoverResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Recover_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletRecoverResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1720,42 +1720,42 @@ func (m *Rpc_Wallet_Recover_Response) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Recover_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Recover_Response.Merge(m, src)
+func (m *RpcWalletRecoverResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletRecoverResponse.Merge(m, src)
 }
-func (m *Rpc_Wallet_Recover_Response) XXX_Size() int {
+func (m *RpcWalletRecoverResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Recover_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Recover_Response.DiscardUnknown(m)
+func (m *RpcWalletRecoverResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletRecoverResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Recover_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletRecoverResponse proto.InternalMessageInfo
 
-func (m *Rpc_Wallet_Recover_Response) GetError() *Rpc_Wallet_Recover_Response_Error {
+func (m *RpcWalletRecoverResponse) GetError() *RpcWalletRecoverResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type Rpc_Wallet_Recover_Response_Error struct {
-	Code        Rpc_Wallet_Recover_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Wallet_Recover_Response_Error_Code" json:"code,omitempty"`
-	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcWalletRecoverResponseError struct {
+	Code        RpcWalletRecoverResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcWalletRecoverResponseErrorCode" json:"code,omitempty"`
+	Description string                            `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Wallet_Recover_Response_Error) Reset()         { *m = Rpc_Wallet_Recover_Response_Error{} }
-func (m *Rpc_Wallet_Recover_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Wallet_Recover_Response_Error) ProtoMessage()    {}
-func (*Rpc_Wallet_Recover_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcWalletRecoverResponseError) Reset()         { *m = RpcWalletRecoverResponseError{} }
+func (m *RpcWalletRecoverResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcWalletRecoverResponseError) ProtoMessage()    {}
+func (*RpcWalletRecoverResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 1, 1, 1, 0}
 }
-func (m *Rpc_Wallet_Recover_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcWalletRecoverResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Wallet_Recover_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcWalletRecoverResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Wallet_Recover_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcWalletRecoverResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1765,47 +1765,47 @@ func (m *Rpc_Wallet_Recover_Response_Error) XXX_Marshal(b []byte, deterministic 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Wallet_Recover_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Wallet_Recover_Response_Error.Merge(m, src)
+func (m *RpcWalletRecoverResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcWalletRecoverResponseError.Merge(m, src)
 }
-func (m *Rpc_Wallet_Recover_Response_Error) XXX_Size() int {
+func (m *RpcWalletRecoverResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Wallet_Recover_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Wallet_Recover_Response_Error.DiscardUnknown(m)
+func (m *RpcWalletRecoverResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcWalletRecoverResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Wallet_Recover_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcWalletRecoverResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Wallet_Recover_Response_Error) GetCode() Rpc_Wallet_Recover_Response_Error_Code {
+func (m *RpcWalletRecoverResponseError) GetCode() RpcWalletRecoverResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Wallet_Recover_Response_Error_NULL
+	return RpcWalletRecoverResponseError_NULL
 }
 
-func (m *Rpc_Wallet_Recover_Response_Error) GetDescription() string {
+func (m *RpcWalletRecoverResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Account struct {
+type RpcAccount struct {
 }
 
-func (m *Rpc_Account) Reset()         { *m = Rpc_Account{} }
-func (m *Rpc_Account) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account) ProtoMessage()    {}
-func (*Rpc_Account) Descriptor() ([]byte, []int) {
+func (m *RpcAccount) Reset()         { *m = RpcAccount{} }
+func (m *RpcAccount) String() string { return proto.CompactTextString(m) }
+func (*RpcAccount) ProtoMessage()    {}
+func (*RpcAccount) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2}
 }
-func (m *Rpc_Account) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccount) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccount) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccount.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1815,33 +1815,33 @@ func (m *Rpc_Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account.Merge(m, src)
+func (m *RpcAccount) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccount.Merge(m, src)
 }
-func (m *Rpc_Account) XXX_Size() int {
+func (m *RpcAccount) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account.DiscardUnknown(m)
+func (m *RpcAccount) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccount.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccount proto.InternalMessageInfo
 
-type Rpc_Account_Create struct {
+type RpcAccountCreate struct {
 }
 
-func (m *Rpc_Account_Create) Reset()         { *m = Rpc_Account_Create{} }
-func (m *Rpc_Account_Create) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Create) ProtoMessage()    {}
-func (*Rpc_Account_Create) Descriptor() ([]byte, []int) {
+func (m *RpcAccountCreate) Reset()         { *m = RpcAccountCreate{} }
+func (m *RpcAccountCreate) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountCreate) ProtoMessage()    {}
+func (*RpcAccountCreate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 0}
 }
-func (m *Rpc_Account_Create) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Create.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountCreate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1851,40 +1851,40 @@ func (m *Rpc_Account_Create) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Create) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Create.Merge(m, src)
+func (m *RpcAccountCreate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountCreate.Merge(m, src)
 }
-func (m *Rpc_Account_Create) XXX_Size() int {
+func (m *RpcAccountCreate) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Create) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Create.DiscardUnknown(m)
+func (m *RpcAccountCreate) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountCreate.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Create proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountCreate proto.InternalMessageInfo
 
 //*
 // Front end to middleware request-to-create-an account
-type Rpc_Account_Create_Request struct {
+type RpcAccountCreateRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Types that are valid to be assigned to Avatar:
-	//	*Rpc_Account_Create_Request_AvatarLocalPath
-	//	*Rpc_Account_Create_Request_AvatarColor
-	Avatar isRpc_Account_Create_RequestAvatar `protobuf_oneof:"avatar"`
+	//	*RpcAccountCreateRequestAvatarOfAvatarLocalPath
+	//	*RpcAccountCreateRequestAvatarOfAvatarColor
+	Avatar isRpcAccountCreateRequestAvatar `protobuf_oneof:"avatar"`
 }
 
-func (m *Rpc_Account_Create_Request) Reset()         { *m = Rpc_Account_Create_Request{} }
-func (m *Rpc_Account_Create_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Create_Request) ProtoMessage()    {}
-func (*Rpc_Account_Create_Request) Descriptor() ([]byte, []int) {
+func (m *RpcAccountCreateRequest) Reset()         { *m = RpcAccountCreateRequest{} }
+func (m *RpcAccountCreateRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountCreateRequest) ProtoMessage()    {}
+func (*RpcAccountCreateRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 0, 0}
 }
-func (m *Rpc_Account_Create_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountCreateRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Create_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Create_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountCreateRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1894,89 +1894,89 @@ func (m *Rpc_Account_Create_Request) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Create_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Create_Request.Merge(m, src)
+func (m *RpcAccountCreateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountCreateRequest.Merge(m, src)
 }
-func (m *Rpc_Account_Create_Request) XXX_Size() int {
+func (m *RpcAccountCreateRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Create_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Create_Request.DiscardUnknown(m)
+func (m *RpcAccountCreateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountCreateRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Create_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountCreateRequest proto.InternalMessageInfo
 
-type isRpc_Account_Create_RequestAvatar interface {
-	isRpc_Account_Create_RequestAvatar()
+type isRpcAccountCreateRequestAvatar interface {
+	isRpcAccountCreateRequestAvatar()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Rpc_Account_Create_Request_AvatarLocalPath struct {
+type RpcAccountCreateRequestAvatarOfAvatarLocalPath struct {
 	AvatarLocalPath string `protobuf:"bytes,2,opt,name=avatarLocalPath,proto3,oneof" json:"avatarLocalPath,omitempty"`
 }
-type Rpc_Account_Create_Request_AvatarColor struct {
+type RpcAccountCreateRequestAvatarOfAvatarColor struct {
 	AvatarColor string `protobuf:"bytes,3,opt,name=avatarColor,proto3,oneof" json:"avatarColor,omitempty"`
 }
 
-func (*Rpc_Account_Create_Request_AvatarLocalPath) isRpc_Account_Create_RequestAvatar() {}
-func (*Rpc_Account_Create_Request_AvatarColor) isRpc_Account_Create_RequestAvatar()     {}
+func (*RpcAccountCreateRequestAvatarOfAvatarLocalPath) isRpcAccountCreateRequestAvatar() {}
+func (*RpcAccountCreateRequestAvatarOfAvatarColor) isRpcAccountCreateRequestAvatar()     {}
 
-func (m *Rpc_Account_Create_Request) GetAvatar() isRpc_Account_Create_RequestAvatar {
+func (m *RpcAccountCreateRequest) GetAvatar() isRpcAccountCreateRequestAvatar {
 	if m != nil {
 		return m.Avatar
 	}
 	return nil
 }
 
-func (m *Rpc_Account_Create_Request) GetName() string {
+func (m *RpcAccountCreateRequest) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Rpc_Account_Create_Request) GetAvatarLocalPath() string {
-	if x, ok := m.GetAvatar().(*Rpc_Account_Create_Request_AvatarLocalPath); ok {
+func (m *RpcAccountCreateRequest) GetAvatarLocalPath() string {
+	if x, ok := m.GetAvatar().(*RpcAccountCreateRequestAvatarOfAvatarLocalPath); ok {
 		return x.AvatarLocalPath
 	}
 	return ""
 }
 
-func (m *Rpc_Account_Create_Request) GetAvatarColor() string {
-	if x, ok := m.GetAvatar().(*Rpc_Account_Create_Request_AvatarColor); ok {
+func (m *RpcAccountCreateRequest) GetAvatarColor() string {
+	if x, ok := m.GetAvatar().(*RpcAccountCreateRequestAvatarOfAvatarColor); ok {
 		return x.AvatarColor
 	}
 	return ""
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*Rpc_Account_Create_Request) XXX_OneofWrappers() []interface{} {
+func (*RpcAccountCreateRequest) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*Rpc_Account_Create_Request_AvatarLocalPath)(nil),
-		(*Rpc_Account_Create_Request_AvatarColor)(nil),
+		(*RpcAccountCreateRequestAvatarOfAvatarLocalPath)(nil),
+		(*RpcAccountCreateRequestAvatarOfAvatarColor)(nil),
 	}
 }
 
 //*
 // Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
-type Rpc_Account_Create_Response struct {
-	Error   *Rpc_Account_Create_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Account *Model_Account                     `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+type RpcAccountCreateResponse struct {
+	Error   *RpcAccountCreateResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Account *ModelAccount                  `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
 }
 
-func (m *Rpc_Account_Create_Response) Reset()         { *m = Rpc_Account_Create_Response{} }
-func (m *Rpc_Account_Create_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Create_Response) ProtoMessage()    {}
-func (*Rpc_Account_Create_Response) Descriptor() ([]byte, []int) {
+func (m *RpcAccountCreateResponse) Reset()         { *m = RpcAccountCreateResponse{} }
+func (m *RpcAccountCreateResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountCreateResponse) ProtoMessage()    {}
+func (*RpcAccountCreateResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 0, 1}
 }
-func (m *Rpc_Account_Create_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountCreateResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Create_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Create_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountCreateResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1986,49 +1986,49 @@ func (m *Rpc_Account_Create_Response) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Create_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Create_Response.Merge(m, src)
+func (m *RpcAccountCreateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountCreateResponse.Merge(m, src)
 }
-func (m *Rpc_Account_Create_Response) XXX_Size() int {
+func (m *RpcAccountCreateResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Create_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Create_Response.DiscardUnknown(m)
+func (m *RpcAccountCreateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountCreateResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Create_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountCreateResponse proto.InternalMessageInfo
 
-func (m *Rpc_Account_Create_Response) GetError() *Rpc_Account_Create_Response_Error {
+func (m *RpcAccountCreateResponse) GetError() *RpcAccountCreateResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Account_Create_Response) GetAccount() *Model_Account {
+func (m *RpcAccountCreateResponse) GetAccount() *ModelAccount {
 	if m != nil {
 		return m.Account
 	}
 	return nil
 }
 
-type Rpc_Account_Create_Response_Error struct {
-	Code        Rpc_Account_Create_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Account_Create_Response_Error_Code" json:"code,omitempty"`
-	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcAccountCreateResponseError struct {
+	Code        RpcAccountCreateResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcAccountCreateResponseErrorCode" json:"code,omitempty"`
+	Description string                            `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Account_Create_Response_Error) Reset()         { *m = Rpc_Account_Create_Response_Error{} }
-func (m *Rpc_Account_Create_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Create_Response_Error) ProtoMessage()    {}
-func (*Rpc_Account_Create_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcAccountCreateResponseError) Reset()         { *m = RpcAccountCreateResponseError{} }
+func (m *RpcAccountCreateResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountCreateResponseError) ProtoMessage()    {}
+func (*RpcAccountCreateResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 0, 1, 0}
 }
-func (m *Rpc_Account_Create_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountCreateResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Create_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountCreateResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Create_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountCreateResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2038,47 +2038,47 @@ func (m *Rpc_Account_Create_Response_Error) XXX_Marshal(b []byte, deterministic 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Create_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Create_Response_Error.Merge(m, src)
+func (m *RpcAccountCreateResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountCreateResponseError.Merge(m, src)
 }
-func (m *Rpc_Account_Create_Response_Error) XXX_Size() int {
+func (m *RpcAccountCreateResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Create_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Create_Response_Error.DiscardUnknown(m)
+func (m *RpcAccountCreateResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountCreateResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Create_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountCreateResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Account_Create_Response_Error) GetCode() Rpc_Account_Create_Response_Error_Code {
+func (m *RpcAccountCreateResponseError) GetCode() RpcAccountCreateResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Account_Create_Response_Error_NULL
+	return RpcAccountCreateResponseError_NULL
 }
 
-func (m *Rpc_Account_Create_Response_Error) GetDescription() string {
+func (m *RpcAccountCreateResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Account_Recover struct {
+type RpcAccountRecover struct {
 }
 
-func (m *Rpc_Account_Recover) Reset()         { *m = Rpc_Account_Recover{} }
-func (m *Rpc_Account_Recover) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Recover) ProtoMessage()    {}
-func (*Rpc_Account_Recover) Descriptor() ([]byte, []int) {
+func (m *RpcAccountRecover) Reset()         { *m = RpcAccountRecover{} }
+func (m *RpcAccountRecover) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountRecover) ProtoMessage()    {}
+func (*RpcAccountRecover) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 1}
 }
-func (m *Rpc_Account_Recover) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountRecover) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Recover) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountRecover) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Recover.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountRecover.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2088,36 +2088,36 @@ func (m *Rpc_Account_Recover) XXX_Marshal(b []byte, deterministic bool) ([]byte,
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Recover) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Recover.Merge(m, src)
+func (m *RpcAccountRecover) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountRecover.Merge(m, src)
 }
-func (m *Rpc_Account_Recover) XXX_Size() int {
+func (m *RpcAccountRecover) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Recover) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Recover.DiscardUnknown(m)
+func (m *RpcAccountRecover) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountRecover.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Recover proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountRecover proto.InternalMessageInfo
 
 //*
 // Front end to middleware request-to-start-search of an accounts for a recovered mnemonic.
 // Each of an account that would be found will come with an AccountAdd event
-type Rpc_Account_Recover_Request struct {
+type RpcAccountRecoverRequest struct {
 }
 
-func (m *Rpc_Account_Recover_Request) Reset()         { *m = Rpc_Account_Recover_Request{} }
-func (m *Rpc_Account_Recover_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Recover_Request) ProtoMessage()    {}
-func (*Rpc_Account_Recover_Request) Descriptor() ([]byte, []int) {
+func (m *RpcAccountRecoverRequest) Reset()         { *m = RpcAccountRecoverRequest{} }
+func (m *RpcAccountRecoverRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountRecoverRequest) ProtoMessage()    {}
+func (*RpcAccountRecoverRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 1, 0}
 }
-func (m *Rpc_Account_Recover_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountRecoverRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Recover_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountRecoverRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Recover_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountRecoverRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2127,36 +2127,36 @@ func (m *Rpc_Account_Recover_Request) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Recover_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Recover_Request.Merge(m, src)
+func (m *RpcAccountRecoverRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountRecoverRequest.Merge(m, src)
 }
-func (m *Rpc_Account_Recover_Request) XXX_Size() int {
+func (m *RpcAccountRecoverRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Recover_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Recover_Request.DiscardUnknown(m)
+func (m *RpcAccountRecoverRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountRecoverRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Recover_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountRecoverRequest proto.InternalMessageInfo
 
 //*
 // Middleware-to-front-end response to an account recover request, that can contain a NULL error and created account or a non-NULL error and an empty account
-type Rpc_Account_Recover_Response struct {
-	Error *Rpc_Account_Recover_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcAccountRecoverResponse struct {
+	Error *RpcAccountRecoverResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *Rpc_Account_Recover_Response) Reset()         { *m = Rpc_Account_Recover_Response{} }
-func (m *Rpc_Account_Recover_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Recover_Response) ProtoMessage()    {}
-func (*Rpc_Account_Recover_Response) Descriptor() ([]byte, []int) {
+func (m *RpcAccountRecoverResponse) Reset()         { *m = RpcAccountRecoverResponse{} }
+func (m *RpcAccountRecoverResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountRecoverResponse) ProtoMessage()    {}
+func (*RpcAccountRecoverResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 1, 1}
 }
-func (m *Rpc_Account_Recover_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountRecoverResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Recover_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountRecoverResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Recover_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountRecoverResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2166,42 +2166,42 @@ func (m *Rpc_Account_Recover_Response) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Recover_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Recover_Response.Merge(m, src)
+func (m *RpcAccountRecoverResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountRecoverResponse.Merge(m, src)
 }
-func (m *Rpc_Account_Recover_Response) XXX_Size() int {
+func (m *RpcAccountRecoverResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Recover_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Recover_Response.DiscardUnknown(m)
+func (m *RpcAccountRecoverResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountRecoverResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Recover_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountRecoverResponse proto.InternalMessageInfo
 
-func (m *Rpc_Account_Recover_Response) GetError() *Rpc_Account_Recover_Response_Error {
+func (m *RpcAccountRecoverResponse) GetError() *RpcAccountRecoverResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type Rpc_Account_Recover_Response_Error struct {
-	Code        Rpc_Account_Recover_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Account_Recover_Response_Error_Code" json:"code,omitempty"`
-	Description string                                  `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcAccountRecoverResponseError struct {
+	Code        RpcAccountRecoverResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcAccountRecoverResponseErrorCode" json:"code,omitempty"`
+	Description string                             `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Account_Recover_Response_Error) Reset()         { *m = Rpc_Account_Recover_Response_Error{} }
-func (m *Rpc_Account_Recover_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Recover_Response_Error) ProtoMessage()    {}
-func (*Rpc_Account_Recover_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcAccountRecoverResponseError) Reset()         { *m = RpcAccountRecoverResponseError{} }
+func (m *RpcAccountRecoverResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountRecoverResponseError) ProtoMessage()    {}
+func (*RpcAccountRecoverResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 1, 1, 0}
 }
-func (m *Rpc_Account_Recover_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountRecoverResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Recover_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountRecoverResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Recover_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountRecoverResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2211,47 +2211,47 @@ func (m *Rpc_Account_Recover_Response_Error) XXX_Marshal(b []byte, deterministic
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Recover_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Recover_Response_Error.Merge(m, src)
+func (m *RpcAccountRecoverResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountRecoverResponseError.Merge(m, src)
 }
-func (m *Rpc_Account_Recover_Response_Error) XXX_Size() int {
+func (m *RpcAccountRecoverResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Recover_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Recover_Response_Error.DiscardUnknown(m)
+func (m *RpcAccountRecoverResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountRecoverResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Recover_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountRecoverResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Account_Recover_Response_Error) GetCode() Rpc_Account_Recover_Response_Error_Code {
+func (m *RpcAccountRecoverResponseError) GetCode() RpcAccountRecoverResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Account_Recover_Response_Error_NULL
+	return RpcAccountRecoverResponseError_NULL
 }
 
-func (m *Rpc_Account_Recover_Response_Error) GetDescription() string {
+func (m *RpcAccountRecoverResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Account_Select struct {
+type RpcAccountSelect struct {
 }
 
-func (m *Rpc_Account_Select) Reset()         { *m = Rpc_Account_Select{} }
-func (m *Rpc_Account_Select) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Select) ProtoMessage()    {}
-func (*Rpc_Account_Select) Descriptor() ([]byte, []int) {
+func (m *RpcAccountSelect) Reset()         { *m = RpcAccountSelect{} }
+func (m *RpcAccountSelect) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountSelect) ProtoMessage()    {}
+func (*RpcAccountSelect) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 2}
 }
-func (m *Rpc_Account_Select) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountSelect) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Select) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountSelect) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Select.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountSelect.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2261,38 +2261,38 @@ func (m *Rpc_Account_Select) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Select) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Select.Merge(m, src)
+func (m *RpcAccountSelect) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountSelect.Merge(m, src)
 }
-func (m *Rpc_Account_Select) XXX_Size() int {
+func (m *RpcAccountSelect) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Select) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Select.DiscardUnknown(m)
+func (m *RpcAccountSelect) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountSelect.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Select proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountSelect proto.InternalMessageInfo
 
 //*
 // Front end to middleware request-to-launch-a specific account using account id and a root path
 // User can select an account from those, that came with an AccountAdd events
-type Rpc_Account_Select_Request struct {
+type RpcAccountSelectRequest struct {
 	Id       string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	RootPath string `protobuf:"bytes,2,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
 }
 
-func (m *Rpc_Account_Select_Request) Reset()         { *m = Rpc_Account_Select_Request{} }
-func (m *Rpc_Account_Select_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Select_Request) ProtoMessage()    {}
-func (*Rpc_Account_Select_Request) Descriptor() ([]byte, []int) {
+func (m *RpcAccountSelectRequest) Reset()         { *m = RpcAccountSelectRequest{} }
+func (m *RpcAccountSelectRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountSelectRequest) ProtoMessage()    {}
+func (*RpcAccountSelectRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 2, 0}
 }
-func (m *Rpc_Account_Select_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountSelectRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Select_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountSelectRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Select_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountSelectRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2302,26 +2302,26 @@ func (m *Rpc_Account_Select_Request) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Select_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Select_Request.Merge(m, src)
+func (m *RpcAccountSelectRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountSelectRequest.Merge(m, src)
 }
-func (m *Rpc_Account_Select_Request) XXX_Size() int {
+func (m *RpcAccountSelectRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Select_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Select_Request.DiscardUnknown(m)
+func (m *RpcAccountSelectRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountSelectRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Select_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountSelectRequest proto.InternalMessageInfo
 
-func (m *Rpc_Account_Select_Request) GetId() string {
+func (m *RpcAccountSelectRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Rpc_Account_Select_Request) GetRootPath() string {
+func (m *RpcAccountSelectRequest) GetRootPath() string {
 	if m != nil {
 		return m.RootPath
 	}
@@ -2330,23 +2330,23 @@ func (m *Rpc_Account_Select_Request) GetRootPath() string {
 
 //*
 // Middleware-to-front-end response for an account select request, that can contain a NULL error and selected account or a non-NULL error and an empty account
-type Rpc_Account_Select_Response struct {
-	Error   *Rpc_Account_Select_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Account *Model_Account                     `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+type RpcAccountSelectResponse struct {
+	Error   *RpcAccountSelectResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Account *ModelAccount                  `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
 }
 
-func (m *Rpc_Account_Select_Response) Reset()         { *m = Rpc_Account_Select_Response{} }
-func (m *Rpc_Account_Select_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Select_Response) ProtoMessage()    {}
-func (*Rpc_Account_Select_Response) Descriptor() ([]byte, []int) {
+func (m *RpcAccountSelectResponse) Reset()         { *m = RpcAccountSelectResponse{} }
+func (m *RpcAccountSelectResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountSelectResponse) ProtoMessage()    {}
+func (*RpcAccountSelectResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 2, 1}
 }
-func (m *Rpc_Account_Select_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountSelectResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Select_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountSelectResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Select_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountSelectResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2356,49 +2356,49 @@ func (m *Rpc_Account_Select_Response) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Select_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Select_Response.Merge(m, src)
+func (m *RpcAccountSelectResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountSelectResponse.Merge(m, src)
 }
-func (m *Rpc_Account_Select_Response) XXX_Size() int {
+func (m *RpcAccountSelectResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Select_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Select_Response.DiscardUnknown(m)
+func (m *RpcAccountSelectResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountSelectResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Select_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountSelectResponse proto.InternalMessageInfo
 
-func (m *Rpc_Account_Select_Response) GetError() *Rpc_Account_Select_Response_Error {
+func (m *RpcAccountSelectResponse) GetError() *RpcAccountSelectResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Account_Select_Response) GetAccount() *Model_Account {
+func (m *RpcAccountSelectResponse) GetAccount() *ModelAccount {
 	if m != nil {
 		return m.Account
 	}
 	return nil
 }
 
-type Rpc_Account_Select_Response_Error struct {
-	Code        Rpc_Account_Select_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Account_Select_Response_Error_Code" json:"code,omitempty"`
-	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcAccountSelectResponseError struct {
+	Code        RpcAccountSelectResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcAccountSelectResponseErrorCode" json:"code,omitempty"`
+	Description string                            `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Account_Select_Response_Error) Reset()         { *m = Rpc_Account_Select_Response_Error{} }
-func (m *Rpc_Account_Select_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Account_Select_Response_Error) ProtoMessage()    {}
-func (*Rpc_Account_Select_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcAccountSelectResponseError) Reset()         { *m = RpcAccountSelectResponseError{} }
+func (m *RpcAccountSelectResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcAccountSelectResponseError) ProtoMessage()    {}
+func (*RpcAccountSelectResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 2, 1, 0}
 }
-func (m *Rpc_Account_Select_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcAccountSelectResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Account_Select_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcAccountSelectResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Account_Select_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcAccountSelectResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2408,47 +2408,47 @@ func (m *Rpc_Account_Select_Response_Error) XXX_Marshal(b []byte, deterministic 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Account_Select_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Account_Select_Response_Error.Merge(m, src)
+func (m *RpcAccountSelectResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcAccountSelectResponseError.Merge(m, src)
 }
-func (m *Rpc_Account_Select_Response_Error) XXX_Size() int {
+func (m *RpcAccountSelectResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Account_Select_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Account_Select_Response_Error.DiscardUnknown(m)
+func (m *RpcAccountSelectResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcAccountSelectResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Account_Select_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcAccountSelectResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Account_Select_Response_Error) GetCode() Rpc_Account_Select_Response_Error_Code {
+func (m *RpcAccountSelectResponseError) GetCode() RpcAccountSelectResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Account_Select_Response_Error_NULL
+	return RpcAccountSelectResponseError_NULL
 }
 
-func (m *Rpc_Account_Select_Response_Error) GetDescription() string {
+func (m *RpcAccountSelectResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Version struct {
+type RpcVersion struct {
 }
 
-func (m *Rpc_Version) Reset()         { *m = Rpc_Version{} }
-func (m *Rpc_Version) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Version) ProtoMessage()    {}
-func (*Rpc_Version) Descriptor() ([]byte, []int) {
+func (m *RpcVersion) Reset()         { *m = RpcVersion{} }
+func (m *RpcVersion) String() string { return proto.CompactTextString(m) }
+func (*RpcVersion) ProtoMessage()    {}
+func (*RpcVersion) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3}
 }
-func (m *Rpc_Version) XXX_Unmarshal(b []byte) error {
+func (m *RpcVersion) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Version) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcVersion) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Version.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcVersion.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2458,33 +2458,33 @@ func (m *Rpc_Version) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Version) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Version.Merge(m, src)
+func (m *RpcVersion) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcVersion.Merge(m, src)
 }
-func (m *Rpc_Version) XXX_Size() int {
+func (m *RpcVersion) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Version) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Version.DiscardUnknown(m)
+func (m *RpcVersion) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcVersion.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Version proto.InternalMessageInfo
+var xxx_messageInfo_RpcVersion proto.InternalMessageInfo
 
-type Rpc_Version_Get struct {
+type RpcVersionGet struct {
 }
 
-func (m *Rpc_Version_Get) Reset()         { *m = Rpc_Version_Get{} }
-func (m *Rpc_Version_Get) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Version_Get) ProtoMessage()    {}
-func (*Rpc_Version_Get) Descriptor() ([]byte, []int) {
+func (m *RpcVersionGet) Reset()         { *m = RpcVersionGet{} }
+func (m *RpcVersionGet) String() string { return proto.CompactTextString(m) }
+func (*RpcVersionGet) ProtoMessage()    {}
+func (*RpcVersionGet) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0}
 }
-func (m *Rpc_Version_Get) XXX_Unmarshal(b []byte) error {
+func (m *RpcVersionGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Version_Get) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcVersionGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Version_Get.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcVersionGet.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2494,33 +2494,33 @@ func (m *Rpc_Version_Get) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Version_Get) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Version_Get.Merge(m, src)
+func (m *RpcVersionGet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcVersionGet.Merge(m, src)
 }
-func (m *Rpc_Version_Get) XXX_Size() int {
+func (m *RpcVersionGet) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Version_Get) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Version_Get.DiscardUnknown(m)
+func (m *RpcVersionGet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcVersionGet.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Version_Get proto.InternalMessageInfo
+var xxx_messageInfo_RpcVersionGet proto.InternalMessageInfo
 
-type Rpc_Version_Get_Request struct {
+type RpcVersionGetRequest struct {
 }
 
-func (m *Rpc_Version_Get_Request) Reset()         { *m = Rpc_Version_Get_Request{} }
-func (m *Rpc_Version_Get_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Version_Get_Request) ProtoMessage()    {}
-func (*Rpc_Version_Get_Request) Descriptor() ([]byte, []int) {
+func (m *RpcVersionGetRequest) Reset()         { *m = RpcVersionGetRequest{} }
+func (m *RpcVersionGetRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcVersionGetRequest) ProtoMessage()    {}
+func (*RpcVersionGetRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 0}
 }
-func (m *Rpc_Version_Get_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcVersionGetRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Version_Get_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcVersionGetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Version_Get_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcVersionGetRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2530,35 +2530,35 @@ func (m *Rpc_Version_Get_Request) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Version_Get_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Version_Get_Request.Merge(m, src)
+func (m *RpcVersionGetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcVersionGetRequest.Merge(m, src)
 }
-func (m *Rpc_Version_Get_Request) XXX_Size() int {
+func (m *RpcVersionGetRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Version_Get_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Version_Get_Request.DiscardUnknown(m)
+func (m *RpcVersionGetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcVersionGetRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Version_Get_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcVersionGetRequest proto.InternalMessageInfo
 
-type Rpc_Version_Get_Response struct {
-	Error   *Rpc_Version_Get_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Version string                          `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+type RpcVersionGetResponse struct {
+	Error   *RpcVersionGetResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Version string                      `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 }
 
-func (m *Rpc_Version_Get_Response) Reset()         { *m = Rpc_Version_Get_Response{} }
-func (m *Rpc_Version_Get_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Version_Get_Response) ProtoMessage()    {}
-func (*Rpc_Version_Get_Response) Descriptor() ([]byte, []int) {
+func (m *RpcVersionGetResponse) Reset()         { *m = RpcVersionGetResponse{} }
+func (m *RpcVersionGetResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcVersionGetResponse) ProtoMessage()    {}
+func (*RpcVersionGetResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1}
 }
-func (m *Rpc_Version_Get_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcVersionGetResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Version_Get_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcVersionGetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Version_Get_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcVersionGetResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2568,49 +2568,49 @@ func (m *Rpc_Version_Get_Response) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Version_Get_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Version_Get_Response.Merge(m, src)
+func (m *RpcVersionGetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcVersionGetResponse.Merge(m, src)
 }
-func (m *Rpc_Version_Get_Response) XXX_Size() int {
+func (m *RpcVersionGetResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Version_Get_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Version_Get_Response.DiscardUnknown(m)
+func (m *RpcVersionGetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcVersionGetResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Version_Get_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcVersionGetResponse proto.InternalMessageInfo
 
-func (m *Rpc_Version_Get_Response) GetError() *Rpc_Version_Get_Response_Error {
+func (m *RpcVersionGetResponse) GetError() *RpcVersionGetResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Version_Get_Response) GetVersion() string {
+func (m *RpcVersionGetResponse) GetVersion() string {
 	if m != nil {
 		return m.Version
 	}
 	return ""
 }
 
-type Rpc_Version_Get_Response_Error struct {
-	Code        Rpc_Version_Get_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Version_Get_Response_Error_Code" json:"code,omitempty"`
-	Description string                              `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcVersionGetResponseError struct {
+	Code        RpcVersionGetResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcVersionGetResponseErrorCode" json:"code,omitempty"`
+	Description string                         `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Version_Get_Response_Error) Reset()         { *m = Rpc_Version_Get_Response_Error{} }
-func (m *Rpc_Version_Get_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Version_Get_Response_Error) ProtoMessage()    {}
-func (*Rpc_Version_Get_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcVersionGetResponseError) Reset()         { *m = RpcVersionGetResponseError{} }
+func (m *RpcVersionGetResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcVersionGetResponseError) ProtoMessage()    {}
+func (*RpcVersionGetResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1, 0}
 }
-func (m *Rpc_Version_Get_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcVersionGetResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Version_Get_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcVersionGetResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Version_Get_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcVersionGetResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2620,47 +2620,47 @@ func (m *Rpc_Version_Get_Response_Error) XXX_Marshal(b []byte, deterministic boo
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Version_Get_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Version_Get_Response_Error.Merge(m, src)
+func (m *RpcVersionGetResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcVersionGetResponseError.Merge(m, src)
 }
-func (m *Rpc_Version_Get_Response_Error) XXX_Size() int {
+func (m *RpcVersionGetResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Version_Get_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Version_Get_Response_Error.DiscardUnknown(m)
+func (m *RpcVersionGetResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcVersionGetResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Version_Get_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcVersionGetResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Version_Get_Response_Error) GetCode() Rpc_Version_Get_Response_Error_Code {
+func (m *RpcVersionGetResponseError) GetCode() RpcVersionGetResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Version_Get_Response_Error_NULL
+	return RpcVersionGetResponseError_NULL
 }
 
-func (m *Rpc_Version_Get_Response_Error) GetDescription() string {
+func (m *RpcVersionGetResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Log struct {
+type RpcLog struct {
 }
 
-func (m *Rpc_Log) Reset()         { *m = Rpc_Log{} }
-func (m *Rpc_Log) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Log) ProtoMessage()    {}
-func (*Rpc_Log) Descriptor() ([]byte, []int) {
+func (m *RpcLog) Reset()         { *m = RpcLog{} }
+func (m *RpcLog) String() string { return proto.CompactTextString(m) }
+func (*RpcLog) ProtoMessage()    {}
+func (*RpcLog) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4}
 }
-func (m *Rpc_Log) XXX_Unmarshal(b []byte) error {
+func (m *RpcLog) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Log) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcLog) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Log.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcLog.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2670,33 +2670,33 @@ func (m *Rpc_Log) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Log) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Log.Merge(m, src)
+func (m *RpcLog) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLog.Merge(m, src)
 }
-func (m *Rpc_Log) XXX_Size() int {
+func (m *RpcLog) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Log) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Log.DiscardUnknown(m)
+func (m *RpcLog) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLog.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Log proto.InternalMessageInfo
+var xxx_messageInfo_RpcLog proto.InternalMessageInfo
 
-type Rpc_Log_Send struct {
+type RpcLogSend struct {
 }
 
-func (m *Rpc_Log_Send) Reset()         { *m = Rpc_Log_Send{} }
-func (m *Rpc_Log_Send) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Log_Send) ProtoMessage()    {}
-func (*Rpc_Log_Send) Descriptor() ([]byte, []int) {
+func (m *RpcLogSend) Reset()         { *m = RpcLogSend{} }
+func (m *RpcLogSend) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSend) ProtoMessage()    {}
+func (*RpcLogSend) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0}
 }
-func (m *Rpc_Log_Send) XXX_Unmarshal(b []byte) error {
+func (m *RpcLogSend) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Log_Send) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcLogSend) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Log_Send.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcLogSend.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2706,35 +2706,35 @@ func (m *Rpc_Log_Send) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Log_Send) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Log_Send.Merge(m, src)
+func (m *RpcLogSend) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSend.Merge(m, src)
 }
-func (m *Rpc_Log_Send) XXX_Size() int {
+func (m *RpcLogSend) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Log_Send) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Log_Send.DiscardUnknown(m)
+func (m *RpcLogSend) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSend.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Log_Send proto.InternalMessageInfo
+var xxx_messageInfo_RpcLogSend proto.InternalMessageInfo
 
-type Rpc_Log_Send_Request struct {
-	Message string                     `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Level   Rpc_Log_Send_Request_Level `protobuf:"varint,2,opt,name=level,proto3,enum=anytype.Rpc_Log_Send_Request_Level" json:"level,omitempty"`
+type RpcLogSendRequest struct {
+	Message string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Level   RpcLogSendRequestLevel `protobuf:"varint,2,opt,name=level,proto3,enum=anytype.RpcLogSendRequestLevel" json:"level,omitempty"`
 }
 
-func (m *Rpc_Log_Send_Request) Reset()         { *m = Rpc_Log_Send_Request{} }
-func (m *Rpc_Log_Send_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Log_Send_Request) ProtoMessage()    {}
-func (*Rpc_Log_Send_Request) Descriptor() ([]byte, []int) {
+func (m *RpcLogSendRequest) Reset()         { *m = RpcLogSendRequest{} }
+func (m *RpcLogSendRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSendRequest) ProtoMessage()    {}
+func (*RpcLogSendRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 0}
 }
-func (m *Rpc_Log_Send_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcLogSendRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Log_Send_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcLogSendRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Log_Send_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcLogSendRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2744,48 +2744,48 @@ func (m *Rpc_Log_Send_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Log_Send_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Log_Send_Request.Merge(m, src)
+func (m *RpcLogSendRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSendRequest.Merge(m, src)
 }
-func (m *Rpc_Log_Send_Request) XXX_Size() int {
+func (m *RpcLogSendRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Log_Send_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Log_Send_Request.DiscardUnknown(m)
+func (m *RpcLogSendRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSendRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Log_Send_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcLogSendRequest proto.InternalMessageInfo
 
-func (m *Rpc_Log_Send_Request) GetMessage() string {
+func (m *RpcLogSendRequest) GetMessage() string {
 	if m != nil {
 		return m.Message
 	}
 	return ""
 }
 
-func (m *Rpc_Log_Send_Request) GetLevel() Rpc_Log_Send_Request_Level {
+func (m *RpcLogSendRequest) GetLevel() RpcLogSendRequestLevel {
 	if m != nil {
 		return m.Level
 	}
-	return Rpc_Log_Send_Request_DEBUG
+	return RpcLogSendRequest_DEBUG
 }
 
-type Rpc_Log_Send_Response struct {
-	Error *Rpc_Log_Send_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcLogSendResponse struct {
+	Error *RpcLogSendResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *Rpc_Log_Send_Response) Reset()         { *m = Rpc_Log_Send_Response{} }
-func (m *Rpc_Log_Send_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Log_Send_Response) ProtoMessage()    {}
-func (*Rpc_Log_Send_Response) Descriptor() ([]byte, []int) {
+func (m *RpcLogSendResponse) Reset()         { *m = RpcLogSendResponse{} }
+func (m *RpcLogSendResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSendResponse) ProtoMessage()    {}
+func (*RpcLogSendResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1}
 }
-func (m *Rpc_Log_Send_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcLogSendResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Log_Send_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcLogSendResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Log_Send_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcLogSendResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2795,42 +2795,42 @@ func (m *Rpc_Log_Send_Response) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Log_Send_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Log_Send_Response.Merge(m, src)
+func (m *RpcLogSendResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSendResponse.Merge(m, src)
 }
-func (m *Rpc_Log_Send_Response) XXX_Size() int {
+func (m *RpcLogSendResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Log_Send_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Log_Send_Response.DiscardUnknown(m)
+func (m *RpcLogSendResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSendResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Log_Send_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcLogSendResponse proto.InternalMessageInfo
 
-func (m *Rpc_Log_Send_Response) GetError() *Rpc_Log_Send_Response_Error {
+func (m *RpcLogSendResponse) GetError() *RpcLogSendResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type Rpc_Log_Send_Response_Error struct {
-	Code        Rpc_Log_Send_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Log_Send_Response_Error_Code" json:"code,omitempty"`
-	Description string                           `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcLogSendResponseError struct {
+	Code        RpcLogSendResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcLogSendResponseErrorCode" json:"code,omitempty"`
+	Description string                      `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Log_Send_Response_Error) Reset()         { *m = Rpc_Log_Send_Response_Error{} }
-func (m *Rpc_Log_Send_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Log_Send_Response_Error) ProtoMessage()    {}
-func (*Rpc_Log_Send_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcLogSendResponseError) Reset()         { *m = RpcLogSendResponseError{} }
+func (m *RpcLogSendResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSendResponseError) ProtoMessage()    {}
+func (*RpcLogSendResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1, 0}
 }
-func (m *Rpc_Log_Send_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcLogSendResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Log_Send_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcLogSendResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Log_Send_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcLogSendResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2840,47 +2840,47 @@ func (m *Rpc_Log_Send_Response_Error) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Log_Send_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Log_Send_Response_Error.Merge(m, src)
+func (m *RpcLogSendResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSendResponseError.Merge(m, src)
 }
-func (m *Rpc_Log_Send_Response_Error) XXX_Size() int {
+func (m *RpcLogSendResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Log_Send_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Log_Send_Response_Error.DiscardUnknown(m)
+func (m *RpcLogSendResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSendResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Log_Send_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcLogSendResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Log_Send_Response_Error) GetCode() Rpc_Log_Send_Response_Error_Code {
+func (m *RpcLogSendResponseError) GetCode() RpcLogSendResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Log_Send_Response_Error_NULL
+	return RpcLogSendResponseError_NULL
 }
 
-func (m *Rpc_Log_Send_Response_Error) GetDescription() string {
+func (m *RpcLogSendResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Ipfs struct {
+type RpcIpfs struct {
 }
 
-func (m *Rpc_Ipfs) Reset()         { *m = Rpc_Ipfs{} }
-func (m *Rpc_Ipfs) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Ipfs) ProtoMessage()    {}
-func (*Rpc_Ipfs) Descriptor() ([]byte, []int) {
+func (m *RpcIpfs) Reset()         { *m = RpcIpfs{} }
+func (m *RpcIpfs) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfs) ProtoMessage()    {}
+func (*RpcIpfs) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5}
 }
-func (m *Rpc_Ipfs) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfs) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Ipfs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Ipfs.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfs.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2890,33 +2890,33 @@ func (m *Rpc_Ipfs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Ipfs) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Ipfs.Merge(m, src)
+func (m *RpcIpfs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfs.Merge(m, src)
 }
-func (m *Rpc_Ipfs) XXX_Size() int {
+func (m *RpcIpfs) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Ipfs) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Ipfs.DiscardUnknown(m)
+func (m *RpcIpfs) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfs.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Ipfs proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfs proto.InternalMessageInfo
 
-type Rpc_Ipfs_Get struct {
+type RpcIpfsGet struct {
 }
 
-func (m *Rpc_Ipfs_Get) Reset()         { *m = Rpc_Ipfs_Get{} }
-func (m *Rpc_Ipfs_Get) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Ipfs_Get) ProtoMessage()    {}
-func (*Rpc_Ipfs_Get) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsGet) Reset()         { *m = RpcIpfsGet{} }
+func (m *RpcIpfsGet) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsGet) ProtoMessage()    {}
+func (*RpcIpfsGet) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0}
 }
-func (m *Rpc_Ipfs_Get) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Ipfs_Get) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Ipfs_Get.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsGet.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2926,33 +2926,33 @@ func (m *Rpc_Ipfs_Get) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Ipfs_Get) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Ipfs_Get.Merge(m, src)
+func (m *RpcIpfsGet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsGet.Merge(m, src)
 }
-func (m *Rpc_Ipfs_Get) XXX_Size() int {
+func (m *RpcIpfsGet) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Ipfs_Get) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Ipfs_Get.DiscardUnknown(m)
+func (m *RpcIpfsGet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsGet.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Ipfs_Get proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsGet proto.InternalMessageInfo
 
-type Rpc_Ipfs_Get_File struct {
+type RpcIpfsGetFile struct {
 }
 
-func (m *Rpc_Ipfs_Get_File) Reset()         { *m = Rpc_Ipfs_Get_File{} }
-func (m *Rpc_Ipfs_Get_File) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Ipfs_Get_File) ProtoMessage()    {}
-func (*Rpc_Ipfs_Get_File) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsGetFile) Reset()         { *m = RpcIpfsGetFile{} }
+func (m *RpcIpfsGetFile) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsGetFile) ProtoMessage()    {}
+func (*RpcIpfsGetFile) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0}
 }
-func (m *Rpc_Ipfs_Get_File) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsGetFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Ipfs_Get_File) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsGetFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Ipfs_Get_File.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsGetFile.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2962,34 +2962,34 @@ func (m *Rpc_Ipfs_Get_File) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Ipfs_Get_File) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Ipfs_Get_File.Merge(m, src)
+func (m *RpcIpfsGetFile) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsGetFile.Merge(m, src)
 }
-func (m *Rpc_Ipfs_Get_File) XXX_Size() int {
+func (m *RpcIpfsGetFile) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Ipfs_Get_File) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Ipfs_Get_File.DiscardUnknown(m)
+func (m *RpcIpfsGetFile) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsGetFile.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Ipfs_Get_File proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsGetFile proto.InternalMessageInfo
 
-type Rpc_Ipfs_Get_File_Request struct {
+type RpcIpfsGetFileRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (m *Rpc_Ipfs_Get_File_Request) Reset()         { *m = Rpc_Ipfs_Get_File_Request{} }
-func (m *Rpc_Ipfs_Get_File_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Ipfs_Get_File_Request) ProtoMessage()    {}
-func (*Rpc_Ipfs_Get_File_Request) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsGetFileRequest) Reset()         { *m = RpcIpfsGetFileRequest{} }
+func (m *RpcIpfsGetFileRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsGetFileRequest) ProtoMessage()    {}
+func (*RpcIpfsGetFileRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 0}
 }
-func (m *Rpc_Ipfs_Get_File_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsGetFileRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Ipfs_Get_File_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsGetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Ipfs_Get_File_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsGetFileRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2999,44 +2999,44 @@ func (m *Rpc_Ipfs_Get_File_Request) XXX_Marshal(b []byte, deterministic bool) ([
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Ipfs_Get_File_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Ipfs_Get_File_Request.Merge(m, src)
+func (m *RpcIpfsGetFileRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsGetFileRequest.Merge(m, src)
 }
-func (m *Rpc_Ipfs_Get_File_Request) XXX_Size() int {
+func (m *RpcIpfsGetFileRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Ipfs_Get_File_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Ipfs_Get_File_Request.DiscardUnknown(m)
+func (m *RpcIpfsGetFileRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsGetFileRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Ipfs_Get_File_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsGetFileRequest proto.InternalMessageInfo
 
-func (m *Rpc_Ipfs_Get_File_Request) GetId() string {
+func (m *RpcIpfsGetFileRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-type Rpc_Ipfs_Get_File_Response struct {
-	Error *Rpc_Ipfs_Get_File_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Data  []byte                            `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	Media string                            `protobuf:"bytes,3,opt,name=media,proto3" json:"media,omitempty"`
-	Name  string                            `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+type RpcIpfsGetFileResponse struct {
+	Error *RpcIpfsGetFileResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Data  []byte                       `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Media string                       `protobuf:"bytes,3,opt,name=media,proto3" json:"media,omitempty"`
+	Name  string                       `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) Reset()         { *m = Rpc_Ipfs_Get_File_Response{} }
-func (m *Rpc_Ipfs_Get_File_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Ipfs_Get_File_Response) ProtoMessage()    {}
-func (*Rpc_Ipfs_Get_File_Response) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsGetFileResponse) Reset()         { *m = RpcIpfsGetFileResponse{} }
+func (m *RpcIpfsGetFileResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsGetFileResponse) ProtoMessage()    {}
+func (*RpcIpfsGetFileResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 1}
 }
-func (m *Rpc_Ipfs_Get_File_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsGetFileResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Ipfs_Get_File_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsGetFileResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Ipfs_Get_File_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsGetFileResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3046,63 +3046,63 @@ func (m *Rpc_Ipfs_Get_File_Response) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Ipfs_Get_File_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Ipfs_Get_File_Response.Merge(m, src)
+func (m *RpcIpfsGetFileResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsGetFileResponse.Merge(m, src)
 }
-func (m *Rpc_Ipfs_Get_File_Response) XXX_Size() int {
+func (m *RpcIpfsGetFileResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Ipfs_Get_File_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Ipfs_Get_File_Response.DiscardUnknown(m)
+func (m *RpcIpfsGetFileResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsGetFileResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Ipfs_Get_File_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsGetFileResponse proto.InternalMessageInfo
 
-func (m *Rpc_Ipfs_Get_File_Response) GetError() *Rpc_Ipfs_Get_File_Response_Error {
+func (m *RpcIpfsGetFileResponse) GetError() *RpcIpfsGetFileResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) GetData() []byte {
+func (m *RpcIpfsGetFileResponse) GetData() []byte {
 	if m != nil {
 		return m.Data
 	}
 	return nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) GetMedia() string {
+func (m *RpcIpfsGetFileResponse) GetMedia() string {
 	if m != nil {
 		return m.Media
 	}
 	return ""
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) GetName() string {
+func (m *RpcIpfsGetFileResponse) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-type Rpc_Ipfs_Get_File_Response_Error struct {
-	Code        Rpc_Ipfs_Get_File_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Ipfs_Get_File_Response_Error_Code" json:"code,omitempty"`
-	Description string                                `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcIpfsGetFileResponseError struct {
+	Code        RpcIpfsGetFileResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcIpfsGetFileResponseErrorCode" json:"code,omitempty"`
+	Description string                          `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Ipfs_Get_File_Response_Error) Reset()         { *m = Rpc_Ipfs_Get_File_Response_Error{} }
-func (m *Rpc_Ipfs_Get_File_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Ipfs_Get_File_Response_Error) ProtoMessage()    {}
-func (*Rpc_Ipfs_Get_File_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsGetFileResponseError) Reset()         { *m = RpcIpfsGetFileResponseError{} }
+func (m *RpcIpfsGetFileResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsGetFileResponseError) ProtoMessage()    {}
+func (*RpcIpfsGetFileResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 1, 0}
 }
-func (m *Rpc_Ipfs_Get_File_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsGetFileResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Ipfs_Get_File_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsGetFileResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Ipfs_Get_File_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsGetFileResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3112,47 +3112,47 @@ func (m *Rpc_Ipfs_Get_File_Response_Error) XXX_Marshal(b []byte, deterministic b
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Ipfs_Get_File_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Ipfs_Get_File_Response_Error.Merge(m, src)
+func (m *RpcIpfsGetFileResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsGetFileResponseError.Merge(m, src)
 }
-func (m *Rpc_Ipfs_Get_File_Response_Error) XXX_Size() int {
+func (m *RpcIpfsGetFileResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Ipfs_Get_File_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Ipfs_Get_File_Response_Error.DiscardUnknown(m)
+func (m *RpcIpfsGetFileResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsGetFileResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Ipfs_Get_File_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsGetFileResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Ipfs_Get_File_Response_Error) GetCode() Rpc_Ipfs_Get_File_Response_Error_Code {
+func (m *RpcIpfsGetFileResponseError) GetCode() RpcIpfsGetFileResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Ipfs_Get_File_Response_Error_NULL
+	return RpcIpfsGetFileResponseError_NULL
 }
 
-func (m *Rpc_Ipfs_Get_File_Response_Error) GetDescription() string {
+func (m *RpcIpfsGetFileResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Image struct {
+type RpcImage struct {
 }
 
-func (m *Rpc_Image) Reset()         { *m = Rpc_Image{} }
-func (m *Rpc_Image) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image) ProtoMessage()    {}
-func (*Rpc_Image) Descriptor() ([]byte, []int) {
+func (m *RpcImage) Reset()         { *m = RpcImage{} }
+func (m *RpcImage) String() string { return proto.CompactTextString(m) }
+func (*RpcImage) ProtoMessage()    {}
+func (*RpcImage) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6}
 }
-func (m *Rpc_Image) XXX_Unmarshal(b []byte) error {
+func (m *RpcImage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImage.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3162,33 +3162,33 @@ func (m *Rpc_Image) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image.Merge(m, src)
+func (m *RpcImage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImage.Merge(m, src)
 }
-func (m *Rpc_Image) XXX_Size() int {
+func (m *RpcImage) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image.DiscardUnknown(m)
+func (m *RpcImage) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image proto.InternalMessageInfo
+var xxx_messageInfo_RpcImage proto.InternalMessageInfo
 
-type Rpc_Image_Get struct {
+type RpcImageGet struct {
 }
 
-func (m *Rpc_Image_Get) Reset()         { *m = Rpc_Image_Get{} }
-func (m *Rpc_Image_Get) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get) ProtoMessage()    {}
-func (*Rpc_Image_Get) Descriptor() ([]byte, []int) {
+func (m *RpcImageGet) Reset()         { *m = RpcImageGet{} }
+func (m *RpcImageGet) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGet) ProtoMessage()    {}
+func (*RpcImageGet) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0}
 }
-func (m *Rpc_Image_Get) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGet.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3198,33 +3198,33 @@ func (m *Rpc_Image_Get) XXX_Marshal(b []byte, deterministic bool) ([]byte, error
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get.Merge(m, src)
+func (m *RpcImageGet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGet.Merge(m, src)
 }
-func (m *Rpc_Image_Get) XXX_Size() int {
+func (m *RpcImageGet) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get.DiscardUnknown(m)
+func (m *RpcImageGet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGet.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGet proto.InternalMessageInfo
 
-type Rpc_Image_Get_Blob struct {
+type RpcImageGetBlob struct {
 }
 
-func (m *Rpc_Image_Get_Blob) Reset()         { *m = Rpc_Image_Get_Blob{} }
-func (m *Rpc_Image_Get_Blob) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_Blob) ProtoMessage()    {}
-func (*Rpc_Image_Get_Blob) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetBlob) Reset()         { *m = RpcImageGetBlob{} }
+func (m *RpcImageGetBlob) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetBlob) ProtoMessage()    {}
+func (*RpcImageGetBlob) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0}
 }
-func (m *Rpc_Image_Get_Blob) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetBlob) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_Blob) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetBlob) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_Blob.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetBlob.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3234,35 +3234,35 @@ func (m *Rpc_Image_Get_Blob) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_Blob) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_Blob.Merge(m, src)
+func (m *RpcImageGetBlob) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetBlob.Merge(m, src)
 }
-func (m *Rpc_Image_Get_Blob) XXX_Size() int {
+func (m *RpcImageGetBlob) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_Blob) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_Blob.DiscardUnknown(m)
+func (m *RpcImageGetBlob) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetBlob.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_Blob proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetBlob proto.InternalMessageInfo
 
-type Rpc_Image_Get_Blob_Request struct {
-	Id    string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Size_ Model_Image_Size `protobuf:"varint,2,opt,name=size,proto3,enum=anytype.Model_Image_Size" json:"size,omitempty"`
+type RpcImageGetBlobRequest struct {
+	Id    string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Size_ ModelImageSize `protobuf:"varint,2,opt,name=size,proto3,enum=anytype.ModelImageSize" json:"size,omitempty"`
 }
 
-func (m *Rpc_Image_Get_Blob_Request) Reset()         { *m = Rpc_Image_Get_Blob_Request{} }
-func (m *Rpc_Image_Get_Blob_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_Blob_Request) ProtoMessage()    {}
-func (*Rpc_Image_Get_Blob_Request) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetBlobRequest) Reset()         { *m = RpcImageGetBlobRequest{} }
+func (m *RpcImageGetBlobRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetBlobRequest) ProtoMessage()    {}
+func (*RpcImageGetBlobRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 0}
 }
-func (m *Rpc_Image_Get_Blob_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetBlobRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_Blob_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetBlobRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_Blob_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetBlobRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3272,49 +3272,49 @@ func (m *Rpc_Image_Get_Blob_Request) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_Blob_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_Blob_Request.Merge(m, src)
+func (m *RpcImageGetBlobRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetBlobRequest.Merge(m, src)
 }
-func (m *Rpc_Image_Get_Blob_Request) XXX_Size() int {
+func (m *RpcImageGetBlobRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_Blob_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_Blob_Request.DiscardUnknown(m)
+func (m *RpcImageGetBlobRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetBlobRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_Blob_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetBlobRequest proto.InternalMessageInfo
 
-func (m *Rpc_Image_Get_Blob_Request) GetId() string {
+func (m *RpcImageGetBlobRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Rpc_Image_Get_Blob_Request) GetSize_() Model_Image_Size {
+func (m *RpcImageGetBlobRequest) GetSize_() ModelImageSize {
 	if m != nil {
 		return m.Size_
 	}
-	return Model_Image_LARGE
+	return ModelImage_LARGE
 }
 
-type Rpc_Image_Get_Blob_Response struct {
-	Error *Rpc_Image_Get_Blob_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Blob  []byte                             `protobuf:"bytes,2,opt,name=blob,proto3" json:"blob,omitempty"`
+type RpcImageGetBlobResponse struct {
+	Error *RpcImageGetBlobResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Blob  []byte                        `protobuf:"bytes,2,opt,name=blob,proto3" json:"blob,omitempty"`
 }
 
-func (m *Rpc_Image_Get_Blob_Response) Reset()         { *m = Rpc_Image_Get_Blob_Response{} }
-func (m *Rpc_Image_Get_Blob_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_Blob_Response) ProtoMessage()    {}
-func (*Rpc_Image_Get_Blob_Response) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetBlobResponse) Reset()         { *m = RpcImageGetBlobResponse{} }
+func (m *RpcImageGetBlobResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetBlobResponse) ProtoMessage()    {}
+func (*RpcImageGetBlobResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 1}
 }
-func (m *Rpc_Image_Get_Blob_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetBlobResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_Blob_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetBlobResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_Blob_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetBlobResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3324,49 +3324,49 @@ func (m *Rpc_Image_Get_Blob_Response) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_Blob_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_Blob_Response.Merge(m, src)
+func (m *RpcImageGetBlobResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetBlobResponse.Merge(m, src)
 }
-func (m *Rpc_Image_Get_Blob_Response) XXX_Size() int {
+func (m *RpcImageGetBlobResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_Blob_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_Blob_Response.DiscardUnknown(m)
+func (m *RpcImageGetBlobResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetBlobResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_Blob_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetBlobResponse proto.InternalMessageInfo
 
-func (m *Rpc_Image_Get_Blob_Response) GetError() *Rpc_Image_Get_Blob_Response_Error {
+func (m *RpcImageGetBlobResponse) GetError() *RpcImageGetBlobResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Image_Get_Blob_Response) GetBlob() []byte {
+func (m *RpcImageGetBlobResponse) GetBlob() []byte {
 	if m != nil {
 		return m.Blob
 	}
 	return nil
 }
 
-type Rpc_Image_Get_Blob_Response_Error struct {
-	Code        Rpc_Image_Get_Blob_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Image_Get_Blob_Response_Error_Code" json:"code,omitempty"`
-	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcImageGetBlobResponseError struct {
+	Code        RpcImageGetBlobResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcImageGetBlobResponseErrorCode" json:"code,omitempty"`
+	Description string                           `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Image_Get_Blob_Response_Error) Reset()         { *m = Rpc_Image_Get_Blob_Response_Error{} }
-func (m *Rpc_Image_Get_Blob_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_Blob_Response_Error) ProtoMessage()    {}
-func (*Rpc_Image_Get_Blob_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetBlobResponseError) Reset()         { *m = RpcImageGetBlobResponseError{} }
+func (m *RpcImageGetBlobResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetBlobResponseError) ProtoMessage()    {}
+func (*RpcImageGetBlobResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 1, 0}
 }
-func (m *Rpc_Image_Get_Blob_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetBlobResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_Blob_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetBlobResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_Blob_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetBlobResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3376,47 +3376,47 @@ func (m *Rpc_Image_Get_Blob_Response_Error) XXX_Marshal(b []byte, deterministic 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_Blob_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_Blob_Response_Error.Merge(m, src)
+func (m *RpcImageGetBlobResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetBlobResponseError.Merge(m, src)
 }
-func (m *Rpc_Image_Get_Blob_Response_Error) XXX_Size() int {
+func (m *RpcImageGetBlobResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_Blob_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_Blob_Response_Error.DiscardUnknown(m)
+func (m *RpcImageGetBlobResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetBlobResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_Blob_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetBlobResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Image_Get_Blob_Response_Error) GetCode() Rpc_Image_Get_Blob_Response_Error_Code {
+func (m *RpcImageGetBlobResponseError) GetCode() RpcImageGetBlobResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Image_Get_Blob_Response_Error_NULL
+	return RpcImageGetBlobResponseError_NULL
 }
 
-func (m *Rpc_Image_Get_Blob_Response_Error) GetDescription() string {
+func (m *RpcImageGetBlobResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type Rpc_Image_Get_File struct {
+type RpcImageGetFile struct {
 }
 
-func (m *Rpc_Image_Get_File) Reset()         { *m = Rpc_Image_Get_File{} }
-func (m *Rpc_Image_Get_File) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_File) ProtoMessage()    {}
-func (*Rpc_Image_Get_File) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetFile) Reset()         { *m = RpcImageGetFile{} }
+func (m *RpcImageGetFile) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetFile) ProtoMessage()    {}
+func (*RpcImageGetFile) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1}
 }
-func (m *Rpc_Image_Get_File) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_File) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_File.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetFile.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3426,35 +3426,35 @@ func (m *Rpc_Image_Get_File) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_File) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_File.Merge(m, src)
+func (m *RpcImageGetFile) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetFile.Merge(m, src)
 }
-func (m *Rpc_Image_Get_File) XXX_Size() int {
+func (m *RpcImageGetFile) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_File) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_File.DiscardUnknown(m)
+func (m *RpcImageGetFile) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetFile.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_File proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetFile proto.InternalMessageInfo
 
-type Rpc_Image_Get_File_Request struct {
-	Id    string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Size_ Model_Image_Size `protobuf:"varint,2,opt,name=size,proto3,enum=anytype.Model_Image_Size" json:"size,omitempty"`
+type RpcImageGetFileRequest struct {
+	Id    string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Size_ ModelImageSize `protobuf:"varint,2,opt,name=size,proto3,enum=anytype.ModelImageSize" json:"size,omitempty"`
 }
 
-func (m *Rpc_Image_Get_File_Request) Reset()         { *m = Rpc_Image_Get_File_Request{} }
-func (m *Rpc_Image_Get_File_Request) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_File_Request) ProtoMessage()    {}
-func (*Rpc_Image_Get_File_Request) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetFileRequest) Reset()         { *m = RpcImageGetFileRequest{} }
+func (m *RpcImageGetFileRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetFileRequest) ProtoMessage()    {}
+func (*RpcImageGetFileRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 0}
 }
-func (m *Rpc_Image_Get_File_Request) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetFileRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_File_Request) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_File_Request.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetFileRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3464,49 +3464,49 @@ func (m *Rpc_Image_Get_File_Request) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_File_Request) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_File_Request.Merge(m, src)
+func (m *RpcImageGetFileRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetFileRequest.Merge(m, src)
 }
-func (m *Rpc_Image_Get_File_Request) XXX_Size() int {
+func (m *RpcImageGetFileRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_File_Request) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_File_Request.DiscardUnknown(m)
+func (m *RpcImageGetFileRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetFileRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_File_Request proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetFileRequest proto.InternalMessageInfo
 
-func (m *Rpc_Image_Get_File_Request) GetId() string {
+func (m *RpcImageGetFileRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Rpc_Image_Get_File_Request) GetSize_() Model_Image_Size {
+func (m *RpcImageGetFileRequest) GetSize_() ModelImageSize {
 	if m != nil {
 		return m.Size_
 	}
-	return Model_Image_LARGE
+	return ModelImage_LARGE
 }
 
-type Rpc_Image_Get_File_Response struct {
-	Error     *Rpc_Image_Get_File_Response_Error `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	LocalPath string                             `protobuf:"bytes,2,opt,name=localPath,proto3" json:"localPath,omitempty"`
+type RpcImageGetFileResponse struct {
+	Error     *RpcImageGetFileResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	LocalPath string                        `protobuf:"bytes,2,opt,name=localPath,proto3" json:"localPath,omitempty"`
 }
 
-func (m *Rpc_Image_Get_File_Response) Reset()         { *m = Rpc_Image_Get_File_Response{} }
-func (m *Rpc_Image_Get_File_Response) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_File_Response) ProtoMessage()    {}
-func (*Rpc_Image_Get_File_Response) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetFileResponse) Reset()         { *m = RpcImageGetFileResponse{} }
+func (m *RpcImageGetFileResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetFileResponse) ProtoMessage()    {}
+func (*RpcImageGetFileResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 1}
 }
-func (m *Rpc_Image_Get_File_Response) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetFileResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_File_Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetFileResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_File_Response.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetFileResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3516,49 +3516,49 @@ func (m *Rpc_Image_Get_File_Response) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_File_Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_File_Response.Merge(m, src)
+func (m *RpcImageGetFileResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetFileResponse.Merge(m, src)
 }
-func (m *Rpc_Image_Get_File_Response) XXX_Size() int {
+func (m *RpcImageGetFileResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_File_Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_File_Response.DiscardUnknown(m)
+func (m *RpcImageGetFileResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetFileResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_File_Response proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetFileResponse proto.InternalMessageInfo
 
-func (m *Rpc_Image_Get_File_Response) GetError() *Rpc_Image_Get_File_Response_Error {
+func (m *RpcImageGetFileResponse) GetError() *RpcImageGetFileResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *Rpc_Image_Get_File_Response) GetLocalPath() string {
+func (m *RpcImageGetFileResponse) GetLocalPath() string {
 	if m != nil {
 		return m.LocalPath
 	}
 	return ""
 }
 
-type Rpc_Image_Get_File_Response_Error struct {
-	Code        Rpc_Image_Get_File_Response_Error_Code `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.Rpc_Image_Get_File_Response_Error_Code" json:"code,omitempty"`
-	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcImageGetFileResponseError struct {
+	Code        RpcImageGetFileResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcImageGetFileResponseErrorCode" json:"code,omitempty"`
+	Description string                           `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *Rpc_Image_Get_File_Response_Error) Reset()         { *m = Rpc_Image_Get_File_Response_Error{} }
-func (m *Rpc_Image_Get_File_Response_Error) String() string { return proto.CompactTextString(m) }
-func (*Rpc_Image_Get_File_Response_Error) ProtoMessage()    {}
-func (*Rpc_Image_Get_File_Response_Error) Descriptor() ([]byte, []int) {
+func (m *RpcImageGetFileResponseError) Reset()         { *m = RpcImageGetFileResponseError{} }
+func (m *RpcImageGetFileResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcImageGetFileResponseError) ProtoMessage()    {}
+func (*RpcImageGetFileResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 1, 0}
 }
-func (m *Rpc_Image_Get_File_Response_Error) XXX_Unmarshal(b []byte) error {
+func (m *RpcImageGetFileResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Rpc_Image_Get_File_Response_Error) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcImageGetFileResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Rpc_Image_Get_File_Response_Error.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcImageGetFileResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3568,26 +3568,26 @@ func (m *Rpc_Image_Get_File_Response_Error) XXX_Marshal(b []byte, deterministic 
 		return b[:n], nil
 	}
 }
-func (m *Rpc_Image_Get_File_Response_Error) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Rpc_Image_Get_File_Response_Error.Merge(m, src)
+func (m *RpcImageGetFileResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcImageGetFileResponseError.Merge(m, src)
 }
-func (m *Rpc_Image_Get_File_Response_Error) XXX_Size() int {
+func (m *RpcImageGetFileResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *Rpc_Image_Get_File_Response_Error) XXX_DiscardUnknown() {
-	xxx_messageInfo_Rpc_Image_Get_File_Response_Error.DiscardUnknown(m)
+func (m *RpcImageGetFileResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcImageGetFileResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Rpc_Image_Get_File_Response_Error proto.InternalMessageInfo
+var xxx_messageInfo_RpcImageGetFileResponseError proto.InternalMessageInfo
 
-func (m *Rpc_Image_Get_File_Response_Error) GetCode() Rpc_Image_Get_File_Response_Error_Code {
+func (m *RpcImageGetFileResponseError) GetCode() RpcImageGetFileResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return Rpc_Image_Get_File_Response_Error_NULL
+	return RpcImageGetFileResponseError_NULL
 }
 
-func (m *Rpc_Image_Get_File_Response_Error) GetDescription() string {
+func (m *RpcImageGetFileResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
@@ -3595,88 +3595,88 @@ func (m *Rpc_Image_Get_File_Response_Error) GetDescription() string {
 }
 
 func init() {
-	proto.RegisterEnum("anytype.Rpc_Block_History_Move_Response_Error_Code", Rpc_Block_History_Move_Response_Error_Code_name, Rpc_Block_History_Move_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Block_Open_Response_Error_Code", Rpc_Block_Open_Response_Error_Code_name, Rpc_Block_Open_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Block_Create_Response_Error_Code", Rpc_Block_Create_Response_Error_Code_name, Rpc_Block_Create_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Block_Update_Response_Error_Code", Rpc_Block_Update_Response_Error_Code_name, Rpc_Block_Update_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Wallet_Create_Response_Error_Code", Rpc_Wallet_Create_Response_Error_Code_name, Rpc_Wallet_Create_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Wallet_Recover_Response_Error_Code", Rpc_Wallet_Recover_Response_Error_Code_name, Rpc_Wallet_Recover_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Account_Create_Response_Error_Code", Rpc_Account_Create_Response_Error_Code_name, Rpc_Account_Create_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Account_Recover_Response_Error_Code", Rpc_Account_Recover_Response_Error_Code_name, Rpc_Account_Recover_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Account_Select_Response_Error_Code", Rpc_Account_Select_Response_Error_Code_name, Rpc_Account_Select_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Version_Get_Response_Error_Code", Rpc_Version_Get_Response_Error_Code_name, Rpc_Version_Get_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Log_Send_Request_Level", Rpc_Log_Send_Request_Level_name, Rpc_Log_Send_Request_Level_value)
-	proto.RegisterEnum("anytype.Rpc_Log_Send_Response_Error_Code", Rpc_Log_Send_Response_Error_Code_name, Rpc_Log_Send_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Ipfs_Get_File_Response_Error_Code", Rpc_Ipfs_Get_File_Response_Error_Code_name, Rpc_Ipfs_Get_File_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Image_Get_Blob_Response_Error_Code", Rpc_Image_Get_Blob_Response_Error_Code_name, Rpc_Image_Get_Blob_Response_Error_Code_value)
-	proto.RegisterEnum("anytype.Rpc_Image_Get_File_Response_Error_Code", Rpc_Image_Get_File_Response_Error_Code_name, Rpc_Image_Get_File_Response_Error_Code_value)
+	proto.RegisterEnum("anytype.RpcBlockHistoryMoveResponseErrorCode", RpcBlockHistoryMoveResponseErrorCode_name, RpcBlockHistoryMoveResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockOpenResponseErrorCode", RpcBlockOpenResponseErrorCode_name, RpcBlockOpenResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockCreateResponseErrorCode", RpcBlockCreateResponseErrorCode_name, RpcBlockCreateResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockUpdateResponseErrorCode", RpcBlockUpdateResponseErrorCode_name, RpcBlockUpdateResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcWalletCreateResponseErrorCode", RpcWalletCreateResponseErrorCode_name, RpcWalletCreateResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcWalletRecoverResponseErrorCode", RpcWalletRecoverResponseErrorCode_name, RpcWalletRecoverResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcAccountCreateResponseErrorCode", RpcAccountCreateResponseErrorCode_name, RpcAccountCreateResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcAccountRecoverResponseErrorCode", RpcAccountRecoverResponseErrorCode_name, RpcAccountRecoverResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcAccountSelectResponseErrorCode", RpcAccountSelectResponseErrorCode_name, RpcAccountSelectResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcVersionGetResponseErrorCode", RpcVersionGetResponseErrorCode_name, RpcVersionGetResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcLogSendRequestLevel", RpcLogSendRequestLevel_name, RpcLogSendRequestLevel_value)
+	proto.RegisterEnum("anytype.RpcLogSendResponseErrorCode", RpcLogSendResponseErrorCode_name, RpcLogSendResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcIpfsGetFileResponseErrorCode", RpcIpfsGetFileResponseErrorCode_name, RpcIpfsGetFileResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcImageGetBlobResponseErrorCode", RpcImageGetBlobResponseErrorCode_name, RpcImageGetBlobResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcImageGetFileResponseErrorCode", RpcImageGetFileResponseErrorCode_name, RpcImageGetFileResponseErrorCode_value)
 	proto.RegisterType((*Rpc)(nil), "anytype.Rpc")
-	proto.RegisterType((*Rpc_Block)(nil), "anytype.Rpc.Block")
-	proto.RegisterType((*Rpc_Block_History)(nil), "anytype.Rpc.Block.History")
-	proto.RegisterType((*Rpc_Block_History_Move)(nil), "anytype.Rpc.Block.History.Move")
-	proto.RegisterType((*Rpc_Block_History_Move_Request)(nil), "anytype.Rpc.Block.History.Move.Request")
-	proto.RegisterType((*Rpc_Block_History_Move_Response)(nil), "anytype.Rpc.Block.History.Move.Response")
-	proto.RegisterType((*Rpc_Block_History_Move_Response_Error)(nil), "anytype.Rpc.Block.History.Move.Response.Error")
-	proto.RegisterType((*Rpc_Block_Open)(nil), "anytype.Rpc.Block.Open")
-	proto.RegisterType((*Rpc_Block_Open_Request)(nil), "anytype.Rpc.Block.Open.Request")
-	proto.RegisterType((*Rpc_Block_Open_Response)(nil), "anytype.Rpc.Block.Open.Response")
-	proto.RegisterType((*Rpc_Block_Open_Response_Error)(nil), "anytype.Rpc.Block.Open.Response.Error")
-	proto.RegisterType((*Rpc_Block_Create)(nil), "anytype.Rpc.Block.Create")
-	proto.RegisterType((*Rpc_Block_Create_Request)(nil), "anytype.Rpc.Block.Create.Request")
-	proto.RegisterType((*Rpc_Block_Create_Response)(nil), "anytype.Rpc.Block.Create.Response")
-	proto.RegisterType((*Rpc_Block_Create_Response_Error)(nil), "anytype.Rpc.Block.Create.Response.Error")
-	proto.RegisterType((*Rpc_Block_Update)(nil), "anytype.Rpc.Block.Update")
-	proto.RegisterType((*Rpc_Block_Update_Request)(nil), "anytype.Rpc.Block.Update.Request")
-	proto.RegisterType((*Rpc_Block_Update_Response)(nil), "anytype.Rpc.Block.Update.Response")
-	proto.RegisterType((*Rpc_Block_Update_Response_Error)(nil), "anytype.Rpc.Block.Update.Response.Error")
-	proto.RegisterType((*Rpc_Wallet)(nil), "anytype.Rpc.Wallet")
-	proto.RegisterType((*Rpc_Wallet_Create)(nil), "anytype.Rpc.Wallet.Create")
-	proto.RegisterType((*Rpc_Wallet_Create_Request)(nil), "anytype.Rpc.Wallet.Create.Request")
-	proto.RegisterType((*Rpc_Wallet_Create_Response)(nil), "anytype.Rpc.Wallet.Create.Response")
-	proto.RegisterType((*Rpc_Wallet_Create_Response_Error)(nil), "anytype.Rpc.Wallet.Create.Response.Error")
-	proto.RegisterType((*Rpc_Wallet_Recover)(nil), "anytype.Rpc.Wallet.Recover")
-	proto.RegisterType((*Rpc_Wallet_Recover_Request)(nil), "anytype.Rpc.Wallet.Recover.Request")
-	proto.RegisterType((*Rpc_Wallet_Recover_Response)(nil), "anytype.Rpc.Wallet.Recover.Response")
-	proto.RegisterType((*Rpc_Wallet_Recover_Response_Error)(nil), "anytype.Rpc.Wallet.Recover.Response.Error")
-	proto.RegisterType((*Rpc_Account)(nil), "anytype.Rpc.Account")
-	proto.RegisterType((*Rpc_Account_Create)(nil), "anytype.Rpc.Account.Create")
-	proto.RegisterType((*Rpc_Account_Create_Request)(nil), "anytype.Rpc.Account.Create.Request")
-	proto.RegisterType((*Rpc_Account_Create_Response)(nil), "anytype.Rpc.Account.Create.Response")
-	proto.RegisterType((*Rpc_Account_Create_Response_Error)(nil), "anytype.Rpc.Account.Create.Response.Error")
-	proto.RegisterType((*Rpc_Account_Recover)(nil), "anytype.Rpc.Account.Recover")
-	proto.RegisterType((*Rpc_Account_Recover_Request)(nil), "anytype.Rpc.Account.Recover.Request")
-	proto.RegisterType((*Rpc_Account_Recover_Response)(nil), "anytype.Rpc.Account.Recover.Response")
-	proto.RegisterType((*Rpc_Account_Recover_Response_Error)(nil), "anytype.Rpc.Account.Recover.Response.Error")
-	proto.RegisterType((*Rpc_Account_Select)(nil), "anytype.Rpc.Account.Select")
-	proto.RegisterType((*Rpc_Account_Select_Request)(nil), "anytype.Rpc.Account.Select.Request")
-	proto.RegisterType((*Rpc_Account_Select_Response)(nil), "anytype.Rpc.Account.Select.Response")
-	proto.RegisterType((*Rpc_Account_Select_Response_Error)(nil), "anytype.Rpc.Account.Select.Response.Error")
-	proto.RegisterType((*Rpc_Version)(nil), "anytype.Rpc.Version")
-	proto.RegisterType((*Rpc_Version_Get)(nil), "anytype.Rpc.Version.Get")
-	proto.RegisterType((*Rpc_Version_Get_Request)(nil), "anytype.Rpc.Version.Get.Request")
-	proto.RegisterType((*Rpc_Version_Get_Response)(nil), "anytype.Rpc.Version.Get.Response")
-	proto.RegisterType((*Rpc_Version_Get_Response_Error)(nil), "anytype.Rpc.Version.Get.Response.Error")
-	proto.RegisterType((*Rpc_Log)(nil), "anytype.Rpc.Log")
-	proto.RegisterType((*Rpc_Log_Send)(nil), "anytype.Rpc.Log.Send")
-	proto.RegisterType((*Rpc_Log_Send_Request)(nil), "anytype.Rpc.Log.Send.Request")
-	proto.RegisterType((*Rpc_Log_Send_Response)(nil), "anytype.Rpc.Log.Send.Response")
-	proto.RegisterType((*Rpc_Log_Send_Response_Error)(nil), "anytype.Rpc.Log.Send.Response.Error")
-	proto.RegisterType((*Rpc_Ipfs)(nil), "anytype.Rpc.Ipfs")
-	proto.RegisterType((*Rpc_Ipfs_Get)(nil), "anytype.Rpc.Ipfs.Get")
-	proto.RegisterType((*Rpc_Ipfs_Get_File)(nil), "anytype.Rpc.Ipfs.Get.File")
-	proto.RegisterType((*Rpc_Ipfs_Get_File_Request)(nil), "anytype.Rpc.Ipfs.Get.File.Request")
-	proto.RegisterType((*Rpc_Ipfs_Get_File_Response)(nil), "anytype.Rpc.Ipfs.Get.File.Response")
-	proto.RegisterType((*Rpc_Ipfs_Get_File_Response_Error)(nil), "anytype.Rpc.Ipfs.Get.File.Response.Error")
-	proto.RegisterType((*Rpc_Image)(nil), "anytype.Rpc.Image")
-	proto.RegisterType((*Rpc_Image_Get)(nil), "anytype.Rpc.Image.Get")
-	proto.RegisterType((*Rpc_Image_Get_Blob)(nil), "anytype.Rpc.Image.Get.Blob")
-	proto.RegisterType((*Rpc_Image_Get_Blob_Request)(nil), "anytype.Rpc.Image.Get.Blob.Request")
-	proto.RegisterType((*Rpc_Image_Get_Blob_Response)(nil), "anytype.Rpc.Image.Get.Blob.Response")
-	proto.RegisterType((*Rpc_Image_Get_Blob_Response_Error)(nil), "anytype.Rpc.Image.Get.Blob.Response.Error")
-	proto.RegisterType((*Rpc_Image_Get_File)(nil), "anytype.Rpc.Image.Get.File")
-	proto.RegisterType((*Rpc_Image_Get_File_Request)(nil), "anytype.Rpc.Image.Get.File.Request")
-	proto.RegisterType((*Rpc_Image_Get_File_Response)(nil), "anytype.Rpc.Image.Get.File.Response")
-	proto.RegisterType((*Rpc_Image_Get_File_Response_Error)(nil), "anytype.Rpc.Image.Get.File.Response.Error")
+	proto.RegisterType((*RpcBlock)(nil), "anytype.Rpc.Block")
+	proto.RegisterType((*RpcBlockHistory)(nil), "anytype.Rpc.Block.History")
+	proto.RegisterType((*RpcBlockHistoryMove)(nil), "anytype.Rpc.Block.History.Move")
+	proto.RegisterType((*RpcBlockHistoryMoveRequest)(nil), "anytype.Rpc.Block.History.Move.Request")
+	proto.RegisterType((*RpcBlockHistoryMoveResponse)(nil), "anytype.Rpc.Block.History.Move.Response")
+	proto.RegisterType((*RpcBlockHistoryMoveResponseError)(nil), "anytype.Rpc.Block.History.Move.Response.Error")
+	proto.RegisterType((*RpcBlockOpen)(nil), "anytype.Rpc.Block.Open")
+	proto.RegisterType((*RpcBlockOpenRequest)(nil), "anytype.Rpc.Block.Open.Request")
+	proto.RegisterType((*RpcBlockOpenResponse)(nil), "anytype.Rpc.Block.Open.Response")
+	proto.RegisterType((*RpcBlockOpenResponseError)(nil), "anytype.Rpc.Block.Open.Response.Error")
+	proto.RegisterType((*RpcBlockCreate)(nil), "anytype.Rpc.Block.Create")
+	proto.RegisterType((*RpcBlockCreateRequest)(nil), "anytype.Rpc.Block.Create.Request")
+	proto.RegisterType((*RpcBlockCreateResponse)(nil), "anytype.Rpc.Block.Create.Response")
+	proto.RegisterType((*RpcBlockCreateResponseError)(nil), "anytype.Rpc.Block.Create.Response.Error")
+	proto.RegisterType((*RpcBlockUpdate)(nil), "anytype.Rpc.Block.Update")
+	proto.RegisterType((*RpcBlockUpdateRequest)(nil), "anytype.Rpc.Block.Update.Request")
+	proto.RegisterType((*RpcBlockUpdateResponse)(nil), "anytype.Rpc.Block.Update.Response")
+	proto.RegisterType((*RpcBlockUpdateResponseError)(nil), "anytype.Rpc.Block.Update.Response.Error")
+	proto.RegisterType((*RpcWallet)(nil), "anytype.Rpc.Wallet")
+	proto.RegisterType((*RpcWalletCreate)(nil), "anytype.Rpc.Wallet.Create")
+	proto.RegisterType((*RpcWalletCreateRequest)(nil), "anytype.Rpc.Wallet.Create.Request")
+	proto.RegisterType((*RpcWalletCreateResponse)(nil), "anytype.Rpc.Wallet.Create.Response")
+	proto.RegisterType((*RpcWalletCreateResponseError)(nil), "anytype.Rpc.Wallet.Create.Response.Error")
+	proto.RegisterType((*RpcWalletRecover)(nil), "anytype.Rpc.Wallet.Recover")
+	proto.RegisterType((*RpcWalletRecoverRequest)(nil), "anytype.Rpc.Wallet.Recover.Request")
+	proto.RegisterType((*RpcWalletRecoverResponse)(nil), "anytype.Rpc.Wallet.Recover.Response")
+	proto.RegisterType((*RpcWalletRecoverResponseError)(nil), "anytype.Rpc.Wallet.Recover.Response.Error")
+	proto.RegisterType((*RpcAccount)(nil), "anytype.Rpc.Account")
+	proto.RegisterType((*RpcAccountCreate)(nil), "anytype.Rpc.Account.Create")
+	proto.RegisterType((*RpcAccountCreateRequest)(nil), "anytype.Rpc.Account.Create.Request")
+	proto.RegisterType((*RpcAccountCreateResponse)(nil), "anytype.Rpc.Account.Create.Response")
+	proto.RegisterType((*RpcAccountCreateResponseError)(nil), "anytype.Rpc.Account.Create.Response.Error")
+	proto.RegisterType((*RpcAccountRecover)(nil), "anytype.Rpc.Account.Recover")
+	proto.RegisterType((*RpcAccountRecoverRequest)(nil), "anytype.Rpc.Account.Recover.Request")
+	proto.RegisterType((*RpcAccountRecoverResponse)(nil), "anytype.Rpc.Account.Recover.Response")
+	proto.RegisterType((*RpcAccountRecoverResponseError)(nil), "anytype.Rpc.Account.Recover.Response.Error")
+	proto.RegisterType((*RpcAccountSelect)(nil), "anytype.Rpc.Account.Select")
+	proto.RegisterType((*RpcAccountSelectRequest)(nil), "anytype.Rpc.Account.Select.Request")
+	proto.RegisterType((*RpcAccountSelectResponse)(nil), "anytype.Rpc.Account.Select.Response")
+	proto.RegisterType((*RpcAccountSelectResponseError)(nil), "anytype.Rpc.Account.Select.Response.Error")
+	proto.RegisterType((*RpcVersion)(nil), "anytype.Rpc.Version")
+	proto.RegisterType((*RpcVersionGet)(nil), "anytype.Rpc.Version.Get")
+	proto.RegisterType((*RpcVersionGetRequest)(nil), "anytype.Rpc.Version.Get.Request")
+	proto.RegisterType((*RpcVersionGetResponse)(nil), "anytype.Rpc.Version.Get.Response")
+	proto.RegisterType((*RpcVersionGetResponseError)(nil), "anytype.Rpc.Version.Get.Response.Error")
+	proto.RegisterType((*RpcLog)(nil), "anytype.Rpc.Log")
+	proto.RegisterType((*RpcLogSend)(nil), "anytype.Rpc.Log.Send")
+	proto.RegisterType((*RpcLogSendRequest)(nil), "anytype.Rpc.Log.Send.Request")
+	proto.RegisterType((*RpcLogSendResponse)(nil), "anytype.Rpc.Log.Send.Response")
+	proto.RegisterType((*RpcLogSendResponseError)(nil), "anytype.Rpc.Log.Send.Response.Error")
+	proto.RegisterType((*RpcIpfs)(nil), "anytype.Rpc.Ipfs")
+	proto.RegisterType((*RpcIpfsGet)(nil), "anytype.Rpc.Ipfs.Get")
+	proto.RegisterType((*RpcIpfsGetFile)(nil), "anytype.Rpc.Ipfs.Get.File")
+	proto.RegisterType((*RpcIpfsGetFileRequest)(nil), "anytype.Rpc.Ipfs.Get.File.Request")
+	proto.RegisterType((*RpcIpfsGetFileResponse)(nil), "anytype.Rpc.Ipfs.Get.File.Response")
+	proto.RegisterType((*RpcIpfsGetFileResponseError)(nil), "anytype.Rpc.Ipfs.Get.File.Response.Error")
+	proto.RegisterType((*RpcImage)(nil), "anytype.Rpc.Image")
+	proto.RegisterType((*RpcImageGet)(nil), "anytype.Rpc.Image.Get")
+	proto.RegisterType((*RpcImageGetBlob)(nil), "anytype.Rpc.Image.Get.Blob")
+	proto.RegisterType((*RpcImageGetBlobRequest)(nil), "anytype.Rpc.Image.Get.Blob.Request")
+	proto.RegisterType((*RpcImageGetBlobResponse)(nil), "anytype.Rpc.Image.Get.Blob.Response")
+	proto.RegisterType((*RpcImageGetBlobResponseError)(nil), "anytype.Rpc.Image.Get.Blob.Response.Error")
+	proto.RegisterType((*RpcImageGetFile)(nil), "anytype.Rpc.Image.Get.File")
+	proto.RegisterType((*RpcImageGetFileRequest)(nil), "anytype.Rpc.Image.Get.File.Request")
+	proto.RegisterType((*RpcImageGetFileResponse)(nil), "anytype.Rpc.Image.Get.File.Response")
+	proto.RegisterType((*RpcImageGetFileResponseError)(nil), "anytype.Rpc.Image.Get.File.Response.Error")
 }
 
 func init() { proto.RegisterFile("commands.proto", fileDescriptor_0dff099eb2e3dfdb) }
@@ -3804,7 +3804,7 @@ func (m *Rpc) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlock) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3814,12 +3814,12 @@ func (m *Rpc_Block) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlock) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3827,7 +3827,7 @@ func (m *Rpc_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_History) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockHistory) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3837,12 +3837,12 @@ func (m *Rpc_Block_History) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_History) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockHistory) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_History) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockHistory) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3850,7 +3850,7 @@ func (m *Rpc_Block_History) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_History_Move) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockHistoryMove) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3860,12 +3860,12 @@ func (m *Rpc_Block_History_Move) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_History_Move) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMove) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_History_Move) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMove) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3873,7 +3873,7 @@ func (m *Rpc_Block_History_Move) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_History_Move_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockHistoryMoveRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3883,12 +3883,12 @@ func (m *Rpc_Block_History_Move_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_History_Move_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMoveRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_History_Move_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMoveRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3920,7 +3920,7 @@ func (m *Rpc_Block_History_Move_Request) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_History_Move_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockHistoryMoveResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3930,12 +3930,12 @@ func (m *Rpc_Block_History_Move_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_History_Move_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMoveResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_History_Move_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMoveResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3955,7 +3955,7 @@ func (m *Rpc_Block_History_Move_Response) MarshalToSizedBuffer(dAtA []byte) (int
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_History_Move_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockHistoryMoveResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3965,12 +3965,12 @@ func (m *Rpc_Block_History_Move_Response_Error) Marshal() (dAtA []byte, err erro
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_History_Move_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMoveResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_History_Move_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockHistoryMoveResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3990,7 +3990,7 @@ func (m *Rpc_Block_History_Move_Response_Error) MarshalToSizedBuffer(dAtA []byte
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Open) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockOpen) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4000,12 +4000,12 @@ func (m *Rpc_Block_Open) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Open) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockOpen) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Open) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockOpen) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4013,7 +4013,7 @@ func (m *Rpc_Block_Open) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Open_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockOpenRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4023,12 +4023,12 @@ func (m *Rpc_Block_Open_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Open_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockOpenRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Open_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockOpenRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4043,7 +4043,7 @@ func (m *Rpc_Block_Open_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Open_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockOpenResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4053,12 +4053,12 @@ func (m *Rpc_Block_Open_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Open_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockOpenResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Open_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockOpenResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4090,7 +4090,7 @@ func (m *Rpc_Block_Open_Response) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Open_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockOpenResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4100,12 +4100,12 @@ func (m *Rpc_Block_Open_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Open_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockOpenResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Open_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockOpenResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4125,7 +4125,7 @@ func (m *Rpc_Block_Open_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Create) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockCreate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4135,12 +4135,12 @@ func (m *Rpc_Block_Create) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Create) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockCreate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4148,7 +4148,7 @@ func (m *Rpc_Block_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Create_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockCreateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4158,12 +4158,12 @@ func (m *Rpc_Block_Create_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Create_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockCreateRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Create_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4183,7 +4183,7 @@ func (m *Rpc_Block_Create_Request) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Create_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockCreateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4193,12 +4193,12 @@ func (m *Rpc_Block_Create_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Create_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockCreateResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Create_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4218,7 +4218,7 @@ func (m *Rpc_Block_Create_Response) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Create_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockCreateResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4228,12 +4228,12 @@ func (m *Rpc_Block_Create_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Create_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockCreateResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Create_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockCreateResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4253,7 +4253,7 @@ func (m *Rpc_Block_Create_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Update) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockUpdate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4263,12 +4263,12 @@ func (m *Rpc_Block_Update) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Update) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Update) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4276,7 +4276,7 @@ func (m *Rpc_Block_Update) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Update_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockUpdateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4286,12 +4286,12 @@ func (m *Rpc_Block_Update_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Update_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdateRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Update_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4311,7 +4311,7 @@ func (m *Rpc_Block_Update_Request) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Update_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockUpdateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4321,12 +4321,12 @@ func (m *Rpc_Block_Update_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Update_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdateResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Update_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4346,7 +4346,7 @@ func (m *Rpc_Block_Update_Response) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Block_Update_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockUpdateResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4356,12 +4356,12 @@ func (m *Rpc_Block_Update_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Block_Update_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdateResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Block_Update_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockUpdateResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4381,7 +4381,7 @@ func (m *Rpc_Block_Update_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet) Marshal() (dAtA []byte, err error) {
+func (m *RpcWallet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4391,12 +4391,12 @@ func (m *Rpc_Wallet) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWallet) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWallet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4404,7 +4404,7 @@ func (m *Rpc_Wallet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Create) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletCreate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4414,12 +4414,12 @@ func (m *Rpc_Wallet_Create) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Create) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletCreate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4427,7 +4427,7 @@ func (m *Rpc_Wallet_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Create_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletCreateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4437,12 +4437,12 @@ func (m *Rpc_Wallet_Create_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Create_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletCreateRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Create_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4457,7 +4457,7 @@ func (m *Rpc_Wallet_Create_Request) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Create_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletCreateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4467,12 +4467,12 @@ func (m *Rpc_Wallet_Create_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Create_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletCreateResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Create_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4499,7 +4499,7 @@ func (m *Rpc_Wallet_Create_Response) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Create_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletCreateResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4509,12 +4509,12 @@ func (m *Rpc_Wallet_Create_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Create_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletCreateResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Create_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletCreateResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4534,7 +4534,7 @@ func (m *Rpc_Wallet_Create_Response_Error) MarshalToSizedBuffer(dAtA []byte) (in
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Recover) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletRecover) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4544,12 +4544,12 @@ func (m *Rpc_Wallet_Recover) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Recover) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletRecover) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Recover) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletRecover) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4557,7 +4557,7 @@ func (m *Rpc_Wallet_Recover) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Recover_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletRecoverRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4567,12 +4567,12 @@ func (m *Rpc_Wallet_Recover_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Recover_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletRecoverRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Recover_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletRecoverRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4594,7 +4594,7 @@ func (m *Rpc_Wallet_Recover_Request) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Recover_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletRecoverResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4604,12 +4604,12 @@ func (m *Rpc_Wallet_Recover_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Recover_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletRecoverResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Recover_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletRecoverResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4629,7 +4629,7 @@ func (m *Rpc_Wallet_Recover_Response) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Wallet_Recover_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcWalletRecoverResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4639,12 +4639,12 @@ func (m *Rpc_Wallet_Recover_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Wallet_Recover_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcWalletRecoverResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Wallet_Recover_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcWalletRecoverResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4664,7 +4664,7 @@ func (m *Rpc_Wallet_Recover_Response_Error) MarshalToSizedBuffer(dAtA []byte) (i
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccount) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4674,12 +4674,12 @@ func (m *Rpc_Account) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccount) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccount) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4687,7 +4687,7 @@ func (m *Rpc_Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Create) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountCreate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4697,12 +4697,12 @@ func (m *Rpc_Account_Create) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Create) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountCreate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4710,7 +4710,7 @@ func (m *Rpc_Account_Create) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Create_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountCreateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4720,12 +4720,12 @@ func (m *Rpc_Account_Create_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Create_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Create_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4749,12 +4749,12 @@ func (m *Rpc_Account_Create_Request) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Create_Request_AvatarLocalPath) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateRequestAvatarOfAvatarLocalPath) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Create_Request_AvatarLocalPath) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateRequestAvatarOfAvatarLocalPath) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i -= len(m.AvatarLocalPath)
 	copy(dAtA[i:], m.AvatarLocalPath)
@@ -4763,12 +4763,12 @@ func (m *Rpc_Account_Create_Request_AvatarLocalPath) MarshalToSizedBuffer(dAtA [
 	dAtA[i] = 0x12
 	return len(dAtA) - i, nil
 }
-func (m *Rpc_Account_Create_Request_AvatarColor) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateRequestAvatarOfAvatarColor) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Create_Request_AvatarColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateRequestAvatarOfAvatarColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i -= len(m.AvatarColor)
 	copy(dAtA[i:], m.AvatarColor)
@@ -4777,7 +4777,7 @@ func (m *Rpc_Account_Create_Request_AvatarColor) MarshalToSizedBuffer(dAtA []byt
 	dAtA[i] = 0x1a
 	return len(dAtA) - i, nil
 }
-func (m *Rpc_Account_Create_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountCreateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4787,12 +4787,12 @@ func (m *Rpc_Account_Create_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Create_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Create_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4824,7 +4824,7 @@ func (m *Rpc_Account_Create_Response) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Create_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountCreateResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4834,12 +4834,12 @@ func (m *Rpc_Account_Create_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Create_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Create_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountCreateResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4859,7 +4859,7 @@ func (m *Rpc_Account_Create_Response_Error) MarshalToSizedBuffer(dAtA []byte) (i
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Recover) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountRecover) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4869,12 +4869,12 @@ func (m *Rpc_Account_Recover) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Recover) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountRecover) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Recover) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountRecover) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4882,7 +4882,7 @@ func (m *Rpc_Account_Recover) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Recover_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountRecoverRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4892,12 +4892,12 @@ func (m *Rpc_Account_Recover_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Recover_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountRecoverRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Recover_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountRecoverRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4905,7 +4905,7 @@ func (m *Rpc_Account_Recover_Request) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Recover_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountRecoverResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4915,12 +4915,12 @@ func (m *Rpc_Account_Recover_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Recover_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountRecoverResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Recover_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountRecoverResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4940,7 +4940,7 @@ func (m *Rpc_Account_Recover_Response) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Recover_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountRecoverResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4950,12 +4950,12 @@ func (m *Rpc_Account_Recover_Response_Error) Marshal() (dAtA []byte, err error) 
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Recover_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountRecoverResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Recover_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountRecoverResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4975,7 +4975,7 @@ func (m *Rpc_Account_Recover_Response_Error) MarshalToSizedBuffer(dAtA []byte) (
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Select) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountSelect) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4985,12 +4985,12 @@ func (m *Rpc_Account_Select) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Select) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountSelect) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Select) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountSelect) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -4998,7 +4998,7 @@ func (m *Rpc_Account_Select) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Select_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountSelectRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5008,12 +5008,12 @@ func (m *Rpc_Account_Select_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Select_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountSelectRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Select_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountSelectRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5035,7 +5035,7 @@ func (m *Rpc_Account_Select_Request) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Select_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountSelectResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5045,12 +5045,12 @@ func (m *Rpc_Account_Select_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Select_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountSelectResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Select_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountSelectResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5082,7 +5082,7 @@ func (m *Rpc_Account_Select_Response) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Account_Select_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcAccountSelectResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5092,12 +5092,12 @@ func (m *Rpc_Account_Select_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Account_Select_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcAccountSelectResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Account_Select_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcAccountSelectResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5117,7 +5117,7 @@ func (m *Rpc_Account_Select_Response_Error) MarshalToSizedBuffer(dAtA []byte) (i
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Version) Marshal() (dAtA []byte, err error) {
+func (m *RpcVersion) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5127,12 +5127,12 @@ func (m *Rpc_Version) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Version) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcVersion) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Version) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcVersion) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5140,7 +5140,7 @@ func (m *Rpc_Version) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Version_Get) Marshal() (dAtA []byte, err error) {
+func (m *RpcVersionGet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5150,12 +5150,12 @@ func (m *Rpc_Version_Get) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Version_Get) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcVersionGet) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Version_Get) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcVersionGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5163,7 +5163,7 @@ func (m *Rpc_Version_Get) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Version_Get_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcVersionGetRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5173,12 +5173,12 @@ func (m *Rpc_Version_Get_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Version_Get_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcVersionGetRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Version_Get_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcVersionGetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5186,7 +5186,7 @@ func (m *Rpc_Version_Get_Request) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Version_Get_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcVersionGetResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5196,12 +5196,12 @@ func (m *Rpc_Version_Get_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Version_Get_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcVersionGetResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Version_Get_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcVersionGetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5228,7 +5228,7 @@ func (m *Rpc_Version_Get_Response) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Version_Get_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcVersionGetResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5238,12 +5238,12 @@ func (m *Rpc_Version_Get_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Version_Get_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcVersionGetResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Version_Get_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcVersionGetResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5263,7 +5263,7 @@ func (m *Rpc_Version_Get_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Log) Marshal() (dAtA []byte, err error) {
+func (m *RpcLog) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5273,12 +5273,12 @@ func (m *Rpc_Log) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Log) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcLog) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Log) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcLog) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5286,7 +5286,7 @@ func (m *Rpc_Log) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Log_Send) Marshal() (dAtA []byte, err error) {
+func (m *RpcLogSend) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5296,12 +5296,12 @@ func (m *Rpc_Log_Send) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Log_Send) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcLogSend) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Log_Send) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcLogSend) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5309,7 +5309,7 @@ func (m *Rpc_Log_Send) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Log_Send_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcLogSendRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5319,12 +5319,12 @@ func (m *Rpc_Log_Send_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Log_Send_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcLogSendRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Log_Send_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcLogSendRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5344,7 +5344,7 @@ func (m *Rpc_Log_Send_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Log_Send_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcLogSendResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5354,12 +5354,12 @@ func (m *Rpc_Log_Send_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Log_Send_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcLogSendResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Log_Send_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcLogSendResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5379,7 +5379,7 @@ func (m *Rpc_Log_Send_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Log_Send_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcLogSendResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5389,12 +5389,12 @@ func (m *Rpc_Log_Send_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Log_Send_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcLogSendResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Log_Send_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcLogSendResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5414,7 +5414,7 @@ func (m *Rpc_Log_Send_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Ipfs) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfs) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5424,12 +5424,12 @@ func (m *Rpc_Ipfs) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Ipfs) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfs) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Ipfs) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfs) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5437,7 +5437,7 @@ func (m *Rpc_Ipfs) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Ipfs_Get) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsGet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5447,12 +5447,12 @@ func (m *Rpc_Ipfs_Get) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Ipfs_Get) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsGet) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Ipfs_Get) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5460,7 +5460,7 @@ func (m *Rpc_Ipfs_Get) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Ipfs_Get_File) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsGetFile) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5470,12 +5470,12 @@ func (m *Rpc_Ipfs_Get_File) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Ipfs_Get_File) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFile) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Ipfs_Get_File) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5483,7 +5483,7 @@ func (m *Rpc_Ipfs_Get_File) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsGetFileRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5493,12 +5493,12 @@ func (m *Rpc_Ipfs_Get_File_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFileRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Ipfs_Get_File_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFileRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5513,7 +5513,7 @@ func (m *Rpc_Ipfs_Get_File_Request) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsGetFileResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5523,12 +5523,12 @@ func (m *Rpc_Ipfs_Get_File_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFileResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFileResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5569,7 +5569,7 @@ func (m *Rpc_Ipfs_Get_File_Response) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsGetFileResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5579,12 +5579,12 @@ func (m *Rpc_Ipfs_Get_File_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Ipfs_Get_File_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFileResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Ipfs_Get_File_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsGetFileResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5604,7 +5604,7 @@ func (m *Rpc_Ipfs_Get_File_Response_Error) MarshalToSizedBuffer(dAtA []byte) (in
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image) Marshal() (dAtA []byte, err error) {
+func (m *RpcImage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5614,12 +5614,12 @@ func (m *Rpc_Image) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5627,7 +5627,7 @@ func (m *Rpc_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5637,12 +5637,12 @@ func (m *Rpc_Image_Get) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGet) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5650,7 +5650,7 @@ func (m *Rpc_Image_Get) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_Blob) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetBlob) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5660,12 +5660,12 @@ func (m *Rpc_Image_Get_Blob) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_Blob) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlob) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_Blob) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlob) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5673,7 +5673,7 @@ func (m *Rpc_Image_Get_Blob) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_Blob_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetBlobRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5683,12 +5683,12 @@ func (m *Rpc_Image_Get_Blob_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_Blob_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlobRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_Blob_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlobRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5708,7 +5708,7 @@ func (m *Rpc_Image_Get_Blob_Request) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_Blob_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetBlobResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5718,12 +5718,12 @@ func (m *Rpc_Image_Get_Blob_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_Blob_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlobResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_Blob_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlobResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5750,7 +5750,7 @@ func (m *Rpc_Image_Get_Blob_Response) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_Blob_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetBlobResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5760,12 +5760,12 @@ func (m *Rpc_Image_Get_Blob_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_Blob_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlobResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_Blob_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetBlobResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5785,7 +5785,7 @@ func (m *Rpc_Image_Get_Blob_Response_Error) MarshalToSizedBuffer(dAtA []byte) (i
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_File) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetFile) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5795,12 +5795,12 @@ func (m *Rpc_Image_Get_File) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_File) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetFile) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_File) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5808,7 +5808,7 @@ func (m *Rpc_Image_Get_File) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_File_Request) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetFileRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5818,12 +5818,12 @@ func (m *Rpc_Image_Get_File_Request) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_File_Request) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetFileRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_File_Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetFileRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5843,7 +5843,7 @@ func (m *Rpc_Image_Get_File_Request) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_File_Response) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetFileResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5853,12 +5853,12 @@ func (m *Rpc_Image_Get_File_Response) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_File_Response) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetFileResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_File_Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetFileResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5885,7 +5885,7 @@ func (m *Rpc_Image_Get_File_Response) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *Rpc_Image_Get_File_Response_Error) Marshal() (dAtA []byte, err error) {
+func (m *RpcImageGetFileResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5895,12 +5895,12 @@ func (m *Rpc_Image_Get_File_Response_Error) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Rpc_Image_Get_File_Response_Error) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcImageGetFileResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Rpc_Image_Get_File_Response_Error) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcImageGetFileResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5940,7 +5940,7 @@ func (m *Rpc) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block) Size() (n int) {
+func (m *RpcBlock) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5949,7 +5949,7 @@ func (m *Rpc_Block) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_History) Size() (n int) {
+func (m *RpcBlockHistory) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5958,7 +5958,7 @@ func (m *Rpc_Block_History) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_History_Move) Size() (n int) {
+func (m *RpcBlockHistoryMove) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5967,7 +5967,7 @@ func (m *Rpc_Block_History_Move) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_History_Move_Request) Size() (n int) {
+func (m *RpcBlockHistoryMoveRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5987,7 +5987,7 @@ func (m *Rpc_Block_History_Move_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_History_Move_Response) Size() (n int) {
+func (m *RpcBlockHistoryMoveResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6000,7 +6000,7 @@ func (m *Rpc_Block_History_Move_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_History_Move_Response_Error) Size() (n int) {
+func (m *RpcBlockHistoryMoveResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6016,7 +6016,7 @@ func (m *Rpc_Block_History_Move_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Open) Size() (n int) {
+func (m *RpcBlockOpen) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6025,7 +6025,7 @@ func (m *Rpc_Block_Open) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Open_Request) Size() (n int) {
+func (m *RpcBlockOpenRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6038,7 +6038,7 @@ func (m *Rpc_Block_Open_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Open_Response) Size() (n int) {
+func (m *RpcBlockOpenResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6055,7 +6055,7 @@ func (m *Rpc_Block_Open_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Open_Response_Error) Size() (n int) {
+func (m *RpcBlockOpenResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6071,7 +6071,7 @@ func (m *Rpc_Block_Open_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Create) Size() (n int) {
+func (m *RpcBlockCreate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6080,7 +6080,7 @@ func (m *Rpc_Block_Create) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Create_Request) Size() (n int) {
+func (m *RpcBlockCreateRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6096,7 +6096,7 @@ func (m *Rpc_Block_Create_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Create_Response) Size() (n int) {
+func (m *RpcBlockCreateResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6109,7 +6109,7 @@ func (m *Rpc_Block_Create_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Create_Response_Error) Size() (n int) {
+func (m *RpcBlockCreateResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6125,7 +6125,7 @@ func (m *Rpc_Block_Create_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Update) Size() (n int) {
+func (m *RpcBlockUpdate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6134,7 +6134,7 @@ func (m *Rpc_Block_Update) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Update_Request) Size() (n int) {
+func (m *RpcBlockUpdateRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6147,7 +6147,7 @@ func (m *Rpc_Block_Update_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Update_Response) Size() (n int) {
+func (m *RpcBlockUpdateResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6160,7 +6160,7 @@ func (m *Rpc_Block_Update_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Block_Update_Response_Error) Size() (n int) {
+func (m *RpcBlockUpdateResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6176,7 +6176,7 @@ func (m *Rpc_Block_Update_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet) Size() (n int) {
+func (m *RpcWallet) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6185,7 +6185,7 @@ func (m *Rpc_Wallet) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Create) Size() (n int) {
+func (m *RpcWalletCreate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6194,7 +6194,7 @@ func (m *Rpc_Wallet_Create) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Create_Request) Size() (n int) {
+func (m *RpcWalletCreateRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6207,7 +6207,7 @@ func (m *Rpc_Wallet_Create_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Create_Response) Size() (n int) {
+func (m *RpcWalletCreateResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6224,7 +6224,7 @@ func (m *Rpc_Wallet_Create_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Create_Response_Error) Size() (n int) {
+func (m *RpcWalletCreateResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6240,7 +6240,7 @@ func (m *Rpc_Wallet_Create_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Recover) Size() (n int) {
+func (m *RpcWalletRecover) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6249,7 +6249,7 @@ func (m *Rpc_Wallet_Recover) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Recover_Request) Size() (n int) {
+func (m *RpcWalletRecoverRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6266,7 +6266,7 @@ func (m *Rpc_Wallet_Recover_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Recover_Response) Size() (n int) {
+func (m *RpcWalletRecoverResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6279,7 +6279,7 @@ func (m *Rpc_Wallet_Recover_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Wallet_Recover_Response_Error) Size() (n int) {
+func (m *RpcWalletRecoverResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6295,7 +6295,7 @@ func (m *Rpc_Wallet_Recover_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account) Size() (n int) {
+func (m *RpcAccount) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6304,7 +6304,7 @@ func (m *Rpc_Account) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Create) Size() (n int) {
+func (m *RpcAccountCreate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6313,7 +6313,7 @@ func (m *Rpc_Account_Create) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Create_Request) Size() (n int) {
+func (m *RpcAccountCreateRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6329,7 +6329,7 @@ func (m *Rpc_Account_Create_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Create_Request_AvatarLocalPath) Size() (n int) {
+func (m *RpcAccountCreateRequestAvatarOfAvatarLocalPath) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6339,7 +6339,7 @@ func (m *Rpc_Account_Create_Request_AvatarLocalPath) Size() (n int) {
 	n += 1 + l + sovCommands(uint64(l))
 	return n
 }
-func (m *Rpc_Account_Create_Request_AvatarColor) Size() (n int) {
+func (m *RpcAccountCreateRequestAvatarOfAvatarColor) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6349,7 +6349,7 @@ func (m *Rpc_Account_Create_Request_AvatarColor) Size() (n int) {
 	n += 1 + l + sovCommands(uint64(l))
 	return n
 }
-func (m *Rpc_Account_Create_Response) Size() (n int) {
+func (m *RpcAccountCreateResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6366,7 +6366,7 @@ func (m *Rpc_Account_Create_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Create_Response_Error) Size() (n int) {
+func (m *RpcAccountCreateResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6382,7 +6382,7 @@ func (m *Rpc_Account_Create_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Recover) Size() (n int) {
+func (m *RpcAccountRecover) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6391,7 +6391,7 @@ func (m *Rpc_Account_Recover) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Recover_Request) Size() (n int) {
+func (m *RpcAccountRecoverRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6400,7 +6400,7 @@ func (m *Rpc_Account_Recover_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Recover_Response) Size() (n int) {
+func (m *RpcAccountRecoverResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6413,7 +6413,7 @@ func (m *Rpc_Account_Recover_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Recover_Response_Error) Size() (n int) {
+func (m *RpcAccountRecoverResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6429,7 +6429,7 @@ func (m *Rpc_Account_Recover_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Select) Size() (n int) {
+func (m *RpcAccountSelect) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6438,7 +6438,7 @@ func (m *Rpc_Account_Select) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Select_Request) Size() (n int) {
+func (m *RpcAccountSelectRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6455,7 +6455,7 @@ func (m *Rpc_Account_Select_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Select_Response) Size() (n int) {
+func (m *RpcAccountSelectResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6472,7 +6472,7 @@ func (m *Rpc_Account_Select_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Account_Select_Response_Error) Size() (n int) {
+func (m *RpcAccountSelectResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6488,7 +6488,7 @@ func (m *Rpc_Account_Select_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Version) Size() (n int) {
+func (m *RpcVersion) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6497,7 +6497,7 @@ func (m *Rpc_Version) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Version_Get) Size() (n int) {
+func (m *RpcVersionGet) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6506,7 +6506,7 @@ func (m *Rpc_Version_Get) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Version_Get_Request) Size() (n int) {
+func (m *RpcVersionGetRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6515,7 +6515,7 @@ func (m *Rpc_Version_Get_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Version_Get_Response) Size() (n int) {
+func (m *RpcVersionGetResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6532,7 +6532,7 @@ func (m *Rpc_Version_Get_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Version_Get_Response_Error) Size() (n int) {
+func (m *RpcVersionGetResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6548,7 +6548,7 @@ func (m *Rpc_Version_Get_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Log) Size() (n int) {
+func (m *RpcLog) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6557,7 +6557,7 @@ func (m *Rpc_Log) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Log_Send) Size() (n int) {
+func (m *RpcLogSend) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6566,7 +6566,7 @@ func (m *Rpc_Log_Send) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Log_Send_Request) Size() (n int) {
+func (m *RpcLogSendRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6582,7 +6582,7 @@ func (m *Rpc_Log_Send_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Log_Send_Response) Size() (n int) {
+func (m *RpcLogSendResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6595,7 +6595,7 @@ func (m *Rpc_Log_Send_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Log_Send_Response_Error) Size() (n int) {
+func (m *RpcLogSendResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6611,7 +6611,7 @@ func (m *Rpc_Log_Send_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Ipfs) Size() (n int) {
+func (m *RpcIpfs) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6620,7 +6620,7 @@ func (m *Rpc_Ipfs) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Ipfs_Get) Size() (n int) {
+func (m *RpcIpfsGet) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6629,7 +6629,7 @@ func (m *Rpc_Ipfs_Get) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Ipfs_Get_File) Size() (n int) {
+func (m *RpcIpfsGetFile) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6638,7 +6638,7 @@ func (m *Rpc_Ipfs_Get_File) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Ipfs_Get_File_Request) Size() (n int) {
+func (m *RpcIpfsGetFileRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6651,7 +6651,7 @@ func (m *Rpc_Ipfs_Get_File_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Ipfs_Get_File_Response) Size() (n int) {
+func (m *RpcIpfsGetFileResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6676,7 +6676,7 @@ func (m *Rpc_Ipfs_Get_File_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Ipfs_Get_File_Response_Error) Size() (n int) {
+func (m *RpcIpfsGetFileResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6692,7 +6692,7 @@ func (m *Rpc_Ipfs_Get_File_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image) Size() (n int) {
+func (m *RpcImage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6701,7 +6701,7 @@ func (m *Rpc_Image) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get) Size() (n int) {
+func (m *RpcImageGet) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6710,7 +6710,7 @@ func (m *Rpc_Image_Get) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_Blob) Size() (n int) {
+func (m *RpcImageGetBlob) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6719,7 +6719,7 @@ func (m *Rpc_Image_Get_Blob) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_Blob_Request) Size() (n int) {
+func (m *RpcImageGetBlobRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6735,7 +6735,7 @@ func (m *Rpc_Image_Get_Blob_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_Blob_Response) Size() (n int) {
+func (m *RpcImageGetBlobResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6752,7 +6752,7 @@ func (m *Rpc_Image_Get_Blob_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_Blob_Response_Error) Size() (n int) {
+func (m *RpcImageGetBlobResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6768,7 +6768,7 @@ func (m *Rpc_Image_Get_Blob_Response_Error) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_File) Size() (n int) {
+func (m *RpcImageGetFile) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6777,7 +6777,7 @@ func (m *Rpc_Image_Get_File) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_File_Request) Size() (n int) {
+func (m *RpcImageGetFileRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6793,7 +6793,7 @@ func (m *Rpc_Image_Get_File_Request) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_File_Response) Size() (n int) {
+func (m *RpcImageGetFileResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6810,7 +6810,7 @@ func (m *Rpc_Image_Get_File_Response) Size() (n int) {
 	return n
 }
 
-func (m *Rpc_Image_Get_File_Response_Error) Size() (n int) {
+func (m *RpcImageGetFileResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6885,7 +6885,7 @@ func (m *Rpc) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block) Unmarshal(dAtA []byte) error {
+func (m *RpcBlock) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6938,7 +6938,7 @@ func (m *Rpc_Block) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_History) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockHistory) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6991,7 +6991,7 @@ func (m *Rpc_Block_History) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_History_Move) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockHistoryMove) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7044,7 +7044,7 @@ func (m *Rpc_Block_History_Move) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_History_Move_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockHistoryMoveRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7181,7 +7181,7 @@ func (m *Rpc_Block_History_Move_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_History_Move_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockHistoryMoveResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7240,7 +7240,7 @@ func (m *Rpc_Block_History_Move_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Block_History_Move_Response_Error{}
+				m.Error = &RpcBlockHistoryMoveResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -7270,7 +7270,7 @@ func (m *Rpc_Block_History_Move_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_History_Move_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockHistoryMoveResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7313,7 +7313,7 @@ func (m *Rpc_Block_History_Move_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Block_History_Move_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcBlockHistoryMoveResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -7374,7 +7374,7 @@ func (m *Rpc_Block_History_Move_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Open) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockOpen) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7427,7 +7427,7 @@ func (m *Rpc_Block_Open) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Open_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockOpenRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7512,7 +7512,7 @@ func (m *Rpc_Block_Open_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Open_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockOpenResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7571,7 +7571,7 @@ func (m *Rpc_Block_Open_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Block_Open_Response_Error{}
+				m.Error = &RpcBlockOpenResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -7607,7 +7607,7 @@ func (m *Rpc_Block_Open_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.BlockHeader == nil {
-				m.BlockHeader = &Model_Block_Header{}
+				m.BlockHeader = &ModelBlockHeader{}
 			}
 			if err := m.BlockHeader.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -7637,7 +7637,7 @@ func (m *Rpc_Block_Open_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Open_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockOpenResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7680,7 +7680,7 @@ func (m *Rpc_Block_Open_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Block_Open_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcBlockOpenResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -7741,7 +7741,7 @@ func (m *Rpc_Block_Open_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Create) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockCreate) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7794,7 +7794,7 @@ func (m *Rpc_Block_Create) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Create_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockCreateRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7837,7 +7837,7 @@ func (m *Rpc_Block_Create_Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= Model_Block_Header_Type(b&0x7F) << shift
+				m.Type |= ModelBlockHeaderType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -7898,7 +7898,7 @@ func (m *Rpc_Block_Create_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Create_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockCreateResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7957,7 +7957,7 @@ func (m *Rpc_Block_Create_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Block_Create_Response_Error{}
+				m.Error = &RpcBlockCreateResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -7987,7 +7987,7 @@ func (m *Rpc_Block_Create_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Create_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockCreateResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8030,7 +8030,7 @@ func (m *Rpc_Block_Create_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Block_Create_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcBlockCreateResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -8091,7 +8091,7 @@ func (m *Rpc_Block_Create_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Update) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockUpdate) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8144,7 +8144,7 @@ func (m *Rpc_Block_Update) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Update_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockUpdateRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8233,7 +8233,7 @@ func (m *Rpc_Block_Update_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Update_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockUpdateResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8292,7 +8292,7 @@ func (m *Rpc_Block_Update_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Block_Update_Response_Error{}
+				m.Error = &RpcBlockUpdateResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -8322,7 +8322,7 @@ func (m *Rpc_Block_Update_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Block_Update_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockUpdateResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8365,7 +8365,7 @@ func (m *Rpc_Block_Update_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Block_Update_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcBlockUpdateResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -8426,7 +8426,7 @@ func (m *Rpc_Block_Update_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet) Unmarshal(dAtA []byte) error {
+func (m *RpcWallet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8479,7 +8479,7 @@ func (m *Rpc_Wallet) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Create) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletCreate) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8532,7 +8532,7 @@ func (m *Rpc_Wallet_Create) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Create_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletCreateRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8617,7 +8617,7 @@ func (m *Rpc_Wallet_Create_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Create_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletCreateResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8676,7 +8676,7 @@ func (m *Rpc_Wallet_Create_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Wallet_Create_Response_Error{}
+				m.Error = &RpcWalletCreateResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -8738,7 +8738,7 @@ func (m *Rpc_Wallet_Create_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Create_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletCreateResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8781,7 +8781,7 @@ func (m *Rpc_Wallet_Create_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Wallet_Create_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcWalletCreateResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -8842,7 +8842,7 @@ func (m *Rpc_Wallet_Create_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Recover) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletRecover) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8895,7 +8895,7 @@ func (m *Rpc_Wallet_Recover) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Recover_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletRecoverRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9012,7 +9012,7 @@ func (m *Rpc_Wallet_Recover_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Recover_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletRecoverResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9071,7 +9071,7 @@ func (m *Rpc_Wallet_Recover_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Wallet_Recover_Response_Error{}
+				m.Error = &RpcWalletRecoverResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -9101,7 +9101,7 @@ func (m *Rpc_Wallet_Recover_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Wallet_Recover_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcWalletRecoverResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9144,7 +9144,7 @@ func (m *Rpc_Wallet_Recover_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Wallet_Recover_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcWalletRecoverResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -9205,7 +9205,7 @@ func (m *Rpc_Wallet_Recover_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account) Unmarshal(dAtA []byte) error {
+func (m *RpcAccount) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9258,7 +9258,7 @@ func (m *Rpc_Account) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Create) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountCreate) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9311,7 +9311,7 @@ func (m *Rpc_Account_Create) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Create_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountCreateRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9402,7 +9402,7 @@ func (m *Rpc_Account_Create_Request) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Avatar = &Rpc_Account_Create_Request_AvatarLocalPath{string(dAtA[iNdEx:postIndex])}
+			m.Avatar = &RpcAccountCreateRequestAvatarOfAvatarLocalPath{string(dAtA[iNdEx:postIndex])}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -9434,7 +9434,7 @@ func (m *Rpc_Account_Create_Request) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Avatar = &Rpc_Account_Create_Request_AvatarColor{string(dAtA[iNdEx:postIndex])}
+			m.Avatar = &RpcAccountCreateRequestAvatarOfAvatarColor{string(dAtA[iNdEx:postIndex])}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -9460,7 +9460,7 @@ func (m *Rpc_Account_Create_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Create_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountCreateResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9519,7 +9519,7 @@ func (m *Rpc_Account_Create_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Account_Create_Response_Error{}
+				m.Error = &RpcAccountCreateResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -9555,7 +9555,7 @@ func (m *Rpc_Account_Create_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Account == nil {
-				m.Account = &Model_Account{}
+				m.Account = &ModelAccount{}
 			}
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -9585,7 +9585,7 @@ func (m *Rpc_Account_Create_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Create_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountCreateResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9628,7 +9628,7 @@ func (m *Rpc_Account_Create_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Account_Create_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcAccountCreateResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -9689,7 +9689,7 @@ func (m *Rpc_Account_Create_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Recover) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountRecover) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9742,7 +9742,7 @@ func (m *Rpc_Account_Recover) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Recover_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountRecoverRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9795,7 +9795,7 @@ func (m *Rpc_Account_Recover_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Recover_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountRecoverResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9854,7 +9854,7 @@ func (m *Rpc_Account_Recover_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Account_Recover_Response_Error{}
+				m.Error = &RpcAccountRecoverResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -9884,7 +9884,7 @@ func (m *Rpc_Account_Recover_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Recover_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountRecoverResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -9927,7 +9927,7 @@ func (m *Rpc_Account_Recover_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Account_Recover_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcAccountRecoverResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -9988,7 +9988,7 @@ func (m *Rpc_Account_Recover_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Select) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountSelect) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10041,7 +10041,7 @@ func (m *Rpc_Account_Select) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Select_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountSelectRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10158,7 +10158,7 @@ func (m *Rpc_Account_Select_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Select_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountSelectResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10217,7 +10217,7 @@ func (m *Rpc_Account_Select_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Account_Select_Response_Error{}
+				m.Error = &RpcAccountSelectResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -10253,7 +10253,7 @@ func (m *Rpc_Account_Select_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Account == nil {
-				m.Account = &Model_Account{}
+				m.Account = &ModelAccount{}
 			}
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -10283,7 +10283,7 @@ func (m *Rpc_Account_Select_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Account_Select_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcAccountSelectResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10326,7 +10326,7 @@ func (m *Rpc_Account_Select_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Account_Select_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcAccountSelectResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -10387,7 +10387,7 @@ func (m *Rpc_Account_Select_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Version) Unmarshal(dAtA []byte) error {
+func (m *RpcVersion) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10440,7 +10440,7 @@ func (m *Rpc_Version) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Version_Get) Unmarshal(dAtA []byte) error {
+func (m *RpcVersionGet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10493,7 +10493,7 @@ func (m *Rpc_Version_Get) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Version_Get_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcVersionGetRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10546,7 +10546,7 @@ func (m *Rpc_Version_Get_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Version_Get_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcVersionGetResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10605,7 +10605,7 @@ func (m *Rpc_Version_Get_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Version_Get_Response_Error{}
+				m.Error = &RpcVersionGetResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -10667,7 +10667,7 @@ func (m *Rpc_Version_Get_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Version_Get_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcVersionGetResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10710,7 +10710,7 @@ func (m *Rpc_Version_Get_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Version_Get_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcVersionGetResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -10771,7 +10771,7 @@ func (m *Rpc_Version_Get_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Log) Unmarshal(dAtA []byte) error {
+func (m *RpcLog) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10824,7 +10824,7 @@ func (m *Rpc_Log) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Log_Send) Unmarshal(dAtA []byte) error {
+func (m *RpcLogSend) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10877,7 +10877,7 @@ func (m *Rpc_Log_Send) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Log_Send_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcLogSendRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -10952,7 +10952,7 @@ func (m *Rpc_Log_Send_Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Level |= Rpc_Log_Send_Request_Level(b&0x7F) << shift
+				m.Level |= RpcLogSendRequestLevel(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -10981,7 +10981,7 @@ func (m *Rpc_Log_Send_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Log_Send_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcLogSendResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11040,7 +11040,7 @@ func (m *Rpc_Log_Send_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Log_Send_Response_Error{}
+				m.Error = &RpcLogSendResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -11070,7 +11070,7 @@ func (m *Rpc_Log_Send_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Log_Send_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcLogSendResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11113,7 +11113,7 @@ func (m *Rpc_Log_Send_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Log_Send_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcLogSendResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -11174,7 +11174,7 @@ func (m *Rpc_Log_Send_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Ipfs) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfs) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11227,7 +11227,7 @@ func (m *Rpc_Ipfs) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Ipfs_Get) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsGet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11280,7 +11280,7 @@ func (m *Rpc_Ipfs_Get) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Ipfs_Get_File) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsGetFile) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11333,7 +11333,7 @@ func (m *Rpc_Ipfs_Get_File) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Ipfs_Get_File_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsGetFileRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11418,7 +11418,7 @@ func (m *Rpc_Ipfs_Get_File_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Ipfs_Get_File_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsGetFileResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11477,7 +11477,7 @@ func (m *Rpc_Ipfs_Get_File_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Ipfs_Get_File_Response_Error{}
+				m.Error = &RpcIpfsGetFileResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -11605,7 +11605,7 @@ func (m *Rpc_Ipfs_Get_File_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Ipfs_Get_File_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsGetFileResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11648,7 +11648,7 @@ func (m *Rpc_Ipfs_Get_File_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Ipfs_Get_File_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcIpfsGetFileResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -11709,7 +11709,7 @@ func (m *Rpc_Ipfs_Get_File_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image) Unmarshal(dAtA []byte) error {
+func (m *RpcImage) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11762,7 +11762,7 @@ func (m *Rpc_Image) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11815,7 +11815,7 @@ func (m *Rpc_Image_Get) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_Blob) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetBlob) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11868,7 +11868,7 @@ func (m *Rpc_Image_Get_Blob) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_Blob_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetBlobRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11943,7 +11943,7 @@ func (m *Rpc_Image_Get_Blob_Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Size_ |= Model_Image_Size(b&0x7F) << shift
+				m.Size_ |= ModelImageSize(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -11972,7 +11972,7 @@ func (m *Rpc_Image_Get_Blob_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_Blob_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetBlobResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12031,7 +12031,7 @@ func (m *Rpc_Image_Get_Blob_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Image_Get_Blob_Response_Error{}
+				m.Error = &RpcImageGetBlobResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -12095,7 +12095,7 @@ func (m *Rpc_Image_Get_Blob_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_Blob_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetBlobResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12138,7 +12138,7 @@ func (m *Rpc_Image_Get_Blob_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Image_Get_Blob_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcImageGetBlobResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -12199,7 +12199,7 @@ func (m *Rpc_Image_Get_Blob_Response_Error) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_File) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetFile) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12252,7 +12252,7 @@ func (m *Rpc_Image_Get_File) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_File_Request) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetFileRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12327,7 +12327,7 @@ func (m *Rpc_Image_Get_File_Request) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Size_ |= Model_Image_Size(b&0x7F) << shift
+				m.Size_ |= ModelImageSize(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -12356,7 +12356,7 @@ func (m *Rpc_Image_Get_File_Request) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_File_Response) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetFileResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12415,7 +12415,7 @@ func (m *Rpc_Image_Get_File_Response) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &Rpc_Image_Get_File_Response_Error{}
+				m.Error = &RpcImageGetFileResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -12477,7 +12477,7 @@ func (m *Rpc_Image_Get_File_Response) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Rpc_Image_Get_File_Response_Error) Unmarshal(dAtA []byte) error {
+func (m *RpcImageGetFileResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12520,7 +12520,7 @@ func (m *Rpc_Image_Get_File_Response_Error) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= Rpc_Image_Get_File_Response_Error_Code(b&0x7F) << shift
+				m.Code |= RpcImageGetFileResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

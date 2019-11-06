@@ -23,22 +23,22 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type Model_Block_Header_Type int32
+type ModelBlockHeaderType int32
 
 const (
-	Model_Block_Header_DASHBOARD Model_Block_Header_Type = 0
-	Model_Block_Header_PAGE      Model_Block_Header_Type = 1
-	Model_Block_Header_DATAVIEW  Model_Block_Header_Type = 2
-	Model_Block_Header_TEXT      Model_Block_Header_Type = 3
-	Model_Block_Header_FILE      Model_Block_Header_Type = 4
-	Model_Block_Header_PICTURE   Model_Block_Header_Type = 5
-	Model_Block_Header_VIDEO     Model_Block_Header_Type = 6
-	Model_Block_Header_BOOKMARK  Model_Block_Header_Type = 7
-	Model_Block_Header_LAYOUT    Model_Block_Header_Type = 8
-	Model_Block_Header_DIV       Model_Block_Header_Type = 9
+	ModelBlockHeader_DASHBOARD ModelBlockHeaderType = 0
+	ModelBlockHeader_PAGE      ModelBlockHeaderType = 1
+	ModelBlockHeader_DATAVIEW  ModelBlockHeaderType = 2
+	ModelBlockHeader_TEXT      ModelBlockHeaderType = 3
+	ModelBlockHeader_FILE      ModelBlockHeaderType = 4
+	ModelBlockHeader_PICTURE   ModelBlockHeaderType = 5
+	ModelBlockHeader_VIDEO     ModelBlockHeaderType = 6
+	ModelBlockHeader_BOOKMARK  ModelBlockHeaderType = 7
+	ModelBlockHeader_LAYOUT    ModelBlockHeaderType = 8
+	ModelBlockHeader_DIV       ModelBlockHeaderType = 9
 )
 
-var Model_Block_Header_Type_name = map[int32]string{
+var ModelBlockHeaderType_name = map[int32]string{
 	0: "DASHBOARD",
 	1: "PAGE",
 	2: "DATAVIEW",
@@ -51,7 +51,7 @@ var Model_Block_Header_Type_name = map[int32]string{
 	9: "DIV",
 }
 
-var Model_Block_Header_Type_value = map[string]int32{
+var ModelBlockHeaderType_value = map[string]int32{
 	"DASHBOARD": 0,
 	"PAGE":      1,
 	"DATAVIEW":  2,
@@ -64,74 +64,74 @@ var Model_Block_Header_Type_value = map[string]int32{
 	"DIV":       9,
 }
 
-func (x Model_Block_Header_Type) String() string {
-	return proto.EnumName(Model_Block_Header_Type_name, int32(x))
+func (x ModelBlockHeaderType) String() string {
+	return proto.EnumName(ModelBlockHeaderType_name, int32(x))
 }
 
-func (Model_Block_Header_Type) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockHeaderType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 0, 0}
 }
 
-type Model_Block_Content_Layout_Style int32
+type ModelBlockContentLayoutStyle int32
 
 const (
-	Model_Block_Content_Layout_ROW    Model_Block_Content_Layout_Style = 0
-	Model_Block_Content_Layout_COLUMN Model_Block_Content_Layout_Style = 1
+	ModelBlockContentLayout_ROW    ModelBlockContentLayoutStyle = 0
+	ModelBlockContentLayout_COLUMN ModelBlockContentLayoutStyle = 1
 )
 
-var Model_Block_Content_Layout_Style_name = map[int32]string{
+var ModelBlockContentLayoutStyle_name = map[int32]string{
 	0: "ROW",
 	1: "COLUMN",
 }
 
-var Model_Block_Content_Layout_Style_value = map[string]int32{
+var ModelBlockContentLayoutStyle_value = map[string]int32{
 	"ROW":    0,
 	"COLUMN": 1,
 }
 
-func (x Model_Block_Content_Layout_Style) String() string {
-	return proto.EnumName(Model_Block_Content_Layout_Style_name, int32(x))
+func (x ModelBlockContentLayoutStyle) String() string {
+	return proto.EnumName(ModelBlockContentLayoutStyle_name, int32(x))
 }
 
-func (Model_Block_Content_Layout_Style) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockContentLayoutStyle) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 0, 0}
 }
 
-type Model_Block_Content_Dashboard_Style int32
+type ModelBlockContentDashboardStyle int32
 
 const (
-	Model_Block_Content_Dashboard_MAIN_SCREEN Model_Block_Content_Dashboard_Style = 0
+	ModelBlockContentDashboard_MAIN_SCREEN ModelBlockContentDashboardStyle = 0
 )
 
-var Model_Block_Content_Dashboard_Style_name = map[int32]string{
+var ModelBlockContentDashboardStyle_name = map[int32]string{
 	0: "MAIN_SCREEN",
 }
 
-var Model_Block_Content_Dashboard_Style_value = map[string]int32{
+var ModelBlockContentDashboardStyle_value = map[string]int32{
 	"MAIN_SCREEN": 0,
 }
 
-func (x Model_Block_Content_Dashboard_Style) String() string {
-	return proto.EnumName(Model_Block_Content_Dashboard_Style_name, int32(x))
+func (x ModelBlockContentDashboardStyle) String() string {
+	return proto.EnumName(ModelBlockContentDashboardStyle_name, int32(x))
 }
 
-func (Model_Block_Content_Dashboard_Style) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockContentDashboardStyle) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 2, 0}
 }
 
-type Model_Block_Content_Text_Style int32
+type ModelBlockContentTextStyle int32
 
 const (
-	Model_Block_Content_Text_p     Model_Block_Content_Text_Style = 0
-	Model_Block_Content_Text_h1    Model_Block_Content_Text_Style = 1
-	Model_Block_Content_Text_h2    Model_Block_Content_Text_Style = 2
-	Model_Block_Content_Text_h3    Model_Block_Content_Text_Style = 3
-	Model_Block_Content_Text_h4    Model_Block_Content_Text_Style = 4
-	Model_Block_Content_Text_quote Model_Block_Content_Text_Style = 5
-	Model_Block_Content_Text_code  Model_Block_Content_Text_Style = 6
+	ModelBlockContentText_p     ModelBlockContentTextStyle = 0
+	ModelBlockContentText_h1    ModelBlockContentTextStyle = 1
+	ModelBlockContentText_h2    ModelBlockContentTextStyle = 2
+	ModelBlockContentText_h3    ModelBlockContentTextStyle = 3
+	ModelBlockContentText_h4    ModelBlockContentTextStyle = 4
+	ModelBlockContentText_quote ModelBlockContentTextStyle = 5
+	ModelBlockContentText_code  ModelBlockContentTextStyle = 6
 )
 
-var Model_Block_Content_Text_Style_name = map[int32]string{
+var ModelBlockContentTextStyle_name = map[int32]string{
 	0: "p",
 	1: "h1",
 	2: "h2",
@@ -141,7 +141,7 @@ var Model_Block_Content_Text_Style_name = map[int32]string{
 	6: "code",
 }
 
-var Model_Block_Content_Text_Style_value = map[string]int32{
+var ModelBlockContentTextStyle_value = map[string]int32{
 	"p":     0,
 	"h1":    1,
 	"h2":    2,
@@ -151,53 +151,53 @@ var Model_Block_Content_Text_Style_value = map[string]int32{
 	"code":  6,
 }
 
-func (x Model_Block_Content_Text_Style) String() string {
-	return proto.EnumName(Model_Block_Content_Text_Style_name, int32(x))
+func (x ModelBlockContentTextStyle) String() string {
+	return proto.EnumName(ModelBlockContentTextStyle_name, int32(x))
 }
 
-func (Model_Block_Content_Text_Style) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockContentTextStyle) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 0}
 }
 
-type Model_Block_Content_Text_MarkerType int32
+type ModelBlockContentTextMarkerType int32
 
 const (
-	Model_Block_Content_Text_none   Model_Block_Content_Text_MarkerType = 0
-	Model_Block_Content_Text_number Model_Block_Content_Text_MarkerType = 1
-	Model_Block_Content_Text_bullet Model_Block_Content_Text_MarkerType = 2
+	ModelBlockContentText_none   ModelBlockContentTextMarkerType = 0
+	ModelBlockContentText_number ModelBlockContentTextMarkerType = 1
+	ModelBlockContentText_bullet ModelBlockContentTextMarkerType = 2
 )
 
-var Model_Block_Content_Text_MarkerType_name = map[int32]string{
+var ModelBlockContentTextMarkerType_name = map[int32]string{
 	0: "none",
 	1: "number",
 	2: "bullet",
 }
 
-var Model_Block_Content_Text_MarkerType_value = map[string]int32{
+var ModelBlockContentTextMarkerType_value = map[string]int32{
 	"none":   0,
 	"number": 1,
 	"bullet": 2,
 }
 
-func (x Model_Block_Content_Text_MarkerType) String() string {
-	return proto.EnumName(Model_Block_Content_Text_MarkerType_name, int32(x))
+func (x ModelBlockContentTextMarkerType) String() string {
+	return proto.EnumName(ModelBlockContentTextMarkerType_name, int32(x))
 }
 
-func (Model_Block_Content_Text_MarkerType) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockContentTextMarkerType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 1}
 }
 
-type Model_Block_Content_Text_Mark_Type int32
+type ModelBlockContentTextMarkType int32
 
 const (
-	Model_Block_Content_Text_Mark_STRIKETHROUGH Model_Block_Content_Text_Mark_Type = 0
-	Model_Block_Content_Text_Mark_KEYBOARD      Model_Block_Content_Text_Mark_Type = 1
-	Model_Block_Content_Text_Mark_ITALIC        Model_Block_Content_Text_Mark_Type = 2
-	Model_Block_Content_Text_Mark_BOLD          Model_Block_Content_Text_Mark_Type = 3
-	Model_Block_Content_Text_Mark_LINK          Model_Block_Content_Text_Mark_Type = 4
+	ModelBlockContentTextMark_STRIKETHROUGH ModelBlockContentTextMarkType = 0
+	ModelBlockContentTextMark_KEYBOARD      ModelBlockContentTextMarkType = 1
+	ModelBlockContentTextMark_ITALIC        ModelBlockContentTextMarkType = 2
+	ModelBlockContentTextMark_BOLD          ModelBlockContentTextMarkType = 3
+	ModelBlockContentTextMark_LINK          ModelBlockContentTextMarkType = 4
 )
 
-var Model_Block_Content_Text_Mark_Type_name = map[int32]string{
+var ModelBlockContentTextMarkType_name = map[int32]string{
 	0: "STRIKETHROUGH",
 	1: "KEYBOARD",
 	2: "ITALIC",
@@ -205,7 +205,7 @@ var Model_Block_Content_Text_Mark_Type_name = map[int32]string{
 	4: "LINK",
 }
 
-var Model_Block_Content_Text_Mark_Type_value = map[string]int32{
+var ModelBlockContentTextMarkType_value = map[string]int32{
 	"STRIKETHROUGH": 0,
 	"KEYBOARD":      1,
 	"ITALIC":        2,
@@ -213,25 +213,25 @@ var Model_Block_Content_Text_Mark_Type_value = map[string]int32{
 	"LINK":          4,
 }
 
-func (x Model_Block_Content_Text_Mark_Type) String() string {
-	return proto.EnumName(Model_Block_Content_Text_Mark_Type_name, int32(x))
+func (x ModelBlockContentTextMarkType) String() string {
+	return proto.EnumName(ModelBlockContentTextMarkType_name, int32(x))
 }
 
-func (Model_Block_Content_Text_Mark_Type) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockContentTextMarkType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 1, 0}
 }
 
-type Model_Block_Content_Media_State int32
+type ModelBlockContentMediaState int32
 
 const (
-	Model_Block_Content_Media_EMPTY       Model_Block_Content_Media_State = 0
-	Model_Block_Content_Media_UPLOADING   Model_Block_Content_Media_State = 1
-	Model_Block_Content_Media_PREVIEW     Model_Block_Content_Media_State = 2
-	Model_Block_Content_Media_DOWNLOADING Model_Block_Content_Media_State = 3
-	Model_Block_Content_Media_DONE        Model_Block_Content_Media_State = 4
+	ModelBlockContentMedia_EMPTY       ModelBlockContentMediaState = 0
+	ModelBlockContentMedia_UPLOADING   ModelBlockContentMediaState = 1
+	ModelBlockContentMedia_PREVIEW     ModelBlockContentMediaState = 2
+	ModelBlockContentMedia_DOWNLOADING ModelBlockContentMediaState = 3
+	ModelBlockContentMedia_DONE        ModelBlockContentMediaState = 4
 )
 
-var Model_Block_Content_Media_State_name = map[int32]string{
+var ModelBlockContentMediaState_name = map[int32]string{
 	0: "EMPTY",
 	1: "UPLOADING",
 	2: "PREVIEW",
@@ -239,7 +239,7 @@ var Model_Block_Content_Media_State_name = map[int32]string{
 	4: "DONE",
 }
 
-var Model_Block_Content_Media_State_value = map[string]int32{
+var ModelBlockContentMediaState_value = map[string]int32{
 	"EMPTY":       0,
 	"UPLOADING":   1,
 	"PREVIEW":     2,
@@ -247,108 +247,108 @@ var Model_Block_Content_Media_State_value = map[string]int32{
 	"DONE":        4,
 }
 
-func (x Model_Block_Content_Media_State) String() string {
-	return proto.EnumName(Model_Block_Content_Media_State_name, int32(x))
+func (x ModelBlockContentMediaState) String() string {
+	return proto.EnumName(ModelBlockContentMediaState_name, int32(x))
 }
 
-func (Model_Block_Content_Media_State) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockContentMediaState) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 0}
 }
 
-type Model_Block_Content_Page_Style int32
+type ModelBlockContentPageStyle int32
 
 const (
-	Model_Block_Content_Page_EMPTY    Model_Block_Content_Page_Style = 0
-	Model_Block_Content_Page_TASK     Model_Block_Content_Page_Style = 1
-	Model_Block_Content_Page_BOOKMARK Model_Block_Content_Page_Style = 2
-	Model_Block_Content_Page_SET      Model_Block_Content_Page_Style = 3
+	ModelBlockContentPage_EMPTY    ModelBlockContentPageStyle = 0
+	ModelBlockContentPage_TASK     ModelBlockContentPageStyle = 1
+	ModelBlockContentPage_BOOKMARK ModelBlockContentPageStyle = 2
+	ModelBlockContentPage_SET      ModelBlockContentPageStyle = 3
 )
 
-var Model_Block_Content_Page_Style_name = map[int32]string{
+var ModelBlockContentPageStyle_name = map[int32]string{
 	0: "EMPTY",
 	1: "TASK",
 	2: "BOOKMARK",
 	3: "SET",
 }
 
-var Model_Block_Content_Page_Style_value = map[string]int32{
+var ModelBlockContentPageStyle_value = map[string]int32{
 	"EMPTY":    0,
 	"TASK":     1,
 	"BOOKMARK": 2,
 	"SET":      3,
 }
 
-func (x Model_Block_Content_Page_Style) String() string {
-	return proto.EnumName(Model_Block_Content_Page_Style_name, int32(x))
+func (x ModelBlockContentPageStyle) String() string {
+	return proto.EnumName(ModelBlockContentPageStyle_name, int32(x))
 }
 
-func (Model_Block_Content_Page_Style) EnumDescriptor() ([]byte, []int) {
+func (ModelBlockContentPageStyle) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 6, 0}
 }
 
 // `NullValue` is a singleton enumeration to represent the null value for the
-type Model_Struct_NullValue int32
+type ModelStructNullValue int32
 
 const (
-	Model_Struct_NULL_VALUE Model_Struct_NullValue = 0
+	ModelStruct_NULL_VALUE ModelStructNullValue = 0
 )
 
-var Model_Struct_NullValue_name = map[int32]string{
+var ModelStructNullValue_name = map[int32]string{
 	0: "NULL_VALUE",
 }
 
-var Model_Struct_NullValue_value = map[string]int32{
+var ModelStructNullValue_value = map[string]int32{
 	"NULL_VALUE": 0,
 }
 
-func (x Model_Struct_NullValue) String() string {
-	return proto.EnumName(Model_Struct_NullValue_name, int32(x))
+func (x ModelStructNullValue) String() string {
+	return proto.EnumName(ModelStructNullValue_name, int32(x))
 }
 
-func (Model_Struct_NullValue) EnumDescriptor() ([]byte, []int) {
+func (ModelStructNullValue) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 2, 0}
 }
 
-type Model_Image_Size int32
+type ModelImageSize int32
 
 const (
-	Model_Image_LARGE Model_Image_Size = 0
-	Model_Image_SMALL Model_Image_Size = 1
-	Model_Image_THUMB Model_Image_Size = 2
+	ModelImage_LARGE ModelImageSize = 0
+	ModelImage_SMALL ModelImageSize = 1
+	ModelImage_THUMB ModelImageSize = 2
 )
 
-var Model_Image_Size_name = map[int32]string{
+var ModelImageSize_name = map[int32]string{
 	0: "LARGE",
 	1: "SMALL",
 	2: "THUMB",
 }
 
-var Model_Image_Size_value = map[string]int32{
+var ModelImageSize_value = map[string]int32{
 	"LARGE": 0,
 	"SMALL": 1,
 	"THUMB": 2,
 }
 
-func (x Model_Image_Size) String() string {
-	return proto.EnumName(Model_Image_Size_name, int32(x))
+func (x ModelImageSize) String() string {
+	return proto.EnumName(ModelImageSize_name, int32(x))
 }
 
-func (Model_Image_Size) EnumDescriptor() ([]byte, []int) {
+func (ModelImageSize) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 4, 0}
 }
 
-type Model_Video_Size int32
+type ModelVideoSize int32
 
 const (
-	Model_Video_SD_360p   Model_Video_Size = 0
-	Model_Video_SD_480p   Model_Video_Size = 1
-	Model_Video_HD_720p   Model_Video_Size = 2
-	Model_Video_HD_1080p  Model_Video_Size = 3
-	Model_Video_UHD_1440p Model_Video_Size = 4
-	Model_Video_UHD_2160p Model_Video_Size = 5
+	ModelVideo_SD_360p   ModelVideoSize = 0
+	ModelVideo_SD_480p   ModelVideoSize = 1
+	ModelVideo_HD_720p   ModelVideoSize = 2
+	ModelVideo_HD_1080p  ModelVideoSize = 3
+	ModelVideo_UHD_1440p ModelVideoSize = 4
+	ModelVideo_UHD_2160p ModelVideoSize = 5
 )
 
-var Model_Video_Size_name = map[int32]string{
+var ModelVideoSize_name = map[int32]string{
 	0: "SD_360p",
 	1: "SD_480p",
 	2: "HD_720p",
@@ -357,7 +357,7 @@ var Model_Video_Size_name = map[int32]string{
 	5: "UHD_2160p",
 }
 
-var Model_Video_Size_value = map[string]int32{
+var ModelVideoSize_value = map[string]int32{
 	"SD_360p":   0,
 	"SD_480p":   1,
 	"HD_720p":   2,
@@ -366,11 +366,11 @@ var Model_Video_Size_value = map[string]int32{
 	"UHD_2160p": 5,
 }
 
-func (x Model_Video_Size) String() string {
-	return proto.EnumName(Model_Video_Size_name, int32(x))
+func (x ModelVideoSize) String() string {
+	return proto.EnumName(ModelVideoSize_name, int32(x))
 }
 
-func (Model_Video_Size) EnumDescriptor() ([]byte, []int) {
+func (ModelVideoSize) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 5, 0}
 }
 
@@ -410,32 +410,32 @@ func (m *Model) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Model proto.InternalMessageInfo
 
-type Model_Block struct {
-	Header   *Model_Block_Header `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
-	Children []string            `protobuf:"bytes,2,rep,name=children,proto3" json:"children,omitempty"`
+type ModelBlock struct {
+	Header   *ModelBlockHeader `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	Children []string          `protobuf:"bytes,2,rep,name=children,proto3" json:"children,omitempty"`
 	// Types that are valid to be assigned to Content:
-	//	*Model_Block_Dashboard
-	//	*Model_Block_Page
-	//	*Model_Block_Dataview
-	//	*Model_Block_Text
-	//	*Model_Block_Media
-	//	*Model_Block_Layout
-	//	*Model_Block_Div
-	Content isModel_BlockContent `protobuf_oneof:"content"`
+	//	*ModelBlockContentOfDashboard
+	//	*ModelBlockContentOfPage
+	//	*ModelBlockContentOfDataview
+	//	*ModelBlockContentOfText
+	//	*ModelBlockContentOfMedia
+	//	*ModelBlockContentOfLayout
+	//	*ModelBlockContentOfDiv
+	Content isModelBlockContent `protobuf_oneof:"content"`
 }
 
-func (m *Model_Block) Reset()         { *m = Model_Block{} }
-func (m *Model_Block) String() string { return proto.CompactTextString(m) }
-func (*Model_Block) ProtoMessage()    {}
-func (*Model_Block) Descriptor() ([]byte, []int) {
+func (m *ModelBlock) Reset()         { *m = ModelBlock{} }
+func (m *ModelBlock) String() string { return proto.CompactTextString(m) }
+func (*ModelBlock) ProtoMessage()    {}
+func (*ModelBlock) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0}
 }
-func (m *Model_Block) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlock.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -445,156 +445,156 @@ func (m *Model_Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Model_Block) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block.Merge(m, src)
+func (m *ModelBlock) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlock.Merge(m, src)
 }
-func (m *Model_Block) XXX_Size() int {
+func (m *ModelBlock) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block.DiscardUnknown(m)
+func (m *ModelBlock) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlock.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlock proto.InternalMessageInfo
 
-type isModel_BlockContent interface {
-	isModel_BlockContent()
+type isModelBlockContent interface {
+	isModelBlockContent()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Model_Block_Dashboard struct {
-	Dashboard *Model_Block_Content_Dashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
+type ModelBlockContentOfDashboard struct {
+	Dashboard *ModelBlockContentDashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
 }
-type Model_Block_Page struct {
-	Page *Model_Block_Content_Page `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
+type ModelBlockContentOfPage struct {
+	Page *ModelBlockContentPage `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
 }
-type Model_Block_Dataview struct {
-	Dataview *Model_Block_Content_Dataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
+type ModelBlockContentOfDataview struct {
+	Dataview *ModelBlockContentDataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
 }
-type Model_Block_Text struct {
-	Text *Model_Block_Content_Text `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
+type ModelBlockContentOfText struct {
+	Text *ModelBlockContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
 }
-type Model_Block_Media struct {
-	Media *Model_Block_Content_Media `protobuf:"bytes,15,opt,name=media,proto3,oneof" json:"media,omitempty"`
+type ModelBlockContentOfMedia struct {
+	Media *ModelBlockContentMedia `protobuf:"bytes,15,opt,name=media,proto3,oneof" json:"media,omitempty"`
 }
-type Model_Block_Layout struct {
-	Layout *Model_Block_Content_Layout `protobuf:"bytes,16,opt,name=layout,proto3,oneof" json:"layout,omitempty"`
+type ModelBlockContentOfLayout struct {
+	Layout *ModelBlockContentLayout `protobuf:"bytes,16,opt,name=layout,proto3,oneof" json:"layout,omitempty"`
 }
-type Model_Block_Div struct {
-	Div *Model_Block_Content_Div `protobuf:"bytes,17,opt,name=div,proto3,oneof" json:"div,omitempty"`
+type ModelBlockContentOfDiv struct {
+	Div *ModelBlockContentDiv `protobuf:"bytes,17,opt,name=div,proto3,oneof" json:"div,omitempty"`
 }
 
-func (*Model_Block_Dashboard) isModel_BlockContent() {}
-func (*Model_Block_Page) isModel_BlockContent()      {}
-func (*Model_Block_Dataview) isModel_BlockContent()  {}
-func (*Model_Block_Text) isModel_BlockContent()      {}
-func (*Model_Block_Media) isModel_BlockContent()     {}
-func (*Model_Block_Layout) isModel_BlockContent()    {}
-func (*Model_Block_Div) isModel_BlockContent()       {}
+func (*ModelBlockContentOfDashboard) isModelBlockContent() {}
+func (*ModelBlockContentOfPage) isModelBlockContent()      {}
+func (*ModelBlockContentOfDataview) isModelBlockContent()  {}
+func (*ModelBlockContentOfText) isModelBlockContent()      {}
+func (*ModelBlockContentOfMedia) isModelBlockContent()     {}
+func (*ModelBlockContentOfLayout) isModelBlockContent()    {}
+func (*ModelBlockContentOfDiv) isModelBlockContent()       {}
 
-func (m *Model_Block) GetContent() isModel_BlockContent {
+func (m *ModelBlock) GetContent() isModelBlockContent {
 	if m != nil {
 		return m.Content
 	}
 	return nil
 }
 
-func (m *Model_Block) GetHeader() *Model_Block_Header {
+func (m *ModelBlock) GetHeader() *ModelBlockHeader {
 	if m != nil {
 		return m.Header
 	}
 	return nil
 }
 
-func (m *Model_Block) GetChildren() []string {
+func (m *ModelBlock) GetChildren() []string {
 	if m != nil {
 		return m.Children
 	}
 	return nil
 }
 
-func (m *Model_Block) GetDashboard() *Model_Block_Content_Dashboard {
-	if x, ok := m.GetContent().(*Model_Block_Dashboard); ok {
+func (m *ModelBlock) GetDashboard() *ModelBlockContentDashboard {
+	if x, ok := m.GetContent().(*ModelBlockContentOfDashboard); ok {
 		return x.Dashboard
 	}
 	return nil
 }
 
-func (m *Model_Block) GetPage() *Model_Block_Content_Page {
-	if x, ok := m.GetContent().(*Model_Block_Page); ok {
+func (m *ModelBlock) GetPage() *ModelBlockContentPage {
+	if x, ok := m.GetContent().(*ModelBlockContentOfPage); ok {
 		return x.Page
 	}
 	return nil
 }
 
-func (m *Model_Block) GetDataview() *Model_Block_Content_Dataview {
-	if x, ok := m.GetContent().(*Model_Block_Dataview); ok {
+func (m *ModelBlock) GetDataview() *ModelBlockContentDataview {
+	if x, ok := m.GetContent().(*ModelBlockContentOfDataview); ok {
 		return x.Dataview
 	}
 	return nil
 }
 
-func (m *Model_Block) GetText() *Model_Block_Content_Text {
-	if x, ok := m.GetContent().(*Model_Block_Text); ok {
+func (m *ModelBlock) GetText() *ModelBlockContentText {
+	if x, ok := m.GetContent().(*ModelBlockContentOfText); ok {
 		return x.Text
 	}
 	return nil
 }
 
-func (m *Model_Block) GetMedia() *Model_Block_Content_Media {
-	if x, ok := m.GetContent().(*Model_Block_Media); ok {
+func (m *ModelBlock) GetMedia() *ModelBlockContentMedia {
+	if x, ok := m.GetContent().(*ModelBlockContentOfMedia); ok {
 		return x.Media
 	}
 	return nil
 }
 
-func (m *Model_Block) GetLayout() *Model_Block_Content_Layout {
-	if x, ok := m.GetContent().(*Model_Block_Layout); ok {
+func (m *ModelBlock) GetLayout() *ModelBlockContentLayout {
+	if x, ok := m.GetContent().(*ModelBlockContentOfLayout); ok {
 		return x.Layout
 	}
 	return nil
 }
 
-func (m *Model_Block) GetDiv() *Model_Block_Content_Div {
-	if x, ok := m.GetContent().(*Model_Block_Div); ok {
+func (m *ModelBlock) GetDiv() *ModelBlockContentDiv {
+	if x, ok := m.GetContent().(*ModelBlockContentOfDiv); ok {
 		return x.Div
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*Model_Block) XXX_OneofWrappers() []interface{} {
+func (*ModelBlock) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*Model_Block_Dashboard)(nil),
-		(*Model_Block_Page)(nil),
-		(*Model_Block_Dataview)(nil),
-		(*Model_Block_Text)(nil),
-		(*Model_Block_Media)(nil),
-		(*Model_Block_Layout)(nil),
-		(*Model_Block_Div)(nil),
+		(*ModelBlockContentOfDashboard)(nil),
+		(*ModelBlockContentOfPage)(nil),
+		(*ModelBlockContentOfDataview)(nil),
+		(*ModelBlockContentOfText)(nil),
+		(*ModelBlockContentOfMedia)(nil),
+		(*ModelBlockContentOfLayout)(nil),
+		(*ModelBlockContentOfDiv)(nil),
 	}
 }
 
-type Model_Block_Header struct {
-	Id          string                          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type        Model_Block_Header_Type         `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.Model_Block_Header_Type" json:"type,omitempty"`
-	Fields      *Model_Struct                   `protobuf:"bytes,3,opt,name=fields,proto3" json:"fields,omitempty"`
-	Permissions *Model_Block_Header_Permissions `protobuf:"bytes,4,opt,name=permissions,proto3" json:"permissions,omitempty"`
+type ModelBlockHeader struct {
+	Id          string                       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type        ModelBlockHeaderType         `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.ModelBlockHeaderType" json:"type,omitempty"`
+	Fields      *ModelStruct                 `protobuf:"bytes,3,opt,name=fields,proto3" json:"fields,omitempty"`
+	Permissions *ModelBlockHeaderPermissions `protobuf:"bytes,4,opt,name=permissions,proto3" json:"permissions,omitempty"`
 }
 
-func (m *Model_Block_Header) Reset()         { *m = Model_Block_Header{} }
-func (m *Model_Block_Header) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Header) ProtoMessage()    {}
-func (*Model_Block_Header) Descriptor() ([]byte, []int) {
+func (m *ModelBlockHeader) Reset()         { *m = ModelBlockHeader{} }
+func (m *ModelBlockHeader) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockHeader) ProtoMessage()    {}
+func (*ModelBlockHeader) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 0}
 }
-func (m *Model_Block_Header) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockHeader) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Header.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockHeader.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -604,47 +604,47 @@ func (m *Model_Block_Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Header) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Header.Merge(m, src)
+func (m *ModelBlockHeader) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockHeader.Merge(m, src)
 }
-func (m *Model_Block_Header) XXX_Size() int {
+func (m *ModelBlockHeader) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Header) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Header.DiscardUnknown(m)
+func (m *ModelBlockHeader) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockHeader.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Header proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockHeader proto.InternalMessageInfo
 
-func (m *Model_Block_Header) GetId() string {
+func (m *ModelBlockHeader) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Model_Block_Header) GetType() Model_Block_Header_Type {
+func (m *ModelBlockHeader) GetType() ModelBlockHeaderType {
 	if m != nil {
 		return m.Type
 	}
-	return Model_Block_Header_DASHBOARD
+	return ModelBlockHeader_DASHBOARD
 }
 
-func (m *Model_Block_Header) GetFields() *Model_Struct {
+func (m *ModelBlockHeader) GetFields() *ModelStruct {
 	if m != nil {
 		return m.Fields
 	}
 	return nil
 }
 
-func (m *Model_Block_Header) GetPermissions() *Model_Block_Header_Permissions {
+func (m *ModelBlockHeader) GetPermissions() *ModelBlockHeaderPermissions {
 	if m != nil {
 		return m.Permissions
 	}
 	return nil
 }
 
-type Model_Block_Header_Permissions struct {
+type ModelBlockHeaderPermissions struct {
 	Read   bool `protobuf:"varint,1,opt,name=read,proto3" json:"read,omitempty"`
 	Edit   bool `protobuf:"varint,2,opt,name=edit,proto3" json:"edit,omitempty"`
 	Remove bool `protobuf:"varint,3,opt,name=remove,proto3" json:"remove,omitempty"`
@@ -652,18 +652,18 @@ type Model_Block_Header_Permissions struct {
 	DropOn bool `protobuf:"varint,5,opt,name=dropOn,proto3" json:"dropOn,omitempty"`
 }
 
-func (m *Model_Block_Header_Permissions) Reset()         { *m = Model_Block_Header_Permissions{} }
-func (m *Model_Block_Header_Permissions) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Header_Permissions) ProtoMessage()    {}
-func (*Model_Block_Header_Permissions) Descriptor() ([]byte, []int) {
+func (m *ModelBlockHeaderPermissions) Reset()         { *m = ModelBlockHeaderPermissions{} }
+func (m *ModelBlockHeaderPermissions) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockHeaderPermissions) ProtoMessage()    {}
+func (*ModelBlockHeaderPermissions) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 0, 0}
 }
-func (m *Model_Block_Header_Permissions) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockHeaderPermissions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Header_Permissions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockHeaderPermissions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Header_Permissions.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockHeaderPermissions.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -673,68 +673,68 @@ func (m *Model_Block_Header_Permissions) XXX_Marshal(b []byte, deterministic boo
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Header_Permissions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Header_Permissions.Merge(m, src)
+func (m *ModelBlockHeaderPermissions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockHeaderPermissions.Merge(m, src)
 }
-func (m *Model_Block_Header_Permissions) XXX_Size() int {
+func (m *ModelBlockHeaderPermissions) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Header_Permissions) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Header_Permissions.DiscardUnknown(m)
+func (m *ModelBlockHeaderPermissions) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockHeaderPermissions.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Header_Permissions proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockHeaderPermissions proto.InternalMessageInfo
 
-func (m *Model_Block_Header_Permissions) GetRead() bool {
+func (m *ModelBlockHeaderPermissions) GetRead() bool {
 	if m != nil {
 		return m.Read
 	}
 	return false
 }
 
-func (m *Model_Block_Header_Permissions) GetEdit() bool {
+func (m *ModelBlockHeaderPermissions) GetEdit() bool {
 	if m != nil {
 		return m.Edit
 	}
 	return false
 }
 
-func (m *Model_Block_Header_Permissions) GetRemove() bool {
+func (m *ModelBlockHeaderPermissions) GetRemove() bool {
 	if m != nil {
 		return m.Remove
 	}
 	return false
 }
 
-func (m *Model_Block_Header_Permissions) GetDrag() bool {
+func (m *ModelBlockHeaderPermissions) GetDrag() bool {
 	if m != nil {
 		return m.Drag
 	}
 	return false
 }
 
-func (m *Model_Block_Header_Permissions) GetDropOn() bool {
+func (m *ModelBlockHeaderPermissions) GetDropOn() bool {
 	if m != nil {
 		return m.DropOn
 	}
 	return false
 }
 
-type Model_Block_Content struct {
+type ModelBlockContent struct {
 }
 
-func (m *Model_Block_Content) Reset()         { *m = Model_Block_Content{} }
-func (m *Model_Block_Content) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content) ProtoMessage()    {}
-func (*Model_Block_Content) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContent) Reset()         { *m = ModelBlockContent{} }
+func (m *ModelBlockContent) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContent) ProtoMessage()    {}
+func (*ModelBlockContent) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1}
 }
-func (m *Model_Block_Content) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContent) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContent) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContent.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -744,34 +744,34 @@ func (m *Model_Block_Content) XXX_Marshal(b []byte, deterministic bool) ([]byte,
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content.Merge(m, src)
+func (m *ModelBlockContent) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContent.Merge(m, src)
 }
-func (m *Model_Block_Content) XXX_Size() int {
+func (m *ModelBlockContent) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content.DiscardUnknown(m)
+func (m *ModelBlockContent) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContent.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContent proto.InternalMessageInfo
 
-type Model_Block_Content_Layout struct {
-	Style Model_Block_Content_Layout_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_Content_Layout_Style" json:"style,omitempty"`
+type ModelBlockContentLayout struct {
+	Style ModelBlockContentLayoutStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.ModelBlockContentLayoutStyle" json:"style,omitempty"`
 }
 
-func (m *Model_Block_Content_Layout) Reset()         { *m = Model_Block_Content_Layout{} }
-func (m *Model_Block_Content_Layout) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Layout) ProtoMessage()    {}
-func (*Model_Block_Content_Layout) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentLayout) Reset()         { *m = ModelBlockContentLayout{} }
+func (m *ModelBlockContentLayout) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentLayout) ProtoMessage()    {}
+func (*ModelBlockContentLayout) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 0}
 }
-func (m *Model_Block_Content_Layout) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentLayout) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Layout) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentLayout) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Layout.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentLayout.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -781,40 +781,40 @@ func (m *Model_Block_Content_Layout) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Layout) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Layout.Merge(m, src)
+func (m *ModelBlockContentLayout) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentLayout.Merge(m, src)
 }
-func (m *Model_Block_Content_Layout) XXX_Size() int {
+func (m *ModelBlockContentLayout) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Layout) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Layout.DiscardUnknown(m)
+func (m *ModelBlockContentLayout) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentLayout.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Layout proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentLayout proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Layout) GetStyle() Model_Block_Content_Layout_Style {
+func (m *ModelBlockContentLayout) GetStyle() ModelBlockContentLayoutStyle {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_Content_Layout_ROW
+	return ModelBlockContentLayout_ROW
 }
 
-type Model_Block_Content_Div struct {
+type ModelBlockContentDiv struct {
 }
 
-func (m *Model_Block_Content_Div) Reset()         { *m = Model_Block_Content_Div{} }
-func (m *Model_Block_Content_Div) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Div) ProtoMessage()    {}
-func (*Model_Block_Content_Div) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentDiv) Reset()         { *m = ModelBlockContentDiv{} }
+func (m *ModelBlockContentDiv) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentDiv) ProtoMessage()    {}
+func (*ModelBlockContentDiv) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 1}
 }
-func (m *Model_Block_Content_Div) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentDiv) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Div) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentDiv) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Div.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentDiv.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -824,35 +824,35 @@ func (m *Model_Block_Content_Div) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Div) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Div.Merge(m, src)
+func (m *ModelBlockContentDiv) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentDiv.Merge(m, src)
 }
-func (m *Model_Block_Content_Div) XXX_Size() int {
+func (m *ModelBlockContentDiv) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Div) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Div.DiscardUnknown(m)
+func (m *ModelBlockContentDiv) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentDiv.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Div proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentDiv proto.InternalMessageInfo
 
-type Model_Block_Content_Dashboard struct {
-	Style   Model_Block_Content_Dashboard_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_Content_Dashboard_Style" json:"style,omitempty"`
-	Headers []*Model_Block_Header               `protobuf:"bytes,2,rep,name=headers,proto3" json:"headers,omitempty"`
+type ModelBlockContentDashboard struct {
+	Style   ModelBlockContentDashboardStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.ModelBlockContentDashboardStyle" json:"style,omitempty"`
+	Headers []*ModelBlockHeader             `protobuf:"bytes,2,rep,name=headers,proto3" json:"headers,omitempty"`
 }
 
-func (m *Model_Block_Content_Dashboard) Reset()         { *m = Model_Block_Content_Dashboard{} }
-func (m *Model_Block_Content_Dashboard) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Dashboard) ProtoMessage()    {}
-func (*Model_Block_Content_Dashboard) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentDashboard) Reset()         { *m = ModelBlockContentDashboard{} }
+func (m *ModelBlockContentDashboard) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentDashboard) ProtoMessage()    {}
+func (*ModelBlockContentDashboard) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 2}
 }
-func (m *Model_Block_Content_Dashboard) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentDashboard) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Dashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentDashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Dashboard.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentDashboard.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -862,47 +862,47 @@ func (m *Model_Block_Content_Dashboard) XXX_Marshal(b []byte, deterministic bool
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Dashboard) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Dashboard.Merge(m, src)
+func (m *ModelBlockContentDashboard) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentDashboard.Merge(m, src)
 }
-func (m *Model_Block_Content_Dashboard) XXX_Size() int {
+func (m *ModelBlockContentDashboard) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Dashboard) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Dashboard.DiscardUnknown(m)
+func (m *ModelBlockContentDashboard) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentDashboard.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Dashboard proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentDashboard proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Dashboard) GetStyle() Model_Block_Content_Dashboard_Style {
+func (m *ModelBlockContentDashboard) GetStyle() ModelBlockContentDashboardStyle {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_Content_Dashboard_MAIN_SCREEN
+	return ModelBlockContentDashboard_MAIN_SCREEN
 }
 
-func (m *Model_Block_Content_Dashboard) GetHeaders() []*Model_Block_Header {
+func (m *ModelBlockContentDashboard) GetHeaders() []*ModelBlockHeader {
 	if m != nil {
 		return m.Headers
 	}
 	return nil
 }
 
-type Model_Block_Content_Dataview struct {
+type ModelBlockContentDataview struct {
 }
 
-func (m *Model_Block_Content_Dataview) Reset()         { *m = Model_Block_Content_Dataview{} }
-func (m *Model_Block_Content_Dataview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Dataview) ProtoMessage()    {}
-func (*Model_Block_Content_Dataview) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentDataview) Reset()         { *m = ModelBlockContentDataview{} }
+func (m *ModelBlockContentDataview) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentDataview) ProtoMessage()    {}
+func (*ModelBlockContentDataview) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 3}
 }
-func (m *Model_Block_Content_Dataview) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentDataview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Dataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentDataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Dataview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentDataview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -912,40 +912,40 @@ func (m *Model_Block_Content_Dataview) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Dataview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Dataview.Merge(m, src)
+func (m *ModelBlockContentDataview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentDataview.Merge(m, src)
 }
-func (m *Model_Block_Content_Dataview) XXX_Size() int {
+func (m *ModelBlockContentDataview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Dataview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Dataview.DiscardUnknown(m)
+func (m *ModelBlockContentDataview) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentDataview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Dataview proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentDataview proto.InternalMessageInfo
 
-type Model_Block_Content_Text struct {
-	Text       string                              `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	Style      Model_Block_Content_Text_Style      `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.Model_Block_Content_Text_Style" json:"style,omitempty"`
-	MarksList  *Model_Block_Content_Text_Marks     `protobuf:"bytes,3,opt,name=marksList,proto3" json:"marksList,omitempty"`
-	Toggleable bool                                `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
-	MarkerType Model_Block_Content_Text_MarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.Model_Block_Content_Text_MarkerType" json:"markerType,omitempty"`
-	Checkable  bool                                `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
-	Checked    bool                                `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
+type ModelBlockContentText struct {
+	Text       string                          `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Style      ModelBlockContentTextStyle      `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.ModelBlockContentTextStyle" json:"style,omitempty"`
+	MarksList  *ModelBlockContentTextMarks     `protobuf:"bytes,3,opt,name=marksList,proto3" json:"marksList,omitempty"`
+	Toggleable bool                            `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
+	MarkerType ModelBlockContentTextMarkerType `protobuf:"varint,5,opt,name=markerType,proto3,enum=anytype.ModelBlockContentTextMarkerType" json:"markerType,omitempty"`
+	Checkable  bool                            `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
+	Checked    bool                            `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
 }
 
-func (m *Model_Block_Content_Text) Reset()         { *m = Model_Block_Content_Text{} }
-func (m *Model_Block_Content_Text) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Text) ProtoMessage()    {}
-func (*Model_Block_Content_Text) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentText) Reset()         { *m = ModelBlockContentText{} }
+func (m *ModelBlockContentText) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentText) ProtoMessage()    {}
+func (*ModelBlockContentText) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4}
 }
-func (m *Model_Block_Content_Text) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Text) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Text.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentText.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -955,83 +955,83 @@ func (m *Model_Block_Content_Text) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Text) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Text.Merge(m, src)
+func (m *ModelBlockContentText) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentText.Merge(m, src)
 }
-func (m *Model_Block_Content_Text) XXX_Size() int {
+func (m *ModelBlockContentText) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Text) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Text.DiscardUnknown(m)
+func (m *ModelBlockContentText) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentText.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Text proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentText proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Text) GetText() string {
+func (m *ModelBlockContentText) GetText() string {
 	if m != nil {
 		return m.Text
 	}
 	return ""
 }
 
-func (m *Model_Block_Content_Text) GetStyle() Model_Block_Content_Text_Style {
+func (m *ModelBlockContentText) GetStyle() ModelBlockContentTextStyle {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_Content_Text_p
+	return ModelBlockContentText_p
 }
 
-func (m *Model_Block_Content_Text) GetMarksList() *Model_Block_Content_Text_Marks {
+func (m *ModelBlockContentText) GetMarksList() *ModelBlockContentTextMarks {
 	if m != nil {
 		return m.MarksList
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Text) GetToggleable() bool {
+func (m *ModelBlockContentText) GetToggleable() bool {
 	if m != nil {
 		return m.Toggleable
 	}
 	return false
 }
 
-func (m *Model_Block_Content_Text) GetMarkerType() Model_Block_Content_Text_MarkerType {
+func (m *ModelBlockContentText) GetMarkerType() ModelBlockContentTextMarkerType {
 	if m != nil {
 		return m.MarkerType
 	}
-	return Model_Block_Content_Text_none
+	return ModelBlockContentText_none
 }
 
-func (m *Model_Block_Content_Text) GetCheckable() bool {
+func (m *ModelBlockContentText) GetCheckable() bool {
 	if m != nil {
 		return m.Checkable
 	}
 	return false
 }
 
-func (m *Model_Block_Content_Text) GetChecked() bool {
+func (m *ModelBlockContentText) GetChecked() bool {
 	if m != nil {
 		return m.Checked
 	}
 	return false
 }
 
-type Model_Block_Content_Text_Marks struct {
-	Marks []*Model_Block_Content_Text_Mark `protobuf:"bytes,1,rep,name=marks,proto3" json:"marks,omitempty"`
+type ModelBlockContentTextMarks struct {
+	Marks []*ModelBlockContentTextMark `protobuf:"bytes,1,rep,name=marks,proto3" json:"marks,omitempty"`
 }
 
-func (m *Model_Block_Content_Text_Marks) Reset()         { *m = Model_Block_Content_Text_Marks{} }
-func (m *Model_Block_Content_Text_Marks) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Text_Marks) ProtoMessage()    {}
-func (*Model_Block_Content_Text_Marks) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentTextMarks) Reset()         { *m = ModelBlockContentTextMarks{} }
+func (m *ModelBlockContentTextMarks) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentTextMarks) ProtoMessage()    {}
+func (*ModelBlockContentTextMarks) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 0}
 }
-func (m *Model_Block_Content_Text_Marks) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentTextMarks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Text_Marks) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentTextMarks) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Text_Marks.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentTextMarks.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1041,43 +1041,43 @@ func (m *Model_Block_Content_Text_Marks) XXX_Marshal(b []byte, deterministic boo
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Text_Marks) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Text_Marks.Merge(m, src)
+func (m *ModelBlockContentTextMarks) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentTextMarks.Merge(m, src)
 }
-func (m *Model_Block_Content_Text_Marks) XXX_Size() int {
+func (m *ModelBlockContentTextMarks) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Text_Marks) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Text_Marks.DiscardUnknown(m)
+func (m *ModelBlockContentTextMarks) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentTextMarks.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Text_Marks proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentTextMarks proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Text_Marks) GetMarks() []*Model_Block_Content_Text_Mark {
+func (m *ModelBlockContentTextMarks) GetMarks() []*ModelBlockContentTextMark {
 	if m != nil {
 		return m.Marks
 	}
 	return nil
 }
 
-type Model_Block_Content_Text_Mark struct {
-	Range *Model_Range                       `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
-	Type  Model_Block_Content_Text_Mark_Type `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.Model_Block_Content_Text_Mark_Type" json:"type,omitempty"`
-	Param string                             `protobuf:"bytes,3,opt,name=param,proto3" json:"param,omitempty"`
+type ModelBlockContentTextMark struct {
+	Range *ModelRange                   `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
+	Type  ModelBlockContentTextMarkType `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.ModelBlockContentTextMarkType" json:"type,omitempty"`
+	Param string                        `protobuf:"bytes,3,opt,name=param,proto3" json:"param,omitempty"`
 }
 
-func (m *Model_Block_Content_Text_Mark) Reset()         { *m = Model_Block_Content_Text_Mark{} }
-func (m *Model_Block_Content_Text_Mark) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Text_Mark) ProtoMessage()    {}
-func (*Model_Block_Content_Text_Mark) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentTextMark) Reset()         { *m = ModelBlockContentTextMark{} }
+func (m *ModelBlockContentTextMark) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentTextMark) ProtoMessage()    {}
+func (*ModelBlockContentTextMark) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 4, 1}
 }
-func (m *Model_Block_Content_Text_Mark) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentTextMark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Text_Mark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentTextMark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Text_Mark.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentTextMark.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1087,61 +1087,61 @@ func (m *Model_Block_Content_Text_Mark) XXX_Marshal(b []byte, deterministic bool
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Text_Mark) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Text_Mark.Merge(m, src)
+func (m *ModelBlockContentTextMark) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentTextMark.Merge(m, src)
 }
-func (m *Model_Block_Content_Text_Mark) XXX_Size() int {
+func (m *ModelBlockContentTextMark) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Text_Mark) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Text_Mark.DiscardUnknown(m)
+func (m *ModelBlockContentTextMark) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentTextMark.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Text_Mark proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentTextMark proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Text_Mark) GetRange() *Model_Range {
+func (m *ModelBlockContentTextMark) GetRange() *ModelRange {
 	if m != nil {
 		return m.Range
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Text_Mark) GetType() Model_Block_Content_Text_Mark_Type {
+func (m *ModelBlockContentTextMark) GetType() ModelBlockContentTextMarkType {
 	if m != nil {
 		return m.Type
 	}
-	return Model_Block_Content_Text_Mark_STRIKETHROUGH
+	return ModelBlockContentTextMark_STRIKETHROUGH
 }
 
-func (m *Model_Block_Content_Text_Mark) GetParam() string {
+func (m *ModelBlockContentTextMark) GetParam() string {
 	if m != nil {
 		return m.Param
 	}
 	return ""
 }
 
-type Model_Block_Content_Media struct {
-	Content []byte                          `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	State   Model_Block_Content_Media_State `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.Model_Block_Content_Media_State" json:"state,omitempty"`
+type ModelBlockContentMedia struct {
+	Content []byte                      `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	State   ModelBlockContentMediaState `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.ModelBlockContentMediaState" json:"state,omitempty"`
 	// Types that are valid to be assigned to Preview:
-	//	*Model_Block_Content_Media_Video
-	//	*Model_Block_Content_Media_Image
-	//	*Model_Block_Content_Media_File
-	Preview isModel_Block_Content_MediaPreview `protobuf_oneof:"preview"`
+	//	*ModelBlockContentMediaPreviewOfVideo
+	//	*ModelBlockContentMediaPreviewOfImage
+	//	*ModelBlockContentMediaPreviewOfFile
+	Preview isModelBlockContentMediaPreview `protobuf_oneof:"preview"`
 }
 
-func (m *Model_Block_Content_Media) Reset()         { *m = Model_Block_Content_Media{} }
-func (m *Model_Block_Content_Media) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Media) ProtoMessage()    {}
-func (*Model_Block_Content_Media) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentMedia) Reset()         { *m = ModelBlockContentMedia{} }
+func (m *ModelBlockContentMedia) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentMedia) ProtoMessage()    {}
+func (*ModelBlockContentMedia) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5}
 }
-func (m *Model_Block_Content_Media) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentMedia) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Media) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentMedia) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Media.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentMedia.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1151,109 +1151,107 @@ func (m *Model_Block_Content_Media) XXX_Marshal(b []byte, deterministic bool) ([
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Media) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Media.Merge(m, src)
+func (m *ModelBlockContentMedia) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentMedia.Merge(m, src)
 }
-func (m *Model_Block_Content_Media) XXX_Size() int {
+func (m *ModelBlockContentMedia) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Media) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Media.DiscardUnknown(m)
+func (m *ModelBlockContentMedia) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentMedia.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Media proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentMedia proto.InternalMessageInfo
 
-type isModel_Block_Content_MediaPreview interface {
-	isModel_Block_Content_MediaPreview()
+type isModelBlockContentMediaPreview interface {
+	isModelBlockContentMediaPreview()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Model_Block_Content_Media_Video struct {
-	Video *Model_Block_Content_Media_VideoPreview `protobuf:"bytes,101,opt,name=video,proto3,oneof" json:"video,omitempty"`
+type ModelBlockContentMediaPreviewOfVideo struct {
+	Video *ModelBlockContentMediaVideoPreview `protobuf:"bytes,101,opt,name=video,proto3,oneof" json:"video,omitempty"`
 }
-type Model_Block_Content_Media_Image struct {
-	Image *Model_Block_Content_Media_ImagePreview `protobuf:"bytes,102,opt,name=image,proto3,oneof" json:"image,omitempty"`
+type ModelBlockContentMediaPreviewOfImage struct {
+	Image *ModelBlockContentMediaImagePreview `protobuf:"bytes,102,opt,name=image,proto3,oneof" json:"image,omitempty"`
 }
-type Model_Block_Content_Media_File struct {
-	File *Model_Block_Content_Media_FilePreview `protobuf:"bytes,103,opt,name=file,proto3,oneof" json:"file,omitempty"`
+type ModelBlockContentMediaPreviewOfFile struct {
+	File *ModelBlockContentMediaFilePreview `protobuf:"bytes,103,opt,name=file,proto3,oneof" json:"file,omitempty"`
 }
 
-func (*Model_Block_Content_Media_Video) isModel_Block_Content_MediaPreview() {}
-func (*Model_Block_Content_Media_Image) isModel_Block_Content_MediaPreview() {}
-func (*Model_Block_Content_Media_File) isModel_Block_Content_MediaPreview()  {}
+func (*ModelBlockContentMediaPreviewOfVideo) isModelBlockContentMediaPreview() {}
+func (*ModelBlockContentMediaPreviewOfImage) isModelBlockContentMediaPreview() {}
+func (*ModelBlockContentMediaPreviewOfFile) isModelBlockContentMediaPreview()  {}
 
-func (m *Model_Block_Content_Media) GetPreview() isModel_Block_Content_MediaPreview {
+func (m *ModelBlockContentMedia) GetPreview() isModelBlockContentMediaPreview {
 	if m != nil {
 		return m.Preview
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Media) GetContent() []byte {
+func (m *ModelBlockContentMedia) GetContent() []byte {
 	if m != nil {
 		return m.Content
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Media) GetState() Model_Block_Content_Media_State {
+func (m *ModelBlockContentMedia) GetState() ModelBlockContentMediaState {
 	if m != nil {
 		return m.State
 	}
-	return Model_Block_Content_Media_EMPTY
+	return ModelBlockContentMedia_EMPTY
 }
 
-func (m *Model_Block_Content_Media) GetVideo() *Model_Block_Content_Media_VideoPreview {
-	if x, ok := m.GetPreview().(*Model_Block_Content_Media_Video); ok {
+func (m *ModelBlockContentMedia) GetVideo() *ModelBlockContentMediaVideoPreview {
+	if x, ok := m.GetPreview().(*ModelBlockContentMediaPreviewOfVideo); ok {
 		return x.Video
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Media) GetImage() *Model_Block_Content_Media_ImagePreview {
-	if x, ok := m.GetPreview().(*Model_Block_Content_Media_Image); ok {
+func (m *ModelBlockContentMedia) GetImage() *ModelBlockContentMediaImagePreview {
+	if x, ok := m.GetPreview().(*ModelBlockContentMediaPreviewOfImage); ok {
 		return x.Image
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Media) GetFile() *Model_Block_Content_Media_FilePreview {
-	if x, ok := m.GetPreview().(*Model_Block_Content_Media_File); ok {
+func (m *ModelBlockContentMedia) GetFile() *ModelBlockContentMediaFilePreview {
+	if x, ok := m.GetPreview().(*ModelBlockContentMediaPreviewOfFile); ok {
 		return x.File
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*Model_Block_Content_Media) XXX_OneofWrappers() []interface{} {
+func (*ModelBlockContentMedia) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*Model_Block_Content_Media_Video)(nil),
-		(*Model_Block_Content_Media_Image)(nil),
-		(*Model_Block_Content_Media_File)(nil),
+		(*ModelBlockContentMediaPreviewOfVideo)(nil),
+		(*ModelBlockContentMediaPreviewOfImage)(nil),
+		(*ModelBlockContentMediaPreviewOfFile)(nil),
 	}
 }
 
-type Model_Block_Content_Media_VideoPreview struct {
+type ModelBlockContentMediaVideoPreview struct {
 	Thumbnail []byte `protobuf:"bytes,1,opt,name=thumbnail,proto3" json:"thumbnail,omitempty"`
 	Name      string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
-func (m *Model_Block_Content_Media_VideoPreview) Reset() {
-	*m = Model_Block_Content_Media_VideoPreview{}
-}
-func (m *Model_Block_Content_Media_VideoPreview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Media_VideoPreview) ProtoMessage()    {}
-func (*Model_Block_Content_Media_VideoPreview) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentMediaVideoPreview) Reset()         { *m = ModelBlockContentMediaVideoPreview{} }
+func (m *ModelBlockContentMediaVideoPreview) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentMediaVideoPreview) ProtoMessage()    {}
+func (*ModelBlockContentMediaVideoPreview) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 0}
 }
-func (m *Model_Block_Content_Media_VideoPreview) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentMediaVideoPreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Media_VideoPreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentMediaVideoPreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Media_VideoPreview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentMediaVideoPreview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1263,59 +1261,57 @@ func (m *Model_Block_Content_Media_VideoPreview) XXX_Marshal(b []byte, determini
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Media_VideoPreview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Media_VideoPreview.Merge(m, src)
+func (m *ModelBlockContentMediaVideoPreview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentMediaVideoPreview.Merge(m, src)
 }
-func (m *Model_Block_Content_Media_VideoPreview) XXX_Size() int {
+func (m *ModelBlockContentMediaVideoPreview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Media_VideoPreview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Media_VideoPreview.DiscardUnknown(m)
+func (m *ModelBlockContentMediaVideoPreview) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentMediaVideoPreview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Media_VideoPreview proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentMediaVideoPreview proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Media_VideoPreview) GetThumbnail() []byte {
+func (m *ModelBlockContentMediaVideoPreview) GetThumbnail() []byte {
 	if m != nil {
 		return m.Thumbnail
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Media_VideoPreview) GetName() string {
+func (m *ModelBlockContentMediaVideoPreview) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Model_Block_Content_Media_VideoPreview) GetWidth() int32 {
+func (m *ModelBlockContentMediaVideoPreview) GetWidth() int32 {
 	if m != nil {
 		return m.Width
 	}
 	return 0
 }
 
-type Model_Block_Content_Media_ImagePreview struct {
+type ModelBlockContentMediaImagePreview struct {
 	Thumbnail []byte `protobuf:"bytes,1,opt,name=thumbnail,proto3" json:"thumbnail,omitempty"`
 	Name      string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
-func (m *Model_Block_Content_Media_ImagePreview) Reset() {
-	*m = Model_Block_Content_Media_ImagePreview{}
-}
-func (m *Model_Block_Content_Media_ImagePreview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Media_ImagePreview) ProtoMessage()    {}
-func (*Model_Block_Content_Media_ImagePreview) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentMediaImagePreview) Reset()         { *m = ModelBlockContentMediaImagePreview{} }
+func (m *ModelBlockContentMediaImagePreview) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentMediaImagePreview) ProtoMessage()    {}
+func (*ModelBlockContentMediaImagePreview) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 1}
 }
-func (m *Model_Block_Content_Media_ImagePreview) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentMediaImagePreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Media_ImagePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentMediaImagePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Media_ImagePreview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentMediaImagePreview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1325,56 +1321,56 @@ func (m *Model_Block_Content_Media_ImagePreview) XXX_Marshal(b []byte, determini
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Media_ImagePreview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Media_ImagePreview.Merge(m, src)
+func (m *ModelBlockContentMediaImagePreview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentMediaImagePreview.Merge(m, src)
 }
-func (m *Model_Block_Content_Media_ImagePreview) XXX_Size() int {
+func (m *ModelBlockContentMediaImagePreview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Media_ImagePreview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Media_ImagePreview.DiscardUnknown(m)
+func (m *ModelBlockContentMediaImagePreview) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentMediaImagePreview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Media_ImagePreview proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentMediaImagePreview proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Media_ImagePreview) GetThumbnail() []byte {
+func (m *ModelBlockContentMediaImagePreview) GetThumbnail() []byte {
 	if m != nil {
 		return m.Thumbnail
 	}
 	return nil
 }
 
-func (m *Model_Block_Content_Media_ImagePreview) GetName() string {
+func (m *ModelBlockContentMediaImagePreview) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Model_Block_Content_Media_ImagePreview) GetWidth() int32 {
+func (m *ModelBlockContentMediaImagePreview) GetWidth() int32 {
 	if m != nil {
 		return m.Width
 	}
 	return 0
 }
 
-type Model_Block_Content_Media_FilePreview struct {
+type ModelBlockContentMediaFilePreview struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Icon string `protobuf:"bytes,2,opt,name=icon,proto3" json:"icon,omitempty"`
 }
 
-func (m *Model_Block_Content_Media_FilePreview) Reset()         { *m = Model_Block_Content_Media_FilePreview{} }
-func (m *Model_Block_Content_Media_FilePreview) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Media_FilePreview) ProtoMessage()    {}
-func (*Model_Block_Content_Media_FilePreview) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentMediaFilePreview) Reset()         { *m = ModelBlockContentMediaFilePreview{} }
+func (m *ModelBlockContentMediaFilePreview) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentMediaFilePreview) ProtoMessage()    {}
+func (*ModelBlockContentMediaFilePreview) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 5, 2}
 }
-func (m *Model_Block_Content_Media_FilePreview) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentMediaFilePreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Media_FilePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentMediaFilePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Media_FilePreview.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentMediaFilePreview.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1384,48 +1380,48 @@ func (m *Model_Block_Content_Media_FilePreview) XXX_Marshal(b []byte, determinis
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Media_FilePreview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Media_FilePreview.Merge(m, src)
+func (m *ModelBlockContentMediaFilePreview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentMediaFilePreview.Merge(m, src)
 }
-func (m *Model_Block_Content_Media_FilePreview) XXX_Size() int {
+func (m *ModelBlockContentMediaFilePreview) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Media_FilePreview) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Media_FilePreview.DiscardUnknown(m)
+func (m *ModelBlockContentMediaFilePreview) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentMediaFilePreview.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Media_FilePreview proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentMediaFilePreview proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Media_FilePreview) GetName() string {
+func (m *ModelBlockContentMediaFilePreview) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Model_Block_Content_Media_FilePreview) GetIcon() string {
+func (m *ModelBlockContentMediaFilePreview) GetIcon() string {
 	if m != nil {
 		return m.Icon
 	}
 	return ""
 }
 
-type Model_Block_Content_Page struct {
-	Style Model_Block_Content_Page_Style `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.Model_Block_Content_Page_Style" json:"style,omitempty"`
+type ModelBlockContentPage struct {
+	Style ModelBlockContentPageStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.ModelBlockContentPageStyle" json:"style,omitempty"`
 }
 
-func (m *Model_Block_Content_Page) Reset()         { *m = Model_Block_Content_Page{} }
-func (m *Model_Block_Content_Page) String() string { return proto.CompactTextString(m) }
-func (*Model_Block_Content_Page) ProtoMessage()    {}
-func (*Model_Block_Content_Page) Descriptor() ([]byte, []int) {
+func (m *ModelBlockContentPage) Reset()         { *m = ModelBlockContentPage{} }
+func (m *ModelBlockContentPage) String() string { return proto.CompactTextString(m) }
+func (*ModelBlockContentPage) ProtoMessage()    {}
+func (*ModelBlockContentPage) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 0, 1, 6}
 }
-func (m *Model_Block_Content_Page) XXX_Unmarshal(b []byte) error {
+func (m *ModelBlockContentPage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Block_Content_Page) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelBlockContentPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Block_Content_Page.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelBlockContentPage.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1435,42 +1431,42 @@ func (m *Model_Block_Content_Page) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *Model_Block_Content_Page) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Block_Content_Page.Merge(m, src)
+func (m *ModelBlockContentPage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelBlockContentPage.Merge(m, src)
 }
-func (m *Model_Block_Content_Page) XXX_Size() int {
+func (m *ModelBlockContentPage) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Block_Content_Page) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Block_Content_Page.DiscardUnknown(m)
+func (m *ModelBlockContentPage) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelBlockContentPage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Block_Content_Page proto.InternalMessageInfo
+var xxx_messageInfo_ModelBlockContentPage proto.InternalMessageInfo
 
-func (m *Model_Block_Content_Page) GetStyle() Model_Block_Content_Page_Style {
+func (m *ModelBlockContentPage) GetStyle() ModelBlockContentPageStyle {
 	if m != nil {
 		return m.Style
 	}
-	return Model_Block_Content_Page_EMPTY
+	return ModelBlockContentPage_EMPTY
 }
 
-type Model_Range struct {
+type ModelRange struct {
 	From int32 `protobuf:"varint,1,opt,name=from,proto3" json:"from,omitempty"`
 	To   int32 `protobuf:"varint,2,opt,name=to,proto3" json:"to,omitempty"`
 }
 
-func (m *Model_Range) Reset()         { *m = Model_Range{} }
-func (m *Model_Range) String() string { return proto.CompactTextString(m) }
-func (*Model_Range) ProtoMessage()    {}
-func (*Model_Range) Descriptor() ([]byte, []int) {
+func (m *ModelRange) Reset()         { *m = ModelRange{} }
+func (m *ModelRange) String() string { return proto.CompactTextString(m) }
+func (*ModelRange) ProtoMessage()    {}
+func (*ModelRange) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 1}
 }
-func (m *Model_Range) XXX_Unmarshal(b []byte) error {
+func (m *ModelRange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Range) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelRange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Range.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelRange.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1480,49 +1476,49 @@ func (m *Model_Range) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Model_Range) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Range.Merge(m, src)
+func (m *ModelRange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelRange.Merge(m, src)
 }
-func (m *Model_Range) XXX_Size() int {
+func (m *ModelRange) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Range) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Range.DiscardUnknown(m)
+func (m *ModelRange) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelRange.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Range proto.InternalMessageInfo
+var xxx_messageInfo_ModelRange proto.InternalMessageInfo
 
-func (m *Model_Range) GetFrom() int32 {
+func (m *ModelRange) GetFrom() int32 {
 	if m != nil {
 		return m.From
 	}
 	return 0
 }
 
-func (m *Model_Range) GetTo() int32 {
+func (m *ModelRange) GetTo() int32 {
 	if m != nil {
 		return m.To
 	}
 	return 0
 }
 
-type Model_Struct struct {
+type ModelStruct struct {
 	// Unordered map of dynamically typed values.
-	Fields map[string]*Model_Struct_Value `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Fields map[string]*ModelStructValue `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *Model_Struct) Reset()         { *m = Model_Struct{} }
-func (m *Model_Struct) String() string { return proto.CompactTextString(m) }
-func (*Model_Struct) ProtoMessage()    {}
-func (*Model_Struct) Descriptor() ([]byte, []int) {
+func (m *ModelStruct) Reset()         { *m = ModelStruct{} }
+func (m *ModelStruct) String() string { return proto.CompactTextString(m) }
+func (*ModelStruct) ProtoMessage()    {}
+func (*ModelStruct) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 2}
 }
-func (m *Model_Struct) XXX_Unmarshal(b []byte) error {
+func (m *ModelStruct) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Struct) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelStruct) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Struct.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelStruct.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1532,19 +1528,19 @@ func (m *Model_Struct) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return b[:n], nil
 	}
 }
-func (m *Model_Struct) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Struct.Merge(m, src)
+func (m *ModelStruct) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelStruct.Merge(m, src)
 }
-func (m *Model_Struct) XXX_Size() int {
+func (m *ModelStruct) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Struct) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Struct.DiscardUnknown(m)
+func (m *ModelStruct) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelStruct.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Struct proto.InternalMessageInfo
+var xxx_messageInfo_ModelStruct proto.InternalMessageInfo
 
-func (m *Model_Struct) GetFields() map[string]*Model_Struct_Value {
+func (m *ModelStruct) GetFields() map[string]*ModelStructValue {
 	if m != nil {
 		return m.Fields
 	}
@@ -1555,29 +1551,29 @@ func (m *Model_Struct) GetFields() map[string]*Model_Struct_Value {
 // null, a number, a string, a boolean, a recursive struct value, or a
 // list of values. A producer of value is expected to set one of that
 // variants, absence of any variant indicates an error.
-type Model_Struct_Value struct {
+type ModelStructValue struct {
 	// Types that are valid to be assigned to Kind:
-	//	*Model_Struct_Value_NullValue
-	//	*Model_Struct_Value_NumberValue
-	//	*Model_Struct_Value_StringValue
-	//	*Model_Struct_Value_BoolValue
-	//	*Model_Struct_Value_StructValue
-	//	*Model_Struct_Value_ListValue
-	Kind isModel_Struct_ValueKind `protobuf_oneof:"kind"`
+	//	*ModelStructValueKindOfNullValue
+	//	*ModelStructValueKindOfNumberValue
+	//	*ModelStructValueKindOfStringValue
+	//	*ModelStructValueKindOfBoolValue
+	//	*ModelStructValueKindOfStructValue
+	//	*ModelStructValueKindOfListValue
+	Kind isModelStructValueKind `protobuf_oneof:"kind"`
 }
 
-func (m *Model_Struct_Value) Reset()         { *m = Model_Struct_Value{} }
-func (m *Model_Struct_Value) String() string { return proto.CompactTextString(m) }
-func (*Model_Struct_Value) ProtoMessage()    {}
-func (*Model_Struct_Value) Descriptor() ([]byte, []int) {
+func (m *ModelStructValue) Reset()         { *m = ModelStructValue{} }
+func (m *ModelStructValue) String() string { return proto.CompactTextString(m) }
+func (*ModelStructValue) ProtoMessage()    {}
+func (*ModelStructValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 2, 1}
 }
-func (m *Model_Struct_Value) XXX_Unmarshal(b []byte) error {
+func (m *ModelStructValue) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Struct_Value) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelStructValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Struct_Value.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelStructValue.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1587,128 +1583,128 @@ func (m *Model_Struct_Value) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *Model_Struct_Value) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Struct_Value.Merge(m, src)
+func (m *ModelStructValue) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelStructValue.Merge(m, src)
 }
-func (m *Model_Struct_Value) XXX_Size() int {
+func (m *ModelStructValue) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Struct_Value) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Struct_Value.DiscardUnknown(m)
+func (m *ModelStructValue) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelStructValue.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Struct_Value proto.InternalMessageInfo
+var xxx_messageInfo_ModelStructValue proto.InternalMessageInfo
 
-type isModel_Struct_ValueKind interface {
-	isModel_Struct_ValueKind()
+type isModelStructValueKind interface {
+	isModelStructValueKind()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Model_Struct_Value_NullValue struct {
-	NullValue Model_Struct_NullValue `protobuf:"varint,1,opt,name=null_value,json=nullValue,proto3,enum=anytype.Model_Struct_NullValue,oneof" json:"null_value,omitempty"`
+type ModelStructValueKindOfNullValue struct {
+	NullValue ModelStructNullValue `protobuf:"varint,1,opt,name=null_value,json=nullValue,proto3,enum=anytype.ModelStructNullValue,oneof" json:"null_value,omitempty"`
 }
-type Model_Struct_Value_NumberValue struct {
+type ModelStructValueKindOfNumberValue struct {
 	NumberValue float64 `protobuf:"fixed64,2,opt,name=number_value,json=numberValue,proto3,oneof" json:"number_value,omitempty"`
 }
-type Model_Struct_Value_StringValue struct {
+type ModelStructValueKindOfStringValue struct {
 	StringValue string `protobuf:"bytes,3,opt,name=string_value,json=stringValue,proto3,oneof" json:"string_value,omitempty"`
 }
-type Model_Struct_Value_BoolValue struct {
+type ModelStructValueKindOfBoolValue struct {
 	BoolValue bool `protobuf:"varint,4,opt,name=bool_value,json=boolValue,proto3,oneof" json:"bool_value,omitempty"`
 }
-type Model_Struct_Value_StructValue struct {
-	StructValue *Model_Struct `protobuf:"bytes,5,opt,name=struct_value,json=structValue,proto3,oneof" json:"struct_value,omitempty"`
+type ModelStructValueKindOfStructValue struct {
+	StructValue *ModelStruct `protobuf:"bytes,5,opt,name=struct_value,json=structValue,proto3,oneof" json:"struct_value,omitempty"`
 }
-type Model_Struct_Value_ListValue struct {
-	ListValue *Model_Struct_ListValue `protobuf:"bytes,6,opt,name=list_value,json=listValue,proto3,oneof" json:"list_value,omitempty"`
+type ModelStructValueKindOfListValue struct {
+	ListValue *ModelStructListValue `protobuf:"bytes,6,opt,name=list_value,json=listValue,proto3,oneof" json:"list_value,omitempty"`
 }
 
-func (*Model_Struct_Value_NullValue) isModel_Struct_ValueKind()   {}
-func (*Model_Struct_Value_NumberValue) isModel_Struct_ValueKind() {}
-func (*Model_Struct_Value_StringValue) isModel_Struct_ValueKind() {}
-func (*Model_Struct_Value_BoolValue) isModel_Struct_ValueKind()   {}
-func (*Model_Struct_Value_StructValue) isModel_Struct_ValueKind() {}
-func (*Model_Struct_Value_ListValue) isModel_Struct_ValueKind()   {}
+func (*ModelStructValueKindOfNullValue) isModelStructValueKind()   {}
+func (*ModelStructValueKindOfNumberValue) isModelStructValueKind() {}
+func (*ModelStructValueKindOfStringValue) isModelStructValueKind() {}
+func (*ModelStructValueKindOfBoolValue) isModelStructValueKind()   {}
+func (*ModelStructValueKindOfStructValue) isModelStructValueKind() {}
+func (*ModelStructValueKindOfListValue) isModelStructValueKind()   {}
 
-func (m *Model_Struct_Value) GetKind() isModel_Struct_ValueKind {
+func (m *ModelStructValue) GetKind() isModelStructValueKind {
 	if m != nil {
 		return m.Kind
 	}
 	return nil
 }
 
-func (m *Model_Struct_Value) GetNullValue() Model_Struct_NullValue {
-	if x, ok := m.GetKind().(*Model_Struct_Value_NullValue); ok {
+func (m *ModelStructValue) GetNullValue() ModelStructNullValue {
+	if x, ok := m.GetKind().(*ModelStructValueKindOfNullValue); ok {
 		return x.NullValue
 	}
-	return Model_Struct_NULL_VALUE
+	return ModelStruct_NULL_VALUE
 }
 
-func (m *Model_Struct_Value) GetNumberValue() float64 {
-	if x, ok := m.GetKind().(*Model_Struct_Value_NumberValue); ok {
+func (m *ModelStructValue) GetNumberValue() float64 {
+	if x, ok := m.GetKind().(*ModelStructValueKindOfNumberValue); ok {
 		return x.NumberValue
 	}
 	return 0
 }
 
-func (m *Model_Struct_Value) GetStringValue() string {
-	if x, ok := m.GetKind().(*Model_Struct_Value_StringValue); ok {
+func (m *ModelStructValue) GetStringValue() string {
+	if x, ok := m.GetKind().(*ModelStructValueKindOfStringValue); ok {
 		return x.StringValue
 	}
 	return ""
 }
 
-func (m *Model_Struct_Value) GetBoolValue() bool {
-	if x, ok := m.GetKind().(*Model_Struct_Value_BoolValue); ok {
+func (m *ModelStructValue) GetBoolValue() bool {
+	if x, ok := m.GetKind().(*ModelStructValueKindOfBoolValue); ok {
 		return x.BoolValue
 	}
 	return false
 }
 
-func (m *Model_Struct_Value) GetStructValue() *Model_Struct {
-	if x, ok := m.GetKind().(*Model_Struct_Value_StructValue); ok {
+func (m *ModelStructValue) GetStructValue() *ModelStruct {
+	if x, ok := m.GetKind().(*ModelStructValueKindOfStructValue); ok {
 		return x.StructValue
 	}
 	return nil
 }
 
-func (m *Model_Struct_Value) GetListValue() *Model_Struct_ListValue {
-	if x, ok := m.GetKind().(*Model_Struct_Value_ListValue); ok {
+func (m *ModelStructValue) GetListValue() *ModelStructListValue {
+	if x, ok := m.GetKind().(*ModelStructValueKindOfListValue); ok {
 		return x.ListValue
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*Model_Struct_Value) XXX_OneofWrappers() []interface{} {
+func (*ModelStructValue) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*Model_Struct_Value_NullValue)(nil),
-		(*Model_Struct_Value_NumberValue)(nil),
-		(*Model_Struct_Value_StringValue)(nil),
-		(*Model_Struct_Value_BoolValue)(nil),
-		(*Model_Struct_Value_StructValue)(nil),
-		(*Model_Struct_Value_ListValue)(nil),
+		(*ModelStructValueKindOfNullValue)(nil),
+		(*ModelStructValueKindOfNumberValue)(nil),
+		(*ModelStructValueKindOfStringValue)(nil),
+		(*ModelStructValueKindOfBoolValue)(nil),
+		(*ModelStructValueKindOfStructValue)(nil),
+		(*ModelStructValueKindOfListValue)(nil),
 	}
 }
 
 // `ListValue` is a wrapper around a repeated field of values.
-type Model_Struct_ListValue struct {
-	Values []*Model_Struct_Value `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+type ModelStructListValue struct {
+	Values []*ModelStructValue `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
 }
 
-func (m *Model_Struct_ListValue) Reset()         { *m = Model_Struct_ListValue{} }
-func (m *Model_Struct_ListValue) String() string { return proto.CompactTextString(m) }
-func (*Model_Struct_ListValue) ProtoMessage()    {}
-func (*Model_Struct_ListValue) Descriptor() ([]byte, []int) {
+func (m *ModelStructListValue) Reset()         { *m = ModelStructListValue{} }
+func (m *ModelStructListValue) String() string { return proto.CompactTextString(m) }
+func (*ModelStructListValue) ProtoMessage()    {}
+func (*ModelStructListValue) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 2, 2}
 }
-func (m *Model_Struct_ListValue) XXX_Unmarshal(b []byte) error {
+func (m *ModelStructListValue) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Struct_ListValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelStructListValue) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Struct_ListValue.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelStructListValue.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1718,19 +1714,19 @@ func (m *Model_Struct_ListValue) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *Model_Struct_ListValue) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Struct_ListValue.Merge(m, src)
+func (m *ModelStructListValue) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelStructListValue.Merge(m, src)
 }
-func (m *Model_Struct_ListValue) XXX_Size() int {
+func (m *ModelStructListValue) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Struct_ListValue) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Struct_ListValue.DiscardUnknown(m)
+func (m *ModelStructListValue) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelStructListValue.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Struct_ListValue proto.InternalMessageInfo
+var xxx_messageInfo_ModelStructListValue proto.InternalMessageInfo
 
-func (m *Model_Struct_ListValue) GetValues() []*Model_Struct_Value {
+func (m *ModelStructListValue) GetValues() []*ModelStructValue {
 	if m != nil {
 		return m.Values
 	}
@@ -1739,24 +1735,24 @@ func (m *Model_Struct_ListValue) GetValues() []*Model_Struct_Value {
 
 //*
 // Contains basic information about user account
-type Model_Account struct {
-	Id     string                `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name   string                `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Avatar *Model_Account_Avatar `protobuf:"bytes,3,opt,name=avatar,proto3" json:"avatar,omitempty"`
+type ModelAccount struct {
+	Id     string              `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name   string              `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Avatar *ModelAccountAvatar `protobuf:"bytes,3,opt,name=avatar,proto3" json:"avatar,omitempty"`
 }
 
-func (m *Model_Account) Reset()         { *m = Model_Account{} }
-func (m *Model_Account) String() string { return proto.CompactTextString(m) }
-func (*Model_Account) ProtoMessage()    {}
-func (*Model_Account) Descriptor() ([]byte, []int) {
+func (m *ModelAccount) Reset()         { *m = ModelAccount{} }
+func (m *ModelAccount) String() string { return proto.CompactTextString(m) }
+func (*ModelAccount) ProtoMessage()    {}
+func (*ModelAccount) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 3}
 }
-func (m *Model_Account) XXX_Unmarshal(b []byte) error {
+func (m *ModelAccount) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelAccount) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Account.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelAccount.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1766,33 +1762,33 @@ func (m *Model_Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error
 		return b[:n], nil
 	}
 }
-func (m *Model_Account) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Account.Merge(m, src)
+func (m *ModelAccount) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelAccount.Merge(m, src)
 }
-func (m *Model_Account) XXX_Size() int {
+func (m *ModelAccount) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Account) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Account.DiscardUnknown(m)
+func (m *ModelAccount) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelAccount.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Account proto.InternalMessageInfo
+var xxx_messageInfo_ModelAccount proto.InternalMessageInfo
 
-func (m *Model_Account) GetId() string {
+func (m *ModelAccount) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Model_Account) GetName() string {
+func (m *ModelAccount) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *Model_Account) GetAvatar() *Model_Account_Avatar {
+func (m *ModelAccount) GetAvatar() *ModelAccountAvatar {
 	if m != nil {
 		return m.Avatar
 	}
@@ -1801,25 +1797,25 @@ func (m *Model_Account) GetAvatar() *Model_Account_Avatar {
 
 //*
 // Avatar of a user's account. It could be an image or color
-type Model_Account_Avatar struct {
+type ModelAccountAvatar struct {
 	// Types that are valid to be assigned to Avatar:
-	//	*Model_Account_Avatar_Image
-	//	*Model_Account_Avatar_Color
-	Avatar isModel_Account_AvatarAvatar `protobuf_oneof:"avatar"`
+	//	*ModelAccountAvatarAvatarOfImage
+	//	*ModelAccountAvatarAvatarOfColor
+	Avatar isModelAccountAvatarAvatar `protobuf_oneof:"avatar"`
 }
 
-func (m *Model_Account_Avatar) Reset()         { *m = Model_Account_Avatar{} }
-func (m *Model_Account_Avatar) String() string { return proto.CompactTextString(m) }
-func (*Model_Account_Avatar) ProtoMessage()    {}
-func (*Model_Account_Avatar) Descriptor() ([]byte, []int) {
+func (m *ModelAccountAvatar) Reset()         { *m = ModelAccountAvatar{} }
+func (m *ModelAccountAvatar) String() string { return proto.CompactTextString(m) }
+func (*ModelAccountAvatar) ProtoMessage()    {}
+func (*ModelAccountAvatar) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 3, 0}
 }
-func (m *Model_Account_Avatar) XXX_Unmarshal(b []byte) error {
+func (m *ModelAccountAvatar) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Account_Avatar) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelAccountAvatar) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Account_Avatar.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelAccountAvatar.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1829,80 +1825,80 @@ func (m *Model_Account_Avatar) XXX_Marshal(b []byte, deterministic bool) ([]byte
 		return b[:n], nil
 	}
 }
-func (m *Model_Account_Avatar) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Account_Avatar.Merge(m, src)
+func (m *ModelAccountAvatar) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelAccountAvatar.Merge(m, src)
 }
-func (m *Model_Account_Avatar) XXX_Size() int {
+func (m *ModelAccountAvatar) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Account_Avatar) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Account_Avatar.DiscardUnknown(m)
+func (m *ModelAccountAvatar) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelAccountAvatar.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Account_Avatar proto.InternalMessageInfo
+var xxx_messageInfo_ModelAccountAvatar proto.InternalMessageInfo
 
-type isModel_Account_AvatarAvatar interface {
-	isModel_Account_AvatarAvatar()
+type isModelAccountAvatarAvatar interface {
+	isModelAccountAvatarAvatar()
 	MarshalTo([]byte) (int, error)
 	Size() int
 }
 
-type Model_Account_Avatar_Image struct {
-	Image *Model_Image `protobuf:"bytes,1,opt,name=image,proto3,oneof" json:"image,omitempty"`
+type ModelAccountAvatarAvatarOfImage struct {
+	Image *ModelImage `protobuf:"bytes,1,opt,name=image,proto3,oneof" json:"image,omitempty"`
 }
-type Model_Account_Avatar_Color struct {
+type ModelAccountAvatarAvatarOfColor struct {
 	Color string `protobuf:"bytes,2,opt,name=color,proto3,oneof" json:"color,omitempty"`
 }
 
-func (*Model_Account_Avatar_Image) isModel_Account_AvatarAvatar() {}
-func (*Model_Account_Avatar_Color) isModel_Account_AvatarAvatar() {}
+func (*ModelAccountAvatarAvatarOfImage) isModelAccountAvatarAvatar() {}
+func (*ModelAccountAvatarAvatarOfColor) isModelAccountAvatarAvatar() {}
 
-func (m *Model_Account_Avatar) GetAvatar() isModel_Account_AvatarAvatar {
+func (m *ModelAccountAvatar) GetAvatar() isModelAccountAvatarAvatar {
 	if m != nil {
 		return m.Avatar
 	}
 	return nil
 }
 
-func (m *Model_Account_Avatar) GetImage() *Model_Image {
-	if x, ok := m.GetAvatar().(*Model_Account_Avatar_Image); ok {
+func (m *ModelAccountAvatar) GetImage() *ModelImage {
+	if x, ok := m.GetAvatar().(*ModelAccountAvatarAvatarOfImage); ok {
 		return x.Image
 	}
 	return nil
 }
 
-func (m *Model_Account_Avatar) GetColor() string {
-	if x, ok := m.GetAvatar().(*Model_Account_Avatar_Color); ok {
+func (m *ModelAccountAvatar) GetColor() string {
+	if x, ok := m.GetAvatar().(*ModelAccountAvatarAvatarOfColor); ok {
 		return x.Color
 	}
 	return ""
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*Model_Account_Avatar) XXX_OneofWrappers() []interface{} {
+func (*ModelAccountAvatar) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*Model_Account_Avatar_Image)(nil),
-		(*Model_Account_Avatar_Color)(nil),
+		(*ModelAccountAvatarAvatarOfImage)(nil),
+		(*ModelAccountAvatarAvatarOfColor)(nil),
 	}
 }
 
-type Model_Image struct {
-	Id    string             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Sizes []Model_Image_Size `protobuf:"varint,2,rep,packed,name=sizes,proto3,enum=anytype.Model_Image_Size" json:"sizes,omitempty"`
+type ModelImage struct {
+	Id    string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Sizes []ModelImageSize `protobuf:"varint,2,rep,packed,name=sizes,proto3,enum=anytype.ModelImageSize" json:"sizes,omitempty"`
 }
 
-func (m *Model_Image) Reset()         { *m = Model_Image{} }
-func (m *Model_Image) String() string { return proto.CompactTextString(m) }
-func (*Model_Image) ProtoMessage()    {}
-func (*Model_Image) Descriptor() ([]byte, []int) {
+func (m *ModelImage) Reset()         { *m = ModelImage{} }
+func (m *ModelImage) String() string { return proto.CompactTextString(m) }
+func (*ModelImage) ProtoMessage()    {}
+func (*ModelImage) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 4}
 }
-func (m *Model_Image) XXX_Unmarshal(b []byte) error {
+func (m *ModelImage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Image) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelImage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Image.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelImage.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1912,49 +1908,49 @@ func (m *Model_Image) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Model_Image) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Image.Merge(m, src)
+func (m *ModelImage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelImage.Merge(m, src)
 }
-func (m *Model_Image) XXX_Size() int {
+func (m *ModelImage) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Image) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Image.DiscardUnknown(m)
+func (m *ModelImage) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelImage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Image proto.InternalMessageInfo
+var xxx_messageInfo_ModelImage proto.InternalMessageInfo
 
-func (m *Model_Image) GetId() string {
+func (m *ModelImage) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Model_Image) GetSizes() []Model_Image_Size {
+func (m *ModelImage) GetSizes() []ModelImageSize {
 	if m != nil {
 		return m.Sizes
 	}
 	return nil
 }
 
-type Model_Video struct {
-	Id    string             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Sizes []Model_Video_Size `protobuf:"varint,2,rep,packed,name=sizes,proto3,enum=anytype.Model_Video_Size" json:"sizes,omitempty"`
+type ModelVideo struct {
+	Id    string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Sizes []ModelVideoSize `protobuf:"varint,2,rep,packed,name=sizes,proto3,enum=anytype.ModelVideoSize" json:"sizes,omitempty"`
 }
 
-func (m *Model_Video) Reset()         { *m = Model_Video{} }
-func (m *Model_Video) String() string { return proto.CompactTextString(m) }
-func (*Model_Video) ProtoMessage()    {}
-func (*Model_Video) Descriptor() ([]byte, []int) {
+func (m *ModelVideo) Reset()         { *m = ModelVideo{} }
+func (m *ModelVideo) String() string { return proto.CompactTextString(m) }
+func (*ModelVideo) ProtoMessage()    {}
+func (*ModelVideo) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0b5431a010549573, []int{0, 5}
 }
-func (m *Model_Video) XXX_Unmarshal(b []byte) error {
+func (m *ModelVideo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Model_Video) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ModelVideo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Model_Video.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ModelVideo.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1964,26 +1960,26 @@ func (m *Model_Video) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *Model_Video) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Model_Video.Merge(m, src)
+func (m *ModelVideo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ModelVideo.Merge(m, src)
 }
-func (m *Model_Video) XXX_Size() int {
+func (m *ModelVideo) XXX_Size() int {
 	return m.Size()
 }
-func (m *Model_Video) XXX_DiscardUnknown() {
-	xxx_messageInfo_Model_Video.DiscardUnknown(m)
+func (m *ModelVideo) XXX_DiscardUnknown() {
+	xxx_messageInfo_ModelVideo.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Model_Video proto.InternalMessageInfo
+var xxx_messageInfo_ModelVideo proto.InternalMessageInfo
 
-func (m *Model_Video) GetId() string {
+func (m *ModelVideo) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *Model_Video) GetSizes() []Model_Video_Size {
+func (m *ModelVideo) GetSizes() []ModelVideoSize {
 	if m != nil {
 		return m.Sizes
 	}
@@ -1991,43 +1987,43 @@ func (m *Model_Video) GetSizes() []Model_Video_Size {
 }
 
 func init() {
-	proto.RegisterEnum("anytype.Model_Block_Header_Type", Model_Block_Header_Type_name, Model_Block_Header_Type_value)
-	proto.RegisterEnum("anytype.Model_Block_Content_Layout_Style", Model_Block_Content_Layout_Style_name, Model_Block_Content_Layout_Style_value)
-	proto.RegisterEnum("anytype.Model_Block_Content_Dashboard_Style", Model_Block_Content_Dashboard_Style_name, Model_Block_Content_Dashboard_Style_value)
-	proto.RegisterEnum("anytype.Model_Block_Content_Text_Style", Model_Block_Content_Text_Style_name, Model_Block_Content_Text_Style_value)
-	proto.RegisterEnum("anytype.Model_Block_Content_Text_MarkerType", Model_Block_Content_Text_MarkerType_name, Model_Block_Content_Text_MarkerType_value)
-	proto.RegisterEnum("anytype.Model_Block_Content_Text_Mark_Type", Model_Block_Content_Text_Mark_Type_name, Model_Block_Content_Text_Mark_Type_value)
-	proto.RegisterEnum("anytype.Model_Block_Content_Media_State", Model_Block_Content_Media_State_name, Model_Block_Content_Media_State_value)
-	proto.RegisterEnum("anytype.Model_Block_Content_Page_Style", Model_Block_Content_Page_Style_name, Model_Block_Content_Page_Style_value)
-	proto.RegisterEnum("anytype.Model_Struct_NullValue", Model_Struct_NullValue_name, Model_Struct_NullValue_value)
-	proto.RegisterEnum("anytype.Model_Image_Size", Model_Image_Size_name, Model_Image_Size_value)
-	proto.RegisterEnum("anytype.Model_Video_Size", Model_Video_Size_name, Model_Video_Size_value)
+	proto.RegisterEnum("anytype.ModelBlockHeaderType", ModelBlockHeaderType_name, ModelBlockHeaderType_value)
+	proto.RegisterEnum("anytype.ModelBlockContentLayoutStyle", ModelBlockContentLayoutStyle_name, ModelBlockContentLayoutStyle_value)
+	proto.RegisterEnum("anytype.ModelBlockContentDashboardStyle", ModelBlockContentDashboardStyle_name, ModelBlockContentDashboardStyle_value)
+	proto.RegisterEnum("anytype.ModelBlockContentTextStyle", ModelBlockContentTextStyle_name, ModelBlockContentTextStyle_value)
+	proto.RegisterEnum("anytype.ModelBlockContentTextMarkerType", ModelBlockContentTextMarkerType_name, ModelBlockContentTextMarkerType_value)
+	proto.RegisterEnum("anytype.ModelBlockContentTextMarkType", ModelBlockContentTextMarkType_name, ModelBlockContentTextMarkType_value)
+	proto.RegisterEnum("anytype.ModelBlockContentMediaState", ModelBlockContentMediaState_name, ModelBlockContentMediaState_value)
+	proto.RegisterEnum("anytype.ModelBlockContentPageStyle", ModelBlockContentPageStyle_name, ModelBlockContentPageStyle_value)
+	proto.RegisterEnum("anytype.ModelStructNullValue", ModelStructNullValue_name, ModelStructNullValue_value)
+	proto.RegisterEnum("anytype.ModelImageSize", ModelImageSize_name, ModelImageSize_value)
+	proto.RegisterEnum("anytype.ModelVideoSize", ModelVideoSize_name, ModelVideoSize_value)
 	proto.RegisterType((*Model)(nil), "anytype.Model")
-	proto.RegisterType((*Model_Block)(nil), "anytype.Model.Block")
-	proto.RegisterType((*Model_Block_Header)(nil), "anytype.Model.Block.Header")
-	proto.RegisterType((*Model_Block_Header_Permissions)(nil), "anytype.Model.Block.Header.Permissions")
-	proto.RegisterType((*Model_Block_Content)(nil), "anytype.Model.Block.Content")
-	proto.RegisterType((*Model_Block_Content_Layout)(nil), "anytype.Model.Block.Content.Layout")
-	proto.RegisterType((*Model_Block_Content_Div)(nil), "anytype.Model.Block.Content.Div")
-	proto.RegisterType((*Model_Block_Content_Dashboard)(nil), "anytype.Model.Block.Content.Dashboard")
-	proto.RegisterType((*Model_Block_Content_Dataview)(nil), "anytype.Model.Block.Content.Dataview")
-	proto.RegisterType((*Model_Block_Content_Text)(nil), "anytype.Model.Block.Content.Text")
-	proto.RegisterType((*Model_Block_Content_Text_Marks)(nil), "anytype.Model.Block.Content.Text.Marks")
-	proto.RegisterType((*Model_Block_Content_Text_Mark)(nil), "anytype.Model.Block.Content.Text.Mark")
-	proto.RegisterType((*Model_Block_Content_Media)(nil), "anytype.Model.Block.Content.Media")
-	proto.RegisterType((*Model_Block_Content_Media_VideoPreview)(nil), "anytype.Model.Block.Content.Media.VideoPreview")
-	proto.RegisterType((*Model_Block_Content_Media_ImagePreview)(nil), "anytype.Model.Block.Content.Media.ImagePreview")
-	proto.RegisterType((*Model_Block_Content_Media_FilePreview)(nil), "anytype.Model.Block.Content.Media.FilePreview")
-	proto.RegisterType((*Model_Block_Content_Page)(nil), "anytype.Model.Block.Content.Page")
-	proto.RegisterType((*Model_Range)(nil), "anytype.Model.Range")
-	proto.RegisterType((*Model_Struct)(nil), "anytype.Model.Struct")
-	proto.RegisterMapType((map[string]*Model_Struct_Value)(nil), "anytype.Model.Struct.FieldsEntry")
-	proto.RegisterType((*Model_Struct_Value)(nil), "anytype.Model.Struct.Value")
-	proto.RegisterType((*Model_Struct_ListValue)(nil), "anytype.Model.Struct.ListValue")
-	proto.RegisterType((*Model_Account)(nil), "anytype.Model.Account")
-	proto.RegisterType((*Model_Account_Avatar)(nil), "anytype.Model.Account.Avatar")
-	proto.RegisterType((*Model_Image)(nil), "anytype.Model.Image")
-	proto.RegisterType((*Model_Video)(nil), "anytype.Model.Video")
+	proto.RegisterType((*ModelBlock)(nil), "anytype.Model.Block")
+	proto.RegisterType((*ModelBlockHeader)(nil), "anytype.Model.Block.Header")
+	proto.RegisterType((*ModelBlockHeaderPermissions)(nil), "anytype.Model.Block.Header.Permissions")
+	proto.RegisterType((*ModelBlockContent)(nil), "anytype.Model.Block.Content")
+	proto.RegisterType((*ModelBlockContentLayout)(nil), "anytype.Model.Block.Content.Layout")
+	proto.RegisterType((*ModelBlockContentDiv)(nil), "anytype.Model.Block.Content.Div")
+	proto.RegisterType((*ModelBlockContentDashboard)(nil), "anytype.Model.Block.Content.Dashboard")
+	proto.RegisterType((*ModelBlockContentDataview)(nil), "anytype.Model.Block.Content.Dataview")
+	proto.RegisterType((*ModelBlockContentText)(nil), "anytype.Model.Block.Content.Text")
+	proto.RegisterType((*ModelBlockContentTextMarks)(nil), "anytype.Model.Block.Content.Text.Marks")
+	proto.RegisterType((*ModelBlockContentTextMark)(nil), "anytype.Model.Block.Content.Text.Mark")
+	proto.RegisterType((*ModelBlockContentMedia)(nil), "anytype.Model.Block.Content.Media")
+	proto.RegisterType((*ModelBlockContentMediaVideoPreview)(nil), "anytype.Model.Block.Content.Media.VideoPreview")
+	proto.RegisterType((*ModelBlockContentMediaImagePreview)(nil), "anytype.Model.Block.Content.Media.ImagePreview")
+	proto.RegisterType((*ModelBlockContentMediaFilePreview)(nil), "anytype.Model.Block.Content.Media.FilePreview")
+	proto.RegisterType((*ModelBlockContentPage)(nil), "anytype.Model.Block.Content.Page")
+	proto.RegisterType((*ModelRange)(nil), "anytype.Model.Range")
+	proto.RegisterType((*ModelStruct)(nil), "anytype.Model.Struct")
+	proto.RegisterMapType((map[string]*ModelStructValue)(nil), "anytype.Model.Struct.FieldsEntry")
+	proto.RegisterType((*ModelStructValue)(nil), "anytype.Model.Struct.Value")
+	proto.RegisterType((*ModelStructListValue)(nil), "anytype.Model.Struct.ListValue")
+	proto.RegisterType((*ModelAccount)(nil), "anytype.Model.Account")
+	proto.RegisterType((*ModelAccountAvatar)(nil), "anytype.Model.Account.Avatar")
+	proto.RegisterType((*ModelImage)(nil), "anytype.Model.Image")
+	proto.RegisterType((*ModelVideo)(nil), "anytype.Model.Video")
 }
 
 func init() { proto.RegisterFile("models.proto", fileDescriptor_0b5431a010549573) }
@@ -2164,7 +2160,7 @@ func (m *Model) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlock) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2174,12 +2170,12 @@ func (m *Model_Block) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlock) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2217,12 +2213,12 @@ func (m *Model_Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Dashboard) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfDashboard) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Dashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Dashboard != nil {
 		{
@@ -2238,12 +2234,12 @@ func (m *Model_Block_Dashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Page) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfPage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Page) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Page != nil {
 		{
@@ -2259,12 +2255,12 @@ func (m *Model_Block_Page) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Dataview) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfDataview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Dataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Dataview != nil {
 		{
@@ -2280,12 +2276,12 @@ func (m *Model_Block_Dataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Text) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfText) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Text) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Text != nil {
 		{
@@ -2301,12 +2297,12 @@ func (m *Model_Block_Text) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Media) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfMedia) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Media) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfMedia) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Media != nil {
 		{
@@ -2322,12 +2318,12 @@ func (m *Model_Block_Media) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Layout) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfLayout) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Layout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfLayout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Layout != nil {
 		{
@@ -2345,12 +2341,12 @@ func (m *Model_Block_Layout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Div) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfDiv) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Div) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentOfDiv) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Div != nil {
 		{
@@ -2368,7 +2364,7 @@ func (m *Model_Block_Div) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Header) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockHeader) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2378,12 +2374,12 @@ func (m *Model_Block_Header) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Header) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockHeader) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2427,7 +2423,7 @@ func (m *Model_Block_Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Header_Permissions) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockHeaderPermissions) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2437,12 +2433,12 @@ func (m *Model_Block_Header_Permissions) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Header_Permissions) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockHeaderPermissions) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Header_Permissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockHeaderPermissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2500,7 +2496,7 @@ func (m *Model_Block_Header_Permissions) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContent) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2510,12 +2506,12 @@ func (m *Model_Block_Content) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContent) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2523,7 +2519,7 @@ func (m *Model_Block_Content) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Layout) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentLayout) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2533,12 +2529,12 @@ func (m *Model_Block_Content_Layout) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Layout) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentLayout) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Layout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentLayout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2551,7 +2547,7 @@ func (m *Model_Block_Content_Layout) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Div) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentDiv) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2561,12 +2557,12 @@ func (m *Model_Block_Content_Div) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Div) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentDiv) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Div) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentDiv) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2574,7 +2570,7 @@ func (m *Model_Block_Content_Div) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Dashboard) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentDashboard) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2584,12 +2580,12 @@ func (m *Model_Block_Content_Dashboard) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Dashboard) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentDashboard) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Dashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2616,7 +2612,7 @@ func (m *Model_Block_Content_Dashboard) MarshalToSizedBuffer(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Dataview) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentDataview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2626,12 +2622,12 @@ func (m *Model_Block_Content_Dataview) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Dataview) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentDataview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Dataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2639,7 +2635,7 @@ func (m *Model_Block_Content_Dataview) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Text) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentText) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2649,12 +2645,12 @@ func (m *Model_Block_Content_Text) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Text) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentText) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Text) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2721,7 +2717,7 @@ func (m *Model_Block_Content_Text) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Text_Marks) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentTextMarks) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2731,12 +2727,12 @@ func (m *Model_Block_Content_Text_Marks) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Text_Marks) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentTextMarks) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Text_Marks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentTextMarks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2758,7 +2754,7 @@ func (m *Model_Block_Content_Text_Marks) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Text_Mark) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentTextMark) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2768,12 +2764,12 @@ func (m *Model_Block_Content_Text_Mark) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Text_Mark) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentTextMark) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Text_Mark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentTextMark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2805,7 +2801,7 @@ func (m *Model_Block_Content_Text_Mark) MarshalToSizedBuffer(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Media) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentMedia) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2815,12 +2811,12 @@ func (m *Model_Block_Content_Media) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Media) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMedia) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Media) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMedia) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2849,12 +2845,12 @@ func (m *Model_Block_Content_Media) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Media_Video) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaPreviewOfVideo) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Media_Video) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaPreviewOfVideo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Video != nil {
 		{
@@ -2872,12 +2868,12 @@ func (m *Model_Block_Content_Media_Video) MarshalToSizedBuffer(dAtA []byte) (int
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Content_Media_Image) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaPreviewOfImage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Media_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaPreviewOfImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Image != nil {
 		{
@@ -2895,12 +2891,12 @@ func (m *Model_Block_Content_Media_Image) MarshalToSizedBuffer(dAtA []byte) (int
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Content_Media_File) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaPreviewOfFile) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Media_File) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaPreviewOfFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.File != nil {
 		{
@@ -2918,7 +2914,7 @@ func (m *Model_Block_Content_Media_File) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Block_Content_Media_VideoPreview) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentMediaVideoPreview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2928,12 +2924,12 @@ func (m *Model_Block_Content_Media_VideoPreview) Marshal() (dAtA []byte, err err
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Media_VideoPreview) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaVideoPreview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Media_VideoPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaVideoPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2960,7 +2956,7 @@ func (m *Model_Block_Content_Media_VideoPreview) MarshalToSizedBuffer(dAtA []byt
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Media_ImagePreview) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentMediaImagePreview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2970,12 +2966,12 @@ func (m *Model_Block_Content_Media_ImagePreview) Marshal() (dAtA []byte, err err
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Media_ImagePreview) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaImagePreview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Media_ImagePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaImagePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3002,7 +2998,7 @@ func (m *Model_Block_Content_Media_ImagePreview) MarshalToSizedBuffer(dAtA []byt
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Media_FilePreview) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentMediaFilePreview) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3012,12 +3008,12 @@ func (m *Model_Block_Content_Media_FilePreview) Marshal() (dAtA []byte, err erro
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Media_FilePreview) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaFilePreview) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Media_FilePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentMediaFilePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3039,7 +3035,7 @@ func (m *Model_Block_Content_Media_FilePreview) MarshalToSizedBuffer(dAtA []byte
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Block_Content_Page) Marshal() (dAtA []byte, err error) {
+func (m *ModelBlockContentPage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3049,12 +3045,12 @@ func (m *Model_Block_Content_Page) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Block_Content_Page) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelBlockContentPage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Block_Content_Page) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelBlockContentPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3067,7 +3063,7 @@ func (m *Model_Block_Content_Page) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Range) Marshal() (dAtA []byte, err error) {
+func (m *ModelRange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3077,12 +3073,12 @@ func (m *Model_Range) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Range) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelRange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Range) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3100,7 +3096,7 @@ func (m *Model_Range) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Struct) Marshal() (dAtA []byte, err error) {
+func (m *ModelStruct) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3110,12 +3106,12 @@ func (m *Model_Struct) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Struct) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStruct) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStruct) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3149,7 +3145,7 @@ func (m *Model_Struct) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Struct_Value) Marshal() (dAtA []byte, err error) {
+func (m *ModelStructValue) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3159,12 +3155,12 @@ func (m *Model_Struct_Value) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Struct_Value) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_Value) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3181,24 +3177,24 @@ func (m *Model_Struct_Value) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Struct_Value_NullValue) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfNullValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_Value_NullValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfNullValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i = encodeVarintModels(dAtA, i, uint64(m.NullValue))
 	i--
 	dAtA[i] = 0x8
 	return len(dAtA) - i, nil
 }
-func (m *Model_Struct_Value_NumberValue) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfNumberValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_Value_NumberValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfNumberValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i -= 8
 	encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.NumberValue))))
@@ -3206,12 +3202,12 @@ func (m *Model_Struct_Value_NumberValue) MarshalToSizedBuffer(dAtA []byte) (int,
 	dAtA[i] = 0x11
 	return len(dAtA) - i, nil
 }
-func (m *Model_Struct_Value_StringValue) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfStringValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_Value_StringValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfStringValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i -= len(m.StringValue)
 	copy(dAtA[i:], m.StringValue)
@@ -3220,12 +3216,12 @@ func (m *Model_Struct_Value_StringValue) MarshalToSizedBuffer(dAtA []byte) (int,
 	dAtA[i] = 0x1a
 	return len(dAtA) - i, nil
 }
-func (m *Model_Struct_Value_BoolValue) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfBoolValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_Value_BoolValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfBoolValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i--
 	if m.BoolValue {
@@ -3237,12 +3233,12 @@ func (m *Model_Struct_Value_BoolValue) MarshalToSizedBuffer(dAtA []byte) (int, e
 	dAtA[i] = 0x20
 	return len(dAtA) - i, nil
 }
-func (m *Model_Struct_Value_StructValue) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfStructValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_Value_StructValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfStructValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.StructValue != nil {
 		{
@@ -3258,12 +3254,12 @@ func (m *Model_Struct_Value_StructValue) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Struct_Value_ListValue) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfListValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_Value_ListValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructValueKindOfListValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.ListValue != nil {
 		{
@@ -3279,7 +3275,7 @@ func (m *Model_Struct_Value_ListValue) MarshalToSizedBuffer(dAtA []byte) (int, e
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Struct_ListValue) Marshal() (dAtA []byte, err error) {
+func (m *ModelStructListValue) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3289,12 +3285,12 @@ func (m *Model_Struct_ListValue) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Struct_ListValue) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelStructListValue) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Struct_ListValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelStructListValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3316,7 +3312,7 @@ func (m *Model_Struct_ListValue) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Account) Marshal() (dAtA []byte, err error) {
+func (m *ModelAccount) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3326,12 +3322,12 @@ func (m *Model_Account) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Account) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelAccount) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelAccount) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3365,7 +3361,7 @@ func (m *Model_Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Account_Avatar) Marshal() (dAtA []byte, err error) {
+func (m *ModelAccountAvatar) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3375,12 +3371,12 @@ func (m *Model_Account_Avatar) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Account_Avatar) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelAccountAvatar) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Account_Avatar) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelAccountAvatar) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3397,12 +3393,12 @@ func (m *Model_Account_Avatar) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Account_Avatar_Image) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelAccountAvatarAvatarOfImage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Account_Avatar_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelAccountAvatarAvatarOfImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	if m.Image != nil {
 		{
@@ -3418,12 +3414,12 @@ func (m *Model_Account_Avatar_Image) MarshalToSizedBuffer(dAtA []byte) (int, err
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Model_Account_Avatar_Color) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelAccountAvatarAvatarOfColor) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Account_Avatar_Color) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelAccountAvatarAvatarOfColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	i -= len(m.Color)
 	copy(dAtA[i:], m.Color)
@@ -3432,7 +3428,7 @@ func (m *Model_Account_Avatar_Color) MarshalToSizedBuffer(dAtA []byte) (int, err
 	dAtA[i] = 0x12
 	return len(dAtA) - i, nil
 }
-func (m *Model_Image) Marshal() (dAtA []byte, err error) {
+func (m *ModelImage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3442,12 +3438,12 @@ func (m *Model_Image) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Image) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelImage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3480,7 +3476,7 @@ func (m *Model_Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Model_Video) Marshal() (dAtA []byte, err error) {
+func (m *ModelVideo) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3490,12 +3486,12 @@ func (m *Model_Video) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Model_Video) MarshalTo(dAtA []byte) (int, error) {
+func (m *ModelVideo) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Model_Video) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ModelVideo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -3548,7 +3544,7 @@ func (m *Model) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block) Size() (n int) {
+func (m *ModelBlock) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3570,7 +3566,7 @@ func (m *Model_Block) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Dashboard) Size() (n int) {
+func (m *ModelBlockContentOfDashboard) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3582,7 +3578,7 @@ func (m *Model_Block_Dashboard) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Page) Size() (n int) {
+func (m *ModelBlockContentOfPage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3594,7 +3590,7 @@ func (m *Model_Block_Page) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Dataview) Size() (n int) {
+func (m *ModelBlockContentOfDataview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3606,7 +3602,7 @@ func (m *Model_Block_Dataview) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Text) Size() (n int) {
+func (m *ModelBlockContentOfText) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3618,7 +3614,7 @@ func (m *Model_Block_Text) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Media) Size() (n int) {
+func (m *ModelBlockContentOfMedia) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3630,7 +3626,7 @@ func (m *Model_Block_Media) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Layout) Size() (n int) {
+func (m *ModelBlockContentOfLayout) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3642,7 +3638,7 @@ func (m *Model_Block_Layout) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Div) Size() (n int) {
+func (m *ModelBlockContentOfDiv) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3654,7 +3650,7 @@ func (m *Model_Block_Div) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Header) Size() (n int) {
+func (m *ModelBlockHeader) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3678,7 +3674,7 @@ func (m *Model_Block_Header) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Header_Permissions) Size() (n int) {
+func (m *ModelBlockHeaderPermissions) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3702,7 +3698,7 @@ func (m *Model_Block_Header_Permissions) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content) Size() (n int) {
+func (m *ModelBlockContent) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3711,7 +3707,7 @@ func (m *Model_Block_Content) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Layout) Size() (n int) {
+func (m *ModelBlockContentLayout) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3723,7 +3719,7 @@ func (m *Model_Block_Content_Layout) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Div) Size() (n int) {
+func (m *ModelBlockContentDiv) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3732,7 +3728,7 @@ func (m *Model_Block_Content_Div) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Dashboard) Size() (n int) {
+func (m *ModelBlockContentDashboard) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3750,7 +3746,7 @@ func (m *Model_Block_Content_Dashboard) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Dataview) Size() (n int) {
+func (m *ModelBlockContentDataview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3759,7 +3755,7 @@ func (m *Model_Block_Content_Dataview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Text) Size() (n int) {
+func (m *ModelBlockContentText) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3791,7 +3787,7 @@ func (m *Model_Block_Content_Text) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Text_Marks) Size() (n int) {
+func (m *ModelBlockContentTextMarks) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3806,7 +3802,7 @@ func (m *Model_Block_Content_Text_Marks) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Text_Mark) Size() (n int) {
+func (m *ModelBlockContentTextMark) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3826,7 +3822,7 @@ func (m *Model_Block_Content_Text_Mark) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Media) Size() (n int) {
+func (m *ModelBlockContentMedia) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3845,7 +3841,7 @@ func (m *Model_Block_Content_Media) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Media_Video) Size() (n int) {
+func (m *ModelBlockContentMediaPreviewOfVideo) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3857,7 +3853,7 @@ func (m *Model_Block_Content_Media_Video) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Content_Media_Image) Size() (n int) {
+func (m *ModelBlockContentMediaPreviewOfImage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3869,7 +3865,7 @@ func (m *Model_Block_Content_Media_Image) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Content_Media_File) Size() (n int) {
+func (m *ModelBlockContentMediaPreviewOfFile) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3881,7 +3877,7 @@ func (m *Model_Block_Content_Media_File) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Block_Content_Media_VideoPreview) Size() (n int) {
+func (m *ModelBlockContentMediaVideoPreview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3901,7 +3897,7 @@ func (m *Model_Block_Content_Media_VideoPreview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Media_ImagePreview) Size() (n int) {
+func (m *ModelBlockContentMediaImagePreview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3921,7 +3917,7 @@ func (m *Model_Block_Content_Media_ImagePreview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Media_FilePreview) Size() (n int) {
+func (m *ModelBlockContentMediaFilePreview) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3938,7 +3934,7 @@ func (m *Model_Block_Content_Media_FilePreview) Size() (n int) {
 	return n
 }
 
-func (m *Model_Block_Content_Page) Size() (n int) {
+func (m *ModelBlockContentPage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3950,7 +3946,7 @@ func (m *Model_Block_Content_Page) Size() (n int) {
 	return n
 }
 
-func (m *Model_Range) Size() (n int) {
+func (m *ModelRange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3965,7 +3961,7 @@ func (m *Model_Range) Size() (n int) {
 	return n
 }
 
-func (m *Model_Struct) Size() (n int) {
+func (m *ModelStruct) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3987,7 +3983,7 @@ func (m *Model_Struct) Size() (n int) {
 	return n
 }
 
-func (m *Model_Struct_Value) Size() (n int) {
+func (m *ModelStructValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3999,7 +3995,7 @@ func (m *Model_Struct_Value) Size() (n int) {
 	return n
 }
 
-func (m *Model_Struct_Value_NullValue) Size() (n int) {
+func (m *ModelStructValueKindOfNullValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4008,7 +4004,7 @@ func (m *Model_Struct_Value_NullValue) Size() (n int) {
 	n += 1 + sovModels(uint64(m.NullValue))
 	return n
 }
-func (m *Model_Struct_Value_NumberValue) Size() (n int) {
+func (m *ModelStructValueKindOfNumberValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4017,7 +4013,7 @@ func (m *Model_Struct_Value_NumberValue) Size() (n int) {
 	n += 9
 	return n
 }
-func (m *Model_Struct_Value_StringValue) Size() (n int) {
+func (m *ModelStructValueKindOfStringValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4027,7 +4023,7 @@ func (m *Model_Struct_Value_StringValue) Size() (n int) {
 	n += 1 + l + sovModels(uint64(l))
 	return n
 }
-func (m *Model_Struct_Value_BoolValue) Size() (n int) {
+func (m *ModelStructValueKindOfBoolValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4036,7 +4032,7 @@ func (m *Model_Struct_Value_BoolValue) Size() (n int) {
 	n += 2
 	return n
 }
-func (m *Model_Struct_Value_StructValue) Size() (n int) {
+func (m *ModelStructValueKindOfStructValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4048,7 +4044,7 @@ func (m *Model_Struct_Value_StructValue) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Struct_Value_ListValue) Size() (n int) {
+func (m *ModelStructValueKindOfListValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4060,7 +4056,7 @@ func (m *Model_Struct_Value_ListValue) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Struct_ListValue) Size() (n int) {
+func (m *ModelStructListValue) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4075,7 +4071,7 @@ func (m *Model_Struct_ListValue) Size() (n int) {
 	return n
 }
 
-func (m *Model_Account) Size() (n int) {
+func (m *ModelAccount) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4096,7 +4092,7 @@ func (m *Model_Account) Size() (n int) {
 	return n
 }
 
-func (m *Model_Account_Avatar) Size() (n int) {
+func (m *ModelAccountAvatar) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4108,7 +4104,7 @@ func (m *Model_Account_Avatar) Size() (n int) {
 	return n
 }
 
-func (m *Model_Account_Avatar_Image) Size() (n int) {
+func (m *ModelAccountAvatarAvatarOfImage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4120,7 +4116,7 @@ func (m *Model_Account_Avatar_Image) Size() (n int) {
 	}
 	return n
 }
-func (m *Model_Account_Avatar_Color) Size() (n int) {
+func (m *ModelAccountAvatarAvatarOfColor) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4130,7 +4126,7 @@ func (m *Model_Account_Avatar_Color) Size() (n int) {
 	n += 1 + l + sovModels(uint64(l))
 	return n
 }
-func (m *Model_Image) Size() (n int) {
+func (m *ModelImage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4150,7 +4146,7 @@ func (m *Model_Image) Size() (n int) {
 	return n
 }
 
-func (m *Model_Video) Size() (n int) {
+func (m *ModelVideo) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -4229,7 +4225,7 @@ func (m *Model) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block) Unmarshal(dAtA []byte) error {
+func (m *ModelBlock) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4288,7 +4284,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Header == nil {
-				m.Header = &Model_Block_Header{}
+				m.Header = &ModelBlockHeader{}
 			}
 			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -4355,11 +4351,11 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Dashboard{}
+			v := &ModelBlockContentDashboard{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &Model_Block_Dashboard{v}
+			m.Content = &ModelBlockContentOfDashboard{v}
 			iNdEx = postIndex
 		case 12:
 			if wireType != 2 {
@@ -4390,11 +4386,11 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Page{}
+			v := &ModelBlockContentPage{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &Model_Block_Page{v}
+			m.Content = &ModelBlockContentOfPage{v}
 			iNdEx = postIndex
 		case 13:
 			if wireType != 2 {
@@ -4425,11 +4421,11 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Dataview{}
+			v := &ModelBlockContentDataview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &Model_Block_Dataview{v}
+			m.Content = &ModelBlockContentOfDataview{v}
 			iNdEx = postIndex
 		case 14:
 			if wireType != 2 {
@@ -4460,11 +4456,11 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Text{}
+			v := &ModelBlockContentText{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &Model_Block_Text{v}
+			m.Content = &ModelBlockContentOfText{v}
 			iNdEx = postIndex
 		case 15:
 			if wireType != 2 {
@@ -4495,11 +4491,11 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Media{}
+			v := &ModelBlockContentMedia{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &Model_Block_Media{v}
+			m.Content = &ModelBlockContentOfMedia{v}
 			iNdEx = postIndex
 		case 16:
 			if wireType != 2 {
@@ -4530,11 +4526,11 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Layout{}
+			v := &ModelBlockContentLayout{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &Model_Block_Layout{v}
+			m.Content = &ModelBlockContentOfLayout{v}
 			iNdEx = postIndex
 		case 17:
 			if wireType != 2 {
@@ -4565,11 +4561,11 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Div{}
+			v := &ModelBlockContentDiv{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &Model_Block_Div{v}
+			m.Content = &ModelBlockContentOfDiv{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4595,7 +4591,7 @@ func (m *Model_Block) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Header) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockHeader) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4670,7 +4666,7 @@ func (m *Model_Block_Header) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= Model_Block_Header_Type(b&0x7F) << shift
+				m.Type |= ModelBlockHeaderType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4705,7 +4701,7 @@ func (m *Model_Block_Header) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Fields == nil {
-				m.Fields = &Model_Struct{}
+				m.Fields = &ModelStruct{}
 			}
 			if err := m.Fields.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -4741,7 +4737,7 @@ func (m *Model_Block_Header) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Permissions == nil {
-				m.Permissions = &Model_Block_Header_Permissions{}
+				m.Permissions = &ModelBlockHeaderPermissions{}
 			}
 			if err := m.Permissions.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -4771,7 +4767,7 @@ func (m *Model_Block_Header) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Header_Permissions) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockHeaderPermissions) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4924,7 +4920,7 @@ func (m *Model_Block_Header_Permissions) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContent) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4977,7 +4973,7 @@ func (m *Model_Block_Content) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Layout) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentLayout) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5020,7 +5016,7 @@ func (m *Model_Block_Content_Layout) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_Content_Layout_Style(b&0x7F) << shift
+				m.Style |= ModelBlockContentLayoutStyle(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -5049,7 +5045,7 @@ func (m *Model_Block_Content_Layout) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Div) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentDiv) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5102,7 +5098,7 @@ func (m *Model_Block_Content_Div) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Dashboard) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentDashboard) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5145,7 +5141,7 @@ func (m *Model_Block_Content_Dashboard) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_Content_Dashboard_Style(b&0x7F) << shift
+				m.Style |= ModelBlockContentDashboardStyle(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -5179,7 +5175,7 @@ func (m *Model_Block_Content_Dashboard) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Headers = append(m.Headers, &Model_Block_Header{})
+			m.Headers = append(m.Headers, &ModelBlockHeader{})
 			if err := m.Headers[len(m.Headers)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -5208,7 +5204,7 @@ func (m *Model_Block_Content_Dashboard) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Dataview) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentDataview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5261,7 +5257,7 @@ func (m *Model_Block_Content_Dataview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Text) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentText) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5336,7 +5332,7 @@ func (m *Model_Block_Content_Text) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_Content_Text_Style(b&0x7F) << shift
+				m.Style |= ModelBlockContentTextStyle(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -5371,7 +5367,7 @@ func (m *Model_Block_Content_Text) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.MarksList == nil {
-				m.MarksList = &Model_Block_Content_Text_Marks{}
+				m.MarksList = &ModelBlockContentTextMarks{}
 			}
 			if err := m.MarksList.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5411,7 +5407,7 @@ func (m *Model_Block_Content_Text) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.MarkerType |= Model_Block_Content_Text_MarkerType(b&0x7F) << shift
+				m.MarkerType |= ModelBlockContentTextMarkerType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -5480,7 +5476,7 @@ func (m *Model_Block_Content_Text) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Text_Marks) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentTextMarks) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5538,7 +5534,7 @@ func (m *Model_Block_Content_Text_Marks) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Marks = append(m.Marks, &Model_Block_Content_Text_Mark{})
+			m.Marks = append(m.Marks, &ModelBlockContentTextMark{})
 			if err := m.Marks[len(m.Marks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -5567,7 +5563,7 @@ func (m *Model_Block_Content_Text_Marks) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Text_Mark) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentTextMark) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5626,7 +5622,7 @@ func (m *Model_Block_Content_Text_Mark) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Range == nil {
-				m.Range = &Model_Range{}
+				m.Range = &ModelRange{}
 			}
 			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5646,7 +5642,7 @@ func (m *Model_Block_Content_Text_Mark) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Type |= Model_Block_Content_Text_Mark_Type(b&0x7F) << shift
+				m.Type |= ModelBlockContentTextMarkType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -5707,7 +5703,7 @@ func (m *Model_Block_Content_Text_Mark) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Media) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentMedia) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5784,7 +5780,7 @@ func (m *Model_Block_Content_Media) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.State |= Model_Block_Content_Media_State(b&0x7F) << shift
+				m.State |= ModelBlockContentMediaState(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -5818,11 +5814,11 @@ func (m *Model_Block_Content_Media) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Media_VideoPreview{}
+			v := &ModelBlockContentMediaVideoPreview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Preview = &Model_Block_Content_Media_Video{v}
+			m.Preview = &ModelBlockContentMediaPreviewOfVideo{v}
 			iNdEx = postIndex
 		case 102:
 			if wireType != 2 {
@@ -5853,11 +5849,11 @@ func (m *Model_Block_Content_Media) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Media_ImagePreview{}
+			v := &ModelBlockContentMediaImagePreview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Preview = &Model_Block_Content_Media_Image{v}
+			m.Preview = &ModelBlockContentMediaPreviewOfImage{v}
 			iNdEx = postIndex
 		case 103:
 			if wireType != 2 {
@@ -5888,11 +5884,11 @@ func (m *Model_Block_Content_Media) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Block_Content_Media_FilePreview{}
+			v := &ModelBlockContentMediaFilePreview{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Preview = &Model_Block_Content_Media_File{v}
+			m.Preview = &ModelBlockContentMediaPreviewOfFile{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -5918,7 +5914,7 @@ func (m *Model_Block_Content_Media) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Media_VideoPreview) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentMediaVideoPreview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6056,7 +6052,7 @@ func (m *Model_Block_Content_Media_VideoPreview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Media_ImagePreview) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentMediaImagePreview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6194,7 +6190,7 @@ func (m *Model_Block_Content_Media_ImagePreview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Media_FilePreview) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentMediaFilePreview) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6311,7 +6307,7 @@ func (m *Model_Block_Content_Media_FilePreview) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Block_Content_Page) Unmarshal(dAtA []byte) error {
+func (m *ModelBlockContentPage) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6354,7 +6350,7 @@ func (m *Model_Block_Content_Page) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Style |= Model_Block_Content_Page_Style(b&0x7F) << shift
+				m.Style |= ModelBlockContentPageStyle(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -6383,7 +6379,7 @@ func (m *Model_Block_Content_Page) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Range) Unmarshal(dAtA []byte) error {
+func (m *ModelRange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6474,7 +6470,7 @@ func (m *Model_Range) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Struct) Unmarshal(dAtA []byte) error {
+func (m *ModelStruct) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6533,10 +6529,10 @@ func (m *Model_Struct) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Fields == nil {
-				m.Fields = make(map[string]*Model_Struct_Value)
+				m.Fields = make(map[string]*ModelStructValue)
 			}
 			var mapkey string
-			var mapvalue *Model_Struct_Value
+			var mapvalue *ModelStructValue
 			for iNdEx < postIndex {
 				entryPreIndex := iNdEx
 				var wire uint64
@@ -6610,7 +6606,7 @@ func (m *Model_Struct) Unmarshal(dAtA []byte) error {
 					if postmsgIndex > l {
 						return io.ErrUnexpectedEOF
 					}
-					mapvalue = &Model_Struct_Value{}
+					mapvalue = &ModelStructValue{}
 					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
 						return err
 					}
@@ -6656,7 +6652,7 @@ func (m *Model_Struct) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
+func (m *ModelStructValue) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6689,7 +6685,7 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NullValue", wireType)
 			}
-			var v Model_Struct_NullValue
+			var v ModelStructNullValue
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowModels
@@ -6699,12 +6695,12 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				v |= Model_Struct_NullValue(b&0x7F) << shift
+				v |= ModelStructNullValue(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.Kind = &Model_Struct_Value_NullValue{v}
+			m.Kind = &ModelStructValueKindOfNullValue{v}
 		case 2:
 			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NumberValue", wireType)
@@ -6715,7 +6711,7 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 			}
 			v = uint64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
 			iNdEx += 8
-			m.Kind = &Model_Struct_Value_NumberValue{float64(math.Float64frombits(v))}
+			m.Kind = &ModelStructValueKindOfNumberValue{float64(math.Float64frombits(v))}
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field StringValue", wireType)
@@ -6746,7 +6742,7 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Kind = &Model_Struct_Value_StringValue{string(dAtA[iNdEx:postIndex])}
+			m.Kind = &ModelStructValueKindOfStringValue{string(dAtA[iNdEx:postIndex])}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
@@ -6768,7 +6764,7 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 				}
 			}
 			b := bool(v != 0)
-			m.Kind = &Model_Struct_Value_BoolValue{b}
+			m.Kind = &ModelStructValueKindOfBoolValue{b}
 		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field StructValue", wireType)
@@ -6798,11 +6794,11 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Struct{}
+			v := &ModelStruct{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Kind = &Model_Struct_Value_StructValue{v}
+			m.Kind = &ModelStructValueKindOfStructValue{v}
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -6833,11 +6829,11 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Struct_ListValue{}
+			v := &ModelStructListValue{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Kind = &Model_Struct_Value_ListValue{v}
+			m.Kind = &ModelStructValueKindOfListValue{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6863,7 +6859,7 @@ func (m *Model_Struct_Value) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Struct_ListValue) Unmarshal(dAtA []byte) error {
+func (m *ModelStructListValue) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6921,7 +6917,7 @@ func (m *Model_Struct_ListValue) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Values = append(m.Values, &Model_Struct_Value{})
+			m.Values = append(m.Values, &ModelStructValue{})
 			if err := m.Values[len(m.Values)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -6950,7 +6946,7 @@ func (m *Model_Struct_ListValue) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Account) Unmarshal(dAtA []byte) error {
+func (m *ModelAccount) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7073,7 +7069,7 @@ func (m *Model_Account) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Avatar == nil {
-				m.Avatar = &Model_Account_Avatar{}
+				m.Avatar = &ModelAccountAvatar{}
 			}
 			if err := m.Avatar.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -7103,7 +7099,7 @@ func (m *Model_Account) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Account_Avatar) Unmarshal(dAtA []byte) error {
+func (m *ModelAccountAvatar) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7161,11 +7157,11 @@ func (m *Model_Account_Avatar) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &Model_Image{}
+			v := &ModelImage{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Avatar = &Model_Account_Avatar_Image{v}
+			m.Avatar = &ModelAccountAvatarAvatarOfImage{v}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -7197,7 +7193,7 @@ func (m *Model_Account_Avatar) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Avatar = &Model_Account_Avatar_Color{string(dAtA[iNdEx:postIndex])}
+			m.Avatar = &ModelAccountAvatarAvatarOfColor{string(dAtA[iNdEx:postIndex])}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -7223,7 +7219,7 @@ func (m *Model_Account_Avatar) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Image) Unmarshal(dAtA []byte) error {
+func (m *ModelImage) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7286,7 +7282,7 @@ func (m *Model_Image) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType == 0 {
-				var v Model_Image_Size
+				var v ModelImageSize
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
 						return ErrIntOverflowModels
@@ -7296,7 +7292,7 @@ func (m *Model_Image) Unmarshal(dAtA []byte) error {
 					}
 					b := dAtA[iNdEx]
 					iNdEx++
-					v |= Model_Image_Size(b&0x7F) << shift
+					v |= ModelImageSize(b&0x7F) << shift
 					if b < 0x80 {
 						break
 					}
@@ -7330,10 +7326,10 @@ func (m *Model_Image) Unmarshal(dAtA []byte) error {
 				}
 				var elementCount int
 				if elementCount != 0 && len(m.Sizes) == 0 {
-					m.Sizes = make([]Model_Image_Size, 0, elementCount)
+					m.Sizes = make([]ModelImageSize, 0, elementCount)
 				}
 				for iNdEx < postIndex {
-					var v Model_Image_Size
+					var v ModelImageSize
 					for shift := uint(0); ; shift += 7 {
 						if shift >= 64 {
 							return ErrIntOverflowModels
@@ -7343,7 +7339,7 @@ func (m *Model_Image) Unmarshal(dAtA []byte) error {
 						}
 						b := dAtA[iNdEx]
 						iNdEx++
-						v |= Model_Image_Size(b&0x7F) << shift
+						v |= ModelImageSize(b&0x7F) << shift
 						if b < 0x80 {
 							break
 						}
@@ -7377,7 +7373,7 @@ func (m *Model_Image) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Model_Video) Unmarshal(dAtA []byte) error {
+func (m *ModelVideo) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7440,7 +7436,7 @@ func (m *Model_Video) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType == 0 {
-				var v Model_Video_Size
+				var v ModelVideoSize
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
 						return ErrIntOverflowModels
@@ -7450,7 +7446,7 @@ func (m *Model_Video) Unmarshal(dAtA []byte) error {
 					}
 					b := dAtA[iNdEx]
 					iNdEx++
-					v |= Model_Video_Size(b&0x7F) << shift
+					v |= ModelVideoSize(b&0x7F) << shift
 					if b < 0x80 {
 						break
 					}
@@ -7484,10 +7480,10 @@ func (m *Model_Video) Unmarshal(dAtA []byte) error {
 				}
 				var elementCount int
 				if elementCount != 0 && len(m.Sizes) == 0 {
-					m.Sizes = make([]Model_Video_Size, 0, elementCount)
+					m.Sizes = make([]ModelVideoSize, 0, elementCount)
 				}
 				for iNdEx < postIndex {
-					var v Model_Video_Size
+					var v ModelVideoSize
 					for shift := uint(0); ; shift += 7 {
 						if shift >= 64 {
 							return ErrIntOverflowModels
@@ -7497,7 +7493,7 @@ func (m *Model_Video) Unmarshal(dAtA []byte) error {
 						}
 						b := dAtA[iNdEx]
 						iNdEx++
-						v |= Model_Video_Size(b&0x7F) << shift
+						v |= ModelVideoSize(b&0x7F) << shift
 						if b < 0x80 {
 							break
 						}
