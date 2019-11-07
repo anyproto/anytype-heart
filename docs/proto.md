@@ -128,6 +128,7 @@
     - [Event.Block.Create](#anytype.Event.Block.Create)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.Show](#anytype.Event.Block.Show)
+    - [Event.Block.Show.BlockEntry](#anytype.Event.Block.Show.BlockEntry)
     - [Event.Block.Update](#anytype.Event.Block.Update)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
@@ -1703,7 +1704,7 @@ Message, that will be sent to the front on each account found after an AccountRe
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [Model.Block](#anytype.Model.Block) |  |  |
+| block | [Model.Block](#anytype.Model.Block) | repeated |  |
 
 
 
@@ -1737,7 +1738,23 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [Model.Block](#anytype.Model.Block) |  |  |
+| block | [Event.Block.Show.BlockEntry](#anytype.Event.Block.Show.BlockEntry) | repeated | id -&gt; block |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Show.BlockEntry"></a>
+
+### Event.Block.Show.BlockEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [Model.Block](#anytype.Model.Block) |  |  |
 
 
 

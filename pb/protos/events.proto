@@ -32,7 +32,7 @@ message Event {
 
     message Block {
         message Show {
-            Model.Block block = 1;
+            map<string, Model.Block> block = 1; // id -> block
         }
 
         message Update {
@@ -40,7 +40,7 @@ message Event {
         }
 
         message Create {
-            Model.Block block = 1;
+            repeated Model.Block block = 1;
         }
 
         /**
