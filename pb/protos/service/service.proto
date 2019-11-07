@@ -13,7 +13,7 @@ service ClientCommands {
 
     rpc ImageGetBlob (anytype.Rpc.Image.Get.Blob.Request) returns (anytype.Rpc.Image.Get.Blob.Response);
 
-    rpc VersionGet (anytype.Rpc.Version.Get.Request) returns (anytype.Rpc.Version.Get.Response);
+    rpc VersionGet (anytype.Rpc.Block.Version.Get.Request) returns (anytype.Rpc.Block.Version.Get.Response);
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
 
     rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);

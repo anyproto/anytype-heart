@@ -5,13 +5,32 @@ option go_package = "pb";
 import "models.proto";
 import "changes.proto";
 
+/*
+ * Rpc is a namespace, that agregates all of the service commands between client and middleware.
+ * Structure: Topic > Subtopic > Subsub... > Action > (Request, Response).
+ * Request – message from a client.
+ * Response – message from a middleware. 
+*/
 message Rpc {
+    /*
+     * Namespace, that agregates subtopics and actions, that relates to blocks.
+    */
     message Block {
+        /*
+         * Block history: switch between versions (lib context: switch block head), move forward or backward
+         * **Example scenario**
+         * 1. User -> MacOS Front: CMD+Z
+         * 2. Front -> MW: Rpc.Block.History.Move.Request(blockId, false)
+         * 3. MW -> Lib: ?? TODO
+         * 4. Lib: switches current block header to a previous one
+         * 5. Lib -> MW: prev version of block
+         * 6. MW -> Front: BlockShow(block.prevVersion)
+        */
         message History {
             message Move { 
                 message Request {
                     string blockId = 1;
-                    bool moveForward = 2;
+                    bool moveForward = 2; // Move direction. If true, 
                 }
 
                 message Response {
@@ -33,6 +52,23 @@ message Rpc {
             }
         }
 
+        /*
+         * Works with a smart blocks (block-organizers, like page, dashboard etc)
+         * **Example scenario**
+         * 1A. On front-end start.
+         *     1. Front -> MW: Rpc.Block.Open.Request(dashboard.id)
+         *     2. MW -> Front: BlockShow(dashboard)
+         *     3. MW -> Front: Rpc.Block.Open.Response(err)
+         * 1B. User clicks on a page icon on the dashboard.
+         *     1. Front -> MW: Rpc.Block.Close.Request(dashboard.id)
+         * Get close response first, then open request:
+         *     2. MW -> Front: Rpc.Block.Close.Response(err)    
+         *     3. Front -> MW: Rpc.Block.Open.Request(page.id)
+         *     4. MW -> Front: BlockShow(<page, blocks>)
+         *     5. MW -> Front: Rpc.Block.Open.Response(err)
+         * Image/Video/File blocks then:
+         *     6. MW -> Front: BlockShow(<blocks>)
+        */
         message Open { 
             message Request {
                 string id = 1;
@@ -55,6 +91,21 @@ message Rpc {
             }
         }
 
+        /*
+         * Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
+         * **Example scenario**
+         * 1A. Create Page on dashboard
+         *     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+         *     2. Front -> MW: Rpc.Block.Close.Request(block: dashboard.id)
+         *     3. Front <- MW: Rpc.Block.Close.Response(err)
+         *     4. Front <- MW: Rpc.Block.Create.Response(page.id)
+         *     5. Front <- MW: Rpc.Block.Open.Response(err)         
+         *     6. Front <- MW: Event.Block.Show(page)
+         * 1B. Create Page on Page
+         *     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+         *     2. Front <- MW: Rpc.Block.Create.Response(newPage.id)
+         *     3. Front <- MW: Event.Block.Show(newPage)
+        */
         message Create {
             message Request {
                 Model.Block block = 1;
@@ -64,6 +115,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                string blockId = 2;
 
                 message Error {
                     Code code = 1;
@@ -79,6 +131,16 @@ message Rpc {
             }
         }
         
+        /*
+         * Update a Smart/Internal block. Request can contain a content/field/permission/children update
+         * **Example scenarios**
+         * 1A. Update text block on page
+         * 1B. Update page on dashboard
+         * 1C. Update page on page
+         * 1D. Update page permission on a dashboard
+         * 1E. Update page children of the same page
+         * 1F. Update children of a layout block on a page
+        */        
         message Update {
             message Request {
                 Change.Multiple.BlocksList changes = 1;
@@ -100,8 +162,36 @@ message Rpc {
                 }
             }
         }
+
+        /*
+         *
+        */
+        message Close {
+            message Request {
+                string id = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
     }
 
+    /*
+     * Namespace, that agregates subtopics and actions, that relates to wallet.
+    */
     message Wallet {
         message Create {
             /**
@@ -164,6 +254,9 @@ message Rpc {
         }
     }
 
+    /*
+     * Namespace, that agregates subtopics and actions, that relates to account.
+    */
     message Account {
         message Create {
             /**
@@ -270,6 +363,9 @@ message Rpc {
         }
     }
 
+    /*
+     * Namespace, that agregates subtopics and actions, that relates to ??? TODO
+    */
     message Version {
         message Get {
             message Request {}
@@ -296,6 +392,10 @@ message Rpc {
         }
     }
 
+    /*
+     * Namespace, that agregates log subtopics and actions.
+     * Usage: send request with topic (Level) and description (message) from client to middleware to log.
+    */
     message Log {
         message Send {
             message Request {
@@ -332,9 +432,12 @@ message Rpc {
         }
     }
 
+    /*
+     * Namespace, that agregates subtopics and actions to work with IPFS directly (get files, blobs, images, etc)
+    */
     message Ipfs {
-        message Get {
-            message File {
+        message File {
+            message Get {
                 message Request {
                     string id = 1;
                 }
@@ -361,63 +464,63 @@ message Rpc {
                 }
             }
         }
-    }
 
-    message Image {
-        message Get {
-            message Blob {
-                message Request {
-                    string id = 1;
-                    Model.Image.Size size = 2;
+        message Image {
+            message Get {
+                message Blob {
+                    message Request {
+                        string id = 1;
+                        Model.Image.Size size = 2;
+                    }
+
+                    message Response {
+                        Error error = 1;
+                        bytes blob = 2;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+
+                                NOT_FOUND = 101;
+                                TIMEOUT = 102;
+                            }
+                        }
+                    }
                 }
 
-                message Response {
-                    Error error = 1;
-                    bytes blob = 2;
+                message File {
+                    message Request {
+                        string id = 1;
+                        Model.Image.Size size = 2;
+                    }
 
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
+                    message Response {
+                        Error error = 1;
+                        string localPath = 2;
 
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            // ...
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
 
-                            NOT_FOUND = 101;
-                            TIMEOUT = 102;
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+
+                                NOT_FOUND = 101;
+                                TIMEOUT = 102;
+                            }
                         }
                     }
                 }
             }
-
-            message File {
-                message Request {
-                    string id = 1;
-                    Model.Image.Size size = 2;
-                }
-
-                message Response {
-                    Error error = 1;
-                    string localPath = 2;
-
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
-
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            // ...
-
-                            NOT_FOUND = 101;
-                            TIMEOUT = 102;
-                        }
-                    }
-                }
-            }
-        }
+        }        
     }
 }
