@@ -1,0 +1,183 @@
+syntax = "proto3";
+package anytype;
+option go_package = "pb";
+
+import "google/protobuf/struct.proto";
+
+message Block {
+    string id = 1;
+    google.protobuf.Struct fields = 2;
+    Permissions permissions = 3;
+    repeated string childrenIds = 4;
+    map<string, Block> blockById = 5;
+
+    message Permissions {
+        bool read = 1;
+        bool edit = 2;
+        bool remove = 3;
+        bool drag = 4;
+        bool dropOn = 5;
+    }
+
+    oneof content {
+        Content.Dashboard dashboard = 11;
+        Content.Page page = 12;
+        Content.Dataview dataview = 13;
+
+        Content.Text text = 14;
+        Content.Video video = 15;
+        Content.Image image = 16;
+        Content.File file = 17;
+        Content.Layout layout = 18;
+        Content.Div div = 19;
+    }
+
+    message Content {
+        message Layout {
+            Style style = 1;
+
+            enum Style {
+                ROW = 0;
+                COLUMN = 1;
+            }
+        }
+
+        message Div {}
+
+        message Dashboard {
+            enum Style {
+                MAIN_SCREEN = 0;
+                // ...
+            }
+
+            Style style = 1;
+        }
+
+        message Dataview {
+            // ...
+        }
+
+        message Text {
+            enum Style {
+                p = 0;
+                h1 = 1;
+                h2 = 2;
+                h3 = 3;
+                h4 = 4;
+                quote = 5;
+                code = 6;
+            }
+
+            enum MarkerType {
+                none = 0;
+                number = 1;
+                bullet = 2;
+            }
+
+            message Marks {
+                repeated Mark marks = 1;
+            }
+
+            message Mark {
+
+                enum Type {
+                    STRIKETHROUGH = 0;
+                    KEYBOARD = 1;
+                    ITALIC = 2;
+                    BOLD = 3;
+                    LINK = 4;
+                }
+
+                Range range = 1;
+                Type type = 2;
+                string param = 3; // link, color, etc
+            }
+
+            string text = 1;
+            Style style = 2;
+            Marks marksList = 3;
+
+            bool toggleable = 4;
+            MarkerType markerType = 5;
+
+            bool checkable = 6;
+            bool checked = 7;
+        }
+
+        message Video {
+            string localFilePath = 1;
+            State state = 2;
+            Preview preview = 3;
+
+            message Preview {
+                bytes thumbnail = 1;
+                string name = 2;
+                int32 width = 3;
+            }
+
+            enum State {
+                EMPTY = 0;
+                UPLOADING = 1;
+                PREVIEW = 2;
+                DOWNLOADING = 3;
+                DONE = 4;
+            }
+        }
+
+        message Image {
+            string localFilePath = 1;
+            State state = 2;
+            Preview preview = 3;
+
+            message Preview {
+                bytes thumbnail = 1;
+                string name = 2;
+                int32 width = 3;
+            }
+
+            enum State {
+                EMPTY = 0;
+                UPLOADING = 1;
+                PREVIEW = 2;
+                DOWNLOADING = 3;
+                DONE = 4;
+            }
+        }
+
+        message File {
+            string localFilePath = 1;
+            State state = 2;
+            Preview preview = 3;
+
+            message Preview {
+                string name = 1;
+                string icon = 2;
+            }
+
+            enum State {
+                EMPTY = 0;
+                UPLOADING = 1;
+                PREVIEW = 2;
+                DOWNLOADING = 3;
+                DONE = 4;
+            }
+        }
+
+        message Page {
+            enum Style {
+                EMPTY = 0;
+                TASK = 1;
+                BOOKMARK = 2;
+                SET = 3;
+                // ...
+            }
+
+            Style style = 1;
+        }
+    }
+}
+
+message Range {
+    int32 from = 1;
+    int32 to = 2;
+}

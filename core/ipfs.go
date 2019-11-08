@@ -12,17 +12,17 @@ import (
 )
 
 func (a *Anytype) IpfsPeers() (*ipfs.ConnInfos, error) {
-	return ipfs.SwarmPeers(a.Textile.Node().Ipfs(), true, true, true, true)
+	return ipfs.SwarmPeers(a.ipfs(), true, true, true, true)
 }
 
 // IpfsReaderAtPath return reader under an ipfs path
 func (a *Anytype) IpfsReaderAtPath(pth string) (io.ReadCloser, error) {
-	api, err := coreapi.NewCoreAPI(a.Textile.Node().Ipfs())
+	api, err := coreapi.NewCoreAPI(a.ipfs())
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(a.Textile.Node().Ipfs().Context(), ipfs.CatTimeout)
+	ctx, cancel := context.WithTimeout(a.ipfs().Context(), ipfs.CatTimeout)
 	defer cancel()
 
 	f, err := api.Unixfs().Get(ctx, path.New(pth))

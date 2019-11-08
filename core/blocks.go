@@ -3,28 +3,45 @@ package core
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/schema"
 	mh "github.com/multiformats/go-multihash"
 	uuid "github.com/satori/go.uuid"
 )
 
-func (a *Anytype) CreateBlock(blockType BlockType) (*Block, error) {
-	switch blockType {
-	case BlockType_PAGE, BlockType_DASHBOARD, BlockType_DATAVIEW:
-		smartBlock, err := a.SmartBlockCreate(blockType)
+type CreateBlockTargetPosition string
+
+const CreateBlockTargetPositionAfter CreateBlockTargetPosition = "after"
+const CreateBlockTargetPositionBefore CreateBlockTargetPosition = "before"
+
+func (a *Anytype) CreateBlock(content pb.IsBlockContent) (Block, error) {
+	switch content.(type) {
+	case *pb.BlockContentOfPage:
+		thrd, err := a.newBlockThread(schema.Page)
+		if err != nil {
+			return nil, err
+		}
+		return &Page{SmartBlock{thread: thrd, node: a}}, nil
+	case *pb.BlockContentOfDashboard:
+		thrd, err := a.newBlockThread(schema.Dashboard)
 		if err != nil {
 			return nil, err
 		}
 
-		return &Block{Id: smartBlock.GetId(), Type: blockType}, nil
+		return &Dashboard{SmartBlock{thread: thrd, node: a}}, nil
 	default:
-		return &Block{
-			Id:   uuid.NewV4().String(),
-			Type: blockType,
+		return &SimpleBlock{
+			id:   uuid.NewV4().String(),
+			node: a,
 		}, nil
 	}
 }
 
-func (a *Anytype) GetBlock(id string) (*Block, error) {
+func (a *Anytype) AddBlock(target string, targetPosition CreateBlockTargetPosition, content pb.IsBlockContent) (*Block, error) {
+	// todo: to be implemented
+}
+
+func (a *Anytype) GetBlock(id string) (Block, error) {
 	_, err := mh.FromB58String(id)
 	if err == nil {
 		smartBlock, err := a.SmartBlockGet(id)
@@ -32,7 +49,14 @@ func (a *Anytype) GetBlock(id string) (*Block, error) {
 			return nil, err
 		}
 
-		return &Block{Id: id, Type: smartBlock.GetType()}, nil
+		switch smartBlock.thread.Schema.Name {
+		case "dashboard":
+			return &Dashboard{*smartBlock}, nil
+		case "page":
+			return &Page{*smartBlock}, nil
+		default:
+			return nil, fmt.Errorf("for now only smartblocks are queriable")
+		}
 	}
 
 	// todo: allow to query simple blocks via smart blocks

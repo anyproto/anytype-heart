@@ -1,17 +1,16 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-library/pb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 type PageVersion struct {
+	pb        *pb.Block
 	VersionId string
-	PageId    string
 	User      string
 	Date      *timestamp.Timestamp
-	Fields    *structpb.Struct
-	Content   *BlockContentPage
 }
 
 func (pageVersion *PageVersion) GetVersionId() string {
@@ -19,7 +18,7 @@ func (pageVersion *PageVersion) GetVersionId() string {
 }
 
 func (pageVersion *PageVersion) GetBlockId() string {
-	return pageVersion.PageId
+	return pageVersion.pb.Id
 }
 
 func (pageVersion *PageVersion) GetUser() string {
@@ -30,64 +29,39 @@ func (pageVersion *PageVersion) GetDate() *timestamp.Timestamp {
 	return pageVersion.Date
 }
 
-func (pageVersion *PageVersion) GetName() string {
-	if name, exists := pageVersion.Fields.Fields["name"]; exists {
-		return name.GetStringValue()
-	}
-
-	return ""
+func (pageVersion *PageVersion) GetNewVersionsOfBlocks(blocks chan<- []BlockVersion) (cancelFunc func()) {
+	// todo: to be implemented
+	close(blocks)
+	return func() {}
 }
 
-func (pageVersion *PageVersion) GetIcon() string {
-	if icon, exists := pageVersion.Fields.Fields["icon"]; exists {
-		return icon.GetStringValue()
+func (ver *PageVersion) GetDependentBlocks() map[string]BlockVersion {
+	var m = make(map[string]BlockVersion, len(ver.pb.BlockById))
+	for blockId, block := range ver.pb.BlockById {
+		m[blockId] = &PageVersion{pb: block, VersionId: ver.VersionId, User: ver.User, Date: ver.Date}
 	}
-
-	return ""
+	return m
 }
 
-func (pageVersion *PageVersion) GetBlocks() map[string]*Block {
-	return pageVersion.Content.Blocks.BlockById
+func (pageVersion *PageVersion) GetChildrenIds() []string {
+	return pageVersion.pb.ChildrenIds
 }
 
 func (ver *PageVersion) GetFields() *structpb.Struct {
-	return ver.Fields
+	return ver.pb.Fields
 }
 
 func (ver *PageVersion) GetExternalFields() *structpb.Struct {
 	return &structpb.Struct{Fields: map[string]*structpb.Value{
-		"name": ver.Fields.Fields["name"],
-		"icon": ver.Fields.Fields["icon"],
+		"name": ver.pb.Fields.Fields["name"],
+		"icon": ver.pb.Fields.Fields["icon"],
 	}}
 }
 
-func (ver *PageVersion) GetSmartBlocksTree(anytype *Anytype) ([]SmartBlock, error) {
+func (ver *PageVersion) GetPermissions() *pb.BlockPermissions {
+	return ver.pb.Permissions
+}
 
-	return []SmartBlock{}, nil
-	/*if ver == nil {
-		return nil
-	}
-
-	var blockById = make(map[string]*Block)
-
-	var traverseTree func([]*Block)
-	traverseTree = func(list []*Block) {
-		for _, block := range list {
-			if smartBlock := block.SmartBlock(anytype); smartBlock == nil{
-
-			}
-			if _, alreadyExists := blockById[block.Id]; !alreadyExists {
-				switch block.Content.(type) {
-				case *Block_Page:
-					blockById[block.Id] = block
-					traverseTree(block.GetPage().Blocks.Blocks)
-
-				}
-				traverseTree(block.Ge)
-			}
-		}
-	}
-
-	traverseTree(ver.Blocks)
-	return blockById*/
+func (ver *PageVersion) GetContent() pb.IsBlockContent {
+	return ver.pb.Content
 }
