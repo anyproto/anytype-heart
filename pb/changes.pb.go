@@ -22,6 +22,8 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+//
+// Change contains single block change or list of block changes.
 type Change struct {
 }
 
@@ -58,6 +60,8 @@ func (m *Change) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Change proto.InternalMessageInfo
 
+//
+// Change.Block contains only one, single change for one block.
 type ChangeBlock struct {
 }
 
@@ -876,6 +880,8 @@ func (*ChangeBlockContentText) XXX_OneofWrappers() []interface{} {
 	}
 }
 
+//
+// Change.Single contains only one, single change, but for a list of blocks.
 type ChangeSingle struct {
 }
 
@@ -1096,6 +1102,8 @@ func (*ChangeSingleBlocksList) XXX_OneofWrappers() []interface{} {
 	}
 }
 
+//
+// Change.Multiple contains array of changes, for a list of blocks each.
 type ChangeMultiple struct {
 }
 

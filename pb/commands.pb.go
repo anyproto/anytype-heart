@@ -137,6 +137,34 @@ func (RpcBlockUpdateResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 3, 1, 0, 0}
 }
 
+type RpcBlockCloseResponseErrorCode int32
+
+const (
+	RpcBlockCloseResponseError_NULL          RpcBlockCloseResponseErrorCode = 0
+	RpcBlockCloseResponseError_UNKNOWN_ERROR RpcBlockCloseResponseErrorCode = 1
+	RpcBlockCloseResponseError_BAD_INPUT     RpcBlockCloseResponseErrorCode = 2
+)
+
+var RpcBlockCloseResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockCloseResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockCloseResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockCloseResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockCloseResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 4, 1, 0, 0}
+}
+
 type RpcWalletCreateResponseErrorCode int32
 
 const (
@@ -325,43 +353,6 @@ func (RpcAccountSelectResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 2, 2, 1, 0, 0}
 }
 
-type RpcVersionGetResponseErrorCode int32
-
-const (
-	RpcVersionGetResponseError_NULL             RpcVersionGetResponseErrorCode = 0
-	RpcVersionGetResponseError_UNKNOWN_ERROR    RpcVersionGetResponseErrorCode = 1
-	RpcVersionGetResponseError_BAD_INPUT        RpcVersionGetResponseErrorCode = 2
-	RpcVersionGetResponseError_VERSION_IS_EMPTY RpcVersionGetResponseErrorCode = 3
-	RpcVersionGetResponseError_NOT_FOUND        RpcVersionGetResponseErrorCode = 101
-	RpcVersionGetResponseError_TIMEOUT          RpcVersionGetResponseErrorCode = 102
-)
-
-var RpcVersionGetResponseErrorCode_name = map[int32]string{
-	0:   "NULL",
-	1:   "UNKNOWN_ERROR",
-	2:   "BAD_INPUT",
-	3:   "VERSION_IS_EMPTY",
-	101: "NOT_FOUND",
-	102: "TIMEOUT",
-}
-
-var RpcVersionGetResponseErrorCode_value = map[string]int32{
-	"NULL":             0,
-	"UNKNOWN_ERROR":    1,
-	"BAD_INPUT":        2,
-	"VERSION_IS_EMPTY": 3,
-	"NOT_FOUND":        101,
-	"TIMEOUT":          102,
-}
-
-func (x RpcVersionGetResponseErrorCode) String() string {
-	return proto.EnumName(RpcVersionGetResponseErrorCode_name, int32(x))
-}
-
-func (RpcVersionGetResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1, 0, 0}
-}
-
 type RpcLogSendRequestLevel int32
 
 const (
@@ -396,7 +387,7 @@ func (x RpcLogSendRequestLevel) String() string {
 }
 
 func (RpcLogSendRequestLevel) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 0, 0}
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 0, 0}
 }
 
 type RpcLogSendResponseErrorCode int32
@@ -430,20 +421,57 @@ func (x RpcLogSendResponseErrorCode) String() string {
 }
 
 func (RpcLogSendResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1, 0, 0}
+}
+
+type RpcVersionGetResponseErrorCode int32
+
+const (
+	RpcVersionGetResponseError_NULL             RpcVersionGetResponseErrorCode = 0
+	RpcVersionGetResponseError_UNKNOWN_ERROR    RpcVersionGetResponseErrorCode = 1
+	RpcVersionGetResponseError_BAD_INPUT        RpcVersionGetResponseErrorCode = 2
+	RpcVersionGetResponseError_VERSION_IS_EMPTY RpcVersionGetResponseErrorCode = 3
+	RpcVersionGetResponseError_NOT_FOUND        RpcVersionGetResponseErrorCode = 101
+	RpcVersionGetResponseError_TIMEOUT          RpcVersionGetResponseErrorCode = 102
+)
+
+var RpcVersionGetResponseErrorCode_name = map[int32]string{
+	0:   "NULL",
+	1:   "UNKNOWN_ERROR",
+	2:   "BAD_INPUT",
+	3:   "VERSION_IS_EMPTY",
+	101: "NOT_FOUND",
+	102: "TIMEOUT",
+}
+
+var RpcVersionGetResponseErrorCode_value = map[string]int32{
+	"NULL":             0,
+	"UNKNOWN_ERROR":    1,
+	"BAD_INPUT":        2,
+	"VERSION_IS_EMPTY": 3,
+	"NOT_FOUND":        101,
+	"TIMEOUT":          102,
+}
+
+func (x RpcVersionGetResponseErrorCode) String() string {
+	return proto.EnumName(RpcVersionGetResponseErrorCode_name, int32(x))
+}
+
+func (RpcVersionGetResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1, 0, 0}
 }
 
-type RpcIpfsGetFileResponseErrorCode int32
+type RpcIpfsFileGetResponseErrorCode int32
 
 const (
-	RpcIpfsGetFileResponseError_NULL          RpcIpfsGetFileResponseErrorCode = 0
-	RpcIpfsGetFileResponseError_UNKNOWN_ERROR RpcIpfsGetFileResponseErrorCode = 1
-	RpcIpfsGetFileResponseError_BAD_INPUT     RpcIpfsGetFileResponseErrorCode = 2
-	RpcIpfsGetFileResponseError_NOT_FOUND     RpcIpfsGetFileResponseErrorCode = 101
-	RpcIpfsGetFileResponseError_TIMEOUT       RpcIpfsGetFileResponseErrorCode = 102
+	RpcIpfsFileGetResponseError_NULL          RpcIpfsFileGetResponseErrorCode = 0
+	RpcIpfsFileGetResponseError_UNKNOWN_ERROR RpcIpfsFileGetResponseErrorCode = 1
+	RpcIpfsFileGetResponseError_BAD_INPUT     RpcIpfsFileGetResponseErrorCode = 2
+	RpcIpfsFileGetResponseError_NOT_FOUND     RpcIpfsFileGetResponseErrorCode = 101
+	RpcIpfsFileGetResponseError_TIMEOUT       RpcIpfsFileGetResponseErrorCode = 102
 )
 
-var RpcIpfsGetFileResponseErrorCode_name = map[int32]string{
+var RpcIpfsFileGetResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -451,7 +479,7 @@ var RpcIpfsGetFileResponseErrorCode_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var RpcIpfsGetFileResponseErrorCode_value = map[string]int32{
+var RpcIpfsFileGetResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -459,25 +487,25 @@ var RpcIpfsGetFileResponseErrorCode_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x RpcIpfsGetFileResponseErrorCode) String() string {
-	return proto.EnumName(RpcIpfsGetFileResponseErrorCode_name, int32(x))
+func (x RpcIpfsFileGetResponseErrorCode) String() string {
+	return proto.EnumName(RpcIpfsFileGetResponseErrorCode_name, int32(x))
 }
 
-func (RpcIpfsGetFileResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+func (RpcIpfsFileGetResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 1, 0, 0}
 }
 
-type RpcImageGetBlobResponseErrorCode int32
+type RpcIpfsImageGetBlobResponseErrorCode int32
 
 const (
-	RpcImageGetBlobResponseError_NULL          RpcImageGetBlobResponseErrorCode = 0
-	RpcImageGetBlobResponseError_UNKNOWN_ERROR RpcImageGetBlobResponseErrorCode = 1
-	RpcImageGetBlobResponseError_BAD_INPUT     RpcImageGetBlobResponseErrorCode = 2
-	RpcImageGetBlobResponseError_NOT_FOUND     RpcImageGetBlobResponseErrorCode = 101
-	RpcImageGetBlobResponseError_TIMEOUT       RpcImageGetBlobResponseErrorCode = 102
+	RpcIpfsImageGetBlobResponseError_NULL          RpcIpfsImageGetBlobResponseErrorCode = 0
+	RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR RpcIpfsImageGetBlobResponseErrorCode = 1
+	RpcIpfsImageGetBlobResponseError_BAD_INPUT     RpcIpfsImageGetBlobResponseErrorCode = 2
+	RpcIpfsImageGetBlobResponseError_NOT_FOUND     RpcIpfsImageGetBlobResponseErrorCode = 101
+	RpcIpfsImageGetBlobResponseError_TIMEOUT       RpcIpfsImageGetBlobResponseErrorCode = 102
 )
 
-var RpcImageGetBlobResponseErrorCode_name = map[int32]string{
+var RpcIpfsImageGetBlobResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -485,7 +513,7 @@ var RpcImageGetBlobResponseErrorCode_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var RpcImageGetBlobResponseErrorCode_value = map[string]int32{
+var RpcIpfsImageGetBlobResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -493,25 +521,25 @@ var RpcImageGetBlobResponseErrorCode_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x RpcImageGetBlobResponseErrorCode) String() string {
-	return proto.EnumName(RpcImageGetBlobResponseErrorCode_name, int32(x))
+func (x RpcIpfsImageGetBlobResponseErrorCode) String() string {
+	return proto.EnumName(RpcIpfsImageGetBlobResponseErrorCode_name, int32(x))
 }
 
-func (RpcImageGetBlobResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 1, 0, 0}
+func (RpcIpfsImageGetBlobResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 0, 1, 0, 0}
 }
 
-type RpcImageGetFileResponseErrorCode int32
+type RpcIpfsImageGetFileResponseErrorCode int32
 
 const (
-	RpcImageGetFileResponseError_NULL          RpcImageGetFileResponseErrorCode = 0
-	RpcImageGetFileResponseError_UNKNOWN_ERROR RpcImageGetFileResponseErrorCode = 1
-	RpcImageGetFileResponseError_BAD_INPUT     RpcImageGetFileResponseErrorCode = 2
-	RpcImageGetFileResponseError_NOT_FOUND     RpcImageGetFileResponseErrorCode = 101
-	RpcImageGetFileResponseError_TIMEOUT       RpcImageGetFileResponseErrorCode = 102
+	RpcIpfsImageGetFileResponseError_NULL          RpcIpfsImageGetFileResponseErrorCode = 0
+	RpcIpfsImageGetFileResponseError_UNKNOWN_ERROR RpcIpfsImageGetFileResponseErrorCode = 1
+	RpcIpfsImageGetFileResponseError_BAD_INPUT     RpcIpfsImageGetFileResponseErrorCode = 2
+	RpcIpfsImageGetFileResponseError_NOT_FOUND     RpcIpfsImageGetFileResponseErrorCode = 101
+	RpcIpfsImageGetFileResponseError_TIMEOUT       RpcIpfsImageGetFileResponseErrorCode = 102
 )
 
-var RpcImageGetFileResponseErrorCode_name = map[int32]string{
+var RpcIpfsImageGetFileResponseErrorCode_name = map[int32]string{
 	0:   "NULL",
 	1:   "UNKNOWN_ERROR",
 	2:   "BAD_INPUT",
@@ -519,7 +547,7 @@ var RpcImageGetFileResponseErrorCode_name = map[int32]string{
 	102: "TIMEOUT",
 }
 
-var RpcImageGetFileResponseErrorCode_value = map[string]int32{
+var RpcIpfsImageGetFileResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
@@ -527,14 +555,19 @@ var RpcImageGetFileResponseErrorCode_value = map[string]int32{
 	"TIMEOUT":       102,
 }
 
-func (x RpcImageGetFileResponseErrorCode) String() string {
-	return proto.EnumName(RpcImageGetFileResponseErrorCode_name, int32(x))
+func (x RpcIpfsImageGetFileResponseErrorCode) String() string {
+	return proto.EnumName(RpcIpfsImageGetFileResponseErrorCode_name, int32(x))
 }
 
-func (RpcImageGetFileResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 1, 0, 0}
+func (RpcIpfsImageGetFileResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 1, 1, 0, 0}
 }
 
+//
+// Rpc is a namespace, that agregates all of the service commands between client and middleware.
+// Structure: Topic > Subtopic > Subsub... > Action > (Request, Response).
+// Request – message from a client.
+// Response – message from a middleware.
 type Rpc struct {
 }
 
@@ -571,6 +604,8 @@ func (m *Rpc) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Rpc proto.InternalMessageInfo
 
+//
+// Namespace, that agregates subtopics and actions, that relates to blocks.
 type RpcBlock struct {
 }
 
@@ -607,6 +642,15 @@ func (m *RpcBlock) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlock proto.InternalMessageInfo
 
+//
+// Block history: switch between versions (lib context: switch block head), move forward or backward
+// **Example scenario**
+// 1. User -> MacOS Front: CMD+Z
+// 2. Front -> MW: Rpc.Block.History.Move.Request(blockId, false)
+// 3. MW -> Lib: ?? TODO
+// 4. Lib: switches current block header to a previous one
+// 5. Lib -> MW: prev version of block
+// 6. MW -> Front: BlockShow(block.prevVersion)
 type RpcBlockHistory struct {
 }
 
@@ -827,6 +871,22 @@ func (m *RpcBlockHistoryMoveResponseError) GetDescription() string {
 	return ""
 }
 
+//
+// Works with a smart blocks (block-organizers, like page, dashboard etc)
+// **Example scenario**
+// 1A. On front-end start.
+//     1. Front -> MW: Rpc.Block.Open.Request(dashboard.id)
+//     2. MW -> Front: BlockShow(dashboard)
+//     3. MW -> Front: Rpc.Block.Open.Response(err)
+// 1B. User clicks on a page icon on the dashboard.
+//     1. Front -> MW: Rpc.Block.Close.Request(dashboard.id)
+// Get close response first, then open request:
+//     2. MW -> Front: Rpc.Block.Close.Response(err)
+//     3. Front -> MW: Rpc.Block.Open.Request(page.id)
+//     4. MW -> Front: BlockShow(<page, blocks>)
+//     5. MW -> Front: Rpc.Block.Open.Response(err)
+// Image/Video/File blocks then:
+//     6. MW -> Front: BlockShow(<blocks>)
 type RpcBlockOpen struct {
 }
 
@@ -1003,6 +1063,20 @@ func (m *RpcBlockOpenResponseError) GetDescription() string {
 	return ""
 }
 
+//
+// Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
+// **Example scenario**
+// 1A. Create Page on dashboard
+//     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+//     2. Front -> MW: Rpc.Block.Close.Request(block: dashboard.id)
+//     3. Front <- MW: Rpc.Block.Close.Response(err)
+//     4. Front <- MW: Rpc.Block.Create.Response(page.id)
+//     5. Front <- MW: Rpc.Block.Open.Response(err)
+//     6. Front <- MW: Event.Block.Show(page)
+// 1B. Create Page on Page
+//     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+//     2. Front <- MW: Rpc.Block.Create.Response(newPage.id)
+//     3. Front <- MW: Event.Block.Show(newPage)
 type RpcBlockCreate struct {
 }
 
@@ -1100,7 +1174,8 @@ func (m *RpcBlockCreateRequest) GetPosition() ModelBlockPosition {
 }
 
 type RpcBlockCreateResponse struct {
-	Error *RpcBlockCreateResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Error   *RpcBlockCreateResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	BlockId string                       `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 }
 
 func (m *RpcBlockCreateResponse) Reset()         { *m = RpcBlockCreateResponse{} }
@@ -1141,6 +1216,13 @@ func (m *RpcBlockCreateResponse) GetError() *RpcBlockCreateResponseError {
 		return m.Error
 	}
 	return nil
+}
+
+func (m *RpcBlockCreateResponse) GetBlockId() string {
+	if m != nil {
+		return m.BlockId
+	}
+	return ""
 }
 
 type RpcBlockCreateResponseError struct {
@@ -1195,6 +1277,15 @@ func (m *RpcBlockCreateResponseError) GetDescription() string {
 	return ""
 }
 
+//
+// Update a Smart/Internal block. Request can contain a content/field/permission/children update
+// **Example scenarios**
+// 1A. Update text block on page
+// 1B. Update page on dashboard
+// 1C. Update page on page
+// 1D. Update page permission on a dashboard
+// 1E. Update page children of the same page
+// 1F. Update children of a layout block on a page
 type RpcBlockUpdate struct {
 }
 
@@ -1371,6 +1462,186 @@ func (m *RpcBlockUpdateResponseError) GetDescription() string {
 	return ""
 }
 
+//
+//
+type RpcBlockClose struct {
+}
+
+func (m *RpcBlockClose) Reset()         { *m = RpcBlockClose{} }
+func (m *RpcBlockClose) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockClose) ProtoMessage()    {}
+func (*RpcBlockClose) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 4}
+}
+func (m *RpcBlockClose) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockClose) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockClose.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockClose) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockClose.Merge(m, src)
+}
+func (m *RpcBlockClose) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockClose) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockClose.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockClose proto.InternalMessageInfo
+
+type RpcBlockCloseRequest struct {
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+}
+
+func (m *RpcBlockCloseRequest) Reset()         { *m = RpcBlockCloseRequest{} }
+func (m *RpcBlockCloseRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCloseRequest) ProtoMessage()    {}
+func (*RpcBlockCloseRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 4, 0}
+}
+func (m *RpcBlockCloseRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockCloseRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockCloseRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockCloseRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCloseRequest.Merge(m, src)
+}
+func (m *RpcBlockCloseRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockCloseRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCloseRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockCloseRequest proto.InternalMessageInfo
+
+func (m *RpcBlockCloseRequest) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+type RpcBlockCloseResponse struct {
+	Error *RpcBlockCloseResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockCloseResponse) Reset()         { *m = RpcBlockCloseResponse{} }
+func (m *RpcBlockCloseResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCloseResponse) ProtoMessage()    {}
+func (*RpcBlockCloseResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 4, 1}
+}
+func (m *RpcBlockCloseResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockCloseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockCloseResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockCloseResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCloseResponse.Merge(m, src)
+}
+func (m *RpcBlockCloseResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockCloseResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCloseResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockCloseResponse proto.InternalMessageInfo
+
+func (m *RpcBlockCloseResponse) GetError() *RpcBlockCloseResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockCloseResponseError struct {
+	Code        RpcBlockCloseResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockCloseResponseErrorCode" json:"code,omitempty"`
+	Description string                         `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockCloseResponseError) Reset()         { *m = RpcBlockCloseResponseError{} }
+func (m *RpcBlockCloseResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCloseResponseError) ProtoMessage()    {}
+func (*RpcBlockCloseResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 0, 4, 1, 0}
+}
+func (m *RpcBlockCloseResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockCloseResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockCloseResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockCloseResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCloseResponseError.Merge(m, src)
+}
+func (m *RpcBlockCloseResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockCloseResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCloseResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockCloseResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockCloseResponseError) GetCode() RpcBlockCloseResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockCloseResponseError_NULL
+}
+
+func (m *RpcBlockCloseResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+//
+// Namespace, that agregates subtopics and actions, that relates to wallet.
 type RpcWallet struct {
 }
 
@@ -1783,6 +2054,8 @@ func (m *RpcWalletRecoverResponseError) GetDescription() string {
 	return ""
 }
 
+//
+// Namespace, that agregates subtopics and actions, that relates to account.
 type RpcAccount struct {
 }
 
@@ -2426,6 +2699,229 @@ func (m *RpcAccountSelectResponseError) GetDescription() string {
 	return ""
 }
 
+//
+// Namespace, that agregates log subtopics and actions.
+// Usage: send request with topic (Level) and description (message) from client to middleware to log.
+type RpcLog struct {
+}
+
+func (m *RpcLog) Reset()         { *m = RpcLog{} }
+func (m *RpcLog) String() string { return proto.CompactTextString(m) }
+func (*RpcLog) ProtoMessage()    {}
+func (*RpcLog) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3}
+}
+func (m *RpcLog) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLog) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLog.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLog) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLog.Merge(m, src)
+}
+func (m *RpcLog) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLog) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLog.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLog proto.InternalMessageInfo
+
+type RpcLogSend struct {
+}
+
+func (m *RpcLogSend) Reset()         { *m = RpcLogSend{} }
+func (m *RpcLogSend) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSend) ProtoMessage()    {}
+func (*RpcLogSend) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0}
+}
+func (m *RpcLogSend) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLogSend) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLogSend.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLogSend) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSend.Merge(m, src)
+}
+func (m *RpcLogSend) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLogSend) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSend.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLogSend proto.InternalMessageInfo
+
+type RpcLogSendRequest struct {
+	Message string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Level   RpcLogSendRequestLevel `protobuf:"varint,2,opt,name=level,proto3,enum=anytype.RpcLogSendRequestLevel" json:"level,omitempty"`
+}
+
+func (m *RpcLogSendRequest) Reset()         { *m = RpcLogSendRequest{} }
+func (m *RpcLogSendRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSendRequest) ProtoMessage()    {}
+func (*RpcLogSendRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 0}
+}
+func (m *RpcLogSendRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLogSendRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLogSendRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLogSendRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSendRequest.Merge(m, src)
+}
+func (m *RpcLogSendRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLogSendRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSendRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLogSendRequest proto.InternalMessageInfo
+
+func (m *RpcLogSendRequest) GetMessage() string {
+	if m != nil {
+		return m.Message
+	}
+	return ""
+}
+
+func (m *RpcLogSendRequest) GetLevel() RpcLogSendRequestLevel {
+	if m != nil {
+		return m.Level
+	}
+	return RpcLogSendRequest_DEBUG
+}
+
+type RpcLogSendResponse struct {
+	Error *RpcLogSendResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcLogSendResponse) Reset()         { *m = RpcLogSendResponse{} }
+func (m *RpcLogSendResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSendResponse) ProtoMessage()    {}
+func (*RpcLogSendResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1}
+}
+func (m *RpcLogSendResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLogSendResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLogSendResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLogSendResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSendResponse.Merge(m, src)
+}
+func (m *RpcLogSendResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLogSendResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSendResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLogSendResponse proto.InternalMessageInfo
+
+func (m *RpcLogSendResponse) GetError() *RpcLogSendResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcLogSendResponseError struct {
+	Code        RpcLogSendResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcLogSendResponseErrorCode" json:"code,omitempty"`
+	Description string                      `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcLogSendResponseError) Reset()         { *m = RpcLogSendResponseError{} }
+func (m *RpcLogSendResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcLogSendResponseError) ProtoMessage()    {}
+func (*RpcLogSendResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1, 0}
+}
+func (m *RpcLogSendResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLogSendResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLogSendResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLogSendResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLogSendResponseError.Merge(m, src)
+}
+func (m *RpcLogSendResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLogSendResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLogSendResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLogSendResponseError proto.InternalMessageInfo
+
+func (m *RpcLogSendResponseError) GetCode() RpcLogSendResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcLogSendResponseError_NULL
+}
+
+func (m *RpcLogSendResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 type RpcVersion struct {
 }
 
@@ -2433,7 +2929,7 @@ func (m *RpcVersion) Reset()         { *m = RpcVersion{} }
 func (m *RpcVersion) String() string { return proto.CompactTextString(m) }
 func (*RpcVersion) ProtoMessage()    {}
 func (*RpcVersion) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3}
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4}
 }
 func (m *RpcVersion) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2469,7 +2965,7 @@ func (m *RpcVersionGet) Reset()         { *m = RpcVersionGet{} }
 func (m *RpcVersionGet) String() string { return proto.CompactTextString(m) }
 func (*RpcVersionGet) ProtoMessage()    {}
 func (*RpcVersionGet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0}
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0}
 }
 func (m *RpcVersionGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2505,7 +3001,7 @@ func (m *RpcVersionGetRequest) Reset()         { *m = RpcVersionGetRequest{} }
 func (m *RpcVersionGetRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcVersionGetRequest) ProtoMessage()    {}
 func (*RpcVersionGetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 0}
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 0}
 }
 func (m *RpcVersionGetRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2543,7 +3039,7 @@ func (m *RpcVersionGetResponse) Reset()         { *m = RpcVersionGetResponse{} }
 func (m *RpcVersionGetResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcVersionGetResponse) ProtoMessage()    {}
 func (*RpcVersionGetResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1}
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1}
 }
 func (m *RpcVersionGetResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2595,7 +3091,7 @@ func (m *RpcVersionGetResponseError) Reset()         { *m = RpcVersionGetRespons
 func (m *RpcVersionGetResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcVersionGetResponseError) ProtoMessage()    {}
 func (*RpcVersionGetResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 3, 0, 1, 0}
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1, 0}
 }
 func (m *RpcVersionGetResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2638,226 +3134,8 @@ func (m *RpcVersionGetResponseError) GetDescription() string {
 	return ""
 }
 
-type RpcLog struct {
-}
-
-func (m *RpcLog) Reset()         { *m = RpcLog{} }
-func (m *RpcLog) String() string { return proto.CompactTextString(m) }
-func (*RpcLog) ProtoMessage()    {}
-func (*RpcLog) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4}
-}
-func (m *RpcLog) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcLog) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcLog.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcLog) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcLog.Merge(m, src)
-}
-func (m *RpcLog) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcLog) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcLog.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcLog proto.InternalMessageInfo
-
-type RpcLogSend struct {
-}
-
-func (m *RpcLogSend) Reset()         { *m = RpcLogSend{} }
-func (m *RpcLogSend) String() string { return proto.CompactTextString(m) }
-func (*RpcLogSend) ProtoMessage()    {}
-func (*RpcLogSend) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0}
-}
-func (m *RpcLogSend) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcLogSend) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcLogSend.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcLogSend) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcLogSend.Merge(m, src)
-}
-func (m *RpcLogSend) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcLogSend) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcLogSend.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcLogSend proto.InternalMessageInfo
-
-type RpcLogSendRequest struct {
-	Message string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Level   RpcLogSendRequestLevel `protobuf:"varint,2,opt,name=level,proto3,enum=anytype.RpcLogSendRequestLevel" json:"level,omitempty"`
-}
-
-func (m *RpcLogSendRequest) Reset()         { *m = RpcLogSendRequest{} }
-func (m *RpcLogSendRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcLogSendRequest) ProtoMessage()    {}
-func (*RpcLogSendRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 0}
-}
-func (m *RpcLogSendRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcLogSendRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcLogSendRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcLogSendRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcLogSendRequest.Merge(m, src)
-}
-func (m *RpcLogSendRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcLogSendRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcLogSendRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcLogSendRequest proto.InternalMessageInfo
-
-func (m *RpcLogSendRequest) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
-func (m *RpcLogSendRequest) GetLevel() RpcLogSendRequestLevel {
-	if m != nil {
-		return m.Level
-	}
-	return RpcLogSendRequest_DEBUG
-}
-
-type RpcLogSendResponse struct {
-	Error *RpcLogSendResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *RpcLogSendResponse) Reset()         { *m = RpcLogSendResponse{} }
-func (m *RpcLogSendResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcLogSendResponse) ProtoMessage()    {}
-func (*RpcLogSendResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1}
-}
-func (m *RpcLogSendResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcLogSendResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcLogSendResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcLogSendResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcLogSendResponse.Merge(m, src)
-}
-func (m *RpcLogSendResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcLogSendResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcLogSendResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcLogSendResponse proto.InternalMessageInfo
-
-func (m *RpcLogSendResponse) GetError() *RpcLogSendResponseError {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type RpcLogSendResponseError struct {
-	Code        RpcLogSendResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcLogSendResponseErrorCode" json:"code,omitempty"`
-	Description string                      `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-}
-
-func (m *RpcLogSendResponseError) Reset()         { *m = RpcLogSendResponseError{} }
-func (m *RpcLogSendResponseError) String() string { return proto.CompactTextString(m) }
-func (*RpcLogSendResponseError) ProtoMessage()    {}
-func (*RpcLogSendResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 4, 0, 1, 0}
-}
-func (m *RpcLogSendResponseError) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcLogSendResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcLogSendResponseError.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcLogSendResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcLogSendResponseError.Merge(m, src)
-}
-func (m *RpcLogSendResponseError) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcLogSendResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcLogSendResponseError.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcLogSendResponseError proto.InternalMessageInfo
-
-func (m *RpcLogSendResponseError) GetCode() RpcLogSendResponseErrorCode {
-	if m != nil {
-		return m.Code
-	}
-	return RpcLogSendResponseError_NULL
-}
-
-func (m *RpcLogSendResponseError) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
+//
+// Namespace, that agregates subtopics and actions to work with IPFS directly (get files, blobs, images, etc)
 type RpcIpfs struct {
 }
 
@@ -2894,21 +3172,21 @@ func (m *RpcIpfs) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcIpfs proto.InternalMessageInfo
 
-type RpcIpfsGet struct {
+type RpcIpfsFile struct {
 }
 
-func (m *RpcIpfsGet) Reset()         { *m = RpcIpfsGet{} }
-func (m *RpcIpfsGet) String() string { return proto.CompactTextString(m) }
-func (*RpcIpfsGet) ProtoMessage()    {}
-func (*RpcIpfsGet) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsFile) Reset()         { *m = RpcIpfsFile{} }
+func (m *RpcIpfsFile) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsFile) ProtoMessage()    {}
+func (*RpcIpfsFile) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0}
 }
-func (m *RpcIpfsGet) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcIpfsGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcIpfsGet.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsFile.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2918,33 +3196,33 @@ func (m *RpcIpfsGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *RpcIpfsGet) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcIpfsGet.Merge(m, src)
+func (m *RpcIpfsFile) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsFile.Merge(m, src)
 }
-func (m *RpcIpfsGet) XXX_Size() int {
+func (m *RpcIpfsFile) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcIpfsGet) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcIpfsGet.DiscardUnknown(m)
+func (m *RpcIpfsFile) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsFile.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcIpfsGet proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsFile proto.InternalMessageInfo
 
-type RpcIpfsGetFile struct {
+type RpcIpfsFileGet struct {
 }
 
-func (m *RpcIpfsGetFile) Reset()         { *m = RpcIpfsGetFile{} }
-func (m *RpcIpfsGetFile) String() string { return proto.CompactTextString(m) }
-func (*RpcIpfsGetFile) ProtoMessage()    {}
-func (*RpcIpfsGetFile) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsFileGet) Reset()         { *m = RpcIpfsFileGet{} }
+func (m *RpcIpfsFileGet) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsFileGet) ProtoMessage()    {}
+func (*RpcIpfsFileGet) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0}
 }
-func (m *RpcIpfsGetFile) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsFileGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcIpfsGetFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsFileGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcIpfsGetFile.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsFileGet.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2954,34 +3232,34 @@ func (m *RpcIpfsGetFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return b[:n], nil
 	}
 }
-func (m *RpcIpfsGetFile) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcIpfsGetFile.Merge(m, src)
+func (m *RpcIpfsFileGet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsFileGet.Merge(m, src)
 }
-func (m *RpcIpfsGetFile) XXX_Size() int {
+func (m *RpcIpfsFileGet) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcIpfsGetFile) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcIpfsGetFile.DiscardUnknown(m)
+func (m *RpcIpfsFileGet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsFileGet.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcIpfsGetFile proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsFileGet proto.InternalMessageInfo
 
-type RpcIpfsGetFileRequest struct {
+type RpcIpfsFileGetRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (m *RpcIpfsGetFileRequest) Reset()         { *m = RpcIpfsGetFileRequest{} }
-func (m *RpcIpfsGetFileRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcIpfsGetFileRequest) ProtoMessage()    {}
-func (*RpcIpfsGetFileRequest) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsFileGetRequest) Reset()         { *m = RpcIpfsFileGetRequest{} }
+func (m *RpcIpfsFileGetRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsFileGetRequest) ProtoMessage()    {}
+func (*RpcIpfsFileGetRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 0}
 }
-func (m *RpcIpfsGetFileRequest) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsFileGetRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcIpfsGetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsFileGetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcIpfsGetFileRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsFileGetRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -2991,44 +3269,44 @@ func (m *RpcIpfsGetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *RpcIpfsGetFileRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcIpfsGetFileRequest.Merge(m, src)
+func (m *RpcIpfsFileGetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsFileGetRequest.Merge(m, src)
 }
-func (m *RpcIpfsGetFileRequest) XXX_Size() int {
+func (m *RpcIpfsFileGetRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcIpfsGetFileRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcIpfsGetFileRequest.DiscardUnknown(m)
+func (m *RpcIpfsFileGetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsFileGetRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcIpfsGetFileRequest proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsFileGetRequest proto.InternalMessageInfo
 
-func (m *RpcIpfsGetFileRequest) GetId() string {
+func (m *RpcIpfsFileGetRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-type RpcIpfsGetFileResponse struct {
-	Error *RpcIpfsGetFileResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcIpfsFileGetResponse struct {
+	Error *RpcIpfsFileGetResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Data  []byte                       `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 	Media string                       `protobuf:"bytes,3,opt,name=media,proto3" json:"media,omitempty"`
 	Name  string                       `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 }
 
-func (m *RpcIpfsGetFileResponse) Reset()         { *m = RpcIpfsGetFileResponse{} }
-func (m *RpcIpfsGetFileResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcIpfsGetFileResponse) ProtoMessage()    {}
-func (*RpcIpfsGetFileResponse) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsFileGetResponse) Reset()         { *m = RpcIpfsFileGetResponse{} }
+func (m *RpcIpfsFileGetResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsFileGetResponse) ProtoMessage()    {}
+func (*RpcIpfsFileGetResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 1}
 }
-func (m *RpcIpfsGetFileResponse) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsFileGetResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcIpfsGetFileResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsFileGetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcIpfsGetFileResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsFileGetResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3038,63 +3316,63 @@ func (m *RpcIpfsGetFileResponse) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *RpcIpfsGetFileResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcIpfsGetFileResponse.Merge(m, src)
+func (m *RpcIpfsFileGetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsFileGetResponse.Merge(m, src)
 }
-func (m *RpcIpfsGetFileResponse) XXX_Size() int {
+func (m *RpcIpfsFileGetResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcIpfsGetFileResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcIpfsGetFileResponse.DiscardUnknown(m)
+func (m *RpcIpfsFileGetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsFileGetResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcIpfsGetFileResponse proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsFileGetResponse proto.InternalMessageInfo
 
-func (m *RpcIpfsGetFileResponse) GetError() *RpcIpfsGetFileResponseError {
+func (m *RpcIpfsFileGetResponse) GetError() *RpcIpfsFileGetResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *RpcIpfsGetFileResponse) GetData() []byte {
+func (m *RpcIpfsFileGetResponse) GetData() []byte {
 	if m != nil {
 		return m.Data
 	}
 	return nil
 }
 
-func (m *RpcIpfsGetFileResponse) GetMedia() string {
+func (m *RpcIpfsFileGetResponse) GetMedia() string {
 	if m != nil {
 		return m.Media
 	}
 	return ""
 }
 
-func (m *RpcIpfsGetFileResponse) GetName() string {
+func (m *RpcIpfsFileGetResponse) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-type RpcIpfsGetFileResponseError struct {
-	Code        RpcIpfsGetFileResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcIpfsGetFileResponseErrorCode" json:"code,omitempty"`
+type RpcIpfsFileGetResponseError struct {
+	Code        RpcIpfsFileGetResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcIpfsFileGetResponseErrorCode" json:"code,omitempty"`
 	Description string                          `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *RpcIpfsGetFileResponseError) Reset()         { *m = RpcIpfsGetFileResponseError{} }
-func (m *RpcIpfsGetFileResponseError) String() string { return proto.CompactTextString(m) }
-func (*RpcIpfsGetFileResponseError) ProtoMessage()    {}
-func (*RpcIpfsGetFileResponseError) Descriptor() ([]byte, []int) {
+func (m *RpcIpfsFileGetResponseError) Reset()         { *m = RpcIpfsFileGetResponseError{} }
+func (m *RpcIpfsFileGetResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsFileGetResponseError) ProtoMessage()    {}
+func (*RpcIpfsFileGetResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 0, 0, 1, 0}
 }
-func (m *RpcIpfsGetFileResponseError) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsFileGetResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcIpfsGetFileResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsFileGetResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcIpfsGetFileResponseError.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsFileGetResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3104,47 +3382,47 @@ func (m *RpcIpfsGetFileResponseError) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *RpcIpfsGetFileResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcIpfsGetFileResponseError.Merge(m, src)
+func (m *RpcIpfsFileGetResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsFileGetResponseError.Merge(m, src)
 }
-func (m *RpcIpfsGetFileResponseError) XXX_Size() int {
+func (m *RpcIpfsFileGetResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcIpfsGetFileResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcIpfsGetFileResponseError.DiscardUnknown(m)
+func (m *RpcIpfsFileGetResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsFileGetResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcIpfsGetFileResponseError proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsFileGetResponseError proto.InternalMessageInfo
 
-func (m *RpcIpfsGetFileResponseError) GetCode() RpcIpfsGetFileResponseErrorCode {
+func (m *RpcIpfsFileGetResponseError) GetCode() RpcIpfsFileGetResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return RpcIpfsGetFileResponseError_NULL
+	return RpcIpfsFileGetResponseError_NULL
 }
 
-func (m *RpcIpfsGetFileResponseError) GetDescription() string {
+func (m *RpcIpfsFileGetResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type RpcImage struct {
+type RpcIpfsImage struct {
 }
 
-func (m *RpcImage) Reset()         { *m = RpcImage{} }
-func (m *RpcImage) String() string { return proto.CompactTextString(m) }
-func (*RpcImage) ProtoMessage()    {}
-func (*RpcImage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6}
+func (m *RpcIpfsImage) Reset()         { *m = RpcIpfsImage{} }
+func (m *RpcIpfsImage) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImage) ProtoMessage()    {}
+func (*RpcIpfsImage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1}
 }
-func (m *RpcImage) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImage.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3154,33 +3432,33 @@ func (m *RpcImage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *RpcImage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImage.Merge(m, src)
+func (m *RpcIpfsImage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImage.Merge(m, src)
 }
-func (m *RpcImage) XXX_Size() int {
+func (m *RpcIpfsImage) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImage) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImage.DiscardUnknown(m)
+func (m *RpcIpfsImage) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImage proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImage proto.InternalMessageInfo
 
-type RpcImageGet struct {
+type RpcIpfsImageGet struct {
 }
 
-func (m *RpcImageGet) Reset()         { *m = RpcImageGet{} }
-func (m *RpcImageGet) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGet) ProtoMessage()    {}
-func (*RpcImageGet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0}
+func (m *RpcIpfsImageGet) Reset()         { *m = RpcIpfsImageGet{} }
+func (m *RpcIpfsImageGet) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGet) ProtoMessage()    {}
+func (*RpcIpfsImageGet) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0}
 }
-func (m *RpcImageGet) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGet.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGet.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3190,33 +3468,33 @@ func (m *RpcImageGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGet) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGet.Merge(m, src)
+func (m *RpcIpfsImageGet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGet.Merge(m, src)
 }
-func (m *RpcImageGet) XXX_Size() int {
+func (m *RpcIpfsImageGet) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGet) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGet.DiscardUnknown(m)
+func (m *RpcIpfsImageGet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGet.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGet proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGet proto.InternalMessageInfo
 
-type RpcImageGetBlob struct {
+type RpcIpfsImageGetBlob struct {
 }
 
-func (m *RpcImageGetBlob) Reset()         { *m = RpcImageGetBlob{} }
-func (m *RpcImageGetBlob) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetBlob) ProtoMessage()    {}
-func (*RpcImageGetBlob) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0}
+func (m *RpcIpfsImageGetBlob) Reset()         { *m = RpcIpfsImageGetBlob{} }
+func (m *RpcIpfsImageGetBlob) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetBlob) ProtoMessage()    {}
+func (*RpcIpfsImageGetBlob) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 0}
 }
-func (m *RpcImageGetBlob) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetBlob) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetBlob) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetBlob) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetBlob.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetBlob.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3226,35 +3504,35 @@ func (m *RpcImageGetBlob) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetBlob) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetBlob.Merge(m, src)
+func (m *RpcIpfsImageGetBlob) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetBlob.Merge(m, src)
 }
-func (m *RpcImageGetBlob) XXX_Size() int {
+func (m *RpcIpfsImageGetBlob) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetBlob) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetBlob.DiscardUnknown(m)
+func (m *RpcIpfsImageGetBlob) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetBlob.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetBlob proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetBlob proto.InternalMessageInfo
 
-type RpcImageGetBlobRequest struct {
+type RpcIpfsImageGetBlobRequest struct {
 	Id    string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Size_ ModelImageSize `protobuf:"varint,2,opt,name=size,proto3,enum=anytype.ModelImageSize" json:"size,omitempty"`
 }
 
-func (m *RpcImageGetBlobRequest) Reset()         { *m = RpcImageGetBlobRequest{} }
-func (m *RpcImageGetBlobRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetBlobRequest) ProtoMessage()    {}
-func (*RpcImageGetBlobRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 0}
+func (m *RpcIpfsImageGetBlobRequest) Reset()         { *m = RpcIpfsImageGetBlobRequest{} }
+func (m *RpcIpfsImageGetBlobRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetBlobRequest) ProtoMessage()    {}
+func (*RpcIpfsImageGetBlobRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 0, 0}
 }
-func (m *RpcImageGetBlobRequest) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetBlobRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetBlobRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetBlobRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetBlobRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetBlobRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3264,49 +3542,49 @@ func (m *RpcImageGetBlobRequest) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetBlobRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetBlobRequest.Merge(m, src)
+func (m *RpcIpfsImageGetBlobRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetBlobRequest.Merge(m, src)
 }
-func (m *RpcImageGetBlobRequest) XXX_Size() int {
+func (m *RpcIpfsImageGetBlobRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetBlobRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetBlobRequest.DiscardUnknown(m)
+func (m *RpcIpfsImageGetBlobRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetBlobRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetBlobRequest proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetBlobRequest proto.InternalMessageInfo
 
-func (m *RpcImageGetBlobRequest) GetId() string {
+func (m *RpcIpfsImageGetBlobRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *RpcImageGetBlobRequest) GetSize_() ModelImageSize {
+func (m *RpcIpfsImageGetBlobRequest) GetSize_() ModelImageSize {
 	if m != nil {
 		return m.Size_
 	}
 	return ModelImage_LARGE
 }
 
-type RpcImageGetBlobResponse struct {
-	Error *RpcImageGetBlobResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Blob  []byte                        `protobuf:"bytes,2,opt,name=blob,proto3" json:"blob,omitempty"`
+type RpcIpfsImageGetBlobResponse struct {
+	Error *RpcIpfsImageGetBlobResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Blob  []byte                            `protobuf:"bytes,2,opt,name=blob,proto3" json:"blob,omitempty"`
 }
 
-func (m *RpcImageGetBlobResponse) Reset()         { *m = RpcImageGetBlobResponse{} }
-func (m *RpcImageGetBlobResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetBlobResponse) ProtoMessage()    {}
-func (*RpcImageGetBlobResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 1}
+func (m *RpcIpfsImageGetBlobResponse) Reset()         { *m = RpcIpfsImageGetBlobResponse{} }
+func (m *RpcIpfsImageGetBlobResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetBlobResponse) ProtoMessage()    {}
+func (*RpcIpfsImageGetBlobResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 0, 1}
 }
-func (m *RpcImageGetBlobResponse) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetBlobResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetBlobResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetBlobResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetBlobResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetBlobResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3316,49 +3594,49 @@ func (m *RpcImageGetBlobResponse) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetBlobResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetBlobResponse.Merge(m, src)
+func (m *RpcIpfsImageGetBlobResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetBlobResponse.Merge(m, src)
 }
-func (m *RpcImageGetBlobResponse) XXX_Size() int {
+func (m *RpcIpfsImageGetBlobResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetBlobResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetBlobResponse.DiscardUnknown(m)
+func (m *RpcIpfsImageGetBlobResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetBlobResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetBlobResponse proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetBlobResponse proto.InternalMessageInfo
 
-func (m *RpcImageGetBlobResponse) GetError() *RpcImageGetBlobResponseError {
+func (m *RpcIpfsImageGetBlobResponse) GetError() *RpcIpfsImageGetBlobResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *RpcImageGetBlobResponse) GetBlob() []byte {
+func (m *RpcIpfsImageGetBlobResponse) GetBlob() []byte {
 	if m != nil {
 		return m.Blob
 	}
 	return nil
 }
 
-type RpcImageGetBlobResponseError struct {
-	Code        RpcImageGetBlobResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcImageGetBlobResponseErrorCode" json:"code,omitempty"`
-	Description string                           `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcIpfsImageGetBlobResponseError struct {
+	Code        RpcIpfsImageGetBlobResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcIpfsImageGetBlobResponseErrorCode" json:"code,omitempty"`
+	Description string                               `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *RpcImageGetBlobResponseError) Reset()         { *m = RpcImageGetBlobResponseError{} }
-func (m *RpcImageGetBlobResponseError) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetBlobResponseError) ProtoMessage()    {}
-func (*RpcImageGetBlobResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 0, 1, 0}
+func (m *RpcIpfsImageGetBlobResponseError) Reset()         { *m = RpcIpfsImageGetBlobResponseError{} }
+func (m *RpcIpfsImageGetBlobResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetBlobResponseError) ProtoMessage()    {}
+func (*RpcIpfsImageGetBlobResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 0, 1, 0}
 }
-func (m *RpcImageGetBlobResponseError) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetBlobResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetBlobResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetBlobResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetBlobResponseError.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetBlobResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3368,47 +3646,47 @@ func (m *RpcImageGetBlobResponseError) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetBlobResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetBlobResponseError.Merge(m, src)
+func (m *RpcIpfsImageGetBlobResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetBlobResponseError.Merge(m, src)
 }
-func (m *RpcImageGetBlobResponseError) XXX_Size() int {
+func (m *RpcIpfsImageGetBlobResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetBlobResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetBlobResponseError.DiscardUnknown(m)
+func (m *RpcIpfsImageGetBlobResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetBlobResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetBlobResponseError proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetBlobResponseError proto.InternalMessageInfo
 
-func (m *RpcImageGetBlobResponseError) GetCode() RpcImageGetBlobResponseErrorCode {
+func (m *RpcIpfsImageGetBlobResponseError) GetCode() RpcIpfsImageGetBlobResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return RpcImageGetBlobResponseError_NULL
+	return RpcIpfsImageGetBlobResponseError_NULL
 }
 
-func (m *RpcImageGetBlobResponseError) GetDescription() string {
+func (m *RpcIpfsImageGetBlobResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-type RpcImageGetFile struct {
+type RpcIpfsImageGetFile struct {
 }
 
-func (m *RpcImageGetFile) Reset()         { *m = RpcImageGetFile{} }
-func (m *RpcImageGetFile) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetFile) ProtoMessage()    {}
-func (*RpcImageGetFile) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1}
+func (m *RpcIpfsImageGetFile) Reset()         { *m = RpcIpfsImageGetFile{} }
+func (m *RpcIpfsImageGetFile) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetFile) ProtoMessage()    {}
+func (*RpcIpfsImageGetFile) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 1}
 }
-func (m *RpcImageGetFile) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetFile.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetFile.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3418,35 +3696,35 @@ func (m *RpcImageGetFile) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetFile) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetFile.Merge(m, src)
+func (m *RpcIpfsImageGetFile) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetFile.Merge(m, src)
 }
-func (m *RpcImageGetFile) XXX_Size() int {
+func (m *RpcIpfsImageGetFile) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetFile) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetFile.DiscardUnknown(m)
+func (m *RpcIpfsImageGetFile) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetFile.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetFile proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetFile proto.InternalMessageInfo
 
-type RpcImageGetFileRequest struct {
+type RpcIpfsImageGetFileRequest struct {
 	Id    string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Size_ ModelImageSize `protobuf:"varint,2,opt,name=size,proto3,enum=anytype.ModelImageSize" json:"size,omitempty"`
 }
 
-func (m *RpcImageGetFileRequest) Reset()         { *m = RpcImageGetFileRequest{} }
-func (m *RpcImageGetFileRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetFileRequest) ProtoMessage()    {}
-func (*RpcImageGetFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 0}
+func (m *RpcIpfsImageGetFileRequest) Reset()         { *m = RpcIpfsImageGetFileRequest{} }
+func (m *RpcIpfsImageGetFileRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetFileRequest) ProtoMessage()    {}
+func (*RpcIpfsImageGetFileRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 1, 0}
 }
-func (m *RpcImageGetFileRequest) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetFileRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetFileRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetFileRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3456,49 +3734,49 @@ func (m *RpcImageGetFileRequest) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetFileRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetFileRequest.Merge(m, src)
+func (m *RpcIpfsImageGetFileRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetFileRequest.Merge(m, src)
 }
-func (m *RpcImageGetFileRequest) XXX_Size() int {
+func (m *RpcIpfsImageGetFileRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetFileRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetFileRequest.DiscardUnknown(m)
+func (m *RpcIpfsImageGetFileRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetFileRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetFileRequest proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetFileRequest proto.InternalMessageInfo
 
-func (m *RpcImageGetFileRequest) GetId() string {
+func (m *RpcIpfsImageGetFileRequest) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *RpcImageGetFileRequest) GetSize_() ModelImageSize {
+func (m *RpcIpfsImageGetFileRequest) GetSize_() ModelImageSize {
 	if m != nil {
 		return m.Size_
 	}
 	return ModelImage_LARGE
 }
 
-type RpcImageGetFileResponse struct {
-	Error     *RpcImageGetFileResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	LocalPath string                        `protobuf:"bytes,2,opt,name=localPath,proto3" json:"localPath,omitempty"`
+type RpcIpfsImageGetFileResponse struct {
+	Error     *RpcIpfsImageGetFileResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	LocalPath string                            `protobuf:"bytes,2,opt,name=localPath,proto3" json:"localPath,omitempty"`
 }
 
-func (m *RpcImageGetFileResponse) Reset()         { *m = RpcImageGetFileResponse{} }
-func (m *RpcImageGetFileResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetFileResponse) ProtoMessage()    {}
-func (*RpcImageGetFileResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 1}
+func (m *RpcIpfsImageGetFileResponse) Reset()         { *m = RpcIpfsImageGetFileResponse{} }
+func (m *RpcIpfsImageGetFileResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetFileResponse) ProtoMessage()    {}
+func (*RpcIpfsImageGetFileResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 1, 1}
 }
-func (m *RpcImageGetFileResponse) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetFileResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetFileResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetFileResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetFileResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetFileResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3508,49 +3786,49 @@ func (m *RpcImageGetFileResponse) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetFileResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetFileResponse.Merge(m, src)
+func (m *RpcIpfsImageGetFileResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetFileResponse.Merge(m, src)
 }
-func (m *RpcImageGetFileResponse) XXX_Size() int {
+func (m *RpcIpfsImageGetFileResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetFileResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetFileResponse.DiscardUnknown(m)
+func (m *RpcIpfsImageGetFileResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetFileResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetFileResponse proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetFileResponse proto.InternalMessageInfo
 
-func (m *RpcImageGetFileResponse) GetError() *RpcImageGetFileResponseError {
+func (m *RpcIpfsImageGetFileResponse) GetError() *RpcIpfsImageGetFileResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-func (m *RpcImageGetFileResponse) GetLocalPath() string {
+func (m *RpcIpfsImageGetFileResponse) GetLocalPath() string {
 	if m != nil {
 		return m.LocalPath
 	}
 	return ""
 }
 
-type RpcImageGetFileResponseError struct {
-	Code        RpcImageGetFileResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcImageGetFileResponseErrorCode" json:"code,omitempty"`
-	Description string                           `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcIpfsImageGetFileResponseError struct {
+	Code        RpcIpfsImageGetFileResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcIpfsImageGetFileResponseErrorCode" json:"code,omitempty"`
+	Description string                               `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *RpcImageGetFileResponseError) Reset()         { *m = RpcImageGetFileResponseError{} }
-func (m *RpcImageGetFileResponseError) String() string { return proto.CompactTextString(m) }
-func (*RpcImageGetFileResponseError) ProtoMessage()    {}
-func (*RpcImageGetFileResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 6, 0, 1, 1, 0}
+func (m *RpcIpfsImageGetFileResponseError) Reset()         { *m = RpcIpfsImageGetFileResponseError{} }
+func (m *RpcIpfsImageGetFileResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcIpfsImageGetFileResponseError) ProtoMessage()    {}
+func (*RpcIpfsImageGetFileResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_0dff099eb2e3dfdb, []int{0, 5, 1, 0, 1, 1, 0}
 }
-func (m *RpcImageGetFileResponseError) XXX_Unmarshal(b []byte) error {
+func (m *RpcIpfsImageGetFileResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcImageGetFileResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcIpfsImageGetFileResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcImageGetFileResponseError.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcIpfsImageGetFileResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3560,26 +3838,26 @@ func (m *RpcImageGetFileResponseError) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *RpcImageGetFileResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcImageGetFileResponseError.Merge(m, src)
+func (m *RpcIpfsImageGetFileResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcIpfsImageGetFileResponseError.Merge(m, src)
 }
-func (m *RpcImageGetFileResponseError) XXX_Size() int {
+func (m *RpcIpfsImageGetFileResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcImageGetFileResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcImageGetFileResponseError.DiscardUnknown(m)
+func (m *RpcIpfsImageGetFileResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcIpfsImageGetFileResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcImageGetFileResponseError proto.InternalMessageInfo
+var xxx_messageInfo_RpcIpfsImageGetFileResponseError proto.InternalMessageInfo
 
-func (m *RpcImageGetFileResponseError) GetCode() RpcImageGetFileResponseErrorCode {
+func (m *RpcIpfsImageGetFileResponseError) GetCode() RpcIpfsImageGetFileResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return RpcImageGetFileResponseError_NULL
+	return RpcIpfsImageGetFileResponseError_NULL
 }
 
-func (m *RpcImageGetFileResponseError) GetDescription() string {
+func (m *RpcIpfsImageGetFileResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
@@ -3591,17 +3869,18 @@ func init() {
 	proto.RegisterEnum("anytype.RpcBlockOpenResponseErrorCode", RpcBlockOpenResponseErrorCode_name, RpcBlockOpenResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockCreateResponseErrorCode", RpcBlockCreateResponseErrorCode_name, RpcBlockCreateResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockUpdateResponseErrorCode", RpcBlockUpdateResponseErrorCode_name, RpcBlockUpdateResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockCloseResponseErrorCode", RpcBlockCloseResponseErrorCode_name, RpcBlockCloseResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcWalletCreateResponseErrorCode", RpcWalletCreateResponseErrorCode_name, RpcWalletCreateResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcWalletRecoverResponseErrorCode", RpcWalletRecoverResponseErrorCode_name, RpcWalletRecoverResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcAccountCreateResponseErrorCode", RpcAccountCreateResponseErrorCode_name, RpcAccountCreateResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcAccountRecoverResponseErrorCode", RpcAccountRecoverResponseErrorCode_name, RpcAccountRecoverResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcAccountSelectResponseErrorCode", RpcAccountSelectResponseErrorCode_name, RpcAccountSelectResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcVersionGetResponseErrorCode", RpcVersionGetResponseErrorCode_name, RpcVersionGetResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcLogSendRequestLevel", RpcLogSendRequestLevel_name, RpcLogSendRequestLevel_value)
 	proto.RegisterEnum("anytype.RpcLogSendResponseErrorCode", RpcLogSendResponseErrorCode_name, RpcLogSendResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcIpfsGetFileResponseErrorCode", RpcIpfsGetFileResponseErrorCode_name, RpcIpfsGetFileResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcImageGetBlobResponseErrorCode", RpcImageGetBlobResponseErrorCode_name, RpcImageGetBlobResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcImageGetFileResponseErrorCode", RpcImageGetFileResponseErrorCode_name, RpcImageGetFileResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcVersionGetResponseErrorCode", RpcVersionGetResponseErrorCode_name, RpcVersionGetResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcIpfsFileGetResponseErrorCode", RpcIpfsFileGetResponseErrorCode_name, RpcIpfsFileGetResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcIpfsImageGetBlobResponseErrorCode", RpcIpfsImageGetBlobResponseErrorCode_name, RpcIpfsImageGetBlobResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcIpfsImageGetFileResponseErrorCode", RpcIpfsImageGetFileResponseErrorCode_name, RpcIpfsImageGetFileResponseErrorCode_value)
 	proto.RegisterType((*Rpc)(nil), "anytype.Rpc")
 	proto.RegisterType((*RpcBlock)(nil), "anytype.Rpc.Block")
 	proto.RegisterType((*RpcBlockHistory)(nil), "anytype.Rpc.Block.History")
@@ -3621,6 +3900,10 @@ func init() {
 	proto.RegisterType((*RpcBlockUpdateRequest)(nil), "anytype.Rpc.Block.Update.Request")
 	proto.RegisterType((*RpcBlockUpdateResponse)(nil), "anytype.Rpc.Block.Update.Response")
 	proto.RegisterType((*RpcBlockUpdateResponseError)(nil), "anytype.Rpc.Block.Update.Response.Error")
+	proto.RegisterType((*RpcBlockClose)(nil), "anytype.Rpc.Block.Close")
+	proto.RegisterType((*RpcBlockCloseRequest)(nil), "anytype.Rpc.Block.Close.Request")
+	proto.RegisterType((*RpcBlockCloseResponse)(nil), "anytype.Rpc.Block.Close.Response")
+	proto.RegisterType((*RpcBlockCloseResponseError)(nil), "anytype.Rpc.Block.Close.Response.Error")
 	proto.RegisterType((*RpcWallet)(nil), "anytype.Rpc.Wallet")
 	proto.RegisterType((*RpcWalletCreate)(nil), "anytype.Rpc.Wallet.Create")
 	proto.RegisterType((*RpcWalletCreateRequest)(nil), "anytype.Rpc.Wallet.Create.Request")
@@ -3643,134 +3926,138 @@ func init() {
 	proto.RegisterType((*RpcAccountSelectRequest)(nil), "anytype.Rpc.Account.Select.Request")
 	proto.RegisterType((*RpcAccountSelectResponse)(nil), "anytype.Rpc.Account.Select.Response")
 	proto.RegisterType((*RpcAccountSelectResponseError)(nil), "anytype.Rpc.Account.Select.Response.Error")
-	proto.RegisterType((*RpcVersion)(nil), "anytype.Rpc.Version")
-	proto.RegisterType((*RpcVersionGet)(nil), "anytype.Rpc.Version.Get")
-	proto.RegisterType((*RpcVersionGetRequest)(nil), "anytype.Rpc.Version.Get.Request")
-	proto.RegisterType((*RpcVersionGetResponse)(nil), "anytype.Rpc.Version.Get.Response")
-	proto.RegisterType((*RpcVersionGetResponseError)(nil), "anytype.Rpc.Version.Get.Response.Error")
 	proto.RegisterType((*RpcLog)(nil), "anytype.Rpc.Log")
 	proto.RegisterType((*RpcLogSend)(nil), "anytype.Rpc.Log.Send")
 	proto.RegisterType((*RpcLogSendRequest)(nil), "anytype.Rpc.Log.Send.Request")
 	proto.RegisterType((*RpcLogSendResponse)(nil), "anytype.Rpc.Log.Send.Response")
 	proto.RegisterType((*RpcLogSendResponseError)(nil), "anytype.Rpc.Log.Send.Response.Error")
+	proto.RegisterType((*RpcVersion)(nil), "anytype.Rpc.Version")
+	proto.RegisterType((*RpcVersionGet)(nil), "anytype.Rpc.Version.Get")
+	proto.RegisterType((*RpcVersionGetRequest)(nil), "anytype.Rpc.Version.Get.Request")
+	proto.RegisterType((*RpcVersionGetResponse)(nil), "anytype.Rpc.Version.Get.Response")
+	proto.RegisterType((*RpcVersionGetResponseError)(nil), "anytype.Rpc.Version.Get.Response.Error")
 	proto.RegisterType((*RpcIpfs)(nil), "anytype.Rpc.Ipfs")
-	proto.RegisterType((*RpcIpfsGet)(nil), "anytype.Rpc.Ipfs.Get")
-	proto.RegisterType((*RpcIpfsGetFile)(nil), "anytype.Rpc.Ipfs.Get.File")
-	proto.RegisterType((*RpcIpfsGetFileRequest)(nil), "anytype.Rpc.Ipfs.Get.File.Request")
-	proto.RegisterType((*RpcIpfsGetFileResponse)(nil), "anytype.Rpc.Ipfs.Get.File.Response")
-	proto.RegisterType((*RpcIpfsGetFileResponseError)(nil), "anytype.Rpc.Ipfs.Get.File.Response.Error")
-	proto.RegisterType((*RpcImage)(nil), "anytype.Rpc.Image")
-	proto.RegisterType((*RpcImageGet)(nil), "anytype.Rpc.Image.Get")
-	proto.RegisterType((*RpcImageGetBlob)(nil), "anytype.Rpc.Image.Get.Blob")
-	proto.RegisterType((*RpcImageGetBlobRequest)(nil), "anytype.Rpc.Image.Get.Blob.Request")
-	proto.RegisterType((*RpcImageGetBlobResponse)(nil), "anytype.Rpc.Image.Get.Blob.Response")
-	proto.RegisterType((*RpcImageGetBlobResponseError)(nil), "anytype.Rpc.Image.Get.Blob.Response.Error")
-	proto.RegisterType((*RpcImageGetFile)(nil), "anytype.Rpc.Image.Get.File")
-	proto.RegisterType((*RpcImageGetFileRequest)(nil), "anytype.Rpc.Image.Get.File.Request")
-	proto.RegisterType((*RpcImageGetFileResponse)(nil), "anytype.Rpc.Image.Get.File.Response")
-	proto.RegisterType((*RpcImageGetFileResponseError)(nil), "anytype.Rpc.Image.Get.File.Response.Error")
+	proto.RegisterType((*RpcIpfsFile)(nil), "anytype.Rpc.Ipfs.File")
+	proto.RegisterType((*RpcIpfsFileGet)(nil), "anytype.Rpc.Ipfs.File.Get")
+	proto.RegisterType((*RpcIpfsFileGetRequest)(nil), "anytype.Rpc.Ipfs.File.Get.Request")
+	proto.RegisterType((*RpcIpfsFileGetResponse)(nil), "anytype.Rpc.Ipfs.File.Get.Response")
+	proto.RegisterType((*RpcIpfsFileGetResponseError)(nil), "anytype.Rpc.Ipfs.File.Get.Response.Error")
+	proto.RegisterType((*RpcIpfsImage)(nil), "anytype.Rpc.Ipfs.Image")
+	proto.RegisterType((*RpcIpfsImageGet)(nil), "anytype.Rpc.Ipfs.Image.Get")
+	proto.RegisterType((*RpcIpfsImageGetBlob)(nil), "anytype.Rpc.Ipfs.Image.Get.Blob")
+	proto.RegisterType((*RpcIpfsImageGetBlobRequest)(nil), "anytype.Rpc.Ipfs.Image.Get.Blob.Request")
+	proto.RegisterType((*RpcIpfsImageGetBlobResponse)(nil), "anytype.Rpc.Ipfs.Image.Get.Blob.Response")
+	proto.RegisterType((*RpcIpfsImageGetBlobResponseError)(nil), "anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error")
+	proto.RegisterType((*RpcIpfsImageGetFile)(nil), "anytype.Rpc.Ipfs.Image.Get.File")
+	proto.RegisterType((*RpcIpfsImageGetFileRequest)(nil), "anytype.Rpc.Ipfs.Image.Get.File.Request")
+	proto.RegisterType((*RpcIpfsImageGetFileResponse)(nil), "anytype.Rpc.Ipfs.Image.Get.File.Response")
+	proto.RegisterType((*RpcIpfsImageGetFileResponseError)(nil), "anytype.Rpc.Ipfs.Image.Get.File.Response.Error")
 }
 
 func init() { proto.RegisterFile("commands.proto", fileDescriptor_0dff099eb2e3dfdb) }
 
 var fileDescriptor_0dff099eb2e3dfdb = []byte{
-	// 1531 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0x4d, 0x6c, 0x1b, 0xd5,
-	0x16, 0x8e, 0xc7, 0xe3, 0x38, 0x39, 0x49, 0xf3, 0xa6, 0xa3, 0xbe, 0x2a, 0xbd, 0xaf, 0x2f, 0xad,
-	0xd2, 0xf7, 0x4a, 0x9a, 0xb6, 0x43, 0x95, 0x8a, 0x45, 0x11, 0xa5, 0x1d, 0xdb, 0xe3, 0x74, 0xc0,
-	0x9e, 0xb1, 0xae, 0xc7, 0x09, 0xb0, 0x19, 0x4d, 0xec, 0x1b, 0x67, 0x60, 0xec, 0x31, 0xe3, 0x69,
-	0xaa, 0x76, 0xc7, 0xaa, 0x0b, 0x40, 0x42, 0x48, 0xac, 0x90, 0x10, 0x6c, 0x69, 0x91, 0xd8, 0x15,
-	0x21, 0x01, 0x52, 0x61, 0x01, 0x48, 0x48, 0x05, 0x24, 0x84, 0x84, 0x40, 0xb4, 0x5d, 0x20, 0x04,
-	0xdd, 0xc1, 0x12, 0x84, 0xee, 0xfc, 0xd9, 0x13, 0xc5, 0xee, 0x38, 0x6a, 0xd5, 0xee, 0xe6, 0x5e,
-	0x9f, 0xfb, 0x9d, 0x73, 0xbe, 0xef, 0x9c, 0xfb, 0x63, 0x98, 0xa9, 0xdb, 0xad, 0x96, 0xd1, 0x6e,
-	0x74, 0x85, 0x8e, 0x63, 0xbb, 0x36, 0x9f, 0x35, 0xda, 0x17, 0xdd, 0x8b, 0x1d, 0x82, 0xa6, 0x5b,
-	0x76, 0x83, 0x58, 0xc1, 0x34, 0xda, 0x55, 0xdf, 0x30, 0xda, 0x4d, 0x12, 0x0c, 0xe7, 0x7f, 0x3f,
-	0x0a, 0x69, 0xdc, 0xa9, 0xa3, 0x1b, 0x00, 0x99, 0x9c, 0x65, 0xd7, 0x5f, 0x40, 0xbf, 0x30, 0x90,
-	0x3d, 0x67, 0x76, 0x5d, 0xdb, 0xb9, 0x88, 0x7e, 0x60, 0x80, 0x2d, 0xdb, 0x9b, 0x04, 0x49, 0x90,
-	0xc5, 0xe4, 0xc5, 0xf3, 0xa4, 0xeb, 0xf2, 0xb3, 0x90, 0x5d, 0xa3, 0x86, 0x72, 0x63, 0x36, 0x75,
-	0x30, 0xb5, 0x30, 0x89, 0xc3, 0x21, 0x7f, 0x10, 0xa6, 0x5a, 0xf6, 0x26, 0x29, 0xda, 0xce, 0x05,
-	0xc3, 0x69, 0xcc, 0x32, 0x07, 0x53, 0x0b, 0x13, 0xb8, 0x7f, 0x0a, 0xbd, 0xcc, 0xc0, 0x04, 0x26,
-	0xdd, 0x8e, 0xdd, 0xee, 0x12, 0xbe, 0x00, 0x19, 0xe2, 0x38, 0xb6, 0xe3, 0xc1, 0x4c, 0x2d, 0x09,
-	0x42, 0x10, 0xb0, 0x80, 0x3b, 0x75, 0xc1, 0x8b, 0x45, 0x08, 0xe2, 0x10, 0x68, 0x0c, 0x42, 0xb8,
-	0x50, 0x90, 0xe8, 0x2a, 0xec, 0x2f, 0x46, 0x1f, 0xa4, 0x20, 0xe3, 0x4d, 0xf0, 0xcb, 0xc0, 0xd6,
-	0xed, 0x06, 0xf1, 0xe0, 0x66, 0x96, 0x4e, 0x8e, 0x06, 0x27, 0xe4, 0xed, 0x06, 0xc1, 0x1e, 0x00,
-	0xcd, 0xa3, 0x41, 0xba, 0x75, 0xc7, 0xec, 0xb8, 0xa6, 0xdd, 0xf6, 0xf2, 0x98, 0xc4, 0xfd, 0x53,
-	0xf3, 0x05, 0x60, 0xa9, 0x3d, 0x3f, 0x01, 0xac, 0x52, 0x2b, 0x95, 0xb8, 0x31, 0x7e, 0x37, 0xec,
-	0xaa, 0x29, 0x4f, 0x2b, 0xea, 0xaa, 0xa2, 0x4b, 0x18, 0xab, 0x98, 0x4b, 0xf1, 0xbb, 0x60, 0x32,
-	0x27, 0x16, 0x74, 0x59, 0xa9, 0xd4, 0x34, 0x8e, 0xe1, 0x39, 0x98, 0xce, 0x8b, 0x8a, 0xae, 0xa8,
-	0x9a, 0x5e, 0x56, 0x57, 0x24, 0x2e, 0x8d, 0x5e, 0x65, 0x80, 0x55, 0x3b, 0xa4, 0x8d, 0xf6, 0xf5,
-	0xd8, 0x9d, 0x01, 0xc6, 0x0c, 0x89, 0x65, 0xcc, 0x06, 0xfa, 0x35, 0xd5, 0xc7, 0xd8, 0x13, 0x71,
-	0xc6, 0x0e, 0x6f, 0x93, 0x22, 0xc5, 0x1b, 0xc0, 0xd4, 0x5b, 0x11, 0x53, 0x67, 0x62, 0x4c, 0x1d,
-	0x4d, 0x06, 0x33, 0x1a, 0x43, 0x4b, 0xa3, 0x33, 0x84, 0x2e, 0xa7, 0x61, 0x3c, 0xef, 0x10, 0xc3,
-	0x25, 0xe8, 0x95, 0x54, 0x8f, 0x92, 0x45, 0xc8, 0x78, 0x15, 0x16, 0x64, 0xbd, 0x27, 0x0a, 0xb7,
-	0x4c, 0xeb, 0xda, 0x0f, 0x18, 0xfb, 0x26, 0x3c, 0x82, 0x09, 0xd7, 0x70, 0x9a, 0xc4, 0x95, 0x1b,
-	0x41, 0x54, 0xd1, 0x98, 0x3f, 0x05, 0x13, 0x1d, 0xbb, 0x6b, 0x7a, 0x11, 0xa7, 0xbd, 0xcc, 0xff,
-	0xbb, 0x1d, 0x94, 0x50, 0x09, 0x8c, 0x70, 0x64, 0x8e, 0xee, 0xf4, 0xab, 0xf0, 0x64, 0x5c, 0x85,
-	0x85, 0x6d, 0xe8, 0xf3, 0xb3, 0x18, 0xa0, 0xc3, 0xdb, 0x91, 0x0e, 0x62, 0x4c, 0x87, 0xe3, 0x49,
-	0x81, 0xee, 0xbf, 0x12, 0xd7, 0x19, 0x18, 0xaf, 0x75, 0x1a, 0x54, 0x89, 0x73, 0x3d, 0x21, 0x4e,
-	0x43, 0x36, 0xd8, 0x3c, 0x82, 0xd4, 0x0f, 0x45, 0x11, 0xe7, 0xbd, 0x79, 0xa1, 0x7c, 0xde, 0x72,
-	0xcd, 0x8e, 0x45, 0xfc, 0xe8, 0xbb, 0x25, 0xb3, 0xeb, 0xe2, 0x70, 0xcd, 0xc8, 0x24, 0xfa, 0x01,
-	0xdc, 0x03, 0x12, 0xb7, 0x05, 0xba, 0xff, 0x24, 0x7e, 0x95, 0x81, 0xf1, 0x55, 0xc3, 0xb2, 0x88,
-	0x8b, 0x7e, 0x62, 0xa2, 0xca, 0xfe, 0x7f, 0x8f, 0x4f, 0x04, 0x13, 0x8e, 0x6d, 0xbb, 0x15, 0xc3,
-	0xdd, 0x08, 0x3a, 0x3e, 0x1a, 0xa3, 0xab, 0xfd, 0x3b, 0xe5, 0x99, 0x38, 0x59, 0x47, 0x62, 0x39,
-	0xfa, 0x2e, 0x86, 0x96, 0x1c, 0xf5, 0xd4, 0x6a, 0x93, 0x96, 0xdd, 0x36, 0xeb, 0x61, 0x5b, 0x84,
-	0x63, 0x74, 0x3d, 0x62, 0x32, 0x17, 0x63, 0x52, 0x48, 0xec, 0x65, 0x34, 0x2a, 0xab, 0x3b, 0xd8,
-	0x3b, 0x0f, 0xc0, 0x7f, 0x8a, 0xa2, 0x5c, 0x92, 0x0a, 0xba, 0xa6, 0xea, 0x79, 0x2c, 0x89, 0x9a,
-	0xa4, 0x97, 0xd4, 0xbc, 0x58, 0xd2, 0xb1, 0x54, 0x51, 0x39, 0x82, 0x6e, 0x32, 0x94, 0xd6, 0xba,
-	0xbd, 0x49, 0x1c, 0x24, 0x26, 0x62, 0x78, 0x28, 0x27, 0xaf, 0xf7, 0xb3, 0x7f, 0x36, 0xce, 0xfe,
-	0xe2, 0x76, 0xbc, 0x04, 0xbe, 0x07, 0x14, 0xeb, 0xa7, 0x11, 0xc5, 0xf9, 0x18, 0xc5, 0x8f, 0x26,
-	0x87, 0x7a, 0x08, 0x38, 0x7e, 0x73, 0x1a, 0xb2, 0x62, 0xbd, 0x6e, 0x9f, 0x6f, 0xbb, 0xe8, 0x7d,
-	0x36, 0x2a, 0xe8, 0x0b, 0x3d, 0xba, 0x79, 0x60, 0xdb, 0x46, 0x8b, 0x04, 0x54, 0x7b, 0xdf, 0xfc,
-	0x22, 0xfc, 0xcb, 0xd8, 0x34, 0x5c, 0xc3, 0x29, 0xd9, 0x75, 0xc3, 0xf2, 0x94, 0xf0, 0x02, 0x3e,
-	0x37, 0x86, 0xb7, 0xfe, 0xc0, 0xcf, 0xc3, 0x94, 0x3f, 0x95, 0xb7, 0x2d, 0xdb, 0xf1, 0x36, 0x69,
-	0x6a, 0xd7, 0x3f, 0x99, 0x9b, 0x80, 0x71, 0x7f, 0x88, 0xae, 0xa6, 0x93, 0x8a, 0x14, 0x44, 0x3d,
-	0xbc, 0x47, 0x4e, 0x40, 0xd6, 0xf0, 0xed, 0xbc, 0x00, 0xa7, 0x96, 0xf6, 0x6e, 0x39, 0x1d, 0x02,
-	0x14, 0x1c, 0x9a, 0xa1, 0x2b, 0x4c, 0x12, 0x59, 0x87, 0x3a, 0x1f, 0x4d, 0xd6, 0x0f, 0x53, 0x3b,
-	0xd0, 0xf5, 0x18, 0x2c, 0x88, 0xf9, 0xbc, 0x5a, 0x53, 0xb4, 0x40, 0xd5, 0x82, 0x9e, 0xab, 0x69,
-	0x7a, 0x4f, 0xeb, 0xaa, 0x26, 0x62, 0x4d, 0x57, 0xd4, 0x82, 0xc4, 0x51, 0xb9, 0x0e, 0xdf, 0xc5,
-	0x5a, 0xd2, 0x74, 0x45, 0x2c, 0x4b, 0xdc, 0x7a, 0x02, 0x64, 0x49, 0xd3, 0xc5, 0x15, 0x51, 0x13,
-	0x31, 0xd7, 0x44, 0x9f, 0xa5, 0x7b, 0x2d, 0x3a, 0x19, 0xd5, 0x0c, 0x7a, 0xaf, 0x5f, 0x45, 0x31,
-	0xae, 0xe2, 0xd1, 0x6d, 0x89, 0x1c, 0xde, 0x6b, 0x3f, 0x46, 0xa2, 0x14, 0x62, 0xa2, 0x9c, 0x18,
-	0x01, 0x6b, 0x34, 0x55, 0x7e, 0xdb, 0x89, 0x2a, 0xff, 0x86, 0xdd, 0x8a, 0xaa, 0x07, 0xf4, 0x55,
-	0xf5, 0xa2, 0x5a, 0x53, 0x0a, 0x1c, 0xf5, 0xb6, 0x5f, 0x91, 0x7c, 0xf2, 0xb0, 0x94, 0x57, 0x57,
-	0x24, 0xac, 0xaf, 0x8a, 0xa5, 0x92, 0xa4, 0xe9, 0x45, 0x19, 0x57, 0x35, 0x6e, 0xfd, 0x6e, 0x6d,
-	0xda, 0xe4, 0x0f, 0xc1, 0x81, 0xde, 0x58, 0x97, 0x9e, 0x91, 0xab, 0x5a, 0xd5, 0xd3, 0x25, 0xaf,
-	0x62, 0x5c, 0xab, 0x68, 0x52, 0x81, 0xdb, 0xe0, 0xf7, 0x02, 0xdf, 0x43, 0xc1, 0x35, 0xc5, 0x97,
-	0xdf, 0xa4, 0xfe, 0x03, 0x7f, 0xa1, 0x7b, 0x7a, 0x5f, 0xad, 0x48, 0xb8, 0xa8, 0xe2, 0xb2, 0x54,
-	0xe0, 0x9e, 0x47, 0x6f, 0xb0, 0x30, 0x5e, 0x25, 0x16, 0xa9, 0xbb, 0xe8, 0xb1, 0x81, 0xd7, 0xd6,
-	0xd8, 0xc6, 0xcb, 0x6c, 0x39, 0xda, 0xbe, 0x1d, 0xb9, 0x6f, 0x7d, 0x7f, 0xf7, 0xac, 0x6f, 0xbf,
-	0x19, 0xa9, 0x6f, 0xb7, 0x75, 0x3e, 0x5a, 0x85, 0xdc, 0x4c, 0xdd, 0x87, 0xfd, 0x38, 0x89, 0xd0,
-	0xeb, 0x03, 0x84, 0x6e, 0xc6, 0xd1, 0x8b, 0xb2, 0x52, 0x08, 0x6b, 0x51, 0x97, 0x95, 0xa2, 0xca,
-	0x6d, 0xf0, 0x02, 0x2c, 0xf6, 0xa1, 0xd3, 0x2a, 0x08, 0x3c, 0x88, 0x4a, 0x41, 0x2f, 0x2b, 0x52,
-	0x59, 0x55, 0xe4, 0xbc, 0x37, 0x5f, 0x95, 0x34, 0xce, 0x44, 0xdf, 0x31, 0x90, 0x5d, 0x21, 0x4e,
-	0x97, 0x5e, 0x97, 0xbf, 0x64, 0x20, 0xbd, 0x4c, 0xdc, 0xfe, 0x36, 0xbf, 0xd6, 0x7f, 0xa2, 0x9e,
-	0x8e, 0x8b, 0xfe, 0x48, 0x8c, 0xf7, 0x00, 0x44, 0x58, 0x26, 0x83, 0x14, 0x9f, 0x85, 0xec, 0xa6,
-	0x6f, 0x14, 0x90, 0x1d, 0x0e, 0xd1, 0xd7, 0xd1, 0x41, 0x7b, 0x36, 0xa6, 0xec, 0xb1, 0x84, 0x1e,
-	0x46, 0x93, 0xb5, 0xb1, 0x03, 0x55, 0xf7, 0x00, 0xb7, 0x22, 0xe1, 0xaa, 0xac, 0x2a, 0xba, 0x5c,
-	0xd5, 0xa5, 0x72, 0x45, 0x7b, 0x96, 0x4b, 0x53, 0x23, 0xca, 0x64, 0xb8, 0x0b, 0x4c, 0x41, 0x56,
-	0x93, 0xcb, 0x92, 0x5a, 0xd3, 0xb8, 0x75, 0xf4, 0x49, 0x1a, 0xd2, 0x25, 0xbb, 0x89, 0xae, 0xa5,
-	0x81, 0xad, 0x92, 0x76, 0x03, 0xbd, 0x9b, 0x8a, 0x3d, 0xc6, 0x5b, 0xa4, 0xdb, 0x35, 0x9a, 0xe1,
-	0xa1, 0x1b, 0x0e, 0xf9, 0x53, 0x90, 0xb1, 0xc8, 0x26, 0xb1, 0xbc, 0xc0, 0x67, 0xfa, 0xae, 0xea,
-	0x94, 0x81, 0x92, 0xdd, 0x14, 0x28, 0x96, 0x10, 0xe0, 0x08, 0x25, 0x6a, 0x8a, 0xfd, 0x15, 0xf3,
-	0x4f, 0x41, 0xc6, 0x1b, 0xf3, 0x93, 0x90, 0x29, 0x48, 0xb9, 0xda, 0x32, 0x37, 0x46, 0x3f, 0xc3,
-	0x8c, 0x26, 0x21, 0x53, 0x14, 0x35, 0xb1, 0xc4, 0x31, 0x34, 0x73, 0xaf, 0x5c, 0xd2, 0x74, 0xb2,
-	0x22, 0x2a, 0x72, 0x9e, 0x63, 0x69, 0xf4, 0xab, 0x22, 0x56, 0x64, 0x65, 0x99, 0xcb, 0xa0, 0x97,
-	0xfa, 0x75, 0x7f, 0x3c, 0xae, 0xfb, 0xff, 0x06, 0xc5, 0x34, 0xfc, 0x9d, 0x7f, 0x3a, 0x26, 0xed,
-	0x91, 0x24, 0x20, 0xa3, 0xe9, 0xaa, 0xec, 0x40, 0xd7, 0x61, 0x0a, 0xfe, 0xcd, 0x00, 0x2b, 0x77,
-	0xd6, 0xbb, 0xe8, 0xcf, 0xa0, 0x2f, 0xee, 0x30, 0xc0, 0x16, 0x4d, 0x8b, 0x0c, 0x7b, 0xf8, 0x7f,
-	0x91, 0xf8, 0x01, 0x40, 0xa1, 0xbd, 0x5a, 0xa6, 0x90, 0x03, 0x5a, 0x86, 0x07, 0xb6, 0x61, 0xb8,
-	0x86, 0x97, 0xed, 0x34, 0xf6, 0xbe, 0xf9, 0x3d, 0x90, 0x69, 0x91, 0x86, 0x69, 0xf8, 0xf7, 0x2c,
-	0xec, 0x0f, 0xa2, 0x3b, 0x1c, 0xdb, 0xbb, 0xc3, 0xa1, 0x8f, 0x12, 0x3d, 0x11, 0x86, 0xc5, 0xf1,
-	0x60, 0x05, 0xb8, 0x3c, 0x0e, 0x19, 0xb9, 0x65, 0x34, 0x09, 0xfa, 0x2b, 0xe3, 0x2b, 0xf0, 0x07,
-	0x03, 0x6c, 0xce, 0xb2, 0xd7, 0xfa, 0x9f, 0xb7, 0x5b, 0xcf, 0xb0, 0xe3, 0xc0, 0x76, 0xcd, 0x4b,
-	0x24, 0x68, 0xa0, 0x7d, 0x5b, 0x4e, 0x15, 0x0f, 0x4f, 0xa8, 0x9a, 0x97, 0x08, 0xf6, 0xcc, 0xd0,
-	0x3b, 0x89, 0xdf, 0x0c, 0xfe, 0x52, 0xca, 0x14, 0x0d, 0x61, 0xb0, 0x62, 0x6b, 0x96, 0xbd, 0x16,
-	0x2a, 0x46, 0xbf, 0xd1, 0xc7, 0x89, 0xde, 0x11, 0x43, 0xe1, 0x1f, 0x7c, 0x27, 0x78, 0x85, 0x7f,
-	0xef, 0x68, 0xbf, 0xb2, 0x03, 0xda, 0x87, 0x34, 0xca, 0x7e, 0x98, 0xb4, 0xe2, 0x0f, 0x15, 0xdc,
-	0x9b, 0x18, 0x59, 0x80, 0x87, 0xad, 0x13, 0x72, 0xfb, 0x3f, 0xbf, 0x35, 0x97, 0xba, 0x71, 0x6b,
-	0x2e, 0xf5, 0xf3, 0xad, 0xb9, 0xd4, 0x6b, 0xb7, 0xe7, 0xc6, 0x6e, 0xdc, 0x9e, 0x1b, 0xfb, 0xfe,
-	0xf6, 0xdc, 0xd8, 0x73, 0x4c, 0x67, 0x6d, 0x6d, 0xdc, 0xfb, 0x4f, 0xf8, 0xe4, 0x3f, 0x01, 0x00,
-	0x00, 0xff, 0xff, 0x92, 0x61, 0xfe, 0x0d, 0x4b, 0x16, 0x00, 0x00,
+	// 1590 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x98, 0x4d, 0x8c, 0xdb, 0xd4,
+	0x16, 0xc7, 0x27, 0x8e, 0xf3, 0x75, 0xe6, 0xe3, 0xb9, 0x56, 0x5f, 0xd5, 0xde, 0xd7, 0x37, 0xad,
+	0xa6, 0xef, 0xf5, 0x4d, 0xa7, 0xad, 0x5b, 0x4d, 0xdf, 0x5b, 0xf4, 0x89, 0xd2, 0x3a, 0x89, 0x33,
+	0x63, 0x48, 0xec, 0xe8, 0xc6, 0x99, 0x01, 0x36, 0x96, 0x27, 0xb9, 0x93, 0x09, 0x38, 0x71, 0x48,
+	0xdc, 0xa9, 0xda, 0x1d, 0x2b, 0x90, 0x00, 0xa9, 0x20, 0xb1, 0x2a, 0xe2, 0x63, 0x0b, 0xad, 0xc4,
+	0x06, 0x15, 0x21, 0x21, 0xa4, 0xc2, 0x02, 0x90, 0x90, 0x0a, 0x48, 0x08, 0x09, 0x81, 0x68, 0xbb,
+	0x40, 0xa8, 0xb0, 0x64, 0x09, 0x42, 0xd7, 0x76, 0x12, 0x7b, 0x48, 0xd2, 0x78, 0xd4, 0x51, 0xd9,
+	0xe5, 0xde, 0x39, 0x3e, 0xe7, 0xdc, 0xdf, 0xff, 0x9c, 0xfb, 0x31, 0x30, 0x53, 0xb1, 0x1a, 0x0d,
+	0xa3, 0x59, 0xed, 0x08, 0xad, 0xb6, 0x65, 0x5b, 0x7c, 0xc2, 0x68, 0x5e, 0xb4, 0x2f, 0xb6, 0x08,
+	0x9a, 0x6a, 0x58, 0x55, 0x62, 0x7a, 0xd3, 0x68, 0xba, 0xb2, 0x61, 0x34, 0x6b, 0xc4, 0x1b, 0xce,
+	0x5d, 0x13, 0x20, 0x8a, 0x5b, 0x15, 0xf4, 0xdb, 0x14, 0xc4, 0xd2, 0xa6, 0x55, 0x79, 0x0a, 0xfd,
+	0xc8, 0x40, 0x62, 0xb9, 0xde, 0xb1, 0xad, 0xf6, 0x45, 0xf4, 0x2d, 0x03, 0x6c, 0xc1, 0xda, 0x24,
+	0x48, 0x82, 0x04, 0x26, 0x4f, 0x9f, 0x27, 0x1d, 0x9b, 0xdf, 0x0b, 0x89, 0x35, 0x6a, 0x28, 0x57,
+	0xf7, 0x46, 0x0e, 0x46, 0xe6, 0x53, 0xb8, 0x3b, 0xe4, 0x0f, 0xc2, 0x64, 0xc3, 0xda, 0x24, 0x39,
+	0xab, 0x7d, 0xc1, 0x68, 0x57, 0xf7, 0x32, 0x07, 0x23, 0xf3, 0x49, 0xec, 0x9f, 0x42, 0xcf, 0x33,
+	0x90, 0xc4, 0xa4, 0xd3, 0xb2, 0x9a, 0x1d, 0xc2, 0x67, 0x21, 0x46, 0xda, 0x6d, 0xab, 0xed, 0xb8,
+	0x99, 0x5c, 0x14, 0x04, 0x2f, 0x61, 0x01, 0xb7, 0x2a, 0x82, 0x93, 0x8b, 0xe0, 0xe5, 0x21, 0xd0,
+	0x1c, 0x84, 0xee, 0x87, 0x82, 0x44, 0xbf, 0xc2, 0xee, 0xc7, 0xe8, 0xbd, 0x08, 0xc4, 0x9c, 0x09,
+	0x7e, 0x09, 0xd8, 0x8a, 0x55, 0x25, 0x8e, 0xbb, 0x99, 0xc5, 0x53, 0xe1, 0xdc, 0x09, 0x19, 0xab,
+	0x4a, 0xb0, 0xe3, 0x80, 0xae, 0xa3, 0x4a, 0x3a, 0x95, 0x76, 0xbd, 0x65, 0xd7, 0xad, 0xa6, 0xb3,
+	0x8e, 0x14, 0xf6, 0x4f, 0xcd, 0x65, 0x81, 0xa5, 0xf6, 0x7c, 0x12, 0x58, 0xa5, 0x9c, 0xcf, 0x73,
+	0x13, 0xfc, 0x2e, 0x98, 0x2e, 0x2b, 0x8f, 0x2a, 0xea, 0xaa, 0xa2, 0x4b, 0x18, 0xab, 0x98, 0x8b,
+	0xf0, 0xd3, 0x90, 0x4a, 0x8b, 0x59, 0x5d, 0x56, 0x8a, 0x65, 0x8d, 0x63, 0x78, 0x0e, 0xa6, 0x32,
+	0xa2, 0xa2, 0x2b, 0xaa, 0xa6, 0x17, 0xd4, 0x15, 0x89, 0x8b, 0xa2, 0x17, 0x19, 0x60, 0xd5, 0x16,
+	0x69, 0xa2, 0x7d, 0x7d, 0xba, 0x33, 0xc0, 0xd4, 0xbb, 0x60, 0x99, 0x7a, 0x15, 0xfd, 0x14, 0xf1,
+	0x11, 0x7b, 0x28, 0x48, 0xec, 0xf0, 0x80, 0x25, 0x52, 0x7f, 0x43, 0x48, 0xbd, 0xd6, 0x23, 0x75,
+	0x36, 0x40, 0xea, 0xe8, 0x78, 0x6e, 0xc2, 0x11, 0x5a, 0x0c, 0x4f, 0x08, 0xbd, 0x19, 0x85, 0x78,
+	0xa6, 0x4d, 0x0c, 0x9b, 0xa0, 0x17, 0x22, 0x7d, 0x24, 0x0b, 0x10, 0x73, 0x2a, 0xcc, 0x5b, 0xf5,
+	0xee, 0x5e, 0xba, 0x05, 0x5a, 0xd7, 0x6e, 0xc2, 0xd8, 0x35, 0xe1, 0x11, 0x24, 0x6d, 0xa3, 0x5d,
+	0x23, 0xb6, 0x5c, 0xf5, 0xb2, 0xea, 0x8d, 0xf9, 0xd3, 0x90, 0x6c, 0x59, 0x9d, 0xba, 0x93, 0x71,
+	0xd4, 0x59, 0xf9, 0x3f, 0x07, 0xb9, 0x12, 0x8a, 0x9e, 0x11, 0xee, 0x99, 0xa3, 0x67, 0xfd, 0x75,
+	0xfb, 0x70, 0x50, 0x85, 0xf9, 0x01, 0xf8, 0xdc, 0x55, 0x0c, 0xd6, 0xc1, 0xdf, 0x40, 0x4c, 0xa0,
+	0x81, 0xd0, 0x1b, 0x3d, 0x85, 0xc4, 0x80, 0x42, 0xc7, 0xc7, 0x0d, 0xb1, 0xf3, 0x1a, 0xdd, 0x60,
+	0x20, 0x5e, 0x6e, 0x55, 0xa9, 0x46, 0xcb, 0x7d, 0x89, 0xce, 0x40, 0xc2, 0xdb, 0x56, 0x3c, 0x28,
+	0x87, 0x7a, 0x19, 0x67, 0x9c, 0x79, 0xa1, 0x70, 0xde, 0xb4, 0xeb, 0x2d, 0x93, 0xb8, 0xd9, 0x77,
+	0xf2, 0xf5, 0x8e, 0x8d, 0xbb, 0xdf, 0xa0, 0x5f, 0x22, 0xe1, 0xf0, 0xba, 0x09, 0x0c, 0x29, 0xf3,
+	0x30, 0x10, 0x07, 0x3a, 0xda, 0x79, 0x88, 0x97, 0x19, 0x88, 0x65, 0x4c, 0xab, 0x43, 0x46, 0x75,
+	0xfe, 0x5d, 0x3f, 0x94, 0x33, 0x41, 0x28, 0xff, 0x19, 0x54, 0x10, 0xd4, 0xe1, 0x10, 0x26, 0xaf,
+	0xf7, 0x98, 0x9c, 0x0b, 0x30, 0x39, 0x36, 0xa6, 0x9f, 0x9d, 0x47, 0xf2, 0x79, 0x0c, 0xe2, 0xab,
+	0x86, 0x69, 0x12, 0x1b, 0x7d, 0xcf, 0xf4, 0xb6, 0x81, 0x7f, 0xf7, 0xf1, 0x20, 0x48, 0xb6, 0x2d,
+	0xcb, 0x2e, 0x1a, 0xf6, 0x86, 0x07, 0xa9, 0x37, 0x46, 0x57, 0xfd, 0xed, 0x79, 0x36, 0x88, 0xea,
+	0x48, 0x60, 0x89, 0x6e, 0x88, 0xd1, 0xfd, 0x89, 0x20, 0xd9, 0x68, 0x92, 0x86, 0xd5, 0xac, 0x57,
+	0xba, 0x7b, 0x48, 0x77, 0x8c, 0x6e, 0xf4, 0x40, 0xa6, 0x03, 0x20, 0x85, 0xb1, 0xa3, 0x84, 0x43,
+	0x59, 0xda, 0xc6, 0x41, 0x73, 0x00, 0xfe, 0x91, 0x13, 0xe5, 0xbc, 0x94, 0xd5, 0x35, 0x55, 0xcf,
+	0x60, 0x49, 0xd4, 0x24, 0x3d, 0xaf, 0x66, 0xc4, 0xbc, 0x8e, 0xa5, 0xa2, 0xca, 0x11, 0x74, 0x8b,
+	0xa1, 0x58, 0x2b, 0xd6, 0x26, 0x69, 0x23, 0x71, 0x2c, 0xc2, 0x23, 0x99, 0xbc, 0xec, 0xa7, 0x7f,
+	0x2e, 0x48, 0x7f, 0x61, 0x10, 0x17, 0x2f, 0xf6, 0x90, 0x5a, 0xfd, 0xa8, 0x87, 0x38, 0x13, 0x40,
+	0x7c, 0x62, 0x7c, 0x57, 0x7f, 0x01, 0xc6, 0x57, 0xa6, 0x20, 0x21, 0x56, 0x2a, 0xd6, 0xf9, 0xa6,
+	0x8d, 0xde, 0x61, 0x7b, 0x05, 0x7d, 0xa1, 0x8f, 0x9b, 0x07, 0xb6, 0x69, 0x34, 0x88, 0x87, 0xda,
+	0xf9, 0xcd, 0x2f, 0xc0, 0xdf, 0x8c, 0x4d, 0xc3, 0x36, 0xda, 0x79, 0xab, 0x62, 0x98, 0x8e, 0x12,
+	0x4e, 0xc2, 0xcb, 0x13, 0x78, 0xeb, 0x1f, 0xf8, 0x39, 0x98, 0x74, 0xa7, 0x32, 0x96, 0x69, 0xb5,
+	0x9d, 0x13, 0x8d, 0xda, 0xf9, 0x27, 0xd3, 0x49, 0x88, 0xbb, 0x43, 0x74, 0x35, 0x3a, 0xae, 0x48,
+	0x5e, 0xd6, 0xa3, 0x7b, 0xe4, 0x24, 0x24, 0x0c, 0xd7, 0xce, 0x49, 0x70, 0x72, 0x71, 0xcf, 0x96,
+	0xa3, 0xd4, 0xf3, 0x82, 0xbb, 0x66, 0xe8, 0x6d, 0x66, 0x1c, 0x59, 0x47, 0x06, 0x0f, 0x27, 0xeb,
+	0xfb, 0x91, 0x6d, 0xe8, 0x7a, 0x0c, 0xe6, 0xc5, 0x4c, 0x46, 0x2d, 0x2b, 0x9a, 0xa7, 0x6a, 0x56,
+	0x4f, 0x97, 0x35, 0xbd, 0xaf, 0x75, 0x49, 0x13, 0xb1, 0xa6, 0x2b, 0x6a, 0x56, 0xe2, 0xa8, 0x5c,
+	0x87, 0xef, 0x61, 0x2d, 0x69, 0xba, 0x22, 0x16, 0x24, 0x6e, 0x7d, 0x0c, 0xcf, 0x92, 0xa6, 0x8b,
+	0x2b, 0xa2, 0x26, 0x62, 0xae, 0x86, 0x3e, 0x8e, 0xf6, 0x5b, 0x34, 0xd5, 0xab, 0x19, 0x74, 0xcd,
+	0xaf, 0xa2, 0x18, 0x54, 0xf1, 0xe8, 0x40, 0x90, 0xa3, 0x7b, 0xed, 0xbb, 0x9e, 0x28, 0xd9, 0x80,
+	0x28, 0x27, 0x43, 0xf8, 0x0a, 0xa7, 0xca, 0xdd, 0xed, 0xa8, 0xf2, 0x77, 0xd8, 0xa5, 0xa8, 0xba,
+	0x87, 0xaf, 0xa4, 0xe7, 0xd4, 0xb2, 0x92, 0xe5, 0x68, 0xb4, 0xfd, 0x8a, 0xe4, 0xc2, 0xc3, 0x52,
+	0x46, 0x5d, 0x91, 0xb0, 0xbe, 0x2a, 0xe6, 0xf3, 0x92, 0xa6, 0xe7, 0x64, 0x5c, 0xd2, 0xb8, 0xf5,
+	0x7b, 0xb5, 0x69, 0x8d, 0x3f, 0x04, 0x07, 0xfa, 0x63, 0x5d, 0x7a, 0x4c, 0x2e, 0x69, 0x25, 0x47,
+	0x97, 0x8c, 0x8a, 0x71, 0xb9, 0xa8, 0x49, 0x59, 0x6e, 0x83, 0xdf, 0x03, 0x7c, 0xdf, 0x0b, 0x2e,
+	0x2b, 0xae, 0xfc, 0x75, 0x1a, 0xdf, 0x8b, 0xd7, 0x0d, 0x4f, 0x2f, 0xf7, 0x45, 0x09, 0xe7, 0x54,
+	0x5c, 0x90, 0xb2, 0xdc, 0x93, 0xe8, 0x15, 0x16, 0xe2, 0x25, 0x62, 0x92, 0x8a, 0x8d, 0xfe, 0x37,
+	0xf4, 0xa4, 0x0f, 0x6c, 0xbc, 0xcc, 0x96, 0xa3, 0xed, 0xab, 0xd0, 0x7d, 0xeb, 0xc6, 0xbb, 0x6f,
+	0x7d, 0xfb, 0x65, 0xa8, 0xbe, 0x1d, 0x18, 0x3c, 0x5c, 0x85, 0xdc, 0x8a, 0xec, 0xc0, 0x7e, 0x3c,
+	0x8e, 0xd0, 0xeb, 0x43, 0x84, 0xae, 0x05, 0xbd, 0xe7, 0x64, 0x25, 0xdb, 0xad, 0x45, 0x5d, 0x56,
+	0x72, 0x2a, 0xb7, 0xc1, 0x0b, 0xb0, 0xe0, 0xf3, 0x4e, 0xab, 0xc0, 0x8b, 0x20, 0x2a, 0x59, 0xbd,
+	0xa0, 0x48, 0x05, 0x55, 0x91, 0x33, 0xce, 0x7c, 0x49, 0xd2, 0xb8, 0x3a, 0xfa, 0x30, 0x0a, 0xd1,
+	0xbc, 0x55, 0x43, 0xd7, 0xa3, 0xc0, 0x96, 0x48, 0xb3, 0x8a, 0xde, 0x8a, 0x04, 0x1e, 0xd8, 0x0d,
+	0xd2, 0xe9, 0x18, 0xb5, 0xee, 0xd9, 0xd0, 0x1d, 0xf2, 0xa7, 0x21, 0x66, 0x92, 0x4d, 0x62, 0x3a,
+	0xd8, 0x66, 0x7c, 0x97, 0x6c, 0x2a, 0x41, 0xde, 0xaa, 0x09, 0xd4, 0x97, 0xe0, 0xf9, 0x11, 0xf2,
+	0xd4, 0x14, 0xbb, 0x5f, 0xcc, 0x3d, 0x02, 0x31, 0x67, 0xcc, 0xa7, 0x20, 0x96, 0x95, 0xd2, 0xe5,
+	0x25, 0x6e, 0x82, 0xfe, 0xec, 0xe2, 0x4c, 0x41, 0x2c, 0x27, 0x6a, 0x62, 0x9e, 0x63, 0x28, 0x76,
+	0x67, 0x55, 0x51, 0x3a, 0x59, 0x14, 0x15, 0x39, 0xc3, 0xb1, 0xfc, 0x24, 0x24, 0x56, 0x45, 0xac,
+	0xc8, 0xca, 0x12, 0x17, 0x43, 0xcf, 0xf8, 0x0f, 0xfc, 0xff, 0x07, 0x6b, 0xf2, 0x5f, 0xc3, 0x72,
+	0x1a, 0xfd, 0x76, 0x3f, 0x13, 0xa8, 0xad, 0x23, 0xe3, 0x38, 0x09, 0x57, 0x55, 0xca, 0x36, 0x8a,
+	0x6a, 0x1a, 0x52, 0x54, 0xb2, 0xee, 0x76, 0x33, 0x09, 0x09, 0x4d, 0x2e, 0x48, 0x6a, 0x59, 0xe3,
+	0xd6, 0xd1, 0xd7, 0x0c, 0x24, 0x56, 0x48, 0xbb, 0x43, 0x5f, 0x87, 0x9f, 0x31, 0x10, 0x5d, 0x22,
+	0xb6, 0x7f, 0xa3, 0xbe, 0xce, 0x8c, 0x7b, 0x79, 0xf7, 0x9c, 0x08, 0x4b, 0xc4, 0x1e, 0xfe, 0x5e,
+	0xdc, 0x74, 0x8d, 0xba, 0xef, 0x45, 0x6f, 0x88, 0xbe, 0x18, 0xeb, 0x5a, 0x3f, 0x3c, 0x42, 0x38,
+	0x84, 0xd5, 0x6d, 0x20, 0xdc, 0x0d, 0xdc, 0x8a, 0x84, 0x4b, 0xb2, 0xaa, 0xe8, 0x72, 0x49, 0x97,
+	0x0a, 0x45, 0xed, 0x71, 0x2e, 0x3a, 0x12, 0xec, 0xab, 0x29, 0x60, 0xe5, 0xd6, 0x7a, 0x07, 0xfd,
+	0xca, 0x00, 0x9b, 0xab, 0x9b, 0x04, 0xfd, 0xec, 0xe1, 0x1d, 0xf1, 0x56, 0xfa, 0x74, 0xec, 0x07,
+	0x00, 0x75, 0x2d, 0x50, 0xb7, 0x23, 0x80, 0xf3, 0xc0, 0x56, 0x0d, 0xdb, 0x70, 0x18, 0x4c, 0x61,
+	0xe7, 0x37, 0xbf, 0x1b, 0x62, 0x0d, 0x52, 0xad, 0x1b, 0xee, 0x3d, 0x0b, 0xbb, 0x83, 0xde, 0x1d,
+	0x8e, 0xed, 0xdf, 0xe1, 0xd0, 0x07, 0x63, 0x3d, 0x11, 0x46, 0xe5, 0xf1, 0x60, 0x2b, 0xfb, 0x4a,
+	0x1c, 0x62, 0x72, 0xc3, 0xa8, 0x11, 0xf4, 0x52, 0xdc, 0x05, 0xff, 0x3b, 0x03, 0x6c, 0xda, 0xb4,
+	0xd6, 0xfc, 0x2f, 0xfe, 0xad, 0x67, 0xd8, 0x71, 0x60, 0x3b, 0xf5, 0x4b, 0xc4, 0xdb, 0x99, 0xf6,
+	0x6d, 0x39, 0x55, 0x1c, 0x7f, 0x42, 0xa9, 0x7e, 0x89, 0x60, 0xc7, 0x8c, 0xde, 0x06, 0xfb, 0x82,
+	0x49, 0x41, 0xc1, 0x4e, 0xfc, 0x19, 0x94, 0xfb, 0x3d, 0x25, 0x45, 0xf3, 0x18, 0x2e, 0xdb, 0x9a,
+	0x69, 0xad, 0x75, 0x65, 0xa3, 0xbf, 0x7d, 0x8f, 0x89, 0xe5, 0x80, 0x18, 0xff, 0x0d, 0x19, 0xe3,
+	0xc1, 0x4a, 0xf2, 0x5c, 0xd4, 0x6b, 0x85, 0xfb, 0x27, 0xc0, 0xbb, 0xdb, 0x15, 0xc0, 0xa9, 0xd9,
+	0xc1, 0x02, 0xec, 0x87, 0x94, 0x19, 0x7c, 0xb7, 0xe0, 0xfe, 0xc4, 0xf6, 0xa4, 0x18, 0x10, 0xed,
+	0x81, 0x4a, 0x91, 0xde, 0xff, 0xc9, 0xed, 0xd9, 0xc8, 0xcd, 0xdb, 0xb3, 0x91, 0x1f, 0x6e, 0xcf,
+	0x46, 0x2e, 0xdf, 0x99, 0x9d, 0xb8, 0x79, 0x67, 0x76, 0xe2, 0x9b, 0x3b, 0xb3, 0x13, 0x4f, 0x30,
+	0xad, 0xb5, 0xb5, 0xb8, 0xf3, 0x4f, 0xf5, 0x53, 0x7f, 0x04, 0x00, 0x00, 0xff, 0xff, 0xca, 0x53,
+	0x5d, 0x79, 0x8c, 0x17, 0x00, 0x00,
 }
 
 func (m *Rpc) Marshal() (dAtA []byte, err error) {
@@ -4188,6 +4475,13 @@ func (m *RpcBlockCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	_ = i
 	var l int
 	_ = l
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.Error != nil {
 		{
 			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
@@ -4347,6 +4641,129 @@ func (m *RpcBlockUpdateResponseError) MarshalTo(dAtA []byte) (int, error) {
 }
 
 func (m *RpcBlockUpdateResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockClose) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockClose) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockClose) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockCloseRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockCloseRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockCloseRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockCloseResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockCloseResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockCloseResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockCloseResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockCloseResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockCloseResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5102,152 +5519,6 @@ func (m *RpcAccountSelectResponseError) MarshalToSizedBuffer(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcVersion) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcVersion) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcVersion) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcVersionGet) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcVersionGet) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcVersionGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcVersionGetRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcVersionGetRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcVersionGetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcVersionGetResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcVersionGetResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcVersionGetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Version) > 0 {
-		i -= len(m.Version)
-		copy(dAtA[i:], m.Version)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.Version)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintCommands(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcVersionGetResponseError) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcVersionGetResponseError) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcVersionGetResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *RpcLog) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -5399,6 +5670,152 @@ func (m *RpcLogSendResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
+func (m *RpcVersion) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcVersion) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcVersion) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcVersionGet) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcVersionGet) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcVersionGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcVersionGetRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcVersionGetRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcVersionGetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcVersionGetResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcVersionGetResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcVersionGetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Version) > 0 {
+		i -= len(m.Version)
+		copy(dAtA[i:], m.Version)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Version)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcVersionGetResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcVersionGetResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcVersionGetResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *RpcIpfs) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -5422,7 +5839,7 @@ func (m *RpcIpfs) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcIpfsGet) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsFile) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5432,12 +5849,12 @@ func (m *RpcIpfsGet) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcIpfsGet) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsFile) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcIpfsGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5445,7 +5862,7 @@ func (m *RpcIpfsGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcIpfsGetFile) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsFileGet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5455,12 +5872,12 @@ func (m *RpcIpfsGetFile) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcIpfsGetFile) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGet) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcIpfsGetFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5468,7 +5885,7 @@ func (m *RpcIpfsGetFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcIpfsGetFileRequest) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsFileGetRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5478,12 +5895,12 @@ func (m *RpcIpfsGetFileRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcIpfsGetFileRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGetRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcIpfsGetFileRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5498,7 +5915,7 @@ func (m *RpcIpfsGetFileRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcIpfsGetFileResponse) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsFileGetResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5508,12 +5925,12 @@ func (m *RpcIpfsGetFileResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcIpfsGetFileResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGetResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcIpfsGetFileResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5554,7 +5971,7 @@ func (m *RpcIpfsGetFileResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcIpfsGetFileResponseError) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsFileGetResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5564,12 +5981,12 @@ func (m *RpcIpfsGetFileResponseError) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcIpfsGetFileResponseError) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGetResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcIpfsGetFileResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsFileGetResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5589,7 +6006,7 @@ func (m *RpcIpfsGetFileResponseError) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImage) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5599,12 +6016,12 @@ func (m *RpcImage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImage) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5612,7 +6029,7 @@ func (m *RpcImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGet) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5622,12 +6039,12 @@ func (m *RpcImageGet) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGet) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGet) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5635,7 +6052,7 @@ func (m *RpcImageGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetBlob) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetBlob) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5645,12 +6062,12 @@ func (m *RpcImageGetBlob) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetBlob) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlob) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetBlob) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlob) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5658,7 +6075,7 @@ func (m *RpcImageGetBlob) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetBlobRequest) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetBlobRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5668,12 +6085,12 @@ func (m *RpcImageGetBlobRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetBlobRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlobRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetBlobRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlobRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5693,7 +6110,7 @@ func (m *RpcImageGetBlobRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetBlobResponse) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetBlobResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5703,12 +6120,12 @@ func (m *RpcImageGetBlobResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetBlobResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlobResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetBlobResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlobResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5735,7 +6152,7 @@ func (m *RpcImageGetBlobResponse) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetBlobResponseError) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetBlobResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5745,12 +6162,12 @@ func (m *RpcImageGetBlobResponseError) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetBlobResponseError) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlobResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetBlobResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetBlobResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5770,7 +6187,7 @@ func (m *RpcImageGetBlobResponseError) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetFile) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetFile) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5780,12 +6197,12 @@ func (m *RpcImageGetFile) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetFile) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFile) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5793,7 +6210,7 @@ func (m *RpcImageGetFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetFileRequest) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetFileRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5803,12 +6220,12 @@ func (m *RpcImageGetFileRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetFileRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFileRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetFileRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFileRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5828,7 +6245,7 @@ func (m *RpcImageGetFileRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetFileResponse) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetFileResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5838,12 +6255,12 @@ func (m *RpcImageGetFileResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetFileResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFileResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetFileResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFileResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5870,7 +6287,7 @@ func (m *RpcImageGetFileResponse) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcImageGetFileResponseError) Marshal() (dAtA []byte, err error) {
+func (m *RpcIpfsImageGetFileResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -5880,12 +6297,12 @@ func (m *RpcImageGetFileResponseError) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcImageGetFileResponseError) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFileResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcImageGetFileResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcIpfsImageGetFileResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -6087,6 +6504,10 @@ func (m *RpcBlockCreateResponse) Size() (n int) {
 		l = m.Error.Size()
 		n += 1 + l + sovCommands(uint64(l))
 	}
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	return n
 }
 
@@ -6142,6 +6563,57 @@ func (m *RpcBlockUpdateResponse) Size() (n int) {
 }
 
 func (m *RpcBlockUpdateResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockClose) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockCloseRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockCloseResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockCloseResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6469,66 +6941,6 @@ func (m *RpcAccountSelectResponseError) Size() (n int) {
 	return n
 }
 
-func (m *RpcVersion) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
-func (m *RpcVersionGet) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
-func (m *RpcVersionGetRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
-func (m *RpcVersionGetResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	l = len(m.Version)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	return n
-}
-
-func (m *RpcVersionGetResponseError) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + sovCommands(uint64(m.Code))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	return n
-}
-
 func (m *RpcLog) Size() (n int) {
 	if m == nil {
 		return 0
@@ -6592,6 +7004,66 @@ func (m *RpcLogSendResponseError) Size() (n int) {
 	return n
 }
 
+func (m *RpcVersion) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcVersionGet) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcVersionGetRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcVersionGetResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.Version)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcVersionGetResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
 func (m *RpcIpfs) Size() (n int) {
 	if m == nil {
 		return 0
@@ -6601,7 +7073,7 @@ func (m *RpcIpfs) Size() (n int) {
 	return n
 }
 
-func (m *RpcIpfsGet) Size() (n int) {
+func (m *RpcIpfsFile) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6610,7 +7082,7 @@ func (m *RpcIpfsGet) Size() (n int) {
 	return n
 }
 
-func (m *RpcIpfsGetFile) Size() (n int) {
+func (m *RpcIpfsFileGet) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6619,7 +7091,7 @@ func (m *RpcIpfsGetFile) Size() (n int) {
 	return n
 }
 
-func (m *RpcIpfsGetFileRequest) Size() (n int) {
+func (m *RpcIpfsFileGetRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6632,7 +7104,7 @@ func (m *RpcIpfsGetFileRequest) Size() (n int) {
 	return n
 }
 
-func (m *RpcIpfsGetFileResponse) Size() (n int) {
+func (m *RpcIpfsFileGetResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6657,7 +7129,7 @@ func (m *RpcIpfsGetFileResponse) Size() (n int) {
 	return n
 }
 
-func (m *RpcIpfsGetFileResponseError) Size() (n int) {
+func (m *RpcIpfsFileGetResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6673,7 +7145,7 @@ func (m *RpcIpfsGetFileResponseError) Size() (n int) {
 	return n
 }
 
-func (m *RpcImage) Size() (n int) {
+func (m *RpcIpfsImage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6682,7 +7154,7 @@ func (m *RpcImage) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGet) Size() (n int) {
+func (m *RpcIpfsImageGet) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6691,7 +7163,7 @@ func (m *RpcImageGet) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetBlob) Size() (n int) {
+func (m *RpcIpfsImageGetBlob) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6700,7 +7172,7 @@ func (m *RpcImageGetBlob) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetBlobRequest) Size() (n int) {
+func (m *RpcIpfsImageGetBlobRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6716,7 +7188,7 @@ func (m *RpcImageGetBlobRequest) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetBlobResponse) Size() (n int) {
+func (m *RpcIpfsImageGetBlobResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6733,7 +7205,7 @@ func (m *RpcImageGetBlobResponse) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetBlobResponseError) Size() (n int) {
+func (m *RpcIpfsImageGetBlobResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6749,7 +7221,7 @@ func (m *RpcImageGetBlobResponseError) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetFile) Size() (n int) {
+func (m *RpcIpfsImageGetFile) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6758,7 +7230,7 @@ func (m *RpcImageGetFile) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetFileRequest) Size() (n int) {
+func (m *RpcIpfsImageGetFileRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6774,7 +7246,7 @@ func (m *RpcImageGetFileRequest) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetFileResponse) Size() (n int) {
+func (m *RpcIpfsImageGetFileResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6791,7 +7263,7 @@ func (m *RpcImageGetFileResponse) Size() (n int) {
 	return n
 }
 
-func (m *RpcImageGetFileResponseError) Size() (n int) {
+func (m *RpcIpfsImageGetFileResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -7912,6 +8384,38 @@ func (m *RpcBlockCreateResponse) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipCommands(dAtA[iNdEx:])
@@ -8315,6 +8819,337 @@ func (m *RpcBlockUpdateResponseError) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Code |= RpcBlockUpdateResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockClose) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Close: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Close: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockCloseRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockCloseResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockCloseResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockCloseResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockCloseResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -10336,390 +11171,6 @@ func (m *RpcAccountSelectResponseError) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcVersion) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Version: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Version: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcVersionGet) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Get: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Get: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcVersionGetRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Request: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcVersionGetResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Response: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &RpcVersionGetResponseError{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Version = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcVersionGetResponseError) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Error: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= RpcVersionGetResponseErrorCode(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *RpcLog) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -11123,6 +11574,390 @@ func (m *RpcLogSendResponseError) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *RpcVersion) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Version: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Version: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcVersionGet) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Get: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Get: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcVersionGetRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcVersionGetResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcVersionGetResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Version = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcVersionGetResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcVersionGetResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *RpcIpfs) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -11176,60 +12011,7 @@ func (m *RpcIpfs) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcIpfsGet) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Get: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Get: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcIpfsGetFile) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsFile) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11282,7 +12064,60 @@ func (m *RpcIpfsGetFile) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcIpfsGetFileRequest) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsFileGet) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Get: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Get: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcIpfsFileGetRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11367,7 +12202,7 @@ func (m *RpcIpfsGetFileRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcIpfsGetFileResponse) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsFileGetResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11426,7 +12261,7 @@ func (m *RpcIpfsGetFileResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &RpcIpfsGetFileResponseError{}
+				m.Error = &RpcIpfsFileGetResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -11554,7 +12389,7 @@ func (m *RpcIpfsGetFileResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcIpfsGetFileResponseError) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsFileGetResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11597,7 +12432,7 @@ func (m *RpcIpfsGetFileResponseError) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= RpcIpfsGetFileResponseErrorCode(b&0x7F) << shift
+				m.Code |= RpcIpfsFileGetResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -11658,7 +12493,7 @@ func (m *RpcIpfsGetFileResponseError) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImage) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImage) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11711,7 +12546,7 @@ func (m *RpcImage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGet) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11764,7 +12599,7 @@ func (m *RpcImageGet) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetBlob) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetBlob) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11817,7 +12652,7 @@ func (m *RpcImageGetBlob) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetBlobRequest) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetBlobRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11921,7 +12756,7 @@ func (m *RpcImageGetBlobRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetBlobResponse) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetBlobResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -11980,7 +12815,7 @@ func (m *RpcImageGetBlobResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &RpcImageGetBlobResponseError{}
+				m.Error = &RpcIpfsImageGetBlobResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -12044,7 +12879,7 @@ func (m *RpcImageGetBlobResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetBlobResponseError) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetBlobResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12087,7 +12922,7 @@ func (m *RpcImageGetBlobResponseError) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= RpcImageGetBlobResponseErrorCode(b&0x7F) << shift
+				m.Code |= RpcIpfsImageGetBlobResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -12148,7 +12983,7 @@ func (m *RpcImageGetBlobResponseError) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetFile) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetFile) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12201,7 +13036,7 @@ func (m *RpcImageGetFile) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetFileRequest) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetFileRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12305,7 +13140,7 @@ func (m *RpcImageGetFileRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetFileResponse) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetFileResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12364,7 +13199,7 @@ func (m *RpcImageGetFileResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &RpcImageGetFileResponseError{}
+				m.Error = &RpcIpfsImageGetFileResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -12426,7 +13261,7 @@ func (m *RpcImageGetFileResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcImageGetFileResponseError) Unmarshal(dAtA []byte) error {
+func (m *RpcIpfsImageGetFileResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -12469,7 +13304,7 @@ func (m *RpcImageGetFileResponseError) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= RpcImageGetFileResponseErrorCode(b&0x7F) << shift
+				m.Code |= RpcIpfsImageGetFileResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

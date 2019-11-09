@@ -22,6 +22,8 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+//
+// Event – type of message, that could be sent from a middleware to the corresponding front-end.
 type Event struct {
 	// Types that are valid to be assigned to Message:
 	//	*EventMessageOfAccountShow
@@ -324,6 +326,13 @@ func (m *EventBlock) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_EventBlock proto.InternalMessageInfo
 
+//
+// General purpose event to show blocks on a client.
+// Example scenarios:
+// Case A: Page opened, TextBlock didn't exist, BlockShow(TextBlock)
+// Case B: Page opened, TextBlock updated on a different client, BlockShow(TextBlock)
+// Case C: Page opened, TextBlock updated on the same client, BlockShow(TextBlock)
+// Case D: Dashboard opened, BlockShow(PageBlock)
 type EventBlockShow struct {
 	Block map[string]*ModelBlock `protobuf:"bytes,1,rep,name=block,proto3" json:"block,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }

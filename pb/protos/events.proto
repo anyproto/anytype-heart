@@ -5,6 +5,9 @@ option go_package = "pb";
 import "models.proto";
 import "changes.proto";
 
+/* 
+ * Event – type of message, that could be sent from a middleware to the corresponding front-end.
+*/
 message Event {
     oneof message {    
         Account.Show accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
@@ -29,17 +32,24 @@ message Event {
             Model.Account account = 2; // An Account, that has been found for the mnemonic
         }
     }
-
     message Block {
+        /* 
+        * General purpose event to show blocks on a client.
+        * Example scenarios:
+        * Case A: Page opened, TextBlock didn't exist, BlockShow(TextBlock)
+        * Case B: Page opened, TextBlock updated on a different client, BlockShow(TextBlock)
+        * Case C: Page opened, TextBlock updated on the same client, BlockShow(TextBlock)
+        * Case D: Dashboard opened, BlockShow(PageBlock)
+        */    
         message Show {
             map<string, Model.Block> block = 1; // id -> block
         }
 
-        message Update {
+        message Update { // TODO: remove?
             Change.Multiple.BlocksList changes = 1;
         }
 
-        message Create {
+        message Create { // TODO: remove?
             repeated Model.Block block = 1;
         }
 

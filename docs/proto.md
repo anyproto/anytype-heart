@@ -48,6 +48,10 @@
     - [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response)
     - [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
+    - [Rpc.Block.Close](#anytype.Rpc.Block.Close)
+    - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
+    - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
+    - [Rpc.Block.Close.Response.Error](#anytype.Rpc.Block.Close.Response.Error)
     - [Rpc.Block.Create](#anytype.Rpc.Block.Create)
     - [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request)
     - [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response)
@@ -65,22 +69,22 @@
     - [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request)
     - [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response)
     - [Rpc.Block.Update.Response.Error](#anytype.Rpc.Block.Update.Response.Error)
-    - [Rpc.Image](#anytype.Rpc.Image)
-    - [Rpc.Image.Get](#anytype.Rpc.Image.Get)
-    - [Rpc.Image.Get.Blob](#anytype.Rpc.Image.Get.Blob)
-    - [Rpc.Image.Get.Blob.Request](#anytype.Rpc.Image.Get.Blob.Request)
-    - [Rpc.Image.Get.Blob.Response](#anytype.Rpc.Image.Get.Blob.Response)
-    - [Rpc.Image.Get.Blob.Response.Error](#anytype.Rpc.Image.Get.Blob.Response.Error)
-    - [Rpc.Image.Get.File](#anytype.Rpc.Image.Get.File)
-    - [Rpc.Image.Get.File.Request](#anytype.Rpc.Image.Get.File.Request)
-    - [Rpc.Image.Get.File.Response](#anytype.Rpc.Image.Get.File.Response)
-    - [Rpc.Image.Get.File.Response.Error](#anytype.Rpc.Image.Get.File.Response.Error)
     - [Rpc.Ipfs](#anytype.Rpc.Ipfs)
-    - [Rpc.Ipfs.Get](#anytype.Rpc.Ipfs.Get)
-    - [Rpc.Ipfs.Get.File](#anytype.Rpc.Ipfs.Get.File)
-    - [Rpc.Ipfs.Get.File.Request](#anytype.Rpc.Ipfs.Get.File.Request)
-    - [Rpc.Ipfs.Get.File.Response](#anytype.Rpc.Ipfs.Get.File.Response)
-    - [Rpc.Ipfs.Get.File.Response.Error](#anytype.Rpc.Ipfs.Get.File.Response.Error)
+    - [Rpc.Ipfs.File](#anytype.Rpc.Ipfs.File)
+    - [Rpc.Ipfs.File.Get](#anytype.Rpc.Ipfs.File.Get)
+    - [Rpc.Ipfs.File.Get.Request](#anytype.Rpc.Ipfs.File.Get.Request)
+    - [Rpc.Ipfs.File.Get.Response](#anytype.Rpc.Ipfs.File.Get.Response)
+    - [Rpc.Ipfs.File.Get.Response.Error](#anytype.Rpc.Ipfs.File.Get.Response.Error)
+    - [Rpc.Ipfs.Image](#anytype.Rpc.Ipfs.Image)
+    - [Rpc.Ipfs.Image.Get](#anytype.Rpc.Ipfs.Image.Get)
+    - [Rpc.Ipfs.Image.Get.Blob](#anytype.Rpc.Ipfs.Image.Get.Blob)
+    - [Rpc.Ipfs.Image.Get.Blob.Request](#anytype.Rpc.Ipfs.Image.Get.Blob.Request)
+    - [Rpc.Ipfs.Image.Get.Blob.Response](#anytype.Rpc.Ipfs.Image.Get.Blob.Response)
+    - [Rpc.Ipfs.Image.Get.Blob.Response.Error](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error)
+    - [Rpc.Ipfs.Image.Get.File](#anytype.Rpc.Ipfs.Image.Get.File)
+    - [Rpc.Ipfs.Image.Get.File.Request](#anytype.Rpc.Ipfs.Image.Get.File.Request)
+    - [Rpc.Ipfs.Image.Get.File.Response](#anytype.Rpc.Ipfs.Image.Get.File.Response)
+    - [Rpc.Ipfs.Image.Get.File.Response.Error](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error)
     - [Rpc.Log](#anytype.Rpc.Log)
     - [Rpc.Log.Send](#anytype.Rpc.Log.Send)
     - [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request)
@@ -104,13 +108,14 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
+    - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
     - [Rpc.Block.Update.Response.Error.Code](#anytype.Rpc.Block.Update.Response.Error.Code)
-    - [Rpc.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Image.Get.Blob.Response.Error.Code)
-    - [Rpc.Image.Get.File.Response.Error.Code](#anytype.Rpc.Image.Get.File.Response.Error.Code)
-    - [Rpc.Ipfs.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Get.File.Response.Error.Code)
+    - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
+    - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
+    - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
@@ -217,7 +222,7 @@
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
-| ImageGetBlob | [Rpc.Image.Get.Blob.Request](#anytype.Rpc.Image.Get.Blob.Request) | [Rpc.Image.Get.Blob.Response](#anytype.Rpc.Image.Get.Blob.Response) |  |
+| ImageGetBlob | [Rpc.Ipfs.Image.Get.Blob.Request](#anytype.Rpc.Ipfs.Image.Get.Blob.Request) | [Rpc.Ipfs.Image.Get.Blob.Response](#anytype.Rpc.Ipfs.Image.Get.Blob.Response) |  |
 | VersionGet | [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request) | [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
@@ -239,7 +244,7 @@
 <a name="anytype.Change"></a>
 
 ### Change
-
+Change contains single block change or list of block changes.
 
 
 
@@ -249,7 +254,7 @@
 <a name="anytype.Change.Block"></a>
 
 ### Change.Block
-
+Change.Block contains only one, single change for one block.
 
 
 
@@ -418,7 +423,7 @@
 <a name="anytype.Change.Multiple"></a>
 
 ### Change.Multiple
-
+Change.Multiple contains array of changes, for a list of blocks each.
 
 
 
@@ -443,7 +448,7 @@
 <a name="anytype.Change.Single"></a>
 
 ### Change.Single
-
+Change.Single contains only one, single change, but for a list of blocks.
 
 
 
@@ -493,7 +498,10 @@
 <a name="anytype.Rpc"></a>
 
 ### Rpc
-
+Rpc is a namespace, that agregates all of the service commands between client and middleware.
+Structure: Topic &gt; Subtopic &gt; Subsub... &gt; Action &gt; (Request, Response).
+Request – message from a client.
+Response – message from a middleware.
 
 
 
@@ -503,7 +511,7 @@
 <a name="anytype.Rpc.Account"></a>
 
 ### Rpc.Account
-
+Namespace, that agregates subtopics and actions, that relates to account.
 
 
 
@@ -683,7 +691,63 @@ Middleware-to-front-end response for an account select request, that can contain
 <a name="anytype.Rpc.Block"></a>
 
 ### Rpc.Block
+Namespace, that agregates subtopics and actions, that relates to blocks.
 
+
+
+
+
+
+<a name="anytype.Rpc.Block.Close"></a>
+
+### Rpc.Block.Close
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Close.Request"></a>
+
+### Rpc.Block.Close.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Close.Response"></a>
+
+### Rpc.Block.Close.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Close.Response.Error](#anytype.Rpc.Block.Close.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Close.Response.Error"></a>
+
+### Rpc.Block.Close.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -693,7 +757,19 @@ Middleware-to-front-end response for an account select request, that can contain
 <a name="anytype.Rpc.Block.Create"></a>
 
 ### Rpc.Block.Create
-
+Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
+**Example scenario**
+1A. Create Page on dashboard
+    1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    2. Front -&gt; MW: Rpc.Block.Close.Request(block: dashboard.id)
+    3. Front &lt;- MW: Rpc.Block.Close.Response(err)
+    4. Front &lt;- MW: Rpc.Block.Create.Response(page.id)
+    5. Front &lt;- MW: Rpc.Block.Open.Response(err)         
+    6. Front &lt;- MW: Event.Block.Show(page)
+1B. Create Page on Page
+    1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    2. Front &lt;- MW: Rpc.Block.Create.Response(newPage.id)
+    3. Front &lt;- MW: Event.Block.Show(newPage)
 
 
 
@@ -726,6 +802,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Create.Response.Error](#anytype.Rpc.Block.Create.Response.Error) |  |  |
+| blockId | [string](#string) |  |  |
 
 
 
@@ -751,7 +828,14 @@ Middleware-to-front-end response for an account select request, that can contain
 <a name="anytype.Rpc.Block.History"></a>
 
 ### Rpc.Block.History
-
+Block history: switch between versions (lib context: switch block head), move forward or backward
+**Example scenario**
+1. User -&gt; MacOS Front: CMD&#43;Z
+2. Front -&gt; MW: Rpc.Block.History.Move.Request(blockId, false)
+3. MW -&gt; Lib: ?? TODO
+4. Lib: switches current block header to a previous one
+5. Lib -&gt; MW: prev version of block
+6. MW -&gt; Front: BlockShow(block.prevVersion)
 
 
 
@@ -777,7 +861,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| moveForward | [bool](#bool) |  |  |
+| moveForward | [bool](#bool) |  | Move direction. If true, |
 
 
 
@@ -818,7 +902,21 @@ Middleware-to-front-end response for an account select request, that can contain
 <a name="anytype.Rpc.Block.Open"></a>
 
 ### Rpc.Block.Open
-
+Works with a smart blocks (block-organizers, like page, dashboard etc)
+**Example scenario**
+1A. On front-end start.
+    1. Front -&gt; MW: Rpc.Block.Open.Request(dashboard.id)
+    2. MW -&gt; Front: BlockShow(dashboard)
+    3. MW -&gt; Front: Rpc.Block.Open.Response(err)
+1B. User clicks on a page icon on the dashboard.
+    1. Front -&gt; MW: Rpc.Block.Close.Request(dashboard.id)
+Get close response first, then open request:
+    2. MW -&gt; Front: Rpc.Block.Close.Response(err)    
+    3. Front -&gt; MW: Rpc.Block.Open.Request(page.id)
+    4. MW -&gt; Front: BlockShow(&lt;page, blocks&gt;)
+    5. MW -&gt; Front: Rpc.Block.Open.Response(err)
+Image/Video/File blocks then:
+    6. MW -&gt; Front: BlockShow(&lt;blocks&gt;)
 
 
 
@@ -874,7 +972,14 @@ Middleware-to-front-end response for an account select request, that can contain
 <a name="anytype.Rpc.Block.Update"></a>
 
 ### Rpc.Block.Update
-
+Update a Smart/Internal block. Request can contain a content/field/permission/children update
+**Example scenarios**
+1A. Update text block on page
+1B. Update page on dashboard
+1C. Update page on page
+1D. Update page permission on a dashboard
+1E. Update page children of the same page
+1F. Update children of a layout block on a page
 
 
 
@@ -927,145 +1032,19 @@ Middleware-to-front-end response for an account select request, that can contain
 
 
 
-<a name="anytype.Rpc.Image"></a>
-
-### Rpc.Image
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get"></a>
-
-### Rpc.Image.Get
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.Blob"></a>
-
-### Rpc.Image.Get.Blob
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.Blob.Request"></a>
-
-### Rpc.Image.Get.Blob.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| size | [Model.Image.Size](#anytype.Model.Image.Size) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.Blob.Response"></a>
-
-### Rpc.Image.Get.Blob.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Image.Get.Blob.Response.Error](#anytype.Rpc.Image.Get.Blob.Response.Error) |  |  |
-| blob | [bytes](#bytes) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.Blob.Response.Error"></a>
-
-### Rpc.Image.Get.Blob.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Image.Get.Blob.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.File"></a>
-
-### Rpc.Image.Get.File
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.File.Request"></a>
-
-### Rpc.Image.Get.File.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| size | [Model.Image.Size](#anytype.Model.Image.Size) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.File.Response"></a>
-
-### Rpc.Image.Get.File.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Image.Get.File.Response.Error](#anytype.Rpc.Image.Get.File.Response.Error) |  |  |
-| localPath | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Image.Get.File.Response.Error"></a>
-
-### Rpc.Image.Get.File.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Image.Get.File.Response.Error.Code](#anytype.Rpc.Image.Get.File.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Ipfs"></a>
 
 ### Rpc.Ipfs
+Namespace, that agregates subtopics and actions to work with IPFS directly (get files, blobs, images, etc)
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File"></a>
+
+### Rpc.Ipfs.File
 
 
 
@@ -1073,19 +1052,9 @@ Middleware-to-front-end response for an account select request, that can contain
 
 
 
-<a name="anytype.Rpc.Ipfs.Get"></a>
+<a name="anytype.Rpc.Ipfs.File.Get"></a>
 
-### Rpc.Ipfs.Get
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Ipfs.Get.File"></a>
-
-### Rpc.Ipfs.Get.File
+### Rpc.Ipfs.File.Get
 
 
 
@@ -1093,9 +1062,9 @@ Middleware-to-front-end response for an account select request, that can contain
 
 
 
-<a name="anytype.Rpc.Ipfs.Get.File.Request"></a>
+<a name="anytype.Rpc.Ipfs.File.Get.Request"></a>
 
-### Rpc.Ipfs.Get.File.Request
+### Rpc.Ipfs.File.Get.Request
 
 
 
@@ -1108,15 +1077,15 @@ Middleware-to-front-end response for an account select request, that can contain
 
 
 
-<a name="anytype.Rpc.Ipfs.Get.File.Response"></a>
+<a name="anytype.Rpc.Ipfs.File.Get.Response"></a>
 
-### Rpc.Ipfs.Get.File.Response
+### Rpc.Ipfs.File.Get.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Ipfs.Get.File.Response.Error](#anytype.Rpc.Ipfs.Get.File.Response.Error) |  |  |
+| error | [Rpc.Ipfs.File.Get.Response.Error](#anytype.Rpc.Ipfs.File.Get.Response.Error) |  |  |
 | data | [bytes](#bytes) |  |  |
 | media | [string](#string) |  |  |
 | name | [string](#string) |  |  |
@@ -1126,15 +1095,151 @@ Middleware-to-front-end response for an account select request, that can contain
 
 
 
-<a name="anytype.Rpc.Ipfs.Get.File.Response.Error"></a>
+<a name="anytype.Rpc.Ipfs.File.Get.Response.Error"></a>
 
-### Rpc.Ipfs.Get.File.Response.Error
+### Rpc.Ipfs.File.Get.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Ipfs.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Get.File.Response.Error.Code) |  |  |
+| code | [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image"></a>
+
+### Rpc.Ipfs.Image
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get"></a>
+
+### Rpc.Ipfs.Image.Get
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.Blob"></a>
+
+### Rpc.Ipfs.Image.Get.Blob
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.Blob.Request"></a>
+
+### Rpc.Ipfs.Image.Get.Blob.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| size | [Model.Image.Size](#anytype.Model.Image.Size) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.Blob.Response"></a>
+
+### Rpc.Ipfs.Image.Get.Blob.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Ipfs.Image.Get.Blob.Response.Error](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error) |  |  |
+| blob | [bytes](#bytes) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error"></a>
+
+### Rpc.Ipfs.Image.Get.Blob.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.File"></a>
+
+### Rpc.Ipfs.Image.Get.File
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.File.Request"></a>
+
+### Rpc.Ipfs.Image.Get.File.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| size | [Model.Image.Size](#anytype.Model.Image.Size) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.File.Response"></a>
+
+### Rpc.Ipfs.Image.Get.File.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Ipfs.Image.Get.File.Response.Error](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error) |  |  |
+| localPath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.File.Response.Error"></a>
+
+### Rpc.Ipfs.Image.Get.File.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1145,7 +1250,8 @@ Middleware-to-front-end response for an account select request, that can contain
 <a name="anytype.Rpc.Log"></a>
 
 ### Rpc.Log
-
+Namespace, that agregates log subtopics and actions.
+Usage: send request with topic (Level) and description (message) from client to middleware to log.
 
 
 
@@ -1274,7 +1380,7 @@ Middleware-to-front-end response for an account select request, that can contain
 <a name="anytype.Rpc.Wallet"></a>
 
 ### Rpc.Wallet
-
+Namespace, that agregates subtopics and actions, that relates to wallet.
 
 
 
@@ -1450,6 +1556,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Close.Response.Error.Code"></a>
+
+### Rpc.Block.Close.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Create.Response.Error.Code"></a>
 
 ### Rpc.Block.Create.Response.Error.Code
@@ -1503,24 +1622,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Image.Get.Blob.Response.Error.Code"></a>
+<a name="anytype.Rpc.Ipfs.File.Get.Response.Error.Code"></a>
 
-### Rpc.Image.Get.Blob.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-| NOT_FOUND | 101 |  |
-| TIMEOUT | 102 |  |
-
-
-
-<a name="anytype.Rpc.Image.Get.File.Response.Error.Code"></a>
-
-### Rpc.Image.Get.File.Response.Error.Code
+### Rpc.Ipfs.File.Get.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -1533,9 +1637,24 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Ipfs.Get.File.Response.Error.Code"></a>
+<a name="anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code"></a>
 
-### Rpc.Ipfs.Get.File.Response.Error.Code
+### Rpc.Ipfs.Image.Get.Blob.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+| NOT_FOUND | 101 |  |
+| TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code"></a>
+
+### Rpc.Ipfs.Image.Get.File.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -1640,7 +1759,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Event"></a>
 
 ### Event
-
+Event – type of message, that could be sent from a middleware to the corresponding front-end.
 
 
 | Field | Type | Label | Description |
@@ -1699,7 +1818,7 @@ Message, that will be sent to the front on each account found after an AccountRe
 <a name="anytype.Event.Block.Create"></a>
 
 ### Event.Block.Create
-
+TODO: remove?
 
 
 | Field | Type | Label | Description |
@@ -1733,7 +1852,12 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Show"></a>
 
 ### Event.Block.Show
-
+General purpose event to show blocks on a client.
+Example scenarios:
+Case A: Page opened, TextBlock didn&#39;t exist, BlockShow(TextBlock)
+Case B: Page opened, TextBlock updated on a different client, BlockShow(TextBlock)
+Case C: Page opened, TextBlock updated on the same client, BlockShow(TextBlock)
+Case D: Dashboard opened, BlockShow(PageBlock)
 
 
 | Field | Type | Label | Description |
@@ -1764,7 +1888,7 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Update"></a>
 
 ### Event.Block.Update
-
+TODO: remove?
 
 
 | Field | Type | Label | Description |
@@ -1971,6 +2095,8 @@ Avatar of a user&#39;s account. It could be an image or color
 <a name="anytype.Model.Block.Content.Bookmark"></a>
 
 ### Model.Block.Content.Bookmark
+Bookmark is to keep a web-link and to preview a content.
+
 Model.Link.Preview preview = 1;
 
 
@@ -1981,7 +2107,8 @@ Model.Link.Preview preview = 1;
 <a name="anytype.Model.Block.Content.Dashboard"></a>
 
 ### Model.Block.Content.Dashboard
-
+Block type to organize pages on the main screen (main purpose)
+It also can be mounted on a page.
 
 
 | Field | Type | Label | Description |
@@ -2006,7 +2133,7 @@ Model.Link.Preview preview = 1;
 <a name="anytype.Model.Block.Content.Div"></a>
 
 ### Model.Block.Content.Div
-
+Divider: block, that contains only one horizontal thin line
 
 
 
@@ -2021,9 +2148,9 @@ Model.Link.Preview preview = 1;
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  |  |
+| localFilePath | [string](#string) |  | Path to the file on a local machine |
 | state | [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State) |  |  |
-| preview | [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview) |  |  |
+| preview | [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview) |  | Content to show before the main content is downladed |
 
 
 
@@ -2071,8 +2198,8 @@ Model.Link.Preview preview = 1;
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| thumbnail | [bytes](#bytes) |  |  |
 | name | [string](#string) |  |  |
+| icon | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
 
 
@@ -2083,7 +2210,8 @@ Model.Link.Preview preview = 1;
 <a name="anytype.Model.Block.Content.Layout"></a>
 
 ### Model.Block.Content.Layout
-
+Layout have no visual representation, but affects on blocks, that it contains.
+Row/Column layout blocks creates only automatically, after some of a D&amp;D operations, for example
 
 
 | Field | Type | Label | Description |
@@ -2120,10 +2248,10 @@ Model.Link.Preview preview = 1;
 | ----- | ---- | ----- | ----------- |
 | text | [string](#string) |  |  |
 | style | [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style) |  |  |
-| marksList | [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks) |  |  |
-| toggleable | [bool](#bool) |  |  |
-| markerType | [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType) |  |  |
-| checkable | [bool](#bool) |  |  |
+| marksList | [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
+| toggleable | [bool](#bool) |  | can be toggled or not |
+| markerType | [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
+| checkable | [bool](#bool) |  | can be checked or not |
 | checked | [bool](#bool) |  |  |
 
 
@@ -2139,7 +2267,7 @@ Model.Link.Preview preview = 1;
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| range | [Model.Range](#anytype.Model.Range) |  |  |
+| range | [Model.Range](#anytype.Model.Range) |  | range of symbols to apply this mark. From(symbol) To(symbol) |
 | type | [Model.Block.Content.Text.Mark.Type](#anytype.Model.Block.Content.Text.Mark.Type) |  |  |
 | param | [string](#string) |  | link, color, etc |
 
@@ -2188,8 +2316,8 @@ Model.Link.Preview preview = 1;
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| thumbnail | [bytes](#bytes) |  |  |
 | name | [string](#string) |  |  |
+| icon | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
 
 
@@ -2235,7 +2363,7 @@ Model.Link.Preview preview = 1;
 <a name="anytype.Model.Range"></a>
 
 ### Model.Range
-
+General purpose structure, uses in Mark.
 
 
 | Field | Type | Label | Description |
@@ -2353,11 +2481,11 @@ variants, absence of any variant indicates an error.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 |  |
-| UPLOADING | 1 |  |
-| PREVIEW | 2 |  |
-| DOWNLOADING | 3 |  |
-| DONE | 4 |  |
+| EMPTY | 0 | There is no file and preview, it&#39;s an empty block, that waits files. |
+| UPLOADING | 1 | There is stil no file/preview, but file already uploading |
+| PREVIEW | 2 | File exists, preview downloaded, but file – not. |
+| DOWNLOADING | 3 | File exists, preview downloaded, but file downloading |
+| DONE | 4 | File and preview downloaded |
 
 
 
@@ -2368,11 +2496,11 @@ variants, absence of any variant indicates an error.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 |  |
-| UPLOADING | 1 |  |
-| PREVIEW | 2 |  |
-| DOWNLOADING | 3 |  |
-| DONE | 4 |  |
+| EMPTY | 0 | There is no image and preview, it&#39;s an empty block, that waits image. |
+| UPLOADING | 1 | There is stil no image/preview, but image already uploading |
+| PREVIEW | 2 | Image exists, preview downloaded, but image – not. |
+| DOWNLOADING | 3 | Image exists, preview downloaded, but image downloading |
+| DONE | 4 | Image and preview downloaded |
 
 
 
@@ -2395,10 +2523,10 @@ variants, absence of any variant indicates an error.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 |  |
-| TASK | 1 |  |
-| BOOKMARK | 2 |  |
-| SET | 3 | ... |
+| EMPTY | 0 | Ordinary page, without additional fields |
+| TASK | 1 | Page with a task fields |
+| BOOKMARK | 2 | Page with a bookmark fields |
+| SET | 3 | Page, that organize a set of blocks by a specific criterio |
 
 
 
@@ -2454,11 +2582,11 @@ variants, absence of any variant indicates an error.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 |  |
-| UPLOADING | 1 |  |
-| PREVIEW | 2 |  |
-| DOWNLOADING | 3 |  |
-| DONE | 4 |  |
+| EMPTY | 0 | There is no video and preview, it&#39;s an empty block, that waits videos. |
+| UPLOADING | 1 | There is stil no video/preview, but video already uploading |
+| PREVIEW | 2 | Video exists, preview downloaded, but video – not. |
+| DOWNLOADING | 3 | Video exists, preview downloaded, but video downloading |
+| DONE | 4 | Video and preview downloaded |
 
 
 
