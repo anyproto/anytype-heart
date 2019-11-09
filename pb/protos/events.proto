@@ -37,9 +37,13 @@ message Event {
         * General purpose event to show blocks on a client.
         * Example scenarios:
         * Case A: Page opened, TextBlock didn't exist, BlockShow(TextBlock)
+        * 1. TODO
         * Case B: Page opened, TextBlock updated on a different client, BlockShow(TextBlock)
+        * 1. TODO
         * Case C: Page opened, TextBlock updated on the same client, BlockShow(TextBlock)
+        * 1. TODO
         * Case D: Dashboard opened, BlockShow(PageBlock)
+        * 1. TODO
         */    
         message Show {
             map<string, Model.Block> block = 1; // id -> block

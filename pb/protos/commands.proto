@@ -94,14 +94,14 @@ message Rpc {
         /*
          * Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
          * **Example scenario**
-         * 1A. Create Page on dashboard
+         * 1A. Create Page on a dashboard
          *     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
          *     2. Front -> MW: Rpc.Block.Close.Request(block: dashboard.id)
          *     3. Front <- MW: Rpc.Block.Close.Response(err)
          *     4. Front <- MW: Rpc.Block.Create.Response(page.id)
          *     5. Front <- MW: Rpc.Block.Open.Response(err)         
          *     6. Front <- MW: Event.Block.Show(page)
-         * 1B. Create Page on Page
+         * 1B. Create Page on a Page
          *     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
          *     2. Front <- MW: Rpc.Block.Create.Response(newPage.id)
          *     3. Front <- MW: Event.Block.Show(newPage)
@@ -134,12 +134,18 @@ message Rpc {
         /*
          * Update a Smart/Internal block. Request can contain a content/field/permission/children update
          * **Example scenarios**
-         * 1A. Update text block on page
-         * 1B. Update page on dashboard
-         * 1C. Update page on page
-         * 1D. Update page permission on a dashboard
-         * 1E. Update page children of the same page
-         * 1F. Update children of a layout block on a page
+         * Case A. Update text block on page
+         * 1. TODO
+         * Case B. Update page on dashboard
+         * 1. TODO
+         * Case C. Update page on page
+         * 1. TODO
+         * Case D. Update page permission on a dashboard
+         * 1. TODO
+         * Case E. Update page children of the same page
+         * 1. TODO
+         * Case F. Update children of a layout block on a page
+         * 1. TODO
         */        
         message Update {
             message Request {
@@ -164,7 +170,8 @@ message Rpc {
         }
 
         /*
-         *
+         * Block.Close – it means unsubscribe from a block. 
+         * Precondition: block should be opened.
         */
         message Close {
             message Request {
@@ -403,13 +410,17 @@ message Rpc {
         }
     }
 
+    /*
+     * Get info about a version of a middleware.
+     * Info is a string, that contains: BuildDate, GitCommit, GitBranch, GitState
+    */
     message Version {
         message Get {
             message Request {}
 
             message Response {
                 Error error = 1;
-                string version = 2;
+                string version = 2; // BuildDate, GitCommit, GitBranch, GitState
 
                 message Error {
                     Code code = 1;

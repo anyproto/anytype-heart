@@ -237,7 +237,7 @@ message Model {
     }
 
     /**
-    * Contains basic information about user account
+    * Contains basic information about a user account
     */
     message Account {
         string id = 1; // User's thread id
