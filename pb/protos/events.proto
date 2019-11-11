@@ -38,7 +38,7 @@ message Event {
         * Event to show internal blocks on a client
         */    
         message Show {
-            map<string, Model.Block> block = 1; // id -> block
+            map<string, Model.Block> blocks = 1; // id -> block
         }
 
         /*
@@ -46,7 +46,8 @@ message Event {
          * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
         */
         message ShowFullscreen {
-            Model.Block block = 1;
+            string rootId = 1; // Root block id
+            map<string, Model.Block> blocks = 2; // children of the root block
         }
 
         /*

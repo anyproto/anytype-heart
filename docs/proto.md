@@ -133,8 +133,9 @@
     - [Event.Block.Create](#anytype.Event.Block.Create)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.Show](#anytype.Event.Block.Show)
-    - [Event.Block.Show.BlockEntry](#anytype.Event.Block.Show.BlockEntry)
+    - [Event.Block.Show.BlocksEntry](#anytype.Event.Block.Show.BlocksEntry)
     - [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen)
+    - [Event.Block.ShowFullscreen.BlocksEntry](#anytype.Event.Block.ShowFullscreen.BlocksEntry)
     - [Event.Block.Update](#anytype.Event.Block.Update)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
@@ -1871,16 +1872,16 @@ Event to show internal blocks on a client
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [Event.Block.Show.BlockEntry](#anytype.Event.Block.Show.BlockEntry) | repeated | id -&gt; block |
+| blocks | [Event.Block.Show.BlocksEntry](#anytype.Event.Block.Show.BlocksEntry) | repeated | id -&gt; block |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Show.BlockEntry"></a>
+<a name="anytype.Event.Block.Show.BlocksEntry"></a>
 
-### Event.Block.Show.BlockEntry
+### Event.Block.Show.BlocksEntry
 
 
 
@@ -1903,7 +1904,24 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [Model.Block](#anytype.Model.Block) |  |  |
+| rootId | [string](#string) |  | Root block id |
+| blocks | [Event.Block.ShowFullscreen.BlocksEntry](#anytype.Event.Block.ShowFullscreen.BlocksEntry) | repeated | children of the root block |
+
+
+
+
+
+
+<a name="anytype.Event.Block.ShowFullscreen.BlocksEntry"></a>
+
+### Event.Block.ShowFullscreen.BlocksEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [Model.Block](#anytype.Model.Block) |  |  |
 
 
 
