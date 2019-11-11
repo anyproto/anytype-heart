@@ -131,11 +131,9 @@
     - [Event.Account.Show](#anytype.Event.Account.Show)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
-    - [Event.Block.Add.BlocksEntry](#anytype.Event.Block.Add.BlocksEntry)
     - [Event.Block.Create](#anytype.Event.Block.Create)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen)
-    - [Event.Block.ShowFullscreen.BlocksEntry](#anytype.Event.Block.ShowFullscreen.BlocksEntry)
     - [Event.Block.Update](#anytype.Event.Block.Update)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
@@ -1836,23 +1834,7 @@ Event to show internal blocks on a client
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blocks | [Event.Block.Add.BlocksEntry](#anytype.Event.Block.Add.BlocksEntry) | repeated | id -&gt; block |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Add.BlocksEntry"></a>
-
-### Event.Block.Add.BlocksEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [Model.Block](#anytype.Model.Block) |  |  |
+| blocks | [Model.Block](#anytype.Model.Block) | repeated | id -&gt; block |
 
 
 
@@ -1905,23 +1887,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
-| blocks | [Event.Block.ShowFullscreen.BlocksEntry](#anytype.Event.Block.ShowFullscreen.BlocksEntry) | repeated | children of the root block |
-
-
-
-
-
-
-<a name="anytype.Event.Block.ShowFullscreen.BlocksEntry"></a>
-
-### Event.Block.ShowFullscreen.BlocksEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [Model.Block](#anytype.Model.Block) |  |  |
+| blocks | [Model.Block](#anytype.Model.Block) | repeated | children of the root block |
 
 
 

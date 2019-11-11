@@ -38,7 +38,7 @@ message Event {
         * Event to show internal blocks on a client
         */    
         message Add {
-            map<string, Model.Block> blocks = 1; // id -> block
+            repeated Model.Block blocks = 1; // id -> block
         }
 
         /*
@@ -47,7 +47,7 @@ message Event {
         */
         message ShowFullscreen {
             string rootId = 1; // Root block id
-            map<string, Model.Block> blocks = 2; // children of the root block
+            repeated Model.Block blocks = 2; // children of the root block
         }
 
         /*
