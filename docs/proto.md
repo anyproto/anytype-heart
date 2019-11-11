@@ -134,6 +134,7 @@
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Block.Show.BlockEntry](#anytype.Event.Block.Show.BlockEntry)
+    - [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen)
     - [Event.Block.Update](#anytype.Event.Block.Update)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
@@ -438,6 +439,7 @@ Change.Multiple contains array of changes, for a list of blocks each.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| author | [Model.Account](#anytype.Model.Account) |  |  |
 | changes | [Change.Single.BlocksList](#anytype.Change.Single.BlocksList) | repeated |  |
 
 
@@ -464,6 +466,7 @@ Change.Single contains only one, single change, but for a list of blocks.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) | repeated |  |
+| author | [Model.Account](#anytype.Model.Account) |  |  |
 | text | [Change.Block.Content.Text](#anytype.Change.Block.Content.Text) |  |  |
 | fields | [Change.Block.Fields](#anytype.Change.Block.Fields) |  |  |
 | premissions | [Change.Block.Permissions](#anytype.Change.Block.Permissions) |  |  |
@@ -701,7 +704,8 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 <a name="anytype.Rpc.Block.Close"></a>
 
 ### Rpc.Block.Close
-
+Block.Close – it means unsubscribe from a block. 
+Precondition: block should be opened.
 
 
 
@@ -759,14 +763,14 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 ### Rpc.Block.Create
 Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
 **Example scenario**
-1A. Create Page on dashboard
+1A. Create Page on a dashboard
     1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
     2. Front -&gt; MW: Rpc.Block.Close.Request(block: dashboard.id)
     3. Front &lt;- MW: Rpc.Block.Close.Response(err)
     4. Front &lt;- MW: Rpc.Block.Create.Response(page.id)
     5. Front &lt;- MW: Rpc.Block.Open.Response(err)         
     6. Front &lt;- MW: Event.Block.Show(page)
-1B. Create Page on Page
+1B. Create Page on a Page
     1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
     2. Front &lt;- MW: Rpc.Block.Create.Response(newPage.id)
     3. Front &lt;- MW: Event.Block.Show(newPage)
@@ -974,12 +978,18 @@ Image/Video/File blocks then:
 ### Rpc.Block.Update
 Update a Smart/Internal block. Request can contain a content/field/permission/children update
 **Example scenarios**
-1A. Update text block on page
-1B. Update page on dashboard
-1C. Update page on page
-1D. Update page permission on a dashboard
-1E. Update page children of the same page
-1F. Update children of a layout block on a page
+Case A. Update text block on page
+1. TODO
+Case B. Update page on dashboard
+1. TODO
+Case C. Update page on page
+1. TODO
+Case D. Update page permission on a dashboard
+1. TODO
+Case E. Update page children of the same page
+1. TODO
+Case F. Update children of a layout block on a page
+1. TODO
 
 
 
@@ -1318,7 +1328,8 @@ Usage: send request with topic (Level) and description (message) from client to 
 <a name="anytype.Rpc.Version"></a>
 
 ### Rpc.Version
-
+Get info about a version of a middleware.
+Info is a string, that contains: BuildDate, GitCommit, GitBranch, GitState
 
 
 
@@ -1354,7 +1365,7 @@ Usage: send request with topic (Level) and description (message) from client to 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Version.Get.Response.Error](#anytype.Rpc.Version.Get.Response.Error) |  |  |
-| version | [string](#string) |  |  |
+| version | [string](#string) |  | BuildDate, GitCommit, GitBranch, GitState |
 
 
 
@@ -1766,6 +1777,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  | show wallet&#39;s accounts that were loaded from local or remote source |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
+| blockShowFullscreen | [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen) |  |  |
 | blockUpdate | [Event.Block.Update](#anytype.Event.Block.Update) |  |  |
 | blockCreate | [Event.Block.Create](#anytype.Event.Block.Create) |  |  |
 | userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
@@ -1818,7 +1830,9 @@ Message, that will be sent to the front on each account found after an AccountRe
 <a name="anytype.Event.Block.Create"></a>
 
 ### Event.Block.Create
-TODO: remove?
+Scenario: 
+1. Block A have been created on a client C1
+2. client C2 receives Event.Block.Create(Block A)
 
 
 | Field | Type | Label | Description |
@@ -1852,12 +1866,7 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Show"></a>
 
 ### Event.Block.Show
-General purpose event to show blocks on a client.
-Example scenarios:
-Case A: Page opened, TextBlock didn&#39;t exist, BlockShow(TextBlock)
-Case B: Page opened, TextBlock updated on a different client, BlockShow(TextBlock)
-Case C: Page opened, TextBlock updated on the same client, BlockShow(TextBlock)
-Case D: Dashboard opened, BlockShow(PageBlock)
+Event to show internal blocks on a client
 
 
 | Field | Type | Label | Description |
@@ -1885,10 +1894,28 @@ Case D: Dashboard opened, BlockShow(PageBlock)
 
 
 
+<a name="anytype.Event.Block.ShowFullscreen"></a>
+
+### Event.Block.ShowFullscreen
+Works with a smart blocks: Page, Dashboard
+Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| block | [Model.Block](#anytype.Model.Block) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Update"></a>
 
 ### Event.Block.Update
-TODO: remove?
+Updates from different clients, or from the local middleware
+Example scenarios:
+Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 
 
 | Field | Type | Label | Description |
@@ -2024,7 +2051,7 @@ Precondition: user A and user B opened the same block
 <a name="anytype.Model.Account"></a>
 
 ### Model.Account
-Contains basic information about user account
+Contains basic information about a user account
 
 
 | Field | Type | Label | Description |

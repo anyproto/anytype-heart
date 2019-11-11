@@ -1871,7 +1871,7 @@ func (m *ModelStructListValue) GetValues() []*ModelStructValue {
 }
 
 //*
-// Contains basic information about user account
+// Contains basic information about a user account
 type ModelAccount struct {
 	Id     string              `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name   string              `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`

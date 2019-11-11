@@ -84,16 +84,17 @@ message Change {
     message Single {
         message BlocksList {
             repeated string id = 1;
+            Model.Account author = 2;
             oneof change {
-                Block.Content.Text text = 2;
-                Block.Fields fields = 3;
-                Block.Permissions premissions = 4;
-                Block.ChildrenIds childrenIds = 5;
-                Block.Content.Page page = 6;
-                Block.Content.Dashboard dashboard = 7;
-                Block.Content.Video video = 8;
-                Block.Content.Image image = 9;
-                Block.Content.File file = 10;
+                Block.Content.Text text = 3;
+                Block.Fields fields = 4;
+                Block.Permissions premissions = 5;
+                Block.ChildrenIds childrenIds = 6;
+                Block.Content.Page page = 7;
+                Block.Content.Dashboard dashboard = 8;
+                Block.Content.Video video = 9;
+                Block.Content.Image image = 10;
+                Block.Content.File file = 11;
             }
         }
     }
@@ -103,7 +104,8 @@ message Change {
     */
     message Multiple {
         message BlocksList {
-            repeated Single.BlocksList changes = 1;
+            Model.Account author = 1;
+            repeated Single.BlocksList changes = 2;
         }
     }  
 
