@@ -130,10 +130,10 @@
     - [Event.Account](#anytype.Event.Account)
     - [Event.Account.Show](#anytype.Event.Account.Show)
     - [Event.Block](#anytype.Event.Block)
+    - [Event.Block.Add](#anytype.Event.Block.Add)
+    - [Event.Block.Add.BlocksEntry](#anytype.Event.Block.Add.BlocksEntry)
     - [Event.Block.Create](#anytype.Event.Block.Create)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
-    - [Event.Block.Show](#anytype.Event.Block.Show)
-    - [Event.Block.Show.BlocksEntry](#anytype.Event.Block.Show.BlocksEntry)
     - [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen)
     - [Event.Block.ShowFullscreen.BlocksEntry](#anytype.Event.Block.ShowFullscreen.BlocksEntry)
     - [Event.Block.Update](#anytype.Event.Block.Update)
@@ -1777,7 +1777,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  | show wallet&#39;s accounts that were loaded from local or remote source |
-| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
+| blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockShowFullscreen | [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen) |  |  |
 | blockUpdate | [Event.Block.Update](#anytype.Event.Block.Update) |  |  |
 | blockCreate | [Event.Block.Create](#anytype.Event.Block.Create) |  |  |
@@ -1828,6 +1828,37 @@ Message, that will be sent to the front on each account found after an AccountRe
 
 
 
+<a name="anytype.Event.Block.Add"></a>
+
+### Event.Block.Add
+Event to show internal blocks on a client
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blocks | [Event.Block.Add.BlocksEntry](#anytype.Event.Block.Add.BlocksEntry) | repeated | id -&gt; block |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Add.BlocksEntry"></a>
+
+### Event.Block.Add.BlocksEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [Model.Block](#anytype.Model.Block) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Create"></a>
 
 ### Event.Block.Create
@@ -1858,37 +1889,6 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Show"></a>
-
-### Event.Block.Show
-Event to show internal blocks on a client
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| blocks | [Event.Block.Show.BlocksEntry](#anytype.Event.Block.Show.BlocksEntry) | repeated | id -&gt; block |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Show.BlocksEntry"></a>
-
-### Event.Block.Show.BlocksEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [Model.Block](#anytype.Model.Block) |  |  |
 
 
 

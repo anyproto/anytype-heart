@@ -11,7 +11,7 @@ import "changes.proto";
 message Event {
     oneof message {    
         Account.Show accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
-        Block.Show blockShow = 2;
+        Block.Add blockAdd = 2;
         Block.ShowFullscreen blockShowFullscreen = 3;
         Block.Update blockUpdate = 4;
         Block.Create blockCreate = 5;
@@ -37,7 +37,7 @@ message Event {
         /* 
         * Event to show internal blocks on a client
         */    
-        message Show {
+        message Add {
             map<string, Model.Block> blocks = 1; // id -> block
         }
 
