@@ -6,7 +6,7 @@ package pb
 import (
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
-	_struct "github.com/golang/protobuf/ptypes/struct"
+	_struct "github.com/gogo/protobuf/types/struct"
 	io "io"
 	math "math"
 	math_bits "math/bits"

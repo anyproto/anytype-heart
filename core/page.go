@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/pb"
@@ -22,28 +21,12 @@ type Page struct {
 }
 
 func (page *Page) GetVersion(id string) (BlockVersion, error) {
-	files, err := page.node.Textile.Node().File(id)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(files.Files) == 0 {
-		return nil, errors.New("version block not found")
-	}
-
-	blockVersion := &pb.Block{}
-
-	plaintext, err := readFile(page.node.Textile.Node(), files.Files[0].File)
+	file, block, err := page.SmartBlock.GetVersionBlock(id)
 	if err != nil {
 		return nil, fmt.Errorf("readFile error: %s", err.Error())
 	}
 
-	err = proto.Unmarshal(plaintext, blockVersion)
-	if err != nil {
-		return nil, fmt.Errorf("page version proto unmarshal error: %s", err.Error())
-	}
-
-	version := &PageVersion{pb: blockVersion, VersionId: files.Block, Date: files.Date, User: files.User.Address}
+	version := &PageVersion{pb: block, VersionId: file.Block, Date: file.Date, User: file.User.Address}
 
 	return version, nil
 }
@@ -63,17 +46,17 @@ func (page *Page) GetCurrentVersion() (BlockVersion, error) {
 }
 
 func (page *Page) GetVersions(offset string, limit int, metaOnly bool) ([]BlockVersion, error) {
-	files, err := page.node.Textile.Node().Files(offset, limit, page.thread.Id)
+	files, blocks, err := page.SmartBlock.GetVersionsFiles(offset, limit, metaOnly)
 	if err != nil {
 		return nil, err
 	}
 
 	var versions []BlockVersion
-	if len(files.Items) == 0 {
+	if len(files) == 0 {
 		return versions, nil
 	}
 
-	for _, item := range files.Items {
+	for index, item := range files {
 		version := &PageVersion{VersionId: item.Block, Date: item.Date, User: item.User.Address}
 
 		if metaOnly {
@@ -81,19 +64,7 @@ func (page *Page) GetVersions(offset string, limit int, metaOnly bool) ([]BlockV
 			continue
 		}
 
-		block := &pb.Block{}
-
-		plaintext, err := readFile(page.node.Textile.Node(), item.Files[0].File)
-		if err != nil {
-			return nil, fmt.Errorf("readFile error: %s", err.Error())
-		}
-
-		err = proto.Unmarshal(plaintext, block)
-		if err != nil {
-			return nil, fmt.Errorf("page version proto unmarshal error: %s", err.Error())
-		}
-
-		version.pb = block
+		version.pb = blocks[index]
 		versions = append(versions, version)
 	}
 

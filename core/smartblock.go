@@ -24,31 +24,60 @@ func (smartBlock *SmartBlock) GetId() string {
 	return smartBlock.thread.Id
 }
 
-func (smartBlock *SmartBlock) GetVersionFile(id string) (*tpb.Files, []byte, error) {
-	files, err := smartBlock.node.textile().File(id)
+func (smartBlock *SmartBlock) GetVersionBlock(id string) (fileMeta *tpb.Files, block *pb.Block, err error) {
+	fileMeta, err = smartBlock.node.textile().File(id)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if len(files.Files) == 0 {
+	if len(fileMeta.Files) == 0 {
 		return nil, nil, fmt.Errorf("version block not found")
 	}
 
-	plaintext, err := readFile(smartBlock.node.textile(), files.Files[0].File)
+	plaintext, err := readFile(smartBlock.node.textile(), fileMeta.Files[0].File)
 	if err != nil {
 		return nil, nil, fmt.Errorf("readFile error: %s", err.Error())
 	}
 
-	return files, plaintext, err
-}
-
-func (smartBlock *SmartBlock) GetVersionsFiles(offset string, limit int, metaOnly bool) ([]*tpb.Files, error) {
-	files, err := smartBlock.node.textile().Files(offset, limit, smartBlock.thread.Id)
+	err = proto.Unmarshal(plaintext, block)
 	if err != nil {
-		return nil, err
+		return nil, nil, fmt.Errorf("unmarshal error: %s", err.Error())
 	}
 
-	return files.Items, nil
+	return fileMeta, block, err
+}
+
+func (smartBlock *SmartBlock) GetVersionsFiles(offset string, limit int, metaOnly bool) (filesMeta []*tpb.Files, blocks []*pb.Block, err error) {
+	files, err := smartBlock.node.textile().Files(offset, limit, smartBlock.thread.Id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	filesMeta = files.Items
+
+	if metaOnly {
+		return
+	}
+
+	for _, item := range files.Items {
+		block := &pb.Block{}
+
+		plaintext, err := readFile(smartBlock.node.Textile.Node(), item.Files[0].File)
+		if err != nil {
+			// todo: decide if it will be ok to have more meta than blocks content itself
+			// in case of error cut off filesMeta in order to have related indexes in both slices
+			return filesMeta[0:len(blocks)], blocks, fmt.Errorf("readFile error: %s", err.Error())
+		}
+
+		err = proto.Unmarshal(plaintext, block)
+		if err != nil {
+			return filesMeta, blocks, fmt.Errorf("page version proto unmarshal error: %s", err.Error())
+		}
+
+		blocks = append(blocks, block)
+	}
+
+	return
 }
 
 func (smartBlock *SmartBlock) AddVersion(newVersion *pb.Block) (versionId string, user string, date *timestamp.Timestamp, err error) {

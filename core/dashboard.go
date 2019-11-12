@@ -7,20 +7,10 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/gogo/protobuf/proto"
 	structpb "github.com/golang/protobuf/ptypes/struct"
-
-	tcore "github.com/textileio/go-textile/core"
 )
 
 type Dashboard struct {
 	SmartBlock
-}
-
-func (dashboard *Dashboard) GetThread() *tcore.Thread {
-	return dashboard.thread
-}
-
-func (dashboard *Dashboard) GetId() string {
-	return dashboard.thread.Id
 }
 
 func (dashboard *Dashboard) GetVersion(id string) (BlockVersion, error) {
@@ -65,17 +55,17 @@ func (dashboard *Dashboard) GetCurrentVersion() (BlockVersion, error) {
 }
 
 func (dashboard *Dashboard) GetVersions(offset string, limit int, metaOnly bool) ([]BlockVersion, error) {
-	files, err := dashboard.node.Textile.Node().Files(offset, limit, dashboard.thread.Id)
+	files, blocks, err := dashboard.SmartBlock.GetVersionsFiles(offset, limit, metaOnly)
 	if err != nil {
 		return nil, err
 	}
 
 	var versions []BlockVersion
-	if len(files.Items) == 0 {
+	if len(files) == 0 {
 		return versions, nil
 	}
 
-	for _, item := range files.Items {
+	for index, item := range files {
 		version := &DashboardVersion{VersionId: item.Block, Date: item.Date, User: item.User.Address}
 
 		if metaOnly {
@@ -83,19 +73,7 @@ func (dashboard *Dashboard) GetVersions(offset string, limit int, metaOnly bool)
 			continue
 		}
 
-		block := &pb.Block{}
-
-		plaintext, err := readFile(dashboard.node.Textile.Node(), item.Files[0].File)
-		if err != nil {
-			return nil, fmt.Errorf("readFile error: %s", err.Error())
-		}
-
-		err = proto.Unmarshal(plaintext, block)
-		if err != nil {
-			return nil, fmt.Errorf("dashboard version proto unmarshal error: %s", err.Error())
-		}
-
-		version.pb = block
+		version.pb = blocks[index]
 		versions = append(versions, version)
 	}
 

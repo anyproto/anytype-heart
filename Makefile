@@ -14,8 +14,7 @@ lint:
 	golint `go list ./... | grep -v /vendor/`
 
 protos:
-	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp)
-	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/golang/protobuf/ptypes/struct)
-	$(eval P_ANY := Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any)
-	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_ANY))
-	cd pb/protos; protoc --gogofaster_out=$(PKGMAP):.. *.proto
+	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types/timestamp)
+	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types/struct)
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT))
+	cd pb/protos; GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):.. *.proto
