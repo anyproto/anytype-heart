@@ -14,7 +14,7 @@ message Event {
         Block.Add blockAdd = 2;
         Block.ShowFullscreen blockShowFullscreen = 3;
         Block.Update blockUpdate = 4;
-        Block.Create blockCreate = 5;
+        Block.Delete blockDelete = 5;
 
         User.Block.TextRange userBlockTextRange = 6;
         User.Block.Join userBlockJoin = 7;
@@ -35,7 +35,16 @@ message Event {
     }
     message Block {
         /* 
-        * Event to show internal blocks on a client
+        * Event to show internal blocks on a client.
+         * Example Scenarios 
+         * A. Block Creation
+         * 1. Block A have been created on a client C1
+         * 2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
+         * B. Partial block load
+         * 1. Client C1 opens Page1, that contains, for example, 133 blocks.
+         * 2. M -> F: ShowFullScreen(Root, blocks1-50)
+         * 3. M -> F: Block.Add(blocks51-100)
+         * 3. M -> F: Block.Add(blocks101-133)
         */    
         message Add {
             repeated Model.Block blocks = 1; // id -> block
@@ -59,15 +68,6 @@ message Event {
             Change.Multiple.BlocksList changes = 1;
         }
 
-        /*
-         * Scenario: 
-         * 1. Block A have been created on a client C1
-         * 2. client C2 receives Event.Block.Create(Block A) 
-        */
-        message Create {
-            repeated Model.Block block = 1;
-        }
-
         /**
         * Middleware to front end event message, that will be sent on one of this scenarios:
         * Precondition: user A opened a block
@@ -77,7 +77,14 @@ message Event {
         message FilesUpload {
             repeated string filePath = 1; // filepaths to the files
             string blockId = 2; // if empty => create new blocks
-        }        
+        }   
+
+        /*
+         * 
+        */
+        message Delete {
+            string blockId = 1;
+        }                
     }
 
     message User {

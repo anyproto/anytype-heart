@@ -131,7 +131,7 @@
     - [Event.Account.Show](#anytype.Event.Account.Show)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
-    - [Event.Block.Create](#anytype.Event.Block.Create)
+    - [Event.Block.Delete](#anytype.Event.Block.Delete)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen)
     - [Event.Block.Update](#anytype.Event.Block.Update)
@@ -1778,7 +1778,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockShowFullscreen | [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen) |  |  |
 | blockUpdate | [Event.Block.Update](#anytype.Event.Block.Update) |  |  |
-| blockCreate | [Event.Block.Create](#anytype.Event.Block.Create) |  |  |
+| blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
@@ -1829,7 +1829,16 @@ Message, that will be sent to the front on each account found after an AccountRe
 <a name="anytype.Event.Block.Add"></a>
 
 ### Event.Block.Add
-Event to show internal blocks on a client
+Event to show internal blocks on a client.
+Example Scenarios 
+A. Block Creation
+1. Block A have been created on a client C1
+2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
+B. Partial block load
+1. Client C1 opens Page1, that contains, for example, 133 blocks.
+2. M -&gt; F: ShowFullScreen(Root, blocks1-50)
+3. M -&gt; F: Block.Add(blocks51-100)
+3. M -&gt; F: Block.Add(blocks101-133)
 
 
 | Field | Type | Label | Description |
@@ -1841,17 +1850,15 @@ Event to show internal blocks on a client
 
 
 
-<a name="anytype.Event.Block.Create"></a>
+<a name="anytype.Event.Block.Delete"></a>
 
-### Event.Block.Create
-Scenario: 
-1. Block A have been created on a client C1
-2. client C2 receives Event.Block.Create(Block A)
+### Event.Block.Delete
+
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [Model.Block](#anytype.Model.Block) | repeated |  |
+| blockId | [string](#string) |  |  |
 
 
 
