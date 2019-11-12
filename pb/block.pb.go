@@ -6,7 +6,7 @@ package pb
 import (
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
-	_struct "github.com/gogo/protobuf/types/struct"
+	types "github.com/gogo/protobuf/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -307,7 +307,7 @@ func (BlockContentPageStyle) EnumDescriptor() ([]byte, []int) {
 
 type Block struct {
 	Id          string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Fields      *_struct.Struct   `protobuf:"bytes,2,opt,name=fields,proto3" json:"fields,omitempty"`
+	Fields      *types.Struct     `protobuf:"bytes,2,opt,name=fields,proto3" json:"fields,omitempty"`
 	Permissions *BlockPermissions `protobuf:"bytes,3,opt,name=permissions,proto3" json:"permissions,omitempty"`
 	ChildrenIds []string          `protobuf:"bytes,4,rep,name=childrenIds,proto3" json:"childrenIds,omitempty"`
 	BlockById   map[string]*Block `protobuf:"bytes,5,rep,name=blockById,proto3" json:"blockById,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
@@ -415,7 +415,7 @@ func (m *Block) GetId() string {
 	return ""
 }
 
-func (m *Block) GetFields() *_struct.Struct {
+func (m *Block) GetFields() *types.Struct {
 	if m != nil {
 		return m.Fields
 	}
@@ -3079,7 +3079,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Fields == nil {
-				m.Fields = &_struct.Struct{}
+				m.Fields = &types.Struct{}
 			}
 			if err := m.Fields.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
