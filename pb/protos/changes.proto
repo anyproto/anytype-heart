@@ -3,7 +3,13 @@ package anytype;
 option go_package = "pb";
 import "models.proto";
 
+/*
+ * Change contains single block change or list of block changes.
+*/
 message Change {
+    /*
+    * Change.Block contains only one, single change for one block.
+    */
     message Block {
         message Fields {
             Model.Struct fields = 1;
@@ -72,26 +78,34 @@ message Change {
         }
     }
 
+    /*
+    * Change.Single contains only one, single change, but for a list of blocks.
+    */
     message Single {
         message BlocksList {
             repeated string id = 1;
+            Model.Account author = 2;
             oneof change {
-                Block.Content.Text text = 2;
-                Block.Fields fields = 3;
-                Block.Permissions premissions = 4;
-                Block.ChildrenIds childrenIds = 5;
-                Block.Content.Page page = 6;
-                Block.Content.Dashboard dashboard = 7;
-                Block.Content.Video video = 8;
-                Block.Content.Image image = 9;
-                Block.Content.File file = 10;
+                Block.Content.Text text = 3;
+                Block.Fields fields = 4;
+                Block.Permissions premissions = 5;
+                Block.ChildrenIds childrenIds = 6;
+                Block.Content.Page page = 7;
+                Block.Content.Dashboard dashboard = 8;
+                Block.Content.Video video = 9;
+                Block.Content.Image image = 10;
+                Block.Content.File file = 11;
             }
         }
     }
 
+    /*
+    * Change.Multiple contains array of changes, for a list of blocks each.
+    */
     message Multiple {
         message BlocksList {
-            repeated Single.BlocksList changes = 1;
+            Model.Account author = 1;
+            repeated Single.BlocksList changes = 2;
         }
     }  
 
