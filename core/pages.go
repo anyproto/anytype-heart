@@ -88,7 +88,7 @@ func (t *Textile) DuplicatePage(id string, parentId string) (mh.Multihash, error
 		go func(thrd *Thread) {
 			defer wg.Done()
 
-			config := pb.AddThreadConfig{
+			config := model.AddThreadConfig{
 				Name: thrd.Name,
 				Key:  ksuid.New().String(),
 				Schema: &pb.AddThreadConfig_Schema{
@@ -122,16 +122,16 @@ func (t *Textile) DuplicatePage(id string, parentId string) (mh.Multihash, error
 				config.ChildrenIds = append(config.ChildrenIds, id.Pretty())
 			}
 
-			if thrd.ttype == pb.Thread_READ_ONLY && !thrd.writable(t.account.Address()) {
-				config.Type = pb.Thread_OPEN
-				config.Sharing = pb.Thread_SHARED
+			if thrd.ttype == model.Thread_READ_ONLY && !thrd.writable(t.account.Address()) {
+				config.Type = model.Thread_OPEN
+				config.Sharing = model.Thread_SHARED
 			} else {
 				config.Type = thrd.ttype
 				config.Sharing = thrd.sharing
 			}
 
 			if os.Getenv("ANYTYPE_DUPLICATE_READONLY") == "1" {
-				config.Type = pb.Thread_READ_ONLY
+				config.Type = model.Thread_READ_ONLY
 			}
 
 			newThrd, err := t.AddThread(config, sk, t.account.Address(), true, false)
@@ -228,7 +228,7 @@ func (a *Anytype) PageView(id string) (*pb.Page, error) {
 		Id:        t.Id,
 		Name:      name,
 		Initiator: t.Initiator,
-		Type:      pb.Page_Type(t.Type),
+		Type:      model.Page_Type(t.Type),
 		Icon:      icon,
 		Archived:  false,
 	}
@@ -254,7 +254,7 @@ func (a *Anytype) Page(id string) (*Page, error) {
 			Id:        t.Id,
 			Name:      name,
 			Initiator: tv.Initiator,
-			Type:      pb.Page_Type(tv.Type),
+			Type:      model.Page_Type(tv.Type),
 			Icon:      icon,
 			Archived:  false,
 			Children:  nil,

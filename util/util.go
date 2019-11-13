@@ -5,6 +5,9 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 func DiffStringSlice(old, new []string) (removed []string, added []string) {
@@ -64,3 +67,20 @@ func GzipUncompress(b []byte) ([]byte, error) {
 	return resB.Bytes(), nil
 }
 
+func CastTimestampFromGogo(tsP *types.Timestamp) *types.Timestamp {
+	if tsP == nil {
+		return nil
+	}
+
+	ts := types.Timestamp(*tsP)
+	return &ts
+}
+
+func CastTimestampToGogo(tsP *timestamp.Timestamp) *types.Timestamp {
+	if tsP == nil {
+		return nil
+	}
+
+	ts := types.Timestamp(*tsP)
+	return &ts
+}

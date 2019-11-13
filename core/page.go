@@ -3,9 +3,11 @@ package core
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -26,7 +28,7 @@ func (page *Page) GetVersion(id string) (BlockVersion, error) {
 		return nil, fmt.Errorf("readFile error: %s", err.Error())
 	}
 
-	version := &PageVersion{pb: block, VersionId: file.Block, Date: file.Date, User: file.User.Address}
+	version := &PageVersion{pb: block, VersionId: file.Block, Date: util.CastTimestampToGogo(file.Date), User: file.User.Address}
 
 	return version, nil
 }
@@ -57,7 +59,7 @@ func (page *Page) GetVersions(offset string, limit int, metaOnly bool) ([]BlockV
 	}
 
 	for index, item := range files {
-		version := &PageVersion{VersionId: item.Block, Date: item.Date, User: item.User.Address}
+		version := &PageVersion{VersionId: item.Block, Date: util.CastTimestampToGogo(item.Date), User: item.User.Address}
 
 		if metaOnly {
 			versions = append(versions, version)
@@ -71,13 +73,13 @@ func (page *Page) GetVersions(offset string, limit int, metaOnly bool) ([]BlockV
 	return versions, nil
 }
 
-func (page *Page) AddVersion(dependentBlocks map[string]BlockVersion, fields *structpb.Struct, children []string, content pb.IsBlockContent) error {
-	newVersion := &PageVersion{pb: &pb.Block{}}
+func (page *Page) AddVersion(dependentBlocks map[string]BlockVersion, fields *types.Struct, children []string, content model.IsBlockContent) error {
+	newVersion := &PageVersion{pb: &storage.BlockWithDependentBlocks{}}
 
-	if newVersionContent, ok := content.(*pb.BlockContentOfPage); !ok {
+	if newVersionContent, ok := content.(*model.BlockContentOfPage); !ok {
 		return fmt.Errorf("unxpected smartblock type")
 	} else {
-		newVersion.pb.Content = newVersionContent
+		newVersion.pb.Block.Content = newVersionContent
 	}
 
 	lastVersion, err := page.GetCurrentVersion()
@@ -98,8 +100,8 @@ func (page *Page) AddVersion(dependentBlocks map[string]BlockVersion, fields *st
 			children = lastVersion.GetChildrenIds()
 		}
 
-		lastVersionB, _ := proto.Marshal(lastVersion.(*PageVersion).pb.Content.(*pb.BlockContentOfPage).Page)
-		newVersionB, _ := proto.Marshal(newVersion.pb.Content.(*pb.BlockContentOfPage).Page)
+		lastVersionB, _ := proto.Marshal(lastVersion.(*PageVersion).pb.Block.Content.(*model.BlockContentOfPage).Page)
+		newVersionB, _ := proto.Marshal(newVersion.pb.Block.Content.(*model.BlockContentOfPage).Page)
 		if string(lastVersionB) == string(newVersionB) {
 			log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
 			// do not insert the new version if no blocks have changed

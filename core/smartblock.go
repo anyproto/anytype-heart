@@ -3,9 +3,10 @@ package core
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/gogo/protobuf/types"
 	tcore "github.com/textileio/go-textile/core"
 	mill2 "github.com/textileio/go-textile/mill"
 	tpb "github.com/textileio/go-textile/pb"
@@ -24,7 +25,7 @@ func (smartBlock *SmartBlock) GetId() string {
 	return smartBlock.thread.Id
 }
 
-func (smartBlock *SmartBlock) GetVersionBlock(id string) (fileMeta *tpb.Files, block *pb.Block, err error) {
+func (smartBlock *SmartBlock) GetVersionBlock(id string) (fileMeta *tpb.Files, block *storage.BlockWithDependentBlocks, err error) {
 	fileMeta, err = smartBlock.node.textile().File(id)
 	if err != nil {
 		return nil, nil, err
@@ -47,7 +48,7 @@ func (smartBlock *SmartBlock) GetVersionBlock(id string) (fileMeta *tpb.Files, b
 	return fileMeta, block, err
 }
 
-func (smartBlock *SmartBlock) GetVersionsFiles(offset string, limit int, metaOnly bool) (filesMeta []*tpb.Files, blocks []*pb.Block, err error) {
+func (smartBlock *SmartBlock) GetVersionsFiles(offset string, limit int, metaOnly bool) (filesMeta []*tpb.Files, blocks []*storage.BlockWithDependentBlocks, err error) {
 	files, err := smartBlock.node.textile().Files(offset, limit, smartBlock.thread.Id)
 	if err != nil {
 		return nil, nil, err
@@ -60,7 +61,7 @@ func (smartBlock *SmartBlock) GetVersionsFiles(offset string, limit int, metaOnl
 	}
 
 	for _, item := range files.Items {
-		block := &pb.Block{}
+		block := &storage.BlockWithDependentBlocks{}
 
 		plaintext, err := readFile(smartBlock.node.Textile.Node(), item.Files[0].File)
 		if err != nil {
@@ -80,7 +81,7 @@ func (smartBlock *SmartBlock) GetVersionsFiles(offset string, limit int, metaOnl
 	return
 }
 
-func (smartBlock *SmartBlock) AddVersion(newVersion *pb.Block) (versionId string, user string, date *timestamp.Timestamp, err error) {
+func (smartBlock *SmartBlock) AddVersion(newVersion *storage.BlockWithDependentBlocks) (versionId string, user string, date *types.Timestamp, err error) {
 	var newVersionB []byte
 	newVersionB, err = proto.Marshal(newVersion)
 	if err != nil {
@@ -110,7 +111,7 @@ func (smartBlock *SmartBlock) AddVersion(newVersion *pb.Block) (versionId string
 
 	var caption string
 
-	if name, exist := newVersion.GetFields().Fields["name"]; exist {
+	if name, exist := newVersion.Block.GetFields().Fields["name"]; exist {
 		caption = name.String()
 	}
 
@@ -128,7 +129,7 @@ func (smartBlock *SmartBlock) AddVersion(newVersion *pb.Block) (versionId string
 	}
 
 	if newBlock != nil {
-		date = newBlock.Date
+		date = util.CastTimestampToGogo(newBlock.Date)
 	}
 
 	return

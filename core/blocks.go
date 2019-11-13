@@ -3,7 +3,7 @@ package core
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/schema"
 	mh "github.com/multiformats/go-multihash"
 	uuid "github.com/satori/go.uuid"
@@ -14,15 +14,15 @@ type CreateBlockTargetPosition string
 const CreateBlockTargetPositionAfter CreateBlockTargetPosition = "after"
 const CreateBlockTargetPositionBefore CreateBlockTargetPosition = "before"
 
-func (a *Anytype) CreateBlock(content pb.IsBlockContent) (Block, error) {
+func (a *Anytype) CreateBlock(content model.IsBlockContent) (Block, error) {
 	switch content.(type) {
-	case *pb.BlockContentOfPage:
+	case *model.BlockContentOfPage:
 		thrd, err := a.newBlockThread(schema.Page)
 		if err != nil {
 			return nil, err
 		}
 		return &Page{SmartBlock{thread: thrd, node: a}}, nil
-	case *pb.BlockContentOfDashboard:
+	case *model.BlockContentOfDashboard:
 		thrd, err := a.newBlockThread(schema.Dashboard)
 		if err != nil {
 			return nil, err
@@ -37,8 +37,9 @@ func (a *Anytype) CreateBlock(content pb.IsBlockContent) (Block, error) {
 	}
 }
 
-func (a *Anytype) AddBlock(target string, targetPosition CreateBlockTargetPosition, content pb.IsBlockContent) (*Block, error) {
+func (a *Anytype) AddBlock(target string, targetPosition CreateBlockTargetPosition, content model.IsBlockContent) (*Block, error) {
 	// todo: to be implemented
+	return nil, nil
 }
 
 func (a *Anytype) GetBlock(id string) (Block, error) {

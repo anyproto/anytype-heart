@@ -1,13 +1,12 @@
 package core
 
 import (
-	"github.com/anytypeio/go-anytype-library/pb"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/gogo/protobuf/types"
 )
 
 type SimpleBlockVersion struct {
-	pb                      *pb.Block
+	pb                      *model.Block
 	parentSmartBlockVersion BlockVersion
 	node                    *Anytype
 }
@@ -24,7 +23,7 @@ func (blockVersion *SimpleBlockVersion) GetUser() string {
 	return blockVersion.parentSmartBlockVersion.GetUser()
 }
 
-func (blockVersion *SimpleBlockVersion) GetDate() *timestamp.Timestamp {
+func (blockVersion *SimpleBlockVersion) GetDate() *types.Timestamp {
 	return blockVersion.parentSmartBlockVersion.GetDate()
 }
 
@@ -32,21 +31,21 @@ func (blockVersion *SimpleBlockVersion) GetChildrenIds() []string {
 	return blockVersion.pb.ChildrenIds
 }
 
-func (blockVersion *SimpleBlockVersion) GetPermissions() *pb.BlockPermissions {
+func (blockVersion *SimpleBlockVersion) GetPermissions() *model.BlockPermissions {
 	return blockVersion.pb.GetPermissions()
 }
 
-func (blockVersion *SimpleBlockVersion) GetExternalFields() *structpb.Struct {
+func (blockVersion *SimpleBlockVersion) GetExternalFields() *types.Struct {
 	// simple blocks can't have fields
 	return nil
 }
 
-func (blockVersion *SimpleBlockVersion) GetFields() *structpb.Struct {
+func (blockVersion *SimpleBlockVersion) GetFields() *types.Struct {
 	// simple blocks can't have fields
 	return nil
 }
 
-func (blockVersion *SimpleBlockVersion) GetContent() pb.IsBlockContent {
+func (blockVersion *SimpleBlockVersion) GetContent() model.IsBlockContent {
 	return blockVersion.pb.Content
 }
 

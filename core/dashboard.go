@@ -1,12 +1,13 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/gogo/protobuf/types"
 )
 
 type Dashboard struct {
@@ -14,28 +15,12 @@ type Dashboard struct {
 }
 
 func (dashboard *Dashboard) GetVersion(id string) (BlockVersion, error) {
-	files, err := dashboard.node.Textile.Node().File(id)
+	file, block, err := dashboard.SmartBlock.GetVersionBlock(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetVersionBlock error: %s", err.Error())
 	}
 
-	if len(files.Files) == 0 {
-		return nil, errors.New("version block not found")
-	}
-
-	blockVersion := &pb.Block{}
-
-	plaintext, err := readFile(dashboard.node.Textile.Node(), files.Files[0].File)
-	if err != nil {
-		return nil, fmt.Errorf("readFile error: %s", err.Error())
-	}
-
-	err = proto.Unmarshal(plaintext, blockVersion)
-	if err != nil {
-		return nil, fmt.Errorf("dashboard version proto unmarshal error: %s", err.Error())
-	}
-
-	version := &DashboardVersion{pb: blockVersion, VersionId: files.Block, Date: files.Date, User: files.User.Address}
+	version := &DashboardVersion{pb: block, VersionId: file.Block, Date: util.CastTimestampToGogo(file.Date), User: file.User.Address}
 
 	return version, nil
 }
@@ -66,7 +51,7 @@ func (dashboard *Dashboard) GetVersions(offset string, limit int, metaOnly bool)
 	}
 
 	for index, item := range files {
-		version := &DashboardVersion{VersionId: item.Block, Date: item.Date, User: item.User.Address}
+		version := &DashboardVersion{VersionId: item.Block, Date: util.CastTimestampToGogo(item.Date), User: item.User.Address}
 
 		if metaOnly {
 			versions = append(versions, version)
@@ -80,13 +65,13 @@ func (dashboard *Dashboard) GetVersions(offset string, limit int, metaOnly bool)
 	return versions, nil
 }
 
-func (dashboard *Dashboard) AddVersion(dependentBlocks map[string]BlockVersion, fields *structpb.Struct, children []string, content pb.IsBlockContent) error {
-	newVersion := &DashboardVersion{pb: &pb.Block{}}
+func (dashboard *Dashboard) AddVersion(dependentBlocks map[string]BlockVersion, fields *types.Struct, children []string, content model.IsBlockContent) error {
+	newVersion := &DashboardVersion{pb: &storage.BlockWithDependentBlocks{}}
 
-	if newVersionContent, ok := content.(*pb.BlockContentOfDashboard); !ok {
+	if newVersionContent, ok := content.(*model.BlockContentOfDashboard); !ok {
 		return fmt.Errorf("unxpected smartblock type")
 	} else {
-		newVersion.pb.Content = newVersionContent
+		newVersion.pb.Block.Content = newVersionContent
 	}
 
 	lastVersion, err := dashboard.GetCurrentVersion()
@@ -107,8 +92,8 @@ func (dashboard *Dashboard) AddVersion(dependentBlocks map[string]BlockVersion, 
 			children = lastVersion.GetChildrenIds()
 		}
 
-		lastVersionB, _ := proto.Marshal(lastVersion.(*DashboardVersion).pb.Content.(*pb.BlockContentOfDashboard).Dashboard)
-		newVersionB, _ := proto.Marshal(newVersion.pb.Content.(*pb.BlockContentOfDashboard).Dashboard)
+		lastVersionB, _ := proto.Marshal(lastVersion.(*DashboardVersion).pb.Block.Content.(*model.BlockContentOfDashboard).Dashboard)
+		newVersionB, _ := proto.Marshal(newVersion.pb.Block.Content.(*model.BlockContentOfDashboard).Dashboard)
 		if string(lastVersionB) == string(newVersionB) {
 			log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
 			// do not insert the new version if no blocks have changed

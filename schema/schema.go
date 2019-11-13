@@ -15,5 +15,3 @@ var Dashboard = `
   "mill": "/blob"
 }
 `
-
-

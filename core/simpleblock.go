@@ -3,9 +3,9 @@ package core
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/proto"
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/gogo/protobuf/types"
 )
 
 type SimpleBlock struct {
@@ -64,7 +64,7 @@ func (simpleBlock *SimpleBlock) GetVersions(offset string, limit int, metaOnly b
 	return versions, nil
 }
 
-func (simpleBlock *SimpleBlock) AddVersion(dependentBlocks map[string]BlockVersion, fields *structpb.Struct, children []string, content pb.IsBlockContent) error {
+func (simpleBlock *SimpleBlock) AddVersion(dependentBlocks map[string]BlockVersion, fields *types.Struct, children []string, content model.IsBlockContent) error {
 	if fields != nil {
 		return fmt.Errorf("simpleBlock simpleBlocks can't store fields")
 	}
@@ -73,10 +73,10 @@ func (simpleBlock *SimpleBlock) AddVersion(dependentBlocks map[string]BlockVersi
 		return fmt.Errorf("simpleBlock simpleBlocks can't store dependent simpleBlocks")
 	}
 
-	newVersion := &SimpleBlockVersion{pb: &pb.Block{}}
+	newVersion := &SimpleBlockVersion{pb: &model.Block{}}
 
 	switch content.(type) {
-	case *pb.BlockContentOfPage, *pb.BlockContentOfDashboard, *pb.BlockContentOfDataview:
+	case *model.BlockContentOfPage, *model.BlockContentOfDashboard, *model.BlockContentOfDataview:
 		return fmt.Errorf("unxpected smartsimpleBlock type")
 	}
 

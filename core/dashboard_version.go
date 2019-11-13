@@ -1,16 +1,16 @@
 package core
 
 import (
-	"github.com/anytypeio/go-anytype-library/pb"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/gogo/protobuf/types"
 )
 
 type DashboardVersion struct {
-	pb        *pb.Block
+	pb        *storage.BlockWithDependentBlocks
 	VersionId string
 	User      string
-	Date      *timestamp.Timestamp
+	Date      *types.Timestamp
 }
 
 func (ver *DashboardVersion) GetVersionId() string {
@@ -18,14 +18,14 @@ func (ver *DashboardVersion) GetVersionId() string {
 }
 
 func (ver *DashboardVersion) GetBlockId() string {
-	return ver.pb.Id
+	return ver.pb.Block.Id
 }
 
 func (ver *DashboardVersion) GetUser() string {
 	return ver.User
 }
 
-func (ver *DashboardVersion) GetDate() *timestamp.Timestamp {
+func (ver *DashboardVersion) GetDate() *types.Timestamp {
 	return ver.Date
 }
 
@@ -38,30 +38,35 @@ func (ver *DashboardVersion) GetNewVersionsOfBlocks(blocks chan<- []BlockVersion
 func (ver *DashboardVersion) GetDependentBlocks() map[string]BlockVersion {
 	var m = make(map[string]BlockVersion, len(ver.pb.BlockById))
 	for blockId, block := range ver.pb.BlockById {
-		m[blockId] = &DashboardVersion{pb: block, VersionId: ver.VersionId, User: ver.User, Date: ver.Date}
+		switch block.Content.(type) {
+		case *model.BlockContentOfDashboard:
+			m[blockId] = &DashboardVersion{pb: &storage.BlockWithDependentBlocks{Block: block}, VersionId: ver.VersionId, User: ver.User, Date: ver.Date}
+		case *model.BlockContentOfPage:
+			m[blockId] = &PageVersion{pb: &storage.BlockWithDependentBlocks{Block: block}, VersionId: ver.VersionId, User: ver.User, Date: ver.Date}
+		}
 	}
 	return m
 }
 
 func (ver *DashboardVersion) GetChildrenIds() []string {
-	return ver.pb.ChildrenIds
+	return ver.pb.Block.ChildrenIds
 }
 
-func (ver *DashboardVersion) GetFields() *structpb.Struct {
-	return ver.pb.Fields
+func (ver *DashboardVersion) GetFields() *types.Struct {
+	return ver.pb.Block.Fields
 }
 
-func (ver *DashboardVersion) GetExternalFields() *structpb.Struct {
-	return &structpb.Struct{Fields: map[string]*structpb.Value{
-		"name": ver.pb.Fields.Fields["name"],
-		"icon": ver.pb.Fields.Fields["icon"],
+func (ver *DashboardVersion) GetExternalFields() *types.Struct {
+	return &types.Struct{Fields: map[string]*types.Value{
+		"name": ver.pb.Block.Fields.Fields["name"],
+		"icon": ver.pb.Block.Fields.Fields["icon"],
 	}}
 }
 
-func (ver *DashboardVersion) GetPermissions() *pb.BlockPermissions {
-	return ver.pb.Permissions
+func (ver *DashboardVersion) GetPermissions() *model.BlockPermissions {
+	return ver.pb.Block.Permissions
 }
 
-func (ver *DashboardVersion) GetContent() pb.IsBlockContent {
-	return ver.pb.Content
+func (ver *DashboardVersion) GetContent() model.IsBlockContent {
+	return ver.pb.Block.Content
 }

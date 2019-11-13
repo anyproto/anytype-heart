@@ -3,10 +3,9 @@ package core
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/proto"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/gogo/protobuf/types"
 	tcore "github.com/textileio/go-textile/core"
 )
 
@@ -19,7 +18,7 @@ type Block interface {
 	GetCurrentVersion() (BlockVersion, error)
 	// AddVersion adds the new version of block's
 	// if arg is nil it will be taken from the last version
-	AddVersion(dependentBlocks map[string]BlockVersion, fields *structpb.Struct, children []string, content pb.IsBlockContent) error
+	AddVersion(dependentBlocks map[string]BlockVersion, fields *types.Struct, children []string, content model.IsBlockContent) error
 	// SubscribeForEvents provide a way to subscribe for the block and its children events
 	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func())
 	// PublishClientEvent gives a way to push the new client-side event e.g. carriage position change
@@ -31,17 +30,17 @@ type BlockVersion interface {
 	GetBlockId() string
 	GetVersionId() string
 	GetUser() string
-	GetDate() *timestamp.Timestamp
+	GetDate() *types.Timestamp
 	// GetChildrenIds returns IDs of children blocks
 	GetChildrenIds() []string
 	// GetPermissions returns permissions
-	GetPermissions() *pb.BlockPermissions
+	GetPermissions() *model.BlockPermissions
 	// GetExternalFields returns fields supposed to be viewable when block not opened
-	GetExternalFields() *structpb.Struct
+	GetExternalFields() *types.Struct
 	// GetFields returns all block fields
-	GetFields() *structpb.Struct
+	GetFields() *types.Struct
 	// GetContent returns the content interface
-	GetContent() pb.IsBlockContent
+	GetContent() model.IsBlockContent
 	// GetDependentBlocks gives the initial version of dependent blocks
 	// it can contain blocks in the not fully loaded state, e.g. images in the state of DOWNLOADING
 	GetDependentBlocks() map[string]BlockVersion
@@ -52,9 +51,9 @@ type BlockVersion interface {
 
 var ErrorNotSmartBlock = fmt.Errorf("can't retrieve thread for not smart block")
 
-func (anytype *Anytype) getThreadForBlock(b *pb.Block) (*tcore.Thread, error) {
+func (anytype *Anytype) getThreadForBlock(b *model.Block) (*tcore.Thread, error) {
 	switch b.Content.(type) {
-	case *pb.BlockContentOfPage, *pb.BlockContentOfDashboard:
+	case *model.BlockContentOfPage, *model.BlockContentOfDashboard:
 		return anytype.Textile.Node().Thread(b.Id), nil
 	default:
 		return nil, ErrorNotSmartBlock
