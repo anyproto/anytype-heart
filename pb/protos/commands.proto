@@ -30,7 +30,8 @@ message Rpc {
             message Move {
                 message Request {
                     string blockId = 1;
-                    bool moveForward = 2; // Move direction. If true,
+                    bool moveForward = 2; // Move direction. If true, move forward
+                    string contextId = 3; // id of the context block
                 }
 
                 message Response {
@@ -72,6 +73,7 @@ message Rpc {
         message Open {
             message Request {
                 string id = 1;
+                string contextId = 2; // id of the context block
             }
 
             message Response {
@@ -111,6 +113,8 @@ message Rpc {
                 anytype.model.Block block = 1;
                 string targetId = 2;
                 anytype.model.Block.Position position = 3;
+                string contextId = 4; // id of the context block
+                string parentId = 5; // id of the parent block
             }
 
             message Response {
@@ -150,6 +154,7 @@ message Rpc {
         message Update {
             message Request {
                 Change.Multiple.BlocksList changes = 1;
+                string contextId = 2; // id of the context block
             }
 
             message Response {
@@ -176,6 +181,7 @@ message Rpc {
         message Close {
             message Request {
                 string id = 1;
+                string contextId = 2; // id of the context block
             }
 
             message Response {

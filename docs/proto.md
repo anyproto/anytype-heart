@@ -181,7 +181,8 @@
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
-| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | rpc BlockFilesUpload (Block Rpc.History.Move.Request) returns (BlockRpc..History Move.Response); |
+| BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) | TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response); |
+| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | TODO: rpc BlockFilesUpload () returns (); |
 
  
 
@@ -317,7 +318,7 @@ Change.Block contains only one, single change for one block.
 | style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 | marks | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
 | toggleable | [bool](#bool) |  |  |
-| markerType | [model.Block.Content.Text.MarkerType](#anytype.model.Block.Content.Text.MarkerType) |  |  |
+| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
 | checkable | [bool](#bool) |  |  |
 | checked | [bool](#bool) |  |  |
 
@@ -673,6 +674,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -743,6 +745,8 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | block | [model.Block](#anytype.model.Block) |  |  |
 | targetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| contextId | [string](#string) |  | id of the context block |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -817,7 +821,8 @@ Block history: switch between versions (lib context: switch block head), move fo
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| moveForward | [bool](#bool) |  | Move direction. If true, |
+| moveForward | [bool](#bool) |  | Move direction. If true, move forward |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -888,6 +893,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -957,6 +963,7 @@ Case F. Update children of a layout block on a page
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1797,6 +1804,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blocks | [model.Block](#anytype.model.Block) | repeated | id -&gt; block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1812,6 +1820,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1831,6 +1840,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1848,6 +1858,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | children of the root block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1865,6 +1876,7 @@ Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1903,6 +1915,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that opened a block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1921,6 +1934,7 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that left the block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1940,6 +1954,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected blocks |
 | blockIdsArray | [string](#string) | repeated | Ids of selected blocks. |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1960,6 +1975,7 @@ Precondition: user A and user B opened the same block
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected a text |
 | blockId | [string](#string) |  | Id of the text block, that have a selection |
 | range | [model.Range](#anytype.model.Range) |  | Range of the selection |
+| contextId | [string](#string) |  | id of the context block |
 
 
 

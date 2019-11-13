@@ -352,7 +352,8 @@ var xxx_messageInfo_EventBlock proto.InternalMessageInfo
 // 3. M -> F: Block.Add(blocks51-100)
 // 3. M -> F: Block.Add(blocks101-133)
 type EventBlockAdd struct {
-	Blocks []*model.Block `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	Blocks    []*model.Block `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	ContextId string         `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventBlockAdd) Reset()         { *m = EventBlockAdd{} }
@@ -395,12 +396,20 @@ func (m *EventBlockAdd) GetBlocks() []*model.Block {
 	return nil
 }
 
+func (m *EventBlockAdd) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 //
 // Works with a smart blocks: Page, Dashboard
 // Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
 type EventBlockShowFullscreen struct {
-	RootId string         `protobuf:"bytes,1,opt,name=rootId,proto3" json:"rootId,omitempty"`
-	Blocks []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	RootId    string         `protobuf:"bytes,1,opt,name=rootId,proto3" json:"rootId,omitempty"`
+	Blocks    []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	ContextId string         `protobuf:"bytes,3,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventBlockShowFullscreen) Reset()         { *m = EventBlockShowFullscreen{} }
@@ -450,12 +459,20 @@ func (m *EventBlockShowFullscreen) GetBlocks() []*model.Block {
 	return nil
 }
 
+func (m *EventBlockShowFullscreen) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 //
 // Updates from different clients, or from the local middleware
 // Example scenarios:
 // Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 type EventBlockUpdate struct {
-	Changes *ChangeMultipleBlocksList `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
+	Changes   *ChangeMultipleBlocksList `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
+	ContextId string                    `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventBlockUpdate) Reset()         { *m = EventBlockUpdate{} }
@@ -498,14 +515,22 @@ func (m *EventBlockUpdate) GetChanges() *ChangeMultipleBlocksList {
 	return nil
 }
 
+func (m *EventBlockUpdate) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 //*
 // Middleware to front end event message, that will be sent on one of this scenarios:
 // Precondition: user A opened a block
 // 1. User A drops a set of files/pictures/videos
 // 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
 type EventBlockFilesUpload struct {
-	FilePath []string `protobuf:"bytes,1,rep,name=filePath,proto3" json:"filePath,omitempty"`
-	BlockId  string   `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	FilePath  []string `protobuf:"bytes,1,rep,name=filePath,proto3" json:"filePath,omitempty"`
+	BlockId   string   `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	ContextId string   `protobuf:"bytes,3,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventBlockFilesUpload) Reset()         { *m = EventBlockFilesUpload{} }
@@ -555,10 +580,18 @@ func (m *EventBlockFilesUpload) GetBlockId() string {
 	return ""
 }
 
+func (m *EventBlockFilesUpload) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 //
 //
 type EventBlockDelete struct {
-	BlockId string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventBlockDelete) Reset()         { *m = EventBlockDelete{} }
@@ -597,6 +630,13 @@ var xxx_messageInfo_EventBlockDelete proto.InternalMessageInfo
 func (m *EventBlockDelete) GetBlockId() string {
 	if m != nil {
 		return m.BlockId
+	}
+	return ""
+}
+
+func (m *EventBlockDelete) GetContextId() string {
+	if m != nil {
+		return m.ContextId
 	}
 	return ""
 }
@@ -679,7 +719,8 @@ var xxx_messageInfo_EventUserBlock proto.InternalMessageInfo
 // 1. User B opens the same block
 // 2. User A receives a message about p.1
 type EventUserBlockJoin struct {
-	Account *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Account   *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	ContextId string        `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventUserBlockJoin) Reset()         { *m = EventUserBlockJoin{} }
@@ -722,13 +763,21 @@ func (m *EventUserBlockJoin) GetAccount() *EventAccount {
 	return nil
 }
 
+func (m *EventUserBlockJoin) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 //*
 //  Middleware to front end event message, that will be sent in this scenario:
 // Precondition: user A and user B opened the same block
 // 1. User B closes the block
 // 2. User A receives a message about p.1
 type EventUserBlockLeft struct {
-	Account *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Account   *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	ContextId string        `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventUserBlockLeft) Reset()         { *m = EventUserBlockLeft{} }
@@ -771,15 +820,23 @@ func (m *EventUserBlockLeft) GetAccount() *EventAccount {
 	return nil
 }
 
+func (m *EventUserBlockLeft) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 //*
 // Middleware to front end event message, that will be sent in this scenario:
 // Precondition: user A and user B opened the same block
 // 1. User B sets cursor or selects a text region into a text block
 // 2. User A receives a message about p.1
 type EventUserBlockTextRange struct {
-	Account *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	BlockId string        `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	Range   *model.Range  `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
+	Account   *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	BlockId   string        `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	Range     *model.Range  `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
+	ContextId string        `protobuf:"bytes,4,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventUserBlockTextRange) Reset()         { *m = EventUserBlockTextRange{} }
@@ -836,6 +893,13 @@ func (m *EventUserBlockTextRange) GetRange() *model.Range {
 	return nil
 }
 
+func (m *EventUserBlockTextRange) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 //*
 // Middleware to front end event message, that will be sent in this scenario:
 // Precondition: user A and user B opened the same block
@@ -844,6 +908,7 @@ func (m *EventUserBlockTextRange) GetRange() *model.Range {
 type EventUserBlockSelectRange struct {
 	Account       *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 	BlockIdsArray []string      `protobuf:"bytes,2,rep,name=blockIdsArray,proto3" json:"blockIdsArray,omitempty"`
+	ContextId     string        `protobuf:"bytes,3,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *EventUserBlockSelectRange) Reset()         { *m = EventUserBlockSelectRange{} }
@@ -893,6 +958,13 @@ func (m *EventUserBlockSelectRange) GetBlockIdsArray() []string {
 	return nil
 }
 
+func (m *EventUserBlockSelectRange) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*Event)(nil), "anytype.Event")
 	proto.RegisterType((*EventAccount)(nil), "anytype.Event.Account")
@@ -914,51 +986,53 @@ func init() {
 func init() { proto.RegisterFile("pb/protos/events.proto", fileDescriptor_a966342d378ae5f5) }
 
 var fileDescriptor_a966342d378ae5f5 = []byte{
-	// 690 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x95, 0x4d, 0x6f, 0xd3, 0x4c,
-	0x10, 0xc7, 0xed, 0xbc, 0xb9, 0x9e, 0x3c, 0x7d, 0x0e, 0xa6, 0x2a, 0x96, 0x41, 0x56, 0x55, 0x40,
-	0xaa, 0x10, 0xb5, 0x51, 0x2b, 0xa1, 0x5e, 0x10, 0x4a, 0x5b, 0x4a, 0x0a, 0x05, 0xa1, 0x2d, 0x01,
-	0x01, 0x27, 0xbf, 0x6c, 0x13, 0x0b, 0xd7, 0x6b, 0xd9, 0x4e, 0x69, 0xce, 0x5c, 0x38, 0xf2, 0xa9,
-	0x10, 0xc7, 0x1e, 0x39, 0xa2, 0xf6, 0xc2, 0x95, 0x6f, 0x80, 0x76, 0xbc, 0x71, 0xec, 0xc8, 0x05,
-	0x7a, 0xcb, 0xac, 0xff, 0xf3, 0x1b, 0xcf, 0xce, 0x7f, 0x1c, 0x58, 0x8e, 0x5d, 0x3b, 0x4e, 0x58,
-	0xc6, 0x52, 0x9b, 0x9e, 0xd0, 0x28, 0x4b, 0x2d, 0x8c, 0x34, 0xc5, 0x89, 0x26, 0xd9, 0x24, 0xa6,
-	0xc6, 0xb3, 0x13, 0x1a, 0xf9, 0x2c, 0xb1, 0x87, 0x41, 0x36, 0x1a, 0xbb, 0x96, 0xc7, 0x8e, 0x6d,
-	0xf1, 0x28, 0x60, 0xf6, 0x90, 0xad, 0x8b, 0x60, 0x3d, 0x0c, 0xdc, 0xc4, 0x49, 0x26, 0x76, 0xec,
-	0xda, 0xc7, 0xcc, 0xa7, 0xe1, 0x94, 0x8a, 0x81, 0xa0, 0x1a, 0xd7, 0x67, 0xd5, 0xbc, 0x91, 0x13,
-	0x0d, 0xa9, 0x78, 0xb0, 0xfa, 0xf9, 0x3f, 0x68, 0x3f, 0xe6, 0xf5, 0xb5, 0x47, 0xd0, 0x75, 0x3c,
-	0x8f, 0x8d, 0xa3, 0xec, 0x70, 0xc4, 0x3e, 0xea, 0xf2, 0x8a, 0xbc, 0xd6, 0xdd, 0xb8, 0x61, 0x89,
-	0x32, 0x16, 0x8a, 0xac, 0x5e, 0xae, 0xb0, 0xb8, 0xa4, 0x2f, 0x91, 0x72, 0x86, 0xf6, 0x00, 0x16,
-	0xdc, 0x90, 0x79, 0x1f, 0x7a, 0xbe, 0xaf, 0x37, 0x30, 0x5b, 0x9f, 0xcb, 0xde, 0xe6, 0x8f, 0xad,
-	0x9e, 0xef, 0xf7, 0x25, 0x52, 0x68, 0xb5, 0x37, 0x70, 0x0d, 0x7f, 0x73, 0xc8, 0xde, 0x38, 0x0c,
-	0x53, 0x2f, 0xa1, 0x34, 0xd2, 0x9b, 0x88, 0xb8, 0x55, 0x8b, 0xa8, 0x4a, 0xfb, 0x12, 0xa9, 0x23,
-	0xf0, 0x8e, 0xf0, 0x78, 0x10, 0xfb, 0x4e, 0x46, 0xf5, 0x56, 0x6d, 0x47, 0x39, 0x30, 0x97, 0xf0,
-	0x8e, 0x4a, 0x19, 0x05, 0x60, 0x97, 0x86, 0x34, 0xa3, 0x7a, 0xfb, 0x0f, 0x80, 0x5c, 0x52, 0x00,
-	0xf2, 0x50, 0x1b, 0x80, 0x36, 0x4e, 0x69, 0x82, 0x92, 0x57, 0xf4, 0x34, 0x23, 0xfc, 0xea, 0xf5,
-	0x4e, 0x6d, 0x67, 0x83, 0x94, 0x26, 0x02, 0x56, 0x48, 0xfb, 0x12, 0xa9, 0x01, 0x68, 0x7b, 0xb0,
-	0x58, 0x9c, 0x3e, 0x65, 0x41, 0xa4, 0x2b, 0x48, 0x34, 0x2f, 0x27, 0x72, 0x55, 0x5f, 0x22, 0xd5,
-	0xb4, 0x0a, 0xe7, 0x80, 0x1e, 0x65, 0xfa, 0xc2, 0xdf, 0x38, 0x5c, 0x55, 0xe1, 0xf0, 0x03, 0xed,
-	0x3d, 0x2c, 0x15, 0x07, 0x87, 0x34, 0xa4, 0x9e, 0x68, 0x54, 0x45, 0xdc, 0x9d, 0xcb, 0x71, 0x25,
-	0x71, 0x5f, 0x22, 0xb5, 0x10, 0x6d, 0x17, 0xba, 0x47, 0x41, 0x48, 0xd3, 0x41, 0x1c, 0x32, 0xc7,
-	0xd7, 0x01, 0x99, 0x2b, 0xb5, 0x43, 0xd8, 0x9b, 0xe9, 0xf8, 0x24, 0x4a, 0x69, 0xc6, 0x5b, 0x50,
-	0x84, 0x77, 0x8d, 0x17, 0xd0, 0x42, 0xbf, 0x2e, 0x41, 0x3b, 0x88, 0x7c, 0x7a, 0x8a, 0x56, 0x6f,
-	0x92, 0x3c, 0xd0, 0xee, 0x83, 0x22, 0x4c, 0x2d, 0x4c, 0xbc, 0x5c, 0x94, 0xc2, 0x8d, 0x9a, 0xae,
-	0x00, 0x99, 0xca, 0x8c, 0xaf, 0x0d, 0x68, 0x63, 0x7d, 0x63, 0x13, 0x9a, 0xdc, 0xd0, 0xf7, 0xa0,
-	0x83, 0x26, 0x48, 0x75, 0x79, 0xa5, 0xb9, 0xd6, 0xdd, 0x58, 0x9a, 0x23, 0xa0, 0x98, 0x08, 0x8d,
-	0xf1, 0x1a, 0xfe, 0x9f, 0xf3, 0xed, 0x32, 0x74, 0x12, 0xc6, 0xb2, 0x7d, 0x1f, 0xdf, 0x4c, 0x25,
-	0x22, 0x2a, 0x71, 0x1b, 0xff, 0xc0, 0x7d, 0x02, 0x1d, 0x61, 0xe3, 0x87, 0xa0, 0x88, 0xa5, 0x17,
-	0x5b, 0x3d, 0xb3, 0xde, 0x0e, 0x9e, 0x5b, 0xcf, 0xc7, 0x61, 0x16, 0xc4, 0x21, 0xcd, 0x11, 0xe9,
-	0x41, 0x90, 0x66, 0x64, 0x9a, 0x63, 0xec, 0x40, 0xb7, 0x74, 0xb1, 0x9a, 0x01, 0x0b, 0xfc, 0x62,
-	0x5f, 0x3a, 0xd9, 0x08, 0xfb, 0x53, 0x49, 0x11, 0x6b, 0x3a, 0x28, 0x58, 0x7d, 0x3f, 0xff, 0x02,
-	0xa8, 0x64, 0x1a, 0x1a, 0xab, 0xd0, 0x11, 0x3b, 0x51, 0xd2, 0xc8, 0x55, 0xcd, 0xaf, 0x06, 0xb4,
-	0xb8, 0x39, 0x8c, 0x9f, 0xc5, 0x8d, 0x6e, 0x41, 0x0b, 0x9d, 0x5a, 0x9a, 0x8a, 0x3c, 0x37, 0x95,
-	0xca, 0x87, 0x69, 0x36, 0x95, 0x2d, 0x68, 0xa1, 0x37, 0xaf, 0x9e, 0xf9, 0x49, 0x06, 0x75, 0xb6,
-	0x6b, 0x57, 0xce, 0xbf, 0xfc, 0x12, 0xb4, 0xbb, 0xd0, 0x4e, 0x70, 0x31, 0xf2, 0x6f, 0xdb, 0xfc,
-	0xfc, 0xb0, 0x20, 0xc9, 0x25, 0x06, 0x85, 0x6e, 0x79, 0x0b, 0xae, 0xfe, 0x1a, 0xb7, 0x61, 0x51,
-	0xd4, 0x4d, 0x7b, 0x49, 0xe2, 0x4c, 0xd0, 0x34, 0x2a, 0xa9, 0x1e, 0x6e, 0xab, 0xa0, 0x1c, 0xd3,
-	0x34, 0x75, 0x86, 0x74, 0xfb, 0xe6, 0xb7, 0x73, 0x53, 0x3e, 0x3b, 0x37, 0xe5, 0x1f, 0xe7, 0xa6,
-	0xfc, 0xe5, 0xc2, 0x94, 0xce, 0x2e, 0x4c, 0xe9, 0xfb, 0x85, 0x29, 0xbd, 0x6b, 0xc4, 0xae, 0xdb,
-	0xc1, 0xff, 0x8b, 0xcd, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x33, 0xc3, 0xec, 0xa1, 0xb8, 0x06,
-	0x00, 0x00,
+	// 723 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x95, 0xcf, 0x6e, 0xd3, 0x4a,
+	0x14, 0xc6, 0xed, 0x3a, 0x89, 0xeb, 0x13, 0xb5, 0x0b, 0xdf, 0xaa, 0xd7, 0xf2, 0xad, 0xac, 0xea,
+	0x02, 0x52, 0x85, 0xa8, 0x8d, 0x8a, 0xc4, 0x0e, 0x41, 0x4a, 0xa9, 0x02, 0x14, 0x04, 0x53, 0x52,
+	0x04, 0xac, 0xfc, 0x67, 0x9a, 0x58, 0xb8, 0x1e, 0xcb, 0x9e, 0x94, 0x66, 0xcd, 0x0b, 0xb0, 0x63,
+	0xcd, 0xdb, 0xb0, 0xec, 0x92, 0x05, 0x0b, 0x68, 0x77, 0x3c, 0x05, 0x9a, 0xf1, 0xc4, 0xb1, 0x8d,
+	0xdb, 0xa8, 0x12, 0xbb, 0x9c, 0xf1, 0x77, 0x7e, 0x67, 0xce, 0xcc, 0x77, 0x26, 0xb0, 0x9a, 0x78,
+	0x4e, 0x92, 0x12, 0x4a, 0x32, 0x07, 0x1f, 0xe3, 0x98, 0x66, 0x36, 0x8f, 0x74, 0xd5, 0x8d, 0x27,
+	0x74, 0x92, 0x60, 0xf3, 0xe9, 0x31, 0x8e, 0x03, 0x92, 0x3a, 0xc3, 0x90, 0x8e, 0xc6, 0x9e, 0xed,
+	0x93, 0x23, 0x47, 0x7c, 0x0a, 0x89, 0x33, 0x24, 0x9b, 0x22, 0xd8, 0x8c, 0x42, 0x2f, 0x75, 0xd3,
+	0x89, 0x93, 0x78, 0xce, 0x11, 0x09, 0x70, 0x34, 0xa5, 0xf2, 0x40, 0x50, 0xcd, 0x7f, 0x67, 0xd5,
+	0xfc, 0x91, 0x1b, 0x0f, 0xb1, 0xf8, 0xf0, 0xff, 0xe7, 0x65, 0x68, 0x3f, 0x62, 0xf5, 0xf5, 0xfb,
+	0xd0, 0x75, 0x7d, 0x9f, 0x8c, 0x63, 0xba, 0x3f, 0x22, 0x1f, 0x0c, 0x79, 0x5d, 0xde, 0xe8, 0x6e,
+	0xfd, 0x67, 0x8b, 0x32, 0x36, 0x17, 0xd9, 0xbd, 0x5c, 0x61, 0x33, 0x49, 0x5f, 0x42, 0xe5, 0x0c,
+	0xfd, 0x2e, 0x2c, 0x7a, 0x11, 0xf1, 0xdf, 0xf7, 0x82, 0xc0, 0x58, 0xe0, 0xd9, 0x46, 0x2d, 0x7b,
+	0x9b, 0x7d, 0xb6, 0x7b, 0x41, 0xd0, 0x97, 0x50, 0xa1, 0xd5, 0x5f, 0xc3, 0x3f, 0xfc, 0x37, 0x83,
+	0xec, 0x8e, 0xa3, 0x28, 0xf3, 0x53, 0x8c, 0x63, 0x43, 0xe1, 0x88, 0x6b, 0x8d, 0x88, 0xaa, 0xb4,
+	0x2f, 0xa1, 0x26, 0x02, 0xeb, 0x88, 0x2f, 0x0f, 0x92, 0xc0, 0xa5, 0xd8, 0x68, 0x35, 0x76, 0x94,
+	0x03, 0x73, 0x09, 0xeb, 0xa8, 0x94, 0x51, 0x00, 0x76, 0x70, 0x84, 0x29, 0x36, 0xda, 0x97, 0x00,
+	0x72, 0x49, 0x01, 0xc8, 0x43, 0x7d, 0x00, 0xfa, 0x38, 0xc3, 0x29, 0x97, 0xbc, 0xc2, 0x27, 0x14,
+	0xb1, 0xa3, 0x37, 0x3a, 0x8d, 0x9d, 0x0d, 0x32, 0x9c, 0x0a, 0x58, 0x21, 0xed, 0x4b, 0xa8, 0x01,
+	0xa0, 0xef, 0xc2, 0x52, 0xb1, 0xfa, 0x84, 0x84, 0xb1, 0xa1, 0x72, 0xa2, 0x75, 0x31, 0x91, 0xa9,
+	0xfa, 0x12, 0xaa, 0xa6, 0x55, 0x38, 0x7b, 0xf8, 0x90, 0x1a, 0x8b, 0xf3, 0x38, 0x4c, 0x55, 0xe1,
+	0xb0, 0x05, 0xfd, 0x1d, 0xac, 0x14, 0x0b, 0xfb, 0x38, 0xc2, 0xbe, 0x68, 0x54, 0xe3, 0xb8, 0x1b,
+	0x17, 0xe3, 0x4a, 0xe2, 0xbe, 0x84, 0x1a, 0x21, 0xfa, 0x0e, 0x74, 0x0f, 0xc3, 0x08, 0x67, 0x83,
+	0x24, 0x22, 0x6e, 0x60, 0x00, 0x67, 0xae, 0x37, 0x5e, 0xc2, 0xee, 0x4c, 0xc7, 0x6e, 0xa2, 0x94,
+	0x66, 0xbe, 0x01, 0x55, 0x78, 0xd7, 0x7c, 0x0e, 0x2d, 0xee, 0xd7, 0x15, 0x68, 0x87, 0x71, 0x80,
+	0x4f, 0xb8, 0xd5, 0x15, 0x94, 0x07, 0xfa, 0x6d, 0x50, 0x85, 0xa9, 0x85, 0x89, 0x57, 0x8b, 0x52,
+	0x7c, 0xa2, 0xa6, 0x23, 0x80, 0xa6, 0x32, 0xf3, 0xbb, 0x02, 0x6d, 0x5e, 0xdf, 0x7c, 0x09, 0x0a,
+	0x33, 0xf4, 0x2d, 0xe8, 0x70, 0x13, 0x64, 0x86, 0xbc, 0xae, 0x6c, 0x74, 0xb7, 0x56, 0x6a, 0x04,
+	0x2e, 0x46, 0x42, 0xa3, 0xaf, 0x81, 0xe6, 0x93, 0x98, 0xe2, 0x13, 0xfa, 0x38, 0x9f, 0x1b, 0x0d,
+	0xcd, 0x16, 0x4c, 0x0a, 0xcb, 0x35, 0x57, 0xaf, 0x42, 0x27, 0x25, 0x84, 0x89, 0x65, 0x2e, 0x16,
+	0x51, 0xa9, 0xea, 0xc2, 0x55, 0xab, 0x2a, 0xf5, 0xaa, 0x18, 0x3a, 0x62, 0x04, 0xee, 0x81, 0x2a,
+	0x1e, 0x0c, 0xf1, 0x22, 0xcc, 0x6c, 0xfb, 0x90, 0xaf, 0xdb, 0xcf, 0xc6, 0x11, 0x0d, 0x93, 0x08,
+	0xe7, 0x05, 0xb2, 0xbd, 0x30, 0xa3, 0x68, 0x9a, 0x33, 0xa7, 0x39, 0x17, 0xba, 0xa5, 0x2b, 0xd3,
+	0x4d, 0x58, 0x64, 0x57, 0xf6, 0xc2, 0xa5, 0x23, 0x7e, 0x72, 0x1a, 0x2a, 0x62, 0xdd, 0x00, 0x95,
+	0xef, 0xbc, 0xc0, 0x4c, 0xc3, 0x39, 0x9d, 0x3c, 0x80, 0x8e, 0x98, 0xc5, 0x12, 0x41, 0xbe, 0x84,
+	0xf0, 0xc7, 0x26, 0x7f, 0x29, 0xd0, 0x62, 0x96, 0x35, 0x7f, 0x16, 0xf7, 0x7c, 0x00, 0x2d, 0x3e,
+	0x3f, 0x25, 0xaf, 0xc8, 0x35, 0xaf, 0x54, 0x9e, 0xcb, 0xc2, 0x2b, 0x73, 0x4a, 0x1d, 0x40, 0x8b,
+	0xcf, 0xd3, 0xdf, 0xe6, 0x7e, 0x91, 0x41, 0x9b, 0xbd, 0x1e, 0x57, 0xa7, 0x5f, 0x7c, 0xf8, 0x37,
+	0xa1, 0x9d, 0xf2, 0x51, 0xcf, 0x5f, 0xeb, 0xba, 0xe7, 0x78, 0x41, 0x94, 0x4b, 0xaa, 0x7b, 0x6c,
+	0xd5, 0xf7, 0xf8, 0x51, 0x86, 0x6e, 0x79, 0xec, 0xaf, 0xbe, 0xcb, 0xeb, 0xb0, 0x24, 0xb6, 0x95,
+	0xf5, 0xd2, 0xd4, 0x9d, 0xf0, 0x39, 0xd0, 0x50, 0x75, 0xf1, 0x72, 0xbb, 0x6c, 0x6b, 0xa0, 0x1e,
+	0xe1, 0x2c, 0x73, 0x87, 0x78, 0x7b, 0xed, 0xeb, 0x99, 0x25, 0x9f, 0x9e, 0x59, 0xf2, 0x8f, 0x33,
+	0x4b, 0xfe, 0x74, 0x6e, 0x49, 0xa7, 0xe7, 0x96, 0xf4, 0xed, 0xdc, 0x92, 0xde, 0x2e, 0x24, 0x9e,
+	0xd7, 0xe1, 0x7f, 0x9f, 0x77, 0x7e, 0x07, 0x00, 0x00, 0xff, 0xff, 0xba, 0x59, 0xac, 0x77, 0xc7,
+	0x07, 0x00, 0x00,
 }
 
 func (m *Event) Marshal() (dAtA []byte, err error) {
@@ -1309,6 +1383,13 @@ func (m *EventBlockAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if len(m.Blocks) > 0 {
 		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
 			{
@@ -1346,6 +1427,13 @@ func (m *EventBlockShowFullscreen) MarshalToSizedBuffer(dAtA []byte) (int, error
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.Blocks) > 0 {
 		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
 			{
@@ -1390,6 +1478,13 @@ func (m *EventBlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.Changes != nil {
 		{
 			size, err := m.Changes.MarshalToSizedBuffer(dAtA[:i])
@@ -1425,6 +1520,13 @@ func (m *EventBlockFilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
@@ -1464,6 +1566,13 @@ func (m *EventBlockDelete) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
@@ -1540,6 +1649,13 @@ func (m *EventUserBlockJoin) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.Account != nil {
 		{
 			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
@@ -1575,6 +1691,13 @@ func (m *EventUserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if m.Account != nil {
 		{
 			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
@@ -1610,6 +1733,13 @@ func (m *EventUserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x22
+	}
 	if m.Range != nil {
 		{
 			size, err := m.Range.MarshalToSizedBuffer(dAtA[:i])
@@ -1664,6 +1794,13 @@ func (m *EventUserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	_ = i
 	var l int
 	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.BlockIdsArray) > 0 {
 		for iNdEx := len(m.BlockIdsArray) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.BlockIdsArray[iNdEx])
@@ -1877,6 +2014,10 @@ func (m *EventBlockAdd) Size() (n int) {
 			n += 1 + l + sovEvents(uint64(l))
 		}
 	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
 	return n
 }
 
@@ -1896,6 +2037,10 @@ func (m *EventBlockShowFullscreen) Size() (n int) {
 			n += 1 + l + sovEvents(uint64(l))
 		}
 	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
 	return n
 }
 
@@ -1907,6 +2052,10 @@ func (m *EventBlockUpdate) Size() (n int) {
 	_ = l
 	if m.Changes != nil {
 		l = m.Changes.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	l = len(m.ContextId)
+	if l > 0 {
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -1928,6 +2077,10 @@ func (m *EventBlockFilesUpload) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovEvents(uint64(l))
 	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
 	return n
 }
 
@@ -1938,6 +2091,10 @@ func (m *EventBlockDelete) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovEvents(uint64(l))
 	}
@@ -1972,6 +2129,10 @@ func (m *EventUserBlockJoin) Size() (n int) {
 		l = m.Account.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
 	return n
 }
 
@@ -1983,6 +2144,10 @@ func (m *EventUserBlockLeft) Size() (n int) {
 	_ = l
 	if m.Account != nil {
 		l = m.Account.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	l = len(m.ContextId)
+	if l > 0 {
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -2006,6 +2171,10 @@ func (m *EventUserBlockTextRange) Size() (n int) {
 		l = m.Range.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
 	return n
 }
 
@@ -2024,6 +2193,10 @@ func (m *EventUserBlockSelectRange) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovEvents(uint64(l))
 		}
+	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
 }
@@ -2714,6 +2887,38 @@ func (m *EventBlockAdd) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEvents(dAtA[iNdEx:])
@@ -2833,6 +3038,38 @@ func (m *EventBlockShowFullscreen) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEvents(dAtA[iNdEx:])
@@ -2921,6 +3158,38 @@ func (m *EventBlockUpdate) Unmarshal(dAtA []byte) error {
 			if err := m.Changes.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3039,6 +3308,38 @@ func (m *EventBlockFilesUpload) Unmarshal(dAtA []byte) error {
 			}
 			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEvents(dAtA[iNdEx:])
@@ -3123,6 +3424,38 @@ func (m *EventBlockDelete) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3319,6 +3652,38 @@ func (m *EventUserBlockJoin) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEvents(dAtA[iNdEx:])
@@ -3407,6 +3772,38 @@ func (m *EventUserBlockLeft) Unmarshal(dAtA []byte) error {
 			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3565,6 +3962,38 @@ func (m *EventUserBlockTextRange) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEvents(dAtA[iNdEx:])
@@ -3685,6 +4114,38 @@ func (m *EventUserBlockSelectRange) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.BlockIdsArray = append(m.BlockIdsArray, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
