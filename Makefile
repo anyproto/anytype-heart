@@ -1,3 +1,5 @@
+JQ_OPTS := "select(.Path == "github.com/anytypeio/go-anytype-lbrary") | .Dir"
+
 setup:
 	GOPRIVATE=github.com/anytypeio/go-anytype-library go mod download
 	go get github.com/ahmetb/govvv
@@ -67,7 +69,16 @@ setup-protoc:
 # 	cd pb/protos/service; env PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I/usr/local/include -I. -I=. -I=.. --gogo_out=plugins=gomobile:../../../lib service.proto
 
 protos:
-	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/golang/protobuf/ptypes/struct)
-	cd pb/protos; GOGO_NO_UNDERSCORE=1 protoc --gogofaster_out=$(P_STRUCT):.. *.proto
-	cd pb/protos/service; GOGO_NO_UNDERSCORE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=.. -I=. --gogofaster_out=plugins=gomobile:../../../lib service.proto
-	cd pb/protos; GOGO_NO_UNDERSCORE=1 protoc --doc_out=../../docs --doc_opt=markdown,proto.md service/*.proto *.proto
+	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
+
+	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
+	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
+	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)
+	$(eval P_PROTOS2 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS))
+	mkdir -p vendor/github.com/anytypeio/go-anytype-library/
+	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc -I . --gogofaster_out=$(PKGMAP):. ./pb/protos/*.proto; mv ./pb/protos/*.pb.go ./pb/
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2))
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib/
+	protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto

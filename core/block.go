@@ -14,7 +14,7 @@ func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCre
 		return m
 	}
 
-	/*block := &pb.ModelBlock{} // TODO
+	/*block := &model.Block{} // TODO
 
 	m := &pb.Event{Message: &pb.EventBlockCreate{&pb.RpcBlockCreate{Block: block}}}
 
@@ -35,7 +35,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return m
 	}
 
-	/*block := &pb.ModelBlock{} // TODO
+	/*block := &model.Block{} // TODO
 
 	m := &pb.Event{Message: &pb.EventBlockShow{&pb.RpcBlockShow{Block: block}}}
 

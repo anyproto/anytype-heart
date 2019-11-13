@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,7 @@ func TestAccountCreate(t *testing.T) {
 	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_test", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
 	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
-	imageGetBlobResp := mw.ImageGetBlob(&pb.RpcIpfsImageGetBlobRequest{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: pb.ModelImage_SMALL})
+	imageGetBlobResp := mw.ImageGetBlob(&pb.RpcIpfsImageGetBlobRequest{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: model.Image_SMALL})
 	require.Equal(t, pb.RpcIpfsImageGetBlobResponseError_NULL, imageGetBlobResp.Error.Code, "ImageGetBlobResponse contains error: %+v", imageGetBlobResp.Error)
 	require.True(t, len(imageGetBlobResp.Blob) > 0, "ava size should be greater than 0")
 
@@ -50,7 +51,7 @@ func TestAccountRecoverLocalWithoutRestart(t *testing.T) {
 	err := mw.Stop()
 	require.NoError(t, err, "failed to stop node")
 
-	var accountCh = make(chan *pb.ModelAccount, 10)
+	var accountCh = make(chan *model.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
@@ -67,7 +68,7 @@ func TestAccountRecoverLocalWithoutRestart(t *testing.T) {
 	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
 	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.ModelAccount
+	var account *model.Account
 	select {
 	case account = <-accountCh:
 		break
@@ -94,7 +95,7 @@ func TestAccountRecoverLocalAfterRestart(t *testing.T) {
 	// reset singleton to emulate restart
 	mw = &Middleware{}
 
-	var accountCh = make(chan *pb.ModelAccount, 10)
+	var accountCh = make(chan *model.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
@@ -111,7 +112,7 @@ func TestAccountRecoverLocalAfterRestart(t *testing.T) {
 	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
 	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.ModelAccount
+	var account *model.Account
 	select {
 	case account = <-accountCh:
 		break
@@ -128,7 +129,7 @@ func TestAccountRecoverRemoteNotExisting(t *testing.T) {
 	mw := recoverWallet(t, "limit oxygen february destroy subway toddler umbrella nose praise shield afford eager")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
 
-	var account *pb.ModelAccount
+	var account *model.Account
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			account = aa.AccountShow.Account
@@ -148,7 +149,7 @@ func TestRecoverRemoteExisting(t *testing.T) {
 	mw := recoverWallet(t, "input blame switch simple fatigue fragile grab goose unusual identify abuse use")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
 
-	var accountCh = make(chan *pb.ModelAccount, 10)
+	var accountCh = make(chan *model.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
@@ -162,7 +163,7 @@ func TestRecoverRemoteExisting(t *testing.T) {
 	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
 	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
 
-	var account *pb.ModelAccount
+	var account *model.Account
 	select {
 	case account = <-accountCh:
 		break

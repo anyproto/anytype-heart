@@ -2,7 +2,7 @@ syntax="proto3";
 package anytype;
 option go_package = "lib";
 
-import "commands.proto";
+import "pb/protos/commands.proto";
 
 service ClientCommands {
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
