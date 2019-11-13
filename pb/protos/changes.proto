@@ -69,7 +69,7 @@ message Change {
                     Model.Block.Content.Text.Marks marks = 3;
 
                     bool toggleable = 4;
-                    Model.Block.Content.Text.MarkerType markerType = 5;
+                    Model.Block.Content.Text.Marker marker = 5;
 
                     bool checkable = 6;
                     bool checked = 7;

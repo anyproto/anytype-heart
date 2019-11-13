@@ -182,7 +182,7 @@
     - [Model.Block.Content.Layout.Style](#anytype.Model.Block.Content.Layout.Style)
     - [Model.Block.Content.Page.Style](#anytype.Model.Block.Content.Page.Style)
     - [Model.Block.Content.Text.Mark.Type](#anytype.Model.Block.Content.Text.Mark.Type)
-    - [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType)
+    - [Model.Block.Content.Text.Marker](#anytype.Model.Block.Content.Text.Marker)
     - [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style)
     - [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State)
     - [Model.Block.Position](#anytype.Model.Block.Position)
@@ -365,7 +365,7 @@ Change.Block contains only one, single change for one block.
 | style | [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style) |  |  |
 | marks | [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks) |  |  |
 | toggleable | [bool](#bool) |  |  |
-| markerType | [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType) |  |  |
+| marker | [Model.Block.Content.Text.Marker](#anytype.Model.Block.Content.Text.Marker) |  |  |
 | checkable | [bool](#bool) |  |  |
 | checked | [bool](#bool) |  |  |
 
@@ -2282,9 +2282,9 @@ Row/Column layout blocks creates only automatically, after some of a D&amp;D ope
 | ----- | ---- | ----- | ----------- |
 | text | [string](#string) |  |  |
 | style | [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style) |  |  |
-| marksList | [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
+| marks | [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
 | toggleable | [bool](#bool) |  | can be toggled or not |
-| markerType | [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
+| marker | [Model.Block.Content.Text.Marker](#anytype.Model.Block.Content.Text.Marker) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
 | checkable | [bool](#bool) |  | can be checked or not |
 | checked | [bool](#bool) |  |  |
 
@@ -2579,9 +2579,9 @@ variants, absence of any variant indicates an error.
 
 
 
-<a name="anytype.Model.Block.Content.Text.MarkerType"></a>
+<a name="anytype.Model.Block.Content.Text.Marker"></a>
 
-### Model.Block.Content.Text.MarkerType
+### Model.Block.Content.Text.Marker
 
 
 | Name | Number | Description |
