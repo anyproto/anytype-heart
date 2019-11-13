@@ -22,12 +22,15 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+//
+// Event – type of message, that could be sent from a middleware to the corresponding front-end.
 type Event struct {
 	// Types that are valid to be assigned to Message:
 	//	*EventMessageOfAccountShow
-	//	*EventMessageOfBlockShow
+	//	*EventMessageOfBlockAdd
+	//	*EventMessageOfBlockShowFullscreen
 	//	*EventMessageOfBlockUpdate
-	//	*EventMessageOfBlockCreate
+	//	*EventMessageOfBlockDelete
 	//	*EventMessageOfUserBlockTextRange
 	//	*EventMessageOfUserBlockJoin
 	//	*EventMessageOfUserBlockLeft
@@ -78,35 +81,39 @@ type isEventMessage interface {
 type EventMessageOfAccountShow struct {
 	AccountShow *EventAccountShow `protobuf:"bytes,1,opt,name=accountShow,proto3,oneof" json:"accountShow,omitempty"`
 }
-type EventMessageOfBlockShow struct {
-	BlockShow *EventBlockShow `protobuf:"bytes,2,opt,name=blockShow,proto3,oneof" json:"blockShow,omitempty"`
+type EventMessageOfBlockAdd struct {
+	BlockAdd *EventBlockAdd `protobuf:"bytes,2,opt,name=blockAdd,proto3,oneof" json:"blockAdd,omitempty"`
+}
+type EventMessageOfBlockShowFullscreen struct {
+	BlockShowFullscreen *EventBlockShowFullscreen `protobuf:"bytes,3,opt,name=blockShowFullscreen,proto3,oneof" json:"blockShowFullscreen,omitempty"`
 }
 type EventMessageOfBlockUpdate struct {
-	BlockUpdate *EventBlockUpdate `protobuf:"bytes,3,opt,name=blockUpdate,proto3,oneof" json:"blockUpdate,omitempty"`
+	BlockUpdate *EventBlockUpdate `protobuf:"bytes,4,opt,name=blockUpdate,proto3,oneof" json:"blockUpdate,omitempty"`
 }
-type EventMessageOfBlockCreate struct {
-	BlockCreate *EventBlockCreate `protobuf:"bytes,4,opt,name=blockCreate,proto3,oneof" json:"blockCreate,omitempty"`
+type EventMessageOfBlockDelete struct {
+	BlockDelete *EventBlockDelete `protobuf:"bytes,5,opt,name=blockDelete,proto3,oneof" json:"blockDelete,omitempty"`
 }
 type EventMessageOfUserBlockTextRange struct {
-	UserBlockTextRange *EventUserBlockTextRange `protobuf:"bytes,5,opt,name=userBlockTextRange,proto3,oneof" json:"userBlockTextRange,omitempty"`
+	UserBlockTextRange *EventUserBlockTextRange `protobuf:"bytes,6,opt,name=userBlockTextRange,proto3,oneof" json:"userBlockTextRange,omitempty"`
 }
 type EventMessageOfUserBlockJoin struct {
-	UserBlockJoin *EventUserBlockJoin `protobuf:"bytes,6,opt,name=userBlockJoin,proto3,oneof" json:"userBlockJoin,omitempty"`
+	UserBlockJoin *EventUserBlockJoin `protobuf:"bytes,7,opt,name=userBlockJoin,proto3,oneof" json:"userBlockJoin,omitempty"`
 }
 type EventMessageOfUserBlockLeft struct {
-	UserBlockLeft *EventUserBlockLeft `protobuf:"bytes,7,opt,name=userBlockLeft,proto3,oneof" json:"userBlockLeft,omitempty"`
+	UserBlockLeft *EventUserBlockLeft `protobuf:"bytes,8,opt,name=userBlockLeft,proto3,oneof" json:"userBlockLeft,omitempty"`
 }
 type EventMessageOfUserBlockSelectRange struct {
-	UserBlockSelectRange *EventUserBlockSelectRange `protobuf:"bytes,8,opt,name=userBlockSelectRange,proto3,oneof" json:"userBlockSelectRange,omitempty"`
+	UserBlockSelectRange *EventUserBlockSelectRange `protobuf:"bytes,9,opt,name=userBlockSelectRange,proto3,oneof" json:"userBlockSelectRange,omitempty"`
 }
 type EventMessageOfFilesUpload struct {
-	FilesUpload *EventBlockFilesUpload `protobuf:"bytes,9,opt,name=filesUpload,proto3,oneof" json:"filesUpload,omitempty"`
+	FilesUpload *EventBlockFilesUpload `protobuf:"bytes,10,opt,name=filesUpload,proto3,oneof" json:"filesUpload,omitempty"`
 }
 
 func (*EventMessageOfAccountShow) isEventMessage()          {}
-func (*EventMessageOfBlockShow) isEventMessage()            {}
+func (*EventMessageOfBlockAdd) isEventMessage()             {}
+func (*EventMessageOfBlockShowFullscreen) isEventMessage()  {}
 func (*EventMessageOfBlockUpdate) isEventMessage()          {}
-func (*EventMessageOfBlockCreate) isEventMessage()          {}
+func (*EventMessageOfBlockDelete) isEventMessage()          {}
 func (*EventMessageOfUserBlockTextRange) isEventMessage()   {}
 func (*EventMessageOfUserBlockJoin) isEventMessage()        {}
 func (*EventMessageOfUserBlockLeft) isEventMessage()        {}
@@ -127,9 +134,16 @@ func (m *Event) GetAccountShow() *EventAccountShow {
 	return nil
 }
 
-func (m *Event) GetBlockShow() *EventBlockShow {
-	if x, ok := m.GetMessage().(*EventMessageOfBlockShow); ok {
-		return x.BlockShow
+func (m *Event) GetBlockAdd() *EventBlockAdd {
+	if x, ok := m.GetMessage().(*EventMessageOfBlockAdd); ok {
+		return x.BlockAdd
+	}
+	return nil
+}
+
+func (m *Event) GetBlockShowFullscreen() *EventBlockShowFullscreen {
+	if x, ok := m.GetMessage().(*EventMessageOfBlockShowFullscreen); ok {
+		return x.BlockShowFullscreen
 	}
 	return nil
 }
@@ -141,9 +155,9 @@ func (m *Event) GetBlockUpdate() *EventBlockUpdate {
 	return nil
 }
 
-func (m *Event) GetBlockCreate() *EventBlockCreate {
-	if x, ok := m.GetMessage().(*EventMessageOfBlockCreate); ok {
-		return x.BlockCreate
+func (m *Event) GetBlockDelete() *EventBlockDelete {
+	if x, ok := m.GetMessage().(*EventMessageOfBlockDelete); ok {
+		return x.BlockDelete
 	}
 	return nil
 }
@@ -187,9 +201,10 @@ func (m *Event) GetFilesUpload() *EventBlockFilesUpload {
 func (*Event) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
 		(*EventMessageOfAccountShow)(nil),
-		(*EventMessageOfBlockShow)(nil),
+		(*EventMessageOfBlockAdd)(nil),
+		(*EventMessageOfBlockShowFullscreen)(nil),
 		(*EventMessageOfBlockUpdate)(nil),
-		(*EventMessageOfBlockCreate)(nil),
+		(*EventMessageOfBlockDelete)(nil),
 		(*EventMessageOfUserBlockTextRange)(nil),
 		(*EventMessageOfUserBlockJoin)(nil),
 		(*EventMessageOfUserBlockLeft)(nil),
@@ -324,22 +339,33 @@ func (m *EventBlock) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_EventBlock proto.InternalMessageInfo
 
-type EventBlockShow struct {
-	Block *ModelBlock `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
+//
+// Event to show internal blocks on a client.
+// Example Scenarios
+// A. Block Creation
+// 1. Block A have been created on a client C1
+// 2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
+// B. Partial block load
+// 1. Client C1 opens Page1, that contains, for example, 133 blocks.
+// 2. M -> F: ShowFullScreen(Root, blocks1-50)
+// 3. M -> F: Block.Add(blocks51-100)
+// 3. M -> F: Block.Add(blocks101-133)
+type EventBlockAdd struct {
+	Blocks []*ModelBlock `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
 }
 
-func (m *EventBlockShow) Reset()         { *m = EventBlockShow{} }
-func (m *EventBlockShow) String() string { return proto.CompactTextString(m) }
-func (*EventBlockShow) ProtoMessage()    {}
-func (*EventBlockShow) Descriptor() ([]byte, []int) {
+func (m *EventBlockAdd) Reset()         { *m = EventBlockAdd{} }
+func (m *EventBlockAdd) String() string { return proto.CompactTextString(m) }
+func (*EventBlockAdd) ProtoMessage()    {}
+func (*EventBlockAdd) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 0}
 }
-func (m *EventBlockShow) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockAdd) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *EventBlockShow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockAdd) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_EventBlockShow.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockAdd.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -349,25 +375,84 @@ func (m *EventBlockShow) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return b[:n], nil
 	}
 }
-func (m *EventBlockShow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockShow.Merge(m, src)
+func (m *EventBlockAdd) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockAdd.Merge(m, src)
 }
-func (m *EventBlockShow) XXX_Size() int {
+func (m *EventBlockAdd) XXX_Size() int {
 	return m.Size()
 }
-func (m *EventBlockShow) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockShow.DiscardUnknown(m)
+func (m *EventBlockAdd) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockAdd.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_EventBlockShow proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockAdd proto.InternalMessageInfo
 
-func (m *EventBlockShow) GetBlock() *ModelBlock {
+func (m *EventBlockAdd) GetBlocks() []*ModelBlock {
 	if m != nil {
-		return m.Block
+		return m.Blocks
 	}
 	return nil
 }
 
+//
+// Works with a smart blocks: Page, Dashboard
+// Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+type EventBlockShowFullscreen struct {
+	RootId string        `protobuf:"bytes,1,opt,name=rootId,proto3" json:"rootId,omitempty"`
+	Blocks []*ModelBlock `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+}
+
+func (m *EventBlockShowFullscreen) Reset()         { *m = EventBlockShowFullscreen{} }
+func (m *EventBlockShowFullscreen) String() string { return proto.CompactTextString(m) }
+func (*EventBlockShowFullscreen) ProtoMessage()    {}
+func (*EventBlockShowFullscreen) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 1}
+}
+func (m *EventBlockShowFullscreen) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockShowFullscreen) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockShowFullscreen.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockShowFullscreen) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockShowFullscreen.Merge(m, src)
+}
+func (m *EventBlockShowFullscreen) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockShowFullscreen) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockShowFullscreen.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockShowFullscreen proto.InternalMessageInfo
+
+func (m *EventBlockShowFullscreen) GetRootId() string {
+	if m != nil {
+		return m.RootId
+	}
+	return ""
+}
+
+func (m *EventBlockShowFullscreen) GetBlocks() []*ModelBlock {
+	if m != nil {
+		return m.Blocks
+	}
+	return nil
+}
+
+//
+// Updates from different clients, or from the local middleware
+// Example scenarios:
+// Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 type EventBlockUpdate struct {
 	Changes *ChangeMultipleBlocksList `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
 }
@@ -376,7 +461,7 @@ func (m *EventBlockUpdate) Reset()         { *m = EventBlockUpdate{} }
 func (m *EventBlockUpdate) String() string { return proto.CompactTextString(m) }
 func (*EventBlockUpdate) ProtoMessage()    {}
 func (*EventBlockUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 1}
+	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 2}
 }
 func (m *EventBlockUpdate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -408,50 +493,6 @@ var xxx_messageInfo_EventBlockUpdate proto.InternalMessageInfo
 func (m *EventBlockUpdate) GetChanges() *ChangeMultipleBlocksList {
 	if m != nil {
 		return m.Changes
-	}
-	return nil
-}
-
-type EventBlockCreate struct {
-	Block *ModelBlock `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
-}
-
-func (m *EventBlockCreate) Reset()         { *m = EventBlockCreate{} }
-func (m *EventBlockCreate) String() string { return proto.CompactTextString(m) }
-func (*EventBlockCreate) ProtoMessage()    {}
-func (*EventBlockCreate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 2}
-}
-func (m *EventBlockCreate) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *EventBlockCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_EventBlockCreate.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *EventBlockCreate) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockCreate.Merge(m, src)
-}
-func (m *EventBlockCreate) XXX_Size() int {
-	return m.Size()
-}
-func (m *EventBlockCreate) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockCreate.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EventBlockCreate proto.InternalMessageInfo
-
-func (m *EventBlockCreate) GetBlock() *ModelBlock {
-	if m != nil {
-		return m.Block
 	}
 	return nil
 }
@@ -507,6 +548,52 @@ func (m *EventBlockFilesUpload) GetFilePath() []string {
 }
 
 func (m *EventBlockFilesUpload) GetBlockId() string {
+	if m != nil {
+		return m.BlockId
+	}
+	return ""
+}
+
+//
+//
+type EventBlockDelete struct {
+	BlockId string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
+}
+
+func (m *EventBlockDelete) Reset()         { *m = EventBlockDelete{} }
+func (m *EventBlockDelete) String() string { return proto.CompactTextString(m) }
+func (*EventBlockDelete) ProtoMessage()    {}
+func (*EventBlockDelete) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8f22242cb04491f9, []int{0, 1, 4}
+}
+func (m *EventBlockDelete) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockDelete) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockDelete.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockDelete) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockDelete.Merge(m, src)
+}
+func (m *EventBlockDelete) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockDelete) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockDelete.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockDelete proto.InternalMessageInfo
+
+func (m *EventBlockDelete) GetBlockId() string {
 	if m != nil {
 		return m.BlockId
 	}
@@ -810,10 +897,11 @@ func init() {
 	proto.RegisterType((*EventAccount)(nil), "anytype.Event.Account")
 	proto.RegisterType((*EventAccountShow)(nil), "anytype.Event.Account.Show")
 	proto.RegisterType((*EventBlock)(nil), "anytype.Event.Block")
-	proto.RegisterType((*EventBlockShow)(nil), "anytype.Event.Block.Show")
+	proto.RegisterType((*EventBlockAdd)(nil), "anytype.Event.Block.Add")
+	proto.RegisterType((*EventBlockShowFullscreen)(nil), "anytype.Event.Block.ShowFullscreen")
 	proto.RegisterType((*EventBlockUpdate)(nil), "anytype.Event.Block.Update")
-	proto.RegisterType((*EventBlockCreate)(nil), "anytype.Event.Block.Create")
 	proto.RegisterType((*EventBlockFilesUpload)(nil), "anytype.Event.Block.FilesUpload")
+	proto.RegisterType((*EventBlockDelete)(nil), "anytype.Event.Block.Delete")
 	proto.RegisterType((*EventUser)(nil), "anytype.Event.User")
 	proto.RegisterType((*EventUserBlock)(nil), "anytype.Event.User.Block")
 	proto.RegisterType((*EventUserBlockJoin)(nil), "anytype.Event.User.Block.Join")
@@ -825,44 +913,48 @@ func init() {
 func init() { proto.RegisterFile("events.proto", fileDescriptor_8f22242cb04491f9) }
 
 var fileDescriptor_8f22242cb04491f9 = []byte{
-	// 579 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x94, 0xcf, 0x6e, 0xd3, 0x40,
-	0x10, 0xc6, 0xed, 0xfc, 0x73, 0x3d, 0x69, 0x2e, 0xab, 0x08, 0x99, 0x05, 0x59, 0x11, 0x7f, 0xa4,
-	0x8a, 0x83, 0x85, 0x0a, 0x87, 0x72, 0x40, 0xa8, 0x09, 0x94, 0x80, 0x5a, 0x84, 0xb6, 0xe4, 0x00,
-	0x9c, 0x9c, 0x64, 0xdb, 0x44, 0xb8, 0xb6, 0x65, 0x6f, 0xa0, 0x39, 0xf3, 0x02, 0x3c, 0x16, 0xc7,
-	0x1e, 0x39, 0xa2, 0xe4, 0x82, 0xc4, 0x89, 0x27, 0x00, 0xed, 0x78, 0xed, 0xd8, 0x91, 0x43, 0x95,
-	0xe3, 0x4c, 0xbe, 0xef, 0x37, 0xd9, 0xd9, 0x6f, 0x0d, 0xbb, 0xfc, 0x33, 0xf7, 0x45, 0xec, 0x84,
-	0x51, 0x20, 0x02, 0x62, 0xb8, 0xfe, 0x5c, 0xcc, 0x43, 0x4e, 0x77, 0x2f, 0x82, 0x31, 0xf7, 0x54,
-	0x9b, 0xb6, 0x46, 0x13, 0xd7, 0x3f, 0xe7, 0xaa, 0xbc, 0xf3, 0x1b, 0xa0, 0xfe, 0x42, 0xda, 0xc8,
-	0x33, 0x68, 0xba, 0xa3, 0x51, 0x30, 0xf3, 0xc5, 0xe9, 0x24, 0xf8, 0x62, 0xe9, 0x1d, 0x7d, 0xaf,
-	0xb9, 0x7f, 0xcb, 0x51, 0x14, 0x07, 0x45, 0xce, 0x61, 0xa2, 0x70, 0xa4, 0xa4, 0xaf, 0xb1, 0xbc,
-	0x83, 0x3c, 0x01, 0x73, 0xe8, 0x05, 0xa3, 0x4f, 0x68, 0xaf, 0xa0, 0xfd, 0xe6, 0x9a, 0xbd, 0x2b,
-	0x7f, 0x4f, 0xcd, 0x2b, 0xb5, 0x9c, 0x8d, 0xc5, 0x20, 0x1c, 0xbb, 0x82, 0x5b, 0xd5, 0xd2, 0xd9,
-	0x89, 0x39, 0x91, 0xc8, 0xd9, 0x39, 0x47, 0x06, 0xe8, 0x45, 0x5c, 0x02, 0x6a, 0xff, 0x01, 0x24,
-	0x92, 0x0c, 0x90, 0x94, 0x64, 0x00, 0x64, 0x16, 0xf3, 0x08, 0x25, 0xef, 0xf8, 0xa5, 0x60, 0x72,
-	0x49, 0x56, 0x1d, 0x39, 0x77, 0xd7, 0x38, 0x83, 0x98, 0x47, 0x0a, 0x96, 0x49, 0xfb, 0x1a, 0x2b,
-	0x01, 0x90, 0x23, 0x68, 0x65, 0xdd, 0xd7, 0xc1, 0xd4, 0xb7, 0x1a, 0x48, 0xb4, 0x37, 0x13, 0xa5,
-	0xaa, 0xaf, 0xb1, 0xa2, 0xad, 0xc0, 0x39, 0xe6, 0x67, 0xc2, 0x32, 0xae, 0xe3, 0x48, 0x55, 0x81,
-	0x23, 0x1b, 0xe4, 0x23, 0xb4, 0xb3, 0xc6, 0x29, 0xf7, 0xf8, 0x48, 0x1d, 0x74, 0x07, 0x71, 0xf7,
-	0x37, 0xe3, 0x72, 0xe2, 0xbe, 0xc6, 0x4a, 0x21, 0xe4, 0x39, 0x34, 0xcf, 0xa6, 0x1e, 0x8f, 0x07,
-	0xa1, 0x17, 0xb8, 0x63, 0xcb, 0x44, 0x66, 0xa7, 0xf4, 0x12, 0x8e, 0x56, 0x3a, 0x79, 0x13, 0x39,
-	0x1b, 0x7d, 0x0f, 0x86, 0x4a, 0x19, 0x7d, 0x03, 0x35, 0x8c, 0x47, 0x1b, 0xea, 0x53, 0x7f, 0xcc,
-	0x2f, 0x31, 0x94, 0x55, 0x96, 0x14, 0xe4, 0x21, 0x18, 0x2a, 0x7e, 0x2a, 0x6d, 0x37, 0xb2, 0x51,
-	0x27, 0x32, 0xf1, 0x69, 0x58, 0x59, 0x2a, 0xa3, 0x7f, 0x75, 0xa8, 0xe3, 0x7c, 0xba, 0xaf, 0xc8,
-	0x0f, 0xa0, 0x8e, 0x29, 0x50, 0x71, 0x6f, 0xaf, 0x11, 0x50, 0xcc, 0x12, 0x09, 0x7d, 0x09, 0x0d,
-	0x95, 0xb6, 0xa7, 0x60, 0xa8, 0x57, 0xa4, 0x7c, 0xab, 0x84, 0xf4, 0xb0, 0xef, 0x9c, 0xcc, 0x3c,
-	0x31, 0x0d, 0x3d, 0x9e, 0x10, 0xe2, 0xe3, 0x69, 0x2c, 0x58, 0xea, 0xa1, 0x8f, 0xa1, 0xa1, 0x52,
-	0xb7, 0xcd, 0xf8, 0x1e, 0x34, 0x73, 0x5b, 0x23, 0x14, 0x76, 0xe4, 0xd6, 0xde, 0xba, 0x62, 0x62,
-	0xe9, 0x9d, 0xea, 0x9e, 0xc9, 0xb2, 0x9a, 0x58, 0x60, 0xa0, 0xe7, 0xd5, 0x18, 0x37, 0x63, 0xb2,
-	0xb4, 0xa4, 0x7f, 0x2a, 0x50, 0x93, 0xb7, 0x4a, 0x7f, 0x55, 0xd2, 0x55, 0x1c, 0x40, 0x0d, 0x23,
-	0x96, 0x5b, 0xa7, 0xbe, 0xb6, 0xce, 0xc2, 0xdb, 0x5f, 0xad, 0xf3, 0x00, 0x6a, 0x18, 0xaa, 0xed,
-	0x9d, 0x5f, 0x75, 0x30, 0x57, 0x8f, 0x64, 0x6b, 0xff, 0xe6, 0x03, 0xca, 0x8d, 0x46, 0x98, 0xe8,
-	0x6a, 0xe9, 0x46, 0x71, 0x20, 0x4b, 0x24, 0x94, 0x43, 0x33, 0x1f, 0xdf, 0xed, 0xff, 0xc6, 0x3d,
-	0x68, 0xa9, 0xb9, 0xf1, 0x61, 0x14, 0xb9, 0x73, 0xab, 0x82, 0x17, 0x51, 0x6c, 0x76, 0x4d, 0x30,
-	0x2e, 0x78, 0x1c, 0xbb, 0xe7, 0xbc, 0x7b, 0xfb, 0xfb, 0xc2, 0xd6, 0xaf, 0x16, 0xb6, 0xfe, 0x73,
-	0x61, 0xeb, 0xdf, 0x96, 0xb6, 0x76, 0xb5, 0xb4, 0xb5, 0x1f, 0x4b, 0x5b, 0xfb, 0x50, 0x09, 0x87,
-	0xc3, 0x06, 0x7e, 0x92, 0x1f, 0xfd, 0x0b, 0x00, 0x00, 0xff, 0xff, 0x0b, 0x48, 0x94, 0x96, 0xc8,
-	0x05, 0x00, 0x00,
+	// 644 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x95, 0xcf, 0x4f, 0xd4, 0x40,
+	0x14, 0xc7, 0xdb, 0xfd, 0x55, 0xfa, 0x16, 0x3c, 0x8c, 0x84, 0x4c, 0x46, 0xd3, 0x10, 0xd4, 0x84,
+	0x18, 0xd3, 0x18, 0x48, 0x0c, 0x17, 0x63, 0x16, 0x10, 0x17, 0x03, 0xc6, 0x0c, 0xae, 0x46, 0x3d,
+	0x95, 0x76, 0x80, 0x8d, 0xa5, 0x6d, 0xda, 0x59, 0x85, 0xb3, 0x17, 0x8f, 0xfe, 0x55, 0xc6, 0x23,
+	0x47, 0x8f, 0x06, 0x2e, 0x5e, 0xfd, 0x0f, 0xcc, 0xbc, 0xce, 0x76, 0xdb, 0x4d, 0x51, 0xf7, 0xc6,
+	0x7b, 0x7c, 0xdf, 0x67, 0xfa, 0xe6, 0x7d, 0xdf, 0x2c, 0xcc, 0x8b, 0x8f, 0x22, 0x92, 0x99, 0x9b,
+	0xa4, 0xb1, 0x8c, 0x89, 0xe5, 0x45, 0xe7, 0xf2, 0x3c, 0x11, 0x6c, 0xfe, 0x34, 0x0e, 0x44, 0xa8,
+	0xd3, 0x6c, 0xc1, 0x3f, 0xf1, 0xa2, 0x63, 0xa1, 0xc3, 0x95, 0x2f, 0xf3, 0xd0, 0x7e, 0xaa, 0xca,
+	0xc8, 0x13, 0xe8, 0x7a, 0xbe, 0x1f, 0x8f, 0x22, 0x79, 0x70, 0x12, 0x7f, 0xa2, 0xe6, 0xb2, 0xb9,
+	0xda, 0x5d, 0xbb, 0xe5, 0x6a, 0x8a, 0x8b, 0x22, 0xb7, 0x97, 0x2b, 0x5c, 0x25, 0xe9, 0x1b, 0xbc,
+	0x5c, 0x41, 0x1e, 0xc1, 0xdc, 0x61, 0x18, 0xfb, 0x1f, 0x7a, 0x41, 0x40, 0x1b, 0x58, 0x4d, 0xa7,
+	0xaa, 0x37, 0xd5, 0xbf, 0xdd, 0x5e, 0x10, 0xf4, 0x0d, 0x5e, 0x68, 0xc9, 0x1b, 0xb8, 0x89, 0x7f,
+	0x2b, 0xc8, 0xce, 0x28, 0x0c, 0x33, 0x3f, 0x15, 0x22, 0xa2, 0x4d, 0x44, 0xdc, 0xa9, 0x45, 0x54,
+	0xa5, 0x7d, 0x83, 0xd7, 0x11, 0x54, 0x47, 0x98, 0x1e, 0x24, 0x81, 0x27, 0x05, 0x6d, 0xd5, 0x76,
+	0x94, 0x03, 0x73, 0x89, 0xea, 0xa8, 0x54, 0x51, 0x00, 0xb6, 0x45, 0x28, 0xa4, 0xa0, 0xed, 0xbf,
+	0x00, 0x72, 0x49, 0x01, 0xc8, 0x43, 0x32, 0x00, 0x32, 0xca, 0x44, 0x8a, 0x92, 0x57, 0xe2, 0x4c,
+	0x72, 0x75, 0xf5, 0xb4, 0x53, 0xdb, 0xd9, 0x20, 0x13, 0xa9, 0x86, 0x15, 0xd2, 0xbe, 0xc1, 0x6b,
+	0x00, 0x64, 0x07, 0x16, 0x8a, 0xec, 0xf3, 0x78, 0x18, 0x51, 0x0b, 0x89, 0xce, 0xf5, 0x44, 0xa5,
+	0xea, 0x1b, 0xbc, 0x5a, 0x56, 0xe1, 0xec, 0x89, 0x23, 0x49, 0xe7, 0xfe, 0xc5, 0x51, 0xaa, 0x0a,
+	0x47, 0x25, 0xc8, 0x7b, 0x58, 0x2c, 0x12, 0x07, 0x22, 0x14, 0xbe, 0x6e, 0xd4, 0x46, 0xdc, 0xbd,
+	0xeb, 0x71, 0x25, 0x71, 0xdf, 0xe0, 0xb5, 0x10, 0xb2, 0x0d, 0xdd, 0xa3, 0x61, 0x28, 0xb2, 0x41,
+	0x12, 0xc6, 0x5e, 0x40, 0x01, 0x99, 0xcb, 0xb5, 0x43, 0xd8, 0x99, 0xe8, 0xd4, 0x24, 0x4a, 0x65,
+	0xec, 0x2d, 0x58, 0xda, 0xbb, 0xec, 0x05, 0xb4, 0xd0, 0xaf, 0x8b, 0xd0, 0x1e, 0x46, 0x81, 0x38,
+	0x43, 0xab, 0x37, 0x79, 0x1e, 0x90, 0x87, 0x60, 0x69, 0x53, 0x6b, 0x13, 0x2f, 0x15, 0x47, 0xed,
+	0xab, 0x3d, 0x1a, 0xaf, 0x00, 0x1f, 0xcb, 0xd8, 0xb7, 0x06, 0xb4, 0xf1, 0x7c, 0xb6, 0x0e, 0x4d,
+	0x65, 0xe8, 0x07, 0xd0, 0x41, 0x13, 0x64, 0xd4, 0x5c, 0x6e, 0xae, 0x76, 0xd7, 0x16, 0xa7, 0x08,
+	0x28, 0xe6, 0x5a, 0xc3, 0x5e, 0xc3, 0x8d, 0x29, 0xdf, 0x2e, 0x41, 0x27, 0x8d, 0x63, 0xb9, 0x1b,
+	0xe0, 0x97, 0xd9, 0x5c, 0x47, 0x25, 0x6e, 0xe3, 0x3f, 0xb8, 0xcf, 0xa0, 0xa3, 0x6d, 0xfc, 0x18,
+	0x2c, 0xbd, 0xf4, 0x7a, 0xab, 0x27, 0xd6, 0xdb, 0xc2, 0xbc, 0xbb, 0x3f, 0x0a, 0xe5, 0x30, 0x09,
+	0x45, 0x8e, 0xc8, 0xf6, 0x86, 0x99, 0xe4, 0xe3, 0x1a, 0xb6, 0x05, 0xdd, 0xd2, 0xc5, 0x12, 0x06,
+	0x73, 0xea, 0x62, 0x5f, 0x7a, 0xf2, 0x04, 0xfb, 0xb3, 0x79, 0x11, 0x13, 0x0a, 0x16, 0x9e, 0xbe,
+	0x9b, 0xbf, 0x00, 0x36, 0x1f, 0x87, 0x6c, 0x05, 0x3a, 0x7a, 0x27, 0x4a, 0x1a, 0xb3, 0xaa, 0xf9,
+	0xdd, 0x80, 0x96, 0x32, 0x07, 0xfb, 0x55, 0xdc, 0xe8, 0x06, 0xb4, 0xd0, 0xa9, 0xa5, 0xa9, 0x98,
+	0x53, 0x53, 0xa9, 0x3c, 0x4c, 0x93, 0xa9, 0x6c, 0x40, 0x0b, 0xbd, 0x39, 0x7b, 0xe5, 0x67, 0x13,
+	0xec, 0xc9, 0xae, 0xcd, 0x5c, 0x7f, 0xfd, 0x25, 0x90, 0xfb, 0xd0, 0x4e, 0x71, 0x31, 0xf2, 0xb7,
+	0x6d, 0x7a, 0x7e, 0x78, 0x20, 0xcf, 0x25, 0x4c, 0x40, 0xb7, 0xbc, 0x05, 0xb3, 0x7f, 0xc6, 0x5d,
+	0x58, 0xd0, 0xe7, 0x66, 0xbd, 0x34, 0xf5, 0xce, 0xd1, 0x34, 0x36, 0xaf, 0x26, 0x37, 0x6d, 0xb0,
+	0x4e, 0x45, 0x96, 0x79, 0xc7, 0x62, 0xf3, 0xf6, 0xf7, 0x4b, 0xc7, 0xbc, 0xb8, 0x74, 0xcc, 0x9f,
+	0x97, 0x8e, 0xf9, 0xf5, 0xca, 0x31, 0x2e, 0xae, 0x1c, 0xe3, 0xc7, 0x95, 0x63, 0xbc, 0x6b, 0x24,
+	0x87, 0x87, 0x1d, 0xfc, 0xbd, 0x58, 0xff, 0x13, 0x00, 0x00, 0xff, 0xff, 0xa8, 0xdb, 0x3b, 0x9b,
+	0x65, 0x06, 0x00, 0x00,
 }
 
 func (m *Event) Marshal() (dAtA []byte, err error) {
@@ -918,16 +1010,16 @@ func (m *EventMessageOfAccountShow) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	}
 	return len(dAtA) - i, nil
 }
-func (m *EventMessageOfBlockShow) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockAdd) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventMessageOfBlockShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.BlockShow != nil {
+	if m.BlockAdd != nil {
 		{
-			size, err := m.BlockShow.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.BlockAdd.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -936,6 +1028,27 @@ func (m *EventMessageOfBlockShow) MarshalToSizedBuffer(dAtA []byte) (int, error)
 		}
 		i--
 		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+func (m *EventMessageOfBlockShowFullscreen) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventMessageOfBlockShowFullscreen) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.BlockShowFullscreen != nil {
+		{
+			size, err := m.BlockShowFullscreen.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
 	}
 	return len(dAtA) - i, nil
 }
@@ -956,20 +1069,20 @@ func (m *EventMessageOfBlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, erro
 			i = encodeVarintEvents(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x22
 	}
 	return len(dAtA) - i, nil
 }
-func (m *EventMessageOfBlockCreate) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockDelete) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventMessageOfBlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageOfBlockDelete) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.BlockCreate != nil {
+	if m.BlockDelete != nil {
 		{
-			size, err := m.BlockCreate.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.BlockDelete.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -977,7 +1090,7 @@ func (m *EventMessageOfBlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, erro
 			i = encodeVarintEvents(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x22
+		dAtA[i] = 0x2a
 	}
 	return len(dAtA) - i, nil
 }
@@ -998,7 +1111,7 @@ func (m *EventMessageOfUserBlockTextRange) MarshalToSizedBuffer(dAtA []byte) (in
 			i = encodeVarintEvents(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x2a
+		dAtA[i] = 0x32
 	}
 	return len(dAtA) - i, nil
 }
@@ -1019,7 +1132,7 @@ func (m *EventMessageOfUserBlockJoin) MarshalToSizedBuffer(dAtA []byte) (int, er
 			i = encodeVarintEvents(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x32
+		dAtA[i] = 0x3a
 	}
 	return len(dAtA) - i, nil
 }
@@ -1040,7 +1153,7 @@ func (m *EventMessageOfUserBlockLeft) MarshalToSizedBuffer(dAtA []byte) (int, er
 			i = encodeVarintEvents(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x3a
+		dAtA[i] = 0x42
 	}
 	return len(dAtA) - i, nil
 }
@@ -1061,7 +1174,7 @@ func (m *EventMessageOfUserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (
 			i = encodeVarintEvents(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x42
+		dAtA[i] = 0x4a
 	}
 	return len(dAtA) - i, nil
 }
@@ -1082,7 +1195,7 @@ func (m *EventMessageOfFilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, erro
 			i = encodeVarintEvents(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x4a
+		dAtA[i] = 0x52
 	}
 	return len(dAtA) - i, nil
 }
@@ -1172,7 +1285,7 @@ func (m *EventBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *EventBlockShow) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockAdd) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1182,25 +1295,71 @@ func (m *EventBlockShow) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *EventBlockShow) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockAdd) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventBlockShow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Block != nil {
-		{
-			size, err := m.Block.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
+	if len(m.Blocks) > 0 {
+		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Blocks[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintEvents(dAtA, i, uint64(size))
 			}
-			i -= size
-			i = encodeVarintEvents(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
 		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockShowFullscreen) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockShowFullscreen) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockShowFullscreen) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Blocks) > 0 {
+		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Blocks[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintEvents(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.RootId) > 0 {
+		i -= len(m.RootId)
+		copy(dAtA[i:], m.RootId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.RootId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1230,41 +1389,6 @@ func (m *EventBlockUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	if m.Changes != nil {
 		{
 			size, err := m.Changes.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvents(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *EventBlockCreate) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *EventBlockCreate) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *EventBlockCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Block != nil {
-		{
-			size, err := m.Block.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1312,6 +1436,36 @@ func (m *EventBlockFilesUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			i--
 			dAtA[i] = 0xa
 		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockDelete) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockDelete) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockDelete) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -1565,14 +1719,26 @@ func (m *EventMessageOfAccountShow) Size() (n int) {
 	}
 	return n
 }
-func (m *EventMessageOfBlockShow) Size() (n int) {
+func (m *EventMessageOfBlockAdd) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.BlockShow != nil {
-		l = m.BlockShow.Size()
+	if m.BlockAdd != nil {
+		l = m.BlockAdd.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+func (m *EventMessageOfBlockShowFullscreen) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlockShowFullscreen != nil {
+		l = m.BlockShowFullscreen.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -1589,14 +1755,14 @@ func (m *EventMessageOfBlockUpdate) Size() (n int) {
 	}
 	return n
 }
-func (m *EventMessageOfBlockCreate) Size() (n int) {
+func (m *EventMessageOfBlockDelete) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.BlockCreate != nil {
-		l = m.BlockCreate.Size()
+	if m.BlockDelete != nil {
+		l = m.BlockDelete.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -1695,15 +1861,36 @@ func (m *EventBlock) Size() (n int) {
 	return n
 }
 
-func (m *EventBlockShow) Size() (n int) {
+func (m *EventBlockAdd) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Block != nil {
-		l = m.Block.Size()
+	if len(m.Blocks) > 0 {
+		for _, e := range m.Blocks {
+			l = e.Size()
+			n += 1 + l + sovEvents(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *EventBlockShowFullscreen) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.RootId)
+	if l > 0 {
 		n += 1 + l + sovEvents(uint64(l))
+	}
+	if len(m.Blocks) > 0 {
+		for _, e := range m.Blocks {
+			l = e.Size()
+			n += 1 + l + sovEvents(uint64(l))
+		}
 	}
 	return n
 }
@@ -1721,19 +1908,6 @@ func (m *EventBlockUpdate) Size() (n int) {
 	return n
 }
 
-func (m *EventBlockCreate) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Block != nil {
-		l = m.Block.Size()
-		n += 1 + l + sovEvents(uint64(l))
-	}
-	return n
-}
-
 func (m *EventBlockFilesUpload) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1746,6 +1920,19 @@ func (m *EventBlockFilesUpload) Size() (n int) {
 			n += 1 + l + sovEvents(uint64(l))
 		}
 	}
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockDelete) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
 	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovEvents(uint64(l))
@@ -1909,7 +2096,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockShow", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockAdd", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1936,13 +2123,48 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &EventBlockShow{}
+			v := &EventBlockAdd{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &EventMessageOfBlockShow{v}
+			m.Message = &EventMessageOfBlockAdd{v}
 			iNdEx = postIndex
 		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockShowFullscreen", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &EventBlockShowFullscreen{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Message = &EventMessageOfBlockShowFullscreen{v}
+			iNdEx = postIndex
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field BlockUpdate", wireType)
 			}
@@ -1977,9 +2199,9 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			}
 			m.Message = &EventMessageOfBlockUpdate{v}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockCreate", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockDelete", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2006,13 +2228,13 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &EventBlockCreate{}
+			v := &EventBlockDelete{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Message = &EventMessageOfBlockCreate{v}
+			m.Message = &EventMessageOfBlockDelete{v}
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockTextRange", wireType)
 			}
@@ -2047,7 +2269,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			}
 			m.Message = &EventMessageOfUserBlockTextRange{v}
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockJoin", wireType)
 			}
@@ -2082,7 +2304,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			}
 			m.Message = &EventMessageOfUserBlockJoin{v}
 			iNdEx = postIndex
-		case 7:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockLeft", wireType)
 			}
@@ -2117,7 +2339,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			}
 			m.Message = &EventMessageOfUserBlockLeft{v}
 			iNdEx = postIndex
-		case 8:
+		case 9:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UserBlockSelectRange", wireType)
 			}
@@ -2152,7 +2374,7 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			}
 			m.Message = &EventMessageOfUserBlockSelectRange{v}
 			iNdEx = postIndex
-		case 9:
+		case 10:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FilesUpload", wireType)
 			}
@@ -2425,7 +2647,7 @@ func (m *EventBlock) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EventBlockShow) Unmarshal(dAtA []byte) error {
+func (m *EventBlockAdd) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2448,15 +2670,15 @@ func (m *EventBlockShow) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Show: wiretype end group for non-group")
+			return fmt.Errorf("proto: Add: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Show: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Add: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Block", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2483,10 +2705,127 @@ func (m *EventBlockShow) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Block == nil {
-				m.Block = &ModelBlock{}
+			m.Blocks = append(m.Blocks, &ModelBlock{})
+			if err := m.Blocks[len(m.Blocks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
-			if err := m.Block.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockShowFullscreen) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ShowFullscreen: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ShowFullscreen: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RootId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RootId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Blocks = append(m.Blocks, &ModelBlock{})
+			if err := m.Blocks[len(m.Blocks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2603,95 +2942,6 @@ func (m *EventBlockUpdate) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EventBlockCreate) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvents
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Create: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Create: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Block", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvents
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Block == nil {
-				m.Block = &ModelBlock{}
-			}
-			if err := m.Block.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvents(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *EventBlockFilesUpload) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -2754,6 +3004,91 @@ func (m *EventBlockFilesUpload) Unmarshal(dAtA []byte) error {
 			m.FilePath = append(m.FilePath, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockDelete) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Delete: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Delete: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
 			}
