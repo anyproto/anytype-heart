@@ -84,10 +84,10 @@ message Block {
         message Text {
             string text = 1;
             Style style = 2;
-            Marks marksList = 3; // list of marks to apply to the text
+            Marks marks = 3; // list of marks to apply to the text
 
             bool toggleable = 4; // can be toggled or not
-            MarkerType markerType = 5; // if no – it's not a list. If number/bullet – it should be a list with its list-siblings.
+            Marker marker = 5; // if no – it's not a list. If number/bullet – it should be a list with its list-siblings.
 
             bool checkable = 6; // can be checked or not
             bool checked = 7;
@@ -120,7 +120,7 @@ message Block {
                 code = 6;
             }
 
-            enum MarkerType {
+            enum Marker {
                 none = 0;
                 number = 1;
                 bullet = 2;
