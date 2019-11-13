@@ -721,7 +721,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -792,7 +792,8 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | block | [Model.Block](#anytype.Model.Block) |  |  |
 | targetId | [string](#string) |  |  |
 | position | [Model.Block.Position](#anytype.Model.Block.Position) |  |  |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -868,7 +869,7 @@ Block history: switch between versions (lib context: switch block head), move fo
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
 | moveForward | [bool](#bool) |  | Move direction. If true, move forward |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -939,7 +940,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1009,7 +1010,7 @@ Case F. Update children of a layout block on a page
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1850,7 +1851,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blocks | [Model.Block](#anytype.Model.Block) | repeated | id -&gt; block |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1866,7 +1867,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1886,7 +1887,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1904,7 +1905,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
 | blocks | [Model.Block](#anytype.Model.Block) | repeated | children of the root block |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1922,7 +1923,7 @@ Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1961,7 +1962,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that opened a block |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1980,7 +1981,7 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that left the block |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -2000,7 +2001,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected blocks |
 | blockIdsArray | [string](#string) | repeated | Ids of selected blocks. |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -2021,7 +2022,7 @@ Precondition: user A and user B opened the same block
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected a text |
 | blockId | [string](#string) |  | Id of the text block, that have a selection |
 | range | [Model.Range](#anytype.Model.Range) |  | Range of the selection |
-| contextId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
