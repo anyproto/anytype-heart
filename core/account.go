@@ -79,6 +79,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	mw.localAccounts = append(mw.localAccounts, newAcc)
+	mw.switchAccount(newAcc.Id)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -313,7 +314,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	if avatarHashOrColor != "" {
 		acc.Avatar = getAvatarFromString(avatarHashOrColor)
 	}
-
+	mw.switchAccount(acc.Id)
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 

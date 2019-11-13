@@ -3,6 +3,8 @@ package anytype;
 option go_package = "pb";
 import "models.proto";
 
+import "google/protobuf/struct.proto";
+
 /*
  * Change contains single block change or list of block changes.
 */
@@ -12,7 +14,7 @@ message Change {
     */
     message Block {
         message Fields {
-            Model.Struct fields = 1;
+            google.protobuf.Struct fields = 1;
         }
 
         message Permissions {

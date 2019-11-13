@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -35,13 +36,13 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return m
 	}
 
-	/*block := &pb.ModelBlock{} // TODO
-
-	m := &pb.Event{Message: &pb.EventBlockShow{&pb.RpcBlockShow{Block: block}}}
-
-	if mw.SendEvent != nil {
-		mw.SendEvent(m)
-	}*/
+	if err := mw.blockService.OpenBlock(req.Id); err != nil {
+		switch err {
+		case block.ErrBlockNotFound:
+			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
+		}
+		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
+	}
 
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
 }
@@ -66,4 +67,11 @@ func (mw *Middleware) BlockUpdate(req *pb.RpcBlockUpdateRequest) *pb.RpcBlockUpd
 		}*/
 
 	return response(pb.RpcBlockUpdateResponseError_NULL, nil)
+}
+
+func (mw *Middleware) switchAccount(accountId string) {
+	if mw.blockService != nil {
+		mw.blockService.Close()
+	}
+	mw.blockService = block.NewService(accountId, mw.Anytype, mw.SendEvent)
 }

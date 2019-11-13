@@ -4,6 +4,7 @@ import (
 	"context"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	logging "github.com/ipfs/go-log"
 )
@@ -25,6 +26,7 @@ type Middleware struct {
 	accountSearchCancel context.CancelFunc
 	localAccounts       []*pb.ModelAccount
 	SendEvent           func(event *pb.Event)
+	blockService        block.Service
 	*libCore.Anytype
 }
 

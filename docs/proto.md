@@ -170,10 +170,6 @@
     - [Model.Block.Permissions](#anytype.Model.Block.Permissions)
     - [Model.Image](#anytype.Model.Image)
     - [Model.Range](#anytype.Model.Range)
-    - [Model.Struct](#anytype.Model.Struct)
-    - [Model.Struct.FieldsEntry](#anytype.Model.Struct.FieldsEntry)
-    - [Model.Struct.ListValue](#anytype.Model.Struct.ListValue)
-    - [Model.Struct.Value](#anytype.Model.Struct.Value)
     - [Model.Video](#anytype.Model.Video)
   
     - [Model.Block.Content.Dashboard.Style](#anytype.Model.Block.Content.Dashboard.Style)
@@ -187,7 +183,6 @@
     - [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State)
     - [Model.Block.Position](#anytype.Model.Block.Position)
     - [Model.Image.Size](#anytype.Model.Image.Size)
-    - [Model.Struct.NullValue](#anytype.Model.Struct.NullValue)
     - [Model.Video.Size](#anytype.Model.Video.Size)
   
   
@@ -398,7 +393,7 @@ Change.Block contains only one, single change for one block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| fields | [Model.Struct](#anytype.Model.Struct) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 
@@ -2081,7 +2076,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| fields | [Model.Struct](#anytype.Model.Struct) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | permissions | [Model.Block.Permissions](#anytype.Model.Block.Permissions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
 | dashboard | [Model.Block.Content.Dashboard](#anytype.Model.Block.Content.Dashboard) |  |  |
@@ -2394,75 +2389,6 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.Model.Struct"></a>
-
-### Model.Struct
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| fields | [Model.Struct.FieldsEntry](#anytype.Model.Struct.FieldsEntry) | repeated | Unordered map of dynamically typed values. |
-
-
-
-
-
-
-<a name="anytype.Model.Struct.FieldsEntry"></a>
-
-### Model.Struct.FieldsEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [Model.Struct.Value](#anytype.Model.Struct.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Struct.ListValue"></a>
-
-### Model.Struct.ListValue
-`ListValue` is a wrapper around a repeated field of values.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| values | [Model.Struct.Value](#anytype.Model.Struct.Value) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Model.Struct.Value"></a>
-
-### Model.Struct.Value
-`Value` represents a dynamically typed value which can be either
-null, a number, a string, a boolean, a recursive struct value, or a
-list of values. A producer of value is expected to set one of that
-variants, absence of any variant indicates an error.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| null_value | [Model.Struct.NullValue](#anytype.Model.Struct.NullValue) |  | Represents a null value. |
-| number_value | [double](#double) |  | Represents a double value. |
-| string_value | [string](#string) |  | Represents a string value. |
-| bool_value | [bool](#bool) |  | Represents a boolean value. |
-| struct_value | [Model.Struct](#anytype.Model.Struct) |  | Represents a structured value. |
-| list_value | [Model.Struct.ListValue](#anytype.Model.Struct.ListValue) |  | Represents a repeated `Value`. |
-
-
-
-
-
-
 <a name="anytype.Model.Video"></a>
 
 ### Model.Video
@@ -2630,17 +2556,6 @@ variants, absence of any variant indicates an error.
 | LARGE | 0 |  |
 | SMALL | 1 |  |
 | THUMB | 2 |  |
-
-
-
-<a name="anytype.Model.Struct.NullValue"></a>
-
-### Model.Struct.NullValue
-`NullValue` is a singleton enumeration to represent the null value for the
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL_VALUE | 0 |  |
 
 
 

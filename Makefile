@@ -67,7 +67,9 @@ setup-protoc:
 # 	cd pb/protos/service; env PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I/usr/local/include -I. -I=. -I=.. --gogo_out=plugins=gomobile:../../../lib service.proto
 
 protos:
-	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/golang/protobuf/ptypes/struct)
-	cd pb/protos; GOGO_NO_UNDERSCORE=1 protoc --gogofaster_out=$(P_STRUCT):.. *.proto
-	cd pb/protos/service; GOGO_NO_UNDERSCORE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=.. -I=. --gogofaster_out=plugins=gomobile:../../../lib service.proto
+	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
+	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT))
+	cd pb/protos; GOGO_NO_UNDERSCORE=1 protoc --gogofaster_out=$(PKGMAP):.. *.proto
+	cd pb/protos/service; GOGO_NO_UNDERSCORE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=.. -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:../../../lib service.proto
 	cd pb/protos; GOGO_NO_UNDERSCORE=1 protoc --doc_out=../../docs --doc_opt=markdown,proto.md service/*.proto *.proto

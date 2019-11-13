@@ -2,6 +2,7 @@ package block
 
 import (
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"log"
 	"sync"
 
@@ -19,10 +20,11 @@ type Service interface {
 	Close() error
 }
 
-func NewService(accountId string, lib anytype.Anytype) Service {
+func NewService(accountId string, lib anytype.Anytype, sendEvent func(event *pb.Event)) Service {
 	return &service{
 		accountId:   accountId,
 		anytype:     lib,
+		sendEvent:   sendEvent,
 		smartBlocks: make(map[string]smartBlock),
 	}
 }
@@ -30,6 +32,7 @@ func NewService(accountId string, lib anytype.Anytype) Service {
 type service struct {
 	anytype     anytype.Anytype
 	accountId   string
+	sendEvent   func(event *pb.Event)
 	smartBlocks map[string]smartBlock
 	m           sync.Mutex
 }
