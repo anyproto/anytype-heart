@@ -3,14 +3,14 @@
 
 ## Table of Contents
 
-- [service/service.proto](#service/service.proto)
+- [pb/protos/service/service.proto](#pb/protos/service/service.proto)
   
   
   
     - [ClientCommands](#anytype.ClientCommands)
   
 
-- [changes.proto](#changes.proto)
+- [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.Block](#anytype.Change.Block)
     - [Change.Block.ChildrenIds](#anytype.Change.Block.ChildrenIds)
@@ -32,7 +32,7 @@
   
   
 
-- [commands.proto](#commands.proto)
+- [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Rpc](#anytype.Rpc)
     - [Rpc.Account](#anytype.Rpc.Account)
     - [Rpc.Account.Create](#anytype.Rpc.Account.Create)
@@ -125,7 +125,7 @@
   
   
 
-- [events.proto](#events.proto)
+- [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
     - [Event.Account.Show](#anytype.Event.Account.Show)
@@ -146,61 +146,14 @@
   
   
 
-- [models.proto](#models.proto)
-    - [Model](#anytype.Model)
-    - [Model.Account](#anytype.Model.Account)
-    - [Model.Account.Avatar](#anytype.Model.Account.Avatar)
-    - [Model.Block](#anytype.Model.Block)
-    - [Model.Block.Content](#anytype.Model.Block.Content)
-    - [Model.Block.Content.Bookmark](#anytype.Model.Block.Content.Bookmark)
-    - [Model.Block.Content.Dashboard](#anytype.Model.Block.Content.Dashboard)
-    - [Model.Block.Content.Dataview](#anytype.Model.Block.Content.Dataview)
-    - [Model.Block.Content.Div](#anytype.Model.Block.Content.Div)
-    - [Model.Block.Content.File](#anytype.Model.Block.Content.File)
-    - [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview)
-    - [Model.Block.Content.Image](#anytype.Model.Block.Content.Image)
-    - [Model.Block.Content.Image.Preview](#anytype.Model.Block.Content.Image.Preview)
-    - [Model.Block.Content.Layout](#anytype.Model.Block.Content.Layout)
-    - [Model.Block.Content.Page](#anytype.Model.Block.Content.Page)
-    - [Model.Block.Content.Text](#anytype.Model.Block.Content.Text)
-    - [Model.Block.Content.Text.Mark](#anytype.Model.Block.Content.Text.Mark)
-    - [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks)
-    - [Model.Block.Content.Video](#anytype.Model.Block.Content.Video)
-    - [Model.Block.Content.Video.Preview](#anytype.Model.Block.Content.Video.Preview)
-    - [Model.Block.Permissions](#anytype.Model.Block.Permissions)
-    - [Model.Image](#anytype.Model.Image)
-    - [Model.Range](#anytype.Model.Range)
-    - [Model.Struct](#anytype.Model.Struct)
-    - [Model.Struct.FieldsEntry](#anytype.Model.Struct.FieldsEntry)
-    - [Model.Struct.ListValue](#anytype.Model.Struct.ListValue)
-    - [Model.Struct.Value](#anytype.Model.Struct.Value)
-    - [Model.Video](#anytype.Model.Video)
-  
-    - [Model.Block.Content.Dashboard.Style](#anytype.Model.Block.Content.Dashboard.Style)
-    - [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State)
-    - [Model.Block.Content.Image.State](#anytype.Model.Block.Content.Image.State)
-    - [Model.Block.Content.Layout.Style](#anytype.Model.Block.Content.Layout.Style)
-    - [Model.Block.Content.Page.Style](#anytype.Model.Block.Content.Page.Style)
-    - [Model.Block.Content.Text.Mark.Type](#anytype.Model.Block.Content.Text.Mark.Type)
-    - [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType)
-    - [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style)
-    - [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State)
-    - [Model.Block.Position](#anytype.Model.Block.Position)
-    - [Model.Image.Size](#anytype.Model.Image.Size)
-    - [Model.Struct.NullValue](#anytype.Model.Struct.NullValue)
-    - [Model.Video.Size](#anytype.Model.Video.Size)
-  
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
 
-<a name="service/service.proto"></a>
+<a name="pb/protos/service/service.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## service/service.proto
+## pb/protos/service/service.proto
 
 
  
@@ -228,16 +181,17 @@
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
-| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | rpc BlockFilesUpload (Block Rpc.History.Move.Request) returns (BlockRpc..History Move.Response); |
+| BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) | TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response); |
+| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | TODO: rpc BlockFilesUpload () returns (); |
 
  
 
 
 
-<a name="changes.proto"></a>
+<a name="pb/protos/changes.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## changes.proto
+## pb/protos/changes.proto
 
 
 
@@ -294,8 +248,8 @@ Change.Block contains only one, single change for one block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| style | [Model.Block.Content.Dashboard.Style](#anytype.Model.Block.Content.Dashboard.Style) |  |  |
-| block | [Model.Block](#anytype.Model.Block) |  |  |
+| style | [model.Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style) |  |  |
+| block | [model.Block](#anytype.model.Block) |  |  |
 
 
 
@@ -311,8 +265,8 @@ Change.Block contains only one, single change for one block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | content | [string](#string) |  |  |
-| state | [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State) |  |  |
-| preview | [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview) |  |  |
+| state | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| preview | [model.Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview) |  |  |
 
 
 
@@ -328,8 +282,8 @@ Change.Block contains only one, single change for one block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | content | [string](#string) |  |  |
-| state | [Model.Block.Content.Image.State](#anytype.Model.Block.Content.Image.State) |  |  |
-| preview | [Model.Block.Content.Image.Preview](#anytype.Model.Block.Content.Image.Preview) |  |  |
+| state | [model.Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
+| preview | [model.Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview) |  |  |
 
 
 
@@ -344,8 +298,8 @@ Change.Block contains only one, single change for one block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| style | [Model.Block.Content.Page.Style](#anytype.Model.Block.Content.Page.Style) |  |  |
-| block | [Model.Block](#anytype.Model.Block) |  |  |
+| style | [model.Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style) |  |  |
+| block | [model.Block](#anytype.model.Block) |  |  |
 
 
 
@@ -361,10 +315,10 @@ Change.Block contains only one, single change for one block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | text | [string](#string) |  |  |
-| style | [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style) |  |  |
-| marks | [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks) |  |  |
+| style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+| marks | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
 | toggleable | [bool](#bool) |  |  |
-| markerType | [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType) |  |  |
+| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
 | checkable | [bool](#bool) |  |  |
 | checked | [bool](#bool) |  |  |
 
@@ -382,8 +336,8 @@ Change.Block contains only one, single change for one block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | content | [string](#string) |  |  |
-| state | [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State) |  |  |
-| preview | [Model.Block.Content.Video.Preview](#anytype.Model.Block.Content.Video.Preview) |  |  |
+| state | [model.Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
+| preview | [model.Block.Content.Video.Preview](#anytype.model.Block.Content.Video.Preview) |  |  |
 
 
 
@@ -398,7 +352,7 @@ Change.Block contains only one, single change for one block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| fields | [Model.Struct](#anytype.Model.Struct) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 
@@ -413,7 +367,7 @@ Change.Block contains only one, single change for one block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| permissions | [Model.Block.Permissions](#anytype.Model.Block.Permissions) |  |  |
+| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
 
 
 
@@ -438,7 +392,7 @@ Change.Multiple contains array of changes, for a list of blocks each.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| author | [Model.Account](#anytype.Model.Account) |  |  |
+| author | [model.Account](#anytype.model.Account) |  |  |
 | changes | [Change.Single.BlocksList](#anytype.Change.Single.BlocksList) | repeated |  |
 
 
@@ -465,7 +419,7 @@ Change.Single contains only one, single change, but for a list of blocks.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) | repeated |  |
-| author | [Model.Account](#anytype.Model.Account) |  |  |
+| author | [model.Account](#anytype.model.Account) |  |  |
 | text | [Change.Block.Content.Text](#anytype.Change.Block.Content.Text) |  |  |
 | fields | [Change.Block.Fields](#anytype.Change.Block.Fields) |  |  |
 | premissions | [Change.Block.Permissions](#anytype.Change.Block.Permissions) |  |  |
@@ -490,10 +444,10 @@ Change.Single contains only one, single change, but for a list of blocks.
 
 
 
-<a name="commands.proto"></a>
+<a name="pb/protos/commands.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## commands.proto
+## pb/protos/commands.proto
 
 
 
@@ -556,7 +510,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error) |  | Error while trying to create an account |
-| account | [Model.Account](#anytype.Model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
+| account | [model.Account](#anytype.model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
 
 
 
@@ -592,7 +546,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 <a name="anytype.Rpc.Account.Recover.Request"></a>
 
 ### Rpc.Account.Recover.Request
-Front end to middleware request-to-start-search of an accounts for a recovered mnemonic. 
+Front end to middleware request-to-start-search of an accounts for a recovered mnemonic.
 Each of an account that would be found will come with an AccountAdd event
 
 
@@ -667,7 +621,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error) |  | Error while trying to launch/select an account |
-| account | [Model.Account](#anytype.Model.Account) |  | Selected account |
+| account | [model.Account](#anytype.model.Account) |  | Selected account |
 
 
 
@@ -703,7 +657,7 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 <a name="anytype.Rpc.Block.Close"></a>
 
 ### Rpc.Block.Close
-Block.Close – it means unsubscribe from a block. 
+Block.Close – it means unsubscribe from a block.
 Precondition: block should be opened.
 
 
@@ -720,6 +674,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -767,7 +722,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
     2. Front -&gt; MW: Rpc.Block.Close.Request(block: dashboard.id)
     3. Front &lt;- MW: Rpc.Block.Close.Response(err)
     4. Front &lt;- MW: Rpc.Block.Create.Response(page.id)
-    5. Front &lt;- MW: Rpc.Block.Open.Response(err)         
+    5. Front &lt;- MW: Rpc.Block.Open.Response(err)
     6. Front &lt;- MW: Event.Block.Show(page)
 1B. Create Page on a Page
     1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
@@ -787,9 +742,11 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [Model.Block](#anytype.Model.Block) |  |  |
+| block | [model.Block](#anytype.model.Block) |  |  |
 | targetId | [string](#string) |  |  |
-| position | [Model.Block.Position](#anytype.Model.Block.Position) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| contextId | [string](#string) |  | id of the context block |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -864,7 +821,8 @@ Block history: switch between versions (lib context: switch block head), move fo
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| moveForward | [bool](#bool) |  | Move direction. If true, |
+| moveForward | [bool](#bool) |  | Move direction. If true, move forward |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -914,7 +872,7 @@ Works with a smart blocks (block-organizers, like page, dashboard etc)
 1B. User clicks on a page icon on the dashboard.
     1. Front -&gt; MW: Rpc.Block.Close.Request(dashboard.id)
 Get close response first, then open request:
-    2. MW -&gt; Front: Rpc.Block.Close.Response(err)    
+    2. MW -&gt; Front: Rpc.Block.Close.Response(err)
     3. Front -&gt; MW: Rpc.Block.Open.Request(page.id)
     4. MW -&gt; Front: BlockShow(&lt;page, blocks&gt;)
     5. MW -&gt; Front: Rpc.Block.Open.Response(err)
@@ -935,6 +893,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1004,6 +963,7 @@ Case F. Update children of a layout block on a page
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1159,7 +1119,7 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| size | [Model.Image.Size](#anytype.Model.Image.Size) |  |  |
+| size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
 
 
 
@@ -1217,7 +1177,7 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| size | [Model.Image.Size](#anytype.Model.Image.Size) |  |  |
+| size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
 
 
 
@@ -1759,10 +1719,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="events.proto"></a>
+<a name="pb/protos/events.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## events.proto
+## pb/protos/events.proto
 
 
 
@@ -1809,7 +1769,7 @@ Message, that will be sent to the front on each account found after an AccountRe
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | index | [int64](#int64) |  | Number of an account in an all found accounts list |
-| account | [Model.Account](#anytype.Model.Account) |  | An Account, that has been found for the mnemonic |
+| account | [model.Account](#anytype.model.Account) |  | An Account, that has been found for the mnemonic |
 
 
 
@@ -1830,7 +1790,7 @@ Message, that will be sent to the front on each account found after an AccountRe
 
 ### Event.Block.Add
 Event to show internal blocks on a client.
-Example Scenarios 
+Example Scenarios
 A. Block Creation
 1. Block A have been created on a client C1
 2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
@@ -1843,7 +1803,8 @@ B. Partial block load
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blocks | [Model.Block](#anytype.Model.Block) | repeated | id -&gt; block |
+| blocks | [model.Block](#anytype.model.Block) | repeated | id -&gt; block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1859,6 +1820,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1878,6 +1840,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1894,7 +1857,8 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
-| blocks | [Model.Block](#anytype.Model.Block) | repeated | children of the root block |
+| blocks | [model.Block](#anytype.model.Block) | repeated | children of the root block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1912,6 +1876,7 @@ Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1950,6 +1915,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that opened a block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1968,6 +1934,7 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that left the block |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1987,6 +1954,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected blocks |
 | blockIdsArray | [string](#string) | repeated | Ids of selected blocks. |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1998,7 +1966,7 @@ Precondition: user A and user B opened the same block
 ### Event.User.Block.TextRange
 Middleware to front end event message, that will be sent in this scenario:
 Precondition: user A and user B opened the same block
-1. User B sets cursor or selects a text region into a text block 
+1. User B sets cursor or selects a text region into a text block
 2. User A receives a message about p.1
 
 
@@ -2006,658 +1974,14 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected a text |
 | blockId | [string](#string) |  | Id of the text block, that have a selection |
-| range | [Model.Range](#anytype.Model.Range) |  | Range of the selection |
+| range | [model.Range](#anytype.model.Range) |  | Range of the selection |
+| contextId | [string](#string) |  | id of the context block |
 
 
 
 
 
  
-
- 
-
- 
-
- 
-
-
-
-<a name="models.proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## models.proto
-
-
-
-<a name="anytype.Model"></a>
-
-### Model
-
-
-
-
-
-
-
-<a name="anytype.Model.Account"></a>
-
-### Model.Account
-Contains basic information about a user account
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | User&#39;s thread id |
-| name | [string](#string) |  | User name, that associated with this account |
-| avatar | [Model.Account.Avatar](#anytype.Model.Account.Avatar) |  | Avatar of a user&#39;s account |
-
-
-
-
-
-
-<a name="anytype.Model.Account.Avatar"></a>
-
-### Model.Account.Avatar
-Avatar of a user&#39;s account. It could be an image or color
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| image | [Model.Image](#anytype.Model.Image) |  | Image of the avatar. Contains hash and size |
-| color | [string](#string) |  | Color of the avatar, if no image |
-
-
-
-
-
-
-<a name="anytype.Model.Block"></a>
-
-### Model.Block
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| fields | [Model.Struct](#anytype.Model.Struct) |  |  |
-| permissions | [Model.Block.Permissions](#anytype.Model.Block.Permissions) |  |  |
-| childrenIds | [string](#string) | repeated |  |
-| dashboard | [Model.Block.Content.Dashboard](#anytype.Model.Block.Content.Dashboard) |  |  |
-| page | [Model.Block.Content.Page](#anytype.Model.Block.Content.Page) |  |  |
-| dataview | [Model.Block.Content.Dataview](#anytype.Model.Block.Content.Dataview) |  |  |
-| text | [Model.Block.Content.Text](#anytype.Model.Block.Content.Text) |  |  |
-| video | [Model.Block.Content.Video](#anytype.Model.Block.Content.Video) |  |  |
-| image | [Model.Block.Content.Image](#anytype.Model.Block.Content.Image) |  |  |
-| file | [Model.Block.Content.File](#anytype.Model.Block.Content.File) |  |  |
-| layout | [Model.Block.Content.Layout](#anytype.Model.Block.Content.Layout) |  |  |
-| div | [Model.Block.Content.Div](#anytype.Model.Block.Content.Div) |  |  |
-| bookmark | [Model.Block.Content.Bookmark](#anytype.Model.Block.Content.Bookmark) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content"></a>
-
-### Model.Block.Content
-
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Bookmark"></a>
-
-### Model.Block.Content.Bookmark
-Bookmark is to keep a web-link and to preview a content.
-
-Model.Link.Preview preview = 1;
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Dashboard"></a>
-
-### Model.Block.Content.Dashboard
-Block type to organize pages on the main screen (main purpose)
-It also can be mounted on a page.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Model.Block.Content.Dashboard.Style](#anytype.Model.Block.Content.Dashboard.Style) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Dataview"></a>
-
-### Model.Block.Content.Dataview
-...
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Div"></a>
-
-### Model.Block.Content.Div
-Divider: block, that contains only one horizontal thin line
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.File"></a>
-
-### Model.Block.Content.File
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  | Path to the file on a local machine |
-| state | [Model.Block.Content.File.State](#anytype.Model.Block.Content.File.State) |  |  |
-| preview | [Model.Block.Content.File.Preview](#anytype.Model.Block.Content.File.Preview) |  | Content to show before the main content is downladed |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.File.Preview"></a>
-
-### Model.Block.Content.File.Preview
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Image"></a>
-
-### Model.Block.Content.Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  |  |
-| state | [Model.Block.Content.Image.State](#anytype.Model.Block.Content.Image.State) |  |  |
-| preview | [Model.Block.Content.Image.Preview](#anytype.Model.Block.Content.Image.Preview) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Image.Preview"></a>
-
-### Model.Block.Content.Image.Preview
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Layout"></a>
-
-### Model.Block.Content.Layout
-Layout have no visual representation, but affects on blocks, that it contains.
-Row/Column layout blocks creates only automatically, after some of a D&amp;D operations, for example
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Model.Block.Content.Layout.Style](#anytype.Model.Block.Content.Layout.Style) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Page"></a>
-
-### Model.Block.Content.Page
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Model.Block.Content.Page.Style](#anytype.Model.Block.Content.Page.Style) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Text"></a>
-
-### Model.Block.Content.Text
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| text | [string](#string) |  |  |
-| style | [Model.Block.Content.Text.Style](#anytype.Model.Block.Content.Text.Style) |  |  |
-| marksList | [Model.Block.Content.Text.Marks](#anytype.Model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
-| toggleable | [bool](#bool) |  | can be toggled or not |
-| markerType | [Model.Block.Content.Text.MarkerType](#anytype.Model.Block.Content.Text.MarkerType) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
-| checkable | [bool](#bool) |  | can be checked or not |
-| checked | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Text.Mark"></a>
-
-### Model.Block.Content.Text.Mark
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| range | [Model.Range](#anytype.Model.Range) |  | range of symbols to apply this mark. From(symbol) To(symbol) |
-| type | [Model.Block.Content.Text.Mark.Type](#anytype.Model.Block.Content.Text.Mark.Type) |  |  |
-| param | [string](#string) |  | link, color, etc |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Text.Marks"></a>
-
-### Model.Block.Content.Text.Marks
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| marks | [Model.Block.Content.Text.Mark](#anytype.Model.Block.Content.Text.Mark) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Video"></a>
-
-### Model.Block.Content.Video
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  |  |
-| state | [Model.Block.Content.Video.State](#anytype.Model.Block.Content.Video.State) |  |  |
-| preview | [Model.Block.Content.Video.Preview](#anytype.Model.Block.Content.Video.Preview) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Content.Video.Preview"></a>
-
-### Model.Block.Content.Video.Preview
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Block.Permissions"></a>
-
-### Model.Block.Permissions
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| read | [bool](#bool) |  |  |
-| edit | [bool](#bool) |  |  |
-| remove | [bool](#bool) |  |  |
-| drag | [bool](#bool) |  |  |
-| dropOn | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Image"></a>
-
-### Model.Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| sizes | [Model.Image.Size](#anytype.Model.Image.Size) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Model.Range"></a>
-
-### Model.Range
-General purpose structure, uses in Mark.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| from | [int32](#int32) |  |  |
-| to | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Struct"></a>
-
-### Model.Struct
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| fields | [Model.Struct.FieldsEntry](#anytype.Model.Struct.FieldsEntry) | repeated | Unordered map of dynamically typed values. |
-
-
-
-
-
-
-<a name="anytype.Model.Struct.FieldsEntry"></a>
-
-### Model.Struct.FieldsEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [Model.Struct.Value](#anytype.Model.Struct.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.Model.Struct.ListValue"></a>
-
-### Model.Struct.ListValue
-`ListValue` is a wrapper around a repeated field of values.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| values | [Model.Struct.Value](#anytype.Model.Struct.Value) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Model.Struct.Value"></a>
-
-### Model.Struct.Value
-`Value` represents a dynamically typed value which can be either
-null, a number, a string, a boolean, a recursive struct value, or a
-list of values. A producer of value is expected to set one of that
-variants, absence of any variant indicates an error.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| null_value | [Model.Struct.NullValue](#anytype.Model.Struct.NullValue) |  | Represents a null value. |
-| number_value | [double](#double) |  | Represents a double value. |
-| string_value | [string](#string) |  | Represents a string value. |
-| bool_value | [bool](#bool) |  | Represents a boolean value. |
-| struct_value | [Model.Struct](#anytype.Model.Struct) |  | Represents a structured value. |
-| list_value | [Model.Struct.ListValue](#anytype.Model.Struct.ListValue) |  | Represents a repeated `Value`. |
-
-
-
-
-
-
-<a name="anytype.Model.Video"></a>
-
-### Model.Video
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| sizes | [Model.Video.Size](#anytype.Model.Video.Size) | repeated |  |
-
-
-
-
-
- 
-
-
-<a name="anytype.Model.Block.Content.Dashboard.Style"></a>
-
-### Model.Block.Content.Dashboard.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| MAIN_SCREEN | 0 | ... |
-
-
-
-<a name="anytype.Model.Block.Content.File.State"></a>
-
-### Model.Block.Content.File.State
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| EMPTY | 0 | There is no file and preview, it&#39;s an empty block, that waits files. |
-| UPLOADING | 1 | There is stil no file/preview, but file already uploading |
-| PREVIEW | 2 | File exists, preview downloaded, but file – not. |
-| DOWNLOADING | 3 | File exists, preview downloaded, but file downloading |
-| DONE | 4 | File and preview downloaded |
-
-
-
-<a name="anytype.Model.Block.Content.Image.State"></a>
-
-### Model.Block.Content.Image.State
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| EMPTY | 0 | There is no image and preview, it&#39;s an empty block, that waits image. |
-| UPLOADING | 1 | There is stil no image/preview, but image already uploading |
-| PREVIEW | 2 | Image exists, preview downloaded, but image – not. |
-| DOWNLOADING | 3 | Image exists, preview downloaded, but image downloading |
-| DONE | 4 | Image and preview downloaded |
-
-
-
-<a name="anytype.Model.Block.Content.Layout.Style"></a>
-
-### Model.Block.Content.Layout.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| ROW | 0 |  |
-| COLUMN | 1 |  |
-
-
-
-<a name="anytype.Model.Block.Content.Page.Style"></a>
-
-### Model.Block.Content.Page.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| EMPTY | 0 | Ordinary page, without additional fields |
-| TASK | 1 | Page with a task fields |
-| BOOKMARK | 2 | Page with a bookmark fields |
-| SET | 3 | Page, that organize a set of blocks by a specific criterio |
-
-
-
-<a name="anytype.Model.Block.Content.Text.Mark.Type"></a>
-
-### Model.Block.Content.Text.Mark.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| STRIKETHROUGH | 0 |  |
-| KEYBOARD | 1 |  |
-| ITALIC | 2 |  |
-| BOLD | 3 |  |
-| LINK | 4 |  |
-
-
-
-<a name="anytype.Model.Block.Content.Text.MarkerType"></a>
-
-### Model.Block.Content.Text.MarkerType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| none | 0 |  |
-| number | 1 |  |
-| bullet | 2 |  |
-
-
-
-<a name="anytype.Model.Block.Content.Text.Style"></a>
-
-### Model.Block.Content.Text.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| p | 0 |  |
-| h1 | 1 |  |
-| h2 | 2 |  |
-| h3 | 3 |  |
-| h4 | 4 |  |
-| quote | 5 |  |
-| code | 6 |  |
-
-
-
-<a name="anytype.Model.Block.Content.Video.State"></a>
-
-### Model.Block.Content.Video.State
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| EMPTY | 0 | There is no video and preview, it&#39;s an empty block, that waits videos. |
-| UPLOADING | 1 | There is stil no video/preview, but video already uploading |
-| PREVIEW | 2 | Video exists, preview downloaded, but video – not. |
-| DOWNLOADING | 3 | Video exists, preview downloaded, but video downloading |
-| DONE | 4 | Video and preview downloaded |
-
-
-
-<a name="anytype.Model.Block.Position"></a>
-
-### Model.Block.Position
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| BEFORE | 0 |  |
-| AFTER | 1 |  |
-
-
-
-<a name="anytype.Model.Image.Size"></a>
-
-### Model.Image.Size
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| LARGE | 0 |  |
-| SMALL | 1 |  |
-| THUMB | 2 |  |
-
-
-
-<a name="anytype.Model.Struct.NullValue"></a>
-
-### Model.Struct.NullValue
-`NullValue` is a singleton enumeration to represent the null value for the
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL_VALUE | 0 |  |
-
-
-
-<a name="anytype.Model.Video.Size"></a>
-
-### Model.Video.Size
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| SD_360p | 0 |  |
-| SD_480p | 1 |  |
-| HD_720p | 2 |  |
-| HD_1080p | 3 |  |
-| UHD_1440p | 4 |  |
-| UHD_2160p | 5 |  |
-
 
  
 

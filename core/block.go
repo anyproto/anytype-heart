@@ -14,7 +14,7 @@ func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCre
 		return m
 	}
 
-	/*block := &pb.ModelBlock{} // TODO
+	/*block := &model.Block{} // TODO
 
 	m := &pb.Event{Message: &pb.EventBlockCreate{&pb.RpcBlockCreate{Block: block}}}
 
@@ -35,7 +35,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return m
 	}
 
-	/*block := &pb.ModelBlock{} // TODO
+	/*block := &model.Block{} // TODO
 
 	m := &pb.Event{Message: &pb.EventBlockShow{&pb.RpcBlockShow{Block: block}}}
 
@@ -44,6 +44,19 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	}*/
 
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockCloseResponse {
+	response := func(code pb.RpcBlockCloseResponseErrorCode, err error) *pb.RpcBlockCloseResponse {
+		m := &pb.RpcBlockCloseResponse{Error: &pb.RpcBlockCloseResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockCloseResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockUpdate(req *pb.RpcBlockUpdateRequest) *pb.RpcBlockUpdateResponse {
