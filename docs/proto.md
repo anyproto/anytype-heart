@@ -593,7 +593,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 <a name="anytype.Rpc.Account.Recover.Request"></a>
 
 ### Rpc.Account.Recover.Request
-Front end to middleware request-to-start-search of an accounts for a recovered mnemonic. 
+Front end to middleware request-to-start-search of an accounts for a recovered mnemonic.
 Each of an account that would be found will come with an AccountAdd event
 
 
@@ -704,7 +704,7 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 <a name="anytype.Rpc.Block.Close"></a>
 
 ### Rpc.Block.Close
-Block.Close – it means unsubscribe from a block. 
+Block.Close – it means unsubscribe from a block.
 Precondition: block should be opened.
 
 
@@ -721,7 +721,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -769,7 +769,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
     2. Front -&gt; MW: Rpc.Block.Close.Request(block: dashboard.id)
     3. Front &lt;- MW: Rpc.Block.Close.Response(err)
     4. Front &lt;- MW: Rpc.Block.Create.Response(page.id)
-    5. Front &lt;- MW: Rpc.Block.Open.Response(err)         
+    5. Front &lt;- MW: Rpc.Block.Open.Response(err)
     6. Front &lt;- MW: Event.Block.Show(page)
 1B. Create Page on a Page
     1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
@@ -792,7 +792,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | block | [Model.Block](#anytype.Model.Block) |  |  |
 | targetId | [string](#string) |  |  |
 | position | [Model.Block.Position](#anytype.Model.Block.Position) |  |  |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -868,7 +868,7 @@ Block history: switch between versions (lib context: switch block head), move fo
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
 | moveForward | [bool](#bool) |  | Move direction. If true, move forward |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -918,7 +918,7 @@ Works with a smart blocks (block-organizers, like page, dashboard etc)
 1B. User clicks on a page icon on the dashboard.
     1. Front -&gt; MW: Rpc.Block.Close.Request(dashboard.id)
 Get close response first, then open request:
-    2. MW -&gt; Front: Rpc.Block.Close.Response(err)    
+    2. MW -&gt; Front: Rpc.Block.Close.Response(err)
     3. Front -&gt; MW: Rpc.Block.Open.Request(page.id)
     4. MW -&gt; Front: BlockShow(&lt;page, blocks&gt;)
     5. MW -&gt; Front: Rpc.Block.Open.Response(err)
@@ -939,7 +939,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1009,7 +1009,7 @@ Case F. Update children of a layout block on a page
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1836,7 +1836,7 @@ Message, that will be sent to the front on each account found after an AccountRe
 
 ### Event.Block.Add
 Event to show internal blocks on a client.
-Example Scenarios 
+Example Scenarios
 A. Block Creation
 1. Block A have been created on a client C1
 2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
@@ -1850,7 +1850,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blocks | [Model.Block](#anytype.Model.Block) | repeated | id -&gt; block |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1866,7 +1866,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1886,7 +1886,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1904,7 +1904,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
 | blocks | [Model.Block](#anytype.Model.Block) | repeated | children of the root block |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1922,7 +1922,7 @@ Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1961,7 +1961,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that opened a block |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1980,7 +1980,7 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that left the block |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -2000,7 +2000,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected blocks |
 | blockIdsArray | [string](#string) | repeated | Ids of selected blocks. |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
@@ -2012,7 +2012,7 @@ Precondition: user A and user B opened the same block
 ### Event.User.Block.TextRange
 Middleware to front end event message, that will be sent in this scenario:
 Precondition: user A and user B opened the same block
-1. User B sets cursor or selects a text region into a text block 
+1. User B sets cursor or selects a text region into a text block
 2. User A receives a message about p.1
 
 
@@ -2021,7 +2021,7 @@ Precondition: user A and user B opened the same block
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected a text |
 | blockId | [string](#string) |  | Id of the text block, that have a selection |
 | range | [Model.Range](#anytype.Model.Range) |  | Range of the selection |
-| parentId | [string](#string) |  | id of the parent block |
+| contextId | [string](#string) |  | id of the parent block |
 
 
 
