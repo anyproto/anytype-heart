@@ -146,6 +146,47 @@
   
   
 
+- [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto)
+    - [Account](#anytype.model.Account)
+    - [Account.Avatar](#anytype.model.Account.Avatar)
+    - [Block](#anytype.model.Block)
+    - [Block.Content](#anytype.model.Block.Content)
+    - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
+    - [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard)
+    - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
+    - [Block.Content.Div](#anytype.model.Block.Content.Div)
+    - [Block.Content.File](#anytype.model.Block.Content.File)
+    - [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview)
+    - [Block.Content.Image](#anytype.model.Block.Content.Image)
+    - [Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview)
+    - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
+    - [Block.Content.Page](#anytype.model.Block.Content.Page)
+    - [Block.Content.Text](#anytype.model.Block.Content.Text)
+    - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
+    - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
+    - [Block.Content.Video](#anytype.model.Block.Content.Video)
+    - [Block.Content.Video.Preview](#anytype.model.Block.Content.Video.Preview)
+    - [Block.Permissions](#anytype.model.Block.Permissions)
+    - [Image](#anytype.model.Image)
+    - [Range](#anytype.model.Range)
+    - [Video](#anytype.model.Video)
+  
+    - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
+    - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
+    - [Block.Content.Image.State](#anytype.model.Block.Content.Image.State)
+    - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
+    - [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style)
+    - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
+    - [Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker)
+    - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
+    - [Block.Content.Video.State](#anytype.model.Block.Content.Video.State)
+    - [Block.Position](#anytype.model.Block.Position)
+    - [Image.Size](#anytype.model.Image.Size)
+    - [Video.Size](#anytype.model.Video.Size)
+  
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -1982,6 +2023,561 @@ Precondition: user A and user B opened the same block
 
 
  
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto
+
+
+
+<a name="anytype.model.Account"></a>
+
+### Account
+Contains basic information about a user account
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | User&#39;s thread id |
+| name | [string](#string) |  | User name, that associated with this account |
+| avatar | [Account.Avatar](#anytype.model.Account.Avatar) |  | Avatar of a user&#39;s account |
+
+
+
+
+
+
+<a name="anytype.model.Account.Avatar"></a>
+
+### Account.Avatar
+Avatar of a user&#39;s account. It could be an image or color
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| image | [Image](#anytype.model.Image) |  | Image of the avatar. Contains hash and size |
+| color | [string](#string) |  | Color of the avatar, if no image |
+
+
+
+
+
+
+<a name="anytype.model.Block"></a>
+
+### Block
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| permissions | [Block.Permissions](#anytype.model.Block.Permissions) |  |  |
+| childrenIds | [string](#string) | repeated |  |
+| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
+| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
+| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
+| text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
+| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
+| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
+| file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
+| layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
+| div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
+| bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content"></a>
+
+### Block.Content
+
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Bookmark"></a>
+
+### Block.Content.Bookmark
+Bookmark is to keep a web-link and to preview a content.
+
+Model.Link.Preview preview = 1;
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dashboard"></a>
+
+### Block.Content.Dashboard
+Block type to organize pages on the main screen (main purpose)
+It also can be mounted on a page.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| style | [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview"></a>
+
+### Block.Content.Dataview
+...
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Div"></a>
+
+### Block.Content.Div
+Divider: block, that contains only one horizontal thin line
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.File"></a>
+
+### Block.Content.File
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| localFilePath | [string](#string) |  | Path to the file on a local machine |
+| state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| preview | [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview) |  | Content to show before the main content is downladed |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.File.Preview"></a>
+
+### Block.Content.File.Preview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| icon | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Image"></a>
+
+### Block.Content.Image
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| localFilePath | [string](#string) |  |  |
+| state | [Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
+| preview | [Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Image.Preview"></a>
+
+### Block.Content.Image.Preview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| icon | [string](#string) |  |  |
+| width | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Layout"></a>
+
+### Block.Content.Layout
+Layout have no visual representation, but affects on blocks, that it contains.
+Row/Column layout blocks creates only automatically, after some of a D&amp;D operations, for example
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| style | [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Page"></a>
+
+### Block.Content.Page
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| style | [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Text"></a>
+
+### Block.Content.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| style | [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+| marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
+| toggleable | [bool](#bool) |  | can be toggled or not |
+| marker | [Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
+| checkable | [bool](#bool) |  | can be checked or not |
+| checked | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Text.Mark"></a>
+
+### Block.Content.Text.Mark
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| range | [Range](#anytype.model.Range) |  | range of symbols to apply this mark. From(symbol) To(symbol) |
+| type | [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type) |  |  |
+| param | [string](#string) |  | link, color, etc |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Text.Marks"></a>
+
+### Block.Content.Text.Marks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| marks | [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Video"></a>
+
+### Block.Content.Video
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| localFilePath | [string](#string) |  |  |
+| state | [Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
+| preview | [Block.Content.Video.Preview](#anytype.model.Block.Content.Video.Preview) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Video.Preview"></a>
+
+### Block.Content.Video.Preview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| icon | [string](#string) |  |  |
+| width | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Permissions"></a>
+
+### Block.Permissions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| read | [bool](#bool) |  |  |
+| edit | [bool](#bool) |  |  |
+| remove | [bool](#bool) |  |  |
+| drag | [bool](#bool) |  |  |
+| dropOn | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Image"></a>
+
+### Image
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| sizes | [Image.Size](#anytype.model.Image.Size) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Range"></a>
+
+### Range
+General purpose structure, uses in Mark.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| from | [int32](#int32) |  |  |
+| to | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Video"></a>
+
+### Video
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| sizes | [Video.Size](#anytype.model.Video.Size) | repeated |  |
+
+
+
+
+
+ 
+
+
+<a name="anytype.model.Block.Content.Dashboard.Style"></a>
+
+### Block.Content.Dashboard.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| MAIN_SCREEN | 0 | ... |
+
+
+
+<a name="anytype.model.Block.Content.File.State"></a>
+
+### Block.Content.File.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EMPTY | 0 | There is no file and preview, it&#39;s an empty block, that waits files. |
+| UPLOADING | 1 | There is stil no file/preview, but file already uploading |
+| PREVIEW | 2 | File exists, preview downloaded, but file – not. |
+| DOWNLOADING | 3 | File exists, preview downloaded, but file downloading |
+| DONE | 4 | File and preview downloaded |
+
+
+
+<a name="anytype.model.Block.Content.Image.State"></a>
+
+### Block.Content.Image.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EMPTY | 0 | There is no image and preview, it&#39;s an empty block, that waits image. |
+| UPLOADING | 1 | There is stil no image/preview, but image already uploading |
+| PREVIEW | 2 | Image exists, preview downloaded, but image – not. |
+| DOWNLOADING | 3 | Image exists, preview downloaded, but image downloading |
+| DONE | 4 | Image and preview downloaded |
+
+
+
+<a name="anytype.model.Block.Content.Layout.Style"></a>
+
+### Block.Content.Layout.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ROW | 0 |  |
+| COLUMN | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Page.Style"></a>
+
+### Block.Content.Page.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EMPTY | 0 | Ordinary page, without additional fields |
+| TASK | 1 | Page with a task fields |
+| BOOKMARK | 2 | Page with a bookmark fields |
+| SET | 3 | Page, that organize a set of blocks by a specific criterio |
+
+
+
+<a name="anytype.model.Block.Content.Text.Mark.Type"></a>
+
+### Block.Content.Text.Mark.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| STRIKETHROUGH | 0 |  |
+| KEYBOARD | 1 |  |
+| ITALIC | 2 |  |
+| BOLD | 3 |  |
+| LINK | 4 |  |
+
+
+
+<a name="anytype.model.Block.Content.Text.Marker"></a>
+
+### Block.Content.Text.Marker
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| none | 0 |  |
+| number | 1 |  |
+| bullet | 2 |  |
+
+
+
+<a name="anytype.model.Block.Content.Text.Style"></a>
+
+### Block.Content.Text.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| p | 0 |  |
+| h1 | 1 |  |
+| h2 | 2 |  |
+| h3 | 3 |  |
+| h4 | 4 |  |
+| quote | 5 |  |
+| code | 6 |  |
+
+
+
+<a name="anytype.model.Block.Content.Video.State"></a>
+
+### Block.Content.Video.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| EMPTY | 0 | There is no video and preview, it&#39;s an empty block, that waits videos. |
+| UPLOADING | 1 | There is stil no video/preview, but video already uploading |
+| PREVIEW | 2 | Video exists, preview downloaded, but video – not. |
+| DOWNLOADING | 3 | Video exists, preview downloaded, but video downloading |
+| DONE | 4 | Video and preview downloaded |
+
+
+
+<a name="anytype.model.Block.Position"></a>
+
+### Block.Position
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BEFORE | 0 |  |
+| AFTER | 1 |  |
+
+
+
+<a name="anytype.model.Image.Size"></a>
+
+### Image.Size
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LARGE | 0 |  |
+| SMALL | 1 |  |
+| THUMB | 2 |  |
+
+
+
+<a name="anytype.model.Video.Size"></a>
+
+### Video.Size
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SD_360p | 0 |  |
+| SD_480p | 1 |  |
+| HD_720p | 2 |  |
+| HD_1080p | 3 |  |
+| UHD_1440p | 4 |  |
+| UHD_2160p | 5 |  |
+
 
  
 
