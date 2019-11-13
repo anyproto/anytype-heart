@@ -33,6 +33,7 @@ github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf h1:qet1QNfXsQxTZq
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/anytypeio/go-anytype-library v0.0.0-20191019100520-f545fa654778 h1:phKH412ykZjj3gVLT/g8vjTPvf614J9Is4W/SstZPgc=
 github.com/anytypeio/go-anytype-library v0.0.0-20191019100520-f545fa654778/go.mod h1:5wGC8Nez1P9QNCAqYi6xNt6II8XKGdzI2PrZenVSlMM=
+github.com/anytypeio/go-anytype-library v0.0.0-20191113141511-c9b19512c0b3 h1:u/ZumvyWaRUhV/eeJXToMyBb2p6XwEjLSlPQiJ/A3SE=
 github.com/anytypeio/go-anytype-library v0.0.0-20191113141511-c9b19512c0b3/go.mod h1:y/AxtJs2jNQ2711DtGkuhdzg6ZaPG/ofuQL7Yoe5N6g=
 github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec h1:f/fnKGgxS33FvG0g96HcwasQrf6V1CjsAt1suWz8kF0=
 github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec/go.mod h1:upnwIsP8dsXfGQEjJ8BL9AY6yJHU6etVWozxVN4PyXc=
