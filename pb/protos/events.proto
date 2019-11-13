@@ -48,6 +48,7 @@ message Event {
         */    
         message Add {
             repeated Model.Block blocks = 1; // id -> block
+            string parentId = 2; // id of the parent block
         }
 
         /*
@@ -57,6 +58,7 @@ message Event {
         message ShowFullscreen {
             string rootId = 1; // Root block id
             repeated Model.Block blocks = 2; // children of the root block
+            string parentId = 3; // id of the parent block
         }
 
         /*
@@ -66,6 +68,7 @@ message Event {
         */ 
         message Update {
             Change.Multiple.BlocksList changes = 1;
+            string parentId = 2; // id of the parent block
         }
 
         /**
@@ -77,13 +80,15 @@ message Event {
         message FilesUpload {
             repeated string filePath = 1; // filepaths to the files
             string blockId = 2; // if empty => create new blocks
-        }   
+            string parentId = 3; // id of the parent block
+        }
 
         /*
          * 
         */
         message Delete {
             string blockId = 1;
+            string parentId = 2; // id of the parent block
         }                
     }
 
@@ -98,6 +103,7 @@ message Event {
             */        
             message Join {
                 Account account = 1; // Account of the user, that opened a block
+                string parentId = 2; // id of the parent block
             }
 
             /**
@@ -108,6 +114,7 @@ message Event {
             */
             message Left {
                 Account account = 1; // Account of the user, that left the block
+                string parentId = 2; // id of the parent block
             }
 
             /**
@@ -120,6 +127,7 @@ message Event {
                 Account account = 1; // Account of the user, that selected a text
                 string blockId = 2; // Id of the text block, that have a selection
                 Model.Range range = 3; // Range of the selection
+                string parentId = 4; // id of the parent block
             }
 
             /**
@@ -131,6 +139,7 @@ message Event {
             message SelectRange {
                 Account account = 1; // Account of the user, that selected blocks
                 repeated string blockIdsArray = 2; // Ids of selected blocks.
+                string parentId = 3; // id of the parent block
             }
         }
     }

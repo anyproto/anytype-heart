@@ -228,7 +228,8 @@
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
-| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | rpc BlockFilesUpload (Block Rpc.History.Move.Request) returns (BlockRpc..History Move.Response); |
+| BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) | TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response); |
+| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | TODO: rpc BlockFilesUpload () returns (); |
 
  
 
@@ -720,6 +721,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -790,6 +792,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | block | [Model.Block](#anytype.Model.Block) |  |  |
 | targetId | [string](#string) |  |  |
 | position | [Model.Block.Position](#anytype.Model.Block.Position) |  |  |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -864,7 +867,8 @@ Block history: switch between versions (lib context: switch block head), move fo
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| moveForward | [bool](#bool) |  | Move direction. If true, |
+| moveForward | [bool](#bool) |  | Move direction. If true, move forward |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -935,6 +939,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1004,6 +1009,7 @@ Case F. Update children of a layout block on a page
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1844,6 +1850,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blocks | [Model.Block](#anytype.Model.Block) | repeated | id -&gt; block |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1859,6 +1866,7 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1878,6 +1886,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1895,6 +1904,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
 | blocks | [Model.Block](#anytype.Model.Block) | repeated | children of the root block |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1912,6 +1922,7 @@ Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1950,6 +1961,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that opened a block |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1968,6 +1980,7 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that left the block |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -1987,6 +2000,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected blocks |
 | blockIdsArray | [string](#string) | repeated | Ids of selected blocks. |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -2007,6 +2021,7 @@ Precondition: user A and user B opened the same block
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected a text |
 | blockId | [string](#string) |  | Id of the text block, that have a selection |
 | range | [Model.Range](#anytype.Model.Range) |  | Range of the selection |
+| parentId | [string](#string) |  | id of the parent block |
 
 
 
