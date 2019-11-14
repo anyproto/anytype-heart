@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
@@ -27,7 +28,7 @@ func TestEventHandler(t *testing.T) {
 		eventReceived = event
 	})
 
-	eventSent := &pb.Event{Message: &pb.EventMessageOfAccountShow{AccountShow: &pb.EventAccountShow{Index: 0, Account: &pb.ModelAccount{Id: "1", Name: "name"}}}}
+	eventSent := &pb.Event{Message: &pb.EventMessageOfAccountShow{AccountShow: &pb.EventAccountShow{Index: 0, Account: &model.Account{Id: "1", Name: "name"}}}}
 	mw.SendEvent(eventSent)
 
 	require.Equal(t, eventSent, eventReceived, "eventReceived not equal to eventSent: %s %s", eventSent, eventReceived)

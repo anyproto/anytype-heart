@@ -2,11 +2,12 @@ package block
 
 import (
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/proto"
 )
 
 var (
@@ -75,7 +76,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 
 func (p *commonSmart) sendOnOpenEvents(ver anytype.BlockVersion) {
 	deps := ver.GetDependentBlocks()
-	blocks := make([]*pb.ModelBlock, 0, len(deps)+1)
+	blocks := make([]*model.Block, 0, len(deps)+1)
 	blocks = append(blocks, versionToModel(ver))
 	for _, b := range deps {
 		blocks = append(blocks, versionToModel(b))

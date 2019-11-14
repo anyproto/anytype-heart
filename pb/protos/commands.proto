@@ -2,14 +2,14 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-import "models.proto";
-import "changes.proto";
+import "vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto";
+import "pb/protos/changes.proto";
 
 /*
  * Rpc is a namespace, that agregates all of the service commands between client and middleware.
  * Structure: Topic > Subtopic > Subsub... > Action > (Request, Response).
  * Request – message from a client.
- * Response – message from a middleware. 
+ * Response – message from a middleware.
 */
 message Rpc {
     /*
@@ -27,10 +27,11 @@ message Rpc {
          * 6. MW -> Front: BlockShow(block.prevVersion)
         */
         message History {
-            message Move { 
+            message Move {
                 message Request {
                     string blockId = 1;
-                    bool moveForward = 2; // Move direction. If true, 
+                    bool moveForward = 2; // Move direction. If true, move forward
+                    string contextId = 3; // id of the context block
                 }
 
                 message Response {
@@ -47,7 +48,7 @@ message Rpc {
                             CAN_NOT_MOVE = 3;
                             // ...
                         }
-                    }    
+                    }
                 }
             }
         }
@@ -62,16 +63,17 @@ message Rpc {
          * 1B. User clicks on a page icon on the dashboard.
          *     1. Front -> MW: Rpc.Block.Close.Request(dashboard.id)
          * Get close response first, then open request:
-         *     2. MW -> Front: Rpc.Block.Close.Response(err)    
+         *     2. MW -> Front: Rpc.Block.Close.Response(err)
          *     3. Front -> MW: Rpc.Block.Open.Request(page.id)
          *     4. MW -> Front: BlockShow(<page, blocks>)
          *     5. MW -> Front: Rpc.Block.Open.Response(err)
          * Image/Video/File blocks then:
          *     6. MW -> Front: BlockShow(<blocks>)
         */
-        message Open { 
+        message Open {
             message Request {
                 string id = 1;
+                string contextId = 2; // id of the context block
             }
 
             message Response {
@@ -99,7 +101,7 @@ message Rpc {
          *     2. Front -> MW: Rpc.Block.Close.Request(block: dashboard.id)
          *     3. Front <- MW: Rpc.Block.Close.Response(err)
          *     4. Front <- MW: Rpc.Block.Create.Response(page.id)
-         *     5. Front <- MW: Rpc.Block.Open.Response(err)         
+         *     5. Front <- MW: Rpc.Block.Open.Response(err)
          *     6. Front <- MW: Event.Block.Show(page)
          * 1B. Create Page on a Page
          *     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
@@ -108,9 +110,11 @@ message Rpc {
         */
         message Create {
             message Request {
-                Model.Block block = 1;
+                anytype.model.Block block = 1;
                 string targetId = 2;
-                Model.Block.Position position = 3;
+                anytype.model.Block.Position position = 3;
+                string contextId = 4; // id of the context block
+                string parentId = 5; // id of the parent block
             }
 
             message Response {
@@ -130,7 +134,7 @@ message Rpc {
                 }
             }
         }
-        
+
         /*
          * Update a Smart/Internal block. Request can contain a content/field/permission/children update
          * **Example scenarios**
@@ -146,10 +150,11 @@ message Rpc {
          * 1. TODO
          * Case F. Update children of a layout block on a page
          * 1. TODO
-        */        
+        */
         message Update {
             message Request {
                 Change.Multiple.BlocksList changes = 1;
+                string contextId = 2; // id of the context block
             }
 
             message Response {
@@ -170,12 +175,13 @@ message Rpc {
         }
 
         /*
-         * Block.Close – it means unsubscribe from a block. 
+         * Block.Close – it means unsubscribe from a block.
          * Precondition: block should be opened.
         */
         message Close {
             message Request {
                 string id = 1;
+                string contextId = 2; // id of the context block
             }
 
             message Response {
@@ -193,7 +199,7 @@ message Rpc {
                     }
                 }
             }
-        }      
+        }
     }
 
     /*
@@ -267,7 +273,7 @@ message Rpc {
     message Account {
         message Create {
             /**
-            * Front end to middleware request-to-create-an account 
+            * Front end to middleware request-to-create-an account
             */
             message Request {
                 string name = 1; // Account name
@@ -282,7 +288,7 @@ message Rpc {
             */
             message Response {
                 Error error = 1; // Error while trying to create an account
-                Model.Account account = 2; // A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields
+                anytype.model.Account account = 2; // A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields
 
                 message Error {
                     Code code = 1;
@@ -303,7 +309,7 @@ message Rpc {
 
         message Recover {
             /**
-            * Front end to middleware request-to-start-search of an accounts for a recovered mnemonic. 
+            * Front end to middleware request-to-start-search of an accounts for a recovered mnemonic.
             * Each of an account that would be found will come with an AccountAdd event
             */
             message Request {}
@@ -325,7 +331,7 @@ message Rpc {
                         NO_ACCOUNTS_FOUND = 101;
                         NEED_TO_RECOVER_WALLET_FIRST = 102;
                         FAILED_TO_CREATE_LOCAL_REPO = 103;
-                        LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104; 
+                        LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104;
                         FAILED_TO_RUN_NODE = 105;
                         WALLET_RECOVER_NOT_PERFORMED = 106;
                     }
@@ -348,7 +354,7 @@ message Rpc {
             */
             message Response {
                 Error error = 1; // Error while trying to launch/select an account
-                Model.Account account = 2; // Selected account
+                anytype.model.Account account = 2; // Selected account
 
                 message Error {
                     Code code = 1;
@@ -438,7 +444,7 @@ message Rpc {
                 }
             }
         }
-    }  
+    }
 
     /*
      * Namespace, that agregates subtopics and actions to work with IPFS directly (get files, blobs, images, etc)
@@ -478,7 +484,7 @@ message Rpc {
                 message Blob {
                     message Request {
                         string id = 1;
-                        Model.Image.Size size = 2;
+                        anytype.model.Image.Size size = 2;
                     }
 
                     message Response {
@@ -505,7 +511,7 @@ message Rpc {
                 message File {
                     message Request {
                         string id = 1;
-                        Model.Image.Size size = 2;
+                        anytype.model.Image.Size size = 2;
                     }
 
                     message Response {
@@ -529,6 +535,6 @@ message Rpc {
                     }
                 }
             }
-        }        
+        }
     }
 }

@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-var avatarSizes = []pb.ModelImageSize{pb.ModelImage_SMALL, pb.ModelImage_LARGE}
+var avatarSizes = []model.ImageSize{model.Image_SMALL, model.Image_LARGE}
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
-	response := func(account *pb.ModelAccount, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
+	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		m := &pb.RpcAccountCreateResponse{Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -44,7 +45,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	mw.Anytype = anytype
-	newAcc := &pb.ModelAccount{Id: account.Address()}
+	newAcc := &model.Account{Id: account.Address()}
 
 	err = mw.Run()
 	if err != nil {
@@ -70,7 +71,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		if err != nil {
 			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
-		newAcc.Avatar = &pb.ModelAccountAvatar{Avatar: &pb.ModelAccountAvatarAvatarOfImage{Image: &pb.ModelImage{hash, avatarSizes}}}
+		newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.Image{hash, avatarSizes}}}
 	} else if req.GetAvatarColor() != "" {
 		err := mw.AccountSetAvatarColor(req.GetAvatarColor())
 		if err != nil {
@@ -93,7 +94,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return m
 	}
 
-	sendAccountAddEvent := func(index int, account *pb.ModelAccount) {
+	sendAccountAddEvent := func(index int, account *model.Account) {
 		m := &pb.Event{Message: &pb.EventMessageOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int64(index), Account: account}}}
 		if mw.SendEvent != nil {
 			mw.SendEvent(m)
@@ -213,7 +214,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
 
-		newAcc := &pb.ModelAccount{Id: account.Address(), Name: contact.Name}
+		newAcc := &model.Account{Id: account.Address(), Name: contact.Name}
 
 		if contact.Avatar != "" {
 			newAcc.Avatar = getAvatarFromString(contact.Avatar)
@@ -230,7 +231,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 }
 
 func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
-	response := func(account *pb.ModelAccount, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
+	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		m := &pb.RpcAccountSelectResponse{Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -280,7 +281,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
-	acc := &pb.ModelAccount{Id: req.Id}
+	acc := &model.Account{Id: req.Id}
 
 	acc.Name, err = mw.Anytype.Textile.Name()
 	if err != nil {
@@ -318,10 +319,10 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
-func getAvatarFromString(avatarHashOrColor string) *pb.ModelAccountAvatar {
+func getAvatarFromString(avatarHashOrColor string) *model.AccountAvatar {
 	if strings.HasPrefix(avatarHashOrColor, "#") {
-		return &pb.ModelAccountAvatar{&pb.ModelAccountAvatarAvatarOfColor{avatarHashOrColor}}
+		return &model.AccountAvatar{&model.AccountAvatarAvatarOfColor{avatarHashOrColor}}
 	} else {
-		return &pb.ModelAccountAvatar{&pb.ModelAccountAvatarAvatarOfImage{&pb.ModelImage{avatarHashOrColor, avatarSizes}}}
+		return &model.AccountAvatar{&model.AccountAvatarAvatarOfImage{&model.Image{avatarHashOrColor, avatarSizes}}}
 	}
 }

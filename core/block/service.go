@@ -2,11 +2,11 @@ package block
 
 import (
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"log"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 var (

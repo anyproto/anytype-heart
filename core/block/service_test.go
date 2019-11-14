@@ -30,7 +30,7 @@ func newFixture(t *testing.T, accountId string) *fixture {
 	ctrl := gomock.NewController(t)
 	anytype := testMock.NewMockAnytype(ctrl)
 	return &fixture{
-		Service: NewService(accountId, anytype),
+		Service: NewService(accountId, anytype, nil),
 		t:       t,
 		ctrl:    ctrl,
 		anytype: anytype,

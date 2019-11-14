@@ -2,14 +2,14 @@ syntax="proto3";
 package anytype;
 option go_package = "pb";
 
-import "models.proto";
-import "changes.proto";
+import "vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto";
+import "pb/protos/changes.proto";
 
-/* 
+/*
  * Event – type of message, that could be sent from a middleware to the corresponding front-end.
 */
 message Event {
-    oneof message {    
+    oneof message {
         Account.Show accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
         Block.Add blockAdd = 2;
         Block.ShowFullscreen blockShowFullscreen = 3;
@@ -24,19 +24,19 @@ message Event {
         Block.FilesUpload filesUpload = 10;
     }
 
-    message Account {  
+    message Account {
         /**
         * Message, that will be sent to the front on each account found after an AccountRecoverRequest
         */
         message Show {
             int64  index  = 1; // Number of an account in an all found accounts list
-            Model.Account account = 2; // An Account, that has been found for the mnemonic
+            anytype.model.Account account = 2; // An Account, that has been found for the mnemonic
         }
     }
     message Block {
-        /* 
+        /*
         * Event to show internal blocks on a client.
-         * Example Scenarios 
+         * Example Scenarios
          * A. Block Creation
          * 1. Block A have been created on a client C1
          * 2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
@@ -45,9 +45,10 @@ message Event {
          * 2. M -> F: ShowFullScreen(Root, blocks1-50)
          * 3. M -> F: Block.Add(blocks51-100)
          * 3. M -> F: Block.Add(blocks101-133)
-        */    
+        */
         message Add {
-            repeated Model.Block blocks = 1; // id -> block
+            repeated anytype.model.Block blocks = 1; // id -> block
+            string contextId = 2; // id of the context block
         }
 
         /*
@@ -56,16 +57,18 @@ message Event {
         */
         message ShowFullscreen {
             string rootId = 1; // Root block id
-            repeated Model.Block blocks = 2; // children of the root block
+            repeated anytype.model.Block blocks = 2; // children of the root block
+            string contextId = 3; // id of the context block
         }
 
         /*
          * Updates from different clients, or from the local middleware
          * Example scenarios:
          * Page opened, TextBlock updated on a different client, BlockUpdate(changes)
-        */ 
+        */
         message Update {
             Change.Multiple.BlocksList changes = 1;
+            string contextId = 2; // id of the context block
         }
 
         /**
@@ -77,14 +80,16 @@ message Event {
         message FilesUpload {
             repeated string filePath = 1; // filepaths to the files
             string blockId = 2; // if empty => create new blocks
-        }   
+            string contextId = 3; // id of the context block
+        }
 
         /*
-         * 
+         *
         */
         message Delete {
             string blockId = 1;
-        }                
+            string contextId = 2; // id of the context block
+        }
     }
 
     message User {
@@ -95,9 +100,10 @@ message Event {
             * Precondition: user A opened a block
             * 1. User B opens the same block
             * 2. User A receives a message about p.1
-            */        
+            */
             message Join {
                 Account account = 1; // Account of the user, that opened a block
+                string contextId = 2; // id of the context block
             }
 
             /**
@@ -108,18 +114,20 @@ message Event {
             */
             message Left {
                 Account account = 1; // Account of the user, that left the block
+                string contextId = 2; // id of the context block
             }
 
             /**
             * Middleware to front end event message, that will be sent in this scenario:
             * Precondition: user A and user B opened the same block
-            * 1. User B sets cursor or selects a text region into a text block 
+            * 1. User B sets cursor or selects a text region into a text block
             * 2. User A receives a message about p.1
             */
             message TextRange {
                 Account account = 1; // Account of the user, that selected a text
                 string blockId = 2; // Id of the text block, that have a selection
-                Model.Range range = 3; // Range of the selection
+                anytype.model.Range range = 3; // Range of the selection
+                string contextId = 4; // id of the context block
             }
 
             /**
@@ -131,6 +139,7 @@ message Event {
             message SelectRange {
                 Account account = 1; // Account of the user, that selected blocks
                 repeated string blockIdsArray = 2; // Ids of selected blocks.
+                string contextId = 3; // id of the context block
             }
         }
     }
