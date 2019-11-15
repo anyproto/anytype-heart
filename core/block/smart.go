@@ -32,6 +32,12 @@ const (
 )
 
 func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
+	if id == testPageId {
+		sb = &testPage{s: s}
+		sb.Open(nil)
+		return
+	}
+
 	b, err := s.anytype.GetBlock(id)
 	if err != nil {
 		return
