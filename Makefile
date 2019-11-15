@@ -18,7 +18,7 @@ lint:
 	golint `go list ./... | grep -v /vendor/`
 
 test:
-	go test github.com/anytypeio/go-anytype-middleware/core github.com/anytypeio/go-anytype-middleware/lib
+	go test github.com/anytypeio/go-anytype-middleware/...
 
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
