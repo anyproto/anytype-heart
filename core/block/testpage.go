@@ -26,9 +26,17 @@ var testBlocks = []*model.Block{
 				"icon": testStringValue(":family:"),
 			},
 		},
-		ChildrenIds: []string{"3", "4"},
+		ChildrenIds: []string{"2", "3", "4"},
 		Content: &model.BlockContentOfPage{
 			Page: &model.BlockContentPage{Style: model.BlockContentPage_EMPTY},
+		},
+	},
+	{
+		Id: "2",
+		Content: &model.BlockContentOfIcon{
+			Icon: &model.BlockContentIcon{
+				Name: ":family:",
+			},
 		},
 	},
 	{
@@ -36,7 +44,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Contacts 3",
-				Style: model.BlockContentText_p,
+				Style: model.BlockContentText_title,
 			},
 		},
 	},
