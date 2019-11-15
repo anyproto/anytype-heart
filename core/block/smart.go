@@ -114,10 +114,15 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	p.m.RLock()
 	defer p.m.RUnlock()
 
-	parent, ok := p.versions[req.ParentId]
+	if req.Block == nil {
+		return "", fmt.Errorf("block can't be empty")
+	}
+
+	parentVer, ok := p.versions[req.ParentId]
 	if ! ok {
 		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 	}
+	parent := parentVer.Model()
 	var target core.BlockVersion
 	if req.TargetId != "" {
 		target, ok = p.versions[req.TargetId]
@@ -126,12 +131,11 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		}
 	}
 
-	childrenIds := parent.Model().ChildrenIds
-	var pos = len(childrenIds) + 1
+	var pos = len(parent.ChildrenIds) + 1
 	if target != nil {
-		targetPos := findPosInSlice(childrenIds, target.Model().Id)
+		targetPos := findPosInSlice(parent.ChildrenIds, target.Model().Id)
 		if targetPos == -1 {
-			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Model().Id)
+			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
 		}
 		if req.Position == model.Block_AFTER {
 			pos = targetPos + 1
@@ -140,14 +144,44 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		}
 	}
 
-	var newBlockId string
-	childrenIds = insertToSlice(childrenIds, newBlockId, pos)
+	newBlock, err := p.block.NewBlock(*req.Block)
+	if err != nil {
+		return
+	}
+	newBlockVer, err := newBlock.GetCurrentVersion()
+	if err != nil {
+		return
+	}
+	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, newBlock.GetId(), pos)
 
+	vers, err := p.block.AddVersions([]*model.Block{newBlockVer.Model(), parent})
+	if err != nil {
+		return
+	}
+	id = vers[0].Model().Id
 	return
 }
 
-func (p *commonSmart) addBlock(b *model.Block) (id string, err error) {
-	// todo:
+func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
+	p.s.sendEvent(&pb.Event{Message: &pb.EventMessageOfBlockAdd{BlockAdd: &pb.EventBlockAdd{
+		Blocks:    []*model.Block{new},
+		ContextId: p.GetId(),
+	}}})
+	p.s.sendEvent(&pb.Event{Message: &pb.EventMessageOfBlockUpdate{BlockUpdate: &pb.EventBlockUpdate{
+		Changes: &pb.ChangeMultipleBlocksList{
+			Changes: []*pb.ChangeSingleBlocksList{
+				{
+					Id: []string{parent.Id},
+					Change: &pb.ChangeSingleBlocksListChangeOfChildrenIds{
+						ChildrenIds: &pb.ChangeBlockChildrenIds{
+							ChildrenIds: parent.ChildrenIds,
+						},
+					},
+				},
+			},
+		},
+		ContextId: p.GetId(),
+	}}})
 	return
 }
 
