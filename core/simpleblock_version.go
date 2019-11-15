@@ -11,51 +11,28 @@ type SimpleBlockVersion struct {
 	node                    *Anytype
 }
 
-func (blockVersion *SimpleBlockVersion) GetBlockId() string {
-	return blockVersion.parentSmartBlockVersion.GetBlockId() + "/" + blockVersion.pb.Id
+func (version *SimpleBlockVersion) Model() *model.Block {
+	return version.pb
 }
 
-func (blockVersion *SimpleBlockVersion) GetVersionId() string {
-	return blockVersion.parentSmartBlockVersion.GetVersionId()
+func (version *SimpleBlockVersion) VersionId() string {
+	return version.parentSmartBlockVersion.VersionId()
 }
 
-func (blockVersion *SimpleBlockVersion) GetUser() string {
-	return blockVersion.parentSmartBlockVersion.GetUser()
+func (version *SimpleBlockVersion) User() string {
+	return version.parentSmartBlockVersion.User()
 }
 
-func (blockVersion *SimpleBlockVersion) GetDate() *types.Timestamp {
-	return blockVersion.parentSmartBlockVersion.GetDate()
+func (version *SimpleBlockVersion) Date() *types.Timestamp {
+	return version.parentSmartBlockVersion.Date()
 }
 
-func (blockVersion *SimpleBlockVersion) GetChildrenIds() []string {
-	return blockVersion.pb.ChildrenIds
-}
-
-func (blockVersion *SimpleBlockVersion) GetPermissions() *model.BlockPermissions {
-	return blockVersion.pb.GetPermissions()
-}
-
-func (blockVersion *SimpleBlockVersion) GetExternalFields() *types.Struct {
+func (version *SimpleBlockVersion) ExternalFields() *types.Struct {
 	// simple blocks can't have fields
 	return nil
 }
 
-func (blockVersion *SimpleBlockVersion) GetFields() *types.Struct {
-	// simple blocks can't have fields
-	return nil
-}
-
-func (blockVersion *SimpleBlockVersion) GetContent() model.IsBlockContent {
-	return blockVersion.pb.Content
-}
-
-func (blockVersion *SimpleBlockVersion) GetDependentBlocks() map[string]BlockVersion {
+func (version *SimpleBlockVersion) DependentBlocks() map[string]BlockVersion {
 	// simple blocks don't store dependent blocks
 	return nil
-}
-
-func (blockVersion *SimpleBlockVersion) GetNewVersionsOfBlocks(blocks chan<- []BlockVersion) (cancelFunc func()) {
-	// not supported yet, need to use parent smartblock instead
-	close(blocks)
-	return func() {}
 }

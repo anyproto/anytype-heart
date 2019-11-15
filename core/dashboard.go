@@ -5,23 +5,20 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 )
 
 type Dashboard struct {
-	SmartBlock
+	*SmartBlock
 }
 
 func (dashboard *Dashboard) GetVersion(id string) (BlockVersion, error) {
-	file, block, err := dashboard.SmartBlock.GetVersionBlock(id)
+	smartBlockVersion, err := dashboard.SmartBlock.GetVersion(id)
 	if err != nil {
-		return nil, fmt.Errorf("GetVersionBlock error: %s", err.Error())
+		return nil, fmt.Errorf("GetVersion error: %s", err.Error())
 	}
 
-	version := &DashboardVersion{pb: block, VersionId: file.Block, Date: util.CastTimestampToGogo(file.Date), User: file.User.Address}
-
+	version := &DashboardVersion{SmartBlockVersion: smartBlockVersion}
 	return version, nil
 }
 
@@ -40,82 +37,171 @@ func (dashboard *Dashboard) GetCurrentVersion() (BlockVersion, error) {
 }
 
 func (dashboard *Dashboard) GetVersions(offset string, limit int, metaOnly bool) ([]BlockVersion, error) {
-	files, blocks, err := dashboard.SmartBlock.GetVersionsFiles(offset, limit, metaOnly)
+	sbversions, err := dashboard.SmartBlock.GetVersions(offset, limit, metaOnly)
 	if err != nil {
 		return nil, err
 	}
 
 	var versions []BlockVersion
-	if len(files) == 0 {
+	if len(sbversions) == 0 {
 		return versions, nil
 	}
 
-	for index, item := range files {
-		version := &DashboardVersion{VersionId: item.Block, Date: util.CastTimestampToGogo(item.Date), User: item.User.Address}
-
-		if metaOnly {
-			versions = append(versions, version)
-			continue
-		}
-
-		version.pb = blocks[index]
-		versions = append(versions, version)
+	for _, sbversion := range sbversions {
+		versions = append(versions, &DashboardVersion{SmartBlockVersion: sbversion})
 	}
 
 	return versions, nil
 }
 
-func (dashboard *Dashboard) AddVersion(dependentBlocks map[string]BlockVersion, fields *types.Struct, children []string, content model.IsBlockContent) error {
-	newVersion := &DashboardVersion{pb: &storage.BlockWithDependentBlocks{}}
+func (dashboard *Dashboard) mergeWithLastVersion(newVersion *PageVersion) *PageVersion {
+	lastVersion, _ := dashboard.GetCurrentVersion()
+	if lastVersion == nil {
+		return newVersion
+	}
 
-	if newVersionContent, ok := content.(*model.BlockContentOfDashboard); !ok {
-		return fmt.Errorf("unxpected smartblock type")
+	var dependentBlocks = lastVersion.DependentBlocks()
+	newVersion.pb.BlockById = make(map[string]*model.Block, len(dependentBlocks))
+	for id, dependentBlock := range dependentBlocks {
+		newVersion.pb.BlockById[id] = dependentBlock.Model()
+	}
+
+	if newVersion.pb.Block.Fields == nil {
+		newVersion.pb.Block.Fields = lastVersion.Model().Fields
+	}
+
+	if newVersion.pb.Block.Content == nil {
+		newVersion.pb.Block.Content = lastVersion.Model().Content
+	}
+
+	if newVersion.pb.Block.ChildrenIds == nil {
+		newVersion.pb.Block.ChildrenIds = lastVersion.Model().ChildrenIds
+	}
+
+	if newVersion.pb.Block.Permissions == nil {
+		newVersion.pb.Block.Permissions = lastVersion.Model().Permissions
+	}
+
+	lastVersionB, _ := proto.Marshal(lastVersion.(*PageVersion).pb.Block.Content.(*model.BlockContentOfPage).Page)
+	newVersionB, _ := proto.Marshal(newVersion.pb.Block.Content.(*model.BlockContentOfPage).Page)
+	if string(lastVersionB) == string(newVersionB) {
+		log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
+		// do not insert the new version if no blocks have changed
+		newVersion.versionId = lastVersion.VersionId()
+		newVersion.user = lastVersion.User()
+		newVersion.date = lastVersion.Date()
+		return newVersion
+	}
+	return newVersion
+}
+
+// NewBlock should be used as constructor for the new block
+func (dashboard *Dashboard) NewBlock(block model.Block) (Block, error) {
+	return dashboard.newBlock(block, dashboard)
+}
+
+func (dashboard *Dashboard) AddVersion(block *model.Block) (BlockVersion, error) {
+	if block.Id == "" {
+		return nil, fmt.Errorf("block has empty id")
+	}
+
+	newVersion := &PageVersion{&SmartBlockVersion{pb: &storage.BlockWithDependentBlocks{Block: block}}}
+
+	if newVersionContent, ok := block.Content.(*model.BlockContentOfDashboard); !ok {
+		return nil, fmt.Errorf("unxpected smartblock type")
 	} else {
 		newVersion.pb.Block.Content = newVersionContent
 	}
 
-	lastVersion, err := dashboard.GetCurrentVersion()
-	if lastVersion != nil {
-		if fields == nil {
-			fields = lastVersion.GetFields()
-		}
-
-		if content == nil {
-			content = lastVersion.GetContent()
-		}
-
-		if dependentBlocks == nil {
-			dependentBlocks = lastVersion.GetDependentBlocks()
-		}
-
-		if children == nil {
-			children = lastVersion.GetChildrenIds()
-		}
-
-		lastVersionB, _ := proto.Marshal(lastVersion.(*DashboardVersion).pb.Block.Content.(*model.BlockContentOfDashboard).Dashboard)
-		newVersionB, _ := proto.Marshal(newVersion.pb.Block.Content.(*model.BlockContentOfDashboard).Dashboard)
-		if string(lastVersionB) == string(newVersionB) {
-			log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
-			// do not insert the new version if no blocks have changed
-			newVersion.VersionId = lastVersion.GetVersionId()
-			newVersion.User = lastVersion.GetUser()
-			newVersion.Date = lastVersion.GetDate()
-		} else {
-			fmt.Printf("version differs:new %s\n%s\n\n---\n\nlast %s\n%s", newVersion.VersionId, string(newVersionB), lastVersion.GetVersionId(), string(lastVersionB))
-		}
+	newVersion = dashboard.mergeWithLastVersion(newVersion)
+	if newVersion.versionId != "" {
+		// nothing changes
+		// todo: should we return error here to handle this specific case?
+		return newVersion, nil
 	}
 
-	if newVersion.VersionId != "" {
-		/*	err = dashboard.Modify(dashboard.ChildrenIds, newVersion.Name, newVersion.Icon)
-			if err != nil {
-				return nil, err
-			}*/
-		return nil
-	}
-
-	newVersion.VersionId, newVersion.User, newVersion.Date, err = dashboard.SmartBlock.AddVersion(newVersion.pb)
+	var err error
+	newVersion.versionId, newVersion.user, newVersion.date, err = dashboard.SmartBlock.AddVersion(newVersion.pb)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return newVersion, nil
+}
+
+func (dashboard *Dashboard) AddVersions(blocks []*model.Block) ([]BlockVersion, error) {
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("no blocks specified")
+	}
+
+	dashboardVersion := &DashboardVersion{&SmartBlockVersion{pb: &storage.BlockWithDependentBlocks{}}}
+	lastVersion, _ := dashboard.GetCurrentVersion()
+	if lastVersion != nil {
+		var dependentBlocks = lastVersion.DependentBlocks()
+		dashboardVersion.pb.BlockById = make(map[string]*model.Block, len(dependentBlocks))
+		for id, dependentBlock := range dependentBlocks {
+			dashboardVersion.pb.BlockById[id] = dependentBlock.Model()
+		}
+	} else {
+		dashboardVersion.pb.BlockById = make(map[string]*model.Block, len(blocks))
+	}
+
+	blockVersions := make([]BlockVersion, 0, len(blocks))
+
+	for _, block := range blocks {
+		if block.Id == "" {
+			return nil, fmt.Errorf("block has empty id")
+		}
+
+		if block.Id == dashboard.GetId() {
+			if block.ChildrenIds != nil {
+				dashboardVersion.pb.Block.ChildrenIds = block.ChildrenIds
+			}
+
+			if block.Content != nil {
+				dashboardVersion.pb.Block.Content = block.Content
+			}
+
+			if block.Fields != nil {
+				dashboardVersion.pb.Block.Fields = block.Fields
+			}
+
+			if block.Permissions != nil {
+				dashboardVersion.pb.Block.Permissions = block.Permissions
+			}
+
+			// only add dashboardVersion in case it was intentionally passed to AddVersions blocks
+			blockVersions = append(blockVersions, dashboardVersion)
+		} else {
+
+			if _, exists := dashboardVersion.pb.BlockById[block.Id]; !exists {
+				dashboardVersion.pb.BlockById[block.Id] = block
+			} else {
+				if isSmartBlock(block) {
+					// ignore smart blocks as they will be added on the fly
+					continue
+				}
+
+				if block.ChildrenIds != nil {
+					dashboardVersion.pb.BlockById[block.Id].ChildrenIds = block.ChildrenIds
+				}
+
+				if block.Permissions != nil {
+					dashboardVersion.pb.BlockById[block.Id].Permissions = block.Permissions
+				}
+
+				if block.Fields != nil {
+					dashboardVersion.pb.BlockById[block.Id].Fields = block.Fields
+				}
+
+				if block.Content != nil {
+					dashboardVersion.pb.BlockById[block.Id].Content = block.Content
+				}
+			}
+
+			blockVersions = append(blockVersions, dashboard.node.blockToVersion(block, dashboardVersion, "", "", nil))
+		}
+	}
+
+	return blockVersions, nil
 }

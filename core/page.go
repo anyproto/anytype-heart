@@ -5,9 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -19,17 +17,16 @@ const (
 var errorNotFound = fmt.Errorf("not found")
 
 type Page struct {
-	SmartBlock
+	*SmartBlock
 }
 
 func (page *Page) GetVersion(id string) (BlockVersion, error) {
-	file, block, err := page.SmartBlock.GetVersionBlock(id)
+	smartBlockVersion, err := page.SmartBlock.GetVersion(id)
 	if err != nil {
-		return nil, fmt.Errorf("readFile error: %s", err.Error())
+		return nil, fmt.Errorf("GetVersion error: %s", err.Error())
 	}
 
-	version := &PageVersion{pb: block, VersionId: file.Block, Date: util.CastTimestampToGogo(file.Date), User: file.User.Address}
-
+	version := &PageVersion{SmartBlockVersion: smartBlockVersion}
 	return version, nil
 }
 
@@ -48,82 +45,170 @@ func (page *Page) GetCurrentVersion() (BlockVersion, error) {
 }
 
 func (page *Page) GetVersions(offset string, limit int, metaOnly bool) ([]BlockVersion, error) {
-	files, blocks, err := page.SmartBlock.GetVersionsFiles(offset, limit, metaOnly)
+	sbversions, err := page.SmartBlock.GetVersions(offset, limit, metaOnly)
 	if err != nil {
 		return nil, err
 	}
 
 	var versions []BlockVersion
-	if len(files) == 0 {
+	if len(sbversions) == 0 {
 		return versions, nil
 	}
 
-	for index, item := range files {
-		version := &PageVersion{VersionId: item.Block, Date: util.CastTimestampToGogo(item.Date), User: item.User.Address}
-
-		if metaOnly {
-			versions = append(versions, version)
-			continue
-		}
-
-		version.pb = blocks[index]
-		versions = append(versions, version)
+	for _, sbversion := range sbversions {
+		versions = append(versions, &PageVersion{SmartBlockVersion: sbversion})
 	}
 
 	return versions, nil
 }
 
-func (page *Page) AddVersion(dependentBlocks map[string]BlockVersion, fields *types.Struct, children []string, content model.IsBlockContent) error {
-	newVersion := &PageVersion{pb: &storage.BlockWithDependentBlocks{}}
+func (page *Page) mergeWithLastVersion(newVersion *PageVersion) *PageVersion {
+	lastVersion, _ := page.GetCurrentVersion()
+	if lastVersion == nil {
+		return newVersion
+	}
+	var dependentBlocks = lastVersion.DependentBlocks()
+	newVersion.pb.BlockById = make(map[string]*model.Block, len(dependentBlocks))
+	for id, dependentBlock := range dependentBlocks {
+		newVersion.pb.BlockById[id] = dependentBlock.Model()
+	}
 
-	if newVersionContent, ok := content.(*model.BlockContentOfPage); !ok {
-		return fmt.Errorf("unxpected smartblock type")
+	if newVersion.pb.Block.Fields == nil {
+		newVersion.pb.Block.Fields = lastVersion.Model().Fields
+	}
+
+	if newVersion.pb.Block.Content == nil {
+		newVersion.pb.Block.Content = lastVersion.Model().Content
+	}
+
+	if newVersion.pb.Block.ChildrenIds == nil {
+		newVersion.pb.Block.ChildrenIds = lastVersion.Model().ChildrenIds
+	}
+
+	if newVersion.pb.Block.Permissions == nil {
+		newVersion.pb.Block.Permissions = lastVersion.Model().Permissions
+	}
+
+	lastVersionB, _ := proto.Marshal(lastVersion.(*PageVersion).pb.Block.Content.(*model.BlockContentOfPage).Page)
+	newVersionB, _ := proto.Marshal(newVersion.pb.Block.Content.(*model.BlockContentOfPage).Page)
+	if string(lastVersionB) == string(newVersionB) {
+		log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
+		// do not insert the new version if no blocks have changed
+		newVersion.versionId = lastVersion.VersionId()
+		newVersion.user = lastVersion.User()
+		newVersion.date = lastVersion.Date()
+		return newVersion
+	}
+	return newVersion
+}
+
+// NewBlock should be used as constructor for the new block
+func (page *Page) NewBlock(block model.Block) (Block, error) {
+	return page.newBlock(block, page)
+}
+
+func (page *Page) AddVersion(block *model.Block) (BlockVersion, error) {
+	if block.Id == "" {
+		return nil, fmt.Errorf("block has empty id")
+	}
+
+	newVersion := &PageVersion{&SmartBlockVersion{pb: &storage.BlockWithDependentBlocks{Block: block}}}
+
+	if newVersionContent, ok := block.Content.(*model.BlockContentOfPage); !ok {
+		return nil, fmt.Errorf("unxpected smartblock type")
 	} else {
 		newVersion.pb.Block.Content = newVersionContent
 	}
 
-	lastVersion, err := page.GetCurrentVersion()
-	if lastVersion != nil {
-		if fields == nil {
-			fields = lastVersion.GetFields()
-		}
-
-		if content == nil {
-			content = lastVersion.GetContent()
-		}
-
-		if dependentBlocks == nil {
-			dependentBlocks = lastVersion.GetDependentBlocks()
-		}
-
-		if children == nil {
-			children = lastVersion.GetChildrenIds()
-		}
-
-		lastVersionB, _ := proto.Marshal(lastVersion.(*PageVersion).pb.Block.Content.(*model.BlockContentOfPage).Page)
-		newVersionB, _ := proto.Marshal(newVersion.pb.Block.Content.(*model.BlockContentOfPage).Page)
-		if string(lastVersionB) == string(newVersionB) {
-			log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
-			// do not insert the new version if no blocks have changed
-			newVersion.VersionId = lastVersion.GetVersionId()
-			newVersion.User = lastVersion.GetUser()
-			newVersion.Date = lastVersion.GetDate()
-		} else {
-			fmt.Printf("version differs:new %s\n%s\n\n---\n\nlast %s\n%s", newVersion.VersionId, string(newVersionB), lastVersion.GetVersionId(), string(lastVersionB))
-		}
+	newVersion = page.mergeWithLastVersion(newVersion)
+	if newVersion.versionId != "" {
+		// nothing changes
+		// todo: should we return error here to handle this specific case?
+		return newVersion, nil
 	}
 
-	if newVersion.VersionId != "" {
-		/*	err = page.Modify(page.ChildrenIds, newVersion.Name, newVersion.Icon)
-			if err != nil {
-				return nil, err
-			}*/
-		return nil
-	}
-
-	newVersion.VersionId, newVersion.User, newVersion.Date, err = page.SmartBlock.AddVersion(newVersion.pb)
+	var err error
+	newVersion.versionId, newVersion.user, newVersion.date, err = page.SmartBlock.AddVersion(newVersion.pb)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return newVersion, nil
+}
+
+func (page *Page) AddVersions(blocks []*model.Block) ([]BlockVersion, error) {
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("no blocks specified")
+	}
+
+	pageVersion := &PageVersion{&SmartBlockVersion{pb: &storage.BlockWithDependentBlocks{}}}
+	lastVersion, _ := page.GetCurrentVersion()
+	if lastVersion != nil {
+		var dependentBlocks = lastVersion.DependentBlocks()
+		pageVersion.pb.BlockById = make(map[string]*model.Block, len(dependentBlocks))
+		for id, dependentBlock := range dependentBlocks {
+			pageVersion.pb.BlockById[id] = dependentBlock.Model()
+		}
+	} else {
+		pageVersion.pb.BlockById = make(map[string]*model.Block, len(blocks))
+	}
+
+	blockVersions := make([]BlockVersion, 0, len(blocks))
+
+	for _, block := range blocks {
+		if block.Id == "" {
+			return nil, fmt.Errorf("block has empty id")
+		}
+
+		if block.Id == page.GetId() {
+			if block.ChildrenIds != nil {
+				pageVersion.pb.Block.ChildrenIds = block.ChildrenIds
+			}
+
+			if block.Content != nil {
+				pageVersion.pb.Block.Content = block.Content
+			}
+
+			if block.Fields != nil {
+				pageVersion.pb.Block.Fields = block.Fields
+			}
+
+			if block.Permissions != nil {
+				pageVersion.pb.Block.Permissions = block.Permissions
+			}
+
+			// only add pageVersion in case it was intentionally passed to AddVersions blocks
+			blockVersions = append(blockVersions, pageVersion)
+		} else {
+
+			if _, exists := pageVersion.pb.BlockById[block.Id]; !exists {
+				pageVersion.pb.BlockById[block.Id] = block
+			} else {
+				if isSmartBlock(block) {
+					// ignore smart blocks as they will be added on the fly
+					continue
+				}
+
+				if block.ChildrenIds != nil {
+					pageVersion.pb.BlockById[block.Id].ChildrenIds = block.ChildrenIds
+				}
+
+				if block.Permissions != nil {
+					pageVersion.pb.BlockById[block.Id].Permissions = block.Permissions
+				}
+
+				if block.Fields != nil {
+					pageVersion.pb.BlockById[block.Id].Fields = block.Fields
+				}
+
+				if block.Content != nil {
+					pageVersion.pb.BlockById[block.Id].Content = block.Content
+				}
+			}
+
+			blockVersions = append(blockVersions, page.node.blockToVersion(block, pageVersion, "", "", nil))
+		}
+	}
+
+	return blockVersions, nil
 }

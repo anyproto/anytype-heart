@@ -16,37 +16,34 @@ type Block interface {
 	GetVersions(offset string, limit int, metaOnly bool) ([]BlockVersion, error)
 	// GetCurrentVersionId returns the current(HEAD) version id of the block
 	GetCurrentVersion() (BlockVersion, error)
+	// NewBlock creates the new block but doesn't add it to the parent
+	// make sure you add it later in AddVersions
+	NewBlock(block model.Block) (Block, error)
 	// AddVersion adds the new version of block's
-	// if arg is nil it will be taken from the last version
-	AddVersion(dependentBlocks map[string]BlockVersion, fields *types.Struct, children []string, content model.IsBlockContent) error
-	// SubscribeForEvents provide a way to subscribe for the block and its children events
-	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func())
+	// if some model.Block fields are nil they will be taken from the current version.
+	AddVersion(blockVersion *model.Block) (BlockVersion, error)
+	// AddVersions adds the new version for the block itself and for any of it's dependents
+	// if some model.Block fields are nil they will be taken from the current version.
+	AddVersions(blockVersions []*model.Block) ([]BlockVersion, error)
+	// GetNewVersionsOfBlocks sends the target block itself and dependent blocks' new versions to the chan
+	SubscribeNewVersionsOfBlocks(sinceVersionId string, blocks chan<- []BlockVersion) (cancelFunc func(), err error)
+	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
+	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error)
 	// PublishClientEvent gives a way to push the new client-side event e.g. carriage position change
 	// notice that you will also get this event in SubscribeForEvents
-	PublishClientEvent(event proto.Message)
+	PublishClientEvent(event proto.Message) error
 }
 
 type BlockVersion interface {
-	GetBlockId() string
-	GetVersionId() string
-	GetUser() string
-	GetDate() *types.Timestamp
-	// GetChildrenIds returns IDs of children blocks
-	GetChildrenIds() []string
-	// GetPermissions returns permissions
-	GetPermissions() *model.BlockPermissions
-	// GetExternalFields returns fields supposed to be viewable when block not opened
-	GetExternalFields() *types.Struct
-	// GetFields returns all block fields
-	GetFields() *types.Struct
-	// GetContent returns the content interface
-	GetContent() model.IsBlockContent
-	// GetDependentBlocks gives the initial version of dependent blocks
+	VersionId() string
+	Model() *model.Block
+	User() string
+	Date() *types.Timestamp
+	// ExternalFields returns fields supposed to be viewable when block not opened
+	ExternalFields() *types.Struct
+	// DependentBlocks gives the initial version of dependent blocks
 	// it can contain blocks in the not fully loaded state, e.g. images in the state of DOWNLOADING
-	GetDependentBlocks() map[string]BlockVersion
-	// GetNewVersionsOfBlocks sends the target block itself and dependent blocks' new versions to the chan
-	// it can send the same block version in case the status changes  (e.g. DOWNLOADING -> PREVIEW for an image block)
-	GetNewVersionsOfBlocks(blocks chan<- []BlockVersion) (cancelFunc func())
+	DependentBlocks() map[string]BlockVersion
 }
 
 var ErrorNotSmartBlock = fmt.Errorf("can't retrieve thread for not smart block")
