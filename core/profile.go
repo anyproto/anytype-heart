@@ -40,7 +40,7 @@ func (a *Anytype) AccountSetAvatarColor(hex string) (err error) {
 		return fmt.Errorf("account thread not found")
 	}
 
-	err = a.Textile.Node().Datastore().Peers().UpdateAvatar(a.Textile.Node().Ipfs().Identity.Pretty(), hex)
+	err = a.Textile.Node().Datastore().Peers().UpdateAvatar(a.ipfs().Identity.Pretty(), hex)
 	if err != nil {
 		return err
 	}

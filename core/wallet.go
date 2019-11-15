@@ -54,13 +54,6 @@ func WalletAccountAt(mnemonic string, index int, passphrase string) (*keypair.Fu
 	return w.AccountAt(index, passphrase)
 }
 
-/*func ListAccountsForWallet(mnemonic, passphrase string) ([]byte, error) {
-	var index = 0
-	for {
-		//return tcore.WalletAccountAt(mnemonic, index, passphrase)
-	}
-}*/
-
 func WalletInitRepo(rootPath string, seed string) error {
 	kp, err := keypair.Parse(seed)
 	if err != nil {
