@@ -88,16 +88,22 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	if err != nil {
 		return
 	}
-	p.versions = ver.GetDependentBlocks()
+	p.versions = ver.DependentBlocks()
 	p.versions[p.GetId()] = ver
 
 	p.showFullscreen()
 
 	events := make(chan proto.Message)
-	p.clientEventsCancel = p.block.SubscribeClientEvents(events)
+	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
+	if err != nil {
+		return
+	}
 	if p.versionsChange != nil {
 		blockChanges := make(chan []core.BlockVersion)
-		p.blockChangesCancel = ver.GetNewVersionsOfBlocks(blockChanges)
+		p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, blockChanges)
+		if err != nil {
+			return
+		}
 		go p.clientEventsLoop(events)
 		go p.versionChangesLoop(blockChanges)
 	}
@@ -120,12 +126,12 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		}
 	}
 
-	childrenIds := parent.GetChildrenIds()
+	childrenIds := parent.Model().ChildrenIds
 	var pos = len(childrenIds) + 1
 	if target != nil {
-		targetPos := findPosInSlice(childrenIds, target.GetBlockId())
+		targetPos := findPosInSlice(childrenIds, target.Model().Id)
 		if targetPos == -1 {
-			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.GetBlockId(), parent.GetBlockId())
+			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Model().Id)
 		}
 		if req.Position == model.Block_AFTER {
 			pos = targetPos + 1
@@ -148,7 +154,7 @@ func (p *commonSmart) addBlock(b *model.Block) (id string, err error) {
 func (p *commonSmart) showFullscreen() {
 	blocks := make([]*model.Block, 0, len(p.versions))
 	for _, b := range p.versions {
-		blocks = append(blocks, versionToModel(b))
+		blocks = append(blocks, b.Model())
 	}
 	event := &pb.Event{
 		Message: &pb.EventMessageOfBlockShowFullscreen{
