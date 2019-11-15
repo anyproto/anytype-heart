@@ -17,6 +17,7 @@ var (
 type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
+	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 	Close() error
 }
 

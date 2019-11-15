@@ -6,24 +6,19 @@ import (
 )
 
 func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
-	response := func(code pb.RpcBlockCreateResponseErrorCode, err error) *pb.RpcBlockCreateResponse {
-		m := &pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: code}}
+	response := func(code pb.RpcBlockCreateResponseErrorCode, id string, err error) *pb.RpcBlockCreateResponse {
+		m := &pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: code}, BlockId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-
-	/*block := &model.Block{} // TODO
-
-	m := &pb.Event{Message: &pb.EventBlockCreate{&pb.RpcBlockCreate{Block: block}}}
-
-	if mw.SendEvent != nil {
-		mw.SendEvent(m)
-	}*/
-
-	return response(pb.RpcBlockCreateResponseError_NULL, nil)
+	id, err := mw.blockService.CreateBlock(*req)
+	if err != nil {
+		response(pb.RpcBlockCreateResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockCreateResponseError_NULL, id, nil)
 }
 
 func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
@@ -32,7 +27,6 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 
@@ -56,7 +50,9 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.CloseBlock(req.Id); err != nil {
+		return response(pb.RpcBlockCloseResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
 }
 
