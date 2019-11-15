@@ -47,10 +47,10 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		return
 	}
 
-	switch ver.(type) {
-	case *core.DashboardVersion:
+	switch ver.Model().Content.(type) {
+	case *model.BlockContentOfDashboard:
 		sb, err = newDashboard(s, b)
-	case *core.PageVersion:
+	case *model.BlockContentOfPage:
 		sb, err = newPage(s, b)
 	default:
 		return nil, ErrUnexpectedSmartBlockType
@@ -104,9 +104,9 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 		if err != nil {
 			return
 		}
-		go p.clientEventsLoop(events)
 		go p.versionChangesLoop(blockChanges)
 	}
+	go p.clientEventsLoop(events)
 	return
 }
 
