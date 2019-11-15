@@ -72,7 +72,7 @@ type commonSmart struct {
 
 	clientEventsCancel func()
 	blockChangesCancel func()
-	closeWg            sync.WaitGroup
+	closeWg            *sync.WaitGroup
 }
 
 func (p *commonSmart) GetId() string {
@@ -82,7 +82,7 @@ func (p *commonSmart) GetId() string {
 func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
-
+	p.closeWg = new(sync.WaitGroup)
 	p.block = block
 	ver, err := p.block.GetCurrentVersion()
 	if err != nil {
@@ -159,6 +159,7 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		return
 	}
 	id = vers[0].Model().Id
+	p.sendCreateEvents(parent, newBlockVer.Model())
 	return
 }
 

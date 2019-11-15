@@ -38,7 +38,7 @@ func TestService_OpenBlock(t *testing.T) {
 
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfDashboard{
 			Dashboard: &model.BlockContentDashboard{},
-		}, nil)
+		}, nil, nil)
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
 		mb.EXPECT().SubscribeClientEvents(gomock.Any())
@@ -48,7 +48,7 @@ func TestService_OpenBlock(t *testing.T) {
 		defer func() { require.NoError(t, fx.CloseBlock(blockId)) }()
 
 		assert.Len(t, fx.events, 1)
-		assert.IsType(t, (*dashboard)(nil), fx.Service.(*service).smartBlocks[blockId])
+		assert.Equal(t, smartBlockTypeDashboard, fx.Service.(*service).smartBlocks[blockId].Type())
 
 	})
 	t.Run("should open page", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestService_OpenBlock(t *testing.T) {
 
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfPage{
 			Page: &model.BlockContentPage{},
-		}, nil)
+		}, nil, nil)
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
 		mb.EXPECT().SubscribeClientEvents(gomock.Any())
@@ -71,7 +71,7 @@ func TestService_OpenBlock(t *testing.T) {
 		defer func() { require.NoError(t, fx.CloseBlock(blockId)) }()
 
 		assert.Len(t, fx.events, 1)
-		assert.IsType(t, (*page)(nil), fx.Service.(*service).smartBlocks[blockId])
+		assert.Equal(t, smartBlockTypePage, fx.Service.(*service).smartBlocks[blockId].Type())
 	})
 }
 
@@ -99,14 +99,14 @@ func (fx *fixture) sendEvent(e *pb.Event) {
 	fx.events = append(fx.events, e)
 }
 
-func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockContent, db map[string]core.BlockVersion) (b *testMock.MockBlock, v *testMock.MockBlockVersion) {
+func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockContent, childrenIds []string, db map[string]core.BlockVersion) (b *testMock.MockBlock, v *testMock.MockBlockVersion) {
 	if db == nil {
 		db = make(map[string]core.BlockVersion)
 	}
-	v = testMock.NewMockBlockVersion(fx.ctrl)
-	v.EXPECT().Model().AnyTimes().Return(&model.Block{
-		Id:      id,
-		Content: content,
+	v = fx.newMockVersion(&model.Block{
+		Id:          id,
+		Content:     content,
+		ChildrenIds: childrenIds,
 	})
 	v.EXPECT().DependentBlocks().AnyTimes().Return(db)
 	b = testMock.NewMockBlock(fx.ctrl)
@@ -115,7 +115,26 @@ func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockConte
 	return
 }
 
+func (fx *fixture) newMockVersion(m *model.Block) (v *testMock.MockBlockVersion) {
+	v = testMock.NewMockBlockVersion(fx.ctrl)
+	v.EXPECT().Model().AnyTimes().Return(m)
+	return
+}
+
 func (fx *fixture) tearDown() {
 	require.NoError(fx.t, fx.Close())
 	fx.ctrl.Finish()
+}
+
+type matcher struct {
+	name string
+	f    func(x interface{}) bool
+}
+
+func (m *matcher) Matches(x interface{}) bool {
+	return m.f(x)
+}
+
+func (m *matcher) String() string {
+	return m.name
 }
