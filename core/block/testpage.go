@@ -26,7 +26,7 @@ var testBlocks = []*model.Block{
 				"icon": testStringValue(":family:"),
 			},
 		},
-		ChildrenIds: []string{"2", "3", "4"},
+		ChildrenIds: []string{"2", "3", "4", "5"},
 		Content: &model.BlockContentOfPage{
 			Page: &model.BlockContentPage{Style: model.BlockContentPage_EMPTY},
 		},
@@ -54,6 +54,51 @@ var testBlocks = []*model.Block{
 			Text: &model.BlockContentText{
 				Text:  "Contacts 4",
 				Style: model.BlockContentText_p,
+			},
+		},
+	},
+	{
+		Id:          "5",
+		ChildrenIds: []string{"6", "8"},
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_ROW,
+			},
+		},
+	},
+	{
+		Id:          "6",
+		ChildrenIds: []string{"7"},
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_COLUMN,
+			},
+		},
+	},
+	{
+		Id: "7",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  "Bla bla 7",
+				Style: model.BlockContentText_h1,
+			},
+		},
+	},
+	{
+		Id:          "8",
+		ChildrenIds: []string{"9"},
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_COLUMN,
+			},
+		},
+	},
+	{
+		Id: "9",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  "Bla bla 9",
+				Style: model.BlockContentText_h2,
 			},
 		},
 	},
