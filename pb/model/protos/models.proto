@@ -35,6 +35,7 @@ message Block {
         Content.Layout layout = 18;
         Content.Div div = 19;
         Content.Bookmark bookmark = 20;
+        Content.Icon icon = 21;
     }
 
     message Content {
@@ -62,6 +63,10 @@ message Block {
     */
         message Bookmark {
             // Model.Link.Preview preview = 1;
+        }
+
+        message Icon {
+            string name = 1;
         }
 
         /*
@@ -118,6 +123,7 @@ message Block {
                 h4 = 4;
                 quote = 5;
                 code = 6;
+                title = 7;
             }
 
             enum Marker {
