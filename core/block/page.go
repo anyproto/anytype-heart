@@ -2,6 +2,7 @@ package block
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 func newPage(s *service, block anytype.Block) (smartBlock, error) {
@@ -11,6 +12,10 @@ func newPage(s *service, block anytype.Block) (smartBlock, error) {
 
 type page struct {
 	*commonSmart
+}
+
+func (p *page) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
+	return p.commonSmart.Create(req)
 }
 
 func (p *page) Type() smartBlockType {

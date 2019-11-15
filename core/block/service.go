@@ -34,7 +34,7 @@ type service struct {
 	accountId   string
 	sendEvent   func(event *pb.Event)
 	smartBlocks map[string]smartBlock
-	m           sync.Mutex
+	m           sync.RWMutex
 }
 
 func (s *service) OpenBlock(id string) (err error) {
@@ -59,6 +59,15 @@ func (s *service) CloseBlock(id string) (err error) {
 		return sb.Close()
 	}
 	return ErrBlockNotFound
+}
+
+func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Create(req)
+	}
+	return "", ErrBlockNotFound
 }
 
 func (s *service) Close() error {

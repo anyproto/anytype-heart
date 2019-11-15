@@ -2,6 +2,8 @@ package block
 
 import (
 	"errors"
+	"fmt"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -18,6 +20,7 @@ type smartBlock interface {
 	Open(b anytype.Block) error
 	GetId() string
 	Type() smartBlockType
+	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	Close() error
 }
 
@@ -53,38 +56,98 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 }
 
 type commonSmart struct {
-	s            *service
-	id           string
-	eventsCancel func()
-	closed       chan struct{}
+	s        *service
+	block    anytype.Block
+	versions map[string]core.BlockVersion
+
+	m sync.RWMutex
+
+	versionsChange func(vers []core.BlockVersion)
+
+	clientEventsCancel func()
+	blockChangesCancel func()
+	closeWg            sync.WaitGroup
 }
 
 func (p *commonSmart) GetId() string {
-	return p.id
+	return p.block.GetId()
 }
 
 func (p *commonSmart) Open(block anytype.Block) (err error) {
-	ver, err := block.GetCurrentVersion()
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	p.block = block
+	ver, err := p.block.GetCurrentVersion()
 	if err != nil {
 		return
 	}
-	p.sendOnOpenEvents(ver)
+	p.versions = ver.GetDependentBlocks()
+	p.versions[p.GetId()] = ver
+
+	p.showFullscreen()
+
 	events := make(chan proto.Message)
-	p.eventsCancel = block.SubscribeClientEvents(events)
+	p.clientEventsCancel = p.block.SubscribeClientEvents(events)
+	if p.versionsChange != nil {
+		blockChanges := make(chan []core.BlockVersion)
+		p.blockChangesCancel = ver.GetNewVersionsOfBlocks(blockChanges)
+		go p.clientEventsLoop(events)
+		go p.versionChangesLoop(blockChanges)
+	}
 	return
 }
 
-func (p *commonSmart) sendOnOpenEvents(ver anytype.BlockVersion) {
-	deps := ver.GetDependentBlocks()
-	blocks := make([]*model.Block, 0, len(deps)+1)
-	blocks = append(blocks, versionToModel(ver))
-	for _, b := range deps {
+func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
+	p.m.RLock()
+	defer p.m.RUnlock()
+
+	parent, ok := p.versions[req.ParentId]
+	if ! ok {
+		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
+	}
+	var target core.BlockVersion
+	if req.TargetId != "" {
+		target, ok = p.versions[req.TargetId]
+		if ! ok {
+			return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
+		}
+	}
+
+	childrenIds := parent.GetChildrenIds()
+	var pos = len(childrenIds) + 1
+	if target != nil {
+		targetPos := findPosInSlice(childrenIds, target.GetBlockId())
+		if targetPos == -1 {
+			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.GetBlockId(), parent.GetBlockId())
+		}
+		if req.Position == model.Block_AFTER {
+			pos = targetPos + 1
+		} else {
+			pos = targetPos
+		}
+	}
+
+	var newBlockId string
+	childrenIds = insertToSlice(childrenIds, newBlockId, pos)
+
+	return
+}
+
+func (p *commonSmart) addBlock(b *model.Block) (id string, err error) {
+	// todo:
+	return
+}
+
+func (p *commonSmart) showFullscreen() {
+	blocks := make([]*model.Block, 0, len(p.versions))
+	for _, b := range p.versions {
 		blocks = append(blocks, versionToModel(b))
 	}
 	event := &pb.Event{
 		Message: &pb.EventMessageOfBlockShowFullscreen{
 			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
-				RootId: ver.GetBlockId(),
+				RootId: p.GetId(),
 				Blocks: blocks,
 			},
 		},
@@ -92,15 +155,29 @@ func (p *commonSmart) sendOnOpenEvents(ver anytype.BlockVersion) {
 	p.s.sendEvent(event)
 }
 
-func (p *commonSmart) eventHandler(events chan proto.Message) {
-	defer close(p.closed)
+func (p *commonSmart) clientEventsLoop(events chan proto.Message) {
+	p.closeWg.Add(1)
+	defer p.closeWg.Done()
 	for m := range events {
-		_ = m
+		_ = m // TODO: handle client events
+	}
+}
+
+func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) {
+	p.closeWg.Add(1)
+	defer p.closeWg.Done()
+	for versions := range blockChanges {
+		p.versionsChange(versions)
 	}
 }
 
 func (p *commonSmart) Close() error {
-	p.eventsCancel()
-	<-p.closed
+	if p.clientEventsCancel != nil {
+		p.clientEventsCancel()
+	}
+	if p.blockChangesCancel != nil {
+		p.blockChangesCancel()
+	}
+	p.closeWg.Wait()
 	return nil
 }
