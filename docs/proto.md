@@ -157,6 +157,7 @@
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview)
+    - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Image](#anytype.model.Block.Content.Image)
     - [Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
@@ -2094,6 +2095,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
 | div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
 | bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
+| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
 
 
 
@@ -2185,6 +2187,21 @@ Divider: block, that contains only one horizontal thin line
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | icon | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Icon"></a>
+
+### Block.Content.Icon
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
 
 
 
@@ -2521,6 +2538,7 @@ General purpose structure, uses in Mark.
 | h4 | 4 |  |
 | quote | 5 |  |
 | code | 6 |  |
+| title | 7 |  |
 
 
 
