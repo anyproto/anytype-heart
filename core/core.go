@@ -20,8 +20,14 @@ var BootstrapNodes = []string{
 	"/ip4/157.230.124.182/tcp/4001/ipfs/12D3KooWKLLf9Qc6SHaLWNPvx7Tk4AMc9i71CLdnbZuRiFMFMnEf",
 }
 
+type PredefinedBlockIds struct {
+	Home    string
+	Archive string
+}
+
 type Anytype struct {
-	Textile *tmobile.Mobile
+	Textile            *tmobile.Mobile
+	PredefinedBlockIds *PredefinedBlockIds
 }
 
 func (a *Anytype) ipfs() *ipfsCore.IpfsNode {
@@ -42,7 +48,8 @@ func New(repoPath string, account string) (*Anytype, error) {
 		return nil, err
 	}
 
-	return &Anytype{Textile: tm}, nil
+	a := &Anytype{Textile: tm}
+	return a, nil
 }
 
 func (a *Anytype) Run() error {
@@ -83,7 +90,7 @@ func (a *Anytype) Run() error {
 		}
 	}()
 
-	err = a.createPredefinedThreads()
+	err = a.createPredefinedBlocks()
 	if err != nil {
 		return err
 	}

@@ -16,35 +16,24 @@ import (
 
 var log = logging.Logger("tex-core")
 
-type derivedThreadIndex uint32
+type threadDerivedIndex uint32
 
 const (
-	threadDerivedIndexHomeDashboard    derivedThreadIndex = 0
-	threadDerivedIndexArchiveDashboard derivedThreadIndex = 1
+	threadDerivedIndexHomeDashboard    threadDerivedIndex = 0
+	threadDerivedIndexArchiveDashboard threadDerivedIndex = 1
 )
 
-var threadDerivedIndexToThreadName = map[derivedThreadIndex]string{
+var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
 	threadDerivedIndexHomeDashboard:    "home",
 	threadDerivedIndexArchiveDashboard: "archive",
 }
 
-var threadDerivedIndexToSchema = map[derivedThreadIndex]string{
+var threadDerivedIndexToSchema = map[threadDerivedIndex]string{
 	threadDerivedIndexHomeDashboard:    schema.Dashboard,
 	threadDerivedIndexArchiveDashboard: schema.Dashboard,
 }
 
-func (a *Anytype) createPredefinedThreads() error {
-	for index, _ := range threadDerivedIndexToThreadName {
-		err := a.predefinedThreadAdd(index)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (a *Anytype) deriveKey(index derivedThreadIndex) (*keypair.Full, error) {
+func (a *Anytype) deriveKey(index threadDerivedIndex) (*keypair.Full, error) {
 	key, err := wallet.NewMasterKey([]byte(a.Textile.Node().Account().Seed()))
 	if err != nil {
 		return nil, err
@@ -68,7 +57,7 @@ func (a *Anytype) predefinedThreadByName(name string) (*tcore.Thread, error) {
 	return nil, fmt.Errorf("thread not found")
 }
 
-func (a *Anytype) predefinedThread(index derivedThreadIndex) (*tcore.Thread, error) {
+func (a *Anytype) predefinedThread(index threadDerivedIndex) (*tcore.Thread, error) {
 	key, err := a.deriveKey(index)
 	if err != nil {
 		return nil, err
@@ -80,19 +69,19 @@ func (a *Anytype) predefinedThread(index derivedThreadIndex) (*tcore.Thread, err
 	return nil, fmt.Errorf("thread not found")
 }
 
-func (a *Anytype) predefinedThreadAdd(index derivedThreadIndex) error {
+func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex) (*tcore.Thread, error) {
 	key, err := a.deriveKey(index)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if a.Textile.Node().ThreadByKey(key.Address()) != nil {
-		return nil
+	if thread := a.Textile.Node().ThreadByKey(key.Address()); thread != nil {
+		return thread, nil
 	}
 
 	sf, err := a.Textile.Node().AddSchema(threadDerivedIndexToSchema[index], "dashboard")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	config := tpb.AddThreadConfig{
@@ -107,23 +96,23 @@ func (a *Anytype) predefinedThreadAdd(index derivedThreadIndex) error {
 
 	sk, err := key.LibP2PPrivKey()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	thread, err := a.Textile.Node().AddThread(config, sk, a.Textile.Address(), true, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// add existing contacts
 	for _, p := range a.Textile.Node().Datastore().Peers().List(fmt.Sprintf("address!='%s'", a.Textile.Address())) {
 		_, err = thread.Annouce(&tpb.ThreadAnnounce{Peer: p})
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return thread, nil
 }
 
 func readFile(t *tcore.Textile, file *tpb.FileIndex) ([]byte, error) {

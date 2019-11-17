@@ -1,16 +1,14 @@
 package schema
 
-var Page = `
-{
-  "name": "PAGE",
+var Page = `{
+  "name": "page",
   "pin": true,
   "mill": "/blob"
 }
 `
 
-var Dashboard = `
-{
-  "name": "DASHBOARD",
+var Dashboard = `{
+  "name": "dashboard",
   "pin": true,
   "mill": "/blob"
 }
