@@ -11,7 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	uuid "github.com/satori/go.uuid"
 	tcore "github.com/textileio/go-textile/core"
-	mill2 "github.com/textileio/go-textile/mill"
+	"github.com/textileio/go-textile/mill"
 	tpb "github.com/textileio/go-textile/pb"
 )
 
@@ -28,7 +28,20 @@ func (smartBlock *SmartBlock) GetId() string {
 	return smartBlock.thread.Id
 }
 
-func (smartBlock *SmartBlock) GetVersion(id string) (smartBlockVersion *SmartBlockVersion, err error) {
+func (smartBlock *SmartBlock) GetCurrentVersion() (BlockVersion, error) {
+	versions, err := smartBlock.GetVersions("", 1, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(versions) == 0 {
+		return nil, errorNotFound
+	}
+
+	return versions[0], nil
+}
+
+func (smartBlock *SmartBlock) GetVersion(id string) (BlockVersion, error) {
 	fileMeta, err := smartBlock.node.textile().File(id)
 	if err != nil {
 		return nil, err
@@ -49,11 +62,11 @@ func (smartBlock *SmartBlock) GetVersion(id string) (smartBlockVersion *SmartBlo
 		return nil, fmt.Errorf("unmarshal error: %s", err.Error())
 	}
 
-	version := &SmartBlockVersion{pb: block, versionId: fileMeta.Block, date: util.CastTimestampToGogo(fileMeta.Date), user: fileMeta.User.Address}
+	version := &SmartBlockVersion{model: block, versionId: fileMeta.Block, date: util.CastTimestampToGogo(fileMeta.Date), user: fileMeta.User.Address}
 	return version, nil
 }
 
-func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly bool) (versions []*SmartBlockVersion, err error) {
+func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly bool) (versions []BlockVersion, err error) {
 	files, err := smartBlock.node.textile().Files(offset, limit, smartBlock.thread.Id)
 	if err != nil {
 		return nil, err
@@ -80,21 +93,174 @@ func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly boo
 			return versions, fmt.Errorf("page version proto unmarshal error: %s", err.Error())
 		}
 
-		version.pb = block
+		version.model = block
 		versions = append(versions, version)
 	}
 
 	return
 }
 
-func (smartBlock *SmartBlock) AddVersion(newVersion *storage.BlockWithDependentBlocks) (versionId string, user string, date *types.Timestamp, err error) {
+func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion) *SmartBlockVersion {
+	lastVersion, _ := smartBlock.GetCurrentVersion()
+	if lastVersion == nil {
+		return newVersion
+	}
+
+	var dependentBlocks = lastVersion.DependentBlocks()
+	newVersion.model.BlockById = make(map[string]*model.Block, len(dependentBlocks))
+	for id, dependentBlock := range dependentBlocks {
+		newVersion.model.BlockById[id] = dependentBlock.Model()
+	}
+
+	if newVersion.model.Block.Fields == nil {
+		newVersion.model.Block.Fields = lastVersion.Model().Fields
+	}
+
+	if newVersion.model.Block.Content == nil {
+		newVersion.model.Block.Content = lastVersion.Model().Content
+	}
+
+	if newVersion.model.Block.ChildrenIds == nil {
+		newVersion.model.Block.ChildrenIds = lastVersion.Model().ChildrenIds
+	}
+
+	if newVersion.model.Block.Permissions == nil {
+		newVersion.model.Block.Permissions = lastVersion.Model().Permissions
+	}
+
+	lastVersionB, _ := proto.Marshal(lastVersion.Model().Content.(*model.BlockContentOfPage).Page)
+	newVersionB, _ := proto.Marshal(newVersion.Model().Content.(*model.BlockContentOfPage).Page)
+	if string(lastVersionB) == string(newVersionB) {
+		log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
+		// do not insert the new version if no blocks have changed
+		newVersion.versionId = lastVersion.VersionId()
+		newVersion.user = lastVersion.User()
+		newVersion.date = lastVersion.Date()
+		return newVersion
+	}
+	return newVersion
+}
+
+func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, error) {
+	if block.Id == "" {
+		return nil, fmt.Errorf("block has empty id")
+	}
+
+	newVersion := &SmartBlockVersion{model: &storage.BlockWithDependentBlocks{Block: block}}
+
+	if block.Content != nil {
+		if newVersionContent, ok := block.Content.(*model.BlockContentOfDashboard); !ok {
+			return nil, fmt.Errorf("unxpected smartblock type")
+		} else {
+			newVersion.model.Block.Content = newVersionContent
+		}
+	}
+
+	newVersion = smartBlock.mergeWithLastVersion(newVersion)
+	if newVersion.versionId != "" {
+		// nothing changes
+		// todo: should we return error here to handle this specific case?
+		return newVersion, nil
+	}
+
+	if block.Content == nil {
+		block.Content = &model.BlockContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
+	}
+
+	var err error
+	newVersion.versionId, newVersion.user, newVersion.date, err = smartBlock.addVersion(newVersion.model)
+	if err != nil {
+		return nil, err
+	}
+
+	return newVersion, nil
+}
+
+func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion, error) {
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("no blocks specified")
+	}
+
+	blockVersion := &SmartBlockVersion{model: &storage.BlockWithDependentBlocks{}}
+	lastVersion, _ := smartBlock.GetCurrentVersion()
+	if lastVersion != nil {
+		var dependentBlocks = lastVersion.DependentBlocks()
+		blockVersion.model.BlockById = make(map[string]*model.Block, len(dependentBlocks))
+		for id, dependentBlock := range dependentBlocks {
+			blockVersion.model.BlockById[id] = dependentBlock.Model()
+		}
+	} else {
+		blockVersion.model.BlockById = make(map[string]*model.Block, len(blocks))
+	}
+
+	blockVersions := make([]BlockVersion, 0, len(blocks))
+
+	for _, block := range blocks {
+		if block.Id == "" {
+			return nil, fmt.Errorf("block has empty id")
+		}
+
+		if block.Id == smartBlock.GetId() {
+			if block.ChildrenIds != nil {
+				blockVersion.model.Block.ChildrenIds = block.ChildrenIds
+			}
+
+			if block.Content != nil {
+				blockVersion.model.Block.Content = block.Content
+			}
+
+			if block.Fields != nil {
+				blockVersion.model.Block.Fields = block.Fields
+			}
+
+			if block.Permissions != nil {
+				blockVersion.model.Block.Permissions = block.Permissions
+			}
+
+			// only add dashboardVersion in case it was intentionally passed to AddVersions blocks
+			blockVersions = append(blockVersions, blockVersion)
+		} else {
+
+			if _, exists := blockVersion.model.BlockById[block.Id]; !exists {
+				blockVersion.model.BlockById[block.Id] = block
+			} else {
+				if isSmartBlock(block) {
+					// ignore smart blocks as they will be added on the fly
+					continue
+				}
+
+				if block.ChildrenIds != nil {
+					blockVersion.model.BlockById[block.Id].ChildrenIds = block.ChildrenIds
+				}
+
+				if block.Permissions != nil {
+					blockVersion.model.BlockById[block.Id].Permissions = block.Permissions
+				}
+
+				if block.Fields != nil {
+					blockVersion.model.BlockById[block.Id].Fields = block.Fields
+				}
+
+				if block.Content != nil {
+					blockVersion.model.BlockById[block.Id].Content = block.Content
+				}
+			}
+
+			blockVersions = append(blockVersions, smartBlock.node.blockToVersion(block, blockVersion, "", "", nil))
+		}
+	}
+
+	return blockVersions, nil
+}
+
+func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentBlocks) (versionId string, user string, date *types.Timestamp, err error) {
 	var newVersionB []byte
 	newVersionB, err = proto.Marshal(newVersion)
 	if err != nil {
 		return
 	}
 
-	mill := &mill2.Json{}
+	mill := &mill.Blob{}
 
 	conf := tcore.AddFileConfig{
 		Media:     "application/json",
