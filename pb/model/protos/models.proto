@@ -76,7 +76,7 @@ message Block {
         message Dashboard {
             enum Style {
                 MAIN_SCREEN = 0;
-                // ...
+                ARCHIVE = 1;
             }
 
             Style style = 1;
