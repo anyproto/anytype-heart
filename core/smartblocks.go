@@ -3,7 +3,11 @@ package core
 import (
 	"crypto/rand"
 	"fmt"
+	"strings"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/gogo/protobuf/types"
 	libp2pc "github.com/libp2p/go-libp2p-crypto"
 	"github.com/segmentio/ksuid"
 	tcore "github.com/textileio/go-textile/core"
@@ -41,10 +45,26 @@ func (a *Anytype) SmartBlockGet(id string) (*SmartBlock, error) {
 		return nil, err
 	}
 
-	switch tv.SchemaNode.Name {
+	switch strings.ToLower(tv.SchemaNode.Name) {
 	case "dashboard", "page", "dataview":
 		return &SmartBlock{thread: thrd, node: a}, nil
 	default:
 		return nil, fmt.Errorf("unknown schema name: %s", tv.SchemaNode.Name)
+	}
+}
+
+func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVersion {
+	return &SmartBlockVersion{
+		node: a,
+		model: &storage.BlockWithDependentBlocks{
+			Block: &model.Block{
+				Fields: &types.Struct{Fields: map[string]*types.Value{
+					"name": {Kind: &types.Value_StringValue{StringValue: "Inaccessible block"}},
+					"icon": {Kind: &types.Value_StringValue{StringValue: ":no_entry_sign:"}},
+				}},
+				Permissions: &model.BlockPermissions{
+					// all permissions are false by default
+				},
+			}},
 	}
 }

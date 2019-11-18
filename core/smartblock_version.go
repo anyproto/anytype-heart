@@ -4,10 +4,11 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
+	mh "github.com/multiformats/go-multihash"
 )
 
 type SmartBlockVersion struct {
-	pb        *storage.BlockWithDependentBlocks
+	model     *storage.BlockWithDependentBlocks
 	versionId string
 	user      string
 	date      *types.Timestamp
@@ -15,7 +16,7 @@ type SmartBlockVersion struct {
 }
 
 func (version *SmartBlockVersion) Model() *model.Block {
-	return version.pb.Block
+	return version.model.Block
 }
 
 func (version *SmartBlockVersion) VersionId() string {
@@ -31,30 +32,62 @@ func (version *SmartBlockVersion) Date() *types.Timestamp {
 }
 
 func (version *SmartBlockVersion) GetContent() model.IsBlockContent {
-	return version.pb.Block.Content
+	return version.model.Block.Content
 }
 
 func (version *SmartBlockVersion) DependentBlocks() map[string]BlockVersion {
-	var m = make(map[string]BlockVersion, len(version.pb.BlockById))
-	for blockId, block := range version.pb.BlockById {
+	var allChildren = version.Model().ChildrenIds
+	var allChildrenMap = make(map[string]struct{}, 0)
+	var m = make(map[string]BlockVersion, len(version.model.BlockById))
+	for blockId, block := range version.model.BlockById {
 		switch block.Content.(type) {
-		case *model.BlockContentOfDashboard:
-			m[blockId] = &DashboardVersion{&SmartBlockVersion{
-				pb: &storage.BlockWithDependentBlocks{
-					Block: block,
-				},
-				versionId: version.versionId,
-				user:      version.user,
-				date:      version.date,
-			}}
-		case *model.BlockContentOfPage:
-			m[blockId] = &PageVersion{&SmartBlockVersion{
-				pb:        &storage.BlockWithDependentBlocks{Block: block},
-				versionId: version.versionId,
-				user:      version.user,
-				date:      version.date,
-			}}
+		case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
+			// not supported
+
+		default:
+			m[blockId] = &SimpleBlockVersion{
+				pb:                      block,
+				parentSmartBlockVersion: version,
+			}
+
+			for _, child := range block.ChildrenIds {
+				if _, exists := allChildrenMap[child]; !exists {
+					allChildren = append(allChildren, child)
+					allChildrenMap[child] = struct{}{}
+				}
+			}
+		}
+	}
+
+	// inject smart blocks children
+	for _, child := range version.model.Block.ChildrenIds {
+		if _, err := mh.FromB58String(child); err != nil {
+			if _, exists := m[child]; !exists {
+				log.Errorf("DependentBlocks: children simple block '%s' not presented in the stored dependent blocks of smart block '%s'", child, version.model.Block.Id)
+			}
+
+			continue
+		}
+
+		smartBlock, err := version.node.GetBlock(child)
+		if err != nil {
+			m[child] = version.node.smartBlockVersionWithoutPermissions(child)
+		} else {
+			smartBlockVersion, err := smartBlock.GetCurrentVersion()
+			if err != nil {
+				log.Errorf("DependentBlocks: failed to found block version for '%s'", child)
+				continue
+			}
+
+			m[child] = smartBlockVersion
 		}
 	}
 	return m
+}
+
+func (version *SmartBlockVersion) ExternalFields() *types.Struct {
+	return &types.Struct{Fields: map[string]*types.Value{
+		"name": version.Model().Fields.Fields["name"],
+		"icon": version.Model().Fields.Fields["icon"],
+	}}
 }

@@ -2,17 +2,13 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
 	mh "github.com/multiformats/go-multihash"
 )
-
-type CreateBlockTargetPosition string
-
-const CreateBlockTargetPositionAfter CreateBlockTargetPosition = "after"
-const CreateBlockTargetPositionBefore CreateBlockTargetPosition = "before"
 
 func (a *Anytype) GetBlock(id string) (Block, error) {
 	_, err := mh.FromB58String(id)
@@ -22,7 +18,7 @@ func (a *Anytype) GetBlock(id string) (Block, error) {
 			return nil, err
 		}
 
-		switch smartBlock.thread.Schema.Name {
+		switch strings.ToLower(smartBlock.thread.Schema.Name) {
 		case "dashboard":
 			return &Dashboard{smartBlock}, nil
 		case "page":
@@ -47,25 +43,16 @@ func isSmartBlock(block *model.Block) bool {
 
 func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, user string, date *types.Timestamp) BlockVersion {
 	switch block.Content.(type) {
-	case *model.BlockContentOfDashboard:
-		return &DashboardVersion{&SmartBlockVersion{
-			pb: &storage.BlockWithDependentBlocks{
+	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
+		return &SmartBlockVersion{
+			model: &storage.BlockWithDependentBlocks{
 				Block: block,
 			},
 			versionId: versionId,
 			user:      user,
 			date:      date,
 			node:      a,
-		}}
-	case *model.BlockContentOfPage:
-		return &PageVersion{&SmartBlockVersion{
-			pb:        &storage.BlockWithDependentBlocks{Block: block},
-			versionId: versionId,
-			user:      user,
-			date:      date,
-			node:      a,
-		}}
-
+		}
 	default:
 		return &SimpleBlockVersion{
 			pb:                      block,
@@ -73,4 +60,78 @@ func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion Blo
 			node:                    a,
 		}
 	}
+}
+
+func (a *Anytype) createPredefinedBlocks() error {
+	predefinedBlockIds := PredefinedBlockIds{}
+	// archive
+	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchiveDashboard)
+	if err != nil {
+		return err
+	}
+	predefinedBlockIds.Archive = thread.Id
+	block, err := a.GetBlock(thread.Id)
+	if err != nil {
+		return err
+	}
+
+	if version, _ := block.GetCurrentVersion(); version == nil {
+		// version not yet created
+		_, err = block.AddVersion(&model.Block{
+			Id: block.GetId(),
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": {Kind: &types.Value_StringValue{StringValue: "Archive"}},
+					"icon": {Kind: &types.Value_StringValue{StringValue: ":package:"}},
+				},
+			},
+			Content: &model.BlockContentOfDashboard{
+				Dashboard: &model.BlockContentDashboard{
+					Style: model.BlockContentDashboard_ARCHIVE,
+				},
+			},
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// home
+	thread, err = a.predefinedThreadAdd(threadDerivedIndexHomeDashboard)
+	if err != nil {
+		return err
+	}
+	predefinedBlockIds.Home = thread.Id
+
+	block, err = a.GetBlock(thread.Id)
+	if err != nil {
+		return err
+	}
+
+	if version, _ := block.GetCurrentVersion(); version == nil {
+		// version not yet created
+		_, err = block.AddVersion(&model.Block{
+			Id:          block.GetId(),
+			ChildrenIds: []string{predefinedBlockIds.Archive},
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": {Kind: &types.Value_StringValue{StringValue: "Home"}},
+					"icon": {Kind: &types.Value_StringValue{StringValue: ":house:"}},
+				},
+			},
+			Content: &model.BlockContentOfDashboard{
+				Dashboard: &model.BlockContentDashboard{
+					Style: model.BlockContentDashboard_MAIN_SCREEN,
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	a.PredefinedBlockIds = &predefinedBlockIds
+
+	return nil
 }
