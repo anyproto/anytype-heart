@@ -105,8 +105,7 @@ message Change {
     */
     message Multiple {
         message BlocksList {
-            anytype.model.Account author = 1;
-            repeated Single.BlocksList changes = 2;
+            repeated Single.BlocksList changes = 1;
         }
     }
 

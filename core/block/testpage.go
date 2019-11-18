@@ -217,8 +217,8 @@ type testPage struct {
 
 func (t *testPage) Open(b anytype.Block) error {
 	event := &pb.Event{
-		Message: &pb.EventMessageOfBlockShowFullscreen{
-			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
+		Message: &pb.EventMessageOfBlockShow{
+			BlockShow: &pb.EventBlockShow{
 				RootId: t.GetId(),
 				Blocks: testBlocks,
 			},

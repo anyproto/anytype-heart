@@ -21,6 +21,10 @@ service ClientCommands {
     rpc BlockUpdate (anytype.Rpc.Block.Update.Request) returns (anytype.Rpc.Block.Update.Response);
     // TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response);
     rpc BlockClose (anytype.Rpc.Block.Close.Request) returns (anytype.Rpc.Block.Close.Response);
+    rpc BlockMarkSet (anytype.Rpc.Block.Action.MarkSet.Request) returns (anytype.Rpc.Block.Action.MarkSet.Response);
+    rpc BlocksDrop (anytype.Rpc.Block.Action.BlocksDrop.Request) returns (anytype.Rpc.Block.Action.BlocksDrop.Response);
+    rpc BlocksContentUpload (anytype.Rpc.Block.Action.Content.Upload.Request) returns (anytype.Rpc.Block.Action.Content.Upload.Response);
+    rpc BlocksContentDownload (anytype.Rpc.Block.Action.Content.Download.Request) returns (anytype.Rpc.Block.Action.Content.Download.Response);
 
     rpc BlockHistoryMove (anytype.Rpc.Block.History.Move.Request) returns (anytype.Rpc.Block.History.Move.Response);
     // TODO: rpc BlockFilesUpload () returns ();

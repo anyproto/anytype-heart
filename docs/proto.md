@@ -48,6 +48,24 @@
     - [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response)
     - [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
+    - [Rpc.Block.Action](#anytype.Rpc.Block.Action)
+    - [Rpc.Block.Action.BlocksDrop](#anytype.Rpc.Block.Action.BlocksDrop)
+    - [Rpc.Block.Action.BlocksDrop.Request](#anytype.Rpc.Block.Action.BlocksDrop.Request)
+    - [Rpc.Block.Action.BlocksDrop.Response](#anytype.Rpc.Block.Action.BlocksDrop.Response)
+    - [Rpc.Block.Action.BlocksDrop.Response.Error](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error)
+    - [Rpc.Block.Action.Content](#anytype.Rpc.Block.Action.Content)
+    - [Rpc.Block.Action.Content.Download](#anytype.Rpc.Block.Action.Content.Download)
+    - [Rpc.Block.Action.Content.Download.Request](#anytype.Rpc.Block.Action.Content.Download.Request)
+    - [Rpc.Block.Action.Content.Download.Response](#anytype.Rpc.Block.Action.Content.Download.Response)
+    - [Rpc.Block.Action.Content.Download.Response.Error](#anytype.Rpc.Block.Action.Content.Download.Response.Error)
+    - [Rpc.Block.Action.Content.Upload](#anytype.Rpc.Block.Action.Content.Upload)
+    - [Rpc.Block.Action.Content.Upload.Request](#anytype.Rpc.Block.Action.Content.Upload.Request)
+    - [Rpc.Block.Action.Content.Upload.Response](#anytype.Rpc.Block.Action.Content.Upload.Response)
+    - [Rpc.Block.Action.Content.Upload.Response.Error](#anytype.Rpc.Block.Action.Content.Upload.Response.Error)
+    - [Rpc.Block.Action.MarkSet](#anytype.Rpc.Block.Action.MarkSet)
+    - [Rpc.Block.Action.MarkSet.Request](#anytype.Rpc.Block.Action.MarkSet.Request)
+    - [Rpc.Block.Action.MarkSet.Response](#anytype.Rpc.Block.Action.MarkSet.Response)
+    - [Rpc.Block.Action.MarkSet.Response.Error](#anytype.Rpc.Block.Action.MarkSet.Response.Error)
     - [Rpc.Block.Close](#anytype.Rpc.Block.Close)
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
     - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
@@ -108,6 +126,10 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
+    - [Rpc.Block.Action.BlocksDrop.Response.Error.Code](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error.Code)
+    - [Rpc.Block.Action.Content.Download.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Download.Response.Error.Code)
+    - [Rpc.Block.Action.Content.Upload.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Upload.Response.Error.Code)
+    - [Rpc.Block.Action.MarkSet.Response.Error.Code](#anytype.Rpc.Block.Action.MarkSet.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
@@ -133,7 +155,7 @@
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
-    - [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen)
+    - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Block.Update](#anytype.Event.Block.Update)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
@@ -225,6 +247,8 @@
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
 | BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) | TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response); |
+| BlockMarkSet | [Rpc.Block.Action.MarkSet.Request](#anytype.Rpc.Block.Action.MarkSet.Request) | [Rpc.Block.Action.MarkSet.Response](#anytype.Rpc.Block.Action.MarkSet.Response) |  |
+| BlocksDrop | [Rpc.Block.Action.BlocksDrop.Request](#anytype.Rpc.Block.Action.BlocksDrop.Request) | [Rpc.Block.Action.BlocksDrop.Response](#anytype.Rpc.Block.Action.BlocksDrop.Response) |  |
 | BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | TODO: rpc BlockFilesUpload () returns (); |
 
  
@@ -435,7 +459,6 @@ Change.Multiple contains array of changes, for a list of blocks each.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| author | [model.Account](#anytype.model.Account) |  |  |
 | changes | [Change.Single.BlocksList](#anytype.Change.Single.BlocksList) | repeated |  |
 
 
@@ -691,6 +714,260 @@ Middleware-to-front-end response for an account select request, that can contain
 
 ### Rpc.Block
 Namespace, that agregates subtopics and actions, that relates to blocks.
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action"></a>
+
+### Rpc.Block.Action
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.BlocksDrop"></a>
+
+### Rpc.Block.Action.BlocksDrop
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.BlocksDrop.Request"></a>
+
+### Rpc.Block.Action.BlocksDrop.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| blocksId | [string](#string) | repeated |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.BlocksDrop.Response"></a>
+
+### Rpc.Block.Action.BlocksDrop.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Action.BlocksDrop.Response.Error](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.BlocksDrop.Response.Error"></a>
+
+### Rpc.Block.Action.BlocksDrop.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Action.BlocksDrop.Response.Error.Code](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content"></a>
+
+### Rpc.Block.Action.Content
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Download"></a>
+
+### Rpc.Block.Action.Content.Download
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Download.Request"></a>
+
+### Rpc.Block.Action.Content.Download.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetId | [string](#string) |  |  |
+| contextId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Download.Response"></a>
+
+### Rpc.Block.Action.Content.Download.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Action.Content.Download.Response.Error](#anytype.Rpc.Block.Action.Content.Download.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Download.Response.Error"></a>
+
+### Rpc.Block.Action.Content.Download.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Action.Content.Download.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Download.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Upload"></a>
+
+### Rpc.Block.Action.Content.Upload
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Upload.Request"></a>
+
+### Rpc.Block.Action.Content.Upload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileName | [string](#string) |  |  |
+| localPath | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| contextId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Upload.Response"></a>
+
+### Rpc.Block.Action.Content.Upload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Action.Content.Upload.Response.Error](#anytype.Rpc.Block.Action.Content.Upload.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Upload.Response.Error"></a>
+
+### Rpc.Block.Action.Content.Upload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Action.Content.Upload.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Upload.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarkSet"></a>
+
+### Rpc.Block.Action.MarkSet
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarkSet.Request"></a>
+
+### Rpc.Block.Action.MarkSet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| range | [model.Range](#anytype.model.Range) |  |  |
+| type | [model.Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarkSet.Response"></a>
+
+### Rpc.Block.Action.MarkSet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Action.MarkSet.Response.Error](#anytype.Rpc.Block.Action.MarkSet.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarkSet.Response.Error"></a>
+
+### Rpc.Block.Action.MarkSet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Action.MarkSet.Response.Error.Code](#anytype.Rpc.Block.Action.MarkSet.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -1569,6 +1846,58 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Action.BlocksDrop.Response.Error.Code"></a>
+
+### Rpc.Block.Action.BlocksDrop.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Download.Response.Error.Code"></a>
+
+### Rpc.Block.Action.Content.Download.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Action.Content.Upload.Response.Error.Code"></a>
+
+### Rpc.Block.Action.Content.Upload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Action.MarkSet.Response.Error.Code"></a>
+
+### Rpc.Block.Action.MarkSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Close.Response.Error.Code"></a>
 
 ### Rpc.Block.Close.Response.Error.Code
@@ -1779,7 +2108,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  | show wallet&#39;s accounts that were loaded from local or remote source |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
-| blockShowFullscreen | [Event.Block.ShowFullscreen](#anytype.Event.Block.ShowFullscreen) |  |  |
+| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | blockUpdate | [Event.Block.Update](#anytype.Event.Block.Update) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
@@ -1890,9 +2219,9 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.ShowFullscreen"></a>
+<a name="anytype.Event.Block.Show"></a>
 
-### Event.Block.ShowFullscreen
+### Event.Block.Show
 Works with a smart blocks: Page, Dashboard
 Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
 

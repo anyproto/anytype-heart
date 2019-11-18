@@ -91,7 +91,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.versions = ver.DependentBlocks()
 	p.versions[p.GetId()] = ver
 
-	p.showFullscreen()
+	p.show()
 
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
@@ -119,14 +119,14 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	}
 
 	parentVer, ok := p.versions[req.ParentId]
-	if ! ok {
+	if !ok {
 		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 	}
 	parent := parentVer.Model()
 	var target core.BlockVersion
 	if req.TargetId != "" {
 		target, ok = p.versions[req.TargetId]
-		if ! ok {
+		if !ok {
 			return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 		}
 	}
@@ -186,14 +186,14 @@ func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
 	return
 }
 
-func (p *commonSmart) showFullscreen() {
+func (p *commonSmart) show() {
 	blocks := make([]*model.Block, 0, len(p.versions))
 	for _, b := range p.versions {
 		blocks = append(blocks, b.Model())
 	}
 	event := &pb.Event{
-		Message: &pb.EventMessageOfBlockShowFullscreen{
-			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
+		Message: &pb.EventMessageOfBlockShow{
+			BlockShow: &pb.EventBlockShow{
 				RootId: p.GetId(),
 				Blocks: blocks,
 			},

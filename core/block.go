@@ -78,6 +78,58 @@ func (mw *Middleware) BlockUpdate(req *pb.RpcBlockUpdateRequest) *pb.RpcBlockUpd
 	return response(pb.RpcBlockUpdateResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockContentUpload(req *pb.RpcBlockActionContentUploadRequest) *pb.RpcBlockActionContentUploadResponse {
+	response := func(code pb.RpcBlockActionContentUploadResponseErrorCode, err error) *pb.RpcBlockActionContentUploadResponse {
+		m := &pb.RpcBlockActionContentUploadResponse{Error: &pb.RpcBlockActionContentUploadResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockActionContentUploadResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockContentDownload(req *pb.RpcBlockActionContentDownloadRequest) *pb.RpcBlockActionContentDownloadResponse {
+	response := func(code pb.RpcBlockActionContentDownloadResponseErrorCode, err error) *pb.RpcBlockActionContentDownloadResponse {
+		m := &pb.RpcBlockActionContentDownloadResponse{Error: &pb.RpcBlockActionContentDownloadResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockActionContentDownloadResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockMarkSet(req *pb.RpcBlockActionMarkSetRequest) *pb.RpcBlockActionMarkSetResponse {
+	response := func(code pb.RpcBlockActionMarkSetResponseErrorCode, err error) *pb.RpcBlockActionMarkSetResponse {
+		m := &pb.RpcBlockActionMarkSetResponse{Error: &pb.RpcBlockActionMarkSetResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockActionMarkSetResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlocksDrop(req *pb.RpcBlockActionBlocksDropRequest) *pb.RpcBlockActionBlocksDropResponse {
+	response := func(code pb.RpcBlockActionBlocksDropResponseErrorCode, err error) *pb.RpcBlockActionBlocksDropResponse {
+		m := &pb.RpcBlockActionBlocksDropResponse{Error: &pb.RpcBlockActionBlocksDropResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockActionBlocksDropResponseError_NULL, nil)
+}
+
 func (mw *Middleware) switchAccount(accountId string) {
 	if mw.blockService != nil {
 		mw.blockService.Close()

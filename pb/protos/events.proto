@@ -12,7 +12,7 @@ message Event {
     oneof message {
         Account.Show accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
         Block.Add blockAdd = 2;
-        Block.ShowFullscreen blockShowFullscreen = 3;
+        Block.Show blockShow = 3;
         Block.Update blockUpdate = 4;
         Block.Delete blockDelete = 5;
 
@@ -55,7 +55,7 @@ message Event {
          * Works with a smart blocks: Page, Dashboard
          * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
         */
-        message ShowFullscreen {
+        message Show {
             string rootId = 1; // Root block id
             repeated anytype.model.Block blocks = 2; // children of the root block
             string contextId = 3; // id of the context block
