@@ -9,7 +9,8 @@ message Block {
     google.protobuf.Struct fields = 2;
     Permissions permissions = 3;
     repeated string childrenIds = 4;
-
+    bool isArchived = 5;
+    
     message Permissions {
         bool read = 1;
         bool edit = 2;
