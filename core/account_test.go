@@ -34,7 +34,7 @@ func TestAccountCreate(t *testing.T) {
 	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_test", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
 	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
-	imageGetBlobResp := mw.ImageGetBlob(&pb.RpcIpfsImageGetBlobRequest{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: model.Image_SMALL})
+	imageGetBlobResp := mw.ImageGetBlob(&pb.RpcIpfsImageGetBlobRequest{Id: accountCreateResp.Account.Avatar.GetImage().Id, Size_: model.Image_Small})
 	require.Equal(t, pb.RpcIpfsImageGetBlobResponseError_NULL, imageGetBlobResp.Error.Code, "ImageGetBlobResponse contains error: %+v", imageGetBlobResp.Error)
 	require.True(t, len(imageGetBlobResp.Blob) > 0, "ava size should be greater than 0")
 
