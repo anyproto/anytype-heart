@@ -17,33 +17,41 @@ func testStringValue(x string) *types.Value {
 	}
 }
 
+func testFloatValue(x float64) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_NumberValue{NumberValue: x},
+	}
+}
+
 var testBlocks = []*model.Block{
 	{
 		Id: testPageId,
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
-				"name": testStringValue("Contacts"),
-				"icon": testStringValue(":family:"),
+				"name": testStringValue("Test page"),
+				"icon": testStringValue(":deciduous_tree:"),
 			},
 		},
-		ChildrenIds: []string{"2", "3", "4", "5"},
+		ChildrenIds: []string{"2", "3", "4", "5", "7", "12", "13"},
 		Content: &model.BlockContentOfPage{
 			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		},
 	},
+
 	{
 		Id: "2",
 		Content: &model.BlockContentOfIcon{
 			Icon: &model.BlockContentIcon{
-				Name: ":family:",
+				Name: ":deciduous_tree:",
 			},
 		},
 	},
+
 	{
 		Id: "3",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Contacts 3",
+				Text:  "Test page",
 				Style: model.BlockContentText_Title,
 			},
 		},
@@ -52,14 +60,45 @@ var testBlocks = []*model.Block{
 		Id: "4",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Contacts 4",
-				Style: model.BlockContentText_P,
+				Text:   "Why Anytype is better vs. Notion?",
+				Style:  model.BlockContentText_P,
+				Marker: model.BlockContentText_Bullet,
 			},
 		},
 	},
 	{
 		Id:          "5",
-		ChildrenIds: []string{"6", "8"},
+		ChildrenIds: []string{"6"},
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:   "Better looking and more pleasant to use:",
+				Style:  model.BlockContentText_P,
+				Marker: model.BlockContentText_Bullet,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{
+							From: 0,
+							To:   40,
+						},
+						Type: model.BlockContentTextMark_Bold,
+					},
+				},
+			},
+		},
+	},
+	{
+		Id: "6",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  "Why? Notion and Airtable use one standard design for all databases - one fits all approach. It works well for a generic case - pages. Anytype customizes the design of a database for each object: page, task, file, link, music file, video, etc. It makes Anytype's tools look native, like apps not spreadsheets.",
+				Style: model.BlockContentText_P,
+			},
+		},
+	},
+
+	{
+		Id:          "7",
+		ChildrenIds: []string{"8", "10"},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Row,
@@ -67,26 +106,13 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id:          "6",
-		ChildrenIds: []string{"7"},
-		Content: &model.BlockContentOfLayout{
-			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_Column,
-			},
-		},
-	},
-	{
-		Id: "7",
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:  "Bla bla 7",
-				Style: model.BlockContentText_H1,
-			},
-		},
-	},
-	{
 		Id:          "8",
 		ChildrenIds: []string{"9"},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				"width": testFloatValue(0.5),
+			},
+		},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Column,
@@ -97,8 +123,89 @@ var testBlocks = []*model.Block{
 		Id: "9",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Bla bla 9",
-				Style: model.BlockContentText_H2,
+				Text:  "Anytype",
+				Style: model.BlockContentText_P,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{
+							From: 0,
+							To:   7,
+						},
+						Type: model.BlockContentTextMark_Italic,
+					},
+				},
+			},
+		},
+	},
+	{
+		Id:          "10",
+		ChildrenIds: []string{"11"},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				"width": testFloatValue(0.5),
+			},
+		},
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Column,
+			},
+		},
+	},
+	{
+		Id: "11",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  "Notion",
+				Style: model.BlockContentText_P,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{
+							From: 0,
+							To:   6,
+						},
+						Type: model.BlockContentTextMark_Italic,
+					},
+				},
+			},
+		},
+	},
+
+	{
+		Id:          "12",
+		ChildrenIds: []string{"13"},
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:   "Faster, better mobile apps",
+				Style:  model.BlockContentText_P,
+				Marker: model.BlockContentText_Bullet,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{
+							From: 0,
+							To:   26,
+						},
+						Type: model.BlockContentTextMark_Bold,
+					},
+				},
+			},
+		},
+	},
+	{
+		Id: "13",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  "We are building native mobile apps. Notion has cross-platform apps. We've analyzed all reviews - the biggest drawback of Notion currently is the quality of their mobile apps. You can check out yourself - here.",
+				Style: model.BlockContentText_P,
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{
+							From: 204,
+							To:   208,
+						},
+						Type:  model.BlockContentTextMark_U,
+						Param: "https://play.google.com/store/apps/details?id=notion.id&hl=en",
+					},
+				},
 			},
 		},
 	},
