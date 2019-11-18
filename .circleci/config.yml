@@ -112,6 +112,7 @@ jobs:
             cd tmp
             mkdir protos
             cp ../pb/protos/*.proto protos
+            cp ../vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto protos
 
             declare -a arr=("linux-amd64")
             for i in "${arr[@]}"
@@ -140,6 +141,7 @@ jobs:
             mv build/ts protobuf
             mkdir protobuf/protos
             mv pb/protos/*.proto ./protobuf/protos
+            cp vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto protobuf/protos
             mv jsaddon/build addon
             tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon
             mv js_${VERSION}_linux-amd64.tar.gz ${OUT}/
@@ -233,6 +235,7 @@ jobs:
             cd tmp
             mkdir protos
             cp ../pb/protos/*.proto protos
+            cp ../vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto protos
             declare -a arr=("darwin-amd64" "windows-amd64")
             for i in "${arr[@]}"
             do
@@ -260,6 +263,7 @@ jobs:
             mv build/ts protobuf
             mkdir protobuf/protos
             mv pb/protos/*.proto ./protobuf/protos
+            cp vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto ./protobuf/protos
             mv jsaddon/build addon
             tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
             mv js_${VERSION}_darwin-amd64.tar.gz ${OUT}/
@@ -342,6 +346,7 @@ jobs:
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
             cp ./pb/protos/*.proto protobuf/protos
+            cp ./vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto protobuf/protos
             protoc --proto_path=./pb/protos --objc_out=./protobuf ./pb/protos/*
       - run:
           name: collect artifacts
@@ -431,7 +436,8 @@ jobs:
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
             cp ./pb/protos/*.proto protobuf/protos
-            protoc --proto_path=./pb/protos --java_out=./protobuf ./pb/protos/*
+            cp ./vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto protobuf/protos
+            protoc --proto_path=./pb/protos --java_out=./protobuf ./pb/protos/* ./vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto
 
       - run:
           name: collect artifacts

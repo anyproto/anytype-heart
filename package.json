@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "protobuf TS bindings for Anytype middleware library",
   "scripts": {
-    "build:ts": "pbjs -t static-module -w commonjs -o build/ts/commands.js ./pb/protos/*.proto ./pb/protos/service/*.proto && ./node_modules/.bin/pbts -o build/ts/commands.d.ts build/ts/commands.js"
+    "build:ts": "pbjs -t static-module -w commonjs -o build/ts/commands.js ./pb/protos/*.proto ./pb/protos/service/*.proto /service/*.proto ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto && ./node_modules/.bin/pbts -o build/ts/commands.d.ts build/ts/commands.js ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto"
   },
   "dependencies": {
     "protobufjs": "^6.8.8"
