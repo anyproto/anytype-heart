@@ -89,13 +89,17 @@ message Block {
         message Text {
             string text = 1;
             Style style = 2;
-            Marks marks = 3; // list of marks to apply to the text
+            repeated Mark marks = 3; // list of marks to apply to the text
 
             bool toggleable = 4; // can be toggled or not
             Marker marker = 5; // if no – it's not a list. If number/bullet – it should be a list with its list-siblings.
 
             bool checkable = 6; // can be checked or not
             bool checked = 7;
+
+            message Marks {
+                repeated Mark marks = 1;
+            }
 
             message Mark {
                 Range range = 1; // range of symbols to apply this mark. From(symbol) To(symbol)
@@ -109,10 +113,6 @@ message Block {
                     BOLD = 3;
                     LINK = 4;
                 }
-            }
-
-            message Marks {
-                repeated Mark marks = 1;
             }
 
             enum Style {
