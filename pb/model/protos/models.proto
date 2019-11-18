@@ -10,7 +10,7 @@ message Block {
     Permissions permissions = 3;
     repeated string childrenIds = 4;
     bool isArchived = 5;
-    
+
     message Permissions {
         bool read = 1;
         bool edit = 2;
@@ -41,9 +41,9 @@ message Block {
 
     message Content {
         /*
-     * Layout have no visual representation, but affects on blocks, that it contains.
-     * Row/Column layout blocks creates only automatically, after some of a D&D operations, for example
-    */
+        * Layout have no visual representation, but affects on blocks, that it contains.
+        * Row/Column layout blocks creates only automatically, after some of a D&D operations, for example
+        */
         message Layout {
             Style style = 1;
 
@@ -54,14 +54,14 @@ message Block {
         }
 
         /*
-     * Divider: block, that contains only one horizontal thin line
-    */
+        * Divider: block, that contains only one horizontal thin line
+        */
         message Div {
         }
 
         /*
-     * Bookmark is to keep a web-link and to preview a content.
-    */
+        * Bookmark is to keep a web-link and to preview a content.
+        */
         message Bookmark {
             // Model.Link.Preview preview = 1;
         }
@@ -71,9 +71,9 @@ message Block {
         }
 
         /*
-     * Block type to organize pages on the main screen (main purpose)
-     * It also can be mounted on a page.
-    */
+        * Block type to organize pages on the main screen (main purpose)
+        * It also can be mounted on a page.
+        */
         message Dashboard {
             enum Style {
                 MainScreen = 0;
@@ -226,8 +226,8 @@ message Account {
     Avatar avatar = 3; // Avatar of a user's account
 
     /**
-* Avatar of a user's account. It could be an image or color
-*/
+    * Avatar of a user's account. It could be an image or color
+    */
     message Avatar {
         oneof avatar {
             Image image = 1; // Image of the avatar. Contains hash and size
