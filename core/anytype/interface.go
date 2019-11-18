@@ -6,6 +6,7 @@ import (
 
 type Anytype interface {
 	GetBlock(id string) (core.Block, error)
+	PredefinedBlockIds() core.PredefinedBlockIds
 }
 
 type Block interface {
