@@ -63,13 +63,12 @@ func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion Blo
 }
 
 func (a *Anytype) createPredefinedBlocks() error {
-	predefinedBlockIds := PredefinedBlockIds{}
 	// archive
 	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchiveDashboard)
 	if err != nil {
 		return err
 	}
-	predefinedBlockIds.Archive = thread.Id
+	a.predefinedBlockIds.Archive = thread.Id
 	block, err := a.GetBlock(thread.Id)
 	if err != nil {
 		return err
@@ -87,7 +86,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 			},
 			Content: &model.BlockContentOfDashboard{
 				Dashboard: &model.BlockContentDashboard{
-					Style: model.BlockContentDashboard_ARCHIVE,
+					Style: model.BlockContentDashboard_Archive,
 				},
 			},
 		})
@@ -102,7 +101,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 	if err != nil {
 		return err
 	}
-	predefinedBlockIds.Home = thread.Id
+	a.predefinedBlockIds.Home = thread.Id
 
 	block, err = a.GetBlock(thread.Id)
 	if err != nil {
@@ -113,7 +112,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 		// version not yet created
 		_, err = block.AddVersion(&model.Block{
 			Id:          block.GetId(),
-			ChildrenIds: []string{predefinedBlockIds.Archive},
+			ChildrenIds: []string{a.predefinedBlockIds.Archive},
 			Fields: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name": {Kind: &types.Value_StringValue{StringValue: "Home"}},
@@ -122,7 +121,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 			},
 			Content: &model.BlockContentOfDashboard{
 				Dashboard: &model.BlockContentDashboard{
-					Style: model.BlockContentDashboard_MAIN_SCREEN,
+					Style: model.BlockContentDashboard_MainScreen,
 				},
 			},
 		})
@@ -130,8 +129,6 @@ func (a *Anytype) createPredefinedBlocks() error {
 			return err
 		}
 	}
-
-	a.PredefinedBlockIds = &predefinedBlockIds
 
 	return nil
 }
