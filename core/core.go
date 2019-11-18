@@ -27,7 +27,7 @@ type PredefinedBlockIds struct {
 
 type Anytype struct {
 	Textile            *tmobile.Mobile
-	PredefinedBlockIds *PredefinedBlockIds
+	predefinedBlockIds PredefinedBlockIds
 }
 
 func (a *Anytype) ipfs() *ipfsCore.IpfsNode {
@@ -36,6 +36,12 @@ func (a *Anytype) ipfs() *ipfsCore.IpfsNode {
 
 func (a *Anytype) textile() *tcore.Textile {
 	return a.Textile.Node()
+}
+
+// PredefinedBlockIds returns default blocks like home and archive
+// ⚠️ Will return empty struct in case it runs before Anytype.Run()
+func (a *Anytype) PredefinedBlockIds() PredefinedBlockIds {
+	return a.predefinedBlockIds
 }
 
 func New(repoPath string, account string) (*Anytype, error) {
