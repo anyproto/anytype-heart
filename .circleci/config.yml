@@ -77,7 +77,7 @@ jobs:
           name: install node and patched gox
           command: |
             curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
-            sudo apt install nodejs
+            sudo apt install nodejs jq -qq
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             mkdir -p $GOPATH/src/github.com/mitchellh
             cd $GOPATH/src/github.com/mitchellh
@@ -109,6 +109,7 @@ jobs:
             OUT=~/dist/lib
             mkdir -p ${OUT}
             mkdir -p tmp
+            make protos_deps
             cd tmp
             mkdir protos
             cp ../pb/protos/*.proto protos
@@ -135,7 +136,7 @@ jobs:
             cp ~/project/linux-amd64.a  ./dist/lib.a
             cp ~/project/linux-amd64.h ./dist/lib.h
             make build-js
-
+            make protos_deps
             npm install
             npm run build:ts
             mv build/ts protobuf
@@ -193,15 +194,15 @@ jobs:
             git checkout db6184738b77fbd5089e5fa1112177f391c91b24
             go install github.com/mitchellh/gox
       - restore_cache:
-          key: homebrew-v2-{{ arch }}
+          key: homebrew-v3-{{ arch }}
       - run:
           name: install mingw-w64 and node
           # also protobuf because we have the shared cache with build-ios-framework
           command: |
-            brew install mingw-w64 protobuf
+            brew install mingw-w64 protobuf jq
             npm i -g node-gyp
       - save_cache:
-          key: homebrew-v2-{{ arch }}
+          key: homebrew-v3-{{ arch }}
           paths:
             - /usr/local/Homebrew
             - ~/Library/Caches/Homebrew
@@ -234,6 +235,7 @@ jobs:
             mkdir -p tmp
             cd tmp
             mkdir protos
+            ake protos_deps
             cp ../pb/protos/*.proto protos
             cp ../vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto protos
             declare -a arr=("darwin-amd64" "windows-amd64")
@@ -256,9 +258,10 @@ jobs:
             OUT=~/dist/lib
             cp ~/project/darwin-amd64.a  ./dist/lib.a
             cp ~/project/darwin-amd64.h ./dist/lib.h
+            make protos_deps
             make build-js
 
-            npm install
+            npm middleware/pb/model/protos/*.protoinstall
             npm run build:ts
             mv build/ts protobuf
             mkdir protobuf/protos
@@ -310,14 +313,14 @@ jobs:
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod download
       - restore_cache:
-          key: homebrew-v2-{{ arch }}
+          key: homebrew-v3-{{ arch }}
       - run:
           name: install protobuf
           # also mingw-w64 because we have the shared cache with build-lib-darwin-windows
           command: |
-            brew install mingw-w64 protobuf
+            brew install mingw-w64 protobuf jq
       - save_cache:
-          key: homebrew-v2-{{ arch }}
+          key: homebrew-v3-{{ arch }}
           paths:
             - /usr/local/Homebrew
             - ~/Library/Caches/Homebrew
@@ -327,6 +330,7 @@ jobs:
             source ./source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
+            make protos_deps
             mkdir -p ~/go/src/github.com/anytypeio
             cd ~ && mv project go/src/github.com/anytypeio/go-anytype-middleware
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
@@ -345,6 +349,7 @@ jobs:
           command: |
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
+            make protos_deps
             cp ./pb/protos/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-middleware/pb/model/protos/*.proto protobuf/protos
             protoc --proto_path=./pb/protos --objc_out=./protobuf ./pb/protos/*
@@ -391,6 +396,7 @@ jobs:
       - run:
           name: install protobuf
           command: |
+            sudo apt install jq -qq
             curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
             unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
             sudo mv protoc3/bin/* /usr/local/bin/
@@ -417,6 +423,7 @@ jobs:
             source ./source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
+            make protos_deps
             mkdir -p ~/go/src/github.com/anytypeio
             cd ~ && mv project ~/go/src/github.com/anytypeio/go-anytype-middleware
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
