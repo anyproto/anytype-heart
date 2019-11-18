@@ -28,7 +28,7 @@ var testBlocks = []*model.Block{
 		},
 		ChildrenIds: []string{"2", "3", "4", "5"},
 		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_EMPTY},
+			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		},
 	},
 	{
@@ -44,7 +44,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Contacts 3",
-				Style: model.BlockContentText_title,
+				Style: model.BlockContentText_Title,
 			},
 		},
 	},
@@ -53,7 +53,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Contacts 4",
-				Style: model.BlockContentText_p,
+				Style: model.BlockContentText_P,
 			},
 		},
 	},
@@ -62,7 +62,7 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"6", "8"},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_ROW,
+				Style: model.BlockContentLayout_Row,
 			},
 		},
 	},
@@ -71,7 +71,7 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"7"},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_COLUMN,
+				Style: model.BlockContentLayout_Column,
 			},
 		},
 	},
@@ -80,7 +80,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Bla bla 7",
-				Style: model.BlockContentText_h1,
+				Style: model.BlockContentText_H1,
 			},
 		},
 	},
@@ -89,7 +89,7 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"9"},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_COLUMN,
+				Style: model.BlockContentLayout_Column,
 			},
 		},
 	},
@@ -98,7 +98,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Bla bla 9",
-				Style: model.BlockContentText_h2,
+				Style: model.BlockContentText_H2,
 			},
 		},
 	},

@@ -137,7 +137,7 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		if targetPos == -1 {
 			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
 		}
-		if req.Position == model.Block_AFTER {
+		if req.Position == model.Block_After {
 			pos = targetPos + 1
 		} else {
 			pos = targetPos

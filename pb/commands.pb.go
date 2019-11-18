@@ -1189,7 +1189,7 @@ func (m *RpcBlockCreateRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
-	return model.Block_BEFORE
+	return model.Block_Before
 }
 
 func (m *RpcBlockCreateRequest) GetContextId() string {
@@ -3624,7 +3624,7 @@ func (m *RpcIpfsImageGetBlobRequest) GetSize_() model.ImageSize {
 	if m != nil {
 		return m.Size_
 	}
-	return model.Image_LARGE
+	return model.Image_Large
 }
 
 type RpcIpfsImageGetBlobResponse struct {
@@ -3816,7 +3816,7 @@ func (m *RpcIpfsImageGetFileRequest) GetSize_() model.ImageSize {
 	if m != nil {
 		return m.Size_
 	}
-	return model.Image_LARGE
+	return model.Image_Large
 }
 
 type RpcIpfsImageGetFileResponse struct {
