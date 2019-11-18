@@ -45,10 +45,10 @@ func TestCommonSmart_Open(t *testing.T) {
 
 		require.Len(t, fx.events, 1)
 		event := fx.events[0]
-		require.IsType(t, (*pb.EventMessageOfBlockShowFullscreen)(nil), event.Message)
-		showFullscreen := event.Message.(*pb.EventMessageOfBlockShowFullscreen).BlockShowFullscreen
-		assert.Equal(t, showFullscreen.RootId, "1")
-		assert.Len(t, showFullscreen.Blocks, 3)
+		require.IsType(t, (*pb.EventMessageOfBlockShow)(nil), event.Message)
+		show := event.Message.(*pb.EventMessageOfBlockShow).BlockShow
+		assert.Equal(t, show.RootId, "1")
+		assert.Len(t, show.Blocks, 3)
 	})
 }
 
