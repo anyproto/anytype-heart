@@ -112,6 +112,9 @@ message Block {
                     Italic = 2;
                     Bold = 3;
                     Underscored = 4;
+                    Link = 5;
+                    TextColor = 6;
+                    BackgroundColor = 7;
                 }
             }
 
