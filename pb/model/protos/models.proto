@@ -196,8 +196,7 @@ message Block {
             enum Style {
                 EMPTY = 0; // Ordinary page, without additional fields
                 TASK = 1; // Page with a task fields
-                BOOKMARK = 2; // Page with a bookmark fields
-                SET = 3; // Page, that organize a set of blocks by a specific criterio
+                SET = 2; // Page, that organize a set of blocks by a specific criterio
                 // ...
             }
 
@@ -236,11 +235,17 @@ message Account {
 message Image {
     string id = 1;
     repeated Size sizes = 2;
+    Style style = 3;
 
     enum Size {
         LARGE = 0;
         SMALL = 1;
         THUMB = 2;
+    }
+
+    enum Style {
+        PICTURE = 0;
+        FILE = 1;
     }
 }
 
