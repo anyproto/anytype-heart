@@ -19,6 +19,10 @@ lint:
 test:
 	go test github.com/anytypeio/go-anytype-middleware/...
 
+test-deps:
+	go install github.com/golang/mock/mockgen
+	go generate ./...
+
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
 	export GO111MODULE=on
