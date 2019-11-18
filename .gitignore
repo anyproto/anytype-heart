@@ -6,3 +6,4 @@ package-lock.json
 /jsaddon/build
 .vscode
 /vendor/
+*_mock.go

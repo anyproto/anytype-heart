@@ -335,7 +335,7 @@ func (m *ChangeBlockContentPage) GetStyle() model.BlockContentPageStyle {
 	if x, ok := m.GetChange().(*ChangeBlockContentPageChangeOfStyle); ok {
 		return x.Style
 	}
-	return model.BlockContentPage_EMPTY
+	return model.BlockContentPage_Empty
 }
 
 func (m *ChangeBlockContentPage) GetBlock() *model.Block {
@@ -420,7 +420,7 @@ func (m *ChangeBlockContentDashboard) GetStyle() model.BlockContentDashboardStyl
 	if x, ok := m.GetChange().(*ChangeBlockContentDashboardChangeOfStyle); ok {
 		return x.Style
 	}
-	return model.BlockContentDashboard_MAIN_SCREEN
+	return model.BlockContentDashboard_MainScreen
 }
 
 func (m *ChangeBlockContentDashboard) GetBlock() *model.Block {
@@ -517,7 +517,7 @@ func (m *ChangeBlockContentFile) GetState() model.BlockContentFileState {
 	if x, ok := m.GetChange().(*ChangeBlockContentFileChangeOfState); ok {
 		return x.State
 	}
-	return model.BlockContentFile_EMPTY
+	return model.BlockContentFile_Empty
 }
 
 func (m *ChangeBlockContentFile) GetPreview() *model.BlockContentFilePreview {
@@ -615,7 +615,7 @@ func (m *ChangeBlockContentImage) GetState() model.BlockContentImageState {
 	if x, ok := m.GetChange().(*ChangeBlockContentImageChangeOfState); ok {
 		return x.State
 	}
-	return model.BlockContentImage_EMPTY
+	return model.BlockContentImage_Empty
 }
 
 func (m *ChangeBlockContentImage) GetPreview() *model.BlockContentImagePreview {
@@ -713,7 +713,7 @@ func (m *ChangeBlockContentVideo) GetState() model.BlockContentVideoState {
 	if x, ok := m.GetChange().(*ChangeBlockContentVideoChangeOfState); ok {
 		return x.State
 	}
-	return model.BlockContentVideo_EMPTY
+	return model.BlockContentVideo_Empty
 }
 
 func (m *ChangeBlockContentVideo) GetPreview() *model.BlockContentVideoPreview {
@@ -831,7 +831,7 @@ func (m *ChangeBlockContentText) GetStyle() model.BlockContentTextStyle {
 	if x, ok := m.GetChange().(*ChangeBlockContentTextChangeOfStyle); ok {
 		return x.Style
 	}
-	return model.BlockContentText_p
+	return model.BlockContentText_P
 }
 
 func (m *ChangeBlockContentText) GetMarks() *model.BlockContentTextMarks {
@@ -852,7 +852,7 @@ func (m *ChangeBlockContentText) GetMarker() model.BlockContentTextMarker {
 	if x, ok := m.GetChange().(*ChangeBlockContentTextChangeOfMarker); ok {
 		return x.Marker
 	}
-	return model.BlockContentText_none
+	return model.BlockContentText_None
 }
 
 func (m *ChangeBlockContentText) GetCheckable() bool {

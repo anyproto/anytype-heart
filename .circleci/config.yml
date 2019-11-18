@@ -44,6 +44,11 @@ jobs:
             git config --global url.ssh://git@github.com/.insteadOf https://github.com/
             go mod download
       - run:
+          name: generate mocks
+          command: |
+            go install github.com/golang/mock/mockgen
+            go generate ./...
+      - run:
           name: Run unit tests
           command: |
             mkdir ~/gotestsum-report

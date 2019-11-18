@@ -157,6 +157,7 @@
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview)
+    - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Image](#anytype.model.Block.Content.Image)
     - [Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
@@ -182,6 +183,7 @@
     - [Block.Content.Video.State](#anytype.model.Block.Content.Video.State)
     - [Block.Position](#anytype.model.Block.Position)
     - [Image.Size](#anytype.model.Image.Size)
+    - [Image.Style](#anytype.model.Image.Style)
     - [Video.Size](#anytype.model.Video.Size)
   
   
@@ -2094,6 +2096,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
 | div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
 | bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
+| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
 
 
 
@@ -2168,7 +2171,7 @@ Divider: block, that contains only one horizontal thin line
 | ----- | ---- | ----- | ----------- |
 | localFilePath | [string](#string) |  | Path to the file on a local machine |
 | state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
-| preview | [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview) |  | Content to show before the main content is downladed |
+| preview | [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview) |  | Content to show before the main content downloaded |
 
 
 
@@ -2185,6 +2188,21 @@ Divider: block, that contains only one horizontal thin line
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | icon | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Icon"></a>
+
+### Block.Content.Icon
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
 
 
 
@@ -2266,7 +2284,7 @@ Row/Column layout blocks creates only automatically, after some of a D&amp;D ope
 | ----- | ---- | ----- | ----------- |
 | text | [string](#string) |  |  |
 | style | [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
-| marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
+| marks | [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) | repeated | list of marks to apply to the text |
 | toggleable | [bool](#bool) |  | can be toggled or not |
 | marker | [Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
 | checkable | [bool](#bool) |  | can be checked or not |
@@ -2372,6 +2390,7 @@ Row/Column layout blocks creates only automatically, after some of a D&amp;D ope
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | sizes | [Image.Size](#anytype.model.Image.Size) | repeated |  |
+| style | [Image.Style](#anytype.model.Image.Style) |  |  |
 
 
 
@@ -2419,7 +2438,8 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MAIN_SCREEN | 0 | ... |
+| MainScreen | 0 |  |
+| Archive | 1 |  |
 
 
 
@@ -2430,11 +2450,11 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 | There is no file and preview, it&#39;s an empty block, that waits files. |
-| UPLOADING | 1 | There is stil no file/preview, but file already uploading |
-| PREVIEW | 2 | File exists, preview downloaded, but file – not. |
-| DOWNLOADING | 3 | File exists, preview downloaded, but file downloading |
-| DONE | 4 | File and preview downloaded |
+| Empty | 0 | There is no file and preview, it&#39;s an empty block, that waits files. |
+| Uploading | 1 | There is still no file/preview, but file already uploading |
+| PreviewDownloaded | 2 | File exists, preview downloaded, but file is not. |
+| Downloading | 3 | File exists, preview downloaded, but file downloading |
+| Done | 4 | File and preview downloaded |
 
 
 
@@ -2445,11 +2465,11 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 | There is no image and preview, it&#39;s an empty block, that waits image. |
-| UPLOADING | 1 | There is stil no image/preview, but image already uploading |
-| PREVIEW | 2 | Image exists, preview downloaded, but image – not. |
-| DOWNLOADING | 3 | Image exists, preview downloaded, but image downloading |
-| DONE | 4 | Image and preview downloaded |
+| Empty | 0 | There is no image and preview, it&#39;s an empty block, that waits image. |
+| Uploading | 1 | There is stil no image/preview, but image already uploading |
+| PreviewDownloaded | 2 | Image exists, preview downloaded, but image – not. |
+| Downloading | 3 | Image exists, preview downloaded, but image downloading |
+| Done | 4 | Image and preview downloaded |
 
 
 
@@ -2460,8 +2480,8 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| ROW | 0 |  |
-| COLUMN | 1 |  |
+| Row | 0 |  |
+| Column | 1 |  |
 
 
 
@@ -2472,10 +2492,9 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 | Ordinary page, without additional fields |
-| TASK | 1 | Page with a task fields |
-| BOOKMARK | 2 | Page with a bookmark fields |
-| SET | 3 | Page, that organize a set of blocks by a specific criterio |
+| Empty | 0 | Ordinary page, without additional fields |
+| Task | 1 | Page with a task fields |
+| Set | 2 | Page, that organize a set of blocks by a specific criterio |
 
 
 
@@ -2486,11 +2505,11 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| STRIKETHROUGH | 0 |  |
-| KEYBOARD | 1 |  |
-| ITALIC | 2 |  |
-| BOLD | 3 |  |
-| LINK | 4 |  |
+| Strikethrough | 0 |  |
+| Keyboard | 1 |  |
+| Italic | 2 |  |
+| Bold | 3 |  |
+| U | 4 |  |
 
 
 
@@ -2501,9 +2520,9 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| none | 0 |  |
-| number | 1 |  |
-| bullet | 2 |  |
+| None | 0 |  |
+| Number | 1 |  |
+| Bullet | 2 |  |
 
 
 
@@ -2514,13 +2533,14 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| p | 0 |  |
-| h1 | 1 |  |
-| h2 | 2 |  |
-| h3 | 3 |  |
-| h4 | 4 |  |
-| quote | 5 |  |
-| code | 6 |  |
+| P | 0 |  |
+| H1 | 1 |  |
+| H2 | 2 |  |
+| H3 | 3 |  |
+| U | 4 |  |
+| Quote | 5 |  |
+| Code | 6 |  |
+| Title | 7 |  |
 
 
 
@@ -2531,11 +2551,11 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| EMPTY | 0 | There is no video and preview, it&#39;s an empty block, that waits videos. |
-| UPLOADING | 1 | There is stil no video/preview, but video already uploading |
-| PREVIEW | 2 | Video exists, preview downloaded, but video – not. |
-| DOWNLOADING | 3 | Video exists, preview downloaded, but video downloading |
-| DONE | 4 | Video and preview downloaded |
+| Empty | 0 | There is no video and preview, it&#39;s an empty block, that waits videos. |
+| Uploading | 1 | There is stil no video/preview, but video already uploading |
+| PreviewDownloaded | 2 | Video exists, preview downloaded, but video – not. |
+| Downloading | 3 | Video exists, preview downloaded, but video downloading |
+| Done | 4 | Video and preview downloaded |
 
 
 
@@ -2546,8 +2566,8 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| BEFORE | 0 |  |
-| AFTER | 1 |  |
+| Before | 0 |  |
+| After | 1 |  |
 
 
 
@@ -2558,9 +2578,21 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| LARGE | 0 |  |
-| SMALL | 1 |  |
-| THUMB | 2 |  |
+| Large | 0 |  |
+| Small | 1 |  |
+| Thumb | 2 |  |
+
+
+
+<a name="anytype.model.Image.Style"></a>
+
+### Image.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Picture | 0 |  |
+| File | 1 |  |
 
 
 
@@ -2571,12 +2603,12 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| SD_360p | 0 |  |
-| SD_480p | 1 |  |
-| HD_720p | 2 |  |
-| HD_1080p | 3 |  |
-| UHD_1440p | 4 |  |
-| UHD_2160p | 5 |  |
+| SD360p | 0 |  |
+| SD480p | 1 |  |
+| HD720p | 2 |  |
+| HD1080p | 3 |  |
+| UHD1440p | 4 |  |
+| UHD2160p | 5 |  |
 
 
  

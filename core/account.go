@@ -12,7 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-var avatarSizes = []model.ImageSize{model.Image_SMALL, model.Image_LARGE}
+var avatarSizes = []model.ImageSize{model.Image_Small, model.Image_Large}
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
@@ -71,7 +71,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		if err != nil {
 			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
-		newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.Image{hash, avatarSizes}}}
+		newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.Image{Id: hash, Sizes: avatarSizes}}}
 	} else if req.GetAvatarColor() != "" {
 		err := mw.AccountSetAvatarColor(req.GetAvatarColor())
 		if err != nil {
@@ -80,6 +80,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	mw.localAccounts = append(mw.localAccounts, newAcc)
+	mw.switchAccount(newAcc.Id)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -314,7 +315,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	if avatarHashOrColor != "" {
 		acc.Avatar = getAvatarFromString(avatarHashOrColor)
 	}
-
+	mw.switchAccount(acc.Id)
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
@@ -322,6 +323,6 @@ func getAvatarFromString(avatarHashOrColor string) *model.AccountAvatar {
 	if strings.HasPrefix(avatarHashOrColor, "#") {
 		return &model.AccountAvatar{&model.AccountAvatarAvatarOfColor{avatarHashOrColor}}
 	} else {
-		return &model.AccountAvatar{&model.AccountAvatarAvatarOfImage{&model.Image{avatarHashOrColor, avatarSizes}}}
+		return &model.AccountAvatar{&model.AccountAvatarAvatarOfImage{&model.Image{Id: avatarHashOrColor, Sizes: avatarSizes}}}
 	}
 }

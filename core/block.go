@@ -1,28 +1,24 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
-	response := func(code pb.RpcBlockCreateResponseErrorCode, err error) *pb.RpcBlockCreateResponse {
-		m := &pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: code}}
+	response := func(code pb.RpcBlockCreateResponseErrorCode, id string, err error) *pb.RpcBlockCreateResponse {
+		m := &pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: code}, BlockId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-
-	/*block := &model.Block{} // TODO
-
-	m := &pb.Event{Message: &pb.EventBlockCreate{&pb.RpcBlockCreate{Block: block}}}
-
-	if mw.SendEvent != nil {
-		mw.SendEvent(m)
-	}*/
-
-	return response(pb.RpcBlockCreateResponseError_NULL, nil)
+	id, err := mw.blockService.CreateBlock(*req)
+	if err != nil {
+		response(pb.RpcBlockCreateResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockCreateResponseError_NULL, id, nil)
 }
 
 func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
@@ -31,17 +27,16 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 
-	/*block := &model.Block{} // TODO
-
-	m := &pb.Event{Message: &pb.EventBlockShow{&pb.RpcBlockShow{Block: block}}}
-
-	if mw.SendEvent != nil {
-		mw.SendEvent(m)
-	}*/
+	if err := mw.blockService.OpenBlock(req.Id); err != nil {
+		switch err {
+		case block.ErrBlockNotFound:
+			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
+		}
+		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
+	}
 
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
 }
@@ -55,7 +50,9 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.CloseBlock(req.Id); err != nil {
+		return response(pb.RpcBlockCloseResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
 }
 
@@ -79,4 +76,11 @@ func (mw *Middleware) BlockUpdate(req *pb.RpcBlockUpdateRequest) *pb.RpcBlockUpd
 		}*/
 
 	return response(pb.RpcBlockUpdateResponseError_NULL, nil)
+}
+
+func (mw *Middleware) switchAccount(accountId string) {
+	if mw.blockService != nil {
+		mw.blockService.Close()
+	}
+	mw.blockService = block.NewService(accountId, mw.Anytype, mw.SendEvent)
 }
