@@ -334,14 +334,12 @@ func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Bloc
 
 func (smartBlock *SmartBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string, blocks chan<- []BlockVersion) (cancelFunc func(), err error) {
 	// todo: to be implemented
-	close(blocks)
-	return func() {}, fmt.Errorf("not implemented")
+	return func() { close(blocks) }, nil
 }
 
 func (smartBlock *SmartBlock) SubscribeClientEvents(events chan<- proto.Message) (cancelFunc func(), err error) {
 	//todo: to be implemented
-	close(events)
-	return func() {}, fmt.Errorf("not implemented")
+	return func() { close(events) }, nil
 }
 
 func (smartBlock *SmartBlock) PublishClientEvent(event proto.Message) error {
