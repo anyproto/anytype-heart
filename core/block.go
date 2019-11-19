@@ -117,6 +117,19 @@ func (mw *Middleware) BlockMarkSet(req *pb.RpcBlockActionMarkSetRequest) *pb.Rpc
 	return response(pb.RpcBlockActionMarkSetResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockMarksGet(req *pb.RpcBlockActionMarksGetRequest) *pb.RpcBlockActionMarksGetResponse {
+	response := func(code pb.RpcBlockActionMarksGetResponseErrorCode, err error) *pb.RpcBlockActionMarksGetResponse {
+		m := &pb.RpcBlockActionMarksGetResponse{Error: &pb.RpcBlockActionMarksGetResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockActionMarksGetResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlocksDrop(req *pb.RpcBlockActionBlocksDropRequest) *pb.RpcBlockActionBlocksDropResponse {
 	response := func(code pb.RpcBlockActionBlocksDropResponseErrorCode, err error) *pb.RpcBlockActionBlocksDropResponse {
 		m := &pb.RpcBlockActionBlocksDropResponse{Error: &pb.RpcBlockActionBlocksDropResponseError{Code: code}}

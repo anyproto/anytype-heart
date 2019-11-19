@@ -202,6 +202,9 @@ message Rpc {
         }
 
         message Action {
+            /*
+             * Set mark to the selected range in the text block.
+            */ 
             message MarkSet {
                 message Request {
                     string contextId = 1;
@@ -225,7 +228,34 @@ message Rpc {
                         }
                     }
                 }                
-            }  
+            } 
+
+            /*
+             * Get marks list in the selected range in text block.
+            */
+            message MarksGet {
+                message Request {
+                    string contextId = 1;
+                    string targetId = 2;                
+                    anytype.model.Range range = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }                
+            }
 
             message BlocksDrop {
                 message Request {
@@ -255,9 +285,8 @@ message Rpc {
             message Content {
                 message Upload {
                     message Request {
-                        string fileName = 1;
-                        string localPath = 2;
-
+                        string localPath = 1;
+                        string url = 2;
                         string targetId = 3;
                         string contextId = 4;
                     }

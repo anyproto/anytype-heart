@@ -22,6 +22,7 @@ message Event {
         User.Block.SelectRange userBlockSelectRange = 9;
 
         Block.FilesUpload filesUpload = 10;
+        Block.MarksInfo marksInfo = 11;
     }
 
     message Account {
@@ -89,6 +90,10 @@ message Event {
         message Delete {
             string blockId = 1;
             string contextId = 2; // id of the context block
+        }
+
+        message MarksInfo {
+            repeated anytype.model.Block.Content.Text.Mark.Type marksInRange = 1;
         }
     }
 

@@ -66,6 +66,10 @@
     - [Rpc.Block.Action.MarkSet.Request](#anytype.Rpc.Block.Action.MarkSet.Request)
     - [Rpc.Block.Action.MarkSet.Response](#anytype.Rpc.Block.Action.MarkSet.Response)
     - [Rpc.Block.Action.MarkSet.Response.Error](#anytype.Rpc.Block.Action.MarkSet.Response.Error)
+    - [Rpc.Block.Action.MarksGet](#anytype.Rpc.Block.Action.MarksGet)
+    - [Rpc.Block.Action.MarksGet.Request](#anytype.Rpc.Block.Action.MarksGet.Request)
+    - [Rpc.Block.Action.MarksGet.Response](#anytype.Rpc.Block.Action.MarksGet.Response)
+    - [Rpc.Block.Action.MarksGet.Response.Error](#anytype.Rpc.Block.Action.MarksGet.Response.Error)
     - [Rpc.Block.Close](#anytype.Rpc.Block.Close)
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
     - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
@@ -130,6 +134,7 @@
     - [Rpc.Block.Action.Content.Download.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Download.Response.Error.Code)
     - [Rpc.Block.Action.Content.Upload.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Upload.Response.Error.Code)
     - [Rpc.Block.Action.MarkSet.Response.Error.Code](#anytype.Rpc.Block.Action.MarkSet.Response.Error.Code)
+    - [Rpc.Block.Action.MarksGet.Response.Error.Code](#anytype.Rpc.Block.Action.MarksGet.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
@@ -155,6 +160,7 @@
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
+    - [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo)
     - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Block.Update](#anytype.Event.Block.Update)
     - [Event.User](#anytype.Event.User)
@@ -248,7 +254,10 @@
 | BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
 | BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) | TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response); |
 | BlockMarkSet | [Rpc.Block.Action.MarkSet.Request](#anytype.Rpc.Block.Action.MarkSet.Request) | [Rpc.Block.Action.MarkSet.Response](#anytype.Rpc.Block.Action.MarkSet.Response) |  |
+| BlockMarksGet | [Rpc.Block.Action.MarksGet.Request](#anytype.Rpc.Block.Action.MarksGet.Request) | [Rpc.Block.Action.MarksGet.Response](#anytype.Rpc.Block.Action.MarksGet.Response) |  |
 | BlocksDrop | [Rpc.Block.Action.BlocksDrop.Request](#anytype.Rpc.Block.Action.BlocksDrop.Request) | [Rpc.Block.Action.BlocksDrop.Response](#anytype.Rpc.Block.Action.BlocksDrop.Response) |  |
+| BlockContentUpload | [Rpc.Block.Action.Content.Upload.Request](#anytype.Rpc.Block.Action.Content.Upload.Request) | [Rpc.Block.Action.Content.Upload.Response](#anytype.Rpc.Block.Action.Content.Upload.Response) |  |
+| BlockContentDownload | [Rpc.Block.Action.Content.Download.Request](#anytype.Rpc.Block.Action.Content.Download.Request) | [Rpc.Block.Action.Content.Download.Response](#anytype.Rpc.Block.Action.Content.Download.Response) |  |
 | BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | TODO: rpc BlockFilesUpload () returns (); |
 
  
@@ -874,8 +883,8 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| fileName | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
+| url | [string](#string) |  |  |
 | targetId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
 
@@ -918,7 +927,7 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 <a name="anytype.Rpc.Block.Action.MarkSet"></a>
 
 ### Rpc.Block.Action.MarkSet
-
+Set mark to the selected range in the text block.
 
 
 
@@ -967,6 +976,64 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Action.MarkSet.Response.Error.Code](#anytype.Rpc.Block.Action.MarkSet.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarksGet"></a>
+
+### Rpc.Block.Action.MarksGet
+Get marks list in the selected range in text block.
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarksGet.Request"></a>
+
+### Rpc.Block.Action.MarksGet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| range | [model.Range](#anytype.model.Range) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarksGet.Response"></a>
+
+### Rpc.Block.Action.MarksGet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Action.MarksGet.Response.Error](#anytype.Rpc.Block.Action.MarksGet.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Action.MarksGet.Response.Error"></a>
+
+### Rpc.Block.Action.MarksGet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Action.MarksGet.Response.Error.Code](#anytype.Rpc.Block.Action.MarksGet.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1898,6 +1965,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Action.MarksGet.Response.Error.Code"></a>
+
+### Rpc.Block.Action.MarksGet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Close.Response.Error.Code"></a>
 
 ### Rpc.Block.Close.Response.Error.Code
@@ -2116,6 +2196,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
+| marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
 
 
 
@@ -2213,6 +2294,21 @@ Precondition: user A opened a block
 | filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
 | contextId | [string](#string) |  | id of the context block |
+
+
+
+
+
+
+<a name="anytype.Event.Block.MarksInfo"></a>
+
+### Event.Block.MarksInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| marksInRange | [model.Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type) | repeated |  |
 
 
 
