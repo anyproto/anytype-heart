@@ -219,6 +219,7 @@ jobs:
             # workaround for gox putting .exe ext
             mv windows-amd64.a.exe windows-amd64.a
             mv windows-amd64.a.h windows-amd64.h
+            make protos_deps
       - save_cache:
           key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
           paths:
@@ -233,7 +234,6 @@ jobs:
             OUT=~/dist/lib
             mkdir -p ${OUT}
             mkdir -p tmp
-            make protos_deps
             cd tmp
             mkdir protos
             cp ../pb/protos/*.proto protos
@@ -351,7 +351,7 @@ jobs:
             mkdir -p protobuf/protos
             cp ./pb/protos/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
-            protoc --proto_path=./pb/protos --objc_out=./protobuf ./pb/protos/*
+            protoc -I ./ --objc_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
       - run:
           name: collect artifacts
           command: |
@@ -397,8 +397,8 @@ jobs:
           command: |
             sudo apt-get update -qq
             sudo apt install jq -qq
-            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
-            unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
+            curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.10.1/protoc-3.10.1-linux-x86_64.zip
+            unzip protoc-3.10.1-linux-x86_64.zip -d protoc3
             sudo mv protoc3/bin/* /usr/local/bin/
             sudo mv protoc3/include/* /usr/local/include/
       - restore_cache:
@@ -444,8 +444,7 @@ jobs:
             mkdir -p protobuf/protos
             cp ./pb/protos/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
-            protoc --proto_path=./pb/protos --java_out=./protobuf ./pb/protos/* ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
-
+            protoc -I ./ --java_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
       - run:
           name: collect artifacts
           command: |
