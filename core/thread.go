@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/schema"
-	logging "github.com/ipfs/go-log"
 	"github.com/mr-tron/base58"
 	tcore "github.com/textileio/go-textile/core"
 	"github.com/textileio/go-textile/crypto"
