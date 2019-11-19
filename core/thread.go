@@ -14,7 +14,6 @@ import (
 	"github.com/textileio/go-textile/wallet"
 )
 
-var log = logging.Logger("tex-core")
 
 type threadDerivedIndex uint32
 
