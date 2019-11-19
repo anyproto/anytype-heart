@@ -136,7 +136,6 @@ jobs:
             cp ~/project/linux-amd64.a  ./dist/lib.a
             cp ~/project/linux-amd64.h ./dist/lib.h
             make build-js
-            make protos_deps
             npm install
             npm run build:ts
             mv build/ts protobuf
@@ -258,9 +257,7 @@ jobs:
             OUT=~/dist/lib
             cp ~/project/darwin-amd64.a  ./dist/lib.a
             cp ~/project/darwin-amd64.h ./dist/lib.h
-            make protos_deps
             make build-js
-
             npm install
             npm run build:ts
             mv build/ts protobuf
