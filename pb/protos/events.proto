@@ -58,7 +58,7 @@ message Event {
         */
         message Show {
             string rootId = 1; // Root block id
-            repeated anytype.model.Block blocks = 2; // children of the root block
+            repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
             string contextId = 3; // id of the context block
         }
 
