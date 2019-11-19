@@ -1,5 +1,4 @@
-JQ_OPTS := "select(.Path == "github.com/anytypeio/go-anytype-lbrary") | .Dir"
-
+.PHONY : protos_deps
 setup:
 	GOPRIVATE=github.com/anytypeio/go-anytype-library go mod download
 	go get github.com/ahmetb/govvv
@@ -19,6 +18,10 @@ lint:
 
 test:
 	go test github.com/anytypeio/go-anytype-middleware/...
+
+test-deps:
+	go install github.com/golang/mock/mockgen
+	go generate ./...
 
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
@@ -64,20 +67,17 @@ setup-protoc:
 	cd $(GOPATH); go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 	export PATH=$(PATH):$(GOROOT)/bin:$(GOPATH)/bin
 
-# protos: # libprotoc 3.9.1
-# 	cd pb/protos; protoc -I/usr/local/include -I. --gogo_out=../ *.proto;
-# 	cd pb/protos/service; env PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I/usr/local/include -I. -I=. -I=.. --gogo_out=plugins=gomobile:../../../lib service.proto
-
-protos:
+protos_deps:
 	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
+	mkdir -p vendor/github.com/anytypeio/go-anytype-library/
+	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
 
+protos: protos_deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)
 	$(eval P_PROTOS2 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS))
-	mkdir -p vendor/github.com/anytypeio/go-anytype-library/
-	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc -I . --gogofaster_out=$(PKGMAP):. ./pb/protos/*.proto; mv ./pb/protos/*.pb.go ./pb/
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib/
