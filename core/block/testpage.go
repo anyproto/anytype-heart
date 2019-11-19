@@ -59,7 +59,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Why Anytype is better vs. Notion?",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -70,7 +70,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Better looking and more pleasant to use:",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 				Marks: []*model.BlockContentTextMark{
 					{
@@ -89,7 +89,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Why? Notion and Airtable use one standard design for all databases - one fits all approach. It works well for a generic case - pages. Anytype customizes the design of a database for each object: page, task, file, link, music file, video, etc. It makes Anytype's tools look native, like apps not spreadsheets.",
-				Style: model.BlockContentText_P,
+				Style: model.BlockContentText_Paragraph,
 			},
 		},
 	},
@@ -121,7 +121,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Anytype",
-				Style: model.BlockContentText_P,
+				Style: model.BlockContentText_Paragraph,
 				Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
@@ -161,7 +161,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Notion",
-				Style: model.BlockContentText_P,
+				Style: model.BlockContentText_Paragraph,
 				Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
@@ -188,7 +188,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Faster, better mobile apps",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 				Marks: []*model.BlockContentTextMark{
 					{
@@ -207,14 +207,14 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "We are building native mobile apps. Notion has cross-platform apps. We've analyzed all reviews - the biggest drawback of Notion currently is the quality of their mobile apps. You can check out yourself - here.",
-				Style: model.BlockContentText_P,
+				Style: model.BlockContentText_Paragraph,
 				Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
 							From: 204,
 							To:   208,
 						},
-						Type:  model.BlockContentTextMark_U,
+						Type:  model.BlockContentTextMark_Underscored,
 						Param: "https://play.google.com/store/apps/details?id=notion.id&hl=en",
 					},
 				},
@@ -262,7 +262,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Free with no storage and upload limits",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 				Marks: []*model.BlockContentTextMark{
 					{
@@ -281,7 +281,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Notion gives 1000 blocks with 5MB per upload for free. Usually a user is over this limit in a week. Anytype is free with no storage and upload limits (and we don't spend resources to offer that). Notion charges more for each member - Anytype can be free for team of any size. Free products grow faster.",
-				Style: model.BlockContentText_P,
+				Style: model.BlockContentText_Paragraph,
 			},
 		},
 	},
@@ -290,7 +290,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Some cool shit here:",
-				Style: model.BlockContentText_H3,
+				Style: model.BlockContentText_Header3,
 			},
 		},
 	},
@@ -375,7 +375,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "",
-				Style: model.BlockContentText_H3,
+				Style: model.BlockContentText_Header3,
 			},
 		},
 	},
@@ -391,7 +391,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "The menu plays 2 roles:",
-				Style: model.BlockContentText_H3,
+				Style: model.BlockContentText_Header3,
 			},
 		},
 	},
@@ -401,7 +401,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Is used to add a new block",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -412,7 +412,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "How it works:",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -422,7 +422,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "User hits \"+\" button",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -432,7 +432,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Add block menu appears",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -442,7 +442,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "User can visually click on one of the options and the block of the corresponding type will appear",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -453,7 +453,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Is used as a Power Tool that allows to call for almost any action - change color, turn block into another, delete block",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -464,7 +464,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "How it works",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -474,7 +474,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "User hits \"+\" button",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -484,7 +484,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Add block menu appears",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -494,7 +494,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "User starts typing \"page\"",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -505,7 +505,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Items connected to page appear:",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -515,7 +515,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Add block",
-				Style: model.BlockContentText_P,
+				Style: model.BlockContentText_Paragraph,
 				Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
@@ -533,7 +533,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "new page",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -543,7 +543,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "new page",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -553,7 +553,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "User chooses one from the list",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -564,7 +564,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Alternative example",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -574,7 +574,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "User hits \"+\" button",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -584,7 +584,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Add block menu appears",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -594,7 +594,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "User starts typing \"turn into\"",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -605,7 +605,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Items connected to turn into appear:",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -615,7 +615,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Turn into",
-				Style: model.BlockContentText_P,
+				Style: model.BlockContentText_Paragraph,
 				Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
@@ -633,7 +633,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "text",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -643,7 +643,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "page",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -653,7 +653,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "heading",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -663,7 +663,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "list",
-				Style:  model.BlockContentText_P,
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},

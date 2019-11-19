@@ -831,7 +831,7 @@ func (m *ChangeBlockContentText) GetStyle() model.BlockContentTextStyle {
 	if x, ok := m.GetChange().(*ChangeBlockContentTextChangeOfStyle); ok {
 		return x.Style
 	}
-	return model.BlockContentText_P
+	return model.BlockContentText_Paragraph
 }
 
 func (m *ChangeBlockContentText) GetMarks() *model.BlockContentTextMarks {

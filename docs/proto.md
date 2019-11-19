@@ -2086,6 +2086,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | permissions | [Block.Permissions](#anytype.model.Block.Permissions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
+| isArchived | [bool](#bool) |  |  |
 | dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
 | page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
@@ -2509,7 +2510,10 @@ General purpose structure, uses in Mark.
 | Keyboard | 1 |  |
 | Italic | 2 |  |
 | Bold | 3 |  |
-| U | 4 |  |
+| Underscored | 4 |  |
+| Link | 5 |  |
+| TextColor | 6 |  |
+| BackgroundColor | 7 |  |
 
 
 
@@ -2533,11 +2537,11 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| P | 0 |  |
-| H1 | 1 |  |
-| H2 | 2 |  |
-| H3 | 3 |  |
-| U | 4 |  |
+| Paragraph | 0 |  |
+| Header1 | 1 |  |
+| Header2 | 2 |  |
+| Header3 | 3 |  |
+| Header4 | 4 |  |
 | Quote | 5 |  |
 | Code | 6 |  |
 | Title | 7 |  |
