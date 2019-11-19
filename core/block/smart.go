@@ -56,6 +56,7 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		return nil, ErrUnexpectedSmartBlockType
 	}
 	if err = sb.Open(b); err != nil {
+		sb.Close()
 		return
 	}
 	return

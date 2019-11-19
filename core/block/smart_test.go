@@ -22,7 +22,7 @@ func TestCommonSmart_Open(t *testing.T) {
 			versionsChange: func(vers []core.BlockVersion) {},
 		}
 
-		mblock, _ := fx.newMockBlockWithContent(
+		block, _ := fx.newMockBlockWithContent(
 			"1",
 			&model.BlockContentOfPage{Page: &model.BlockContentPage{}},
 			[]string{"2", "3"},
@@ -31,7 +31,6 @@ func TestCommonSmart_Open(t *testing.T) {
 				"3": fx.newMockVersion(&model.Block{Id: "3"}),
 			},
 		)
-		block := &blockWrapper{MockBlock: mblock}
 
 		err := sb.Open(block)
 		require.NoError(t, err)
@@ -61,7 +60,7 @@ func TestCommonSmart_Create(t *testing.T) {
 			s: fx.Service.(*service),
 		}
 
-		mblock, _ := fx.newMockBlockWithContent(
+		block, _ := fx.newMockBlockWithContent(
 			"1",
 			&model.BlockContentOfPage{Page: &model.BlockContentPage{}},
 			[]string{"2", "3"},
@@ -70,7 +69,6 @@ func TestCommonSmart_Create(t *testing.T) {
 				"3": fx.newMockVersion(&model.Block{Id: "3"}),
 			},
 		)
-		block := &blockWrapper{MockBlock: mblock}
 
 		err := sb.Open(block)
 		require.NoError(t, err)

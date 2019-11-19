@@ -41,7 +41,6 @@ func TestService_OpenBlock(t *testing.T) {
 		}, nil, nil)
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
-		mb.EXPECT().SubscribeClientEvents(gomock.Any())
 
 		err := fx.OpenBlock(blockId)
 		require.NoError(t, err)
@@ -64,7 +63,6 @@ func TestService_OpenBlock(t *testing.T) {
 		}, nil, nil)
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
-		mb.EXPECT().SubscribeClientEvents(gomock.Any())
 
 		err := fx.OpenBlock(blockId)
 		require.NoError(t, err)
@@ -89,7 +87,6 @@ func TestService_OpenBlock(t *testing.T) {
 		fx.anytype.EXPECT().PredefinedBlockIds().Times(2).Return(core.PredefinedBlockIds{Home: realHomeId})
 
 		fx.anytype.EXPECT().GetBlock(realHomeId).Return(mb, nil)
-		mb.EXPECT().SubscribeClientEvents(gomock.Any())
 
 		err := fx.OpenBlock(blockId)
 		require.NoError(t, err)
@@ -124,7 +121,7 @@ func (fx *fixture) sendEvent(e *pb.Event) {
 	fx.events = append(fx.events, e)
 }
 
-func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockContent, childrenIds []string, db map[string]core.BlockVersion) (b *testMock.MockBlock, v *testMock.MockBlockVersion) {
+func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockContent, childrenIds []string, db map[string]core.BlockVersion) (b *blockWrapper, v *testMock.MockBlockVersion) {
 	if db == nil {
 		db = make(map[string]core.BlockVersion)
 	}
@@ -134,7 +131,7 @@ func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockConte
 		ChildrenIds: childrenIds,
 	})
 	v.EXPECT().DependentBlocks().AnyTimes().Return(db)
-	b = testMock.NewMockBlock(fx.ctrl)
+	b = &blockWrapper{MockBlock: testMock.NewMockBlock(fx.ctrl)}
 	b.EXPECT().GetId().AnyTimes().Return(id)
 	b.EXPECT().GetCurrentVersion().AnyTimes().Return(v, nil)
 	return
