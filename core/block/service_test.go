@@ -75,7 +75,7 @@ func TestService_OpenBlock(t *testing.T) {
 		var (
 			accountId  = "123"
 			blockId    = "home"
-			realHomeId = "realHome"
+			realHomeId = "realHomeId"
 		)
 		fx := newFixture(t, accountId)
 		defer fx.tearDown()
@@ -83,8 +83,6 @@ func TestService_OpenBlock(t *testing.T) {
 		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockContentOfPage{
 			Page: &model.BlockContentPage{},
 		}, nil, nil)
-
-		fx.anytype.EXPECT().PredefinedBlockIds().Times(2).Return(core.PredefinedBlockIds{Home: realHomeId})
 
 		fx.anytype.EXPECT().GetBlock(realHomeId).Return(mb, nil)
 
@@ -134,6 +132,7 @@ func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockConte
 	b = &blockWrapper{MockBlock: testMock.NewMockBlock(fx.ctrl)}
 	b.EXPECT().GetId().AnyTimes().Return(id)
 	b.EXPECT().GetCurrentVersion().AnyTimes().Return(v, nil)
+	fx.anytype.EXPECT().PredefinedBlockIds().AnyTimes().Return(core.PredefinedBlockIds{Home: "realHomeId"})
 	return
 }
 

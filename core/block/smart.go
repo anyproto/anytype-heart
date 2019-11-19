@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -74,6 +75,8 @@ type commonSmart struct {
 	clientEventsCancel func()
 	blockChangesCancel func()
 	closeWg            *sync.WaitGroup
+
+	isHome bool
 }
 
 func (p *commonSmart) GetId() string {
@@ -106,6 +109,15 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 		go p.versionChangesLoop(blockChanges)
 	}
 	go p.clientEventsLoop(events)
+
+	// temp: add testpage to home dashboard
+	p.isHome = block.GetId() == p.s.anytype.PredefinedBlockIds().Home
+	if p.isHome {
+		if findPosInSlice(p.versions[p.GetId()].Model().ChildrenIds, testPageId) == -1 {
+			p.versions[p.GetId()].Model().ChildrenIds = append(p.versions[p.GetId()].Model().ChildrenIds, testPageId)
+		}
+	}
+
 	p.showFullscreen()
 	return
 }
@@ -191,6 +203,24 @@ func (p *commonSmart) showFullscreen() {
 	for _, b := range p.versions {
 		blocks = append(blocks, b.Model())
 	}
+
+	// temp:
+	if p.isHome {
+		blocks = append(blocks, &model.Block{
+			Id: testPageId,
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": testStringValue("Test page"),
+					"icon": testStringValue(":deciduous_tree:"),
+				},
+			},
+			ChildrenIds: []string{},
+			Content: &model.BlockContentOfPage{
+				Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
+			},
+		})
+	}
+
 	event := &pb.Event{
 		Message: &pb.EventMessageOfBlockShowFullscreen{
 			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
