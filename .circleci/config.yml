@@ -409,7 +409,6 @@ jobs:
           keys:
             - go-pkg-v3-android-{{ arch }}-{{ checksum "go.sum" }}
             - go-pkg-v3-android-{{ arch }}
-            - go-pkg-v3-{{ arch }}
       - run:
           name: cache mods
           command: |
