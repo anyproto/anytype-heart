@@ -2,6 +2,7 @@ package block
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 
@@ -27,9 +28,12 @@ type Service interface {
 
 func NewService(accountId string, lib anytype.Anytype, sendEvent func(event *pb.Event)) Service {
 	return &service{
-		accountId:   accountId,
-		anytype:     lib,
-		sendEvent:   sendEvent,
+		accountId: accountId,
+		anytype:   lib,
+		sendEvent: func(event *pb.Event) {
+			fmt.Printf("middle: sending event: %v\n", event)
+			sendEvent(event)
+		},
 		smartBlocks: make(map[string]smartBlock),
 	}
 }

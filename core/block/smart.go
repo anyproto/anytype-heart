@@ -91,8 +91,6 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.versions = ver.DependentBlocks()
 	p.versions[p.GetId()] = ver
 
-	p.showFullscreen()
-
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
 	if err != nil {
@@ -107,6 +105,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 		go p.versionChangesLoop(blockChanges)
 	}
 	go p.clientEventsLoop(events)
+	p.showFullscreen()
 	return
 }
 
