@@ -33,8 +33,8 @@ jobs:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
           keys:
-            - go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
-            - go-pkg-v2-{{ arch }}
+            - go-pkg-v3-{{ arch }}-{{ checksum "go.sum" }}
+            - go-pkg-v3-{{ arch }}
       - run:
           name: cache mods
           command: |
@@ -55,9 +55,10 @@ jobs:
             PACKAGE_NAMES=$(go list ./... | circleci tests split --split-by=timings --timings-type=classname)
             gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml -- $PACKAGE_NAMES
       - save_cache:
-          key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
+          key: go-pkg-v3-{{ arch }}-{{ checksum "go.sum" }}
           paths:
             - /go/pkg
+            - /home/circleci/.cache/go-build
       - store_test_results:
           path: ~/gotestsum-report/
 
@@ -71,8 +72,8 @@ jobs:
             - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
       - restore_cache:
           keys:
-            - go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
-            - go-pkg-v2-{{ arch }}
+            - go-pkg-v3-{{ arch }}-{{ checksum "go.sum" }}
+            - go-pkg-v3-{{ arch }}
       - run:
           name: install node and patched gox
           command: |
@@ -96,9 +97,10 @@ jobs:
             export GO111MODULE=on
             go build -o linux-amd64.a -ldflags "${FLAGS} -w -s" -buildmode=c-archive -v ./lib/clib
       - save_cache:
-          key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
+          key: go-pkg-v3-{{ arch }}-{{ checksum "go.sum" }}
           paths:
             - /go/pkg
+            - /home/circleci/.cache/go-build
       - run:
           name: collect artifacts
           command: |
@@ -174,8 +176,8 @@ jobs:
             sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
       - restore_cache:
           keys:
-            - go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
-            - go-pkg-v2-{{ arch }}
+            - go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
+            - go-pkg-v3-mac-{{ arch }}
       - run:
           name: cache mods
           command: |
@@ -220,9 +222,10 @@ jobs:
             mv windows-amd64.a.h windows-amd64.h
             make protos_deps
       - save_cache:
-          key: go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
+          key: go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
           paths:
             - ~/go/pkg
+            - ~/Library/Caches/go-build
       - run:
           name: collect artifacts
           command: |
@@ -302,8 +305,11 @@ jobs:
             cd src && ./all.bash
       - restore_cache:
           keys:
-            - go-pkg-v2-{{ arch }}-{{ checksum "go.sum" }}
-            - go-pkg-v2-{{ arch }}
+            - go-pkg-v3-ios-{{ arch }}-{{ checksum "go.sum" }}
+            - go-pkg-v3-ios-{{ arch }}
+            - go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
+            - go-pkg-v3-mac-{{ arch }}
+            - go-pkg-v3-{{ arch }}
       - run:
           name: cache mods
           command: |
@@ -338,9 +344,10 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=ios github.com/anytypeio/go-anytype-middleware/lib github.com/anytypeio/go-anytype-middleware/core
       - save_cache:
-          key: go-pkg-v2-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
+          key: go-pkg-v3-ios-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
           paths:
             - ~/go/pkg
+            - ~/Library/Caches/go-build
       - run:
           name: build obj c protobuf bindings
           command: |
@@ -400,8 +407,9 @@ jobs:
             sudo mv protoc3/include/* /usr/local/include/
       - restore_cache:
           keys:
-            - go-pkg-v2-android-{{ arch }}-{{ checksum "go.sum" }}
-            - go-pkg-v2-android-{{ arch }}
+            - go-pkg-v3-android-{{ arch }}-{{ checksum "go.sum" }}
+            - go-pkg-v3-android-{{ arch }}
+            - go-pkg-v3-{{ arch }}
       - run:
           name: cache mods
           command: |
@@ -431,9 +439,10 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gomobile bind -v -ldflags="-w $FLAGS" -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/lib github.com/anytypeio/go-anytype-middleware/core
       - save_cache:
-          key: go-pkg-v2-android-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
+          key: go-pkg-v3-android-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
           paths:
             - /go/pkg
+            - ~/.cache/go-build
       - run:
           name: build java protobuf bindings
           command: |
