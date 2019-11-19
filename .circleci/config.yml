@@ -299,10 +299,12 @@ jobs:
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
             sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
-            cd ~ && mkdir gosrc && cd gosrc
-            git clone https://github.com/textileio/go.git && cd go
-            git checkout sander/ptrace-hackery
-            cd src && ./all.bash
+          # see the https://github.com/golang/go/issues/31628
+          # uncomment if go not fixes this issue and we will need to publish to the appstore
+          # cd ~ && mkdir gosrc && cd gosrc
+          # git clone https://github.com/textileio/go.git && cd go
+          # git checkout sander/ptrace-hackery
+          # cd src && ./all.bash
       - restore_cache:
           keys:
             - go-pkg-v3-ios-{{ arch }}-{{ checksum "go.sum" }}
