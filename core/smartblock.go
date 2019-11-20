@@ -189,8 +189,10 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 		for id, dependentBlock := range dependentBlocks {
 			blockVersion.model.BlockById[id] = dependentBlock.Model()
 		}
+		blockVersion.model.Block = lastVersion.Model()
 	} else {
 		blockVersion.model.BlockById = make(map[string]*model.Block, len(blocks))
+		blockVersion.model.Block = &model.Block{Id: smartBlock.GetId()}
 	}
 
 	blockVersions := make([]BlockVersion, 0, len(blocks))
@@ -250,6 +252,12 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 		}
 	}
 
+	var err error
+	blockVersion.versionId, blockVersion.user, blockVersion.date, err =  smartBlock.addVersion(blockVersion.model)
+	if err != nil {
+		return nil, err
+	}
+
 	return blockVersions, nil
 }
 
@@ -260,7 +268,7 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 		return
 	}
 
-	mill := &mill.Blob{}
+	millBlob := &mill.Blob{}
 
 	conf := tcore.AddFileConfig{
 		Media:     "application/json",
@@ -269,7 +277,7 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 	}
 
 	var newBlockVersionFile *tpb.FileIndex
-	newBlockVersionFile, err = smartBlock.node.textile().AddFileIndex(mill, conf)
+	newBlockVersionFile, err = smartBlock.node.textile().AddFileIndex(millBlob, conf)
 	if err != nil {
 		err = fmt.Errorf("AddFileIndex error: %s", err.Error())
 		return
@@ -297,7 +305,7 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 	user = smartBlock.node.textile().Account().Address()
 	newBlock, err := smartBlock.node.textile().Block(block.B58String())
 	if err != nil {
-		log.Errorf("failed to get the block %s: %s", newBlock.Id, err.Error())
+		log.Errorf("failed to get the block %s: %s", block.B58String(), err.Error())
 	}
 
 	if newBlock != nil {
