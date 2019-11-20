@@ -6,10 +6,13 @@ import (
 	"time"
 
 	ipfsCore "github.com/ipfs/go-ipfs/core"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	tcore "github.com/textileio/go-textile/core"
 	tmobile "github.com/textileio/go-textile/mobile"
 )
+
+var log = logging.Logger("anytype-core")
 
 const privateKey = `/key/swarm/psk/1.0.0/
 /base16/
@@ -49,13 +52,22 @@ func New(repoPath string, account string) (*Anytype, error) {
 	crypto.MinRsaKeyBits = 1024
 
 	msg := messenger{}
-	tm, err := tmobile.NewTextile(&tmobile.RunConfig{filepath.Join(repoPath, account), true, nil}, &msg)
+	tm, err := tmobile.NewTextile(&tmobile.RunConfig{filepath.Join(repoPath, account), false, nil}, &msg)
 	if err != nil {
 		return nil, err
 	}
 
 	a := &Anytype{Textile: tm}
+	a.SetDebug(true)
 	return a, nil
+}
+
+func (a *Anytype) SetDebug(debug bool) {
+	if debug {
+		logging.SetLogLevel("anytype-core", "DEBUG")
+	} else {
+		logging.SetLogLevel("anytype-core", "WARNING")
+	}
 }
 
 func (a *Anytype) Run() error {
