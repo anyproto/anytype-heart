@@ -173,14 +173,14 @@ message Block {
             string localFilePath = 1;
             string previewFilePath = 2;
 
- /*           State state = 2;
+            State state = 3;
             Type type = 4;
 
-            string name = 1;
-            int32 size = 2;
-            int32 addedAt = 3;
-            int32 width = 5;
-            int32 widthToHeight = 6;*/
+            string name = 5;
+            int32 size = 6;
+            int32 addedAt = 7;
+            int32 width = 8;
+            int32 widthToHeight = 9;
 
             enum State {
                 Empty = 0; // There is no image and preview, it's an empty block, that waits image.
