@@ -10,10 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-const (
-	homePageId = "home"
-)
-
 var (
 	ErrBlockNotFound    = errors.New("block not found")
 	ErrBlockAlreadyOpen = errors.New("block already open")
@@ -49,7 +45,6 @@ type service struct {
 func (s *service) OpenBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	id = s.getSmartId(id)
 	if _, ok := s.smartBlocks[id]; ok {
 		return ErrBlockAlreadyOpen
 	}
@@ -65,7 +60,6 @@ func (s *service) OpenBlock(id string) (err error) {
 func (s *service) CloseBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	id = s.getSmartId(id)
 	if sb, ok := s.smartBlocks[id]; ok {
 		delete(s.smartBlocks, id)
 		fmt.Println("middle: close smart block:", id, err)
@@ -77,7 +71,6 @@ func (s *service) CloseBlock(id string) (err error) {
 func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
-	req.ContextId = s.getSmartId(req.ContextId)
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Create(req)
 	}
@@ -93,11 +86,4 @@ func (s *service) Close() error {
 		}
 	}
 	return nil
-}
-
-func (s *service) getSmartId(id string) string {
-	if id == homePageId {
-		id = s.anytype.PredefinedBlockIds().Home
-	}
-	return id
 }

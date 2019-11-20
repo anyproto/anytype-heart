@@ -74,29 +74,6 @@ func TestService_OpenBlock(t *testing.T) {
 		assert.Len(t, fx.events, 1)
 		assert.Equal(t, smartBlockTypePage, fx.Service.(*service).smartBlocks[blockId].Type())
 	})
-	t.Run("should replace home id to real", func(t *testing.T) {
-		var (
-			accountId  = "123"
-			blockId    = "home"
-			realHomeId = "realHomeId"
-		)
-		fx := newFixture(t, accountId)
-		defer fx.ctrl.Finish()
-		defer fx.tearDown()
-
-		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{},
-		}, nil, nil)
-
-		fx.anytype.EXPECT().GetBlock(realHomeId).Return(mb, nil)
-
-		err := fx.OpenBlock(blockId)
-		require.NoError(t, err)
-		defer func() { require.NoError(t, fx.CloseBlock(blockId)) }()
-
-		assert.Len(t, fx.events, 1)
-		assert.Equal(t, smartBlockTypePage, fx.Service.(*service).smartBlocks[realHomeId].Type())
-	})
 }
 
 func newFixture(t *testing.T, accountId string) *fixture {
