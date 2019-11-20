@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 package anytype;
 option go_package = "pb";
 
@@ -312,7 +312,8 @@ message Rpc {
             * Front end to middleware request-to-start-search of an accounts for a recovered mnemonic.
             * Each of an account that would be found will come with an AccountAdd event
             */
-            message Request {}
+            message Request {
+            }
 
             /**
             * Middleware-to-front-end response to an account recover request, that can contain a NULL error and created account or a non-NULL error and an empty account
@@ -422,7 +423,8 @@ message Rpc {
     */
     message Version {
         message Get {
-            message Request {}
+            message Request {
+            }
 
             message Response {
                 Error error = 1;
@@ -534,6 +536,27 @@ message Rpc {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    message Config {
+        message Get {
+            message Request {
+            }
+            message Response {
+                Error error = 1;
+                string homeBlockId = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+
             }
         }
     }
