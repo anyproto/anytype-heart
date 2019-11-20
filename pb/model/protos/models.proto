@@ -8,7 +8,7 @@ message Block {
     string id = 1;
     google.protobuf.Struct fields = 2;
     Permissions permissions = 3;
-    ChildrenIds childrenIds = 4;
+    repeated string childrenIds = 4;
     bool isArchived = 5;
 
     message Permissions {
@@ -19,29 +19,29 @@ message Block {
         bool dropOn = 5;
     }
 
-    message ChildrenIds {
-        repeated string ids = 1;
-    }
-
     enum Position {
         Before = 0;
         After = 1;
     }
 
-    oneof content {
-        Content.Dashboard dashboard = 11;
-        Content.Page page = 12;
-        Content.Dataview dataview = 13;
+    BlockContent content = 6;
+    
+    message BlockContent {
+        oneof content {
+            Content.Dashboard dashboard = 11;
+            Content.Page page = 12;
+            Content.Dataview dataview = 13;
 
-        Content.Text text = 14;
-        Content.Video video = 15;
-        Content.Image image = 16;
-        Content.File file = 17;
-        Content.Layout layout = 18;
-        Content.Div div = 19;
-        Content.Bookmark bookmark = 20;
-        Content.Icon icon = 21;
-        Content.Link link = 22;
+            Content.Text text = 14;
+            Content.Video video = 15;
+            Content.Image image = 16;
+            Content.File file = 17;
+            Content.Layout layout = 18;
+            Content.Div div = 19;
+            Content.Bookmark bookmark = 20;
+            Content.Icon icon = 21;
+            Content.Link link = 22;
+        }
     }
 
     message Content {
