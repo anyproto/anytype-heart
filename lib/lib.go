@@ -1,6 +1,10 @@
 package lib
 
 import (
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 
@@ -14,6 +18,11 @@ var mw = &core.Middleware{}
 
 func init() {
 	registerClientCommandsHandler(mw)
+	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "0" {
+		go func() {
+			http.ListenAndServe(":6060", nil)
+		}()
+	}
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {

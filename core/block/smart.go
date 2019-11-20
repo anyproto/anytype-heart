@@ -125,7 +125,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	p.m.RLock()
 	defer p.m.RUnlock()
-
+	fmt.Println("middle: create block request in:", p.GetId())
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
 	}
@@ -157,21 +157,21 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	}
 
 	newBlock, err := p.block.NewBlock(*req.Block)
+	fmt.Println("middle: creating new block in lib:", err)
 	if err != nil {
 		return
 	}
-	newBlockVer, err := newBlock.GetCurrentVersion()
-	if err != nil {
-		return
-	}
+	req.Block.Id = newBlock.GetId()
+
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, newBlock.GetId(), pos)
 
-	vers, err := p.block.AddVersions([]*model.Block{newBlockVer.Model(), parent})
+	vers, err := p.block.AddVersions([]*model.Block{req.Block, parent})
+	fmt.Println("middle: save updates in lib:", err)
 	if err != nil {
 		return
 	}
 	id = vers[0].Model().Id
-	p.sendCreateEvents(parent, newBlockVer.Model())
+	p.sendCreateEvents(parent, req.Block)
 	return
 }
 
