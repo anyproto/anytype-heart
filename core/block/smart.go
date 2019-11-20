@@ -91,7 +91,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.versions = ver.DependentBlocks()
 	p.versions[p.GetId()] = ver
 
-	p.show()
+	p.showFullscreen()
 
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
@@ -186,14 +186,14 @@ func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
 	return
 }
 
-func (p *commonSmart) show() {
+func (p *commonSmart) showFullscreen() {
 	blocks := make([]*model.Block, 0, len(p.versions))
 	for _, b := range p.versions {
 		blocks = append(blocks, b.Model())
 	}
 	event := &pb.Event{
-		Message: &pb.EventMessageOfBlockShow{
-			BlockShow: &pb.EventBlockShow{
+		Message: &pb.EventMessageOfBlockShowFullscreen{
+			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
 				RootId: p.GetId(),
 				Blocks: blocks,
 			},

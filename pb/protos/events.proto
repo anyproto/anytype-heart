@@ -68,7 +68,7 @@ message Event {
          * Page opened, TextBlock updated on a different client, BlockUpdate(changes)
         */
         message Update {
-            Change.Multiple.BlocksList changes = 1;
+            Changes changes = 1;
             string contextId = 2; // id of the context block
         }
 

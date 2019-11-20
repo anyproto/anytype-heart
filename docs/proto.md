@@ -11,22 +11,9 @@
   
 
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
-    - [Change](#anytype.Change)
-    - [Change.Block](#anytype.Change.Block)
-    - [Change.Block.ChildrenIds](#anytype.Change.Block.ChildrenIds)
-    - [Change.Block.Content](#anytype.Change.Block.Content)
-    - [Change.Block.Content.Dashboard](#anytype.Change.Block.Content.Dashboard)
-    - [Change.Block.Content.File](#anytype.Change.Block.Content.File)
-    - [Change.Block.Content.Image](#anytype.Change.Block.Content.Image)
-    - [Change.Block.Content.Page](#anytype.Change.Block.Content.Page)
-    - [Change.Block.Content.Text](#anytype.Change.Block.Content.Text)
-    - [Change.Block.Content.Video](#anytype.Change.Block.Content.Video)
-    - [Change.Block.Fields](#anytype.Change.Block.Fields)
-    - [Change.Block.Permissions](#anytype.Change.Block.Permissions)
-    - [Change.Multiple](#anytype.Change.Multiple)
-    - [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList)
-    - [Change.Single](#anytype.Change.Single)
-    - [Change.Single.BlocksList](#anytype.Change.Single.BlocksList)
+    - [Changes](#anytype.Changes)
+    - [Changes.Block](#anytype.Changes.Block)
+    - [Changes.Block.ChildrenIds](#anytype.Changes.Block.ChildrenIds)
   
   
   
@@ -271,239 +258,50 @@
 
 
 
-<a name="anytype.Change"></a>
+<a name="anytype.Changes"></a>
 
-### Change
-Change contains single block change or list of block changes.
-
-
+### Changes
+Changes contains group of blocks, that have only changed fields
 
 
-
-
-<a name="anytype.Change.Block"></a>
-
-### Change.Block
-Change.Block contains only one, single change for one block.
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| changes | [Changes.Block](#anytype.Changes.Block) | repeated |  |
+| author | [model.Account](#anytype.model.Account) |  |  |
 
 
 
 
 
 
-<a name="anytype.Change.Block.ChildrenIds"></a>
+<a name="anytype.Changes.Block"></a>
 
-### Change.Block.ChildrenIds
+### Changes.Block
+Changes.Block contains only changed fields of a block
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
+| childrenIds | [Changes.Block.ChildrenIds](#anytype.Changes.Block.ChildrenIds) |  |  |
+| isArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Changes.Block.ChildrenIds"></a>
+
+### Changes.Block.ChildrenIds
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | childrenIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Content"></a>
-
-### Change.Block.Content
-
-
-
-
-
-
-
-<a name="anytype.Change.Block.Content.Dashboard"></a>
-
-### Change.Block.Content.Dashboard
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [model.Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style) |  |  |
-| block | [model.Block](#anytype.model.Block) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Content.File"></a>
-
-### Change.Block.Content.File
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| content | [string](#string) |  |  |
-| state | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
-| preview | [model.Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Content.Image"></a>
-
-### Change.Block.Content.Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| content | [string](#string) |  |  |
-| state | [model.Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
-| preview | [model.Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Content.Page"></a>
-
-### Change.Block.Content.Page
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [model.Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style) |  |  |
-| block | [model.Block](#anytype.model.Block) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Content.Text"></a>
-
-### Change.Block.Content.Text
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| text | [string](#string) |  |  |
-| style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
-| marks | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
-| toggleable | [bool](#bool) |  |  |
-| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
-| checkable | [bool](#bool) |  |  |
-| checked | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Content.Video"></a>
-
-### Change.Block.Content.Video
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| content | [string](#string) |  |  |
-| state | [model.Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
-| preview | [model.Block.Content.Video.Preview](#anytype.model.Block.Content.Video.Preview) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Fields"></a>
-
-### Change.Block.Fields
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Block.Permissions"></a>
-
-### Change.Block.Permissions
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Multiple"></a>
-
-### Change.Multiple
-Change.Multiple contains array of changes, for a list of blocks each.
-
-
-
-
-
-
-<a name="anytype.Change.Multiple.BlocksList"></a>
-
-### Change.Multiple.BlocksList
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| changes | [Change.Single.BlocksList](#anytype.Change.Single.BlocksList) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.Single"></a>
-
-### Change.Single
-Change.Single contains only one, single change, but for a list of blocks.
-
-
-
-
-
-
-<a name="anytype.Change.Single.BlocksList"></a>
-
-### Change.Single.BlocksList
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) | repeated |  |
-| author | [model.Account](#anytype.model.Account) |  |  |
-| text | [Change.Block.Content.Text](#anytype.Change.Block.Content.Text) |  |  |
-| fields | [Change.Block.Fields](#anytype.Change.Block.Fields) |  |  |
-| premissions | [Change.Block.Permissions](#anytype.Change.Block.Permissions) |  |  |
-| childrenIds | [Change.Block.ChildrenIds](#anytype.Change.Block.ChildrenIds) |  |  |
-| page | [Change.Block.Content.Page](#anytype.Change.Block.Content.Page) |  |  |
-| dashboard | [Change.Block.Content.Dashboard](#anytype.Change.Block.Content.Dashboard) |  |  |
-| video | [Change.Block.Content.Video](#anytype.Change.Block.Content.Video) |  |  |
-| image | [Change.Block.Content.Image](#anytype.Change.Block.Content.Image) |  |  |
-| file | [Change.Block.Content.File](#anytype.Change.Block.Content.File) |  |  |
 
 
 
@@ -1349,7 +1147,7 @@ Case F. Update children of a layout block on a page
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| changes | [Changes](#anytype.Changes) |  |  |
 | contextId | [string](#string) |  | id of the context block |
 
 
@@ -2325,7 +2123,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
-| blocks | [model.Block](#anytype.model.Block) | repeated | children of the root block |
+| blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | contextId | [string](#string) |  | id of the context block |
 
 
@@ -2343,7 +2141,7 @@ Page opened, TextBlock updated on a different client, BlockUpdate(changes)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| changes | [Change.Multiple.BlocksList](#anytype.Change.Multiple.BlocksList) |  |  |
+| changes | [Changes](#anytype.Changes) |  |  |
 | contextId | [string](#string) |  | id of the context block |
 
 
