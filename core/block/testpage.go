@@ -58,19 +58,19 @@ var testBlocks = []*model.Block{
 		Id: "4",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Why Anytype is better vs. Notion?",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Why Anytype is better vs. Notion?",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
 	},
 	{
-		Id: "5",
+		Id:          "5",
 		ChildrenIds: []string{"6"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Better looking and more pleasant to use:",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Better looking and more pleasant to use:",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 				Marks: []*model.BlockContentTextMark{
 					{
@@ -103,7 +103,7 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id: "8",
+		Id:          "8",
 		ChildrenIds: []string{"9", "14"},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -143,7 +143,7 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id: "10",
+		Id:          "10",
 		ChildrenIds: []string{"11", "15"},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -183,7 +183,7 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id: "16",
+		Id:          "16",
 		ChildrenIds: []string{"17", "18"},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -218,12 +218,12 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id: "19",
+		Id:          "19",
 		ChildrenIds: []string{"20"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Free with no storage and upload limits",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Free with no storage and upload limits",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 				Marks: []*model.BlockContentTextMark{
 					{
@@ -263,7 +263,7 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id: "23",
+		Id:          "23",
 		ChildrenIds: []string{"24", "27"},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -272,7 +272,7 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id: "24",
+		Id:          "24",
 		ChildrenIds: []string{"25", "26"},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -290,8 +290,8 @@ var testBlocks = []*model.Block{
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
 				"width": testFloatValue(0.5),
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+				"name":  testStringValue("Test page"),
+				"icon":  testStringValue(":deciduous_tree:"),
 			},
 		},
 		Content: &model.BlockContentOfPage{
@@ -303,8 +303,8 @@ var testBlocks = []*model.Block{
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
 				"width": testFloatValue(0.5),
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+				"name":  testStringValue("Test page"),
+				"icon":  testStringValue(":deciduous_tree:"),
 			},
 		},
 		Content: &model.BlockContentOfPage{
@@ -316,8 +316,8 @@ var testBlocks = []*model.Block{
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
 				"width": testFloatValue(0.5),
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+				"name":  testStringValue("Test page"),
+				"icon":  testStringValue(":deciduous_tree:"),
 			},
 		},
 		Content: &model.BlockContentOfPage{
@@ -357,23 +357,23 @@ var testBlocks = []*model.Block{
 		},
 	},
 	{
-		Id: "32",
+		Id:          "32",
 		ChildrenIds: []string{"33"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Is used to add a new block",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Is used to add a new block",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
 	},
 	{
-		Id: "33",
+		Id:          "33",
 		ChildrenIds: []string{"34", "35", "36"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "How it works:",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "How it works:",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -382,8 +382,8 @@ var testBlocks = []*model.Block{
 		Id: "34",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "User hits \"+\" button",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -392,8 +392,8 @@ var testBlocks = []*model.Block{
 		Id: "35",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Add block menu appears",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -402,31 +402,31 @@ var testBlocks = []*model.Block{
 		Id: "36",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "User can visually click on one of the options and the block of the corresponding type will appear",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "User can visually click on one of the options and the block of the corresponding type will appear",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
 	},
 	{
-		Id: "37",
+		Id:          "37",
 		ChildrenIds: []string{"38", "47"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Is used as a Power Tool that allows to call for almost any action - change color, turn block into another, delete block",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Is used as a Power Tool that allows to call for almost any action - change color, turn block into another, delete block",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
 	},
 	{
-		Id: "38",
+		Id:          "38",
 		ChildrenIds: []string{"39", "40", "41", "42", "46"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "How it works",
-				Style: model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:       "How it works",
+				Style:      model.BlockContentText_Paragraph,
+				Marker:     model.BlockContentText_Bullet,
 				Toggleable: true,
 			},
 		},
@@ -435,8 +435,8 @@ var testBlocks = []*model.Block{
 		Id: "39",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "User hits \"+\" button",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -445,8 +445,8 @@ var testBlocks = []*model.Block{
 		Id: "40",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Add block menu appears",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -455,20 +455,20 @@ var testBlocks = []*model.Block{
 		Id: "41",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "User starts typing \"page\"",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "User starts typing \"page\"",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
 	},
 	{
-		Id: "42",
+		Id:          "42",
 		ChildrenIds: []string{"43", "44", "45"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Items connected to page appear:",
-				Style: model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:       "Items connected to page appear:",
+				Style:      model.BlockContentText_Paragraph,
+				Marker:     model.BlockContentText_Number,
 				Toggleable: true,
 			},
 		},
@@ -495,8 +495,8 @@ var testBlocks = []*model.Block{
 		Id: "44",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "new page",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "new page",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -505,8 +505,8 @@ var testBlocks = []*model.Block{
 		Id: "45",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "new page",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "new page",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -515,20 +515,20 @@ var testBlocks = []*model.Block{
 		Id: "46",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "User chooses one from the list",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "User chooses one from the list",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
 	},
 	{
-		Id: "47",
+		Id:          "47",
 		ChildrenIds: []string{"48", "49", "50", "51"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Alternative example",
-				Style: model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:       "Alternative example",
+				Style:      model.BlockContentText_Paragraph,
+				Marker:     model.BlockContentText_Bullet,
 				Toggleable: true,
 			},
 		},
@@ -537,8 +537,8 @@ var testBlocks = []*model.Block{
 		Id: "48",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "User hits \"+\" button",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -547,8 +547,8 @@ var testBlocks = []*model.Block{
 		Id: "49",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "Add block menu appears",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
@@ -557,20 +557,20 @@ var testBlocks = []*model.Block{
 		Id: "50",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "User starts typing \"turn into\"",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "User starts typing \"turn into\"",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Number,
 			},
 		},
 	},
 	{
-		Id: "51",
+		Id:          "51",
 		ChildrenIds: []string{"52", "53", "54", "55", "56"},
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "Items connected to turn into appear:",
-				Style: model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:       "Items connected to turn into appear:",
+				Style:      model.BlockContentText_Paragraph,
+				Marker:     model.BlockContentText_Number,
 				Toggleable: true,
 			},
 		},
@@ -597,8 +597,8 @@ var testBlocks = []*model.Block{
 		Id: "53",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "text",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "text",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -607,8 +607,8 @@ var testBlocks = []*model.Block{
 		Id: "54",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "page",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "page",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -617,7 +617,7 @@ var testBlocks = []*model.Block{
 		Id: "55",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "heading",
+				Text:   "heading",
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -626,8 +626,8 @@ var testBlocks = []*model.Block{
 		Id: "56",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text:  "list",
-				Style: model.BlockContentText_Paragraph,
+				Text:   "list",
+				Style:  model.BlockContentText_Paragraph,
 				Marker: model.BlockContentText_Bullet,
 			},
 		},
@@ -639,6 +639,10 @@ type testPage struct {
 }
 
 func (t *testPage) Open(b anytype.Block) error {
+	return nil
+}
+
+func (t *testPage) Init() {
 	event := &pb.Event{
 		Message: &pb.EventMessageOfBlockShowFullscreen{
 			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
@@ -648,7 +652,6 @@ func (t *testPage) Open(b anytype.Block) error {
 		},
 	}
 	t.s.sendEvent(event)
-	return nil
 }
 
 func (t *testPage) GetId() string {

@@ -54,6 +54,7 @@ func (s *service) OpenBlock(id string) (err error) {
 		return ErrBlockAlreadyOpen
 	}
 	sb, err := openSmartBlock(s, id)
+	fmt.Println("middle: open smart block:", id, err)
 	if err != nil {
 		return
 	}
@@ -67,6 +68,7 @@ func (s *service) CloseBlock(id string) (err error) {
 	id = s.getSmartId(id)
 	if sb, ok := s.smartBlocks[id]; ok {
 		delete(s.smartBlocks, id)
+		fmt.Println("middle: close smart block:", id, err)
 		return sb.Close()
 	}
 	return ErrBlockNotFound

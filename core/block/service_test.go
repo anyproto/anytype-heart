@@ -21,6 +21,7 @@ func TestService_OpenBlock(t *testing.T) {
 			expErr    = errors.New("test err")
 		)
 		fx := newFixture(t, accountId)
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(nil, expErr)
@@ -34,6 +35,7 @@ func TestService_OpenBlock(t *testing.T) {
 			blockId   = "456"
 		)
 		fx := newFixture(t, accountId)
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfDashboard{
@@ -56,6 +58,7 @@ func TestService_OpenBlock(t *testing.T) {
 			blockId   = "456"
 		)
 		fx := newFixture(t, accountId)
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfPage{
@@ -78,6 +81,7 @@ func TestService_OpenBlock(t *testing.T) {
 			realHomeId = "realHomeId"
 		)
 		fx := newFixture(t, accountId)
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockContentOfPage{
@@ -144,7 +148,6 @@ func (fx *fixture) newMockVersion(m *model.Block) (v *testMock.MockBlockVersion)
 
 func (fx *fixture) tearDown() {
 	require.NoError(fx.t, fx.Close())
-	fx.ctrl.Finish()
 }
 
 type matcher struct {

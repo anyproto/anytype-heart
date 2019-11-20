@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -19,6 +18,7 @@ var (
 
 type smartBlock interface {
 	Open(b anytype.Block) error
+	Init()
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
@@ -36,6 +36,7 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 	if id == testPageId {
 		sb = &testPage{s: s}
 		sb.Open(nil)
+		sb.Init()
 		return
 	}
 
@@ -60,13 +61,14 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		sb.Close()
 		return
 	}
+	sb.Init()
 	return
 }
 
 type commonSmart struct {
 	s        *service
 	block    anytype.Block
-	versions map[string]core.BlockVersion
+	versions map[string]simple
 
 	m sync.RWMutex
 
@@ -75,8 +77,6 @@ type commonSmart struct {
 	clientEventsCancel func()
 	blockChangesCancel func()
 	closeWg            *sync.WaitGroup
-
-	isHome bool
 }
 
 func (p *commonSmart) GetId() string {
@@ -87,13 +87,18 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.closeWg = new(sync.WaitGroup)
+	p.versions = make(map[string]simple)
+
 	p.block = block
 	ver, err := p.block.GetCurrentVersion()
 	if err != nil {
 		return
 	}
-	p.versions = ver.DependentBlocks()
-	p.versions[p.GetId()] = ver
+
+	for id, v := range ver.DependentBlocks() {
+		p.versions[id] = &simpleBlock{v.Model()}
+	}
+	p.versions[p.GetId()] = &simpleBlock{ver.Model()}
 
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
@@ -109,17 +114,13 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 		go p.versionChangesLoop(blockChanges)
 	}
 	go p.clientEventsLoop(events)
-
-	// temp: add testpage to home dashboard
-	p.isHome = block.GetId() == p.s.anytype.PredefinedBlockIds().Home
-	if p.isHome {
-		if findPosInSlice(p.versions[p.GetId()].Model().ChildrenIds, testPageId) == -1 {
-			p.versions[p.GetId()].Model().ChildrenIds = append(p.versions[p.GetId()].Model().ChildrenIds, testPageId)
-		}
-	}
-
-	p.showFullscreen()
 	return
+}
+
+func (p *commonSmart) Init() {
+	p.m.RLock()
+	defer p.m.RUnlock()
+	p.showFullscreen()
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -135,7 +136,7 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 	}
 	parent := parentVer.Model()
-	var target core.BlockVersion
+	var target simple
 	if req.TargetId != "" {
 		target, ok = p.versions[req.TargetId]
 		if ! ok {
@@ -165,12 +166,15 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, newBlock.GetId(), pos)
 
-	vers, err := p.block.AddVersions([]*model.Block{req.Block, parent})
+	p.versions[newBlock.GetId()] = &simpleBlock{req.Block}
+	vers, err := p.block.AddVersions([]*model.Block{p.toSave(req.Block), p.toSave(parent)})
 	fmt.Println("middle: save updates in lib:", err)
 	if err != nil {
+		delete(p.versions, newBlock.GetId())
 		return
 	}
-	id = vers[0].Model().Id
+	id = req.Block.Id
+	fmt.Println("middle block created:", req.Block.Id, vers[0].Model().Id)
 	p.sendCreateEvents(parent, req.Block)
 	return
 }
@@ -204,23 +208,6 @@ func (p *commonSmart) showFullscreen() {
 		blocks = append(blocks, b.Model())
 	}
 
-	// temp:
-	if p.isHome {
-		blocks = append(blocks, &model.Block{
-			Id: testPageId,
-			Fields: &types.Struct{
-				Fields: map[string]*types.Value{
-					"name": testStringValue("Test page"),
-					"icon": testStringValue(":deciduous_tree:"),
-				},
-			},
-			ChildrenIds: []string{},
-			Content: &model.BlockContentOfPage{
-				Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
-			},
-		})
-	}
-
 	event := &pb.Event{
 		Message: &pb.EventMessageOfBlockShowFullscreen{
 			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
@@ -246,6 +233,31 @@ func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) 
 	for versions := range blockChanges {
 		p.versionsChange(versions)
 	}
+}
+
+func (p *commonSmart) excludeVirtualIds(ids []string) ([]string) {
+	res := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if v, ok := p.versions[id]; ok && !v.Virtual() {
+			res = append(res, id)
+		}
+	}
+	return res
+}
+
+func (p *commonSmart) toSave(b *model.Block) *model.Block {
+	return &model.Block{
+		Id:          b.Id,
+		Fields:      b.Fields,
+		Permissions: b.Permissions,
+		ChildrenIds: p.excludeVirtualIds(b.ChildrenIds),
+		IsArchived:  b.IsArchived,
+		Content:     b.Content,
+	}
+}
+
+func (p *commonSmart) root() *model.Block {
+	return p.versions[p.block.GetId()].Model()
 }
 
 func (p *commonSmart) Close() error {
