@@ -24,7 +24,7 @@ func TestCommonSmart_Open(t *testing.T) {
 
 		mblock, _ := fx.newMockBlockWithContent(
 			"1",
-			&model.BlockContentOfPage{Page: &model.BlockContentPage{}},
+			&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}},
 			[]string{"2", "3"},
 			map[string]core.BlockVersion{
 				"2": fx.newMockVersion(&model.Block{Id: "2"}),
@@ -45,10 +45,10 @@ func TestCommonSmart_Open(t *testing.T) {
 
 		require.Len(t, fx.events, 1)
 		event := fx.events[0]
-		require.IsType(t, (*pb.EventMessageOfBlockShowFullscreen)(nil), event.Message)
-		showFullscreen := event.Message.(*pb.EventMessageOfBlockShowFullscreen).BlockShowFullscreen
-		assert.Equal(t, showFullscreen.RootId, "1")
-		assert.Len(t, showFullscreen.Blocks, 3)
+		require.IsType(t, (*pb.EventMessageOfBlockShow)(nil), event.Message)
+		show := event.Message.(*pb.EventMessageOfBlockShow).BlockShow
+		assert.Equal(t, show.RootId, "1")
+		assert.Len(t, show.Blocks, 3)
 	})
 }
 
@@ -63,7 +63,7 @@ func TestCommonSmart_Create(t *testing.T) {
 
 		mblock, _ := fx.newMockBlockWithContent(
 			"1",
-			&model.BlockContentOfPage{Page: &model.BlockContentPage{}},
+			&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}},
 			[]string{"2", "3"},
 			map[string]core.BlockVersion{
 				"2": fx.newMockVersion(&model.Block{Id: "2"}),
@@ -81,7 +81,7 @@ func TestCommonSmart_Create(t *testing.T) {
 
 		req := pb.RpcBlockCreateRequest{
 			Block: &model.Block{
-				Content: &model.BlockContentOfPage{Page: &model.BlockContentPage{}},
+				Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}},
 			},
 			TargetId:  "3",
 			Position:  model.Block_Before,
@@ -89,7 +89,7 @@ func TestCommonSmart_Create(t *testing.T) {
 			ParentId:  "1",
 		}
 		newBlockId := "23"
-		newBlock, _ := fx.newMockBlockWithContent(newBlockId, req.Block.Content, nil, nil)
+		newBlock, _ := fx.newMockBlockWithContent(newBlockId, req.Block.Content.Content, nil, nil)
 		block.EXPECT().NewBlock(*req.Block).Return(newBlock, nil)
 		newBlockVer, _ := newBlock.GetCurrentVersion()
 

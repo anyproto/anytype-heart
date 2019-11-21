@@ -12,7 +12,7 @@ message Event {
     oneof message {
         Account.Show accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
         Block.Add blockAdd = 2;
-        Block.ShowFullscreen blockShowFullscreen = 3;
+        Block.Show blockShow = 3;
         Block.Update blockUpdate = 4;
         Block.Delete blockDelete = 5;
 
@@ -22,6 +22,7 @@ message Event {
         User.Block.SelectRange userBlockSelectRange = 9;
 
         Block.FilesUpload filesUpload = 10;
+        Block.MarksInfo marksInfo = 11;
     }
 
     message Account {
@@ -55,9 +56,9 @@ message Event {
          * Works with a smart blocks: Page, Dashboard
          * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
         */
-        message ShowFullscreen {
+        message Show {
             string rootId = 1; // Root block id
-            repeated anytype.model.Block blocks = 2; // children of the root block
+            repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
             string contextId = 3; // id of the context block
         }
 
@@ -67,7 +68,7 @@ message Event {
          * Page opened, TextBlock updated on a different client, BlockUpdate(changes)
         */
         message Update {
-            Change.Multiple.BlocksList changes = 1;
+            Changes changes = 1;
             string contextId = 2; // id of the context block
         }
 
@@ -89,6 +90,10 @@ message Event {
         message Delete {
             string blockId = 1;
             string contextId = 2; // id of the context block
+        }
+
+        message MarksInfo {
+            repeated anytype.model.Block.Content.Text.Mark.Type marksInRange = 1;
         }
     }
 

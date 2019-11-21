@@ -47,10 +47,10 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		return
 	}
 
-	switch ver.Model().Content.(type) {
-	case *model.BlockContentOfDashboard:
+	switch ver.Model().Content.Content.(type) {
+	case *model.BlockCoreContentOfDashboard:
 		sb, err = newDashboard(s, b)
-	case *model.BlockContentOfPage:
+	case *model.BlockCoreContentOfPage:
 		sb, err = newPage(s, b)
 	default:
 		return nil, ErrUnexpectedSmartBlockType
@@ -91,7 +91,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.versions = ver.DependentBlocks()
 	p.versions[p.GetId()] = ver
 
-	p.showFullscreen()
+	p.show()
 
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
@@ -119,14 +119,14 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	}
 
 	parentVer, ok := p.versions[req.ParentId]
-	if ! ok {
+	if !ok {
 		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 	}
 	parent := parentVer.Model()
 	var target core.BlockVersion
 	if req.TargetId != "" {
 		target, ok = p.versions[req.TargetId]
-		if ! ok {
+		if !ok {
 			return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 		}
 	}
@@ -168,32 +168,29 @@ func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
 		Blocks:    []*model.Block{new},
 		ContextId: p.GetId(),
 	}}})
-	p.s.sendEvent(&pb.Event{Message: &pb.EventMessageOfBlockUpdate{BlockUpdate: &pb.EventBlockUpdate{
-		Changes: &pb.ChangeMultipleBlocksList{
-			Changes: []*pb.ChangeSingleBlocksList{
-				{
-					Id: []string{parent.Id},
-					Change: &pb.ChangeSingleBlocksListChangeOfChildrenIds{
-						ChildrenIds: &pb.ChangeBlockChildrenIds{
-							ChildrenIds: parent.ChildrenIds,
-						},
+	p.s.sendEvent(&pb.Event{
+		Message: &pb.EventMessageOfBlockUpdate{
+			BlockUpdate: &pb.EventBlockUpdate{
+				Changes: &pb.Changes{
+					Changes: []*pb.ChangesBlock{
+						// TODO: How to get block.children?
 					},
+					Author: &model.Account{}, // TODO: How to get an Account?
 				},
 			},
 		},
-		ContextId: p.GetId(),
-	}}})
+	})
 	return
 }
 
-func (p *commonSmart) showFullscreen() {
+func (p *commonSmart) show() {
 	blocks := make([]*model.Block, 0, len(p.versions))
 	for _, b := range p.versions {
 		blocks = append(blocks, b.Model())
 	}
 	event := &pb.Event{
-		Message: &pb.EventMessageOfBlockShowFullscreen{
-			BlockShowFullscreen: &pb.EventBlockShowFullscreen{
+		Message: &pb.EventMessageOfBlockShow{
+			BlockShow: &pb.EventBlockShow{
 				RootId: p.GetId(),
 				Blocks: blocks,
 			},

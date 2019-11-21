@@ -36,7 +36,7 @@ func TestService_OpenBlock(t *testing.T) {
 		fx := newFixture(t, accountId)
 		defer fx.tearDown()
 
-		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfDashboard{
+		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockCoreContentOfDashboard{
 			Dashboard: &model.BlockContentDashboard{},
 		}, nil, nil)
 
@@ -59,7 +59,7 @@ func TestService_OpenBlock(t *testing.T) {
 		fx := newFixture(t, accountId)
 		defer fx.tearDown()
 
-		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfPage{
+		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockCoreContentOfPage{
 			Page: &model.BlockContentPage{},
 		}, nil, nil)
 
@@ -82,7 +82,7 @@ func TestService_OpenBlock(t *testing.T) {
 		fx := newFixture(t, accountId)
 		defer fx.tearDown()
 
-		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockContentOfPage{
+		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockCoreContentOfPage{
 			Page: &model.BlockContentPage{},
 		}, nil, nil)
 
@@ -124,13 +124,13 @@ func (fx *fixture) sendEvent(e *pb.Event) {
 	fx.events = append(fx.events, e)
 }
 
-func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockContent, childrenIds []string, db map[string]core.BlockVersion) (b *testMock.MockBlock, v *testMock.MockBlockVersion) {
+func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockCoreContent, childrenIds []string, db map[string]core.BlockVersion) (b *testMock.MockBlock, v *testMock.MockBlockVersion) {
 	if db == nil {
 		db = make(map[string]core.BlockVersion)
 	}
 	v = fx.newMockVersion(&model.Block{
 		Id:          id,
-		Content:     content,
+		Content:     &model.BlockCore{Content: content},
 		ChildrenIds: childrenIds,
 	})
 	v.EXPECT().DependentBlocks().AnyTimes().Return(db)
