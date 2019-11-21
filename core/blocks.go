@@ -33,8 +33,8 @@ func (a *Anytype) GetBlock(id string) (Block, error) {
 }
 
 func isSmartBlock(block *model.Block) bool {
-	switch block.Content.(type) {
-	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
+	switch block.Content.Content.(type) {
+	case *model.BlockCoreContentOfDashboard, *model.BlockCoreContentOfPage:
 		return true
 	default:
 		return false
@@ -42,8 +42,8 @@ func isSmartBlock(block *model.Block) bool {
 }
 
 func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, user string, date *types.Timestamp) BlockVersion {
-	switch block.Content.(type) {
-	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
+	switch block.Content.Content.(type) {
+	case *model.BlockCoreContentOfDashboard, *model.BlockCoreContentOfPage:
 		return &SmartBlockVersion{
 			model: &storage.BlockWithDependentBlocks{
 				Block: block,
@@ -84,9 +84,11 @@ func (a *Anytype) createPredefinedBlocks() error {
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":package:"}},
 				},
 			},
-			Content: &model.BlockContentOfDashboard{
-				Dashboard: &model.BlockContentDashboard{
-					Style: model.BlockContentDashboard_Archive,
+			Content: &model.BlockCore{
+				Content: &model.BlockCoreContentOfDashboard{
+					Dashboard: &model.BlockContentDashboard{
+						Style: model.BlockContentDashboard_Archive,
+					},
 				},
 			},
 		})
@@ -119,9 +121,11 @@ func (a *Anytype) createPredefinedBlocks() error {
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":house:"}},
 				},
 			},
-			Content: &model.BlockContentOfDashboard{
-				Dashboard: &model.BlockContentDashboard{
-					Style: model.BlockContentDashboard_MainScreen,
+			Content: &model.BlockCore{
+				Content: &model.BlockCoreContentOfDashboard{
+					Dashboard: &model.BlockContentDashboard{
+						Style: model.BlockContentDashboard_MainScreen,
+					},
 				},
 			},
 		})
