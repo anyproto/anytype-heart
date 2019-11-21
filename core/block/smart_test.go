@@ -81,7 +81,7 @@ func TestCommonSmart_Create(t *testing.T) {
 
 		req := pb.RpcBlockCreateRequest{
 			Block: &model.Block{
-				Content: &model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}},
+				Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}},
 			},
 			TargetId:  "3",
 			Position:  model.Block_Before,
@@ -89,7 +89,7 @@ func TestCommonSmart_Create(t *testing.T) {
 			ParentId:  "1",
 		}
 		newBlockId := "23"
-		newBlock, _ := fx.newMockBlockWithContent(newBlockId, req.Block.Content, nil, nil)
+		newBlock, _ := fx.newMockBlockWithContent(newBlockId, req.Block.Content.Content, nil, nil)
 		block.EXPECT().NewBlock(*req.Block).Return(newBlock, nil)
 		newBlockVer, _ := newBlock.GetCurrentVersion()
 
