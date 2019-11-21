@@ -91,6 +91,19 @@ func (mw *Middleware) BlockContentUpload(req *pb.RpcBlockActionContentUploadRequ
 	return response(pb.RpcBlockActionContentUploadResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnlinkResponse {
+	response := func(code pb.RpcBlockUnlinkResponseErrorCode, err error) *pb.RpcBlockUnlinkResponse {
+		m := &pb.RpcBlockUnlinkResponse{Error: &pb.RpcBlockUnlinkResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockContentDownload(req *pb.RpcBlockActionContentDownloadRequest) *pb.RpcBlockActionContentDownloadResponse {
 	response := func(code pb.RpcBlockActionContentDownloadResponseErrorCode, err error) *pb.RpcBlockActionContentDownloadResponse {
 		m := &pb.RpcBlockActionContentDownloadResponse{Error: &pb.RpcBlockActionContentDownloadResponseError{Code: code}}

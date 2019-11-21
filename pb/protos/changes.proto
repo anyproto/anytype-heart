@@ -19,12 +19,10 @@ message Changes {
         anytype.model.Block.Permissions permissions = 3;
         ChildrenIds childrenIds = 4;
         bool isArchived = 5;
+        anytype.model.Block.Core content = 6;
 
         message ChildrenIds {
             repeated string childrenIds = 1;
         }
-
-        anytype.model.Block.Core content = 6;
     }
-
 }

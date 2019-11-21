@@ -74,6 +74,11 @@
     - [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request)
     - [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response)
     - [Rpc.Block.Open.Response.Error](#anytype.Rpc.Block.Open.Response.Error)
+    - [Rpc.Block.Unlink](#anytype.Rpc.Block.Unlink)
+    - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
+    - [Rpc.Block.Unlink.Request.Target](#anytype.Rpc.Block.Unlink.Request.Target)
+    - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
+    - [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error)
     - [Rpc.Block.Update](#anytype.Rpc.Block.Update)
     - [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request)
     - [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response)
@@ -126,6 +131,7 @@
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
+    - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
     - [Rpc.Block.Update.Response.Error.Code](#anytype.Rpc.Block.Update.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
@@ -243,6 +249,7 @@
 | BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
 | BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) | TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response); |
 | BlockMarkSet | [Rpc.Block.Action.MarkSet.Request](#anytype.Rpc.Block.Action.MarkSet.Request) | [Rpc.Block.Action.MarkSet.Response](#anytype.Rpc.Block.Action.MarkSet.Response) |  |
+| BlockUnlink | [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request) | [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response) |  |
 | BlockMarksGet | [Rpc.Block.Action.MarksGet.Request](#anytype.Rpc.Block.Action.MarksGet.Request) | [Rpc.Block.Action.MarksGet.Response](#anytype.Rpc.Block.Action.MarksGet.Response) |  |
 | BlocksDrop | [Rpc.Block.Action.BlocksDrop.Request](#anytype.Rpc.Block.Action.BlocksDrop.Request) | [Rpc.Block.Action.BlocksDrop.Response](#anytype.Rpc.Block.Action.BlocksDrop.Response) |  |
 | BlockContentUpload | [Rpc.Block.Action.Content.Upload.Request](#anytype.Rpc.Block.Action.Content.Upload.Request) | [Rpc.Block.Action.Content.Upload.Response](#anytype.Rpc.Block.Action.Content.Upload.Response) |  |
@@ -1119,6 +1126,79 @@ Image/Video/File blocks then:
 
 
 
+<a name="anytype.Rpc.Block.Unlink"></a>
+
+### Rpc.Block.Unlink
+Remove blocks from the childrenIds of its parents
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Request"></a>
+
+### Rpc.Block.Unlink.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
+| targets | [Rpc.Block.Unlink.Request.Target](#anytype.Rpc.Block.Unlink.Request.Target) | repeated | targets to remove |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Request.Target"></a>
+
+### Rpc.Block.Unlink.Request.Target
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetId | [string](#string) |  | id of the block to remove |
+| parentId | [string](#string) |  | id of the parent block |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Response"></a>
+
+### Rpc.Block.Unlink.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Response.Error"></a>
+
+### Rpc.Block.Unlink.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Update"></a>
 
 ### Rpc.Block.Update
@@ -1822,6 +1902,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Open.Response.Error.Code"></a>
 
 ### Rpc.Block.Open.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Response.Error.Code"></a>
+
+### Rpc.Block.Unlink.Response.Error.Code
 
 
 | Name | Number | Description |
