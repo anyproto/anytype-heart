@@ -49,8 +49,8 @@ type BlockVersion interface {
 var ErrorNotSmartBlock = fmt.Errorf("can't retrieve thread for not smart block")
 
 func (anytype *Anytype) getThreadForBlock(b *model.Block) (*tcore.Thread, error) {
-	switch b.Content.(type) {
-	case *model.BlockContentOfPage, *model.BlockContentOfDashboard:
+	switch b.Content.Content.(type) {
+	case *model.BlockCoreContentOfPage, *model.BlockCoreContentOfDashboard:
 		return anytype.Textile.Node().Thread(b.Id), nil
 	default:
 		return nil, ErrorNotSmartBlock

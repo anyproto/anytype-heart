@@ -24,9 +24,9 @@ message Block {
         After = 1;
     }
 
-    BlockContent content = 6;
-    
-    message BlockContent {
+    Core content = 6;
+
+    message Core {
         oneof content {
             Content.Dashboard dashboard = 11;
             Content.Page page = 12;
