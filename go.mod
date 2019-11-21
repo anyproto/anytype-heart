@@ -15,4 +15,3 @@ replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.0.
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
 
-replace github.com/anytypeio/go-anytype-library => ../go-anytype-library
