@@ -24,7 +24,7 @@ message Changes {
             repeated string childrenIds = 1;
         }
 
-        anytype.model.Block.BlockContent content = 6;
+        anytype.model.Block.Core content = 6;
     }
 
 }

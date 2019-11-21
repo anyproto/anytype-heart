@@ -174,14 +174,15 @@
     - [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Image](#anytype.model.Block.Content.Image)
-    - [Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
+    - [Block.Content.Link](#anytype.model.Block.Content.Link)
     - [Block.Content.Page](#anytype.model.Block.Content.Page)
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Content.Video](#anytype.model.Block.Content.Video)
     - [Block.Content.Video.Preview](#anytype.model.Block.Content.Video.Preview)
+    - [Block.Core](#anytype.model.Block.Core)
     - [Block.Permissions](#anytype.model.Block.Permissions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
@@ -190,6 +191,7 @@
     - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
     - [Block.Content.Image.State](#anytype.model.Block.Content.Image.State)
+    - [Block.Content.Image.Type](#anytype.model.Block.Content.Image.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
     - [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
@@ -287,6 +289,7 @@ Changes.Block contains only changed fields of a block
 | permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
 | childrenIds | [Changes.Block.ChildrenIds](#anytype.Changes.Block.ChildrenIds) |  |  |
 | isArchived | [bool](#bool) |  |  |
+| content | [model.Block.Core](#anytype.model.Block.Core) |  |  |
 
 
 
@@ -2309,17 +2312,8 @@ Avatar of a user&#39;s account. It could be an image or color
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | permissions | [Block.Permissions](#anytype.model.Block.Permissions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
-| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
-| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
-| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
-| text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
-| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
-| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
-| file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
-| layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
-| div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
-| bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
-| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
+| isArchived | [bool](#bool) |  |  |
+| content | [Block.Core](#anytype.model.Block.Core) |  |  |
 
 
 
@@ -2367,7 +2361,7 @@ It also can be mounted on a page.
 <a name="anytype.model.Block.Content.Dataview"></a>
 
 ### Block.Content.Dataview
-...
+
 
 
 
@@ -2441,25 +2435,14 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | localFilePath | [string](#string) |  |  |
+| previewFilePath | [string](#string) |  |  |
 | state | [Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
-| preview | [Block.Content.Image.Preview](#anytype.model.Block.Content.Image.Preview) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Image.Preview"></a>
-
-### Block.Content.Image.Preview
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
+| type | [Block.Content.Image.Type](#anytype.model.Block.Content.Image.Type) |  |  |
 | name | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
+| size | [int32](#int32) |  |  |
+| addedAt | [int32](#int32) |  |  |
 | width | [int32](#int32) |  |  |
+| widthToHeight | [int32](#int32) |  |  |
 
 
 
@@ -2476,6 +2459,22 @@ Row/Column layout blocks creates only automatically, after some of a D&amp;D ope
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | style | [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Link"></a>
+
+### Block.Content.Link
+Link: block to link some content from an external sources.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contentId | [string](#string) |  | id of a linked content |
+| isLazyRender | [bool](#bool) |  | Should render internal content by default, or on request only |
 
 
 
@@ -2507,7 +2506,7 @@ Row/Column layout blocks creates only automatically, after some of a D&amp;D ope
 | ----- | ---- | ----- | ----------- |
 | text | [string](#string) |  |  |
 | style | [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
-| marks | [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) | repeated | list of marks to apply to the text |
+| marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
 | toggleable | [bool](#bool) |  | can be toggled or not |
 | marker | [Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
 | checkable | [bool](#bool) |  | can be checked or not |
@@ -2578,6 +2577,32 @@ Row/Column layout blocks creates only automatically, after some of a D&amp;D ope
 | name | [string](#string) |  |  |
 | icon | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Core"></a>
+
+### Block.Core
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
+| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
+| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
+| text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
+| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
+| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
+| file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
+| layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
+| div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
+| bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
+| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
+| link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
 
 
 
@@ -2696,6 +2721,18 @@ General purpose structure, uses in Mark.
 
 
 
+<a name="anytype.model.Block.Content.Image.Type"></a>
+
+### Block.Content.Image.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Png | 0 |  |
+| Jpg | 1 | ... |
+
+
+
 <a name="anytype.model.Block.Content.Layout.Style"></a>
 
 ### Block.Content.Layout.Style
@@ -2732,7 +2769,10 @@ General purpose structure, uses in Mark.
 | Keyboard | 1 |  |
 | Italic | 2 |  |
 | Bold | 3 |  |
-| U | 4 |  |
+| Underscored | 4 |  |
+| Link | 5 |  |
+| TextColor | 6 |  |
+| BackgroundColor | 7 |  |
 
 
 
@@ -2756,11 +2796,11 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| P | 0 |  |
-| H1 | 1 |  |
-| H2 | 2 |  |
-| H3 | 3 |  |
-| U | 4 |  |
+| Paragraph | 0 |  |
+| Header1 | 1 |  |
+| Header2 | 2 |  |
+| Header3 | 3 |  |
+| Header4 | 4 |  |
 | Quote | 5 |  |
 | Code | 6 |  |
 | Title | 7 |  |

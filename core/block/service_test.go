@@ -36,7 +36,7 @@ func TestService_OpenBlock(t *testing.T) {
 		fx := newFixture(t, accountId)
 		defer fx.tearDown()
 
-		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfDashboard{
+		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockCoreContentOfDashboard{
 			Dashboard: &model.BlockContentDashboard{},
 		}, nil, nil)
 
@@ -59,7 +59,7 @@ func TestService_OpenBlock(t *testing.T) {
 		fx := newFixture(t, accountId)
 		defer fx.tearDown()
 
-		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfPage{
+		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockCoreContentOfPage{
 			Page: &model.BlockContentPage{},
 		}, nil, nil)
 
@@ -82,7 +82,7 @@ func TestService_OpenBlock(t *testing.T) {
 		fx := newFixture(t, accountId)
 		defer fx.tearDown()
 
-		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockContentOfPage{
+		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockCoreContentOfPage{
 			Page: &model.BlockContentPage{},
 		}, nil, nil)
 
