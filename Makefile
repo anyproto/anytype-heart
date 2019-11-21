@@ -72,6 +72,7 @@ protos_deps:
 	mkdir -p vendor/github.com/anytypeio/go-anytype-library/
 	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
 
+
 protos: protos_deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)

@@ -23,7 +23,7 @@ func (p *dashboard) Init() {
 		// virtually add testpage to home screen
 		p.addTestPage()
 	}
-	p.showFullscreen()
+	p.show()
 }
 
 func (p *dashboard) addTestPage() {
@@ -36,9 +36,9 @@ func (p *dashboard) addTestPage() {
 			},
 		},
 		ChildrenIds: []string{},
-		Content: &model.BlockContentOfPage{
+		Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{
 			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
-		},
+		}},
 	}}
 	p.versions[p.block.GetId()].Model().ChildrenIds = append(p.versions[p.block.GetId()].Model().ChildrenIds, testPageId)
 }

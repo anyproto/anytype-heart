@@ -166,6 +166,146 @@ func (RpcBlockCloseResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 4, 1, 0, 0}
 }
 
+type RpcBlockActionMarkSetResponseErrorCode int32
+
+const (
+	RpcBlockActionMarkSetResponseError_NULL          RpcBlockActionMarkSetResponseErrorCode = 0
+	RpcBlockActionMarkSetResponseError_UNKNOWN_ERROR RpcBlockActionMarkSetResponseErrorCode = 1
+	RpcBlockActionMarkSetResponseError_BAD_INPUT     RpcBlockActionMarkSetResponseErrorCode = 2
+)
+
+var RpcBlockActionMarkSetResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockActionMarkSetResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockActionMarkSetResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockActionMarkSetResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockActionMarkSetResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 0, 1, 0, 0}
+}
+
+type RpcBlockActionMarksGetResponseErrorCode int32
+
+const (
+	RpcBlockActionMarksGetResponseError_NULL          RpcBlockActionMarksGetResponseErrorCode = 0
+	RpcBlockActionMarksGetResponseError_UNKNOWN_ERROR RpcBlockActionMarksGetResponseErrorCode = 1
+	RpcBlockActionMarksGetResponseError_BAD_INPUT     RpcBlockActionMarksGetResponseErrorCode = 2
+)
+
+var RpcBlockActionMarksGetResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockActionMarksGetResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockActionMarksGetResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockActionMarksGetResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockActionMarksGetResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 1, 1, 0, 0}
+}
+
+type RpcBlockActionBlocksDropResponseErrorCode int32
+
+const (
+	RpcBlockActionBlocksDropResponseError_NULL          RpcBlockActionBlocksDropResponseErrorCode = 0
+	RpcBlockActionBlocksDropResponseError_UNKNOWN_ERROR RpcBlockActionBlocksDropResponseErrorCode = 1
+	RpcBlockActionBlocksDropResponseError_BAD_INPUT     RpcBlockActionBlocksDropResponseErrorCode = 2
+)
+
+var RpcBlockActionBlocksDropResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockActionBlocksDropResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockActionBlocksDropResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockActionBlocksDropResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockActionBlocksDropResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 2, 1, 0, 0}
+}
+
+type RpcBlockActionContentUploadResponseErrorCode int32
+
+const (
+	RpcBlockActionContentUploadResponseError_NULL          RpcBlockActionContentUploadResponseErrorCode = 0
+	RpcBlockActionContentUploadResponseError_UNKNOWN_ERROR RpcBlockActionContentUploadResponseErrorCode = 1
+	RpcBlockActionContentUploadResponseError_BAD_INPUT     RpcBlockActionContentUploadResponseErrorCode = 2
+)
+
+var RpcBlockActionContentUploadResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockActionContentUploadResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockActionContentUploadResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockActionContentUploadResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockActionContentUploadResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 0, 1, 0, 0}
+}
+
+type RpcBlockActionContentDownloadResponseErrorCode int32
+
+const (
+	RpcBlockActionContentDownloadResponseError_NULL          RpcBlockActionContentDownloadResponseErrorCode = 0
+	RpcBlockActionContentDownloadResponseError_UNKNOWN_ERROR RpcBlockActionContentDownloadResponseErrorCode = 1
+	RpcBlockActionContentDownloadResponseError_BAD_INPUT     RpcBlockActionContentDownloadResponseErrorCode = 2
+)
+
+var RpcBlockActionContentDownloadResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockActionContentDownloadResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockActionContentDownloadResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockActionContentDownloadResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockActionContentDownloadResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 1, 1, 0, 0}
+}
+
 type RpcWalletCreateResponseErrorCode int32
 
 const (
@@ -1390,8 +1530,8 @@ func (m *RpcBlockUpdate) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockUpdate proto.InternalMessageInfo
 
 type RpcBlockUpdateRequest struct {
-	Changes   *ChangeMultipleBlocksList `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
-	ContextId string                    `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	Changes   *Changes `protobuf:"bytes,1,opt,name=changes,proto3" json:"changes,omitempty"`
+	ContextId string   `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
 }
 
 func (m *RpcBlockUpdateRequest) Reset()         { *m = RpcBlockUpdateRequest{} }
@@ -1427,7 +1567,7 @@ func (m *RpcBlockUpdateRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockUpdateRequest proto.InternalMessageInfo
 
-func (m *RpcBlockUpdateRequest) GetChanges() *ChangeMultipleBlocksList {
+func (m *RpcBlockUpdateRequest) GetChanges() *Changes {
 	if m != nil {
 		return m.Changes
 	}
@@ -1718,6 +1858,1064 @@ func (m *RpcBlockCloseResponseError) GetCode() RpcBlockCloseResponseErrorCode {
 }
 
 func (m *RpcBlockCloseResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+type RpcBlockAction struct {
+}
+
+func (m *RpcBlockAction) Reset()         { *m = RpcBlockAction{} }
+func (m *RpcBlockAction) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockAction) ProtoMessage()    {}
+func (*RpcBlockAction) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5}
+}
+func (m *RpcBlockAction) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockAction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockAction.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockAction) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockAction.Merge(m, src)
+}
+func (m *RpcBlockAction) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockAction) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockAction.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockAction proto.InternalMessageInfo
+
+//
+// Set mark to the selected range in the text block.
+type RpcBlockActionMarkSet struct {
+}
+
+func (m *RpcBlockActionMarkSet) Reset()         { *m = RpcBlockActionMarkSet{} }
+func (m *RpcBlockActionMarkSet) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarkSet) ProtoMessage()    {}
+func (*RpcBlockActionMarkSet) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 0}
+}
+func (m *RpcBlockActionMarkSet) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarkSet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarkSet.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarkSet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarkSet.Merge(m, src)
+}
+func (m *RpcBlockActionMarkSet) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarkSet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarkSet.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarkSet proto.InternalMessageInfo
+
+type RpcBlockActionMarkSetRequest struct {
+	ContextId string                         `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	TargetId  string                         `protobuf:"bytes,2,opt,name=targetId,proto3" json:"targetId,omitempty"`
+	Range     *model.Range                   `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
+	Type      model.BlockContentTextMarkType `protobuf:"varint,4,opt,name=type,proto3,enum=anytype.model.BlockContentTextMarkType" json:"type,omitempty"`
+}
+
+func (m *RpcBlockActionMarkSetRequest) Reset()         { *m = RpcBlockActionMarkSetRequest{} }
+func (m *RpcBlockActionMarkSetRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarkSetRequest) ProtoMessage()    {}
+func (*RpcBlockActionMarkSetRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 0, 0}
+}
+func (m *RpcBlockActionMarkSetRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarkSetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarkSetRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarkSetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarkSetRequest.Merge(m, src)
+}
+func (m *RpcBlockActionMarkSetRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarkSetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarkSetRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarkSetRequest proto.InternalMessageInfo
+
+func (m *RpcBlockActionMarkSetRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionMarkSetRequest) GetTargetId() string {
+	if m != nil {
+		return m.TargetId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionMarkSetRequest) GetRange() *model.Range {
+	if m != nil {
+		return m.Range
+	}
+	return nil
+}
+
+func (m *RpcBlockActionMarkSetRequest) GetType() model.BlockContentTextMarkType {
+	if m != nil {
+		return m.Type
+	}
+	return model.BlockContentTextMark_Strikethrough
+}
+
+type RpcBlockActionMarkSetResponse struct {
+	Error *RpcBlockActionMarkSetResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockActionMarkSetResponse) Reset()         { *m = RpcBlockActionMarkSetResponse{} }
+func (m *RpcBlockActionMarkSetResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarkSetResponse) ProtoMessage()    {}
+func (*RpcBlockActionMarkSetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 0, 1}
+}
+func (m *RpcBlockActionMarkSetResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarkSetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarkSetResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarkSetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarkSetResponse.Merge(m, src)
+}
+func (m *RpcBlockActionMarkSetResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarkSetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarkSetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarkSetResponse proto.InternalMessageInfo
+
+func (m *RpcBlockActionMarkSetResponse) GetError() *RpcBlockActionMarkSetResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockActionMarkSetResponseError struct {
+	Code        RpcBlockActionMarkSetResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockActionMarkSetResponseErrorCode" json:"code,omitempty"`
+	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockActionMarkSetResponseError) Reset()         { *m = RpcBlockActionMarkSetResponseError{} }
+func (m *RpcBlockActionMarkSetResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarkSetResponseError) ProtoMessage()    {}
+func (*RpcBlockActionMarkSetResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 0, 1, 0}
+}
+func (m *RpcBlockActionMarkSetResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarkSetResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarkSetResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarkSetResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarkSetResponseError.Merge(m, src)
+}
+func (m *RpcBlockActionMarkSetResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarkSetResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarkSetResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarkSetResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockActionMarkSetResponseError) GetCode() RpcBlockActionMarkSetResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockActionMarkSetResponseError_NULL
+}
+
+func (m *RpcBlockActionMarkSetResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+//
+// Get marks list in the selected range in text block.
+type RpcBlockActionMarksGet struct {
+}
+
+func (m *RpcBlockActionMarksGet) Reset()         { *m = RpcBlockActionMarksGet{} }
+func (m *RpcBlockActionMarksGet) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarksGet) ProtoMessage()    {}
+func (*RpcBlockActionMarksGet) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 1}
+}
+func (m *RpcBlockActionMarksGet) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarksGet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarksGet.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarksGet) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarksGet.Merge(m, src)
+}
+func (m *RpcBlockActionMarksGet) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarksGet) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarksGet.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarksGet proto.InternalMessageInfo
+
+type RpcBlockActionMarksGetRequest struct {
+	ContextId string       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	TargetId  string       `protobuf:"bytes,2,opt,name=targetId,proto3" json:"targetId,omitempty"`
+	Range     *model.Range `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
+}
+
+func (m *RpcBlockActionMarksGetRequest) Reset()         { *m = RpcBlockActionMarksGetRequest{} }
+func (m *RpcBlockActionMarksGetRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarksGetRequest) ProtoMessage()    {}
+func (*RpcBlockActionMarksGetRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 1, 0}
+}
+func (m *RpcBlockActionMarksGetRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarksGetRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarksGetRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarksGetRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarksGetRequest.Merge(m, src)
+}
+func (m *RpcBlockActionMarksGetRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarksGetRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarksGetRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarksGetRequest proto.InternalMessageInfo
+
+func (m *RpcBlockActionMarksGetRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionMarksGetRequest) GetTargetId() string {
+	if m != nil {
+		return m.TargetId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionMarksGetRequest) GetRange() *model.Range {
+	if m != nil {
+		return m.Range
+	}
+	return nil
+}
+
+type RpcBlockActionMarksGetResponse struct {
+	Error *RpcBlockActionMarksGetResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockActionMarksGetResponse) Reset()         { *m = RpcBlockActionMarksGetResponse{} }
+func (m *RpcBlockActionMarksGetResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarksGetResponse) ProtoMessage()    {}
+func (*RpcBlockActionMarksGetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 1, 1}
+}
+func (m *RpcBlockActionMarksGetResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarksGetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarksGetResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarksGetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarksGetResponse.Merge(m, src)
+}
+func (m *RpcBlockActionMarksGetResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarksGetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarksGetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarksGetResponse proto.InternalMessageInfo
+
+func (m *RpcBlockActionMarksGetResponse) GetError() *RpcBlockActionMarksGetResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockActionMarksGetResponseError struct {
+	Code        RpcBlockActionMarksGetResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockActionMarksGetResponseErrorCode" json:"code,omitempty"`
+	Description string                                  `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockActionMarksGetResponseError) Reset()         { *m = RpcBlockActionMarksGetResponseError{} }
+func (m *RpcBlockActionMarksGetResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionMarksGetResponseError) ProtoMessage()    {}
+func (*RpcBlockActionMarksGetResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 1, 1, 0}
+}
+func (m *RpcBlockActionMarksGetResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionMarksGetResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionMarksGetResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionMarksGetResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionMarksGetResponseError.Merge(m, src)
+}
+func (m *RpcBlockActionMarksGetResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionMarksGetResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionMarksGetResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionMarksGetResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockActionMarksGetResponseError) GetCode() RpcBlockActionMarksGetResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockActionMarksGetResponseError_NULL
+}
+
+func (m *RpcBlockActionMarksGetResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+type RpcBlockActionBlocksDrop struct {
+}
+
+func (m *RpcBlockActionBlocksDrop) Reset()         { *m = RpcBlockActionBlocksDrop{} }
+func (m *RpcBlockActionBlocksDrop) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionBlocksDrop) ProtoMessage()    {}
+func (*RpcBlockActionBlocksDrop) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 2}
+}
+func (m *RpcBlockActionBlocksDrop) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionBlocksDrop) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionBlocksDrop.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionBlocksDrop) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionBlocksDrop.Merge(m, src)
+}
+func (m *RpcBlockActionBlocksDrop) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionBlocksDrop) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionBlocksDrop.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionBlocksDrop proto.InternalMessageInfo
+
+type RpcBlockActionBlocksDropRequest struct {
+	ContextId string              `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	TargetId  string              `protobuf:"bytes,2,opt,name=targetId,proto3" json:"targetId,omitempty"`
+	BlocksId  []string            `protobuf:"bytes,3,rep,name=blocksId,proto3" json:"blocksId,omitempty"`
+	Position  model.BlockPosition `protobuf:"varint,4,opt,name=position,proto3,enum=anytype.model.BlockPosition" json:"position,omitempty"`
+}
+
+func (m *RpcBlockActionBlocksDropRequest) Reset()         { *m = RpcBlockActionBlocksDropRequest{} }
+func (m *RpcBlockActionBlocksDropRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionBlocksDropRequest) ProtoMessage()    {}
+func (*RpcBlockActionBlocksDropRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 2, 0}
+}
+func (m *RpcBlockActionBlocksDropRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionBlocksDropRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionBlocksDropRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionBlocksDropRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionBlocksDropRequest.Merge(m, src)
+}
+func (m *RpcBlockActionBlocksDropRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionBlocksDropRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionBlocksDropRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionBlocksDropRequest proto.InternalMessageInfo
+
+func (m *RpcBlockActionBlocksDropRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionBlocksDropRequest) GetTargetId() string {
+	if m != nil {
+		return m.TargetId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionBlocksDropRequest) GetBlocksId() []string {
+	if m != nil {
+		return m.BlocksId
+	}
+	return nil
+}
+
+func (m *RpcBlockActionBlocksDropRequest) GetPosition() model.BlockPosition {
+	if m != nil {
+		return m.Position
+	}
+	return model.Block_Before
+}
+
+type RpcBlockActionBlocksDropResponse struct {
+	Error *RpcBlockActionBlocksDropResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockActionBlocksDropResponse) Reset()         { *m = RpcBlockActionBlocksDropResponse{} }
+func (m *RpcBlockActionBlocksDropResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionBlocksDropResponse) ProtoMessage()    {}
+func (*RpcBlockActionBlocksDropResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 2, 1}
+}
+func (m *RpcBlockActionBlocksDropResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionBlocksDropResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionBlocksDropResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionBlocksDropResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionBlocksDropResponse.Merge(m, src)
+}
+func (m *RpcBlockActionBlocksDropResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionBlocksDropResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionBlocksDropResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionBlocksDropResponse proto.InternalMessageInfo
+
+func (m *RpcBlockActionBlocksDropResponse) GetError() *RpcBlockActionBlocksDropResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockActionBlocksDropResponseError struct {
+	Code        RpcBlockActionBlocksDropResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockActionBlocksDropResponseErrorCode" json:"code,omitempty"`
+	Description string                                    `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockActionBlocksDropResponseError) Reset()         { *m = RpcBlockActionBlocksDropResponseError{} }
+func (m *RpcBlockActionBlocksDropResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionBlocksDropResponseError) ProtoMessage()    {}
+func (*RpcBlockActionBlocksDropResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 2, 1, 0}
+}
+func (m *RpcBlockActionBlocksDropResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionBlocksDropResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionBlocksDropResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionBlocksDropResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionBlocksDropResponseError.Merge(m, src)
+}
+func (m *RpcBlockActionBlocksDropResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionBlocksDropResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionBlocksDropResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionBlocksDropResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockActionBlocksDropResponseError) GetCode() RpcBlockActionBlocksDropResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockActionBlocksDropResponseError_NULL
+}
+
+func (m *RpcBlockActionBlocksDropResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+type RpcBlockActionContent struct {
+}
+
+func (m *RpcBlockActionContent) Reset()         { *m = RpcBlockActionContent{} }
+func (m *RpcBlockActionContent) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContent) ProtoMessage()    {}
+func (*RpcBlockActionContent) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3}
+}
+func (m *RpcBlockActionContent) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContent) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContent.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContent) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContent.Merge(m, src)
+}
+func (m *RpcBlockActionContent) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContent) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContent.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContent proto.InternalMessageInfo
+
+type RpcBlockActionContentUpload struct {
+}
+
+func (m *RpcBlockActionContentUpload) Reset()         { *m = RpcBlockActionContentUpload{} }
+func (m *RpcBlockActionContentUpload) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContentUpload) ProtoMessage()    {}
+func (*RpcBlockActionContentUpload) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 0}
+}
+func (m *RpcBlockActionContentUpload) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentUpload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentUpload.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentUpload) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentUpload.Merge(m, src)
+}
+func (m *RpcBlockActionContentUpload) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentUpload) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentUpload.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentUpload proto.InternalMessageInfo
+
+type RpcBlockActionContentUploadRequest struct {
+	LocalPath string `protobuf:"bytes,1,opt,name=localPath,proto3" json:"localPath,omitempty"`
+	Url       string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	TargetId  string `protobuf:"bytes,3,opt,name=targetId,proto3" json:"targetId,omitempty"`
+	ContextId string `protobuf:"bytes,4,opt,name=contextId,proto3" json:"contextId,omitempty"`
+}
+
+func (m *RpcBlockActionContentUploadRequest) Reset()         { *m = RpcBlockActionContentUploadRequest{} }
+func (m *RpcBlockActionContentUploadRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContentUploadRequest) ProtoMessage()    {}
+func (*RpcBlockActionContentUploadRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 0, 0}
+}
+func (m *RpcBlockActionContentUploadRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentUploadRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentUploadRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentUploadRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentUploadRequest.Merge(m, src)
+}
+func (m *RpcBlockActionContentUploadRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentUploadRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentUploadRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentUploadRequest proto.InternalMessageInfo
+
+func (m *RpcBlockActionContentUploadRequest) GetLocalPath() string {
+	if m != nil {
+		return m.LocalPath
+	}
+	return ""
+}
+
+func (m *RpcBlockActionContentUploadRequest) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+func (m *RpcBlockActionContentUploadRequest) GetTargetId() string {
+	if m != nil {
+		return m.TargetId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionContentUploadRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+type RpcBlockActionContentUploadResponse struct {
+	Error *RpcBlockActionContentUploadResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockActionContentUploadResponse) Reset()         { *m = RpcBlockActionContentUploadResponse{} }
+func (m *RpcBlockActionContentUploadResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContentUploadResponse) ProtoMessage()    {}
+func (*RpcBlockActionContentUploadResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 0, 1}
+}
+func (m *RpcBlockActionContentUploadResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentUploadResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentUploadResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentUploadResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentUploadResponse.Merge(m, src)
+}
+func (m *RpcBlockActionContentUploadResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentUploadResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentUploadResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentUploadResponse proto.InternalMessageInfo
+
+func (m *RpcBlockActionContentUploadResponse) GetError() *RpcBlockActionContentUploadResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockActionContentUploadResponseError struct {
+	Code        RpcBlockActionContentUploadResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockActionContentUploadResponseErrorCode" json:"code,omitempty"`
+	Description string                                       `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockActionContentUploadResponseError) Reset() {
+	*m = RpcBlockActionContentUploadResponseError{}
+}
+func (m *RpcBlockActionContentUploadResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContentUploadResponseError) ProtoMessage()    {}
+func (*RpcBlockActionContentUploadResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 0, 1, 0}
+}
+func (m *RpcBlockActionContentUploadResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentUploadResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentUploadResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentUploadResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentUploadResponseError.Merge(m, src)
+}
+func (m *RpcBlockActionContentUploadResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentUploadResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentUploadResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentUploadResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockActionContentUploadResponseError) GetCode() RpcBlockActionContentUploadResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockActionContentUploadResponseError_NULL
+}
+
+func (m *RpcBlockActionContentUploadResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+type RpcBlockActionContentDownload struct {
+}
+
+func (m *RpcBlockActionContentDownload) Reset()         { *m = RpcBlockActionContentDownload{} }
+func (m *RpcBlockActionContentDownload) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContentDownload) ProtoMessage()    {}
+func (*RpcBlockActionContentDownload) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 1}
+}
+func (m *RpcBlockActionContentDownload) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentDownload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentDownload.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentDownload) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentDownload.Merge(m, src)
+}
+func (m *RpcBlockActionContentDownload) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentDownload) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentDownload.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentDownload proto.InternalMessageInfo
+
+type RpcBlockActionContentDownloadRequest struct {
+	TargetId  string `protobuf:"bytes,1,opt,name=targetId,proto3" json:"targetId,omitempty"`
+	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+}
+
+func (m *RpcBlockActionContentDownloadRequest) Reset()         { *m = RpcBlockActionContentDownloadRequest{} }
+func (m *RpcBlockActionContentDownloadRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContentDownloadRequest) ProtoMessage()    {}
+func (*RpcBlockActionContentDownloadRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 1, 0}
+}
+func (m *RpcBlockActionContentDownloadRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentDownloadRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentDownloadRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentDownloadRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentDownloadRequest.Merge(m, src)
+}
+func (m *RpcBlockActionContentDownloadRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentDownloadRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentDownloadRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentDownloadRequest proto.InternalMessageInfo
+
+func (m *RpcBlockActionContentDownloadRequest) GetTargetId() string {
+	if m != nil {
+		return m.TargetId
+	}
+	return ""
+}
+
+func (m *RpcBlockActionContentDownloadRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+type RpcBlockActionContentDownloadResponse struct {
+	Error *RpcBlockActionContentDownloadResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockActionContentDownloadResponse) Reset()         { *m = RpcBlockActionContentDownloadResponse{} }
+func (m *RpcBlockActionContentDownloadResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockActionContentDownloadResponse) ProtoMessage()    {}
+func (*RpcBlockActionContentDownloadResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 1, 1}
+}
+func (m *RpcBlockActionContentDownloadResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentDownloadResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentDownloadResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentDownloadResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentDownloadResponse.Merge(m, src)
+}
+func (m *RpcBlockActionContentDownloadResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentDownloadResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentDownloadResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentDownloadResponse proto.InternalMessageInfo
+
+func (m *RpcBlockActionContentDownloadResponse) GetError() *RpcBlockActionContentDownloadResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockActionContentDownloadResponseError struct {
+	Code        RpcBlockActionContentDownloadResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockActionContentDownloadResponseErrorCode" json:"code,omitempty"`
+	Description string                                         `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockActionContentDownloadResponseError) Reset() {
+	*m = RpcBlockActionContentDownloadResponseError{}
+}
+func (m *RpcBlockActionContentDownloadResponseError) String() string {
+	return proto.CompactTextString(m)
+}
+func (*RpcBlockActionContentDownloadResponseError) ProtoMessage() {}
+func (*RpcBlockActionContentDownloadResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 5, 3, 1, 1, 0}
+}
+func (m *RpcBlockActionContentDownloadResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockActionContentDownloadResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockActionContentDownloadResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockActionContentDownloadResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockActionContentDownloadResponseError.Merge(m, src)
+}
+func (m *RpcBlockActionContentDownloadResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockActionContentDownloadResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockActionContentDownloadResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockActionContentDownloadResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockActionContentDownloadResponseError) GetCode() RpcBlockActionContentDownloadResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockActionContentDownloadResponseError_NULL
+}
+
+func (m *RpcBlockActionContentDownloadResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
@@ -4169,6 +5367,11 @@ func init() {
 	proto.RegisterEnum("anytype.RpcBlockCreateResponseErrorCode", RpcBlockCreateResponseErrorCode_name, RpcBlockCreateResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockUpdateResponseErrorCode", RpcBlockUpdateResponseErrorCode_name, RpcBlockUpdateResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockCloseResponseErrorCode", RpcBlockCloseResponseErrorCode_name, RpcBlockCloseResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockActionMarkSetResponseErrorCode", RpcBlockActionMarkSetResponseErrorCode_name, RpcBlockActionMarkSetResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockActionMarksGetResponseErrorCode", RpcBlockActionMarksGetResponseErrorCode_name, RpcBlockActionMarksGetResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockActionBlocksDropResponseErrorCode", RpcBlockActionBlocksDropResponseErrorCode_name, RpcBlockActionBlocksDropResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockActionContentUploadResponseErrorCode", RpcBlockActionContentUploadResponseErrorCode_name, RpcBlockActionContentUploadResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockActionContentDownloadResponseErrorCode", RpcBlockActionContentDownloadResponseErrorCode_name, RpcBlockActionContentDownloadResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcWalletCreateResponseErrorCode", RpcWalletCreateResponseErrorCode_name, RpcWalletCreateResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcWalletRecoverResponseErrorCode", RpcWalletRecoverResponseErrorCode_name, RpcWalletRecoverResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcAccountCreateResponseErrorCode", RpcAccountCreateResponseErrorCode_name, RpcAccountCreateResponseErrorCode_value)
@@ -4204,6 +5407,28 @@ func init() {
 	proto.RegisterType((*RpcBlockCloseRequest)(nil), "anytype.Rpc.Block.Close.Request")
 	proto.RegisterType((*RpcBlockCloseResponse)(nil), "anytype.Rpc.Block.Close.Response")
 	proto.RegisterType((*RpcBlockCloseResponseError)(nil), "anytype.Rpc.Block.Close.Response.Error")
+	proto.RegisterType((*RpcBlockAction)(nil), "anytype.Rpc.Block.Action")
+	proto.RegisterType((*RpcBlockActionMarkSet)(nil), "anytype.Rpc.Block.Action.MarkSet")
+	proto.RegisterType((*RpcBlockActionMarkSetRequest)(nil), "anytype.Rpc.Block.Action.MarkSet.Request")
+	proto.RegisterType((*RpcBlockActionMarkSetResponse)(nil), "anytype.Rpc.Block.Action.MarkSet.Response")
+	proto.RegisterType((*RpcBlockActionMarkSetResponseError)(nil), "anytype.Rpc.Block.Action.MarkSet.Response.Error")
+	proto.RegisterType((*RpcBlockActionMarksGet)(nil), "anytype.Rpc.Block.Action.MarksGet")
+	proto.RegisterType((*RpcBlockActionMarksGetRequest)(nil), "anytype.Rpc.Block.Action.MarksGet.Request")
+	proto.RegisterType((*RpcBlockActionMarksGetResponse)(nil), "anytype.Rpc.Block.Action.MarksGet.Response")
+	proto.RegisterType((*RpcBlockActionMarksGetResponseError)(nil), "anytype.Rpc.Block.Action.MarksGet.Response.Error")
+	proto.RegisterType((*RpcBlockActionBlocksDrop)(nil), "anytype.Rpc.Block.Action.BlocksDrop")
+	proto.RegisterType((*RpcBlockActionBlocksDropRequest)(nil), "anytype.Rpc.Block.Action.BlocksDrop.Request")
+	proto.RegisterType((*RpcBlockActionBlocksDropResponse)(nil), "anytype.Rpc.Block.Action.BlocksDrop.Response")
+	proto.RegisterType((*RpcBlockActionBlocksDropResponseError)(nil), "anytype.Rpc.Block.Action.BlocksDrop.Response.Error")
+	proto.RegisterType((*RpcBlockActionContent)(nil), "anytype.Rpc.Block.Action.Content")
+	proto.RegisterType((*RpcBlockActionContentUpload)(nil), "anytype.Rpc.Block.Action.Content.Upload")
+	proto.RegisterType((*RpcBlockActionContentUploadRequest)(nil), "anytype.Rpc.Block.Action.Content.Upload.Request")
+	proto.RegisterType((*RpcBlockActionContentUploadResponse)(nil), "anytype.Rpc.Block.Action.Content.Upload.Response")
+	proto.RegisterType((*RpcBlockActionContentUploadResponseError)(nil), "anytype.Rpc.Block.Action.Content.Upload.Response.Error")
+	proto.RegisterType((*RpcBlockActionContentDownload)(nil), "anytype.Rpc.Block.Action.Content.Download")
+	proto.RegisterType((*RpcBlockActionContentDownloadRequest)(nil), "anytype.Rpc.Block.Action.Content.Download.Request")
+	proto.RegisterType((*RpcBlockActionContentDownloadResponse)(nil), "anytype.Rpc.Block.Action.Content.Download.Response")
+	proto.RegisterType((*RpcBlockActionContentDownloadResponseError)(nil), "anytype.Rpc.Block.Action.Content.Download.Response.Error")
 	proto.RegisterType((*RpcWallet)(nil), "anytype.Rpc.Wallet")
 	proto.RegisterType((*RpcWalletCreate)(nil), "anytype.Rpc.Wallet.Create")
 	proto.RegisterType((*RpcWalletCreateRequest)(nil), "anytype.Rpc.Wallet.Create.Request")
@@ -4262,115 +5487,135 @@ func init() {
 func init() { proto.RegisterFile("pb/protos/commands.proto", fileDescriptor_8261c968b2e6f45c) }
 
 var fileDescriptor_8261c968b2e6f45c = []byte{
-	// 1724 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x99, 0x5d, 0x8c, 0xe3, 0x56,
-	0x15, 0xc7, 0x27, 0x8e, 0xf3, 0x75, 0x66, 0x77, 0x71, 0xad, 0xa5, 0x4c, 0x2f, 0xcb, 0x74, 0xb5,
-	0x85, 0xb2, 0xdd, 0x76, 0x9d, 0x6a, 0x0a, 0x42, 0x45, 0x2c, 0xad, 0xe3, 0x38, 0x33, 0xa6, 0x89,
-	0x1d, 0xdd, 0x38, 0xb3, 0xc0, 0x8b, 0xe5, 0x24, 0x77, 0x32, 0x06, 0xc7, 0x37, 0xd8, 0xde, 0x29,
-	0xdb, 0x37, 0x1e, 0x10, 0x48, 0x7d, 0x01, 0x24, 0x9e, 0x8a, 0x0a, 0xaf, 0x40, 0xf9, 0x78, 0x41,
-	0x45, 0x48, 0x08, 0x09, 0x10, 0x02, 0x24, 0xa4, 0x02, 0x12, 0x42, 0x42, 0xa0, 0x76, 0xf7, 0x09,
-	0x15, 0x1e, 0x79, 0xe0, 0x05, 0x21, 0x7f, 0x25, 0xf6, 0x34, 0xc9, 0x3a, 0xd1, 0x8e, 0xb6, 0x6f,
-	0xb9, 0xd7, 0xd7, 0xe7, 0x9c, 0xfb, 0xfb, 0x9f, 0x73, 0x7d, 0xef, 0x0d, 0xec, 0x4c, 0x07, 0xf5,
-	0xa9, 0x4b, 0x7d, 0xea, 0xd5, 0x87, 0x74, 0x32, 0x31, 0x9d, 0x91, 0x27, 0x84, 0x6d, 0xbe, 0x62,
-	0x3a, 0xb7, 0xfd, 0xdb, 0x53, 0x82, 0x5e, 0x38, 0x21, 0xce, 0x88, 0xba, 0xf5, 0xb1, 0xe5, 0x1f,
-	0xdf, 0x1a, 0x08, 0x43, 0x3a, 0xa9, 0xc7, 0x8f, 0x2c, 0x5a, 0x1f, 0xd3, 0xeb, 0x71, 0xe3, 0xba,
-	0x6d, 0x0d, 0x5c, 0xd3, 0xbd, 0x5d, 0x9f, 0x0e, 0xea, 0x13, 0x3a, 0x22, 0x76, 0x62, 0x37, 0x6c,
-	0xc4, 0x56, 0xd1, 0xfb, 0x52, 0xfe, 0x8e, 0x4d, 0x67, 0x4c, 0xe2, 0x07, 0x57, 0x5e, 0xde, 0x83,
-	0x22, 0x9e, 0x0e, 0xd1, 0x8f, 0x2e, 0x40, 0xa9, 0x61, 0xd3, 0xe1, 0xe7, 0xd1, 0x97, 0x8b, 0x50,
-	0x39, 0xb0, 0x3c, 0x9f, 0xba, 0xb7, 0xd1, 0x7f, 0x19, 0x60, 0x3b, 0xf4, 0x84, 0xa0, 0x21, 0x54,
-	0x30, 0xf9, 0xc2, 0x2d, 0xe2, 0xf9, 0xfc, 0x0e, 0x54, 0x06, 0xc1, 0x40, 0x65, 0xb4, 0x53, 0xb8,
-	0x5c, 0xb8, 0x5a, 0xc3, 0x49, 0x93, 0xbf, 0x0c, 0xdb, 0x13, 0x7a, 0x42, 0x5a, 0xd4, 0x7d, 0xd1,
-	0x74, 0x47, 0x3b, 0xcc, 0xe5, 0xc2, 0xd5, 0x2a, 0x4e, 0x77, 0xf1, 0x97, 0xa0, 0x36, 0xa4, 0x8e,
-	0x4f, 0xbe, 0xe8, 0x2b, 0xa3, 0x9d, 0x62, 0xf8, 0xf6, 0xbc, 0x03, 0xbd, 0xcc, 0x40, 0x15, 0x13,
-	0x6f, 0x4a, 0x1d, 0x8f, 0xf0, 0x4d, 0x28, 0x11, 0xd7, 0xa5, 0x6e, 0xe8, 0x64, 0x7b, 0x4f, 0x10,
-	0xe2, 0xf9, 0x0a, 0x78, 0x3a, 0x14, 0xc2, 0x48, 0x85, 0x38, 0x4a, 0x21, 0x88, 0x50, 0x48, 0x5e,
-	0x14, 0xe4, 0xe0, 0x2d, 0x1c, 0xbd, 0x8c, 0x7e, 0x5a, 0x80, 0x52, 0xd8, 0xc1, 0xef, 0x03, 0x3b,
-	0xa4, 0x23, 0x12, 0x9a, 0xbb, 0xb0, 0xf7, 0xcc, 0x7a, 0xe6, 0x04, 0x89, 0x8e, 0x08, 0x0e, 0x0d,
-	0x04, 0xb3, 0x1c, 0x11, 0x6f, 0xe8, 0x5a, 0x53, 0xdf, 0xa2, 0x4e, 0x38, 0xcb, 0x1a, 0x4e, 0x77,
-	0x5d, 0x69, 0x02, 0x1b, 0x8c, 0xe7, 0xab, 0xc0, 0xaa, 0xfd, 0x76, 0x9b, 0xdb, 0xe2, 0x1f, 0x82,
-	0xf3, 0x7d, 0xf5, 0x05, 0x55, 0xbb, 0xa9, 0x1a, 0x32, 0xc6, 0x1a, 0xe6, 0x0a, 0xfc, 0x79, 0xa8,
-	0x35, 0xc4, 0xa6, 0xa1, 0xa8, 0xdd, 0xbe, 0xce, 0x31, 0x3c, 0x07, 0xe7, 0x24, 0x51, 0x35, 0x54,
-	0x4d, 0x37, 0x3a, 0xda, 0xa1, 0xcc, 0x15, 0xd1, 0xf7, 0x19, 0x60, 0xb5, 0x29, 0x71, 0xd0, 0xc7,
-	0xe6, 0xec, 0x2f, 0x00, 0x63, 0x25, 0xd8, 0x19, 0xeb, 0x14, 0x4f, 0xe6, 0x34, 0xcf, 0x7f, 0x16,
-	0x52, 0x3c, 0x3f, 0x91, 0xe5, 0xf9, 0xf8, 0x02, 0x00, 0x81, 0xb7, 0x25, 0x1c, 0x5f, 0x9d, 0x71,
-	0x7c, 0x2e, 0xc3, 0xf1, 0xc9, 0x7c, 0x66, 0xd6, 0xe3, 0xb7, 0xb7, 0x3e, 0x3f, 0xf4, 0xb7, 0x22,
-	0x94, 0x25, 0x97, 0x98, 0x3e, 0x41, 0xbf, 0x29, 0xcc, 0x81, 0x5d, 0x83, 0x52, 0x98, 0x9d, 0xf1,
-	0xac, 0x2f, 0xce, 0xc2, 0x0d, 0xab, 0x23, 0x0a, 0x18, 0x47, 0x43, 0x78, 0x04, 0x55, 0xdf, 0x74,
-	0xc7, 0x64, 0xce, 0x72, 0xd6, 0xe6, 0x9f, 0x85, 0xea, 0x94, 0x7a, 0x56, 0x18, 0x71, 0x31, 0x9c,
-	0xf9, 0x07, 0x16, 0x99, 0x12, 0xba, 0xf1, 0x20, 0x3c, 0x1b, 0x9e, 0xd5, 0x88, 0x3d, 0xa5, 0x51,
-	0xe0, 0x74, 0x6a, 0xba, 0xc4, 0x09, 0x1e, 0x96, 0x22, 0xa7, 0x49, 0x1b, 0x7d, 0x25, 0x5d, 0x0f,
-	0x9f, 0xcc, 0xea, 0x77, 0x75, 0x01, 0xf8, 0x68, 0xfe, 0x8b, 0x15, 0x4c, 0x97, 0x2d, 0x93, 0x29,
-	0x5b, 0xf4, 0x9d, 0x99, 0xb6, 0x62, 0x46, 0xdb, 0xeb, 0x79, 0x5d, 0x9c, 0xbd, 0xba, 0x6f, 0x32,
-	0x50, 0xee, 0x4f, 0x47, 0x81, 0xba, 0x47, 0x73, 0x71, 0x6f, 0x40, 0x25, 0x5e, 0xcc, 0x62, 0x28,
-	0x8f, 0xcd, 0x22, 0x96, 0xc2, 0x7e, 0xa1, 0x73, 0xcb, 0xf6, 0xad, 0xa9, 0x4d, 0xa2, 0xe8, 0xbd,
-	0xb6, 0xe5, 0xf9, 0x38, 0x79, 0xe7, 0x1e, 0xc5, 0xf3, 0xef, 0xc2, 0x7a, 0xf0, 0xa3, 0xf0, 0x96,
-	0x94, 0xcf, 0x3a, 0x88, 0x17, 0x1a, 0x3a, 0x7b, 0xc4, 0x3f, 0x64, 0xa0, 0x24, 0xd9, 0xd4, 0x23,
-	0x9b, 0xaf, 0x37, 0x6f, 0xa7, 0x91, 0xdd, 0xc8, 0x22, 0xfb, 0xf0, 0xa2, 0x64, 0x0a, 0xdc, 0x2d,
-	0x21, 0xf6, 0xed, 0x19, 0xb1, 0xe7, 0x33, 0xc4, 0x9e, 0xca, 0x69, 0xe7, 0xec, 0x81, 0xfd, 0xa1,
-	0x04, 0xe5, 0x9b, 0xa6, 0x6d, 0x13, 0x1f, 0xfd, 0x83, 0x99, 0x2d, 0x3e, 0x1f, 0x9a, 0xc3, 0x43,
-	0x50, 0x75, 0x29, 0xf5, 0xbb, 0xa6, 0x7f, 0x1c, 0x23, 0x9c, 0xb5, 0xd1, 0x6b, 0xe9, 0xd2, 0x7e,
-	0x2e, 0x8b, 0xea, 0x89, 0xcc, 0x14, 0x23, 0x17, 0xab, 0x6b, 0x1b, 0x41, 0x75, 0xe2, 0x90, 0x09,
-	0x75, 0xac, 0x61, 0xb2, 0x72, 0x25, 0x6d, 0xf4, 0xcb, 0x19, 0xc8, 0x46, 0x06, 0xa4, 0x90, 0xdb,
-	0xcb, 0x7a, 0x28, 0x7b, 0x1b, 0x7c, 0xfc, 0x1e, 0x85, 0xf7, 0xb7, 0x44, 0xa5, 0x2d, 0x37, 0x0d,
-	0x5d, 0x33, 0x24, 0x2c, 0x8b, 0xba, 0x6c, 0xb4, 0x35, 0x49, 0x6c, 0x1b, 0x58, 0xee, 0x6a, 0x1c,
-	0x41, 0x6f, 0x31, 0x01, 0xd6, 0x21, 0x3d, 0x21, 0x2e, 0x12, 0x73, 0x11, 0x5e, 0xc9, 0xe4, 0x1b,
-	0x69, 0xfa, 0xcf, 0x67, 0xe9, 0x5f, 0x5b, 0xc4, 0x25, 0xf6, 0xbd, 0x24, 0x57, 0x7f, 0x35, 0x43,
-	0x2c, 0x65, 0x10, 0xd7, 0xf3, 0x9b, 0x7a, 0x17, 0x30, 0x7e, 0xe5, 0x1c, 0x54, 0xc4, 0xe1, 0x90,
-	0xde, 0x72, 0x7c, 0xf4, 0x63, 0x76, 0x96, 0xd0, 0x2f, 0xce, 0x71, 0xf3, 0xc0, 0x3a, 0xe6, 0x84,
-	0xc4, 0xa8, 0xc3, 0xdf, 0xfc, 0x35, 0x78, 0x8f, 0x79, 0x62, 0xfa, 0xa6, 0xdb, 0xa6, 0x43, 0xd3,
-	0x0e, 0x95, 0x08, 0x03, 0x3e, 0xd8, 0xc2, 0xa7, 0x1f, 0xf0, 0x57, 0x60, 0x3b, 0xea, 0x92, 0xa8,
-	0x4d, 0xdd, 0x68, 0xff, 0x77, 0xb0, 0x85, 0xd3, 0x9d, 0x8d, 0x2a, 0x94, 0xa3, 0x26, 0x7a, 0xad,
-	0x98, 0x57, 0xa4, 0x38, 0xea, 0xd5, 0x35, 0xf2, 0x34, 0x54, 0xcc, 0x68, 0x5c, 0x18, 0xe0, 0xf6,
-	0xde, 0xc3, 0xa7, 0x3e, 0xe0, 0xb1, 0x15, 0x9c, 0x0c, 0x0b, 0x36, 0x60, 0x39, 0x64, 0x5d, 0xe9,
-	0x7c, 0x3d, 0x59, 0x7f, 0x56, 0xd8, 0x40, 0xd7, 0xa7, 0xe0, 0xaa, 0x28, 0x49, 0x5a, 0x5f, 0xd5,
-	0x63, 0x55, 0x9b, 0x46, 0xa3, 0xaf, 0x1b, 0x73, 0xad, 0x7b, 0xba, 0x88, 0x75, 0x43, 0xd5, 0x9a,
-	0x32, 0x17, 0xc8, 0xf5, 0xf8, 0x3d, 0x46, 0xcb, 0xba, 0xa1, 0x8a, 0x1d, 0x99, 0x3b, 0xca, 0x61,
-	0x59, 0xd6, 0x0d, 0xf1, 0x50, 0xd4, 0x45, 0xcc, 0x8d, 0xd1, 0xaf, 0x8b, 0xf3, 0x12, 0xad, 0xcd,
-	0x72, 0x06, 0xfd, 0x20, 0xad, 0xa2, 0x98, 0x55, 0xf1, 0xc9, 0x85, 0x20, 0x57, 0xd7, 0xda, 0xdf,
-	0x67, 0xa2, 0x34, 0x33, 0xa2, 0x3c, 0xbd, 0x86, 0xad, 0xf5, 0x54, 0x79, 0x7b, 0x13, 0x55, 0xde,
-	0x0b, 0x0f, 0xa9, 0x9a, 0x11, 0xe3, 0xeb, 0x19, 0x2d, 0xad, 0xaf, 0x36, 0xb9, 0xc0, 0xdb, 0x25,
-	0x55, 0x8e, 0xe0, 0x61, 0x59, 0xd2, 0x0e, 0x65, 0x6c, 0xdc, 0x14, 0xdb, 0x6d, 0x59, 0x37, 0x5a,
-	0x0a, 0xee, 0xe9, 0xdc, 0xd1, 0xbd, 0xca, 0x74, 0xcc, 0x3f, 0x06, 0x8f, 0xce, 0xdb, 0x86, 0xfc,
-	0x69, 0xa5, 0xa7, 0xf7, 0x42, 0x5d, 0x24, 0x0d, 0xe3, 0x7e, 0x57, 0x97, 0x9b, 0xdc, 0x31, 0xff,
-	0x30, 0xf0, 0x73, 0x2b, 0xb8, 0xaf, 0x46, 0xf2, 0x5b, 0x81, 0xff, 0xd8, 0x5f, 0xe2, 0x3e, 0x38,
-	0x70, 0x74, 0x65, 0xdc, 0xd2, 0x70, 0x47, 0x6e, 0x72, 0x9f, 0x43, 0xdf, 0x64, 0xa1, 0xdc, 0x23,
-	0x36, 0x19, 0xfa, 0xe8, 0xa3, 0xcb, 0xf7, 0x01, 0xe9, 0x85, 0x97, 0x39, 0xf5, 0x69, 0xfb, 0xf3,
-	0xda, 0x75, 0x1b, 0xf9, 0xbb, 0x6f, 0x75, 0xfb, 0xa7, 0xb5, 0xea, 0x76, 0xa1, 0xf3, 0xf5, 0x32,
-	0xe4, 0xad, 0xc2, 0x19, 0xac, 0xc7, 0x79, 0x84, 0x3e, 0x5a, 0x22, 0xf4, 0x38, 0x6b, 0xbd, 0xa5,
-	0xa8, 0xcd, 0x24, 0x17, 0x0d, 0x45, 0x6d, 0x69, 0xdc, 0x31, 0x2f, 0xc0, 0xb5, 0x94, 0xf5, 0x20,
-	0x0b, 0x62, 0x0f, 0xa2, 0xda, 0x34, 0x3a, 0xaa, 0xdc, 0xd1, 0x54, 0x45, 0x0a, 0xfb, 0x7b, 0xb2,
-	0xce, 0x59, 0xe8, 0x17, 0x45, 0x28, 0xb6, 0xe9, 0x18, 0xbd, 0x5e, 0x04, 0xb6, 0x47, 0x9c, 0x11,
-	0xfa, 0x5e, 0x21, 0x73, 0x25, 0x30, 0x21, 0x9e, 0x67, 0x8e, 0x93, 0x6f, 0x43, 0xd2, 0xe4, 0x9f,
-	0x85, 0x92, 0x4d, 0x4e, 0x88, 0x1d, 0x62, 0xbb, 0x90, 0xda, 0xa0, 0x07, 0x12, 0xb4, 0xe9, 0x58,
-	0x08, 0x6c, 0x09, 0xb1, 0x1d, 0xa1, 0x1d, 0x0c, 0xc5, 0xd1, 0x1b, 0x57, 0x3e, 0x05, 0xa5, 0xb0,
-	0xcd, 0xd7, 0xa0, 0xd4, 0x94, 0x1b, 0xfd, 0x7d, 0x6e, 0x2b, 0xf8, 0x99, 0xe0, 0xac, 0x41, 0xa9,
-	0x25, 0xea, 0x62, 0x9b, 0x63, 0x02, 0xec, 0xe1, 0xac, 0x8a, 0x41, 0x67, 0x57, 0x54, 0x15, 0x89,
-	0x63, 0xf9, 0x6d, 0xa8, 0xdc, 0x14, 0xb1, 0xaa, 0xa8, 0xfb, 0x5c, 0x09, 0x7d, 0x29, 0xfd, 0xc1,
-	0xff, 0x78, 0x36, 0x27, 0x3f, 0xb8, 0x2c, 0xa6, 0xd5, 0xf7, 0x09, 0x37, 0x32, 0xb9, 0xf5, 0x44,
-	0x1e, 0x23, 0xeb, 0x65, 0x95, 0xba, 0x41, 0x52, 0x9d, 0x87, 0x5a, 0x20, 0x59, 0xb2, 0xdc, 0x6c,
-	0x43, 0x45, 0x57, 0x3a, 0xb2, 0xd6, 0xd7, 0xb9, 0x23, 0xf4, 0x17, 0x06, 0x2a, 0x87, 0xc4, 0xf5,
-	0x2c, 0xea, 0xa0, 0xdf, 0x33, 0x50, 0xdc, 0x27, 0x7e, 0x7a, 0xa1, 0x7e, 0x9d, 0xc9, 0xbb, 0x79,
-	0x8f, 0x8d, 0x08, 0xfb, 0xc4, 0x5f, 0x7e, 0xd6, 0x3c, 0x89, 0x06, 0x25, 0x67, 0xcd, 0xb8, 0x89,
-	0xfe, 0x98, 0x6b, 0x5b, 0xbf, 0xdc, 0xc3, 0x7a, 0x08, 0x47, 0x1b, 0x20, 0xbc, 0x08, 0xdc, 0xa1,
-	0x8c, 0x7b, 0x8a, 0xa6, 0x1a, 0x4a, 0xcf, 0x90, 0x3b, 0x5d, 0xfd, 0x33, 0x5c, 0x71, 0x25, 0xd8,
-	0x6f, 0xd5, 0x80, 0x55, 0xa6, 0x47, 0x1e, 0xfa, 0x0f, 0x03, 0x6c, 0xcb, 0xb2, 0x09, 0xfa, 0x57,
-	0x8c, 0xf7, 0x91, 0xa5, 0x2b, 0x28, 0xfa, 0x5d, 0xee, 0x03, 0x40, 0x60, 0x5a, 0x08, 0xcc, 0xae,
-	0x00, 0xce, 0x03, 0x3b, 0x32, 0x7d, 0x33, 0x64, 0x70, 0x0e, 0x87, 0xbf, 0xf9, 0x8b, 0x50, 0x9a,
-	0x90, 0x91, 0x65, 0xc6, 0xf7, 0x6c, 0x51, 0x63, 0xb6, 0x87, 0x63, 0xe7, 0x7b, 0x38, 0xf4, 0xf3,
-	0x5c, 0x47, 0x84, 0x55, 0x71, 0x3c, 0xd8, 0xcc, 0x7e, 0xa5, 0x0c, 0x25, 0x65, 0x62, 0x8e, 0x09,
-	0xfa, 0x7a, 0x39, 0x02, 0xff, 0x3f, 0x06, 0xd8, 0x86, 0x4d, 0x07, 0xe8, 0x60, 0xf9, 0x37, 0xec,
-	0x3a, 0xb0, 0x9e, 0xf5, 0x12, 0x89, 0x57, 0xa6, 0x47, 0x4e, 0x7d, 0x55, 0x42, 0x7b, 0x42, 0xcf,
-	0x7a, 0x89, 0xe0, 0x70, 0x58, 0xb0, 0x1b, 0x9c, 0x0b, 0x26, 0x67, 0x05, 0xab, 0xbf, 0x13, 0x54,
-	0xf4, 0x7e, 0x40, 0x2a, 0x88, 0x63, 0xb9, 0x6c, 0x03, 0x9b, 0x0e, 0x12, 0xd9, 0x82, 0xdf, 0xa9,
-	0xc3, 0xc4, 0x41, 0x46, 0x8c, 0x8f, 0xac, 0xe9, 0xe3, 0xc1, 0x4a, 0xf2, 0xd5, 0x62, 0x5c, 0x0a,
-	0xf7, 0x4f, 0x80, 0x9f, 0x6c, 0x2a, 0x40, 0x98, 0xb3, 0x8b, 0x05, 0xb8, 0x04, 0x35, 0x3b, 0x7b,
-	0x6e, 0xc1, 0xf3, 0x8e, 0xcd, 0xa4, 0x58, 0xe0, 0xed, 0xc1, 0x4a, 0xf1, 0x5d, 0x06, 0xca, 0x12,
-	0x75, 0x8e, 0xac, 0x31, 0x7a, 0xf5, 0x9d, 0xcb, 0x7e, 0xe6, 0xce, 0x7d, 0xe5, 0x1d, 0x71, 0x64,
-	0x63, 0xc5, 0x22, 0x74, 0x19, 0xb6, 0x8f, 0xe9, 0x84, 0x34, 0x32, 0xb7, 0x8c, 0xe9, 0xae, 0x9c,
-	0xb7, 0xc8, 0x4b, 0x1d, 0x9d, 0xf9, 0x9d, 0x4e, 0xe3, 0xd2, 0x6f, 0xef, 0xec, 0x16, 0xde, 0xb8,
-	0xb3, 0x5b, 0x78, 0xf3, 0xce, 0x6e, 0xe1, 0x6b, 0x77, 0x77, 0xb7, 0xde, 0xb8, 0xbb, 0xbb, 0xf5,
-	0xd7, 0xbb, 0xbb, 0x5b, 0x9f, 0x65, 0xa6, 0x83, 0x41, 0x39, 0xfc, 0xcb, 0xe4, 0x99, 0xff, 0x07,
-	0x00, 0x00, 0xff, 0xff, 0xca, 0xd1, 0xdd, 0x1c, 0xbd, 0x19, 0x00, 0x00,
+	// 2034 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x9a, 0x5d, 0x8c, 0x1b, 0x57,
+	0x15, 0xc7, 0xd7, 0x33, 0xfe, 0xda, 0xb3, 0x49, 0x3a, 0x1d, 0x85, 0xb2, 0xbd, 0x84, 0x6d, 0x94,
+	0x42, 0x49, 0xb7, 0xcd, 0x6c, 0xd8, 0x50, 0x4a, 0x50, 0xbf, 0x66, 0xed, 0xf1, 0xae, 0x5b, 0x7b,
+	0x66, 0x75, 0x3d, 0xde, 0x00, 0x2f, 0xa3, 0xb1, 0x7d, 0xd7, 0x6b, 0x6a, 0xfb, 0x9a, 0xf1, 0x64,
+	0xd3, 0xed, 0x1b, 0x42, 0x08, 0xa4, 0x3e, 0xf0, 0x21, 0xc1, 0x03, 0x45, 0x85, 0x47, 0x4a, 0x0a,
+	0x2d, 0x0f, 0xa8, 0x08, 0x81, 0x90, 0x00, 0x21, 0x40, 0x42, 0x2a, 0x20, 0x21, 0x24, 0x04, 0xa2,
+	0xc9, 0x13, 0x2a, 0xbc, 0x20, 0x21, 0x84, 0x50, 0x01, 0xdd, 0xf9, 0xf2, 0xdc, 0x8d, 0xc7, 0xb1,
+	0xad, 0x6c, 0xc2, 0xdb, 0xdc, 0x3b, 0x77, 0xce, 0x39, 0xf7, 0xf7, 0x3f, 0xf7, 0xdc, 0x99, 0x6b,
+	0xc3, 0xf2, 0xa0, 0xb1, 0x36, 0x70, 0xa8, 0x4b, 0x87, 0x6b, 0x4d, 0xda, 0xeb, 0xd9, 0xfd, 0xd6,
+	0x50, 0xf1, 0xda, 0x72, 0xce, 0xee, 0x1f, 0xb8, 0x07, 0x03, 0x82, 0x9e, 0xd9, 0x27, 0xfd, 0x16,
+	0x75, 0xd6, 0xda, 0x1d, 0x77, 0xef, 0x72, 0x43, 0x69, 0xd2, 0xde, 0x5a, 0x70, 0xab, 0x43, 0xd7,
+	0xda, 0xf4, 0x5c, 0xd0, 0x38, 0xd7, 0xed, 0x34, 0x1c, 0xdb, 0x39, 0x58, 0x1b, 0x34, 0xd6, 0x7a,
+	0xb4, 0x45, 0xba, 0xa1, 0x5d, 0xaf, 0x11, 0x58, 0x45, 0xef, 0x8c, 0xf9, 0xdb, 0xb3, 0xfb, 0x6d,
+	0x12, 0xdc, 0x38, 0xf3, 0x77, 0x15, 0x44, 0x3c, 0x68, 0xa2, 0x2f, 0xaf, 0x40, 0x66, 0xa3, 0x4b,
+	0x9b, 0xcf, 0xa2, 0x4f, 0x8b, 0x90, 0xdb, 0xea, 0x0c, 0x5d, 0xea, 0x1c, 0xa0, 0x7f, 0x09, 0x90,
+	0xae, 0xd2, 0x7d, 0x82, 0x9a, 0x90, 0xc3, 0xe4, 0x13, 0x97, 0xc9, 0xd0, 0x95, 0x97, 0x21, 0xd7,
+	0x60, 0x03, 0xcb, 0xad, 0xe5, 0xd4, 0xe9, 0xd4, 0xd9, 0x45, 0x1c, 0x36, 0xe5, 0xd3, 0xb0, 0xd4,
+	0xa3, 0xfb, 0xa4, 0x44, 0x9d, 0x2b, 0xb6, 0xd3, 0x5a, 0x16, 0x4e, 0xa7, 0xce, 0xe6, 0x71, 0xbc,
+	0x4b, 0x3e, 0x05, 0x8b, 0x4d, 0xda, 0x77, 0xc9, 0x73, 0x6e, 0xb9, 0xb5, 0x2c, 0x7a, 0x4f, 0x8f,
+	0x3a, 0xd0, 0x0b, 0x02, 0xe4, 0x31, 0x19, 0x0e, 0x68, 0x7f, 0x48, 0xe4, 0x22, 0x64, 0x88, 0xe3,
+	0x50, 0xc7, 0x73, 0xb2, 0xb4, 0xae, 0x28, 0xc1, 0x7c, 0x15, 0x3c, 0x68, 0x2a, 0x5e, 0xa4, 0x4a,
+	0x10, 0xa5, 0xc2, 0x22, 0x54, 0xc2, 0x07, 0x15, 0x8d, 0x3d, 0x85, 0xfd, 0x87, 0xd1, 0xf7, 0x52,
+	0x90, 0xf1, 0x3a, 0xe4, 0x4d, 0x48, 0x37, 0x69, 0x8b, 0x78, 0xe6, 0x4e, 0xac, 0x5f, 0x98, 0xcd,
+	0x9c, 0x52, 0xa0, 0x2d, 0x82, 0x3d, 0x03, 0x6c, 0x96, 0x2d, 0x32, 0x6c, 0x3a, 0x9d, 0x81, 0xdb,
+	0xa1, 0x7d, 0x6f, 0x96, 0x8b, 0x38, 0xde, 0x75, 0xa6, 0x08, 0x69, 0x36, 0x5e, 0xce, 0x43, 0x5a,
+	0xaf, 0x57, 0x2a, 0xd2, 0x82, 0x7c, 0x37, 0x1c, 0xaf, 0xeb, 0xcf, 0xe8, 0xc6, 0x25, 0xdd, 0xd2,
+	0x30, 0x36, 0xb0, 0x94, 0x92, 0x8f, 0xc3, 0xe2, 0x86, 0x5a, 0xb4, 0xca, 0xfa, 0x76, 0xdd, 0x94,
+	0x04, 0x59, 0x82, 0x63, 0x05, 0x55, 0xb7, 0x74, 0xc3, 0xb4, 0xaa, 0xc6, 0x8e, 0x26, 0x89, 0xe8,
+	0xaa, 0x00, 0x69, 0x63, 0x40, 0xfa, 0xe8, 0xd1, 0x11, 0xfb, 0x13, 0x20, 0x74, 0x42, 0xec, 0x42,
+	0xe7, 0x10, 0x4f, 0xe1, 0x30, 0xcf, 0xbf, 0xa4, 0x62, 0x3c, 0x1f, 0xe3, 0x79, 0x3e, 0x30, 0x06,
+	0x00, 0xf3, 0x96, 0xc0, 0xf1, 0xa5, 0x88, 0xe3, 0x93, 0x1c, 0xc7, 0x87, 0xa6, 0x33, 0x33, 0x1b,
+	0xbf, 0xf5, 0xd9, 0xf9, 0xa1, 0x3f, 0x88, 0x90, 0x2d, 0x38, 0xc4, 0x76, 0x09, 0xfa, 0x59, 0x6a,
+	0x04, 0x6c, 0x15, 0x32, 0x5e, 0x76, 0x06, 0xb3, 0x3e, 0x19, 0x85, 0xeb, 0xad, 0x0e, 0x3f, 0x60,
+	0xec, 0x0f, 0x91, 0x11, 0xe4, 0x5d, 0xdb, 0x69, 0x93, 0x11, 0xcb, 0xa8, 0x2d, 0x5f, 0x84, 0xfc,
+	0x80, 0x0e, 0x3b, 0x5e, 0xc4, 0xa2, 0x37, 0xf3, 0x77, 0x8f, 0x33, 0xa5, 0x6c, 0x07, 0x83, 0x70,
+	0x34, 0x9c, 0xd7, 0x28, 0x7d, 0x48, 0x23, 0xe6, 0x74, 0x60, 0x3b, 0xa4, 0xcf, 0x6e, 0x66, 0x7c,
+	0xa7, 0x61, 0x1b, 0x7d, 0x26, 0xbe, 0x1e, 0x9e, 0xe0, 0xf5, 0x3b, 0x3b, 0x06, 0xbc, 0x3f, 0xff,
+	0xf1, 0x0a, 0xc6, 0x97, 0xad, 0xc0, 0x2d, 0x5b, 0xf4, 0xf5, 0x48, 0x5b, 0x95, 0xd3, 0xf6, 0xdc,
+	0xb4, 0x2e, 0x8e, 0x5e, 0xdd, 0x5f, 0x09, 0x90, 0xad, 0x0f, 0x5a, 0x4c, 0xdd, 0x5a, 0x5c, 0xdc,
+	0x5c, 0x50, 0xcc, 0x02, 0x28, 0x52, 0x14, 0x71, 0xc1, 0xef, 0xc7, 0xe1, 0x80, 0x9b, 0xac, 0x94,
+	0xbf, 0xa5, 0x66, 0x23, 0xed, 0xc7, 0x92, 0xb0, 0x56, 0x66, 0xe1, 0x39, 0xd6, 0xd0, 0xd1, 0xf3,
+	0xfc, 0xb6, 0x00, 0x99, 0x42, 0x97, 0x0e, 0xc9, 0xfc, 0xc5, 0xe5, 0xad, 0x38, 0xb2, 0xc7, 0x79,
+	0x64, 0xef, 0x1b, 0x97, 0x39, 0xcc, 0x5d, 0x02, 0xb1, 0xaf, 0x45, 0xc4, 0x9e, 0xe2, 0x88, 0x3d,
+	0x3c, 0xa5, 0x9d, 0xa3, 0x07, 0xf6, 0xcf, 0xbb, 0x20, 0xab, 0x36, 0xd9, 0xe3, 0xe8, 0x07, 0x22,
+	0xe4, 0xaa, 0xb6, 0xf3, 0x6c, 0x8d, 0xb8, 0xe8, 0xb5, 0x58, 0xa9, 0xe1, 0x70, 0xa5, 0xc6, 0xac,
+	0xf3, 0xc4, 0xe2, 0xb2, 0x0a, 0x19, 0x87, 0x65, 0xa9, 0x57, 0x59, 0x6e, 0x2c, 0x52, 0x98, 0xdd,
+	0xc3, 0xfe, 0x10, 0x56, 0x7e, 0xd9, 0x2d, 0xaf, 0x90, 0xc4, 0xcb, 0x6f, 0xbc, 0x08, 0x15, 0x98,
+	0xd7, 0xbe, 0xab, 0x98, 0xe4, 0x39, 0x57, 0x61, 0xa1, 0x2a, 0xe6, 0xc1, 0x80, 0x60, 0xef, 0x41,
+	0xf4, 0x76, 0x5c, 0xb7, 0x12, 0xaf, 0xdb, 0xf9, 0x31, 0xbc, 0xfd, 0x59, 0x2b, 0xc1, 0x8c, 0x13,
+	0x04, 0xfc, 0x46, 0x24, 0x60, 0x99, 0x13, 0xf0, 0x91, 0x59, 0x0d, 0x1e, 0xbd, 0x92, 0x6f, 0x0b,
+	0x90, 0x67, 0xbe, 0x87, 0x9b, 0xc4, 0x45, 0xf4, 0x36, 0xcb, 0x87, 0xfe, 0x1b, 0xa7, 0xbf, 0xc9,
+	0xd3, 0x7f, 0xff, 0x64, 0x58, 0x2c, 0xe0, 0x04, 0xfc, 0x2f, 0x47, 0xf8, 0x9f, 0xe6, 0xf0, 0x7f,
+	0x70, 0x66, 0x8b, 0x47, 0xcf, 0xff, 0x55, 0x11, 0xc0, 0x8b, 0x64, 0x58, 0x74, 0xe8, 0x00, 0x7d,
+	0xe5, 0x96, 0xac, 0x20, 0x04, 0x79, 0x6f, 0x37, 0x1b, 0x7a, 0xaf, 0x95, 0x22, 0xbb, 0x17, 0xb6,
+	0xb9, 0xad, 0x3b, 0x3d, 0xd3, 0xd6, 0x8d, 0x3e, 0x15, 0xdf, 0x80, 0xcb, 0xbc, 0x5a, 0x17, 0x92,
+	0xd9, 0x8e, 0xa6, 0x97, 0xa0, 0xd7, 0xd5, 0x48, 0xaf, 0x0a, 0xa7, 0xd7, 0x87, 0xe6, 0xb0, 0x79,
+	0xf4, 0x8a, 0xfd, 0x3b, 0x03, 0xb9, 0xa0, 0xa4, 0xa0, 0x17, 0x44, 0xb6, 0x11, 0x77, 0xa9, 0xdd,
+	0x42, 0x43, 0x4e, 0xb8, 0x2e, 0x6d, 0xda, 0xdd, 0x6d, 0xdb, 0xdd, 0x0b, 0x85, 0x8b, 0x3a, 0x64,
+	0x09, 0xc4, 0xcb, 0x4e, 0x37, 0x88, 0x86, 0x5d, 0x72, 0x52, 0x8a, 0x87, 0xa4, 0x9c, 0xf8, 0xba,
+	0xc4, 0x7f, 0x22, 0x54, 0x79, 0x45, 0x1e, 0x4d, 0xa6, 0x17, 0x56, 0x44, 0x3f, 0xf4, 0x04, 0x55,
+	0x5e, 0x8d, 0x54, 0xd9, 0xe6, 0x54, 0x79, 0x6c, 0x4e, 0xbb, 0x47, 0xaf, 0xcc, 0x9b, 0x02, 0xe4,
+	0x8b, 0xf4, 0x4a, 0xdf, 0xd3, 0xa3, 0x30, 0xd2, 0x23, 0xce, 0x37, 0x35, 0x89, 0xef, 0x0d, 0xbb,
+	0xfa, 0xe7, 0xe2, 0x7c, 0x0d, 0x9e, 0xef, 0xc5, 0x9b, 0x73, 0x08, 0x83, 0x49, 0x20, 0xfc, 0x9d,
+	0x88, 0x30, 0xe6, 0x08, 0x3f, 0x31, 0xb7, 0xe5, 0xdb, 0xf0, 0xea, 0x99, 0x81, 0xec, 0x25, 0xbb,
+	0xdb, 0x25, 0x2e, 0xfa, 0x93, 0x10, 0x7d, 0x63, 0xbc, 0x97, 0x83, 0xed, 0x50, 0xea, 0xc6, 0x72,
+	0x3f, 0x6a, 0xa3, 0x57, 0xe2, 0x38, 0x9f, 0xe4, 0x71, 0x3e, 0xc8, 0x4d, 0xda, 0x77, 0x31, 0xf9,
+	0x15, 0x1e, 0x41, 0xbe, 0xd7, 0x27, 0x3d, 0xda, 0xef, 0x34, 0xc3, 0x0a, 0x18, 0xb6, 0xd1, 0x8f,
+	0x23, 0xb4, 0x1b, 0x1c, 0x5a, 0x65, 0x6a, 0x2f, 0xb3, 0xa1, 0xac, 0xcd, 0xf1, 0x8d, 0x7b, 0x1f,
+	0xbc, 0xab, 0xa4, 0x96, 0x2b, 0x5a, 0xd1, 0x32, 0x0d, 0xab, 0x80, 0x35, 0xd5, 0xd4, 0xac, 0x8a,
+	0x51, 0x50, 0x2b, 0x16, 0xd6, 0xb6, 0x0d, 0x89, 0xb0, 0x7c, 0xce, 0x61, 0xd2, 0xa4, 0xfb, 0xc4,
+	0x41, 0xea, 0x54, 0x84, 0x27, 0x32, 0xf9, 0x62, 0x9c, 0xfe, 0x53, 0x3c, 0xfd, 0xd5, 0x71, 0x5c,
+	0x02, 0xdf, 0x09, 0xd9, 0xfb, 0x93, 0x08, 0x71, 0x81, 0x43, 0xbc, 0x36, 0xbd, 0xa9, 0xff, 0x03,
+	0xc6, 0x2f, 0x1e, 0x83, 0x9c, 0xda, 0x6c, 0xd2, 0xcb, 0x7d, 0x17, 0xbd, 0x96, 0x8e, 0x12, 0xfa,
+	0xca, 0x08, 0xb7, 0x0c, 0xe9, 0xbe, 0xdd, 0x23, 0x01, 0x6a, 0xef, 0x5a, 0x5e, 0x85, 0xbb, 0xec,
+	0x7d, 0xdb, 0xb5, 0x9d, 0x4a, 0x54, 0xe7, 0xbd, 0x80, 0xb7, 0x16, 0xf0, 0xe1, 0x1b, 0xf2, 0x19,
+	0x58, 0xf2, 0xbb, 0x0a, 0xb4, 0x4b, 0x1d, 0xbf, 0xc0, 0x6f, 0x2d, 0xe0, 0x78, 0xe7, 0x46, 0x1e,
+	0xb2, 0x7e, 0x13, 0xbd, 0x22, 0x4e, 0x2b, 0x52, 0x10, 0xf5, 0xe4, 0x35, 0x72, 0x1e, 0x72, 0xb6,
+	0x3f, 0xce, 0x0b, 0x70, 0x69, 0xfd, 0x9e, 0x43, 0x9b, 0x7d, 0x60, 0x05, 0x87, 0xc3, 0xd0, 0x55,
+	0x61, 0x1a, 0x59, 0x27, 0x3a, 0x9f, 0x4d, 0xd6, 0xef, 0xa7, 0xe6, 0xd0, 0xf5, 0x61, 0x38, 0xab,
+	0x16, 0x0a, 0x46, 0x5d, 0x37, 0x03, 0x55, 0x8b, 0xd6, 0x46, 0xdd, 0xb4, 0x46, 0x5a, 0xd7, 0x4c,
+	0x15, 0x9b, 0x96, 0x6e, 0x14, 0x35, 0x89, 0xc9, 0xf5, 0xc0, 0x4d, 0x46, 0x6b, 0xa6, 0xa5, 0xab,
+	0x55, 0x4d, 0xda, 0x9d, 0xc2, 0xb2, 0x66, 0x5a, 0xea, 0x8e, 0x6a, 0xaa, 0x58, 0x6a, 0xa3, 0x9f,
+	0x8a, 0xa3, 0x25, 0xba, 0x18, 0xe5, 0x0c, 0xfa, 0x56, 0x5c, 0x45, 0x95, 0x57, 0xf1, 0xa1, 0xb1,
+	0x20, 0x27, 0xaf, 0xb5, 0x3f, 0x46, 0xa2, 0x14, 0x39, 0x51, 0xce, 0xcf, 0x60, 0x6b, 0x36, 0x55,
+	0xde, 0x9a, 0x47, 0x95, 0x77, 0xc0, 0xdd, 0xba, 0x61, 0x05, 0xf8, 0x6a, 0x56, 0xc9, 0xa8, 0xeb,
+	0x45, 0x89, 0x79, 0x3b, 0xa5, 0x6b, 0x3e, 0x3c, 0xac, 0x15, 0x8c, 0x1d, 0x0d, 0x5b, 0x97, 0xd4,
+	0x4a, 0x45, 0x33, 0xad, 0x52, 0x19, 0xd7, 0x4c, 0x69, 0xf7, 0x66, 0xcb, 0xb4, 0x2d, 0xdf, 0x0f,
+	0xf7, 0x8d, 0xda, 0x96, 0xf6, 0x91, 0x72, 0xcd, 0xac, 0x79, 0xba, 0x14, 0x0c, 0x8c, 0xeb, 0xdb,
+	0xa6, 0x56, 0x94, 0xf6, 0xe4, 0x7b, 0x40, 0x1e, 0x59, 0xc1, 0x75, 0xdd, 0x97, 0xbf, 0xc3, 0xfc,
+	0x07, 0xfe, 0x42, 0xf7, 0xba, 0x61, 0x5a, 0xdb, 0x1a, 0x2e, 0x19, 0xb8, 0xaa, 0x15, 0xa5, 0x8f,
+	0xa3, 0x2f, 0xa5, 0x21, 0x5b, 0x23, 0x5d, 0xd2, 0x74, 0xd1, 0x23, 0xc9, 0x27, 0x00, 0xf1, 0xc2,
+	0x2b, 0x1c, 0xda, 0xda, 0x7e, 0x3b, 0xf3, 0xba, 0xf5, 0xfd, 0xdd, 0xb2, 0x75, 0xfb, 0x9b, 0x99,
+	0xd6, 0xed, 0x58, 0xe7, 0xb3, 0x65, 0xc8, 0x9b, 0xa9, 0x23, 0xa8, 0xc7, 0xd3, 0x08, 0xbd, 0x9b,
+	0x20, 0x74, 0x9b, 0xb7, 0x5e, 0x2a, 0xeb, 0xc5, 0x30, 0x17, 0xad, 0xb2, 0x5e, 0x32, 0xa4, 0x3d,
+	0x59, 0x81, 0xd5, 0x98, 0x75, 0x96, 0x05, 0x81, 0x07, 0x55, 0x2f, 0x5a, 0x55, 0x5d, 0xab, 0x1a,
+	0x7a, 0xb9, 0xe0, 0xf5, 0xd7, 0x34, 0x53, 0xea, 0xa0, 0x1f, 0x89, 0x20, 0x56, 0x68, 0x1b, 0xbd,
+	0x2e, 0x42, 0xba, 0x46, 0xfa, 0x2d, 0xf4, 0xcd, 0x14, 0x77, 0xf2, 0xdf, 0x23, 0xc3, 0xa1, 0xdd,
+	0x0e, 0xf7, 0x86, 0xb0, 0x29, 0x5f, 0x84, 0x4c, 0x97, 0xec, 0x13, 0xff, 0x25, 0xff, 0xc4, 0xfa,
+	0xfd, 0x9c, 0x04, 0x15, 0xda, 0x56, 0x98, 0x2d, 0x25, 0xb0, 0xa3, 0x54, 0xd8, 0x50, 0xec, 0x3f,
+	0x71, 0xe6, 0x69, 0xc8, 0x78, 0x6d, 0x79, 0x11, 0x32, 0x45, 0x6d, 0xa3, 0xbe, 0x29, 0x2d, 0xb0,
+	0xcb, 0x10, 0xe7, 0x22, 0x64, 0x4a, 0xaa, 0xa9, 0x56, 0x24, 0x81, 0x61, 0xf7, 0x66, 0x25, 0xb2,
+	0xce, 0x6d, 0x55, 0x2f, 0x17, 0xa4, 0xb4, 0xbc, 0x04, 0xb9, 0x4b, 0x2a, 0xd6, 0xcb, 0xfa, 0xa6,
+	0x94, 0x41, 0x9f, 0x8c, 0x6f, 0xf8, 0x1f, 0xe6, 0x73, 0xf2, 0x3d, 0x49, 0x31, 0x4d, 0xfe, 0xd9,
+	0xe0, 0x71, 0x2e, 0xb7, 0x1e, 0x9c, 0xc6, 0xc8, 0x6c, 0x59, 0xa5, 0xcf, 0x91, 0x54, 0xc7, 0x61,
+	0x91, 0x49, 0x16, 0x96, 0x9b, 0x25, 0xc8, 0x99, 0xe5, 0xaa, 0x66, 0xd4, 0x4d, 0x69, 0x17, 0xfd,
+	0x4e, 0x80, 0xdc, 0x0e, 0x71, 0x86, 0xec, 0xfb, 0xf5, 0x97, 0x02, 0x88, 0x9b, 0xc4, 0x8d, 0x17,
+	0xea, 0xd7, 0x85, 0x69, 0x8f, 0xed, 0x02, 0x23, 0x4a, 0xe2, 0xb1, 0x03, 0xcb, 0x87, 0x7d, 0x7f,
+	0x50, 0x78, 0xa4, 0x1c, 0x34, 0xd1, 0xaf, 0xa7, 0x3a, 0xd0, 0x4b, 0xf6, 0x30, 0x1b, 0xc2, 0xd6,
+	0x1c, 0x08, 0x4f, 0x82, 0xb4, 0xa3, 0xe1, 0x5a, 0xd9, 0xd0, 0xad, 0x72, 0xcd, 0xd2, 0xaa, 0xdb,
+	0xe6, 0x47, 0x25, 0x71, 0x22, 0xd8, 0xaf, 0x2e, 0x42, 0xba, 0x3c, 0xd8, 0x1d, 0xa2, 0x7f, 0x08,
+	0x90, 0x2e, 0x75, 0xba, 0x04, 0xfd, 0x35, 0xc0, 0x7b, 0x6f, 0x62, 0x05, 0x45, 0xbf, 0x98, 0xfa,
+	0x03, 0x80, 0x99, 0x56, 0x98, 0xd9, 0x09, 0xc0, 0x65, 0x48, 0xb7, 0x6c, 0xd7, 0xf6, 0x18, 0x1c,
+	0xc3, 0xde, 0xb5, 0x7c, 0x12, 0x32, 0x3d, 0xd2, 0xea, 0xd8, 0xc1, 0x87, 0xb4, 0xdf, 0x88, 0xde,
+	0xe1, 0xd2, 0xa3, 0x77, 0x38, 0xf4, 0xc3, 0xa9, 0x3e, 0x11, 0x26, 0xc5, 0x71, 0x67, 0x33, 0xfb,
+	0xc5, 0x2c, 0x64, 0xca, 0x3d, 0xbb, 0x4d, 0xd0, 0x17, 0xb2, 0x3e, 0xf8, 0xff, 0x08, 0x90, 0xde,
+	0xe8, 0xd2, 0x06, 0xda, 0x4a, 0xde, 0xc3, 0xce, 0x41, 0x7a, 0xd8, 0x79, 0x9e, 0x04, 0x95, 0xe9,
+	0xde, 0x43, 0xbb, 0x8a, 0x67, 0x4f, 0xa9, 0x75, 0x9e, 0x27, 0xd8, 0x1b, 0xc6, 0xde, 0x06, 0x47,
+	0x82, 0x69, 0xbc, 0x60, 0x6b, 0x37, 0x82, 0xf2, 0x9f, 0x67, 0xa4, 0x58, 0x1c, 0xc9, 0xb2, 0x35,
+	0xba, 0xb4, 0x11, 0xca, 0xc6, 0xae, 0x63, 0x1f, 0x13, 0x5b, 0x9c, 0x18, 0x1f, 0x98, 0xd1, 0xc7,
+	0x9d, 0x95, 0xe4, 0xb3, 0x62, 0xb0, 0x14, 0x6e, 0x9d, 0x00, 0xdf, 0x9d, 0x57, 0x00, 0x2f, 0x67,
+	0xc7, 0x0b, 0xc0, 0x9d, 0x4f, 0x09, 0x87, 0xce, 0xa7, 0xe6, 0x93, 0x62, 0x8c, 0xb7, 0x3b, 0x2b,
+	0xc5, 0xcb, 0x02, 0x64, 0x0b, 0xb4, 0xbf, 0xdb, 0x69, 0xa3, 0x97, 0x6e, 0x2c, 0xfb, 0xdc, 0xb9,
+	0xd9, 0xc4, 0x9f, 0x82, 0x7d, 0x1b, 0x13, 0x8a, 0xd0, 0x69, 0x58, 0xda, 0xa3, 0x3d, 0xb2, 0xc1,
+	0xfd, 0x98, 0x18, 0xef, 0x9a, 0xf2, 0xc7, 0xe2, 0x44, 0x47, 0x47, 0x7e, 0xa6, 0xb3, 0x71, 0xea,
+	0xe7, 0xd7, 0x56, 0x52, 0x6f, 0x5c, 0x5b, 0x49, 0xfd, 0xf9, 0xda, 0x4a, 0xea, 0xf3, 0xd7, 0x57,
+	0x16, 0xde, 0xb8, 0xbe, 0xb2, 0xf0, 0xfb, 0xeb, 0x2b, 0x0b, 0x1f, 0x13, 0x06, 0x8d, 0x46, 0xd6,
+	0xfb, 0x67, 0xc4, 0x85, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff, 0xe1, 0xde, 0x2c, 0xf9, 0xa4, 0x21,
+	0x00, 0x00,
 }
 
 func (m *Rpc) Marshal() (dAtA []byte, err error) {
@@ -5119,6 +6364,759 @@ func (m *RpcBlockCloseResponseError) MarshalTo(dAtA []byte) (int, error) {
 }
 
 func (m *RpcBlockCloseResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockAction) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockAction) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockAction) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarkSet) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarkSet) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarkSet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarkSetRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarkSetRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarkSetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Type != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Type))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.Range != nil {
+		{
+			size, err := m.Range.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.TargetId) > 0 {
+		i -= len(m.TargetId)
+		copy(dAtA[i:], m.TargetId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarkSetResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarkSetResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarkSetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarkSetResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarkSetResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarkSetResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarksGet) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarksGet) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarksGet) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarksGetRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarksGetRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarksGetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Range != nil {
+		{
+			size, err := m.Range.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.TargetId) > 0 {
+		i -= len(m.TargetId)
+		copy(dAtA[i:], m.TargetId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarksGetResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarksGetResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarksGetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionMarksGetResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionMarksGetResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionMarksGetResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionBlocksDrop) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionBlocksDrop) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionBlocksDrop) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionBlocksDropRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionBlocksDropRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionBlocksDropRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Position != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Position))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.BlocksId) > 0 {
+		for iNdEx := len(m.BlocksId) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BlocksId[iNdEx])
+			copy(dAtA[i:], m.BlocksId[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlocksId[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.TargetId) > 0 {
+		i -= len(m.TargetId)
+		copy(dAtA[i:], m.TargetId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionBlocksDropResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionBlocksDropResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionBlocksDropResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionBlocksDropResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionBlocksDropResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionBlocksDropResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContent) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContent) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentUpload) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentUpload) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentUpload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentUploadRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentUploadRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentUploadRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.TargetId) > 0 {
+		i -= len(m.TargetId)
+		copy(dAtA[i:], m.TargetId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Url) > 0 {
+		i -= len(m.Url)
+		copy(dAtA[i:], m.Url)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Url)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.LocalPath) > 0 {
+		i -= len(m.LocalPath)
+		copy(dAtA[i:], m.LocalPath)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.LocalPath)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentUploadResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentUploadResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentUploadResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentUploadResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentUploadResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentUploadResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentDownload) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentDownload) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentDownload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentDownloadRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentDownloadRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentDownloadRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.TargetId) > 0 {
+		i -= len(m.TargetId)
+		copy(dAtA[i:], m.TargetId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentDownloadResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentDownloadResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentDownloadResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockActionContentDownloadResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockActionContentDownloadResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockActionContentDownloadResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -7139,6 +9137,327 @@ func (m *RpcBlockCloseResponse) Size() (n int) {
 }
 
 func (m *RpcBlockCloseResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockAction) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockActionMarkSet) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockActionMarkSetRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.TargetId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if m.Range != nil {
+		l = m.Range.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if m.Type != 0 {
+		n += 1 + sovCommands(uint64(m.Type))
+	}
+	return n
+}
+
+func (m *RpcBlockActionMarkSetResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionMarkSetResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionMarksGet) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockActionMarksGetRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.TargetId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if m.Range != nil {
+		l = m.Range.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionMarksGetResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionMarksGetResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionBlocksDrop) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockActionBlocksDropRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.TargetId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if len(m.BlocksId) > 0 {
+		for _, s := range m.BlocksId {
+			l = len(s)
+			n += 1 + l + sovCommands(uint64(l))
+		}
+	}
+	if m.Position != 0 {
+		n += 1 + sovCommands(uint64(m.Position))
+	}
+	return n
+}
+
+func (m *RpcBlockActionBlocksDropResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionBlocksDropResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionContent) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockActionContentUpload) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockActionContentUploadRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.LocalPath)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.Url)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.TargetId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionContentUploadResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionContentUploadResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionContentDownload) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockActionContentDownloadRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.TargetId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionContentDownloadResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockActionContentDownloadResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -9369,7 +11688,7 @@ func (m *RpcBlockUpdateRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Changes == nil {
-				m.Changes = &ChangeMultipleBlocksList{}
+				m.Changes = &Changes{}
 			}
 			if err := m.Changes.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -9927,6 +12246,2133 @@ func (m *RpcBlockCloseResponseError) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Code |= RpcBlockCloseResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockAction) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Action: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Action: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarkSet) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MarkSet: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MarkSet: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarkSetRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TargetId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Range", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Range == nil {
+				m.Range = &model.Range{}
+			}
+			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			m.Type = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Type |= model.BlockContentTextMarkType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarkSetResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockActionMarkSetResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarkSetResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockActionMarkSetResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarksGet) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MarksGet: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MarksGet: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarksGetRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TargetId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Range", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Range == nil {
+				m.Range = &model.Range{}
+			}
+			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarksGetResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockActionMarksGetResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionMarksGetResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockActionMarksGetResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionBlocksDrop) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlocksDrop: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlocksDrop: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionBlocksDropRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TargetId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlocksId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlocksId = append(m.BlocksId, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Position", wireType)
+			}
+			m.Position = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Position |= model.BlockPosition(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionBlocksDropResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockActionBlocksDropResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionBlocksDropResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockActionBlocksDropResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContent) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Content: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Content: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentUpload) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Upload: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Upload: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentUploadRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LocalPath", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LocalPath = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Url = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TargetId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentUploadResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockActionContentUploadResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentUploadResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockActionContentUploadResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentDownload) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Download: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Download: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentDownloadRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TargetId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentDownloadResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockActionContentDownloadResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockActionContentDownloadResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockActionContentDownloadResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

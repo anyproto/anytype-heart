@@ -30,19 +30,19 @@ func (p *page) Init() {
 	if title, ok := fieldsGetString(root.Fields, "title"); ok {
 		p.addTitle(title)
 	}
-	p.showFullscreen()
+	p.show()
 }
 
 func (p *page) addTitle(title string) {
 	var b = virtualBlock{
 		&model.Block{
 			Id: p.block.GetId() + pageTitleSuffix,
-			Content: &model.BlockContentOfText{
+			Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 				Text: &model.BlockContentText{
 					Text:  title,
 					Style: model.BlockContentText_Title,
 				},
-			},
+			}},
 		},
 	}
 	p.versions[b.Model().Id] = b
@@ -53,11 +53,11 @@ func (p *page) addIcon(icon string) {
 	var b = virtualBlock{
 		&model.Block{
 			Id: p.block.GetId() + pageIconSuffix,
-			Content: &model.BlockContentOfIcon{
+			Content: &model.BlockCore{Content: &model.BlockCoreContentOfIcon{
 				Icon: &model.BlockContentIcon{
 					Name: icon,
 				},
-			},
+			}},
 		},
 	}
 	p.versions[b.Model().Id] = b
