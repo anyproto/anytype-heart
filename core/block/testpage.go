@@ -673,6 +673,10 @@ func (t *testPage) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	return "", fmt.Errorf("can't create block in the test page")
 }
 
+func (t *testPage) Update(req pb.RpcBlockUpdateRequest) (err error) {
+	return fmt.Errorf("can't update blocks in the test page")
+}
+
 func (t *testPage) Close() error {
 	return nil
 }

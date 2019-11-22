@@ -77,6 +77,15 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	return "", ErrBlockNotFound
 }
 
+func (s *service) UpdateBlock(req pb.RpcBlockUpdateRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Update(req)
+	}
+	return ErrBlockNotFound
+}
+
 func (s *service) Close() error {
 	s.m.Lock()
 	defer s.m.Unlock()

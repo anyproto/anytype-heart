@@ -22,6 +22,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	Update(req pb.RpcBlockUpdateRequest) (err error)
 	Close() error
 }
 
@@ -176,6 +177,45 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	id = req.Block.Id
 	fmt.Println("middle block created:", req.Block.Id, vers[0].Model().Id)
 	p.sendCreateEvents(parent, req.Block)
+	return
+}
+
+func (p *commonSmart) Update(req pb.RpcBlockUpdateRequest) (err error) {
+	if req.Changes == nil || req.Changes.Changes == nil {
+		return
+	}
+
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	var (
+		oldBlocks = make([]simple, len(req.Changes.Changes))
+		updateCtx = make(uniqueIds)
+	)
+
+	var rollback = func() {
+		for _, ob := range oldBlocks {
+			if ob != nil {
+				p.versions[ob.Model().Id] = ob
+			}
+		}
+	}
+	for i, changes := range req.Changes.Changes {
+		if oldBlocks[i], err = p.applyChanges(updateCtx, changes); err != nil {
+			rollback()
+			return
+		}
+	}
+
+	var updatedBlocks = make([]*model.Block, 0, len(updateCtx))
+	for id := range updateCtx {
+		updatedBlocks = append(updatedBlocks, p.toSave(p.versions[id].Model()))
+	}
+
+	if _, err = p.block.AddVersions(updatedBlocks); err != nil {
+		rollback()
+		return
+	}
 	return
 }
 
