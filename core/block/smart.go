@@ -229,7 +229,10 @@ func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
 			BlockUpdate: &pb.EventBlockUpdate{
 				Changes: &pb.Changes{
 					Changes: []*pb.ChangesBlock{
-						// TODO: How to get block.children?
+						{
+							Id:          parent.Id,
+							ChildrenIds: &pb.ChangesBlockChildrenIds{ChildrenIds: parent.ChildrenIds},
+						},
 					},
 					Author: &model.Account{}, // TODO: How to get an Account?
 				},
