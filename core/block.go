@@ -66,15 +66,9 @@ func (mw *Middleware) BlockUpdate(req *pb.RpcBlockUpdateRequest) *pb.RpcBlockUpd
 		return m
 	}
 
-	/*
-		 changes := &pb.RpcBlockChanges{} // TODO
-
-		 m := &pb.Event{Message: &pb.EventBlockUpdate{&pb.RpcBlockUpdate{changes}}}
-
-		if mw.SendEvent != nil {
-			mw.SendEvent(m)
-		}*/
-
+	if err := mw.blockService.UpdateBlock(*req); err != nil {
+		return response(pb.RpcBlockUpdateResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockUpdateResponseError_NULL, nil)
 }
 

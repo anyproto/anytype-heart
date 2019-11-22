@@ -19,6 +19,7 @@ type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
+	UpdateBlock(req pb.RpcBlockUpdateRequest) (err error)
 	Close() error
 }
 
