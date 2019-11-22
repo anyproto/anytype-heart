@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 	"github.com/mohae/deepcopy"
@@ -107,7 +108,7 @@ func TestCommonSmart_Update(t *testing.T) {
 		defer fx.tearDown()
 		sb, _ := newSmartBlock(fx)
 
-		origVersions := deepcopy.Copy(sb.versions).(map[string]simple)
+		origVersions := deepcopy.Copy(sb.versions).(map[string]simple.Block)
 
 		changes := newChanges()
 
