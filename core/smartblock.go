@@ -351,12 +351,12 @@ func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Bloc
 
 func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 
-	var content model.IsBlockContent
+	var content model.IsBlockCoreContent
 	switch strings.ToLower(smartBlock.thread.Schema.Name) {
 	case "dashboard":
-		content = &model.BlockContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
+		content = &model.BlockCoreContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
 	case "page":
-		content = &model.BlockContentOfPage{Page: &model.BlockContentPage{}}
+		content = &model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}
 	default:
 		// shouldn't happen as checks for the schema performed before
 		return nil
@@ -373,7 +373,7 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":page_facing_up:"}},
 				}},
 				Permissions: &perms,
-				Content:     content,
+				Content:     &model.BlockCore{content},
 			}},
 	}
 }

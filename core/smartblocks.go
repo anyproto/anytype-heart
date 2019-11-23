@@ -67,7 +67,7 @@ func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVers
 					// all permissions are false by default
 				},
 				// we don't know the block type for sure, lets set a page
-				Content: &model.BlockContentOfPage{},
+				Content: &model.BlockCore{&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}},
 			}},
 	}
 }
