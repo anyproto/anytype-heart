@@ -58,6 +58,7 @@ func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVers
 		node: a,
 		model: &storage.BlockWithDependentBlocks{
 			Block: &model.Block{
+				Id: id,
 				Fields: &types.Struct{Fields: map[string]*types.Value{
 					"name": {Kind: &types.Value_StringValue{StringValue: "Inaccessible block"}},
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":no_entry_sign:"}},
@@ -65,6 +66,8 @@ func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVers
 				Permissions: &model.BlockPermissions{
 					// all permissions are false by default
 				},
+				// we don't know the block type for sure, lets set a page
+				Content: &model.BlockContentOfPage{},
 			}},
 	}
 }

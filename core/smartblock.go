@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
@@ -35,7 +36,7 @@ func (smartBlock *SmartBlock) GetCurrentVersion() (BlockVersion, error) {
 	}
 
 	if len(versions) == 0 {
-		return nil, errorNotFound
+		return smartBlock.EmptyVersion(), nil
 	}
 
 	return versions[0], nil
@@ -97,6 +98,13 @@ func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly boo
 		versions = append(versions, version)
 	}
 
+	if len(versions) > 0 {
+		for _, child := range versions[0].Model().ChildrenIds {
+			if _, exists := versions[0].DependentBlocks()[child]; !exists {
+				log.Warningf("GetVersions: id=%d child %s is missing", versions[0].Model().Id, child)
+			}
+		}
+	}
 	return
 }
 
@@ -253,7 +261,7 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 	}
 
 	var err error
-	blockVersion.versionId, blockVersion.user, blockVersion.date, err =  smartBlock.addVersion(blockVersion.model)
+	blockVersion.versionId, blockVersion.user, blockVersion.date, err = smartBlock.addVersion(blockVersion.model)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +310,7 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 	}
 
 	versionId = block.B58String()
+	log.Debugf("SmartBlock.addVersion: blockId = %s newVersionId = %s", smartBlock.GetId(), versionId)
 	user = smartBlock.node.textile().Account().Address()
 	newBlock, err := smartBlock.node.textile().Block(block.B58String())
 	if err != nil {
@@ -337,6 +346,35 @@ func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Bloc
 			id:               uuid.NewV4().String(),
 			node:             smartBlock.node,
 		}, nil
+	}
+}
+
+func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
+
+	var content model.IsBlockContent
+	switch strings.ToLower(smartBlock.thread.Schema.Name) {
+	case "dashboard":
+		content = &model.BlockContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
+	case "page":
+		content = &model.BlockContentOfPage{Page: &model.BlockContentPage{}}
+	default:
+		// shouldn't happen as checks for the schema performed before
+		return nil
+	}
+
+	perms := blockPermissionsFull()
+	return &SmartBlockVersion{
+		node: smartBlock.node,
+		model: &storage.BlockWithDependentBlocks{
+			Block: &model.Block{
+				Id: smartBlock.GetId(),
+				Fields: &types.Struct{Fields: map[string]*types.Value{
+					"name": {Kind: &types.Value_StringValue{StringValue: "Untitled"}},
+					"icon": {Kind: &types.Value_StringValue{StringValue: ":page_facing_up:"}},
+				}},
+				Permissions: &perms,
+				Content:     content,
+			}},
 	}
 }
 

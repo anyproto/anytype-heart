@@ -55,7 +55,7 @@ func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion Blo
 		}
 	default:
 		return &SimpleBlockVersion{
-			pb:                      block,
+			model:                   block,
 			parentSmartBlockVersion: parentSmartBlockVersion,
 			node:                    a,
 		}

@@ -6,13 +6,13 @@ import (
 )
 
 type SimpleBlockVersion struct {
-	pb                      *model.Block
+	model                   *model.Block
 	parentSmartBlockVersion BlockVersion
 	node                    *Anytype
 }
 
 func (version *SimpleBlockVersion) Model() *model.Block {
-	return version.pb
+	return version.model
 }
 
 func (version *SimpleBlockVersion) VersionId() string {
