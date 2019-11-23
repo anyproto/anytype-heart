@@ -70,7 +70,7 @@ func (x BlockContentLayoutStyle) String() string {
 }
 
 func (BlockContentLayoutStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 0, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 0, 0}
 }
 
 type BlockContentDashboardStyle int32
@@ -95,7 +95,7 @@ func (x BlockContentDashboardStyle) String() string {
 }
 
 func (BlockContentDashboardStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 4, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 5, 0}
 }
 
 type BlockContentTextStyle int32
@@ -138,7 +138,7 @@ func (x BlockContentTextStyle) String() string {
 }
 
 func (BlockContentTextStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 7, 0}
 }
 
 type BlockContentTextMarker int32
@@ -166,7 +166,7 @@ func (x BlockContentTextMarker) String() string {
 }
 
 func (BlockContentTextMarker) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 7, 1}
 }
 
 type BlockContentTextMarkType int32
@@ -209,7 +209,7 @@ func (x BlockContentTextMarkType) String() string {
 }
 
 func (BlockContentTextMarkType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6, 1, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 7, 1, 0}
 }
 
 type BlockContentVideoState int32
@@ -243,7 +243,7 @@ func (x BlockContentVideoState) String() string {
 }
 
 func (BlockContentVideoState) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 7, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 8, 0}
 }
 
 type BlockContentImageState int32
@@ -277,7 +277,32 @@ func (x BlockContentImageState) String() string {
 }
 
 func (BlockContentImageState) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 8, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 9, 0}
+}
+
+type BlockContentImageType int32
+
+const (
+	BlockContentImage_Png BlockContentImageType = 0
+	BlockContentImage_Jpg BlockContentImageType = 1
+)
+
+var BlockContentImageType_name = map[int32]string{
+	0: "Png",
+	1: "Jpg",
+}
+
+var BlockContentImageType_value = map[string]int32{
+	"Png": 0,
+	"Jpg": 1,
+}
+
+func (x BlockContentImageType) String() string {
+	return proto.EnumName(BlockContentImageType_name, int32(x))
+}
+
+func (BlockContentImageType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 9, 1}
 }
 
 type BlockContentFileState int32
@@ -311,7 +336,7 @@ func (x BlockContentFileState) String() string {
 }
 
 func (BlockContentFileState) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 9, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 10, 0}
 }
 
 type BlockContentPageStyle int32
@@ -339,7 +364,7 @@ func (x BlockContentPageStyle) String() string {
 }
 
 func (BlockContentPageStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 10, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 11, 0}
 }
 
 type ImageSize int32
@@ -438,19 +463,7 @@ type Block struct {
 	Permissions *BlockPermissions `protobuf:"bytes,3,opt,name=permissions,proto3" json:"permissions,omitempty"`
 	ChildrenIds []string          `protobuf:"bytes,4,rep,name=childrenIds,proto3" json:"childrenIds,omitempty"`
 	IsArchived  bool              `protobuf:"varint,5,opt,name=isArchived,proto3" json:"isArchived,omitempty"`
-	// Types that are valid to be assigned to Content:
-	//	*BlockContentOfDashboard
-	//	*BlockContentOfPage
-	//	*BlockContentOfDataview
-	//	*BlockContentOfText
-	//	*BlockContentOfVideo
-	//	*BlockContentOfImage
-	//	*BlockContentOfFile
-	//	*BlockContentOfLayout
-	//	*BlockContentOfDiv
-	//	*BlockContentOfBookmark
-	//	*BlockContentOfIcon
-	Content IsBlockContent `protobuf_oneof:"content"`
+	Content     *BlockCore        `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
 }
 
 func (m *Block) Reset()         { *m = Block{} }
@@ -485,65 +498,6 @@ func (m *Block) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_Block proto.InternalMessageInfo
-
-type IsBlockContent interface {
-	IsBlockContent()
-	MarshalTo([]byte) (int, error)
-	Size() int
-}
-
-type BlockContentOfDashboard struct {
-	Dashboard *BlockContentDashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
-}
-type BlockContentOfPage struct {
-	Page *BlockContentPage `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
-}
-type BlockContentOfDataview struct {
-	Dataview *BlockContentDataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
-}
-type BlockContentOfText struct {
-	Text *BlockContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
-}
-type BlockContentOfVideo struct {
-	Video *BlockContentVideo `protobuf:"bytes,15,opt,name=video,proto3,oneof" json:"video,omitempty"`
-}
-type BlockContentOfImage struct {
-	Image *BlockContentImage `protobuf:"bytes,16,opt,name=image,proto3,oneof" json:"image,omitempty"`
-}
-type BlockContentOfFile struct {
-	File *BlockContentFile `protobuf:"bytes,17,opt,name=file,proto3,oneof" json:"file,omitempty"`
-}
-type BlockContentOfLayout struct {
-	Layout *BlockContentLayout `protobuf:"bytes,18,opt,name=layout,proto3,oneof" json:"layout,omitempty"`
-}
-type BlockContentOfDiv struct {
-	Div *BlockContentDiv `protobuf:"bytes,19,opt,name=div,proto3,oneof" json:"div,omitempty"`
-}
-type BlockContentOfBookmark struct {
-	Bookmark *BlockContentBookmark `protobuf:"bytes,20,opt,name=bookmark,proto3,oneof" json:"bookmark,omitempty"`
-}
-type BlockContentOfIcon struct {
-	Icon *BlockContentIcon `protobuf:"bytes,21,opt,name=icon,proto3,oneof" json:"icon,omitempty"`
-}
-
-func (*BlockContentOfDashboard) IsBlockContent() {}
-func (*BlockContentOfPage) IsBlockContent()      {}
-func (*BlockContentOfDataview) IsBlockContent()  {}
-func (*BlockContentOfText) IsBlockContent()      {}
-func (*BlockContentOfVideo) IsBlockContent()     {}
-func (*BlockContentOfImage) IsBlockContent()     {}
-func (*BlockContentOfFile) IsBlockContent()      {}
-func (*BlockContentOfLayout) IsBlockContent()    {}
-func (*BlockContentOfDiv) IsBlockContent()       {}
-func (*BlockContentOfBookmark) IsBlockContent()  {}
-func (*BlockContentOfIcon) IsBlockContent()      {}
-
-func (m *Block) GetContent() IsBlockContent {
-	if m != nil {
-		return m.Content
-	}
-	return nil
-}
 
 func (m *Block) GetId() string {
 	if m != nil {
@@ -580,98 +534,11 @@ func (m *Block) GetIsArchived() bool {
 	return false
 }
 
-func (m *Block) GetDashboard() *BlockContentDashboard {
-	if x, ok := m.GetContent().(*BlockContentOfDashboard); ok {
-		return x.Dashboard
+func (m *Block) GetContent() *BlockCore {
+	if m != nil {
+		return m.Content
 	}
 	return nil
-}
-
-func (m *Block) GetPage() *BlockContentPage {
-	if x, ok := m.GetContent().(*BlockContentOfPage); ok {
-		return x.Page
-	}
-	return nil
-}
-
-func (m *Block) GetDataview() *BlockContentDataview {
-	if x, ok := m.GetContent().(*BlockContentOfDataview); ok {
-		return x.Dataview
-	}
-	return nil
-}
-
-func (m *Block) GetText() *BlockContentText {
-	if x, ok := m.GetContent().(*BlockContentOfText); ok {
-		return x.Text
-	}
-	return nil
-}
-
-func (m *Block) GetVideo() *BlockContentVideo {
-	if x, ok := m.GetContent().(*BlockContentOfVideo); ok {
-		return x.Video
-	}
-	return nil
-}
-
-func (m *Block) GetImage() *BlockContentImage {
-	if x, ok := m.GetContent().(*BlockContentOfImage); ok {
-		return x.Image
-	}
-	return nil
-}
-
-func (m *Block) GetFile() *BlockContentFile {
-	if x, ok := m.GetContent().(*BlockContentOfFile); ok {
-		return x.File
-	}
-	return nil
-}
-
-func (m *Block) GetLayout() *BlockContentLayout {
-	if x, ok := m.GetContent().(*BlockContentOfLayout); ok {
-		return x.Layout
-	}
-	return nil
-}
-
-func (m *Block) GetDiv() *BlockContentDiv {
-	if x, ok := m.GetContent().(*BlockContentOfDiv); ok {
-		return x.Div
-	}
-	return nil
-}
-
-func (m *Block) GetBookmark() *BlockContentBookmark {
-	if x, ok := m.GetContent().(*BlockContentOfBookmark); ok {
-		return x.Bookmark
-	}
-	return nil
-}
-
-func (m *Block) GetIcon() *BlockContentIcon {
-	if x, ok := m.GetContent().(*BlockContentOfIcon); ok {
-		return x.Icon
-	}
-	return nil
-}
-
-// XXX_OneofWrappers is for the internal use of the proto package.
-func (*Block) XXX_OneofWrappers() []interface{} {
-	return []interface{}{
-		(*BlockContentOfDashboard)(nil),
-		(*BlockContentOfPage)(nil),
-		(*BlockContentOfDataview)(nil),
-		(*BlockContentOfText)(nil),
-		(*BlockContentOfVideo)(nil),
-		(*BlockContentOfImage)(nil),
-		(*BlockContentOfFile)(nil),
-		(*BlockContentOfLayout)(nil),
-		(*BlockContentOfDiv)(nil),
-		(*BlockContentOfBookmark)(nil),
-		(*BlockContentOfIcon)(nil),
-	}
 }
 
 type BlockPermissions struct {
@@ -750,6 +617,221 @@ func (m *BlockPermissions) GetDropOn() bool {
 	return false
 }
 
+type BlockCore struct {
+	// Types that are valid to be assigned to Content:
+	//	*BlockCoreContentOfDashboard
+	//	*BlockCoreContentOfPage
+	//	*BlockCoreContentOfDataview
+	//	*BlockCoreContentOfText
+	//	*BlockCoreContentOfVideo
+	//	*BlockCoreContentOfImage
+	//	*BlockCoreContentOfFile
+	//	*BlockCoreContentOfLayout
+	//	*BlockCoreContentOfDiv
+	//	*BlockCoreContentOfBookmark
+	//	*BlockCoreContentOfIcon
+	//	*BlockCoreContentOfLink
+	Content IsBlockCoreContent `protobuf_oneof:"content"`
+}
+
+func (m *BlockCore) Reset()         { *m = BlockCore{} }
+func (m *BlockCore) String() string { return proto.CompactTextString(m) }
+func (*BlockCore) ProtoMessage()    {}
+func (*BlockCore) Descriptor() ([]byte, []int) {
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1}
+}
+func (m *BlockCore) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *BlockCore) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_BlockCore.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *BlockCore) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockCore.Merge(m, src)
+}
+func (m *BlockCore) XXX_Size() int {
+	return m.Size()
+}
+func (m *BlockCore) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockCore.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BlockCore proto.InternalMessageInfo
+
+type IsBlockCoreContent interface {
+	IsBlockCoreContent()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type BlockCoreContentOfDashboard struct {
+	Dashboard *BlockContentDashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
+}
+type BlockCoreContentOfPage struct {
+	Page *BlockContentPage `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
+}
+type BlockCoreContentOfDataview struct {
+	Dataview *BlockContentDataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
+}
+type BlockCoreContentOfText struct {
+	Text *BlockContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
+}
+type BlockCoreContentOfVideo struct {
+	Video *BlockContentVideo `protobuf:"bytes,15,opt,name=video,proto3,oneof" json:"video,omitempty"`
+}
+type BlockCoreContentOfImage struct {
+	Image *BlockContentImage `protobuf:"bytes,16,opt,name=image,proto3,oneof" json:"image,omitempty"`
+}
+type BlockCoreContentOfFile struct {
+	File *BlockContentFile `protobuf:"bytes,17,opt,name=file,proto3,oneof" json:"file,omitempty"`
+}
+type BlockCoreContentOfLayout struct {
+	Layout *BlockContentLayout `protobuf:"bytes,18,opt,name=layout,proto3,oneof" json:"layout,omitempty"`
+}
+type BlockCoreContentOfDiv struct {
+	Div *BlockContentDiv `protobuf:"bytes,19,opt,name=div,proto3,oneof" json:"div,omitempty"`
+}
+type BlockCoreContentOfBookmark struct {
+	Bookmark *BlockContentBookmark `protobuf:"bytes,20,opt,name=bookmark,proto3,oneof" json:"bookmark,omitempty"`
+}
+type BlockCoreContentOfIcon struct {
+	Icon *BlockContentIcon `protobuf:"bytes,21,opt,name=icon,proto3,oneof" json:"icon,omitempty"`
+}
+type BlockCoreContentOfLink struct {
+	Link *BlockContentLink `protobuf:"bytes,22,opt,name=link,proto3,oneof" json:"link,omitempty"`
+}
+
+func (*BlockCoreContentOfDashboard) IsBlockCoreContent() {}
+func (*BlockCoreContentOfPage) IsBlockCoreContent()      {}
+func (*BlockCoreContentOfDataview) IsBlockCoreContent()  {}
+func (*BlockCoreContentOfText) IsBlockCoreContent()      {}
+func (*BlockCoreContentOfVideo) IsBlockCoreContent()     {}
+func (*BlockCoreContentOfImage) IsBlockCoreContent()     {}
+func (*BlockCoreContentOfFile) IsBlockCoreContent()      {}
+func (*BlockCoreContentOfLayout) IsBlockCoreContent()    {}
+func (*BlockCoreContentOfDiv) IsBlockCoreContent()       {}
+func (*BlockCoreContentOfBookmark) IsBlockCoreContent()  {}
+func (*BlockCoreContentOfIcon) IsBlockCoreContent()      {}
+func (*BlockCoreContentOfLink) IsBlockCoreContent()      {}
+
+func (m *BlockCore) GetContent() IsBlockCoreContent {
+	if m != nil {
+		return m.Content
+	}
+	return nil
+}
+
+func (m *BlockCore) GetDashboard() *BlockContentDashboard {
+	if x, ok := m.GetContent().(*BlockCoreContentOfDashboard); ok {
+		return x.Dashboard
+	}
+	return nil
+}
+
+func (m *BlockCore) GetPage() *BlockContentPage {
+	if x, ok := m.GetContent().(*BlockCoreContentOfPage); ok {
+		return x.Page
+	}
+	return nil
+}
+
+func (m *BlockCore) GetDataview() *BlockContentDataview {
+	if x, ok := m.GetContent().(*BlockCoreContentOfDataview); ok {
+		return x.Dataview
+	}
+	return nil
+}
+
+func (m *BlockCore) GetText() *BlockContentText {
+	if x, ok := m.GetContent().(*BlockCoreContentOfText); ok {
+		return x.Text
+	}
+	return nil
+}
+
+func (m *BlockCore) GetVideo() *BlockContentVideo {
+	if x, ok := m.GetContent().(*BlockCoreContentOfVideo); ok {
+		return x.Video
+	}
+	return nil
+}
+
+func (m *BlockCore) GetImage() *BlockContentImage {
+	if x, ok := m.GetContent().(*BlockCoreContentOfImage); ok {
+		return x.Image
+	}
+	return nil
+}
+
+func (m *BlockCore) GetFile() *BlockContentFile {
+	if x, ok := m.GetContent().(*BlockCoreContentOfFile); ok {
+		return x.File
+	}
+	return nil
+}
+
+func (m *BlockCore) GetLayout() *BlockContentLayout {
+	if x, ok := m.GetContent().(*BlockCoreContentOfLayout); ok {
+		return x.Layout
+	}
+	return nil
+}
+
+func (m *BlockCore) GetDiv() *BlockContentDiv {
+	if x, ok := m.GetContent().(*BlockCoreContentOfDiv); ok {
+		return x.Div
+	}
+	return nil
+}
+
+func (m *BlockCore) GetBookmark() *BlockContentBookmark {
+	if x, ok := m.GetContent().(*BlockCoreContentOfBookmark); ok {
+		return x.Bookmark
+	}
+	return nil
+}
+
+func (m *BlockCore) GetIcon() *BlockContentIcon {
+	if x, ok := m.GetContent().(*BlockCoreContentOfIcon); ok {
+		return x.Icon
+	}
+	return nil
+}
+
+func (m *BlockCore) GetLink() *BlockContentLink {
+	if x, ok := m.GetContent().(*BlockCoreContentOfLink); ok {
+		return x.Link
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*BlockCore) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*BlockCoreContentOfDashboard)(nil),
+		(*BlockCoreContentOfPage)(nil),
+		(*BlockCoreContentOfDataview)(nil),
+		(*BlockCoreContentOfText)(nil),
+		(*BlockCoreContentOfVideo)(nil),
+		(*BlockCoreContentOfImage)(nil),
+		(*BlockCoreContentOfFile)(nil),
+		(*BlockCoreContentOfLayout)(nil),
+		(*BlockCoreContentOfDiv)(nil),
+		(*BlockCoreContentOfBookmark)(nil),
+		(*BlockCoreContentOfIcon)(nil),
+		(*BlockCoreContentOfLink)(nil),
+	}
+}
+
 type BlockContent struct {
 }
 
@@ -757,7 +839,7 @@ func (m *BlockContent) Reset()         { *m = BlockContent{} }
 func (m *BlockContent) String() string { return proto.CompactTextString(m) }
 func (*BlockContent) ProtoMessage()    {}
 func (*BlockContent) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2}
 }
 func (m *BlockContent) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -797,7 +879,7 @@ func (m *BlockContentLayout) Reset()         { *m = BlockContentLayout{} }
 func (m *BlockContentLayout) String() string { return proto.CompactTextString(m) }
 func (*BlockContentLayout) ProtoMessage()    {}
 func (*BlockContentLayout) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 0}
 }
 func (m *BlockContentLayout) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -834,6 +916,60 @@ func (m *BlockContentLayout) GetStyle() BlockContentLayoutStyle {
 }
 
 //
+// Link: block to link some content from an external sources.
+type BlockContentLink struct {
+	ContentId    string `protobuf:"bytes,1,opt,name=contentId,proto3" json:"contentId,omitempty"`
+	IsLazyRender bool   `protobuf:"varint,2,opt,name=isLazyRender,proto3" json:"isLazyRender,omitempty"`
+}
+
+func (m *BlockContentLink) Reset()         { *m = BlockContentLink{} }
+func (m *BlockContentLink) String() string { return proto.CompactTextString(m) }
+func (*BlockContentLink) ProtoMessage()    {}
+func (*BlockContentLink) Descriptor() ([]byte, []int) {
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 1}
+}
+func (m *BlockContentLink) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *BlockContentLink) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_BlockContentLink.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *BlockContentLink) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentLink.Merge(m, src)
+}
+func (m *BlockContentLink) XXX_Size() int {
+	return m.Size()
+}
+func (m *BlockContentLink) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentLink.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BlockContentLink proto.InternalMessageInfo
+
+func (m *BlockContentLink) GetContentId() string {
+	if m != nil {
+		return m.ContentId
+	}
+	return ""
+}
+
+func (m *BlockContentLink) GetIsLazyRender() bool {
+	if m != nil {
+		return m.IsLazyRender
+	}
+	return false
+}
+
+//
 // Divider: block, that contains only one horizontal thin line
 type BlockContentDiv struct {
 }
@@ -842,7 +978,7 @@ func (m *BlockContentDiv) Reset()         { *m = BlockContentDiv{} }
 func (m *BlockContentDiv) String() string { return proto.CompactTextString(m) }
 func (*BlockContentDiv) ProtoMessage()    {}
 func (*BlockContentDiv) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 2}
 }
 func (m *BlockContentDiv) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -880,7 +1016,7 @@ func (m *BlockContentBookmark) Reset()         { *m = BlockContentBookmark{} }
 func (m *BlockContentBookmark) String() string { return proto.CompactTextString(m) }
 func (*BlockContentBookmark) ProtoMessage()    {}
 func (*BlockContentBookmark) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 2}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 3}
 }
 func (m *BlockContentBookmark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -917,7 +1053,7 @@ func (m *BlockContentIcon) Reset()         { *m = BlockContentIcon{} }
 func (m *BlockContentIcon) String() string { return proto.CompactTextString(m) }
 func (*BlockContentIcon) ProtoMessage()    {}
 func (*BlockContentIcon) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 3}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 4}
 }
 func (m *BlockContentIcon) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -964,7 +1100,7 @@ func (m *BlockContentDashboard) Reset()         { *m = BlockContentDashboard{} }
 func (m *BlockContentDashboard) String() string { return proto.CompactTextString(m) }
 func (*BlockContentDashboard) ProtoMessage()    {}
 func (*BlockContentDashboard) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 4}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 5}
 }
 func (m *BlockContentDashboard) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1007,7 +1143,7 @@ func (m *BlockContentDataview) Reset()         { *m = BlockContentDataview{} }
 func (m *BlockContentDataview) String() string { return proto.CompactTextString(m) }
 func (*BlockContentDataview) ProtoMessage()    {}
 func (*BlockContentDataview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 5}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 6}
 }
 func (m *BlockContentDataview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1037,20 +1173,20 @@ func (m *BlockContentDataview) XXX_DiscardUnknown() {
 var xxx_messageInfo_BlockContentDataview proto.InternalMessageInfo
 
 type BlockContentText struct {
-	Text       string                  `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	Style      BlockContentTextStyle   `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle" json:"style,omitempty"`
-	Marks      []*BlockContentTextMark `protobuf:"bytes,3,rep,name=marks,proto3" json:"marks,omitempty"`
-	Toggleable bool                    `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
-	Marker     BlockContentTextMarker  `protobuf:"varint,5,opt,name=marker,proto3,enum=anytype.model.BlockContentTextMarker" json:"marker,omitempty"`
-	Checkable  bool                    `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
-	Checked    bool                    `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
+	Text       string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Style      BlockContentTextStyle  `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle" json:"style,omitempty"`
+	Marks      *BlockContentTextMarks `protobuf:"bytes,3,opt,name=marks,proto3" json:"marks,omitempty"`
+	Toggleable bool                   `protobuf:"varint,4,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
+	Marker     BlockContentTextMarker `protobuf:"varint,5,opt,name=marker,proto3,enum=anytype.model.BlockContentTextMarker" json:"marker,omitempty"`
+	Checkable  bool                   `protobuf:"varint,6,opt,name=checkable,proto3" json:"checkable,omitempty"`
+	Checked    bool                   `protobuf:"varint,7,opt,name=checked,proto3" json:"checked,omitempty"`
 }
 
 func (m *BlockContentText) Reset()         { *m = BlockContentText{} }
 func (m *BlockContentText) String() string { return proto.CompactTextString(m) }
 func (*BlockContentText) ProtoMessage()    {}
 func (*BlockContentText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 7}
 }
 func (m *BlockContentText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1093,7 +1229,7 @@ func (m *BlockContentText) GetStyle() BlockContentTextStyle {
 	return BlockContentText_Paragraph
 }
 
-func (m *BlockContentText) GetMarks() []*BlockContentTextMark {
+func (m *BlockContentText) GetMarks() *BlockContentTextMarks {
 	if m != nil {
 		return m.Marks
 	}
@@ -1136,7 +1272,7 @@ func (m *BlockContentTextMarks) Reset()         { *m = BlockContentTextMarks{} }
 func (m *BlockContentTextMarks) String() string { return proto.CompactTextString(m) }
 func (*BlockContentTextMarks) ProtoMessage()    {}
 func (*BlockContentTextMarks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 7, 0}
 }
 func (m *BlockContentTextMarks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1182,7 +1318,7 @@ func (m *BlockContentTextMark) Reset()         { *m = BlockContentTextMark{} }
 func (m *BlockContentTextMark) String() string { return proto.CompactTextString(m) }
 func (*BlockContentTextMark) ProtoMessage()    {}
 func (*BlockContentTextMark) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 7, 1}
 }
 func (m *BlockContentTextMark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1242,7 +1378,7 @@ func (m *BlockContentVideo) Reset()         { *m = BlockContentVideo{} }
 func (m *BlockContentVideo) String() string { return proto.CompactTextString(m) }
 func (*BlockContentVideo) ProtoMessage()    {}
 func (*BlockContentVideo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 7}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 8}
 }
 func (m *BlockContentVideo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1302,7 +1438,7 @@ func (m *BlockContentVideoPreview) Reset()         { *m = BlockContentVideoPrevi
 func (m *BlockContentVideoPreview) String() string { return proto.CompactTextString(m) }
 func (*BlockContentVideoPreview) ProtoMessage()    {}
 func (*BlockContentVideoPreview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 7, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 8, 0}
 }
 func (m *BlockContentVideoPreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1353,16 +1489,22 @@ func (m *BlockContentVideoPreview) GetWidth() int32 {
 }
 
 type BlockContentImage struct {
-	LocalFilePath string                    `protobuf:"bytes,1,opt,name=localFilePath,proto3" json:"localFilePath,omitempty"`
-	State         BlockContentImageState    `protobuf:"varint,2,opt,name=state,proto3,enum=anytype.model.BlockContentImageState" json:"state,omitempty"`
-	Preview       *BlockContentImagePreview `protobuf:"bytes,3,opt,name=preview,proto3" json:"preview,omitempty"`
+	LocalFilePath   string                 `protobuf:"bytes,1,opt,name=localFilePath,proto3" json:"localFilePath,omitempty"`
+	PreviewFilePath string                 `protobuf:"bytes,2,opt,name=previewFilePath,proto3" json:"previewFilePath,omitempty"`
+	State           BlockContentImageState `protobuf:"varint,3,opt,name=state,proto3,enum=anytype.model.BlockContentImageState" json:"state,omitempty"`
+	Type            BlockContentImageType  `protobuf:"varint,4,opt,name=type,proto3,enum=anytype.model.BlockContentImageType" json:"type,omitempty"`
+	Name            string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Size_           int32                  `protobuf:"varint,6,opt,name=size,proto3" json:"size,omitempty"`
+	AddedAt         int32                  `protobuf:"varint,7,opt,name=addedAt,proto3" json:"addedAt,omitempty"`
+	Width           int32                  `protobuf:"varint,8,opt,name=width,proto3" json:"width,omitempty"`
+	WidthToHeight   int32                  `protobuf:"varint,9,opt,name=widthToHeight,proto3" json:"widthToHeight,omitempty"`
 }
 
 func (m *BlockContentImage) Reset()         { *m = BlockContentImage{} }
 func (m *BlockContentImage) String() string { return proto.CompactTextString(m) }
 func (*BlockContentImage) ProtoMessage()    {}
 func (*BlockContentImage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 8}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 9}
 }
 func (m *BlockContentImage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1398,6 +1540,13 @@ func (m *BlockContentImage) GetLocalFilePath() string {
 	return ""
 }
 
+func (m *BlockContentImage) GetPreviewFilePath() string {
+	if m != nil {
+		return m.PreviewFilePath
+	}
+	return ""
+}
+
 func (m *BlockContentImage) GetState() BlockContentImageState {
 	if m != nil {
 		return m.State
@@ -1405,69 +1554,44 @@ func (m *BlockContentImage) GetState() BlockContentImageState {
 	return BlockContentImage_Empty
 }
 
-func (m *BlockContentImage) GetPreview() *BlockContentImagePreview {
+func (m *BlockContentImage) GetType() BlockContentImageType {
 	if m != nil {
-		return m.Preview
+		return m.Type
 	}
-	return nil
+	return BlockContentImage_Png
 }
 
-type BlockContentImagePreview struct {
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Icon  string `protobuf:"bytes,2,opt,name=icon,proto3" json:"icon,omitempty"`
-	Width int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
-}
-
-func (m *BlockContentImagePreview) Reset()         { *m = BlockContentImagePreview{} }
-func (m *BlockContentImagePreview) String() string { return proto.CompactTextString(m) }
-func (*BlockContentImagePreview) ProtoMessage()    {}
-func (*BlockContentImagePreview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 8, 0}
-}
-func (m *BlockContentImagePreview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockContentImagePreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockContentImagePreview.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockContentImagePreview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockContentImagePreview.Merge(m, src)
-}
-func (m *BlockContentImagePreview) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockContentImagePreview) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockContentImagePreview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockContentImagePreview proto.InternalMessageInfo
-
-func (m *BlockContentImagePreview) GetName() string {
+func (m *BlockContentImage) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *BlockContentImagePreview) GetIcon() string {
+func (m *BlockContentImage) GetSize_() int32 {
 	if m != nil {
-		return m.Icon
+		return m.Size_
 	}
-	return ""
+	return 0
 }
 
-func (m *BlockContentImagePreview) GetWidth() int32 {
+func (m *BlockContentImage) GetAddedAt() int32 {
+	if m != nil {
+		return m.AddedAt
+	}
+	return 0
+}
+
+func (m *BlockContentImage) GetWidth() int32 {
 	if m != nil {
 		return m.Width
+	}
+	return 0
+}
+
+func (m *BlockContentImage) GetWidthToHeight() int32 {
+	if m != nil {
+		return m.WidthToHeight
 	}
 	return 0
 }
@@ -1482,7 +1606,7 @@ func (m *BlockContentFile) Reset()         { *m = BlockContentFile{} }
 func (m *BlockContentFile) String() string { return proto.CompactTextString(m) }
 func (*BlockContentFile) ProtoMessage()    {}
 func (*BlockContentFile) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 9}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 10}
 }
 func (m *BlockContentFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1541,7 +1665,7 @@ func (m *BlockContentFilePreview) Reset()         { *m = BlockContentFilePreview
 func (m *BlockContentFilePreview) String() string { return proto.CompactTextString(m) }
 func (*BlockContentFilePreview) ProtoMessage()    {}
 func (*BlockContentFilePreview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 9, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 10, 0}
 }
 func (m *BlockContentFilePreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1592,7 +1716,7 @@ func (m *BlockContentPage) Reset()         { *m = BlockContentPage{} }
 func (m *BlockContentPage) String() string { return proto.CompactTextString(m) }
 func (*BlockContentPage) ProtoMessage()    {}
 func (*BlockContentPage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 10}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 2, 11}
 }
 func (m *BlockContentPage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1952,6 +2076,7 @@ func init() {
 	proto.RegisterEnum("anytype.model.BlockContentTextMarkType", BlockContentTextMarkType_name, BlockContentTextMarkType_value)
 	proto.RegisterEnum("anytype.model.BlockContentVideoState", BlockContentVideoState_name, BlockContentVideoState_value)
 	proto.RegisterEnum("anytype.model.BlockContentImageState", BlockContentImageState_name, BlockContentImageState_value)
+	proto.RegisterEnum("anytype.model.BlockContentImageType", BlockContentImageType_name, BlockContentImageType_value)
 	proto.RegisterEnum("anytype.model.BlockContentFileState", BlockContentFileState_name, BlockContentFileState_value)
 	proto.RegisterEnum("anytype.model.BlockContentPageStyle", BlockContentPageStyle_name, BlockContentPageStyle_value)
 	proto.RegisterEnum("anytype.model.ImageSize", ImageSize_name, ImageSize_value)
@@ -1959,8 +2084,10 @@ func init() {
 	proto.RegisterEnum("anytype.model.VideoSize", VideoSize_name, VideoSize_value)
 	proto.RegisterType((*Block)(nil), "anytype.model.Block")
 	proto.RegisterType((*BlockPermissions)(nil), "anytype.model.Block.Permissions")
+	proto.RegisterType((*BlockCore)(nil), "anytype.model.Block.Core")
 	proto.RegisterType((*BlockContent)(nil), "anytype.model.Block.Content")
 	proto.RegisterType((*BlockContentLayout)(nil), "anytype.model.Block.Content.Layout")
+	proto.RegisterType((*BlockContentLink)(nil), "anytype.model.Block.Content.Link")
 	proto.RegisterType((*BlockContentDiv)(nil), "anytype.model.Block.Content.Div")
 	proto.RegisterType((*BlockContentBookmark)(nil), "anytype.model.Block.Content.Bookmark")
 	proto.RegisterType((*BlockContentIcon)(nil), "anytype.model.Block.Content.Icon")
@@ -1972,7 +2099,6 @@ func init() {
 	proto.RegisterType((*BlockContentVideo)(nil), "anytype.model.Block.Content.Video")
 	proto.RegisterType((*BlockContentVideoPreview)(nil), "anytype.model.Block.Content.Video.Preview")
 	proto.RegisterType((*BlockContentImage)(nil), "anytype.model.Block.Content.Image")
-	proto.RegisterType((*BlockContentImagePreview)(nil), "anytype.model.Block.Content.Image.Preview")
 	proto.RegisterType((*BlockContentFile)(nil), "anytype.model.Block.Content.File")
 	proto.RegisterType((*BlockContentFilePreview)(nil), "anytype.model.Block.Content.File.Preview")
 	proto.RegisterType((*BlockContentPage)(nil), "anytype.model.Block.Content.Page")
@@ -1986,104 +2112,113 @@ func init() {
 func init() { proto.RegisterFile("pb/model/protos/models.proto", fileDescriptor_47d1277a02da26d7) }
 
 var fileDescriptor_47d1277a02da26d7 = []byte{
-	// 1537 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x57, 0x4f, 0x93, 0xe3, 0x56,
-	0x11, 0xb7, 0x6c, 0xc9, 0x7f, 0xda, 0x99, 0x59, 0xed, 0xcb, 0x26, 0x28, 0xaa, 0xc5, 0x35, 0x31,
-	0x09, 0x3b, 0xd9, 0x24, 0x9e, 0x19, 0xef, 0x40, 0x28, 0x8a, 0x25, 0xac, 0xc7, 0x09, 0x5e, 0xd8,
-	0x0d, 0x46, 0xde, 0xa5, 0x28, 0x6e, 0xcf, 0xd2, 0x1b, 0xf9, 0x61, 0x59, 0x4f, 0xf5, 0xfc, 0xec,
-	0x89, 0x53, 0xdc, 0xb9, 0x52, 0x1c, 0xa9, 0xe2, 0x33, 0x70, 0xe5, 0xc4, 0x85, 0x0b, 0xc7, 0x70,
-	0xe3, 0x48, 0xed, 0x7e, 0x11, 0xaa, 0xdf, 0x93, 0xc6, 0x9e, 0xd9, 0xa9, 0x19, 0x07, 0x6a, 0x0f,
-	0xdc, 0xd4, 0xad, 0xfe, 0x75, 0xff, 0x5e, 0xf7, 0xeb, 0x6e, 0x09, 0xee, 0x66, 0xe3, 0x83, 0x99,
-	0x88, 0x58, 0x72, 0x90, 0x49, 0xa1, 0xc4, 0xdc, 0x08, 0xf3, 0x8e, 0x96, 0xc8, 0x0e, 0x4d, 0x57,
-	0x6a, 0x95, 0xb1, 0x8e, 0xd6, 0xfa, 0x77, 0x63, 0x21, 0xe2, 0x84, 0x19, 0xd3, 0xf1, 0xe2, 0xf4,
-	0x60, 0xae, 0xe4, 0x22, 0x54, 0xc6, 0xb8, 0xfd, 0x97, 0x77, 0xc0, 0xe9, 0x25, 0x22, 0x9c, 0x92,
-	0x5d, 0x28, 0xf3, 0xc8, 0xb3, 0xf6, 0xac, 0xfd, 0x46, 0x50, 0xe6, 0x11, 0x39, 0x80, 0xea, 0x29,
-	0x67, 0x49, 0x34, 0xf7, 0xca, 0x7b, 0xd6, 0x7e, 0xb3, 0xfb, 0xad, 0x8e, 0x71, 0xd4, 0x29, 0x1c,
-	0x75, 0x46, 0xda, 0x51, 0x90, 0x9b, 0x91, 0x1e, 0x34, 0x33, 0x26, 0x67, 0x7c, 0x3e, 0xe7, 0x22,
-	0x9d, 0x7b, 0x15, 0x8d, 0xda, 0xeb, 0x5c, 0x60, 0xd3, 0xd1, 0xb1, 0x3a, 0xc3, 0xb5, 0x5d, 0xb0,
-	0x09, 0x22, 0x7b, 0xd0, 0x0c, 0x27, 0x3c, 0x89, 0x24, 0x4b, 0x1f, 0x47, 0x73, 0xcf, 0xde, 0xab,
-	0xec, 0x37, 0x82, 0x4d, 0x15, 0x69, 0x01, 0xf0, 0xf9, 0x23, 0x19, 0x4e, 0xf8, 0x92, 0x45, 0x9e,
-	0xb3, 0x67, 0xed, 0xd7, 0x83, 0x0d, 0x0d, 0xf9, 0x1c, 0x1a, 0x11, 0x9d, 0x4f, 0xc6, 0x82, 0xca,
-	0xc8, 0x6b, 0x6a, 0x0e, 0xdf, 0xbd, 0x92, 0xc3, 0x89, 0x48, 0x15, 0x4b, 0x55, 0xa7, 0x5f, 0x58,
-	0x0f, 0x4a, 0xc1, 0x1a, 0x4a, 0x3e, 0x01, 0x3b, 0xa3, 0x31, 0xf3, 0xde, 0xd0, 0x2e, 0xde, 0xbd,
-	0xd6, 0xc5, 0x90, 0xc6, 0x6c, 0x50, 0x0a, 0x34, 0x80, 0x9c, 0x40, 0x3d, 0xa2, 0x8a, 0x2e, 0x39,
-	0x3b, 0xf3, 0x76, 0x34, 0xf8, 0xfd, 0x1b, 0xe2, 0x1b, 0xe3, 0x41, 0x29, 0x38, 0x07, 0x62, 0x74,
-	0xc5, 0xbe, 0x54, 0xde, 0xee, 0x16, 0xd1, 0x9f, 0xb1, 0x2f, 0x15, 0x46, 0x47, 0x00, 0xf9, 0x21,
-	0x38, 0x4b, 0x1e, 0x31, 0xe1, 0xdd, 0xd2, 0xc8, 0xf6, 0xb5, 0xc8, 0x5f, 0xa1, 0xe5, 0xa0, 0x14,
-	0x18, 0x08, 0x62, 0xf9, 0x0c, 0xcf, 0xec, 0x6e, 0x81, 0x7d, 0x3c, 0x33, 0x87, 0x36, 0x10, 0x24,
-	0x7c, 0xca, 0x13, 0xe6, 0xdd, 0xde, 0x82, 0xf0, 0xe7, 0x3c, 0xd1, 0xe9, 0x42, 0x00, 0x79, 0x08,
-	0xd5, 0x84, 0xae, 0xc4, 0x42, 0x79, 0x44, 0x43, 0xbf, 0x73, 0x2d, 0xf4, 0x89, 0x36, 0x1d, 0x94,
-	0x82, 0x1c, 0x44, 0x8e, 0xa1, 0x12, 0xf1, 0xa5, 0xf7, 0xe6, 0x35, 0x97, 0xed, 0x3c, 0xd1, 0x7c,
-	0x39, 0x28, 0x05, 0x68, 0x8e, 0x35, 0x1a, 0x0b, 0x31, 0x9d, 0x51, 0x39, 0xf5, 0xee, 0x6c, 0x51,
-	0xa3, 0x5e, 0x6e, 0x8c, 0x35, 0x2a, 0x80, 0x78, 0x64, 0x1e, 0x8a, 0xd4, 0x7b, 0x6b, 0x8b, 0x23,
-	0x3f, 0x0e, 0x45, 0x8a, 0x47, 0x46, 0x80, 0xbf, 0x82, 0xe6, 0x46, 0x03, 0x10, 0x02, 0xb6, 0x64,
-	0xd4, 0xb4, 0x5e, 0x3d, 0xd0, 0xcf, 0xa8, 0x63, 0x11, 0x57, 0xba, 0xf5, 0xea, 0x81, 0x7e, 0x26,
-	0x6f, 0x43, 0x55, 0xb2, 0x99, 0x58, 0x32, 0xdd, 0x5a, 0xf5, 0x20, 0x97, 0xd0, 0x36, 0x92, 0x34,
-	0xf6, 0x6c, 0x63, 0x8b, 0xcf, 0x68, 0x1b, 0x49, 0x91, 0xfd, 0x22, 0xcd, 0x3b, 0x24, 0x97, 0xfc,
-	0x3f, 0xde, 0x86, 0x5a, 0xce, 0xc9, 0x8f, 0xa1, 0x6a, 0xd2, 0x49, 0x3e, 0x05, 0x67, 0xae, 0x56,
-	0x09, 0xd3, 0x14, 0x76, 0xbb, 0x1f, 0x6c, 0x51, 0x82, 0xce, 0x08, 0x01, 0x81, 0xc1, 0xb5, 0xef,
-	0x82, 0xa3, 0x65, 0x52, 0x83, 0x4a, 0x20, 0xce, 0xdc, 0x12, 0x01, 0xa8, 0x9e, 0x88, 0x64, 0x31,
-	0x4b, 0x5d, 0xcb, 0x77, 0xa0, 0xd2, 0xe7, 0x4b, 0x1f, 0xa0, 0x5e, 0xe4, 0xd1, 0xf7, 0xc1, 0xc6,
-	0x94, 0x20, 0xf7, 0x94, 0xce, 0x58, 0x3e, 0x76, 0xf4, 0xb3, 0xbf, 0x80, 0xc6, 0x79, 0x4f, 0x92,
-	0xde, 0x45, 0x6a, 0x1f, 0x6d, 0xd7, 0xca, 0x17, 0xd9, 0xbd, 0x57, 0xb0, 0xdb, 0x05, 0x78, 0x4a,
-	0x79, 0x3a, 0x0a, 0x25, 0x63, 0xa9, 0x5b, 0x22, 0x4d, 0xa8, 0xe5, 0x73, 0xc3, 0xb5, 0x90, 0x5e,
-	0xd1, 0x8a, 0xfe, 0x9f, 0xaa, 0x60, 0x63, 0x5b, 0x21, 0x3f, 0xdd, 0x87, 0x39, 0x3f, 0xdd, 0x62,
-	0x0f, 0x0b, 0x4a, 0x65, 0x4d, 0xe9, 0xde, 0x8d, 0xcd, 0x79, 0x81, 0x0d, 0xf9, 0x11, 0x38, 0x98,
-	0x02, 0x1c, 0x90, 0x95, 0x1b, 0x87, 0x93, 0x86, 0x3f, 0xa5, 0x72, 0x1a, 0x18, 0x10, 0x8e, 0x3f,
-	0x25, 0xe2, 0x38, 0x61, 0x74, 0x9c, 0xb0, 0xbc, 0xe4, 0x1b, 0x1a, 0xf2, 0x13, 0xa8, 0xa2, 0x21,
-	0x93, 0xba, 0xf0, 0xbb, 0xdd, 0xfd, 0xed, 0xdc, 0x33, 0x19, 0xe4, 0x38, 0x72, 0x17, 0x1a, 0xe1,
-	0x84, 0x85, 0x53, 0x1d, 0xa0, 0xaa, 0x03, 0xac, 0x15, 0xc4, 0x83, 0x9a, 0x16, 0x58, 0xe4, 0xd5,
-	0xf4, 0xbb, 0x42, 0xf4, 0x3f, 0x03, 0xe7, 0xa9, 0xa6, 0x78, 0x7e, 0x40, 0xeb, 0xbf, 0x38, 0xa0,
-	0xff, 0xfb, 0x32, 0xd8, 0x28, 0x93, 0xfb, 0xe0, 0x48, 0x9a, 0xc6, 0xa6, 0xf2, 0xcd, 0xee, 0x9d,
-	0x4b, 0x6e, 0x02, 0x7c, 0x17, 0x18, 0x13, 0xf2, 0x29, 0xd8, 0xf8, 0x2a, 0xaf, 0xc8, 0x87, 0xdb,
-	0x45, 0xec, 0x3c, 0x5b, 0x65, 0x2c, 0xd0, 0x40, 0x72, 0x07, 0x9c, 0x8c, 0x4a, 0x3a, 0xd3, 0xad,
-	0xd5, 0x08, 0x8c, 0xd0, 0xfe, 0x1d, 0xd8, 0x68, 0x43, 0x6e, 0xc3, 0xce, 0x48, 0x49, 0x3e, 0x65,
-	0x6a, 0x22, 0xc5, 0x22, 0x9e, 0xb8, 0x25, 0xf2, 0x06, 0xd4, 0x7f, 0xce, 0x56, 0xfa, 0xb2, 0xb9,
-	0x16, 0xde, 0xf6, 0xc7, 0x8a, 0x26, 0x3c, 0x74, 0xcb, 0xa4, 0x0e, 0x76, 0x4f, 0x24, 0x91, 0x5b,
-	0x21, 0xb7, 0xa0, 0xf9, 0x3c, 0x8d, 0x98, 0x9c, 0x87, 0x42, 0xb2, 0xc8, 0xb5, 0xf1, 0xd5, 0x13,
-	0x9e, 0x4e, 0x5d, 0x87, 0xec, 0x40, 0x03, 0x79, 0x9c, 0x88, 0x44, 0x48, 0xb7, 0x4a, 0xde, 0x84,
-	0x5b, 0x3d, 0x1a, 0x4e, 0x63, 0x29, 0x16, 0x69, 0x64, 0x94, 0xb5, 0xf6, 0x6f, 0x8b, 0x6b, 0xbb,
-	0x03, 0x8d, 0x21, 0x95, 0x34, 0x96, 0x34, 0x9b, 0x98, 0x5b, 0x3b, 0x60, 0x34, 0x62, 0xf2, 0xc8,
-	0xb5, 0xd6, 0x42, 0xd7, 0x2d, 0xaf, 0x85, 0x07, 0x6e, 0x65, 0x2d, 0x1c, 0xbb, 0x36, 0x69, 0x80,
-	0xf3, 0xcb, 0x85, 0x50, 0xcc, 0x75, 0x90, 0xc4, 0x89, 0x88, 0x98, 0x5b, 0x45, 0xe5, 0x33, 0xae,
-	0x12, 0xe6, 0xd6, 0xda, 0xf7, 0xa1, 0x6a, 0xae, 0x01, 0xbe, 0xfe, 0x42, 0xa4, 0xcc, 0xb4, 0xf0,
-	0x17, 0x8b, 0xd9, 0x98, 0x49, 0x73, 0xc0, 0xde, 0x22, 0x49, 0x98, 0x72, 0xcb, 0xfe, 0x3f, 0xcb,
-	0xe0, 0xe8, 0xcd, 0x41, 0xde, 0x83, 0x9d, 0x44, 0x84, 0x34, 0xc1, 0x81, 0x3e, 0xa4, 0x6a, 0x92,
-	0xb7, 0xc9, 0x45, 0x25, 0xf9, 0x31, 0xf6, 0x0b, 0x55, 0x45, 0x75, 0xf6, 0x6f, 0x5e, 0x49, 0x9d,
-	0x11, 0xda, 0x07, 0x06, 0x46, 0xfa, 0x50, 0xcb, 0x24, 0xd3, 0xfb, 0xd4, 0x7c, 0x53, 0xdc, 0xdf,
-	0xc2, 0xc3, 0xd0, 0x20, 0x82, 0x02, 0xea, 0xff, 0x14, 0x6a, 0xb9, 0xee, 0xaa, 0xa1, 0x83, 0x3a,
-	0x3d, 0xcc, 0xcb, 0x46, 0x87, 0xcf, 0x78, 0x29, 0xce, 0x78, 0xa4, 0x26, 0x3a, 0xac, 0x13, 0x18,
-	0xa1, 0x3d, 0xc2, 0xb2, 0x20, 0xaf, 0x06, 0x38, 0x9f, 0xcd, 0x32, 0xb5, 0x72, 0x4b, 0x58, 0xa1,
-	0xe7, 0x59, 0x22, 0x68, 0xc4, 0xd3, 0xd8, 0xb5, 0xc8, 0x5b, 0x70, 0x3b, 0x8f, 0xd5, 0x17, 0x67,
-	0x29, 0xea, 0x59, 0xe4, 0x96, 0xf1, 0x3e, 0x14, 0x32, 0xda, 0x55, 0x30, 0xd7, 0x7d, 0xcc, 0xb5,
-	0xad, 0x73, 0xaa, 0x37, 0xea, 0xeb, 0xc8, 0xa9, 0x76, 0xfc, 0x3f, 0xe5, 0xd4, 0x78, 0xf8, 0x3f,
-	0xcb, 0xe9, 0x5f, 0xcb, 0x60, 0x63, 0xc2, 0xb6, 0x4c, 0xe9, 0xc3, 0x8b, 0x29, 0xbd, 0x77, 0xe3,
-	0x27, 0xcc, 0xc5, 0x8c, 0x9e, 0x5c, 0xce, 0xe8, 0x07, 0x37, 0x3b, 0x78, 0x25, 0xa1, 0x47, 0xdf,
-	0x38, 0xa1, 0xaf, 0x27, 0x75, 0x09, 0xd8, 0xf8, 0x4d, 0xbb, 0x5e, 0x75, 0xd6, 0x16, 0x39, 0x19,
-	0x9a, 0x5b, 0xb6, 0xb1, 0x78, 0xdf, 0x2f, 0x26, 0xd8, 0x06, 0xb7, 0x3a, 0xd8, 0xcf, 0xe8, 0x7c,
-	0xea, 0x5a, 0xf8, 0xad, 0x30, 0xc2, 0x81, 0xd2, 0x7e, 0x17, 0xea, 0x43, 0x31, 0xe7, 0x8a, 0x8b,
-	0x54, 0x0f, 0x1a, 0x76, 0x2a, 0x24, 0x0e, 0xa0, 0x06, 0x38, 0x8f, 0x4e, 0x15, 0xce, 0x9f, 0x5e,
-	0x03, 0x6a, 0xa1, 0x09, 0xd3, 0xfe, 0x10, 0x1c, 0x3d, 0xfb, 0x31, 0x1b, 0xa7, 0x52, 0xcc, 0x34,
-	0x37, 0x27, 0xd0, 0xcf, 0xf8, 0x13, 0xa3, 0x84, 0xce, 0x8f, 0x13, 0x94, 0x95, 0x68, 0xff, 0xcd,
-	0x82, 0xda, 0xa3, 0x30, 0x14, 0x8b, 0x54, 0xbd, 0xf2, 0x83, 0x53, 0x64, 0xb8, 0xbc, 0x91, 0xe1,
-	0xef, 0x41, 0x95, 0x2e, 0xa9, 0xa2, 0x32, 0x2f, 0xe2, 0xb7, 0x2f, 0x9d, 0x38, 0xf7, 0xd5, 0x79,
-	0xa4, 0x8d, 0x82, 0xdc, 0xd8, 0xff, 0x35, 0x54, 0x8d, 0x86, 0x7c, 0x54, 0x7c, 0x43, 0x5f, 0xbd,
-	0xb5, 0x2e, 0x7d, 0x35, 0xbf, 0x0d, 0x4e, 0x88, 0xd3, 0xde, 0x70, 0x40, 0xbd, 0x16, 0x7b, 0xf5,
-	0x82, 0x46, 0xfb, 0xef, 0x56, 0x31, 0x18, 0x5e, 0xfd, 0x3f, 0x73, 0xe6, 0xfc, 0x2b, 0x86, 0xbf,
-	0x67, 0x95, 0xfd, 0xdd, 0xee, 0x3b, 0x57, 0x45, 0xea, 0x8c, 0xf8, 0x57, 0x58, 0x0d, 0xb4, 0x23,
-	0x87, 0x45, 0x31, 0x2b, 0xba, 0x98, 0xfe, 0xd5, 0x80, 0xcd, 0xfa, 0xdd, 0x03, 0x1b, 0x1d, 0x60,
-	0x21, 0x9e, 0x50, 0x19, 0xe7, 0x35, 0x19, 0xcd, 0x68, 0x92, 0xb8, 0x96, 0x5e, 0x1f, 0x93, 0xc5,
-	0x6c, 0xec, 0x96, 0xdb, 0xad, 0xa2, 0xd0, 0x4d, 0xa8, 0x0d, 0x79, 0xa8, 0x16, 0xba, 0x7e, 0x75,
-	0xd3, 0x7f, 0xae, 0xd5, 0xfe, 0xb3, 0x55, 0xac, 0x8c, 0x6f, 0x78, 0x8a, 0x7c, 0x1d, 0xac, 0x4f,
-	0xd1, 0x1e, 0xe5, 0x9c, 0x00, 0xaa, 0xa3, 0xfe, 0x83, 0xef, 0x1f, 0x66, 0x66, 0x53, 0x8d, 0xfa,
-	0xc7, 0x3f, 0x38, 0xcc, 0xcc, 0xa6, 0x1a, 0xf4, 0x3f, 0xe9, 0x1e, 0x66, 0xf9, 0x3e, 0xec, 0x1f,
-	0x1d, 0xe2, 0x8b, 0x0a, 0x6e, 0xec, 0xe7, 0x83, 0xfe, 0xd1, 0xf1, 0xf1, 0x61, 0xe6, 0xda, 0xb9,
-	0xd4, 0x3d, 0x42, 0x07, 0x4e, 0xef, 0x67, 0xff, 0x78, 0xd1, 0xb2, 0xbe, 0x7e, 0xd1, 0xb2, 0xfe,
-	0xfd, 0xa2, 0x65, 0xfd, 0xe1, 0x65, 0xab, 0xf4, 0xf5, 0xcb, 0x56, 0xe9, 0x5f, 0x2f, 0x5b, 0xa5,
-	0xdf, 0x1c, 0xc6, 0x5c, 0x4d, 0x16, 0xe3, 0x4e, 0x28, 0x66, 0x07, 0x39, 0x35, 0x2e, 0x0e, 0x62,
-	0xf1, 0x71, 0x2e, 0x7c, 0x9c, 0xf0, 0xb1, 0xa4, 0x72, 0x75, 0x50, 0xfc, 0x92, 0x8f, 0xab, 0xfa,
-	0xff, 0xf8, 0xc1, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0xcc, 0xe9, 0x6b, 0xe3, 0xa5, 0x0f, 0x00,
-	0x00,
+	// 1688 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x58, 0x4f, 0x93, 0x1b, 0x47,
+	0x15, 0xd7, 0x48, 0x33, 0xfa, 0xf3, 0xe4, 0x5d, 0x8f, 0x3b, 0x8e, 0x19, 0x06, 0xb3, 0xb5, 0x11,
+	0x09, 0xde, 0x38, 0x89, 0xf6, 0x8f, 0x17, 0x42, 0x01, 0x26, 0xac, 0x56, 0x09, 0xda, 0xe0, 0x04,
+	0x31, 0x5a, 0x53, 0x14, 0xb7, 0xd6, 0x4c, 0xef, 0xa8, 0xd9, 0xd1, 0xf4, 0x54, 0xab, 0xb5, 0x8e,
+	0x5c, 0xdc, 0xb9, 0x72, 0xa7, 0xf8, 0x1e, 0x9c, 0xa8, 0xa2, 0xb8, 0x70, 0xa1, 0x2a, 0xdc, 0x38,
+	0x82, 0x7d, 0xe6, 0x3b, 0x50, 0xaf, 0x7b, 0x66, 0x25, 0xad, 0xcd, 0xee, 0xe4, 0x90, 0x5b, 0xbf,
+	0xd7, 0xef, 0xd7, 0xfd, 0x7b, 0xef, 0xf5, 0x7b, 0x4f, 0x23, 0xb8, 0x9f, 0x8d, 0x77, 0xa7, 0x22,
+	0x62, 0xc9, 0x6e, 0x26, 0x85, 0x12, 0x33, 0x23, 0xcc, 0xba, 0x5a, 0x22, 0x1b, 0x34, 0x5d, 0xa8,
+	0x45, 0xc6, 0xba, 0x5a, 0xeb, 0xdf, 0x8f, 0x85, 0x88, 0x13, 0x66, 0x4c, 0xc7, 0xf3, 0xb3, 0xdd,
+	0x99, 0x92, 0xf3, 0x50, 0x19, 0xe3, 0xce, 0x7f, 0xbe, 0x05, 0x4e, 0x2f, 0x11, 0xe1, 0x39, 0xd9,
+	0x84, 0x2a, 0x8f, 0x3c, 0x6b, 0xdb, 0xda, 0x69, 0x05, 0x55, 0x1e, 0x91, 0x5d, 0xa8, 0x9f, 0x71,
+	0x96, 0x44, 0x33, 0xaf, 0xba, 0x6d, 0xed, 0xb4, 0x0f, 0xbe, 0xd1, 0x35, 0x07, 0x75, 0x8b, 0x83,
+	0xba, 0x23, 0x7d, 0x50, 0x90, 0x9b, 0x91, 0x1e, 0xb4, 0x33, 0x26, 0xa7, 0x7c, 0x36, 0xe3, 0x22,
+	0x9d, 0x79, 0x35, 0x8d, 0xda, 0xee, 0xae, 0xb1, 0xe9, 0xea, 0xbb, 0xba, 0xc3, 0xa5, 0x5d, 0xb0,
+	0x0a, 0x22, 0xdb, 0xd0, 0x0e, 0x27, 0x3c, 0x89, 0x24, 0x4b, 0x4f, 0xa2, 0x99, 0x67, 0x6f, 0xd7,
+	0x76, 0x5a, 0xc1, 0xaa, 0x8a, 0x6c, 0x01, 0xf0, 0xd9, 0x91, 0x0c, 0x27, 0xfc, 0x82, 0x45, 0x9e,
+	0xb3, 0x6d, 0xed, 0x34, 0x83, 0x15, 0x0d, 0x79, 0x04, 0x8d, 0x50, 0xa4, 0x8a, 0xa5, 0xca, 0xab,
+	0x6b, 0x06, 0xdf, 0x7c, 0x2d, 0x83, 0x63, 0x21, 0x59, 0x50, 0x58, 0xfa, 0x0b, 0x68, 0xaf, 0x50,
+	0x22, 0x04, 0x6c, 0xc9, 0xa8, 0x09, 0x46, 0x33, 0xd0, 0x6b, 0xd4, 0xb1, 0x88, 0x2b, 0x1d, 0x8c,
+	0x66, 0xa0, 0xd7, 0xe4, 0x1e, 0xd4, 0x25, 0x9b, 0x8a, 0x0b, 0xa6, 0x9d, 0x6d, 0x06, 0xb9, 0x84,
+	0xb6, 0x91, 0xa4, 0xb1, 0x67, 0x1b, 0x5b, 0x5c, 0xa3, 0x6d, 0x24, 0x45, 0xf6, 0x8b, 0x34, 0xe7,
+	0x9c, 0x4b, 0xfe, 0x7f, 0x1d, 0xb0, 0x91, 0x0c, 0xf9, 0x04, 0x5a, 0x11, 0x9d, 0x4d, 0xc6, 0x82,
+	0xca, 0xc8, 0x6b, 0x6b, 0xea, 0xdf, 0xfd, 0x3f, 0xd4, 0x35, 0xe9, 0x6e, 0xbf, 0xb0, 0x1e, 0x54,
+	0x82, 0x25, 0x94, 0x7c, 0x08, 0x76, 0x46, 0x63, 0xe6, 0xdd, 0xd2, 0x47, 0xbc, 0x75, 0xed, 0x11,
+	0x43, 0x1a, 0xb3, 0x41, 0x25, 0xd0, 0x00, 0x72, 0x0c, 0xcd, 0x88, 0x2a, 0x7a, 0xc1, 0xd9, 0x33,
+	0x6f, 0x43, 0x83, 0xdf, 0xb9, 0xe1, 0x7e, 0x63, 0x3c, 0xa8, 0x04, 0x97, 0x40, 0xbc, 0x5d, 0xb1,
+	0x2f, 0x94, 0xb7, 0x59, 0xe2, 0xf6, 0x53, 0xf6, 0x85, 0xc2, 0xdb, 0x11, 0x40, 0x7e, 0x08, 0xce,
+	0x05, 0x8f, 0x98, 0xf0, 0x6e, 0x6b, 0x64, 0xe7, 0x5a, 0xe4, 0xaf, 0xd0, 0x72, 0x50, 0x09, 0x0c,
+	0x04, 0xb1, 0x7c, 0x8a, 0x3e, 0xbb, 0x25, 0xb0, 0x27, 0x53, 0xe3, 0xb4, 0x81, 0x20, 0xe1, 0x33,
+	0x9e, 0x30, 0xef, 0x4e, 0x09, 0xc2, 0x9f, 0xf0, 0x44, 0x87, 0x0b, 0x01, 0xe4, 0x31, 0xd4, 0x13,
+	0xba, 0x10, 0x73, 0xe5, 0x11, 0x0d, 0xfd, 0xce, 0xb5, 0xd0, 0x27, 0xda, 0x74, 0x50, 0x09, 0x72,
+	0x10, 0x39, 0x84, 0x5a, 0xc4, 0x2f, 0xbc, 0x37, 0xae, 0xa9, 0x92, 0xcb, 0x40, 0xf3, 0x8b, 0x41,
+	0x25, 0x40, 0x73, 0xcc, 0xd1, 0x58, 0x88, 0xf3, 0x29, 0x95, 0xe7, 0xde, 0xdd, 0x12, 0x39, 0xea,
+	0xe5, 0xc6, 0x98, 0xa3, 0x02, 0x88, 0x2e, 0xf3, 0x50, 0xa4, 0xde, 0x9b, 0x25, 0x5c, 0x3e, 0x09,
+	0x45, 0x8a, 0x2e, 0x23, 0x00, 0x81, 0x09, 0x4f, 0xcf, 0xbd, 0x7b, 0x25, 0x80, 0x4f, 0x78, 0x8a,
+	0xb7, 0x6a, 0x40, 0xaf, 0x75, 0x59, 0x94, 0xfe, 0x3f, 0x08, 0x34, 0x72, 0x1b, 0x3f, 0x86, 0xba,
+	0x89, 0x0b, 0xf9, 0x08, 0x9c, 0x99, 0x5a, 0x24, 0x4c, 0x97, 0xdc, 0xe6, 0xc1, 0xbb, 0x25, 0x62,
+	0xd9, 0x1d, 0x21, 0x20, 0x30, 0xb8, 0xce, 0x7d, 0x70, 0xb4, 0x4c, 0x1a, 0x50, 0x0b, 0xc4, 0x33,
+	0xb7, 0x42, 0x00, 0xea, 0xc7, 0x22, 0x99, 0x4f, 0x53, 0xd7, 0xf2, 0x07, 0x60, 0x23, 0x1f, 0x72,
+	0x1f, 0x5a, 0x39, 0x8f, 0x93, 0xa2, 0xd5, 0x2d, 0x15, 0xa4, 0x03, 0xb7, 0xf8, 0xec, 0x09, 0x7d,
+	0xbe, 0x08, 0x58, 0x1a, 0x31, 0x99, 0x97, 0xfa, 0x9a, 0xce, 0x77, 0xa0, 0xd6, 0xe7, 0x17, 0x3e,
+	0x40, 0xb3, 0x08, 0xad, 0xef, 0x83, 0x8d, 0x51, 0xc2, 0xaa, 0x4f, 0xe9, 0x94, 0xe5, 0xe7, 0xea,
+	0xb5, 0x3f, 0x87, 0xd6, 0x65, 0x99, 0x92, 0xde, 0xba, 0x93, 0xef, 0x97, 0xab, 0xee, 0x75, 0x3f,
+	0xdf, 0x2e, 0xfc, 0xdc, 0x04, 0xf8, 0x8c, 0xf2, 0x74, 0x14, 0x4a, 0xc6, 0x52, 0xb7, 0x42, 0xda,
+	0xd0, 0xc8, 0x7b, 0xa0, 0x6b, 0x21, 0xbd, 0xa2, 0x3a, 0xfd, 0x3f, 0xd6, 0xc1, 0xc6, 0x4a, 0x43,
+	0x7e, 0xba, 0x34, 0x73, 0x7e, 0xba, 0xea, 0x1e, 0x17, 0x94, 0xaa, 0x9a, 0xd2, 0x83, 0x1b, 0xeb,
+	0x75, 0x8d, 0x0d, 0xc2, 0x31, 0x04, 0x45, 0xb3, 0x2f, 0x01, 0xff, 0x0c, 0xcd, 0x03, 0x83, 0xc2,
+	0x5e, 0xae, 0x44, 0x1c, 0x27, 0x8c, 0x8e, 0x13, 0x96, 0x77, 0xcb, 0x15, 0x0d, 0xf9, 0x29, 0xd4,
+	0xd1, 0x90, 0x49, 0xdd, 0x33, 0x37, 0x0f, 0x76, 0xca, 0x9d, 0xcf, 0x64, 0x90, 0xe3, 0x74, 0xc2,
+	0x27, 0x2c, 0x3c, 0xd7, 0x17, 0xd4, 0xf5, 0x05, 0x4b, 0x05, 0xf1, 0xa0, 0xa1, 0x05, 0x16, 0x79,
+	0x0d, 0xbd, 0x57, 0x88, 0xfe, 0xc7, 0xe0, 0x68, 0xa6, 0xe4, 0xc7, 0x85, 0x87, 0xd6, 0x76, 0xed,
+	0xc6, 0x8e, 0x7c, 0xc9, 0x20, 0x77, 0xd0, 0xff, 0x7d, 0x15, 0x6c, 0x94, 0xc9, 0x43, 0x70, 0x24,
+	0x4d, 0x63, 0x93, 0xfa, 0xf6, 0xc1, 0xdd, 0x2b, 0xc7, 0x04, 0xb8, 0x17, 0x18, 0x13, 0xf2, 0x11,
+	0xd8, 0xb8, 0x95, 0xa7, 0xe4, 0xbd, 0x72, 0x37, 0x76, 0x4f, 0x17, 0x19, 0x0b, 0x34, 0x90, 0xdc,
+	0x05, 0x27, 0xa3, 0x92, 0x4e, 0x75, 0x56, 0x5a, 0x81, 0x11, 0x3a, 0xbf, 0x03, 0x1b, 0x6d, 0xc8,
+	0x1d, 0xd8, 0x18, 0x29, 0xc9, 0xcf, 0x99, 0x9a, 0x48, 0x31, 0x8f, 0x27, 0x6e, 0x85, 0xdc, 0x82,
+	0xe6, 0xcf, 0xd9, 0x42, 0xbf, 0x36, 0xd7, 0xc2, 0xc2, 0x39, 0x51, 0x34, 0xe1, 0xa1, 0x5b, 0x25,
+	0x4d, 0xb0, 0x7b, 0x22, 0x89, 0xdc, 0x1a, 0xb9, 0x0d, 0xed, 0xa7, 0x58, 0x01, 0xb3, 0x50, 0x48,
+	0x16, 0xb9, 0x36, 0x6e, 0x61, 0x4d, 0xb9, 0x0e, 0xd9, 0x80, 0x16, 0xf2, 0x38, 0x16, 0x89, 0x90,
+	0x6e, 0x9d, 0xbc, 0x01, 0xb7, 0x7b, 0x34, 0x3c, 0x8f, 0xa5, 0x98, 0xa7, 0x91, 0x51, 0x36, 0x3a,
+	0xbf, 0x2d, 0xde, 0xed, 0x06, 0xb4, 0x86, 0x54, 0xd2, 0x58, 0xd2, 0x6c, 0x62, 0x9e, 0xed, 0x80,
+	0xd1, 0x88, 0xc9, 0x7d, 0xd7, 0x5a, 0x0a, 0x07, 0x6e, 0x75, 0x29, 0x3c, 0x72, 0x6b, 0x4b, 0xe1,
+	0xd0, 0xb5, 0x49, 0x0b, 0x9c, 0x5f, 0xce, 0x85, 0x62, 0xae, 0x83, 0x24, 0x8e, 0x45, 0xc4, 0xdc,
+	0x3a, 0x2a, 0x4f, 0xb9, 0x4a, 0x98, 0xdb, 0xe8, 0x3c, 0x84, 0xba, 0x79, 0x06, 0xb8, 0xfd, 0xb9,
+	0x48, 0x99, 0xe9, 0x06, 0x9f, 0xcf, 0xa7, 0x63, 0x26, 0x8d, 0x83, 0xbd, 0x79, 0x92, 0x30, 0xe5,
+	0x56, 0xfd, 0x7f, 0x56, 0xc1, 0xd1, 0xd3, 0x84, 0xbc, 0x0d, 0x1b, 0x89, 0x08, 0x69, 0x82, 0x4d,
+	0x7e, 0x48, 0xd5, 0x24, 0xaf, 0x93, 0x75, 0x25, 0xf9, 0x09, 0x16, 0x0c, 0x55, 0x45, 0x76, 0x76,
+	0x6e, 0x1e, 0x53, 0xdd, 0x11, 0xda, 0x07, 0x06, 0x46, 0xfa, 0xd0, 0xc8, 0x24, 0xd3, 0x33, 0xd6,
+	0xd4, 0xcc, 0xc3, 0x12, 0x27, 0x0c, 0x0d, 0x22, 0x28, 0xa0, 0xfe, 0xcf, 0xa0, 0x91, 0xeb, 0x5e,
+	0xd7, 0x75, 0x50, 0xa7, 0x1b, 0x7c, 0xd5, 0xe8, 0x74, 0xef, 0xbe, 0x0b, 0xce, 0x33, 0x1e, 0xa9,
+	0x89, 0xbe, 0xd6, 0x09, 0x8c, 0xd0, 0x19, 0x61, 0x5a, 0x90, 0x57, 0x0b, 0x9c, 0x8f, 0xa7, 0x99,
+	0x5a, 0xb8, 0x15, 0xcc, 0xd0, 0xd3, 0x2c, 0x11, 0x34, 0xe2, 0x69, 0xec, 0x5a, 0xe4, 0x4d, 0xb8,
+	0x93, 0xdf, 0xd5, 0x17, 0xcf, 0x52, 0xd4, 0xb3, 0xc8, 0xad, 0xe2, 0x7b, 0x28, 0x64, 0xb4, 0xab,
+	0x61, 0xac, 0xfb, 0x18, 0x6b, 0xdb, 0xff, 0x6b, 0x0d, 0x1c, 0x3d, 0x65, 0x4b, 0xc6, 0x74, 0x07,
+	0x6e, 0xe7, 0x8e, 0x5d, 0xda, 0x19, 0xe6, 0x57, 0xd5, 0xcb, 0xe8, 0xd7, 0x4a, 0x44, 0x5f, 0x53,
+	0x58, 0x8f, 0xfe, 0x8f, 0xf2, 0xd2, 0xb2, 0x4b, 0x74, 0x3b, 0x03, 0x5f, 0x29, 0xab, 0x22, 0xd2,
+	0xce, 0x7a, 0xa4, 0x67, 0xfc, 0xb9, 0x69, 0x2d, 0x4e, 0xa0, 0xd7, 0xd8, 0x55, 0x68, 0x14, 0xb1,
+	0xe8, 0x48, 0xe9, 0xae, 0xe2, 0x04, 0x85, 0xb8, 0xcc, 0x41, 0x73, 0x25, 0x07, 0x18, 0x24, 0xbd,
+	0x38, 0x15, 0x03, 0xc6, 0xe3, 0x89, 0xf2, 0x5a, 0x7a, 0x77, 0x5d, 0xf9, 0xb5, 0x64, 0xaa, 0xe3,
+	0xe5, 0x3d, 0xa1, 0x01, 0xb5, 0x61, 0x1a, 0xbb, 0x15, 0x5c, 0x7c, 0x9a, 0xc5, 0xae, 0xe5, 0xff,
+	0xb9, 0x0a, 0x36, 0x86, 0xbd, 0x64, 0x0a, 0x1f, 0xaf, 0x97, 0xc5, 0x83, 0x1b, 0x7f, 0x46, 0xad,
+	0xe7, 0xe5, 0xf8, 0x6a, 0x55, 0xbc, 0x7b, 0xf3, 0x01, 0xaf, 0x14, 0xc5, 0xfe, 0x57, 0x2e, 0x8a,
+	0xaf, 0xe7, 0xf9, 0x27, 0x60, 0xe3, 0xef, 0xea, 0xe5, 0x6c, 0xb5, 0x4a, 0xc4, 0x64, 0x68, 0xde,
+	0xea, 0xca, 0xa4, 0x7f, 0xa7, 0xe8, 0x98, 0x2b, 0xdc, 0x9a, 0x60, 0x9f, 0xd2, 0xd9, 0xb9, 0x6b,
+	0x61, 0xa2, 0x46, 0xd8, 0xc0, 0x3a, 0x6f, 0x41, 0x73, 0x28, 0x66, 0x5c, 0x71, 0x91, 0xea, 0xc6,
+	0xc6, 0xce, 0x84, 0xc4, 0x86, 0xd7, 0x02, 0xe7, 0xe8, 0x4c, 0x61, 0xbf, 0xeb, 0xbc, 0x07, 0x8e,
+	0x1e, 0x30, 0x18, 0x82, 0x33, 0x29, 0xa6, 0x9a, 0x90, 0x13, 0xe8, 0x35, 0x7e, 0xf6, 0x29, 0xa1,
+	0x83, 0xe2, 0x04, 0x55, 0x25, 0x3a, 0x7f, 0xb1, 0xa0, 0x71, 0x14, 0x86, 0x62, 0x9e, 0xaa, 0x57,
+	0x3e, 0x09, 0x8b, 0xb0, 0x56, 0x57, 0xc2, 0xfa, 0x3d, 0xa8, 0xd3, 0x0b, 0xaa, 0xa8, 0xcc, 0x33,
+	0xf7, 0xed, 0x2b, 0x6e, 0xe6, 0x67, 0x75, 0x8f, 0xb4, 0x51, 0x90, 0x1b, 0xfb, 0xbf, 0x86, 0xba,
+	0xd1, 0x90, 0xf7, 0x8b, 0x1f, 0xef, 0xaf, 0x1f, 0x8d, 0x57, 0x7e, 0xae, 0xdf, 0x03, 0x27, 0xc4,
+	0x91, 0x62, 0x38, 0xa0, 0x5e, 0x8b, 0xbd, 0x66, 0x41, 0xa3, 0xf3, 0x37, 0xab, 0xe8, 0x3e, 0xaf,
+	0x7e, 0xd1, 0x3a, 0x58, 0xa0, 0xf8, 0x41, 0x5b, 0xdb, 0xd9, 0x7c, 0xe5, 0xc3, 0x30, 0xef, 0x17,
+	0xfc, 0x39, 0xa6, 0x00, 0xed, 0xc8, 0x5e, 0x91, 0x41, 0xd3, 0x6e, 0xfc, 0xd7, 0x03, 0x56, 0x93,
+	0xf6, 0x00, 0x6c, 0x3c, 0x00, 0xa3, 0xff, 0x84, 0xca, 0x38, 0x4f, 0xc4, 0x68, 0x4a, 0x93, 0xc4,
+	0xb5, 0xf4, 0x8c, 0x9a, 0xcc, 0xa7, 0x63, 0xb7, 0xda, 0xd9, 0x2a, 0xb2, 0xdb, 0x86, 0xc6, 0x90,
+	0x87, 0x6a, 0xae, 0x93, 0xd6, 0x34, 0x45, 0xe7, 0x5a, 0x9d, 0x3f, 0x59, 0xc5, 0x5c, 0xfa, 0x8a,
+	0x5e, 0xe4, 0x33, 0x67, 0xe9, 0x45, 0x67, 0x94, 0x73, 0x02, 0xa8, 0x8f, 0xfa, 0x8f, 0xbe, 0xbf,
+	0x97, 0x99, 0x71, 0x38, 0xea, 0x1f, 0xfe, 0x60, 0x2f, 0x33, 0xe3, 0x70, 0xd0, 0xff, 0xf0, 0x60,
+	0x2f, 0xcb, 0x87, 0x6e, 0x7f, 0x7f, 0x0f, 0x37, 0x6a, 0xf8, 0xb3, 0xe0, 0xe9, 0xa0, 0xbf, 0x7f,
+	0x78, 0xb8, 0x97, 0xb9, 0x76, 0x2e, 0x1d, 0xec, 0xe3, 0x01, 0x4e, 0xef, 0xd3, 0xbf, 0xbf, 0xd8,
+	0xb2, 0xbe, 0x7c, 0xb1, 0x65, 0xfd, 0xfb, 0xc5, 0x96, 0xf5, 0x87, 0x97, 0x5b, 0x95, 0x2f, 0x5f,
+	0x6e, 0x55, 0xfe, 0xf5, 0x72, 0xab, 0xf2, 0x9b, 0xbd, 0x98, 0xab, 0xc9, 0x7c, 0xdc, 0x0d, 0xc5,
+	0x74, 0x37, 0xa7, 0xc6, 0xc5, 0x6e, 0x2c, 0x3e, 0xc8, 0x85, 0x0f, 0x12, 0x3e, 0x96, 0x54, 0x2e,
+	0x76, 0x8b, 0x3f, 0x31, 0xc6, 0x75, 0xfd, 0x8f, 0xc2, 0xa3, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff,
+	0x9c, 0xdd, 0x6f, 0xbe, 0xd7, 0x10, 0x00, 0x00,
 }
 
 func (m *Block) Marshal() (dAtA []byte, err error) {
@@ -2108,12 +2243,15 @@ func (m *Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = l
 	if m.Content != nil {
 		{
-			size := m.Content.Size()
-			i -= size
-			if _, err := m.Content.MarshalTo(dAtA[i:]); err != nil {
+			size, err := m.Content.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
 				return 0, err
 			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x32
 	}
 	if m.IsArchived {
 		i--
@@ -2168,249 +2306,6 @@ func (m *Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockContentOfDashboard) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Dashboard != nil {
-		{
-			size, err := m.Dashboard.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x5a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfPage) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Page != nil {
-		{
-			size, err := m.Page.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x62
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfDataview) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Dataview != nil {
-		{
-			size, err := m.Dataview.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x6a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfText) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Text != nil {
-		{
-			size, err := m.Text.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x72
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfVideo) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfVideo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Video != nil {
-		{
-			size, err := m.Video.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x7a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfImage) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Image != nil {
-		{
-			size, err := m.Image.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0x82
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfFile) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.File != nil {
-		{
-			size, err := m.File.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0x8a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfLayout) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfLayout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Layout != nil {
-		{
-			size, err := m.Layout.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0x92
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfDiv) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfDiv) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Div != nil {
-		{
-			size, err := m.Div.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0x9a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfBookmark) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfBookmark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Bookmark != nil {
-		{
-			size, err := m.Bookmark.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0xa2
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfIcon) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfIcon) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Icon != nil {
-		{
-			size, err := m.Icon.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0xaa
-	}
-	return len(dAtA) - i, nil
-}
 func (m *BlockPermissions) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -2484,6 +2379,304 @@ func (m *BlockPermissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *BlockCore) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockCore) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCore) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Content != nil {
+		{
+			size := m.Content.Size()
+			i -= size
+			if _, err := m.Content.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *BlockCoreContentOfDashboard) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Dashboard != nil {
+		{
+			size, err := m.Dashboard.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x5a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfPage) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Page != nil {
+		{
+			size, err := m.Page.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x62
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfDataview) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Dataview != nil {
+		{
+			size, err := m.Dataview.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfText) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Text != nil {
+		{
+			size, err := m.Text.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x72
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfVideo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfVideo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Video != nil {
+		{
+			size, err := m.Video.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x7a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfImage) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Image != nil {
+		{
+			size, err := m.Image.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x82
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfFile) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.File != nil {
+		{
+			size, err := m.File.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x8a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfLayout) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfLayout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Layout != nil {
+		{
+			size, err := m.Layout.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x92
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfDiv) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfDiv) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Div != nil {
+		{
+			size, err := m.Div.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x9a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfBookmark) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfBookmark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Bookmark != nil {
+		{
+			size, err := m.Bookmark.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xa2
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfIcon) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfIcon) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Icon != nil {
+		{
+			size, err := m.Icon.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xaa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *BlockCoreContentOfLink) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockCoreContentOfLink) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Link != nil {
+		{
+			size, err := m.Link.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xb2
+	}
+	return len(dAtA) - i, nil
+}
 func (m *BlockContent) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -2531,6 +2724,46 @@ func (m *BlockContentLayout) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i = encodeVarintModels(dAtA, i, uint64(m.Style))
 		i--
 		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *BlockContentLink) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockContentLink) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockContentLink) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.IsLazyRender {
+		i--
+		if m.IsLazyRender {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.ContentId) > 0 {
+		i -= len(m.ContentId)
+		copy(dAtA[i:], m.ContentId)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.ContentId)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -2717,19 +2950,17 @@ func (m *BlockContentText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x20
 	}
-	if len(m.Marks) > 0 {
-		for iNdEx := len(m.Marks) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Marks[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintModels(dAtA, i, uint64(size))
+	if m.Marks != nil {
+		{
+			size, err := m.Marks.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
-			i--
-			dAtA[i] = 0x1a
+			i -= size
+			i = encodeVarintModels(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x1a
 	}
 	if m.Style != 0 {
 		i = encodeVarintModels(dAtA, i, uint64(m.Style))
@@ -2939,69 +3170,54 @@ func (m *BlockContentImage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Preview != nil {
-		{
-			size, err := m.Preview.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
+	if m.WidthToHeight != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.WidthToHeight))
 		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x48
 	}
-	if m.State != 0 {
-		i = encodeVarintModels(dAtA, i, uint64(m.State))
-		i--
-		dAtA[i] = 0x10
-	}
-	if len(m.LocalFilePath) > 0 {
-		i -= len(m.LocalFilePath)
-		copy(dAtA[i:], m.LocalFilePath)
-		i = encodeVarintModels(dAtA, i, uint64(len(m.LocalFilePath)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockContentImagePreview) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockContentImagePreview) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentImagePreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
 	if m.Width != 0 {
 		i = encodeVarintModels(dAtA, i, uint64(m.Width))
 		i--
-		dAtA[i] = 0x18
+		dAtA[i] = 0x40
 	}
-	if len(m.Icon) > 0 {
-		i -= len(m.Icon)
-		copy(dAtA[i:], m.Icon)
-		i = encodeVarintModels(dAtA, i, uint64(len(m.Icon)))
+	if m.AddedAt != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.AddedAt))
 		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x38
+	}
+	if m.Size_ != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.Size_))
+		i--
+		dAtA[i] = 0x30
 	}
 	if len(m.Name) > 0 {
 		i -= len(m.Name)
 		copy(dAtA[i:], m.Name)
 		i = encodeVarintModels(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if m.Type != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.Type))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.State != 0 {
+		i = encodeVarintModels(dAtA, i, uint64(m.State))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.PreviewFilePath) > 0 {
+		i -= len(m.PreviewFilePath)
+		copy(dAtA[i:], m.PreviewFilePath)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.PreviewFilePath)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.LocalFilePath) > 0 {
+		i -= len(m.LocalFilePath)
+		copy(dAtA[i:], m.LocalFilePath)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.LocalFilePath)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -3295,20 +3511,20 @@ func (m *Image) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		dAtA[i] = 0x18
 	}
 	if len(m.Sizes) > 0 {
-		dAtA21 := make([]byte, len(m.Sizes)*10)
-		var j20 int
+		dAtA23 := make([]byte, len(m.Sizes)*10)
+		var j22 int
 		for _, num := range m.Sizes {
 			for num >= 1<<7 {
-				dAtA21[j20] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA23[j22] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j20++
+				j22++
 			}
-			dAtA21[j20] = uint8(num)
-			j20++
+			dAtA23[j22] = uint8(num)
+			j22++
 		}
-		i -= j20
-		copy(dAtA[i:], dAtA21[:j20])
-		i = encodeVarintModels(dAtA, i, uint64(j20))
+		i -= j22
+		copy(dAtA[i:], dAtA23[:j22])
+		i = encodeVarintModels(dAtA, i, uint64(j22))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -3343,20 +3559,20 @@ func (m *Video) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.Sizes) > 0 {
-		dAtA23 := make([]byte, len(m.Sizes)*10)
-		var j22 int
+		dAtA25 := make([]byte, len(m.Sizes)*10)
+		var j24 int
 		for _, num := range m.Sizes {
 			for num >= 1<<7 {
-				dAtA23[j22] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA25[j24] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j22++
+				j24++
 			}
-			dAtA23[j22] = uint8(num)
-			j22++
+			dAtA25[j24] = uint8(num)
+			j24++
 		}
-		i -= j22
-		copy(dAtA[i:], dAtA23[:j22])
-		i = encodeVarintModels(dAtA, i, uint64(j22))
+		i -= j24
+		copy(dAtA[i:], dAtA25[:j24])
+		i = encodeVarintModels(dAtA, i, uint64(j24))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -3409,143 +3625,12 @@ func (m *Block) Size() (n int) {
 		n += 2
 	}
 	if m.Content != nil {
-		n += m.Content.Size()
+		l = m.Content.Size()
+		n += 1 + l + sovModels(uint64(l))
 	}
 	return n
 }
 
-func (m *BlockContentOfDashboard) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Dashboard != nil {
-		l = m.Dashboard.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfPage) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Page != nil {
-		l = m.Page.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfDataview) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Dataview != nil {
-		l = m.Dataview.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfText) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Text != nil {
-		l = m.Text.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfVideo) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Video != nil {
-		l = m.Video.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfImage) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Image != nil {
-		l = m.Image.Size()
-		n += 2 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfFile) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.File != nil {
-		l = m.File.Size()
-		n += 2 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfLayout) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Layout != nil {
-		l = m.Layout.Size()
-		n += 2 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfDiv) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Div != nil {
-		l = m.Div.Size()
-		n += 2 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfBookmark) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Bookmark != nil {
-		l = m.Bookmark.Size()
-		n += 2 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfIcon) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Icon != nil {
-		l = m.Icon.Size()
-		n += 2 + l + sovModels(uint64(l))
-	}
-	return n
-}
 func (m *BlockPermissions) Size() (n int) {
 	if m == nil {
 		return 0
@@ -3570,6 +3655,162 @@ func (m *BlockPermissions) Size() (n int) {
 	return n
 }
 
+func (m *BlockCore) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Content != nil {
+		n += m.Content.Size()
+	}
+	return n
+}
+
+func (m *BlockCoreContentOfDashboard) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Dashboard != nil {
+		l = m.Dashboard.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfPage) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Page != nil {
+		l = m.Page.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfDataview) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Dataview != nil {
+		l = m.Dataview.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfText) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Text != nil {
+		l = m.Text.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfVideo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Video != nil {
+		l = m.Video.Size()
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfImage) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Image != nil {
+		l = m.Image.Size()
+		n += 2 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfFile) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.File != nil {
+		l = m.File.Size()
+		n += 2 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfLayout) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Layout != nil {
+		l = m.Layout.Size()
+		n += 2 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfDiv) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Div != nil {
+		l = m.Div.Size()
+		n += 2 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfBookmark) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Bookmark != nil {
+		l = m.Bookmark.Size()
+		n += 2 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfIcon) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Icon != nil {
+		l = m.Icon.Size()
+		n += 2 + l + sovModels(uint64(l))
+	}
+	return n
+}
+func (m *BlockCoreContentOfLink) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Link != nil {
+		l = m.Link.Size()
+		n += 2 + l + sovModels(uint64(l))
+	}
+	return n
+}
 func (m *BlockContent) Size() (n int) {
 	if m == nil {
 		return 0
@@ -3587,6 +3828,22 @@ func (m *BlockContentLayout) Size() (n int) {
 	_ = l
 	if m.Style != 0 {
 		n += 1 + sovModels(uint64(m.Style))
+	}
+	return n
+}
+
+func (m *BlockContentLink) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContentId)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	if m.IsLazyRender {
+		n += 2
 	}
 	return n
 }
@@ -3656,11 +3913,9 @@ func (m *BlockContentText) Size() (n int) {
 	if m.Style != 0 {
 		n += 1 + sovModels(uint64(m.Style))
 	}
-	if len(m.Marks) > 0 {
-		for _, e := range m.Marks {
-			l = e.Size()
-			n += 1 + l + sovModels(uint64(l))
-		}
+	if m.Marks != nil {
+		l = m.Marks.Size()
+		n += 1 + l + sovModels(uint64(l))
 	}
 	if m.Toggleable {
 		n += 2
@@ -3762,32 +4017,31 @@ func (m *BlockContentImage) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovModels(uint64(l))
 	}
+	l = len(m.PreviewFilePath)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
 	if m.State != 0 {
 		n += 1 + sovModels(uint64(m.State))
 	}
-	if m.Preview != nil {
-		l = m.Preview.Size()
-		n += 1 + l + sovModels(uint64(l))
+	if m.Type != 0 {
+		n += 1 + sovModels(uint64(m.Type))
 	}
-	return n
-}
-
-func (m *BlockContentImagePreview) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
 	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + sovModels(uint64(l))
 	}
-	l = len(m.Icon)
-	if l > 0 {
-		n += 1 + l + sovModels(uint64(l))
+	if m.Size_ != 0 {
+		n += 1 + sovModels(uint64(m.Size_))
+	}
+	if m.AddedAt != 0 {
+		n += 1 + sovModels(uint64(m.AddedAt))
 	}
 	if m.Width != 0 {
 		n += 1 + sovModels(uint64(m.Width))
+	}
+	if m.WidthToHeight != 0 {
+		n += 1 + sovModels(uint64(m.WidthToHeight))
 	}
 	return n
 }
@@ -4145,9 +4399,9 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.IsArchived = bool(v != 0)
-		case 11:
+		case 6:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Dashboard", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4174,361 +4428,12 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockContentDashboard{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if m.Content == nil {
+				m.Content = &BlockCore{}
+			}
+			if err := m.Content.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &BlockContentOfDashboard{v}
-			iNdEx = postIndex
-		case 12:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Page", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentPage{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfPage{v}
-			iNdEx = postIndex
-		case 13:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Dataview", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentDataview{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfDataview{v}
-			iNdEx = postIndex
-		case 14:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Text", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentText{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfText{v}
-			iNdEx = postIndex
-		case 15:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Video", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentVideo{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfVideo{v}
-			iNdEx = postIndex
-		case 16:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Image", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentImage{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfImage{v}
-			iNdEx = postIndex
-		case 17:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field File", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentFile{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfFile{v}
-			iNdEx = postIndex
-		case 18:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Layout", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentLayout{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfLayout{v}
-			iNdEx = postIndex
-		case 19:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Div", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentDiv{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfDiv{v}
-			iNdEx = postIndex
-		case 20:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Bookmark", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentBookmark{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfBookmark{v}
-			iNdEx = postIndex
-		case 21:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Icon", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentIcon{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfIcon{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4707,6 +4612,479 @@ func (m *BlockPermissions) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *BlockCore) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Core: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Core: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Dashboard", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentDashboard{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfDashboard{v}
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Page", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentPage{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfPage{v}
+			iNdEx = postIndex
+		case 13:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Dataview", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentDataview{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfDataview{v}
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Text", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentText{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfText{v}
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Video", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentVideo{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfVideo{v}
+			iNdEx = postIndex
+		case 16:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Image", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentImage{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfImage{v}
+			iNdEx = postIndex
+		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field File", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentFile{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfFile{v}
+			iNdEx = postIndex
+		case 18:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Layout", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentLayout{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfLayout{v}
+			iNdEx = postIndex
+		case 19:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Div", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentDiv{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfDiv{v}
+			iNdEx = postIndex
+		case 20:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bookmark", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentBookmark{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfBookmark{v}
+			iNdEx = postIndex
+		case 21:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Icon", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentIcon{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfIcon{v}
+			iNdEx = postIndex
+		case 22:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Link", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &BlockContentLink{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Content = &BlockCoreContentOfLink{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *BlockContent) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -4808,6 +5186,111 @@ func (m *BlockContentLayout) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockContentLink) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Link: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Link: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContentId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContentId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IsLazyRender", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.IsLazyRender = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipModels(dAtA[iNdEx:])
@@ -5257,8 +5740,10 @@ func (m *BlockContentText) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Marks = append(m.Marks, &BlockContentTextMark{})
-			if err := m.Marks[len(m.Marks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if m.Marks == nil {
+				m.Marks = &BlockContentTextMarks{}
+			}
+			if err := m.Marks.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5930,6 +6415,38 @@ func (m *BlockContentImage) Unmarshal(dAtA []byte) error {
 			m.LocalFilePath = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PreviewFilePath", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PreviewFilePath = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
 			}
@@ -5948,11 +6465,11 @@ func (m *BlockContentImage) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Preview", wireType)
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
 			}
-			var msglen int
+			m.Type = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowModels
@@ -5962,82 +6479,12 @@ func (m *BlockContentImage) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= int(b&0x7F) << shift
+				m.Type |= BlockContentImageType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Preview == nil {
-				m.Preview = &BlockContentImagePreview{}
-			}
-			if err := m.Preview.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipModels(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockContentImagePreview) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowModels
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Preview: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Preview: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
 			}
@@ -6069,11 +6516,11 @@ func (m *BlockContentImagePreview) Unmarshal(dAtA []byte) error {
 			}
 			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Icon", wireType)
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Size_", wireType)
 			}
-			var stringLen uint64
+			m.Size_ = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowModels
@@ -6083,25 +6530,31 @@ func (m *BlockContentImagePreview) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				m.Size_ |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthModels
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AddedAt", wireType)
 			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
+			m.AddedAt = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.AddedAt |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
 			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Icon = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
+		case 8:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Width", wireType)
 			}
@@ -6116,6 +6569,25 @@ func (m *BlockContentImagePreview) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Width |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field WidthToHeight", wireType)
+			}
+			m.WidthToHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.WidthToHeight |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

@@ -24,19 +24,24 @@ message Block {
         After = 1;
     }
 
-    oneof content {
-        Content.Dashboard dashboard = 11;
-        Content.Page page = 12;
-        Content.Dataview dataview = 13;
+    Core content = 6;
 
-        Content.Text text = 14;
-        Content.Video video = 15;
-        Content.Image image = 16;
-        Content.File file = 17;
-        Content.Layout layout = 18;
-        Content.Div div = 19;
-        Content.Bookmark bookmark = 20;
-        Content.Icon icon = 21;
+    message Core {
+        oneof content {
+            Content.Dashboard dashboard = 11;
+            Content.Page page = 12;
+            Content.Dataview dataview = 13;
+
+            Content.Text text = 14;
+            Content.Video video = 15;
+            Content.Image image = 16;
+            Content.File file = 17;
+            Content.Layout layout = 18;
+            Content.Div div = 19;
+            Content.Bookmark bookmark = 20;
+            Content.Icon icon = 21;
+            Content.Link link = 22;
+        }
     }
 
     message Content {
@@ -51,6 +56,14 @@ message Block {
                 Row = 0;
                 Column = 1;
             }
+        }
+
+        /*
+        * Link: block to link some content from an external sources.
+        */
+        message Link {
+            string contentId = 1; // id of a linked content
+            bool isLazyRender = 2; // Should render internal content by default, or on request only
         }
 
         /*
@@ -84,13 +97,12 @@ message Block {
         }
 
         message Dataview {
-            // ...
         }
 
         message Text {
             string text = 1;
             Style style = 2;
-            repeated Mark marks = 3; // list of marks to apply to the text
+            Marks marks = 3; // list of marks to apply to the text
 
             bool toggleable = 4; // can be toggled or not
             Marker marker = 5; // if no – it's not a list. If number/bullet – it should be a list with its list-siblings.
@@ -159,14 +171,16 @@ message Block {
 
         message Image {
             string localFilePath = 1;
-            State state = 2;
-            Preview preview = 3;
+            string previewFilePath = 2;
 
-            message Preview {
-                string name = 1;
-                string icon = 2;
-                int32 width = 3;
-            }
+            State state = 3;
+            Type type = 4;
+
+            string name = 5;
+            int32 size = 6;
+            int32 addedAt = 7;
+            int32 width = 8;
+            int32 widthToHeight = 9;
 
             enum State {
                 Empty = 0; // There is no image and preview, it's an empty block, that waits image.
@@ -174,6 +188,12 @@ message Block {
                 PreviewDownloaded = 2; // Image exists, preview downloaded, but image – not.
                 Downloading = 3; // Image exists, preview downloaded, but image downloading
                 Done = 4; // Image and preview downloaded
+            }
+
+            enum Type {
+                Png = 0;
+                Jpg = 1;
+                // ...
             }
         }
 

@@ -136,8 +136,8 @@ func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion
 		newVersion.model.Block.Permissions = lastVersion.Model().Permissions
 	}
 
-	lastVersionB, _ := proto.Marshal(lastVersion.Model().Content.(*model.BlockContentOfPage).Page)
-	newVersionB, _ := proto.Marshal(newVersion.Model().Content.(*model.BlockContentOfPage).Page)
+	lastVersionB, _ := proto.Marshal(lastVersion.Model().Content.Content.(*model.BlockCoreContentOfPage).Page)
+	newVersionB, _ := proto.Marshal(newVersion.Model().Content.Content.(*model.BlockCoreContentOfPage).Page)
 	if string(lastVersionB) == string(newVersionB) {
 		log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
 		// do not insert the new version if no blocks have changed
@@ -157,10 +157,10 @@ func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, erro
 	newVersion := &SmartBlockVersion{model: &storage.BlockWithDependentBlocks{Block: block}}
 
 	if block.Content != nil {
-		if newVersionContent, ok := block.Content.(*model.BlockContentOfDashboard); !ok {
+		if newVersionContent, ok := block.Content.Content.(*model.BlockCoreContentOfDashboard); !ok {
 			return nil, fmt.Errorf("unxpected smartblock type")
 		} else {
-			newVersion.model.Block.Content = newVersionContent
+			newVersion.model.Block.Content.Content = newVersionContent
 		}
 	}
 
@@ -172,7 +172,7 @@ func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, erro
 	}
 
 	if block.Content == nil {
-		block.Content = &model.BlockContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
+		block.Content = &model.BlockCore{Content: &model.BlockCoreContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}}
 	}
 
 	var err error
@@ -326,14 +326,14 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 
 // NewBlock should be used as constructor for the new block
 func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Block) (Block, error) {
-	switch block.Content.(type) {
-	case *model.BlockContentOfPage:
+	switch block.Content.Content.(type) {
+	case *model.BlockCoreContentOfPage:
 		thrd, err := smartBlock.node.newBlockThread(schema.Page)
 		if err != nil {
 			return nil, err
 		}
 		return &Page{&SmartBlock{thread: thrd, node: smartBlock.node}}, nil
-	case *model.BlockContentOfDashboard:
+	case *model.BlockCoreContentOfDashboard:
 		thrd, err := smartBlock.node.newBlockThread(schema.Dashboard)
 		if err != nil {
 			return nil, err
