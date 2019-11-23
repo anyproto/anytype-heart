@@ -90,68 +90,105 @@ func (t *Text) AddMark(m *model.BlockContentTextMark) (err error) {
 		}
 	}()
 
-	// find intersected marks
-	var intersectIdx []int
-	for i, e := range marks {
-		if e.Range.From <= m.Range.To && e.Range.To >= m.Range.From {
-			intersectIdx = append(intersectIdx, i)
-		}
-		if m.Range.To < e.Range.From {
-			break
-		}
-	}
-
-	// not intersection - just add new one
-	if len(intersectIdx) == 0 {
-		marks = append(marks, m)
-		return
-	}
-
-	var (
-		toDeleteIdx []int
-		solved      bool
+	const (
+		notOverlap int = iota
+		equal          // a equal b
+		outer          // b inside a
+		inner          // a inside b
+		innerLeft      // a inside b, left side eq
+		innerRight     // a inside b, right side eq
+		left           // a-b
+		right          // b-a
+		stop
 	)
 
-	// one intersection - toggle cases
-	if len(intersectIdx) == 1 && m.Param == "" {
-		e := marks[intersectIdx[0]]
+	overlap := func(a, b *model.BlockContentTextMark) int {
 		switch {
-		// toggle existing - just delete mark
-		case *e.Range == *m.Range:
-			toDeleteIdx = intersectIdx
-			solved = true
-		// toggle part
-		case e.Range.From <= m.Range.From && e.Range.To >= m.Range.To:
-			if e.Range.From == m.Range.From {
-				// cut left
-				e.Range.From = m.Range.To
-			} else if e.Range.To == m.Range.To {
-				// cut right
-				e.Range.To = m.Range.From
+		case *a.Range == *b.Range:
+			return equal
+		case a.Range.From <= b.Range.From && a.Range.To >= b.Range.To:
+			return outer
+		case a.Range.From > b.Range.From && a.Range.To < b.Range.To:
+			return inner
+		case a.Range.From == b.Range.From && a.Range.To < b.Range.To:
+			return innerLeft
+		case a.Range.From > b.Range.From && a.Range.To == b.Range.To:
+			return innerRight
+		case a.Range.From < b.Range.From && b.Range.From <= a.Range.To:
+			return left
+		case a.Range.From > b.Range.From && b.Range.To >= a.Range.From:
+			return right
+		case a.Range.To < b.Range.From:
+			return stop
+		}
+		return notOverlap
+	}
+
+	addM := true
+
+	for i := 0; i < len(marks); i++ {
+		var (
+			delete bool
+			e      = marks[i]
+		)
+		switch overlap(m, e) {
+		case equal:
+			if m.Param == "" {
+				delete = true
 			} else {
-				// toggle center - split for two marks
-				marks = append(marks, &model.BlockContentTextMark{
-					Range: &model.Range{
-						From: m.Range.To,
-						To:   e.Range.To,
-					},
-					Type:  e.Type,
-					Param: e.Param,
-				})
+				e.Param = m.Param
+			}
+			addM = false
+		case outer:
+			delete = true
+		case innerLeft:
+			e.Range.From = m.Range.To
+			if m.Param == "" {
+				addM = false
+			}
+		case innerRight:
+			e.Range.To = m.Range.From
+			if m.Param == "" {
+				addM = false
+			}
+		case inner:
+			marks = append(marks, &model.BlockContentTextMark{
+				Range: &model.Range{From: m.Range.To, To: e.Range.To},
+				Type:  e.Type,
+				Param: e.Param,
+			})
+			e.Range.To = m.Range.From
+			if m.Param == "" {
+				addM = false
+			}
+			i = len(marks)
+		case left:
+			if m.Param == e.Param {
+				e.Range.From = m.Range.From
+				addM = false
+			} else {
+				e.Range.From = m.Range.To
+			}
+		case right:
+			if m.Param == e.Param {
+				e.Range.To = m.Range.To
+				m = e
+				addM = false
+			} else {
 				e.Range.To = m.Range.From
 			}
-			solved = true
+		case stop:
+			i = len(marks)
+		}
+		if delete {
+			marks[i] = nil
+			marks = append(marks[:i], marks[i+1:]...)
+			i = -1
 		}
 	}
 
-	if ! solved {
-
-	}
-
-	// delete
-	for _, idx := range toDeleteIdx {
-		marks[idx] = nil
-		marks = append(marks[:idx], marks[idx+1:]...)
+	if addM {
+		marks = append(marks, m)
 	}
 	return
 }
