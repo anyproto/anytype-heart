@@ -187,6 +187,7 @@ func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
 	p.s.sendEvent(&pb.Event{
 		Message: &pb.EventMessageOfBlockUpdate{
 			BlockUpdate: &pb.EventBlockUpdate{
+				ContextId: p.GetId(),
 				Changes: &pb.Changes{
 					Changes: []*pb.ChangesBlock{
 						{

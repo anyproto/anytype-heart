@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	pageTitleSuffix = "/title"
-	pageIconSuffix  = "/icon"
+	pageTitleSuffix = "-title"
+	pageIconSuffix  = "-icon"
 )
 
 func newPage(s *service, block anytype.Block) (smartBlock, error) {
