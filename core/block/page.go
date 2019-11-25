@@ -24,11 +24,11 @@ func (p *page) Init() {
 	p.m.Lock()
 	defer p.m.Unlock()
 	root := p.root()
-	if icon, ok := fieldsGetString(root.Fields, "icon"); ok {
-		p.addIcon(icon)
-	}
 	if name, ok := fieldsGetString(root.Fields, "name"); ok {
 		p.addName(name)
+	}
+	if icon, ok := fieldsGetString(root.Fields, "icon"); ok {
+		p.addIcon(icon)
 	}
 	p.show()
 }
