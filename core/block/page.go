@@ -27,13 +27,13 @@ func (p *page) Init() {
 	if icon, ok := fieldsGetString(root.Fields, "icon"); ok {
 		p.addIcon(icon)
 	}
-	if title, ok := fieldsGetString(root.Fields, "title"); ok {
-		p.addTitle(title)
+	if name, ok := fieldsGetString(root.Fields, "name"); ok {
+		p.addName(name)
 	}
 	p.show()
 }
 
-func (p *page) addTitle(title string) {
+func (p *page) addName(title string) {
 	var b = virtualBlock{
 		&model.Block{
 			Id: p.block.GetId() + pageTitleSuffix,
