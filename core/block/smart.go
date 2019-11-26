@@ -164,24 +164,29 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 }
 
 func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
-	p.s.sendEvent(&pb.Event{Message: &pb.EventMsg{Msg: &pb.EventMessageOfBlockAdd{BlockAdd: &pb.EventBlockAdd{
-		Blocks:    []*model.Block{new},
-		ContextId: p.GetId(),
-	}}}})
-	p.s.sendEvent(&pb.Event{Messages: []*pb.EventMessage{
-		{
-			&pb.EventMessageOfBlockUpdate{
-				BlockUpdate: &pb.EventBlockUpdate{
-					Changes: &pb.Changes{
-						Changes: []*pb.ChangesBlock{
-							// TODO: How to get block.children?
-						},
-						Author: &model.Account{}, // TODO: How to get an Account?
+	p.s.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				&pb.EventMessageValueOfBlockAdd{
+					BlockAdd: &pb.EventBlockAdd{
+						Blocks: []*model.Block{new},
 					},
 				},
 			},
 		},
-	}},
+		ContextId: p.GetId(),
+	})
+	p.s.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				&pb.EventMessageValueOfBlockSetChildrenIds{
+					// TODO: childrenIds
+				},
+			},
+		},
+		// ContextId: TODO
+		// Initiator: TODO
+	},
 	)
 	return
 }
@@ -192,10 +197,14 @@ func (p *commonSmart) show() {
 		blocks = append(blocks, b.Model())
 	}
 	event := &pb.Event{
-		Message: &pb.EventMessageOfBlockShow{
-			BlockShow: &pb.EventBlockShow{
-				RootId: p.GetId(),
-				Blocks: blocks,
+		Messages: []*pb.EventMessage{
+			{
+				&pb.EventMessageValueOfBlockShow{
+					BlockShow: &pb.EventBlockShow{
+						RootId: p.GetId(),
+						Blocks: blocks,
+					},
+				},
 			},
 		},
 	}

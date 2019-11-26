@@ -19,7 +19,7 @@ func (mw *Middleware) IpfsGetFile(req *pb.RpcIpfsFileGetRequest) *pb.RpcIpfsFile
 		return m
 	}
 
-	reader, info, err := mw.Anytype.Textile.Node().FileContent(req.Id)
+	reader, info, err := mw.Anytype.Textile.Node().FileContent(req.BlockId)
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, "", "", pb.RpcIpfsFileGetResponseError_NOT_FOUND, err)
@@ -78,7 +78,7 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 		return m
 	}
 
-	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), req.Id+"/0/"+strings.ToLower(req.GetSize_().String())+"/content")
+	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), req.BlockId+"/0/"+strings.ToLower(req.GetSize_().String())+"/content")
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)

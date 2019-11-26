@@ -32,7 +32,7 @@ service ClientCommands {
     rpc BlockListMove (anytype.Rpc.BlockList.Move.Request) returns (anytype.Rpc.BlockList.Move.Response);
     rpc BlockListSetTextStyle (anytype.Rpc.BlockList.Set.Text.Style.Request) returns (anytype.Rpc.BlockList.Set.Text.Style.Response);
     rpc BlockListSetTextMarker (anytype.Rpc.BlockList.Set.Text.Marker.Request) returns (anytype.Rpc.BlockList.Set.Text.Marker.Response);
-    rpc BlockListSetCheckable (anytype.Rpc.BlockList.Set.Text.Checkable.Request) returns (anytype.Rpc.BlockList.Set.Text.Checkable.Response);
+    rpc BlockListSetTextCheckable (anytype.Rpc.BlockList.Set.Text.Checkable.Request) returns (anytype.Rpc.BlockList.Set.Text.Checkable.Response);
 
     rpc BlockSetTextTextInRange (anytype.Rpc.Block.Set.Text.TextInRange.Request) returns (anytype.Rpc.Block.Set.Text.TextInRange.Response);
     rpc BlockSetTextStyle (anytype.Rpc.Block.Set.Text.Style.Request) returns (anytype.Rpc.Block.Set.Text.Style.Response);

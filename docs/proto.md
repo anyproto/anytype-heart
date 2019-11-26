@@ -374,7 +374,7 @@
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockListSetTextMarker | [Rpc.BlockList.Set.Text.Marker.Request](#anytype.Rpc.BlockList.Set.Text.Marker.Request) | [Rpc.BlockList.Set.Text.Marker.Response](#anytype.Rpc.BlockList.Set.Text.Marker.Response) |  |
-| BlockListSetCheckable | [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request) | [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response) |  |
+| BlockListSetTextCheckable | [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request) | [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response) |  |
 | BlockSetTextTextInRange | [Rpc.Block.Set.Text.TextInRange.Request](#anytype.Rpc.Block.Set.Text.TextInRange.Request) | [Rpc.Block.Set.Text.TextInRange.Response](#anytype.Rpc.Block.Set.Text.TextInRange.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextMark | [Rpc.Block.Set.Text.Mark.Request](#anytype.Rpc.Block.Set.Text.Mark.Request) | [Rpc.Block.Set.Text.Mark.Response](#anytype.Rpc.Block.Set.Text.Mark.Response) |  |
@@ -3423,6 +3423,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | ----- | ---- | ----- | ----------- |
 | messages | [Event.Message](#anytype.Event.Message) | repeated |  |
 | contextId | [string](#string) |  |  |
+| initiator | [model.Account](#anytype.model.Account) |  |  |
 
 
 

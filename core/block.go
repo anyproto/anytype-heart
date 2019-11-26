@@ -30,7 +30,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return m
 	}
 
-	if err := mw.blockService.OpenBlock(req.Id); err != nil {
+	if err := mw.blockService.OpenBlock(req.BlockId); err != nil {
 		switch err {
 		case block.ErrBlockNotFound:
 			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
@@ -50,7 +50,7 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 
 		return m
 	}
-	if err := mw.blockService.CloseBlock(req.Id); err != nil {
+	if err := mw.blockService.CloseBlock(req.BlockId); err != nil {
 		return response(pb.RpcBlockCloseResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
@@ -106,19 +106,6 @@ func (mw *Middleware) BlockGetMarks(req *pb.RpcBlockGetMarksRequest) *pb.RpcBloc
 	}
 	// TODO
 	return response(pb.RpcBlockGetMarksResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockHistoryMove(req *pb.RpcBlockHistoryMoveRequest) *pb.RpcBlockHistoryMoveResponse {
-	response := func(code pb.RpcBlockHistoryMoveResponseErrorCode, err error) *pb.RpcBlockHistoryMoveResponse {
-		m := &pb.RpcBlockHistoryMoveResponse{Error: &pb.RpcBlockHistoryMoveResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcBlockHistoryMoveResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
@@ -199,9 +186,9 @@ func (mw *Middleware) BlockListSetTextMarker(req *pb.RpcBlockListSetTextMarkerRe
 	return response(pb.RpcBlockListSetTextMarkerResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockListSetCheckable(req *pb.RpcBlockListSetCheckableRequest) *pb.RpcBlockListSetCheckableResponse {
-	response := func(code pb.RpcBlockListSetCheckableResponseErrorCode, err error) *pb.RpcBlockListSetCheckableResponse {
-		m := &pb.RpcBlockListSetCheckableResponse{Error: &pb.RpcBlockListSetCheckableResponseError{Code: code}}
+func (mw *Middleware) BlockListSetTextCheckable(req *pb.RpcBlockListSetTextCheckableRequest) *pb.RpcBlockListSetTextCheckableResponse {
+	response := func(code pb.RpcBlockListSetTextCheckableResponseErrorCode, err error) *pb.RpcBlockListSetTextCheckableResponse {
+		m := &pb.RpcBlockListSetTextCheckableResponse{Error: &pb.RpcBlockListSetTextCheckableResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -209,7 +196,7 @@ func (mw *Middleware) BlockListSetCheckable(req *pb.RpcBlockListSetCheckableRequ
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockListSetCheckableResponseError_NULL, nil)
+	return response(pb.RpcBlockListSetTextCheckableResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextTextInRange(req *pb.RpcBlockSetTextTextInRangeRequest) *pb.RpcBlockSetTextTextInRangeResponse {
