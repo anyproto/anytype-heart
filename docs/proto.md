@@ -2427,7 +2427,7 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
+| id | [string](#string) |  |  |
 
 
 
@@ -2506,7 +2506,7 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
+| id | [string](#string) |  |  |
 | size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
 
 
@@ -2564,7 +2564,7 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
+| id | [string](#string) |  |  |
 | size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
 
 

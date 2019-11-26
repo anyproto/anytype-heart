@@ -1022,7 +1022,7 @@ message Rpc {
         message File {
             message Get {
                 message Request {
-                    string blockId = 1;
+                    string id = 1;
                 }
 
                 message Response {
@@ -1052,7 +1052,7 @@ message Rpc {
             message Get {
                 message Blob {
                     message Request {
-                        string blockId = 1;
+                        string id = 1;
                         anytype.model.Image.Size size = 2;
                     }
 
@@ -1079,7 +1079,7 @@ message Rpc {
 
                 message File {
                     message Request {
-                        string blockId = 1;
+                        string id = 1;
                         anytype.model.Image.Size size = 2;
                     }
 
