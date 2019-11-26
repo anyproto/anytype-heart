@@ -13,7 +13,7 @@ import (
 func (a *Anytype) GetBlock(id string) (Block, error) {
 	_, err := mh.FromB58String(id)
 	if err == nil {
-		smartBlock, err := a.SmartBlockGet(id)
+		smartBlock, err := a.GetSmartBlock(id)
 		if err != nil {
 			return nil, err
 		}
@@ -76,6 +76,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 
 	if version, _ := block.GetCurrentVersion(); version == nil {
 		// version not yet created
+		log.Debugf("create predefined archive block")
 		_, err = block.AddVersion(&model.Block{
 			Id: block.GetId(),
 			Fields: &types.Struct{
@@ -112,6 +113,8 @@ func (a *Anytype) createPredefinedBlocks() error {
 
 	if version, _ := block.GetCurrentVersion(); version == nil {
 		// version not yet created
+		log.Debugf("create predefined home block")
+
 		_, err = block.AddVersion(&model.Block{
 			Id:          block.GetId(),
 			ChildrenIds: []string{a.predefinedBlockIds.Archive},

@@ -34,7 +34,7 @@ func (a *Anytype) newBlockThread(schema string) (*tcore.Thread, error) {
 	return a.Textile.Node().AddThread(config, sk, a.Textile.Node().Account().Address(), true, true)
 }
 
-func (a *Anytype) SmartBlockGet(id string) (*SmartBlock, error) {
+func (a *Anytype) GetSmartBlock(id string) (*SmartBlock, error) {
 	thrd, _ := a.predefinedThreadByName(id)
 	if thrd == nil {
 		thrd = a.Textile.Node().Thread(id)
