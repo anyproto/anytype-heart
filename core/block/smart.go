@@ -241,7 +241,7 @@ func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) 
 	}
 }
 
-func (p *commonSmart) excludeVirtualIds(ids []string) []string {
+func (p *commonSmart) excludeVirtualIds(ids []string) ([]string) {
 	res := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if v, ok := p.versions[id]; ok && !v.Virtual() {
