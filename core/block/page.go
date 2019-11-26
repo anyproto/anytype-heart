@@ -1,8 +1,14 @@
 package block
 
 import (
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+)
+
+const (
+	pageTitleSuffix = "-title"
+	pageIconSuffix  = "-icon"
 )
 
 func newPage(s *service, block anytype.Block) (smartBlock, error) {
@@ -12,6 +18,50 @@ func newPage(s *service, block anytype.Block) (smartBlock, error) {
 
 type page struct {
 	*commonSmart
+}
+
+func (p *page) Init() {
+	p.m.Lock()
+	defer p.m.Unlock()
+	root := p.root()
+	if name, ok := fieldsGetString(root.Fields, "name"); ok {
+		p.addName(name)
+	}
+	if icon, ok := fieldsGetString(root.Fields, "icon"); ok {
+		p.addIcon(icon)
+	}
+	p.show()
+}
+
+func (p *page) addName(title string) {
+	var b = virtualBlock{
+		&model.Block{
+			Id: p.block.GetId() + pageTitleSuffix,
+			Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
+				Text: &model.BlockContentText{
+					Text:  title,
+					Style: model.BlockContentText_Title,
+				},
+			}},
+		},
+	}
+	p.versions[b.Model().Id] = b
+	p.root().ChildrenIds = append([]string{b.Model().Id}, p.root().ChildrenIds...)
+}
+
+func (p *page) addIcon(icon string) {
+	var b = virtualBlock{
+		&model.Block{
+			Id: p.block.GetId() + pageIconSuffix,
+			Content: &model.BlockCore{Content: &model.BlockCoreContentOfIcon{
+				Icon: &model.BlockContentIcon{
+					Name: icon,
+				},
+			}},
+		},
+	}
+	p.versions[b.Model().Id] = b
+	p.root().ChildrenIds = append([]string{b.Model().Id}, p.root().ChildrenIds...)
 }
 
 func (p *page) Create(req pb.RpcBlockCreateRequest) (id string, err error) {

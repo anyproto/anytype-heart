@@ -15,6 +15,7 @@ import (
 func TestCommonSmart_Open(t *testing.T) {
 	t.Run("should send fullscreen event on open", func(t *testing.T) {
 		fx := newFixture(t, "")
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		sb := &commonSmart{
@@ -22,7 +23,7 @@ func TestCommonSmart_Open(t *testing.T) {
 			versionsChange: func(vers []core.BlockVersion) {},
 		}
 
-		mblock, _ := fx.newMockBlockWithContent(
+		block, _ := fx.newMockBlockWithContent(
 			"1",
 			&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}},
 			[]string{"2", "3"},
@@ -31,10 +32,10 @@ func TestCommonSmart_Open(t *testing.T) {
 				"3": fx.newMockVersion(&model.Block{Id: "3"}),
 			},
 		)
-		block := &blockWrapper{MockBlock: mblock}
 
 		err := sb.Open(block)
 		require.NoError(t, err)
+		sb.Init()
 
 		defer func() {
 			err := sb.Close()
@@ -55,13 +56,14 @@ func TestCommonSmart_Open(t *testing.T) {
 func TestCommonSmart_Create(t *testing.T) {
 	t.Run("should create block", func(t *testing.T) {
 		fx := newFixture(t, "")
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		sb := &commonSmart{
 			s: fx.Service.(*service),
 		}
 
-		mblock, _ := fx.newMockBlockWithContent(
+		block, _ := fx.newMockBlockWithContent(
 			"1",
 			&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}},
 			[]string{"2", "3"},
@@ -70,10 +72,10 @@ func TestCommonSmart_Create(t *testing.T) {
 				"3": fx.newMockVersion(&model.Block{Id: "3"}),
 			},
 		)
-		block := &blockWrapper{MockBlock: mblock}
 
 		err := sb.Open(block)
 		require.NoError(t, err)
+		sb.Init()
 		defer func() {
 			err := sb.Close()
 			require.NoError(t, err)

@@ -2,15 +2,12 @@ package block
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-)
-
-const (
-	homePageId = "home"
 )
 
 var (
@@ -27,9 +24,12 @@ type Service interface {
 
 func NewService(accountId string, lib anytype.Anytype, sendEvent func(event *pb.Event)) Service {
 	return &service{
-		accountId:   accountId,
-		anytype:     lib,
-		sendEvent:   sendEvent,
+		accountId: accountId,
+		anytype:   lib,
+		sendEvent: func(event *pb.Event) {
+			fmt.Printf("middle: sending event: %v\n", event)
+			sendEvent(event)
+		},
 		smartBlocks: make(map[string]smartBlock),
 	}
 }
@@ -45,11 +45,11 @@ type service struct {
 func (s *service) OpenBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	id = s.getSmartId(id)
 	if _, ok := s.smartBlocks[id]; ok {
 		return ErrBlockAlreadyOpen
 	}
 	sb, err := openSmartBlock(s, id)
+	fmt.Println("middle: open smart block:", id, err)
 	if err != nil {
 		return
 	}
@@ -60,9 +60,9 @@ func (s *service) OpenBlock(id string) (err error) {
 func (s *service) CloseBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	id = s.getSmartId(id)
 	if sb, ok := s.smartBlocks[id]; ok {
 		delete(s.smartBlocks, id)
+		fmt.Println("middle: close smart block:", id, err)
 		return sb.Close()
 	}
 	return ErrBlockNotFound
@@ -71,7 +71,6 @@ func (s *service) CloseBlock(id string) (err error) {
 func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
-	req.ContextId = s.getSmartId(req.ContextId)
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Create(req)
 	}
@@ -87,11 +86,4 @@ func (s *service) Close() error {
 		}
 	}
 	return nil
-}
-
-func (s *service) getSmartId(id string) string {
-	if id == homePageId {
-		id = s.anytype.PredefinedBlockIds().Home
-	}
-	return id
 }

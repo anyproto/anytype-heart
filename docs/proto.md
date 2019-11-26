@@ -78,6 +78,11 @@
     - [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request)
     - [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response)
     - [Rpc.Block.Update.Response.Error](#anytype.Rpc.Block.Update.Response.Error)
+    - [Rpc.Config](#anytype.Rpc.Config)
+    - [Rpc.Config.Get](#anytype.Rpc.Config.Get)
+    - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
+    - [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response)
+    - [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error)
     - [Rpc.Ipfs](#anytype.Rpc.Ipfs)
     - [Rpc.Ipfs.File](#anytype.Rpc.Ipfs.File)
     - [Rpc.Ipfs.File.Get](#anytype.Rpc.Ipfs.File.Get)
@@ -127,6 +132,7 @@
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
     - [Rpc.Block.Update.Response.Error.Code](#anytype.Rpc.Block.Update.Response.Error.Code)
+    - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
@@ -238,6 +244,7 @@
 | ImageGetBlob | [Rpc.Ipfs.Image.Get.Blob.Request](#anytype.Rpc.Ipfs.Image.Get.Blob.Request) | [Rpc.Ipfs.Image.Get.Blob.Response](#anytype.Rpc.Ipfs.Image.Get.Blob.Response) |  |
 | VersionGet | [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request) | [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
+| ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
@@ -1189,6 +1196,68 @@ Case F. Update children of a layout block on a page
 
 
 
+<a name="anytype.Rpc.Config"></a>
+
+### Rpc.Config
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Config.Get"></a>
+
+### Rpc.Config.Get
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Config.Get.Request"></a>
+
+### Rpc.Config.Get.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Config.Get.Response"></a>
+
+### Rpc.Config.Get.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error) |  |  |
+| homeBlockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Config.Get.Response.Error"></a>
+
+### Rpc.Config.Get.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ipfs"></a>
 
 ### Rpc.Ipfs
@@ -1842,6 +1911,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Config.Get.Response.Error.Code"></a>
+
+### Rpc.Config.Get.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

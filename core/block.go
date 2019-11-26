@@ -16,7 +16,7 @@ func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCre
 	}
 	id, err := mw.blockService.CreateBlock(*req)
 	if err != nil {
-		response(pb.RpcBlockCreateResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcBlockCreateResponseError_UNKNOWN_ERROR, "", err)
 	}
 	return response(pb.RpcBlockCreateResponseError_NULL, id, nil)
 }
