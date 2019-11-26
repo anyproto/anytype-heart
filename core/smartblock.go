@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
@@ -33,9 +34,8 @@ func (smartBlock *SmartBlock) GetCurrentVersion() (BlockVersion, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if len(versions) == 0 {
-		return nil, errorNotFound
+		return nil, fmt.Errorf("no block versions found")
 	}
 
 	return versions[0], nil
@@ -97,13 +97,20 @@ func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly boo
 		versions = append(versions, version)
 	}
 
+	if len(versions) > 0 {
+		for _, child := range versions[0].Model().ChildrenIds {
+			if _, exists := versions[0].DependentBlocks()[child]; !exists {
+				log.Warningf("GetVersions: id=%d child %s is missing", versions[0].Model().Id, child)
+			}
+		}
+	}
 	return
 }
 
 func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion) *SmartBlockVersion {
 	lastVersion, _ := smartBlock.GetCurrentVersion()
 	if lastVersion == nil {
-		return newVersion
+		lastVersion = smartBlock.EmptyVersion()
 	}
 
 	var dependentBlocks = lastVersion.DependentBlocks()
@@ -112,7 +119,7 @@ func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion
 		newVersion.model.BlockById[id] = dependentBlock.Model()
 	}
 
-	if newVersion.model.Block.Fields == nil {
+	if newVersion.model.Block.Fields == nil || newVersion.model.Block.Fields.Fields == nil {
 		newVersion.model.Block.Fields = lastVersion.Model().Fields
 	}
 
@@ -128,8 +135,8 @@ func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion
 		newVersion.model.Block.Permissions = lastVersion.Model().Permissions
 	}
 
-	lastVersionB, _ := proto.Marshal(lastVersion.Model().Content.Content.(*model.BlockCoreContentOfPage).Page)
-	newVersionB, _ := proto.Marshal(newVersion.Model().Content.Content.(*model.BlockCoreContentOfPage).Page)
+	lastVersionB, _ := proto.Marshal(lastVersion.Model())
+	newVersionB, _ := proto.Marshal(newVersion.Model())
 	if string(lastVersionB) == string(newVersionB) {
 		log.Debugf("[MERGE] new version has the same blocks as the last version - ignore it")
 		// do not insert the new version if no blocks have changed
@@ -145,15 +152,25 @@ func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, erro
 	if block.Id == "" {
 		return nil, fmt.Errorf("block has empty id")
 	}
+	log.Debugf("AddVersion(%s): %d children=%+v", smartBlock.GetId(), len(block.ChildrenIds), block.ChildrenIds)
 
 	newVersion := &SmartBlockVersion{model: &storage.BlockWithDependentBlocks{Block: block}}
 
 	if block.Content != nil {
-		if newVersionContent, ok := block.Content.Content.(*model.BlockCoreContentOfDashboard); !ok {
-			return nil, fmt.Errorf("unxpected smartblock type")
-		} else {
-			newVersion.model.Block.Content.Content = newVersionContent
+		switch strings.ToLower(smartBlock.thread.Schema.Name) {
+		case "dashboard":
+			if _, ok := block.Content.Content.(*model.BlockCoreContentOfDashboard); !ok {
+				return nil, fmt.Errorf("unxpected smartblock type")
+			}
+		case "page":
+			if _, ok := block.Content.Content.(*model.BlockCoreContentOfPage); !ok {
+				return nil, fmt.Errorf("unxpected smartblock type")
+			}
+		default:
+			return nil, fmt.Errorf("for now only smartblocks are queriable")
 		}
+
+		newVersion.model.Block.Content = block.Content
 	}
 
 	newVersion = smartBlock.mergeWithLastVersion(newVersion)
@@ -189,8 +206,10 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 		for id, dependentBlock := range dependentBlocks {
 			blockVersion.model.BlockById[id] = dependentBlock.Model()
 		}
+		blockVersion.model.Block = lastVersion.Model()
 	} else {
 		blockVersion.model.BlockById = make(map[string]*model.Block, len(blocks))
+		blockVersion.model.Block = &model.Block{Id: smartBlock.GetId()}
 	}
 
 	blockVersions := make([]BlockVersion, 0, len(blocks))
@@ -220,15 +239,26 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 			// only add dashboardVersion in case it was intentionally passed to AddVersions blocks
 			blockVersions = append(blockVersions, blockVersion)
 		} else {
+			if isSmartBlock(block) {
+				// todo: should we create an empty version?
+				childSmartBlock, err := smartBlock.node.GetSmartBlock(block.Id)
+				if err != nil {
+					return nil, err
+				}
+				blockVersion, err := childSmartBlock.AddVersion(block)
+				if err != nil {
+					return nil, err
+				}
+
+				blockVersions = append(blockVersions, blockVersion)
+
+				// no need to add smart block to dependencies blocks, so we can skip
+				continue
+			}
 
 			if _, exists := blockVersion.model.BlockById[block.Id]; !exists {
 				blockVersion.model.BlockById[block.Id] = block
 			} else {
-				if isSmartBlock(block) {
-					// ignore smart blocks as they will be added on the fly
-					continue
-				}
-
 				if block.ChildrenIds != nil {
 					blockVersion.model.BlockById[block.Id].ChildrenIds = block.ChildrenIds
 				}
@@ -250,6 +280,12 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 		}
 	}
 
+	var err error
+	blockVersion.versionId, blockVersion.user, blockVersion.date, err = smartBlock.addVersion(blockVersion.model)
+	if err != nil {
+		return nil, err
+	}
+
 	return blockVersions, nil
 }
 
@@ -260,7 +296,7 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 		return
 	}
 
-	mill := &mill.Blob{}
+	millBlob := &mill.Blob{}
 
 	conf := tcore.AddFileConfig{
 		Media:     "application/json",
@@ -269,7 +305,7 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 	}
 
 	var newBlockVersionFile *tpb.FileIndex
-	newBlockVersionFile, err = smartBlock.node.textile().AddFileIndex(mill, conf)
+	newBlockVersionFile, err = smartBlock.node.textile().AddFileIndex(millBlob, conf)
 	if err != nil {
 		err = fmt.Errorf("AddFileIndex error: %s", err.Error())
 		return
@@ -287,17 +323,18 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 		caption = name.String()
 	}
 
-	block, err := smartBlock.thread.AddFiles(node, "version", caption, keys.Files)
+	block, err := smartBlock.thread.AddFiles(node, "", caption, keys.Files)
 	if err != nil {
 		err = fmt.Errorf("thread.AddFiles error: %s", err.Error())
 		return
 	}
 
 	versionId = block.B58String()
+	log.Debugf("SmartBlock.addVersion: blockId = %s newVersionId = %s", smartBlock.GetId(), versionId)
 	user = smartBlock.node.textile().Account().Address()
 	newBlock, err := smartBlock.node.textile().Block(block.B58String())
 	if err != nil {
-		log.Errorf("failed to get the block %s: %s", newBlock.Id, err.Error())
+		log.Errorf("failed to get the block %s: %s", block.B58String(), err.Error())
 	}
 
 	if newBlock != nil {
@@ -309,6 +346,10 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithDependentB
 
 // NewBlock should be used as constructor for the new block
 func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Block) (Block, error) {
+	if block.Content == nil {
+		return nil, fmt.Errorf("content not set")
+	}
+
 	switch block.Content.Content.(type) {
 	case *model.BlockCoreContentOfPage:
 		thrd, err := smartBlock.node.newBlockThread(schema.Page)
@@ -329,6 +370,35 @@ func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Bloc
 			id:               uuid.NewV4().String(),
 			node:             smartBlock.node,
 		}, nil
+	}
+}
+
+func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
+
+	var content model.IsBlockCoreContent
+	switch strings.ToLower(smartBlock.thread.Schema.Name) {
+	case "dashboard":
+		content = &model.BlockCoreContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
+	case "page":
+		content = &model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}
+	default:
+		// shouldn't happen as checks for the schema performed before
+		return nil
+	}
+
+	perms := blockPermissionsFull()
+	return &SmartBlockVersion{
+		node: smartBlock.node,
+		model: &storage.BlockWithDependentBlocks{
+			Block: &model.Block{
+				Id: smartBlock.GetId(),
+				Fields: &types.Struct{Fields: map[string]*types.Value{
+					"name": {Kind: &types.Value_StringValue{StringValue: "Untitled"}},
+					"icon": {Kind: &types.Value_StringValue{StringValue: ":page_facing_up:"}},
+				}},
+				Permissions: &perms,
+				Content:     &model.BlockCore{content},
+			}},
 	}
 }
 

@@ -46,7 +46,7 @@ func (version *SmartBlockVersion) DependentBlocks() map[string]BlockVersion {
 
 		default:
 			m[blockId] = &SimpleBlockVersion{
-				pb:                      block,
+				model:                   block,
 				parentSmartBlockVersion: version,
 			}
 
@@ -73,9 +73,10 @@ func (version *SmartBlockVersion) DependentBlocks() map[string]BlockVersion {
 		if err != nil {
 			m[child] = version.node.smartBlockVersionWithoutPermissions(child)
 		} else {
+
 			smartBlockVersion, err := smartBlock.GetCurrentVersion()
 			if err != nil {
-				log.Errorf("DependentBlocks: failed to found block version for '%s'", child)
+				m[child] = smartBlock.EmptyVersion()
 				continue
 			}
 

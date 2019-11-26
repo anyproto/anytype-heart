@@ -37,7 +37,7 @@ func (simpleBlock *SimpleBlock) GetCurrentVersion() (BlockVersion, error) {
 	}
 
 	if simpleBlockVersion, exists := parentBlockVersion.DependentBlocks()[simpleBlock.id]; !exists {
-		return nil, fmt.Errorf("simpleBlock not found for this version")
+		return nil, fmt.Errorf("no block versions found")
 	} else {
 		return simpleBlockVersion, nil
 	}
@@ -102,6 +102,20 @@ func (simpleBlock *SimpleBlock) AddVersion(block *model.Block) (BlockVersion, er
 
 func (simpleBlock *SimpleBlock) AddVersions(blocks []*model.Block) ([]BlockVersion, error) {
 	return nil, fmt.Errorf("not supported for simple blocks")
+}
+
+func (simpleBlock *SimpleBlock) EmptyVersion() BlockVersion {
+	perms := blockPermissionsFull()
+	return &SimpleBlockVersion{
+		model: &model.Block{
+			Id:          simpleBlock.id,
+			Permissions: &perms,
+		},
+		//todo: not possible to pass parentSmartBlockVersion here
+		// do we actually need it?
+		//parentSmartBlockVersion:
+		node: simpleBlock.node,
+	}
 }
 
 func (simpleBlock *SimpleBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string, blocks chan<- []BlockVersion) (cancelFunc func(), err error) {

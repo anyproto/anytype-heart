@@ -34,7 +34,7 @@ func (a *Anytype) newBlockThread(schema string) (*tcore.Thread, error) {
 	return a.Textile.Node().AddThread(config, sk, a.Textile.Node().Account().Address(), true, true)
 }
 
-func (a *Anytype) SmartBlockGet(id string) (*SmartBlock, error) {
+func (a *Anytype) GetSmartBlock(id string) (*SmartBlock, error) {
 	thrd, _ := a.predefinedThreadByName(id)
 	if thrd == nil {
 		thrd = a.Textile.Node().Thread(id)
@@ -58,6 +58,7 @@ func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVers
 		node: a,
 		model: &storage.BlockWithDependentBlocks{
 			Block: &model.Block{
+				Id: id,
 				Fields: &types.Struct{Fields: map[string]*types.Value{
 					"name": {Kind: &types.Value_StringValue{StringValue: "Inaccessible block"}},
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":no_entry_sign:"}},
@@ -65,6 +66,8 @@ func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVers
 				Permissions: &model.BlockPermissions{
 					// all permissions are false by default
 				},
+				// we don't know the block type for sure, lets set a page
+				Content: &model.BlockCore{&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}},
 			}},
 	}
 }

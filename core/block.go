@@ -25,6 +25,8 @@ type Block interface {
 	// AddVersions adds the new version for the block itself and for any of it's dependents
 	// if some model.Block fields are nil they will be taken from the current version.
 	AddVersions(blockVersions []*model.Block) ([]BlockVersion, error)
+	// EmptyVersion returns dumb BlockVersion, you can use it as a placeholder when no version yet created
+	EmptyVersion() BlockVersion
 	// GetNewVersionsOfBlocks sends the target block itself and dependent blocks' new versions to the chan
 	SubscribeNewVersionsOfBlocks(sinceVersionId string, blocks chan<- []BlockVersion) (cancelFunc func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
@@ -54,5 +56,15 @@ func (anytype *Anytype) getThreadForBlock(b *model.Block) (*tcore.Thread, error)
 		return anytype.Textile.Node().Thread(b.Id), nil
 	default:
 		return nil, ErrorNotSmartBlock
+	}
+}
+
+func blockPermissionsFull() model.BlockPermissions {
+	return model.BlockPermissions{
+		Read:   true,
+		Edit:   true,
+		Remove: true,
+		Drag:   true,
+		DropOn: true,
 	}
 }
