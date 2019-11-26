@@ -46,8 +46,8 @@ func TestCommonSmart_Open(t *testing.T) {
 
 		require.Len(t, fx.events, 1)
 		event := fx.events[0]
-		require.IsType(t, (*pb.EventMessageOfBlockShow)(nil), event.Message)
-		show := event.Message.(*pb.EventMessageOfBlockShow).BlockShow
+		require.IsType(t, (*pb.EventMessageValueOfBlockShow)(nil), event.Messages[0].Value)
+		show := event.Messages[0].Value.(*pb.EventMessageValueOfBlockShow).BlockShow
 		assert.Equal(t, show.RootId, "1")
 		assert.Len(t, show.Blocks, 3)
 	})
@@ -109,7 +109,7 @@ func TestCommonSmart_Create(t *testing.T) {
 		assert.Equal(t, "23", versToSave[0].Id)
 		assert.Equal(t, []string{"2", "23", "3"}, versToSave[1].ChildrenIds)
 
-		assert.Len(t, fx.events, 3)
+		assert.Len(t, fx.events, 2)
 	})
 }
 

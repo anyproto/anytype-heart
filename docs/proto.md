@@ -10,15 +10,6 @@
     - [ClientCommands](#anytype.ClientCommands)
   
 
-- [pb/protos/changes.proto](#pb/protos/changes.proto)
-    - [Changes](#anytype.Changes)
-    - [Changes.Block](#anytype.Changes.Block)
-    - [Changes.Block.ChildrenIds](#anytype.Changes.Block.ChildrenIds)
-  
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Rpc](#anytype.Rpc)
     - [Rpc.Account](#anytype.Rpc.Account)
@@ -35,28 +26,6 @@
     - [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response)
     - [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
-    - [Rpc.Block.Action](#anytype.Rpc.Block.Action)
-    - [Rpc.Block.Action.BlocksDrop](#anytype.Rpc.Block.Action.BlocksDrop)
-    - [Rpc.Block.Action.BlocksDrop.Request](#anytype.Rpc.Block.Action.BlocksDrop.Request)
-    - [Rpc.Block.Action.BlocksDrop.Response](#anytype.Rpc.Block.Action.BlocksDrop.Response)
-    - [Rpc.Block.Action.BlocksDrop.Response.Error](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error)
-    - [Rpc.Block.Action.Content](#anytype.Rpc.Block.Action.Content)
-    - [Rpc.Block.Action.Content.Download](#anytype.Rpc.Block.Action.Content.Download)
-    - [Rpc.Block.Action.Content.Download.Request](#anytype.Rpc.Block.Action.Content.Download.Request)
-    - [Rpc.Block.Action.Content.Download.Response](#anytype.Rpc.Block.Action.Content.Download.Response)
-    - [Rpc.Block.Action.Content.Download.Response.Error](#anytype.Rpc.Block.Action.Content.Download.Response.Error)
-    - [Rpc.Block.Action.Content.Upload](#anytype.Rpc.Block.Action.Content.Upload)
-    - [Rpc.Block.Action.Content.Upload.Request](#anytype.Rpc.Block.Action.Content.Upload.Request)
-    - [Rpc.Block.Action.Content.Upload.Response](#anytype.Rpc.Block.Action.Content.Upload.Response)
-    - [Rpc.Block.Action.Content.Upload.Response.Error](#anytype.Rpc.Block.Action.Content.Upload.Response.Error)
-    - [Rpc.Block.Action.MarkSet](#anytype.Rpc.Block.Action.MarkSet)
-    - [Rpc.Block.Action.MarkSet.Request](#anytype.Rpc.Block.Action.MarkSet.Request)
-    - [Rpc.Block.Action.MarkSet.Response](#anytype.Rpc.Block.Action.MarkSet.Response)
-    - [Rpc.Block.Action.MarkSet.Response.Error](#anytype.Rpc.Block.Action.MarkSet.Response.Error)
-    - [Rpc.Block.Action.MarksGet](#anytype.Rpc.Block.Action.MarksGet)
-    - [Rpc.Block.Action.MarksGet.Request](#anytype.Rpc.Block.Action.MarksGet.Request)
-    - [Rpc.Block.Action.MarksGet.Response](#anytype.Rpc.Block.Action.MarksGet.Response)
-    - [Rpc.Block.Action.MarksGet.Response.Error](#anytype.Rpc.Block.Action.MarksGet.Response.Error)
     - [Rpc.Block.Close](#anytype.Rpc.Block.Close)
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
     - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
@@ -65,6 +34,15 @@
     - [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request)
     - [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response)
     - [Rpc.Block.Create.Response.Error](#anytype.Rpc.Block.Create.Response.Error)
+    - [Rpc.Block.Download](#anytype.Rpc.Block.Download)
+    - [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request)
+    - [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response)
+    - [Rpc.Block.Download.Response.Error](#anytype.Rpc.Block.Download.Response.Error)
+    - [Rpc.Block.Get](#anytype.Rpc.Block.Get)
+    - [Rpc.Block.Get.Marks](#anytype.Rpc.Block.Get.Marks)
+    - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
+    - [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response)
+    - [Rpc.Block.Get.Marks.Response.Error](#anytype.Rpc.Block.Get.Marks.Response.Error)
     - [Rpc.Block.History](#anytype.Rpc.Block.History)
     - [Rpc.Block.History.Move](#anytype.Rpc.Block.History.Move)
     - [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request)
@@ -74,10 +52,104 @@
     - [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request)
     - [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response)
     - [Rpc.Block.Open.Response.Error](#anytype.Rpc.Block.Open.Response.Error)
-    - [Rpc.Block.Update](#anytype.Rpc.Block.Update)
-    - [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request)
-    - [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response)
-    - [Rpc.Block.Update.Response.Error](#anytype.Rpc.Block.Update.Response.Error)
+    - [Rpc.Block.Set](#anytype.Rpc.Block.Set)
+    - [Rpc.Block.Set.Fields](#anytype.Rpc.Block.Set.Fields)
+    - [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request)
+    - [Rpc.Block.Set.Fields.Response](#anytype.Rpc.Block.Set.Fields.Response)
+    - [Rpc.Block.Set.Fields.Response.Error](#anytype.Rpc.Block.Set.Fields.Response.Error)
+    - [Rpc.Block.Set.File](#anytype.Rpc.Block.Set.File)
+    - [Rpc.Block.Set.File.Name](#anytype.Rpc.Block.Set.File.Name)
+    - [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request)
+    - [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response)
+    - [Rpc.Block.Set.File.Name.Response.Error](#anytype.Rpc.Block.Set.File.Name.Response.Error)
+    - [Rpc.Block.Set.Icon](#anytype.Rpc.Block.Set.Icon)
+    - [Rpc.Block.Set.Icon.Name](#anytype.Rpc.Block.Set.Icon.Name)
+    - [Rpc.Block.Set.Icon.Name.Request](#anytype.Rpc.Block.Set.Icon.Name.Request)
+    - [Rpc.Block.Set.Icon.Name.Response](#anytype.Rpc.Block.Set.Icon.Name.Response)
+    - [Rpc.Block.Set.Icon.Name.Response.Error](#anytype.Rpc.Block.Set.Icon.Name.Response.Error)
+    - [Rpc.Block.Set.Image](#anytype.Rpc.Block.Set.Image)
+    - [Rpc.Block.Set.Image.Name](#anytype.Rpc.Block.Set.Image.Name)
+    - [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request)
+    - [Rpc.Block.Set.Image.Name.Response](#anytype.Rpc.Block.Set.Image.Name.Response)
+    - [Rpc.Block.Set.Image.Name.Response.Error](#anytype.Rpc.Block.Set.Image.Name.Response.Error)
+    - [Rpc.Block.Set.Image.Width](#anytype.Rpc.Block.Set.Image.Width)
+    - [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request)
+    - [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response)
+    - [Rpc.Block.Set.Image.Width.Response.Error](#anytype.Rpc.Block.Set.Image.Width.Response.Error)
+    - [Rpc.Block.Set.IsArchived](#anytype.Rpc.Block.Set.IsArchived)
+    - [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request)
+    - [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response)
+    - [Rpc.Block.Set.IsArchived.Response.Error](#anytype.Rpc.Block.Set.IsArchived.Response.Error)
+    - [Rpc.Block.Set.Permissions](#anytype.Rpc.Block.Set.Permissions)
+    - [Rpc.Block.Set.Permissions.Request](#anytype.Rpc.Block.Set.Permissions.Request)
+    - [Rpc.Block.Set.Permissions.Response](#anytype.Rpc.Block.Set.Permissions.Response)
+    - [Rpc.Block.Set.Permissions.Response.Error](#anytype.Rpc.Block.Set.Permissions.Response.Error)
+    - [Rpc.Block.Set.Text](#anytype.Rpc.Block.Set.Text)
+    - [Rpc.Block.Set.Text.Check](#anytype.Rpc.Block.Set.Text.Check)
+    - [Rpc.Block.Set.Text.Check.Request](#anytype.Rpc.Block.Set.Text.Check.Request)
+    - [Rpc.Block.Set.Text.Check.Response](#anytype.Rpc.Block.Set.Text.Check.Response)
+    - [Rpc.Block.Set.Text.Check.Response.Error](#anytype.Rpc.Block.Set.Text.Check.Response.Error)
+    - [Rpc.Block.Set.Text.Checkable](#anytype.Rpc.Block.Set.Text.Checkable)
+    - [Rpc.Block.Set.Text.Checkable.Request](#anytype.Rpc.Block.Set.Text.Checkable.Request)
+    - [Rpc.Block.Set.Text.Checkable.Response](#anytype.Rpc.Block.Set.Text.Checkable.Response)
+    - [Rpc.Block.Set.Text.Checkable.Response.Error](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error)
+    - [Rpc.Block.Set.Text.Mark](#anytype.Rpc.Block.Set.Text.Mark)
+    - [Rpc.Block.Set.Text.Mark.Request](#anytype.Rpc.Block.Set.Text.Mark.Request)
+    - [Rpc.Block.Set.Text.Mark.Response](#anytype.Rpc.Block.Set.Text.Mark.Response)
+    - [Rpc.Block.Set.Text.Mark.Response.Error](#anytype.Rpc.Block.Set.Text.Mark.Response.Error)
+    - [Rpc.Block.Set.Text.Marker](#anytype.Rpc.Block.Set.Text.Marker)
+    - [Rpc.Block.Set.Text.Marker.Request](#anytype.Rpc.Block.Set.Text.Marker.Request)
+    - [Rpc.Block.Set.Text.Marker.Response](#anytype.Rpc.Block.Set.Text.Marker.Response)
+    - [Rpc.Block.Set.Text.Marker.Response.Error](#anytype.Rpc.Block.Set.Text.Marker.Response.Error)
+    - [Rpc.Block.Set.Text.Style](#anytype.Rpc.Block.Set.Text.Style)
+    - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
+    - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
+    - [Rpc.Block.Set.Text.Style.Response.Error](#anytype.Rpc.Block.Set.Text.Style.Response.Error)
+    - [Rpc.Block.Set.Text.TextInRange](#anytype.Rpc.Block.Set.Text.TextInRange)
+    - [Rpc.Block.Set.Text.TextInRange.Request](#anytype.Rpc.Block.Set.Text.TextInRange.Request)
+    - [Rpc.Block.Set.Text.TextInRange.Response](#anytype.Rpc.Block.Set.Text.TextInRange.Response)
+    - [Rpc.Block.Set.Text.TextInRange.Response.Error](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error)
+    - [Rpc.Block.Set.Text.Toggleable](#anytype.Rpc.Block.Set.Text.Toggleable)
+    - [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request)
+    - [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response)
+    - [Rpc.Block.Set.Text.Toggleable.Response.Error](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error)
+    - [Rpc.Block.Set.Video](#anytype.Rpc.Block.Set.Video)
+    - [Rpc.Block.Set.Video.Name](#anytype.Rpc.Block.Set.Video.Name)
+    - [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request)
+    - [Rpc.Block.Set.Video.Name.Response](#anytype.Rpc.Block.Set.Video.Name.Response)
+    - [Rpc.Block.Set.Video.Name.Response.Error](#anytype.Rpc.Block.Set.Video.Name.Response.Error)
+    - [Rpc.Block.Set.Video.Width](#anytype.Rpc.Block.Set.Video.Width)
+    - [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request)
+    - [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response)
+    - [Rpc.Block.Set.Video.Width.Response.Error](#anytype.Rpc.Block.Set.Video.Width.Response.Error)
+    - [Rpc.Block.Unlink](#anytype.Rpc.Block.Unlink)
+    - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
+    - [Rpc.Block.Unlink.Request.Target](#anytype.Rpc.Block.Unlink.Request.Target)
+    - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
+    - [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error)
+    - [Rpc.Block.Upload](#anytype.Rpc.Block.Upload)
+    - [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request)
+    - [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response)
+    - [Rpc.Block.Upload.Response.Error](#anytype.Rpc.Block.Upload.Response.Error)
+    - [Rpc.BlockList](#anytype.Rpc.BlockList)
+    - [Rpc.BlockList.Move](#anytype.Rpc.BlockList.Move)
+    - [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request)
+    - [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response)
+    - [Rpc.BlockList.Move.Response.Error](#anytype.Rpc.BlockList.Move.Response.Error)
+    - [Rpc.BlockList.Set](#anytype.Rpc.BlockList.Set)
+    - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
+    - [Rpc.BlockList.Set.Text.Checkable](#anytype.Rpc.BlockList.Set.Text.Checkable)
+    - [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request)
+    - [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response)
+    - [Rpc.BlockList.Set.Text.Checkable.Response.Error](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error)
+    - [Rpc.BlockList.Set.Text.Marker](#anytype.Rpc.BlockList.Set.Text.Marker)
+    - [Rpc.BlockList.Set.Text.Marker.Request](#anytype.Rpc.BlockList.Set.Text.Marker.Request)
+    - [Rpc.BlockList.Set.Text.Marker.Response](#anytype.Rpc.BlockList.Set.Text.Marker.Response)
+    - [Rpc.BlockList.Set.Text.Marker.Response.Error](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error)
+    - [Rpc.BlockList.Set.Text.Style](#anytype.Rpc.BlockList.Set.Text.Style)
+    - [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request)
+    - [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response)
+    - [Rpc.BlockList.Set.Text.Style.Response.Error](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error)
     - [Rpc.Config](#anytype.Rpc.Config)
     - [Rpc.Config.Get](#anytype.Rpc.Config.Get)
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
@@ -122,16 +194,34 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
-    - [Rpc.Block.Action.BlocksDrop.Response.Error.Code](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error.Code)
-    - [Rpc.Block.Action.Content.Download.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Download.Response.Error.Code)
-    - [Rpc.Block.Action.Content.Upload.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Upload.Response.Error.Code)
-    - [Rpc.Block.Action.MarkSet.Response.Error.Code](#anytype.Rpc.Block.Action.MarkSet.Response.Error.Code)
-    - [Rpc.Block.Action.MarksGet.Response.Error.Code](#anytype.Rpc.Block.Action.MarksGet.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
+    - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
+    - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
-    - [Rpc.Block.Update.Response.Error.Code](#anytype.Rpc.Block.Update.Response.Error.Code)
+    - [Rpc.Block.Set.Fields.Response.Error.Code](#anytype.Rpc.Block.Set.Fields.Response.Error.Code)
+    - [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code)
+    - [Rpc.Block.Set.Icon.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Icon.Name.Response.Error.Code)
+    - [Rpc.Block.Set.Image.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Name.Response.Error.Code)
+    - [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code)
+    - [Rpc.Block.Set.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.IsArchived.Response.Error.Code)
+    - [Rpc.Block.Set.Permissions.Response.Error.Code](#anytype.Rpc.Block.Set.Permissions.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Check.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Check.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Mark.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
+    - [Rpc.Block.Set.Text.TextInRange.Response.Error.Code](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Toggleable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code)
+    - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
+    - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
+    - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
+    - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
+    - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
+    - [Rpc.BlockList.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error.Code)
+    - [Rpc.BlockList.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error.Code)
+    - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
@@ -154,8 +244,40 @@
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo)
+    - [Event.Block.Set](#anytype.Event.Block.Set)
+    - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
+    - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
+    - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
+    - [Event.Block.Set.File.Icon](#anytype.Event.Block.Set.File.Icon)
+    - [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath)
+    - [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name)
+    - [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
+    - [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon)
+    - [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name)
+    - [Event.Block.Set.Image](#anytype.Event.Block.Set.Image)
+    - [Event.Block.Set.Image.LocalFilePath](#anytype.Event.Block.Set.Image.LocalFilePath)
+    - [Event.Block.Set.Image.Name](#anytype.Event.Block.Set.Image.Name)
+    - [Event.Block.Set.Image.PreviewLocalFilePath](#anytype.Event.Block.Set.Image.PreviewLocalFilePath)
+    - [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State)
+    - [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width)
+    - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
+    - [Event.Block.Set.Permissions](#anytype.Event.Block.Set.Permissions)
+    - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
+    - [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check)
+    - [Event.Block.Set.Text.Checkable](#anytype.Event.Block.Set.Text.Checkable)
+    - [Event.Block.Set.Text.Marker](#anytype.Event.Block.Set.Text.Marker)
+    - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
+    - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
+    - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
+    - [Event.Block.Set.Text.Toggleable](#anytype.Event.Block.Set.Text.Toggleable)
+    - [Event.Block.Set.Video](#anytype.Event.Block.Set.Video)
+    - [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath)
+    - [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name)
+    - [Event.Block.Set.Video.PreviewLocalFilePath](#anytype.Event.Block.Set.Video.PreviewLocalFilePath)
+    - [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State)
+    - [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width)
     - [Event.Block.Show](#anytype.Event.Block.Show)
-    - [Event.Block.Update](#anytype.Event.Block.Update)
+    - [Event.Message](#anytype.Event.Message)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
@@ -245,83 +367,34 @@
 | VersionGet | [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request) | [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
+| BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
-| BlockUpdate | [Rpc.Block.Update.Request](#anytype.Rpc.Block.Update.Request) | [Rpc.Block.Update.Response](#anytype.Rpc.Block.Update.Response) |  |
-| BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) | TODO: rpc BlockDelete (anytype.Rpc.Block.Delete.Request) returns (anytype.Rpc.Block.Delete.Response); |
-| BlockMarkSet | [Rpc.Block.Action.MarkSet.Request](#anytype.Rpc.Block.Action.MarkSet.Request) | [Rpc.Block.Action.MarkSet.Response](#anytype.Rpc.Block.Action.MarkSet.Response) |  |
-| BlockMarksGet | [Rpc.Block.Action.MarksGet.Request](#anytype.Rpc.Block.Action.MarksGet.Request) | [Rpc.Block.Action.MarksGet.Response](#anytype.Rpc.Block.Action.MarksGet.Response) |  |
-| BlocksDrop | [Rpc.Block.Action.BlocksDrop.Request](#anytype.Rpc.Block.Action.BlocksDrop.Request) | [Rpc.Block.Action.BlocksDrop.Response](#anytype.Rpc.Block.Action.BlocksDrop.Response) |  |
-| BlockContentUpload | [Rpc.Block.Action.Content.Upload.Request](#anytype.Rpc.Block.Action.Content.Upload.Request) | [Rpc.Block.Action.Content.Upload.Response](#anytype.Rpc.Block.Action.Content.Upload.Response) |  |
-| BlockContentDownload | [Rpc.Block.Action.Content.Download.Request](#anytype.Rpc.Block.Action.Content.Download.Request) | [Rpc.Block.Action.Content.Download.Response](#anytype.Rpc.Block.Action.Content.Download.Response) |  |
-| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) | TODO: rpc BlockFilesUpload () returns (); |
-
- 
-
-
-
-<a name="pb/protos/changes.proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## pb/protos/changes.proto
-
-
-
-<a name="anytype.Changes"></a>
-
-### Changes
-Changes contains group of blocks, that have only changed fields
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| changes | [Changes.Block](#anytype.Changes.Block) | repeated |  |
-| author | [model.Account](#anytype.model.Account) |  |  |
-
-
-
-
-
-
-<a name="anytype.Changes.Block"></a>
-
-### Changes.Block
-Changes.Block contains only changed fields of a block
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
-| childrenIds | [Changes.Block.ChildrenIds](#anytype.Changes.Block.ChildrenIds) |  |  |
-| isArchived | [bool](#bool) |  |  |
-| content | [model.Block.Core](#anytype.model.Block.Core) |  |  |
-
-
-
-
-
-
-<a name="anytype.Changes.Block.ChildrenIds"></a>
-
-### Changes.Block.ChildrenIds
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| childrenIds | [string](#string) | repeated |  |
-
-
-
-
-
- 
-
- 
-
- 
+| BlockUnlink | [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request) | [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response) |  |
+| BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) |  |
+| BlockDownload | [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request) | [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response) |  |
+| BlockGetMarks | [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request) | [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response) |  |
+| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) |  |
+| BlockSetFields | [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request) | [Rpc.Block.Set.Fields.Response](#anytype.Rpc.Block.Set.Fields.Response) |  |
+| BlockSetPermissions | [Rpc.Block.Set.Permissions.Request](#anytype.Rpc.Block.Set.Permissions.Request) | [Rpc.Block.Set.Permissions.Response](#anytype.Rpc.Block.Set.Permissions.Response) |  |
+| BlockSetIsArchived | [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request) | [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response) |  |
+| BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
+| BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
+| BlockListSetTextMarker | [Rpc.BlockList.Set.Text.Marker.Request](#anytype.Rpc.BlockList.Set.Text.Marker.Request) | [Rpc.BlockList.Set.Text.Marker.Response](#anytype.Rpc.BlockList.Set.Text.Marker.Response) |  |
+| BlockListSetTextCheckable | [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request) | [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response) |  |
+| BlockSetTextTextInRange | [Rpc.Block.Set.Text.TextInRange.Request](#anytype.Rpc.Block.Set.Text.TextInRange.Request) | [Rpc.Block.Set.Text.TextInRange.Response](#anytype.Rpc.Block.Set.Text.TextInRange.Response) |  |
+| BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
+| BlockSetTextMark | [Rpc.Block.Set.Text.Mark.Request](#anytype.Rpc.Block.Set.Text.Mark.Request) | [Rpc.Block.Set.Text.Mark.Response](#anytype.Rpc.Block.Set.Text.Mark.Response) |  |
+| BlockSetTextToggleable | [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request) | [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response) |  |
+| BlockSetTextMarker | [Rpc.Block.Set.Text.Marker.Request](#anytype.Rpc.Block.Set.Text.Marker.Request) | [Rpc.Block.Set.Text.Marker.Response](#anytype.Rpc.Block.Set.Text.Marker.Response) |  |
+| BlockSetTextCheckable | [Rpc.Block.Set.Text.Checkable.Request](#anytype.Rpc.Block.Set.Text.Checkable.Request) | [Rpc.Block.Set.Text.Checkable.Response](#anytype.Rpc.Block.Set.Text.Checkable.Response) |  |
+| BlockSetTextCheck | [Rpc.Block.Set.Text.Check.Request](#anytype.Rpc.Block.Set.Text.Check.Request) | [Rpc.Block.Set.Text.Check.Response](#anytype.Rpc.Block.Set.Text.Check.Response) |  |
+| BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
+| BlockSetImageName | [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request) | [Rpc.Block.Set.Image.Name.Response](#anytype.Rpc.Block.Set.Image.Name.Response) |  |
+| BlockSetImageWidth | [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request) | [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response) |  |
+| BlockSetVideoName | [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request) | [Rpc.Block.Set.Video.Name.Response](#anytype.Rpc.Block.Set.Video.Name.Response) |  |
+| BlockSetVideoWidth | [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request) | [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response) |  |
+| BlockSetIconName | [Rpc.Block.Set.Icon.Name.Request](#anytype.Rpc.Block.Set.Icon.Name.Request) | [Rpc.Block.Set.Icon.Name.Response](#anytype.Rpc.Block.Set.Icon.Name.Response) |  |
 
  
 
@@ -537,318 +610,6 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 
 
 
-<a name="anytype.Rpc.Block.Action"></a>
-
-### Rpc.Block.Action
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.BlocksDrop"></a>
-
-### Rpc.Block.Action.BlocksDrop
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.BlocksDrop.Request"></a>
-
-### Rpc.Block.Action.BlocksDrop.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
-| blocksId | [string](#string) | repeated |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.BlocksDrop.Response"></a>
-
-### Rpc.Block.Action.BlocksDrop.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Action.BlocksDrop.Response.Error](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.BlocksDrop.Response.Error"></a>
-
-### Rpc.Block.Action.BlocksDrop.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Action.BlocksDrop.Response.Error.Code](#anytype.Rpc.Block.Action.BlocksDrop.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content"></a>
-
-### Rpc.Block.Action.Content
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Download"></a>
-
-### Rpc.Block.Action.Content.Download
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Download.Request"></a>
-
-### Rpc.Block.Action.Content.Download.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  |  |
-| contextId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Download.Response"></a>
-
-### Rpc.Block.Action.Content.Download.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Action.Content.Download.Response.Error](#anytype.Rpc.Block.Action.Content.Download.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Download.Response.Error"></a>
-
-### Rpc.Block.Action.Content.Download.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Action.Content.Download.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Download.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Upload"></a>
-
-### Rpc.Block.Action.Content.Upload
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Upload.Request"></a>
-
-### Rpc.Block.Action.Content.Upload.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| localPath | [string](#string) |  |  |
-| url | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
-| contextId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Upload.Response"></a>
-
-### Rpc.Block.Action.Content.Upload.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Action.Content.Upload.Response.Error](#anytype.Rpc.Block.Action.Content.Upload.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Upload.Response.Error"></a>
-
-### Rpc.Block.Action.Content.Upload.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Action.Content.Upload.Response.Error.Code](#anytype.Rpc.Block.Action.Content.Upload.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarkSet"></a>
-
-### Rpc.Block.Action.MarkSet
-Set mark to the selected range in the text block.
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarkSet.Request"></a>
-
-### Rpc.Block.Action.MarkSet.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
-| range | [model.Range](#anytype.model.Range) |  |  |
-| type | [model.Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarkSet.Response"></a>
-
-### Rpc.Block.Action.MarkSet.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Action.MarkSet.Response.Error](#anytype.Rpc.Block.Action.MarkSet.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarkSet.Response.Error"></a>
-
-### Rpc.Block.Action.MarkSet.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Action.MarkSet.Response.Error.Code](#anytype.Rpc.Block.Action.MarkSet.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarksGet"></a>
-
-### Rpc.Block.Action.MarksGet
-Get marks list in the selected range in text block.
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarksGet.Request"></a>
-
-### Rpc.Block.Action.MarksGet.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
-| range | [model.Range](#anytype.model.Range) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarksGet.Response"></a>
-
-### Rpc.Block.Action.MarksGet.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Action.MarksGet.Response.Error](#anytype.Rpc.Block.Action.MarksGet.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Action.MarksGet.Response.Error"></a>
-
-### Rpc.Block.Action.MarksGet.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Action.MarksGet.Response.Error.Code](#anytype.Rpc.Block.Action.MarksGet.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Block.Close"></a>
 
 ### Rpc.Block.Close
@@ -868,8 +629,8 @@ Precondition: block should be opened.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context blo1k |
+| blockId | [string](#string) |  |  |
 
 
 
@@ -913,14 +674,14 @@ Precondition: block should be opened.
 Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
 **Example scenario**
 1A. Create Page on a dashboard
-    1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
     2. Front -&gt; MW: Rpc.Block.Close.Request(block: dashboard.id)
     3. Front &lt;- MW: Rpc.Block.Close.Response(err)
     4. Front &lt;- MW: Rpc.Block.Create.Response(page.id)
     5. Front &lt;- MW: Rpc.Block.Open.Response(err)
     6. Front &lt;- MW: Event.Block.Show(page)
 1B. Create Page on a Page
-    1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
     2. Front &lt;- MW: Rpc.Block.Create.Response(newPage.id)
     3. Front &lt;- MW: Event.Block.Show(newPage)
 
@@ -937,10 +698,10 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [model.Block](#anytype.model.Block) |  |  |
-| targetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 | contextId | [string](#string) |  | id of the context block |
+| targetId | [string](#string) |  | id of the closest block |
+| block | [model.Block](#anytype.model.Block) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 | parentId | [string](#string) |  | id of the parent block |
 
 
@@ -973,6 +734,131 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Download"></a>
+
+### Rpc.Block.Download
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Download.Request"></a>
+
+### Rpc.Block.Download.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Download.Response"></a>
+
+### Rpc.Block.Download.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Download.Response.Error](#anytype.Rpc.Block.Download.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Download.Response.Error"></a>
+
+### Rpc.Block.Download.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get"></a>
+
+### Rpc.Block.Get
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Marks"></a>
+
+### Rpc.Block.Get.Marks
+Get marks list in the selected range in text block.
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Marks.Request"></a>
+
+### Rpc.Block.Get.Marks.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| range | [model.Range](#anytype.model.Range) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Marks.Response"></a>
+
+### Rpc.Block.Get.Marks.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Get.Marks.Response.Error](#anytype.Rpc.Block.Get.Marks.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Marks.Response.Error"></a>
+
+### Rpc.Block.Get.Marks.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1015,9 +901,9 @@ Block history: switch between versions (lib context: switch block head), move fo
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
 | blockId | [string](#string) |  |  |
 | moveForward | [bool](#bool) |  | Move direction. If true, move forward |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1087,8 +973,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context blo1k |
+| blockId | [string](#string) |  |  |
 
 
 
@@ -1126,69 +1012,1383 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Update"></a>
+<a name="anytype.Rpc.Block.Set"></a>
 
-### Rpc.Block.Update
-Update a Smart/Internal block. Request can contain a content/field/permission/children update
-**Example scenarios**
-Case A. Update text block on page
-1. TODO
-Case B. Update page on dashboard
-1. TODO
-Case C. Update page on page
-1. TODO
-Case D. Update page permission on a dashboard
-1. TODO
-Case E. Update page children of the same page
-1. TODO
-Case F. Update children of a layout block on a page
-1. TODO
+### Rpc.Block.Set
 
 
 
 
 
 
-<a name="anytype.Rpc.Block.Update.Request"></a>
 
-### Rpc.Block.Update.Request
+<a name="anytype.Rpc.Block.Set.Fields"></a>
+
+### Rpc.Block.Set.Fields
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Fields.Request"></a>
+
+### Rpc.Block.Set.Fields.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| changes | [Changes](#anytype.Changes) |  |  |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Fields.Response"></a>
+
+### Rpc.Block.Set.Fields.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Fields.Response.Error](#anytype.Rpc.Block.Set.Fields.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Fields.Response.Error"></a>
+
+### Rpc.Block.Set.Fields.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Fields.Response.Error.Code](#anytype.Rpc.Block.Set.Fields.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File"></a>
+
+### Rpc.Block.Set.File
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Name"></a>
+
+### Rpc.Block.Set.File.Name
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Name.Request"></a>
+
+### Rpc.Block.Set.File.Name.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Name.Response"></a>
+
+### Rpc.Block.Set.File.Name.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.File.Name.Response.Error](#anytype.Rpc.Block.Set.File.Name.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Name.Response.Error"></a>
+
+### Rpc.Block.Set.File.Name.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Icon"></a>
+
+### Rpc.Block.Set.Icon
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Icon.Name"></a>
+
+### Rpc.Block.Set.Icon.Name
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Icon.Name.Request"></a>
+
+### Rpc.Block.Set.Icon.Name.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Icon.Name.Response"></a>
+
+### Rpc.Block.Set.Icon.Name.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Icon.Name.Response.Error](#anytype.Rpc.Block.Set.Icon.Name.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Icon.Name.Response.Error"></a>
+
+### Rpc.Block.Set.Icon.Name.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Icon.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Icon.Name.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image"></a>
+
+### Rpc.Block.Set.Image
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Name"></a>
+
+### Rpc.Block.Set.Image.Name
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Name.Request"></a>
+
+### Rpc.Block.Set.Image.Name.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Name.Response"></a>
+
+### Rpc.Block.Set.Image.Name.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Image.Name.Response.Error](#anytype.Rpc.Block.Set.Image.Name.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Name.Response.Error"></a>
+
+### Rpc.Block.Set.Image.Name.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Image.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Name.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Width"></a>
+
+### Rpc.Block.Set.Image.Width
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Width.Request"></a>
+
+### Rpc.Block.Set.Image.Width.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| width | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Width.Response"></a>
+
+### Rpc.Block.Set.Image.Width.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Image.Width.Response.Error](#anytype.Rpc.Block.Set.Image.Width.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Width.Response.Error"></a>
+
+### Rpc.Block.Set.Image.Width.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.IsArchived"></a>
+
+### Rpc.Block.Set.IsArchived
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.IsArchived.Request"></a>
+
+### Rpc.Block.Set.IsArchived.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| IsArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.IsArchived.Response"></a>
+
+### Rpc.Block.Set.IsArchived.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.IsArchived.Response.Error](#anytype.Rpc.Block.Set.IsArchived.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.IsArchived.Response.Error"></a>
+
+### Rpc.Block.Set.IsArchived.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.IsArchived.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Permissions"></a>
+
+### Rpc.Block.Set.Permissions
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Permissions.Request"></a>
+
+### Rpc.Block.Set.Permissions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Permissions.Response"></a>
+
+### Rpc.Block.Set.Permissions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Permissions.Response.Error](#anytype.Rpc.Block.Set.Permissions.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Permissions.Response.Error"></a>
+
+### Rpc.Block.Set.Permissions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Permissions.Response.Error.Code](#anytype.Rpc.Block.Set.Permissions.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text"></a>
+
+### Rpc.Block.Set.Text
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Check"></a>
+
+### Rpc.Block.Set.Text.Check
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Check.Request"></a>
+
+### Rpc.Block.Set.Text.Check.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| check | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Check.Response"></a>
+
+### Rpc.Block.Set.Text.Check.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Check.Response.Error](#anytype.Rpc.Block.Set.Text.Check.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Check.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Check.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Check.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Check.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Checkable"></a>
+
+### Rpc.Block.Set.Text.Checkable
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Checkable.Request"></a>
+
+### Rpc.Block.Set.Text.Checkable.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| checkable | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Checkable.Response"></a>
+
+### Rpc.Block.Set.Text.Checkable.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Checkable.Response.Error](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Checkable.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Checkable.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Mark"></a>
+
+### Rpc.Block.Set.Text.Mark
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Mark.Request"></a>
+
+### Rpc.Block.Set.Text.Mark.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| mark | [model.Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Mark.Response"></a>
+
+### Rpc.Block.Set.Text.Mark.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Mark.Response.Error](#anytype.Rpc.Block.Set.Text.Mark.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Mark.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Mark.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Mark.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Marker"></a>
+
+### Rpc.Block.Set.Text.Marker
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Marker.Request"></a>
+
+### Rpc.Block.Set.Text.Marker.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Marker.Response"></a>
+
+### Rpc.Block.Set.Text.Marker.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Marker.Response.Error](#anytype.Rpc.Block.Set.Text.Marker.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Marker.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Marker.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Style"></a>
+
+### Rpc.Block.Set.Text.Style
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Style.Request"></a>
+
+### Rpc.Block.Set.Text.Style.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Style.Response"></a>
+
+### Rpc.Block.Set.Text.Style.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Style.Response.Error](#anytype.Rpc.Block.Set.Text.Style.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Style.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Style.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.TextInRange"></a>
+
+### Rpc.Block.Set.Text.TextInRange
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Request"></a>
+
+### Rpc.Block.Set.Text.TextInRange.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| text | [string](#string) |  |  |
+| range | [model.Range](#anytype.model.Range) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response"></a>
+
+### Rpc.Block.Set.Text.TextInRange.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.TextInRange.Response.Error](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response.Error"></a>
+
+### Rpc.Block.Set.Text.TextInRange.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.TextInRange.Response.Error.Code](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Toggleable"></a>
+
+### Rpc.Block.Set.Text.Toggleable
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Toggleable.Request"></a>
+
+### Rpc.Block.Set.Text.Toggleable.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| toggleable | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Toggleable.Response"></a>
+
+### Rpc.Block.Set.Text.Toggleable.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Toggleable.Response.Error](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Toggleable.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Toggleable.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Toggleable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video"></a>
+
+### Rpc.Block.Set.Video
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Name"></a>
+
+### Rpc.Block.Set.Video.Name
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Name.Request"></a>
+
+### Rpc.Block.Set.Video.Name.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Name.Response"></a>
+
+### Rpc.Block.Set.Video.Name.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Video.Name.Response.Error](#anytype.Rpc.Block.Set.Video.Name.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Name.Response.Error"></a>
+
+### Rpc.Block.Set.Video.Name.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Width"></a>
+
+### Rpc.Block.Set.Video.Width
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Width.Request"></a>
+
+### Rpc.Block.Set.Video.Width.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| width | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Width.Response"></a>
+
+### Rpc.Block.Set.Video.Width.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Video.Width.Response.Error](#anytype.Rpc.Block.Set.Video.Width.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Width.Response.Error"></a>
+
+### Rpc.Block.Set.Video.Width.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink"></a>
+
+### Rpc.Block.Unlink
+Remove blocks from the childrenIds of its parents
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Request"></a>
+
+### Rpc.Block.Unlink.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
+| targets | [Rpc.Block.Unlink.Request.Target](#anytype.Rpc.Block.Unlink.Request.Target) | repeated | targets to remove |
 
 
 
 
 
 
-<a name="anytype.Rpc.Block.Update.Response"></a>
+<a name="anytype.Rpc.Block.Unlink.Request.Target"></a>
 
-### Rpc.Block.Update.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Update.Response.Error](#anytype.Rpc.Block.Update.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Update.Response.Error"></a>
-
-### Rpc.Block.Update.Response.Error
+### Rpc.Block.Unlink.Request.Target
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Update.Response.Error.Code](#anytype.Rpc.Block.Update.Response.Error.Code) |  |  |
+| blockId | [string](#string) |  | id of the block to remove |
+| parentId | [string](#string) |  | id of the parent block |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Response"></a>
+
+### Rpc.Block.Unlink.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Response.Error"></a>
+
+### Rpc.Block.Unlink.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Upload"></a>
+
+### Rpc.Block.Upload
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Upload.Request"></a>
+
+### Rpc.Block.Upload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| localPath | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Upload.Response"></a>
+
+### Rpc.Block.Upload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Upload.Response.Error](#anytype.Rpc.Block.Upload.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Upload.Response.Error"></a>
+
+### Rpc.Block.Upload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList"></a>
+
+### Rpc.BlockList
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Move"></a>
+
+### Rpc.BlockList.Move
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Move.Request"></a>
+
+### Rpc.BlockList.Move.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blocksId | [string](#string) | repeated |  |
+| dropTargetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Move.Response"></a>
+
+### Rpc.BlockList.Move.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Move.Response.Error](#anytype.Rpc.BlockList.Move.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Move.Response.Error"></a>
+
+### Rpc.BlockList.Move.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set"></a>
+
+### Rpc.BlockList.Set
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text"></a>
+
+### Rpc.BlockList.Set.Text
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Checkable"></a>
+
+### Rpc.BlockList.Set.Text.Checkable
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Request"></a>
+
+### Rpc.BlockList.Set.Text.Checkable.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) | repeated |  |
+| checkable | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Response"></a>
+
+### Rpc.BlockList.Set.Text.Checkable.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Text.Checkable.Response.Error](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error"></a>
+
+### Rpc.BlockList.Set.Text.Checkable.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Marker"></a>
+
+### Rpc.BlockList.Set.Text.Marker
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Marker.Request"></a>
+
+### Rpc.BlockList.Set.Text.Marker.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) | repeated |  |
+| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Marker.Response"></a>
+
+### Rpc.BlockList.Set.Text.Marker.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Text.Marker.Response.Error](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Marker.Response.Error"></a>
+
+### Rpc.BlockList.Set.Text.Marker.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Style"></a>
+
+### Rpc.BlockList.Set.Text.Style
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Style.Request"></a>
+
+### Rpc.BlockList.Set.Text.Style.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) | repeated |  |
+| style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Style.Response"></a>
+
+### Rpc.BlockList.Set.Text.Style.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Text.Style.Response.Error](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Style.Response.Error"></a>
+
+### Rpc.BlockList.Set.Text.Style.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1783,71 +2983,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Action.BlocksDrop.Response.Error.Code"></a>
-
-### Rpc.Block.Action.BlocksDrop.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Download.Response.Error.Code"></a>
-
-### Rpc.Block.Action.Content.Download.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Action.Content.Upload.Response.Error.Code"></a>
-
-### Rpc.Block.Action.Content.Upload.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Action.MarkSet.Response.Error.Code"></a>
-
-### Rpc.Block.Action.MarkSet.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Action.MarksGet.Response.Error.Code"></a>
-
-### Rpc.Block.Action.MarksGet.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.Block.Close.Response.Error.Code"></a>
 
 ### Rpc.Block.Close.Response.Error.Code
@@ -1864,6 +2999,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Create.Response.Error.Code"></a>
 
 ### Rpc.Block.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Download.Response.Error.Code"></a>
+
+### Rpc.Block.Download.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Get.Marks.Response.Error.Code"></a>
+
+### Rpc.Block.Get.Marks.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -1901,9 +3062,282 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Update.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Set.Fields.Response.Error.Code"></a>
 
-### Rpc.Block.Update.Response.Error.Code
+### Rpc.Block.Set.Fields.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Name.Response.Error.Code"></a>
+
+### Rpc.Block.Set.File.Name.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Icon.Name.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Icon.Name.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Name.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Image.Name.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Image.Width.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Image.Width.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.IsArchived.Response.Error.Code"></a>
+
+### Rpc.Block.Set.IsArchived.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Permissions.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Permissions.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Check.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Check.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Checkable.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Checkable.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Mark.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Mark.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Marker.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Style.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Style.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.TextInRange.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Toggleable.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Name.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Video.Name.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Video.Width.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Video.Width.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Unlink.Response.Error.Code"></a>
+
+### Rpc.Block.Unlink.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Upload.Response.Error.Code"></a>
+
+### Rpc.Block.Upload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Move.Response.Error.Code"></a>
+
+### Rpc.BlockList.Move.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Text.Checkable.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Marker.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Text.Marker.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Text.Style.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -2069,17 +3503,9 @@ Event – type of message, that could be sent from a middleware to the correspon
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  | show wallet&#39;s accounts that were loaded from local or remote source |
-| blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
-| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
-| blockUpdate | [Event.Block.Update](#anytype.Event.Block.Update) |  |  |
-| blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
-| userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
-| userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
-| userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
-| userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
-| filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
-| marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
+| messages | [Event.Message](#anytype.Event.Message) | repeated |  |
+| contextId | [string](#string) |  |  |
+| initiator | [model.Account](#anytype.model.Account) |  |  |
 
 
 
@@ -2140,7 +3566,6 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blocks | [model.Block](#anytype.model.Block) | repeated | id -&gt; block |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -2156,7 +3581,6 @@ B. Partial block load
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -2174,9 +3598,8 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
-| contextId | [string](#string) |  | id of the context block |
+| filePath | [string](#string) | repeated | filepaths to the files |
 
 
 
@@ -2198,6 +3621,507 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set"></a>
+
+### Event.Block.Set
+
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.ChildrenIds"></a>
+
+### Event.Block.Set.ChildrenIds
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| childrenIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Fields"></a>
+
+### Event.Block.Set.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File"></a>
+
+### Event.Block.Set.File
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
+| state | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
+| localFilePath | [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath) |  |  |
+| icon | [Event.Block.Set.File.Icon](#anytype.Event.Block.Set.File.Icon) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.Icon"></a>
+
+### Event.Block.Set.File.Icon
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.LocalFilePath"></a>
+
+### Event.Block.Set.File.LocalFilePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.Name"></a>
+
+### Event.Block.Set.File.Name
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.State"></a>
+
+### Event.Block.Set.File.State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Icon"></a>
+
+### Event.Block.Set.Icon
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Icon.Name"></a>
+
+### Event.Block.Set.Icon.Name
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Image"></a>
+
+### Event.Block.Set.Image
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.Image.Name](#anytype.Event.Block.Set.Image.Name) |  |  |
+| width | [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width) |  |  |
+| state | [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State) |  |  |
+| localFilePath | [Event.Block.Set.Image.LocalFilePath](#anytype.Event.Block.Set.Image.LocalFilePath) |  |  |
+| previewLocalFilePath | [Event.Block.Set.Image.PreviewLocalFilePath](#anytype.Event.Block.Set.Image.PreviewLocalFilePath) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Image.LocalFilePath"></a>
+
+### Event.Block.Set.Image.LocalFilePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Image.Name"></a>
+
+### Event.Block.Set.Image.Name
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Image.PreviewLocalFilePath"></a>
+
+### Event.Block.Set.Image.PreviewLocalFilePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Image.State"></a>
+
+### Event.Block.Set.Image.State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Image.Width"></a>
+
+### Event.Block.Set.Image.Width
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.IsArchived"></a>
+
+### Event.Block.Set.IsArchived
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| IsArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Permissions"></a>
+
+### Event.Block.Set.Permissions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text"></a>
+
+### Event.Block.Set.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| text | [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text) |  |  |
+| style | [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style) |  |  |
+| marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
+| toggleable | [Event.Block.Set.Text.Toggleable](#anytype.Event.Block.Set.Text.Toggleable) |  |  |
+| marker | [Event.Block.Set.Text.Marker](#anytype.Event.Block.Set.Text.Marker) |  |  |
+| checkable | [Event.Block.Set.Text.Checkable](#anytype.Event.Block.Set.Text.Checkable) |  |  |
+| check | [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Check"></a>
+
+### Event.Block.Set.Text.Check
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Checkable"></a>
+
+### Event.Block.Set.Text.Checkable
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Marker"></a>
+
+### Event.Block.Set.Text.Marker
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Marks"></a>
+
+### Event.Block.Set.Text.Marks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Style"></a>
+
+### Event.Block.Set.Text.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Text"></a>
+
+### Event.Block.Set.Text.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Toggleable"></a>
+
+### Event.Block.Set.Text.Toggleable
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Video"></a>
+
+### Event.Block.Set.Video
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name) |  |  |
+| width | [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width) |  |  |
+| state | [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State) |  |  |
+| localFilePath | [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath) |  |  |
+| previewLocalFilePath | [Event.Block.Set.Video.PreviewLocalFilePath](#anytype.Event.Block.Set.Video.PreviewLocalFilePath) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Video.LocalFilePath"></a>
+
+### Event.Block.Set.Video.LocalFilePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Video.Name"></a>
+
+### Event.Block.Set.Video.Name
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Video.PreviewLocalFilePath"></a>
+
+### Event.Block.Set.Video.PreviewLocalFilePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Video.State"></a>
+
+### Event.Block.Set.Video.State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Video.Width"></a>
+
+### Event.Block.Set.Video.Width
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [int32](#int32) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Show"></a>
 
 ### Event.Block.Show
@@ -2209,25 +4133,39 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Update"></a>
+<a name="anytype.Event.Message"></a>
 
-### Event.Block.Update
-Updates from different clients, or from the local middleware
-Example scenarios:
-Page opened, TextBlock updated on a different client, BlockUpdate(changes)
+### Event.Message
+
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| changes | [Changes](#anytype.Changes) |  |  |
-| contextId | [string](#string) |  | id of the context block |
+| accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
+| blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
+| blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
+| filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
+| marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
+| blockSetFields | [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields) |  |  |
+| blockSetChildrenIds | [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds) |  |  |
+| blockSetPermissions | [Event.Block.Set.Permissions](#anytype.Event.Block.Set.Permissions) |  |  |
+| blockSetIsArchived | [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived) |  |  |
+| blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
+| blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
+| blockSetImage | [Event.Block.Set.Image](#anytype.Event.Block.Set.Image) |  |  |
+| blockSetVideo | [Event.Block.Set.Video](#anytype.Event.Block.Set.Video) |  |  |
+| blockSetIcon | [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon) |  |  |
+| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
+| userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
+| userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
+| userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
+| userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
 
 
 
@@ -2266,7 +4204,6 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that opened a block |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -2285,7 +4222,6 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that left the block |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -2305,7 +4241,6 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected blocks |
 | blockIdsArray | [string](#string) | repeated | Ids of selected blocks. |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -2326,7 +4261,6 @@ Precondition: user A and user B opened the same block
 | account | [Event.Account](#anytype.Event.Account) |  | Account of the user, that selected a text |
 | blockId | [string](#string) |  | Id of the text block, that have a selection |
 | range | [model.Range](#anytype.model.Range) |  | Range of the selection |
-| contextId | [string](#string) |  | id of the context block |
 
 
 

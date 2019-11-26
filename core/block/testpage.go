@@ -651,12 +651,12 @@ func (t *testPage) Open(b anytype.Block) error {
 
 func (t *testPage) Init() {
 	event := &pb.Event{
-		Message: &pb.EventMessageOfBlockShow{
+		Messages: []*pb.EventMessage{{&pb.EventMessageValueOfBlockShow{
 			BlockShow: &pb.EventBlockShow{
 				RootId: t.GetId(),
 				Blocks: testBlocks,
 			},
-		},
+		}}},
 	}
 	t.s.sendEvent(event)
 }
