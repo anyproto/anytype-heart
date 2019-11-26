@@ -109,7 +109,7 @@ func TestCommonSmart_Create(t *testing.T) {
 		assert.Equal(t, "23", versToSave[0].Id)
 		assert.Equal(t, []string{"2", "23", "3"}, versToSave[1].ChildrenIds)
 
-		assert.Len(t, fx.events, 3)
+		assert.Len(t, fx.events, 2)
 	})
 }
 
