@@ -12,44 +12,27 @@ message Event {
     string contextId = 2;
 
     message Msg {
-        Account.Show accountShow  = 1;
+        oneof msg {
+            Account.Show accountShow  = 1;
 
-        Block.Add blockAdd = 2;
-        Block.Delete blockDelete = 3;
-        Block.FilesUpload filesUpload = 4;
-        Block.MarksInfo marksInfo = 5;
+            Block.Add blockAdd = 2;
+            Block.Delete blockDelete = 3;
+            Block.FilesUpload filesUpload = 4;
+            Block.MarksInfo marksInfo = 5;
 
-        Block.Set.File.Icon blockSetFileIcon = 6;
-        Block.Set.File.LocalFilePath blockSetFileLocalFilePath = 7;
-        Block.Set.File.Name blockSetFileName = 8;
-        Block.Set.File.State blockSetFileState = 9;
+            Block.Set.File blockSetFile = 6;
+            Block.Set.Image blockSetImage = 7;
+            Block.Set.Text blockSetText = 8;
+            Block.Set.Video blockSetVideo = 9;
+            Block.Set.Icon blockSetIcon = 10;
 
-        Block.Set.Image.LocalFilePath blockSetImageLocalFilePath = 10;
-        Block.Set.Image.Name blockSetImageName = 11;
-        Block.Set.Image.PreviewFilePath blockSetImagePreviewFilePath = 12;
-        Block.Set.Image.State blockSetImageState = 13;
-        Block.Set.Image.Width blockSetImageWidth = 14;
+            Block.Show blockShow = 11;
 
-        Block.Set.Text.Check blockSetTextCheck = 15;
-        Block.Set.Text.Checkable blockSetTextCheckable = 16;
-        Block.Set.Text.Marker blockSetTextMarker = 17;
-        Block.Set.Text.Marks blockSetTextMarks = 18;
-        Block.Set.Text.Style blockSetTextStyle = 19;
-        Block.Set.Text.Text blockSetTextTextInRange = 20;
-        Block.Set.Text.Toggleable blockSetTextToggleable = 21;
-
-        Block.Set.Video.LocalFilePath blockSetVideoLocalFilePath = 22;
-        Block.Set.Video.Name blockSetVideoName = 23;
-        Block.Set.Video.PreviewFilePath blockSetVideoPreviewFilePath = 24;
-        Block.Set.Video.State blockSetVideoState = 25;
-        Block.Set.Video.Width blockSetVideoWidth = 26;
-
-        Block.Show blockShow = 27;
-
-        User.Block.Join userBlockJoin = 28;
-        User.Block.Left userBlockLeft = 29;
-        User.Block.SelectRange userBlockSelectRange = 30;
-        User.Block.TextRange userBlockTextRange = 31;
+            User.Block.Join userBlockJoin = 12;
+            User.Block.Left userBlockLeft = 13;
+            User.Block.SelectRange userBlockSelectRange = 14;
+            User.Block.TextRange userBlockTextRange = 15;
+        }
     }
 
     message Account {
@@ -94,8 +77,9 @@ message Event {
         * 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
         */
         message FilesUpload {
-            repeated string filePath = 1; // filepaths to the files
-            string blockId = 2; // if empty => create new blocks
+            string blockId = 1; // if empty => create new blocks
+            repeated string filePath = 2; // filepaths to the files
+
         }
 
         /*
@@ -111,122 +95,132 @@ message Event {
 
         message Set {
             message Text {
+                string id = 1;
+                Text text = 2;
+                Style style = 3;
+                Marks marks = 4;
+                Toggleable toggleable = 5;
+                Marker marker = 6;
+                Checkable checkable = 7;
+                Check check = 8;
+
                 message Text {
-                    string blockId = 1;
-                    string text = 2;
+                    string value = 1;
                 }
 
                 message Style {
-                    string blockId = 1;
-                    anytype.model.Block.Content.Text.Style style = 2;
+                    anytype.model.Block.Content.Text.Style value = 1;
                 }
 
                 message Marks {
-                    string blockId = 1;
-                    anytype.model.Block.Content.Text.Marks marks = 2;
+                    anytype.model.Block.Content.Text.Marks value = 1;
                 }
 
                 message Toggleable {
-                    string blockId = 1;
-                    bool toggleable = 2;
+                    bool value = 1;
                 }
 
                 message Marker {
-                    string blockId = 1;
-                    anytype.model.Block.Content.Text.Marker marker = 2;
+                    anytype.model.Block.Content.Text.Marker value = 1;
                 }
 
                 message Checkable {
-                    string blockId = 1;
-                    bool checkable = 2;
+                    bool value = 1;
                 }
 
                 message Check {
-                    string blockId = 1;
-                    bool check = 2;
+                    bool value = 1;
                 }
             }
 
             message File {
+                string id = 1;
+                Name name = 2;
+                State state = 3;
+                LocalFilePath localFilePath = 4;
+                Icon icon = 5;
+
                 message Name {
-                    string blockId = 1;
-                    string name = 2;
+                    string value = 1;
                 }
 
                 message State {
-                    string blockId = 1;
-                    anytype.model.Block.Content.File.State state = 2;
+                    anytype.model.Block.Content.File.State value = 1;
                 }
 
                 message LocalFilePath {
-                    string blockId = 1;
-                    string path = 2;
+                    string value = 1;
                 }
 
                 message Icon {
-                    string blockId = 1;
-                    string icon = 2;
+                    string value = 1;
                 }
             }
 
             message Image {
+                string id = 1;
+                Name name = 2;
+                Width width = 3;
+                State state = 4;
+                LocalFilePath localFilePath = 5;
+                PreviewLocalFilePath previewLocalFilePath = 6;
+
                 message Name {
-                    string blockId = 1;
-                    string name = 2;
+                    string value = 1;
                 }
 
                 message Width {
-                    string blockId = 1;
-                    int32 width = 2;
+                    int32 value = 1;
                 }
 
                 message State {
-                    string blockId = 1;
-                    anytype.model.Block.Content.Image.State state = 2;
+                    anytype.model.Block.Content.Image.State value = 1;
                 }
 
                 message LocalFilePath {
-                    string blockId = 1;
-                    string path = 2;
+                    string value = 1;
                 }
 
-                message PreviewFilePath {
-                    string blockId = 1;
-                    string path = 2;
+                message PreviewLocalFilePath {
+                    string value = 1;
                 }
             }
 
             message Video {
+                string id = 1;
+                Name name = 2;
+                Width width = 3;
+                State state = 4;
+                LocalFilePath localFilePath = 5;
+                PreviewLocalFilePath previewLocalFilePath = 6;
+
                 message Name {
-                    string blockId = 1;
-                    string name = 2;
+                    string value = 1;
                 }
 
                 message Width {
-                    string blockId = 1;
-                    int32 width = 2;
+                    int32 value = 1;
                 }
 
                 message State {
-                    string blockId = 1;
-                    anytype.model.Block.Content.Video.State state = 2;
+                    anytype.model.Block.Content.Video.State value = 1;
                 }
 
                 message LocalFilePath {
-                    string blockId = 1;
-                    string path = 2;
+                    string value = 1;
                 }
 
-                message PreviewFilePath {
-                    string blockId = 1;
-                    string path = 2;
+                message PreviewLocalFilePath {
+                    string value = 1;
                 }
             }
 
             message Icon {
+                string id = 1;
+                Name name = 2;
+
                 message Name {
-                    string blockId = 1;
-                    string name = 2;
+                    string value = 1;
                 }
             }
         }

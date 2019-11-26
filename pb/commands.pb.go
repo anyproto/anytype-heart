@@ -276,31 +276,31 @@ func (RpcBlockSetIsArchivedResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 1, 0, 0}
 }
 
-type RpcBlockSetTextTextResponseErrorCode int32
+type RpcBlockSetTextTextInRangeResponseErrorCode int32
 
 const (
-	RpcBlockSetTextTextResponseError_NULL          RpcBlockSetTextTextResponseErrorCode = 0
-	RpcBlockSetTextTextResponseError_UNKNOWN_ERROR RpcBlockSetTextTextResponseErrorCode = 1
-	RpcBlockSetTextTextResponseError_BAD_INPUT     RpcBlockSetTextTextResponseErrorCode = 2
+	RpcBlockSetTextTextInRangeResponseError_NULL          RpcBlockSetTextTextInRangeResponseErrorCode = 0
+	RpcBlockSetTextTextInRangeResponseError_UNKNOWN_ERROR RpcBlockSetTextTextInRangeResponseErrorCode = 1
+	RpcBlockSetTextTextInRangeResponseError_BAD_INPUT     RpcBlockSetTextTextInRangeResponseErrorCode = 2
 )
 
-var RpcBlockSetTextTextResponseErrorCode_name = map[int32]string{
+var RpcBlockSetTextTextInRangeResponseErrorCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 }
 
-var RpcBlockSetTextTextResponseErrorCode_value = map[string]int32{
+var RpcBlockSetTextTextInRangeResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 }
 
-func (x RpcBlockSetTextTextResponseErrorCode) String() string {
-	return proto.EnumName(RpcBlockSetTextTextResponseErrorCode_name, int32(x))
+func (x RpcBlockSetTextTextInRangeResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockSetTextTextInRangeResponseErrorCode_name, int32(x))
 }
 
-func (RpcBlockSetTextTextResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+func (RpcBlockSetTextTextInRangeResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 1, 0, 0}
 }
 
@@ -1323,10 +1323,10 @@ func (m *RpcBlockListMove) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockListMove proto.InternalMessageInfo
 
 type RpcBlockListMoveRequest struct {
-	ContextId string              `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	TargetId  string              `protobuf:"bytes,2,opt,name=targetId,proto3" json:"targetId,omitempty"`
-	BlocksId  []string            `protobuf:"bytes,3,rep,name=blocksId,proto3" json:"blocksId,omitempty"`
-	Position  model.BlockPosition `protobuf:"varint,4,opt,name=position,proto3,enum=anytype.model.BlockPosition" json:"position,omitempty"`
+	ContextId    string              `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlocksId     []string            `protobuf:"bytes,2,rep,name=blocksId,proto3" json:"blocksId,omitempty"`
+	DropTargetId string              `protobuf:"bytes,3,opt,name=dropTargetId,proto3" json:"dropTargetId,omitempty"`
+	Position     model.BlockPosition `protobuf:"varint,4,opt,name=position,proto3,enum=anytype.model.BlockPosition" json:"position,omitempty"`
 }
 
 func (m *RpcBlockListMoveRequest) Reset()         { *m = RpcBlockListMoveRequest{} }
@@ -1369,18 +1369,18 @@ func (m *RpcBlockListMoveRequest) GetContextId() string {
 	return ""
 }
 
-func (m *RpcBlockListMoveRequest) GetTargetId() string {
-	if m != nil {
-		return m.TargetId
-	}
-	return ""
-}
-
 func (m *RpcBlockListMoveRequest) GetBlocksId() []string {
 	if m != nil {
 		return m.BlocksId
 	}
 	return nil
+}
+
+func (m *RpcBlockListMoveRequest) GetDropTargetId() string {
+	if m != nil {
+		return m.DropTargetId
+	}
+	return ""
 }
 
 func (m *RpcBlockListMoveRequest) GetPosition() model.BlockPosition {
@@ -1595,8 +1595,8 @@ func (m *RpcBlockListSetTextStyle) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockListSetTextStyle proto.InternalMessageInfo
 
 type RpcBlockListSetTextStyleRequest struct {
-	BlockId   []string                    `protobuf:"bytes,1,rep,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string                      `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string                      `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   []string                    `protobuf:"bytes,2,rep,name=blockId,proto3" json:"blockId,omitempty"`
 	Style     model.BlockContentTextStyle `protobuf:"varint,3,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle" json:"style,omitempty"`
 }
 
@@ -1633,18 +1633,18 @@ func (m *RpcBlockListSetTextStyleRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockListSetTextStyleRequest proto.InternalMessageInfo
 
-func (m *RpcBlockListSetTextStyleRequest) GetBlockId() []string {
-	if m != nil {
-		return m.BlockId
-	}
-	return nil
-}
-
 func (m *RpcBlockListSetTextStyleRequest) GetContextId() string {
 	if m != nil {
 		return m.ContextId
 	}
 	return ""
+}
+
+func (m *RpcBlockListSetTextStyleRequest) GetBlockId() []string {
+	if m != nil {
+		return m.BlockId
+	}
+	return nil
 }
 
 func (m *RpcBlockListSetTextStyleRequest) GetStyle() model.BlockContentTextStyle {
@@ -1787,8 +1787,8 @@ func (m *RpcBlockListSetTextMarker) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockListSetTextMarker proto.InternalMessageInfo
 
 type RpcBlockListSetTextMarkerRequest struct {
-	BlockId   []string                     `protobuf:"bytes,1,rep,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string                       `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string                       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   []string                     `protobuf:"bytes,2,rep,name=blockId,proto3" json:"blockId,omitempty"`
 	Marker    model.BlockContentTextMarker `protobuf:"varint,3,opt,name=marker,proto3,enum=anytype.model.BlockContentTextMarker" json:"marker,omitempty"`
 }
 
@@ -1825,18 +1825,18 @@ func (m *RpcBlockListSetTextMarkerRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockListSetTextMarkerRequest proto.InternalMessageInfo
 
-func (m *RpcBlockListSetTextMarkerRequest) GetBlockId() []string {
-	if m != nil {
-		return m.BlockId
-	}
-	return nil
-}
-
 func (m *RpcBlockListSetTextMarkerRequest) GetContextId() string {
 	if m != nil {
 		return m.ContextId
 	}
 	return ""
+}
+
+func (m *RpcBlockListSetTextMarkerRequest) GetBlockId() []string {
+	if m != nil {
+		return m.BlockId
+	}
+	return nil
 }
 
 func (m *RpcBlockListSetTextMarkerRequest) GetMarker() model.BlockContentTextMarker {
@@ -1981,8 +1981,8 @@ func (m *RpcBlockListSetTextCheckable) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockListSetTextCheckable proto.InternalMessageInfo
 
 type RpcBlockListSetTextCheckableRequest struct {
-	BlockId   []string `protobuf:"bytes,1,rep,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string   `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string   `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   []string `protobuf:"bytes,2,rep,name=blockId,proto3" json:"blockId,omitempty"`
 	Checkable bool     `protobuf:"varint,3,opt,name=checkable,proto3" json:"checkable,omitempty"`
 }
 
@@ -2019,18 +2019,18 @@ func (m *RpcBlockListSetTextCheckableRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockListSetTextCheckableRequest proto.InternalMessageInfo
 
-func (m *RpcBlockListSetTextCheckableRequest) GetBlockId() []string {
-	if m != nil {
-		return m.BlockId
-	}
-	return nil
-}
-
 func (m *RpcBlockListSetTextCheckableRequest) GetContextId() string {
 	if m != nil {
 		return m.ContextId
 	}
 	return ""
+}
+
+func (m *RpcBlockListSetTextCheckableRequest) GetBlockId() []string {
+	if m != nil {
+		return m.BlockId
+	}
+	return nil
 }
 
 func (m *RpcBlockListSetTextCheckableRequest) GetCheckable() bool {
@@ -2213,10 +2213,10 @@ func (m *RpcBlockUpload) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockUpload proto.InternalMessageInfo
 
 type RpcBlockUploadRequest struct {
-	LocalPath string `protobuf:"bytes,1,opt,name=localPath,proto3" json:"localPath,omitempty"`
-	Url       string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
-	TargetId  string `protobuf:"bytes,3,opt,name=targetId,proto3" json:"targetId,omitempty"`
-	ContextId string `protobuf:"bytes,4,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	LocalPath string `protobuf:"bytes,3,opt,name=localPath,proto3" json:"localPath,omitempty"`
+	Url       string `protobuf:"bytes,4,opt,name=url,proto3" json:"url,omitempty"`
 }
 
 func (m *RpcBlockUploadRequest) Reset()         { *m = RpcBlockUploadRequest{} }
@@ -2252,6 +2252,20 @@ func (m *RpcBlockUploadRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockUploadRequest proto.InternalMessageInfo
 
+func (m *RpcBlockUploadRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockUploadRequest) GetBlockId() string {
+	if m != nil {
+		return m.BlockId
+	}
+	return ""
+}
+
 func (m *RpcBlockUploadRequest) GetLocalPath() string {
 	if m != nil {
 		return m.LocalPath
@@ -2262,20 +2276,6 @@ func (m *RpcBlockUploadRequest) GetLocalPath() string {
 func (m *RpcBlockUploadRequest) GetUrl() string {
 	if m != nil {
 		return m.Url
-	}
-	return ""
-}
-
-func (m *RpcBlockUploadRequest) GetTargetId() string {
-	if m != nil {
-		return m.TargetId
-	}
-	return ""
-}
-
-func (m *RpcBlockUploadRequest) GetContextId() string {
-	if m != nil {
-		return m.ContextId
 	}
 	return ""
 }
@@ -2413,8 +2413,8 @@ func (m *RpcBlockDownload) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockDownload proto.InternalMessageInfo
 
 type RpcBlockDownloadRequest struct {
-	TargetId  string `protobuf:"bytes,1,opt,name=targetId,proto3" json:"targetId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 }
 
 func (m *RpcBlockDownloadRequest) Reset()         { *m = RpcBlockDownloadRequest{} }
@@ -2450,16 +2450,16 @@ func (m *RpcBlockDownloadRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockDownloadRequest proto.InternalMessageInfo
 
-func (m *RpcBlockDownloadRequest) GetTargetId() string {
+func (m *RpcBlockDownloadRequest) GetContextId() string {
 	if m != nil {
-		return m.TargetId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockDownloadRequest) GetContextId() string {
+func (m *RpcBlockDownloadRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -2633,8 +2633,8 @@ func (m *RpcBlockSetFields) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetFields proto.InternalMessageInfo
 
 type RpcBlockSetFieldsRequest struct {
-	BlockId   string        `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string        `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string        `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string        `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Fields    *types.Struct `protobuf:"bytes,3,opt,name=fields,proto3" json:"fields,omitempty"`
 }
 
@@ -2671,16 +2671,16 @@ func (m *RpcBlockSetFieldsRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetFieldsRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetFieldsRequest) GetBlockId() string {
+func (m *RpcBlockSetFieldsRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetFieldsRequest) GetContextId() string {
+func (m *RpcBlockSetFieldsRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -2825,8 +2825,8 @@ func (m *RpcBlockSetPermissions) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetPermissions proto.InternalMessageInfo
 
 type RpcBlockSetPermissionsRequest struct {
-	BlockId     string                  `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId   string                  `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId   string                  `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId     string                  `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Permissions *model.BlockPermissions `protobuf:"bytes,3,opt,name=permissions,proto3" json:"permissions,omitempty"`
 }
 
@@ -2863,16 +2863,16 @@ func (m *RpcBlockSetPermissionsRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetPermissionsRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetPermissionsRequest) GetBlockId() string {
+func (m *RpcBlockSetPermissionsRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetPermissionsRequest) GetContextId() string {
+func (m *RpcBlockSetPermissionsRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -3017,8 +3017,8 @@ func (m *RpcBlockSetIsArchived) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetIsArchived proto.InternalMessageInfo
 
 type RpcBlockSetIsArchivedRequest struct {
-	BlockId    string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId  string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId  string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId    string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	IsArchived bool   `protobuf:"varint,3,opt,name=IsArchived,proto3" json:"IsArchived,omitempty"`
 }
 
@@ -3055,16 +3055,16 @@ func (m *RpcBlockSetIsArchivedRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetIsArchivedRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetIsArchivedRequest) GetBlockId() string {
+func (m *RpcBlockSetIsArchivedRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetIsArchivedRequest) GetContextId() string {
+func (m *RpcBlockSetIsArchivedRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -3208,21 +3208,21 @@ func (m *RpcBlockSetText) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetText proto.InternalMessageInfo
 
-type RpcBlockSetTextText struct {
+type RpcBlockSetTextTextInRange struct {
 }
 
-func (m *RpcBlockSetTextText) Reset()         { *m = RpcBlockSetTextText{} }
-func (m *RpcBlockSetTextText) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetTextText) ProtoMessage()    {}
-func (*RpcBlockSetTextText) Descriptor() ([]byte, []int) {
+func (m *RpcBlockSetTextTextInRange) Reset()         { *m = RpcBlockSetTextTextInRange{} }
+func (m *RpcBlockSetTextTextInRange) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetTextTextInRange) ProtoMessage()    {}
+func (*RpcBlockSetTextTextInRange) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0}
 }
-func (m *RpcBlockSetTextText) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetTextTextInRange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetTextText) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetTextTextInRange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextText.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetTextTextInRange.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3232,36 +3232,37 @@ func (m *RpcBlockSetTextText) XXX_Marshal(b []byte, deterministic bool) ([]byte,
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetTextText) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextText.Merge(m, src)
+func (m *RpcBlockSetTextTextInRange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetTextTextInRange.Merge(m, src)
 }
-func (m *RpcBlockSetTextText) XXX_Size() int {
+func (m *RpcBlockSetTextTextInRange) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetTextText) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextText.DiscardUnknown(m)
+func (m *RpcBlockSetTextTextInRange) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetTextTextInRange.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetTextText proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetTextTextInRange proto.InternalMessageInfo
 
-type RpcBlockSetTextTextRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	Text      string `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+type RpcBlockSetTextTextInRangeRequest struct {
+	ContextId string       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string       `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	Text      string       `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	Range     *model.Range `protobuf:"bytes,4,opt,name=range,proto3" json:"range,omitempty"`
 }
 
-func (m *RpcBlockSetTextTextRequest) Reset()         { *m = RpcBlockSetTextTextRequest{} }
-func (m *RpcBlockSetTextTextRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetTextTextRequest) ProtoMessage()    {}
-func (*RpcBlockSetTextTextRequest) Descriptor() ([]byte, []int) {
+func (m *RpcBlockSetTextTextInRangeRequest) Reset()         { *m = RpcBlockSetTextTextInRangeRequest{} }
+func (m *RpcBlockSetTextTextInRangeRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetTextTextInRangeRequest) ProtoMessage()    {}
+func (*RpcBlockSetTextTextInRangeRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 0}
 }
-func (m *RpcBlockSetTextTextRequest) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetTextTextInRangeRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetTextTextRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetTextTextInRangeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextTextRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetTextTextInRangeRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3271,55 +3272,62 @@ func (m *RpcBlockSetTextTextRequest) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetTextTextRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextTextRequest.Merge(m, src)
+func (m *RpcBlockSetTextTextInRangeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetTextTextInRangeRequest.Merge(m, src)
 }
-func (m *RpcBlockSetTextTextRequest) XXX_Size() int {
+func (m *RpcBlockSetTextTextInRangeRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetTextTextRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextTextRequest.DiscardUnknown(m)
+func (m *RpcBlockSetTextTextInRangeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetTextTextInRangeRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetTextTextRequest proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetTextTextInRangeRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextTextRequest) GetBlockId() string {
-	if m != nil {
-		return m.BlockId
-	}
-	return ""
-}
-
-func (m *RpcBlockSetTextTextRequest) GetContextId() string {
+func (m *RpcBlockSetTextTextInRangeRequest) GetContextId() string {
 	if m != nil {
 		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetTextTextRequest) GetText() string {
+func (m *RpcBlockSetTextTextInRangeRequest) GetBlockId() string {
+	if m != nil {
+		return m.BlockId
+	}
+	return ""
+}
+
+func (m *RpcBlockSetTextTextInRangeRequest) GetText() string {
 	if m != nil {
 		return m.Text
 	}
 	return ""
 }
 
-type RpcBlockSetTextTextResponse struct {
-	Error *RpcBlockSetTextTextResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+func (m *RpcBlockSetTextTextInRangeRequest) GetRange() *model.Range {
+	if m != nil {
+		return m.Range
+	}
+	return nil
 }
 
-func (m *RpcBlockSetTextTextResponse) Reset()         { *m = RpcBlockSetTextTextResponse{} }
-func (m *RpcBlockSetTextTextResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetTextTextResponse) ProtoMessage()    {}
-func (*RpcBlockSetTextTextResponse) Descriptor() ([]byte, []int) {
+type RpcBlockSetTextTextInRangeResponse struct {
+	Error *RpcBlockSetTextTextInRangeResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockSetTextTextInRangeResponse) Reset()         { *m = RpcBlockSetTextTextInRangeResponse{} }
+func (m *RpcBlockSetTextTextInRangeResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetTextTextInRangeResponse) ProtoMessage()    {}
+func (*RpcBlockSetTextTextInRangeResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 1}
 }
-func (m *RpcBlockSetTextTextResponse) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetTextTextInRangeResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetTextTextResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetTextTextInRangeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextTextResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetTextTextInRangeResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3329,42 +3337,44 @@ func (m *RpcBlockSetTextTextResponse) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetTextTextResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextTextResponse.Merge(m, src)
+func (m *RpcBlockSetTextTextInRangeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetTextTextInRangeResponse.Merge(m, src)
 }
-func (m *RpcBlockSetTextTextResponse) XXX_Size() int {
+func (m *RpcBlockSetTextTextInRangeResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetTextTextResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextTextResponse.DiscardUnknown(m)
+func (m *RpcBlockSetTextTextInRangeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetTextTextInRangeResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetTextTextResponse proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetTextTextInRangeResponse proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextTextResponse) GetError() *RpcBlockSetTextTextResponseError {
+func (m *RpcBlockSetTextTextInRangeResponse) GetError() *RpcBlockSetTextTextInRangeResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type RpcBlockSetTextTextResponseError struct {
-	Code        RpcBlockSetTextTextResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockSetTextTextResponseErrorCode" json:"code,omitempty"`
-	Description string                               `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcBlockSetTextTextInRangeResponseError struct {
+	Code        RpcBlockSetTextTextInRangeResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockSetTextTextInRangeResponseErrorCode" json:"code,omitempty"`
+	Description string                                      `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *RpcBlockSetTextTextResponseError) Reset()         { *m = RpcBlockSetTextTextResponseError{} }
-func (m *RpcBlockSetTextTextResponseError) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetTextTextResponseError) ProtoMessage()    {}
-func (*RpcBlockSetTextTextResponseError) Descriptor() ([]byte, []int) {
+func (m *RpcBlockSetTextTextInRangeResponseError) Reset() {
+	*m = RpcBlockSetTextTextInRangeResponseError{}
+}
+func (m *RpcBlockSetTextTextInRangeResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetTextTextInRangeResponseError) ProtoMessage()    {}
+func (*RpcBlockSetTextTextInRangeResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 1, 0}
 }
-func (m *RpcBlockSetTextTextResponseError) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetTextTextInRangeResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetTextTextResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetTextTextInRangeResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextTextResponseError.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetTextTextInRangeResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3374,26 +3384,26 @@ func (m *RpcBlockSetTextTextResponseError) XXX_Marshal(b []byte, deterministic b
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetTextTextResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextTextResponseError.Merge(m, src)
+func (m *RpcBlockSetTextTextInRangeResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetTextTextInRangeResponseError.Merge(m, src)
 }
-func (m *RpcBlockSetTextTextResponseError) XXX_Size() int {
+func (m *RpcBlockSetTextTextInRangeResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetTextTextResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextTextResponseError.DiscardUnknown(m)
+func (m *RpcBlockSetTextTextInRangeResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetTextTextInRangeResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetTextTextResponseError proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetTextTextInRangeResponseError proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextTextResponseError) GetCode() RpcBlockSetTextTextResponseErrorCode {
+func (m *RpcBlockSetTextTextInRangeResponseError) GetCode() RpcBlockSetTextTextInRangeResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return RpcBlockSetTextTextResponseError_NULL
+	return RpcBlockSetTextTextInRangeResponseError_NULL
 }
 
-func (m *RpcBlockSetTextTextResponseError) GetDescription() string {
+func (m *RpcBlockSetTextTextInRangeResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
@@ -3437,8 +3447,8 @@ func (m *RpcBlockSetTextStyle) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetTextStyle proto.InternalMessageInfo
 
 type RpcBlockSetTextStyleRequest struct {
-	BlockId   string                      `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string                      `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string                      `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string                      `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Style     model.BlockContentTextStyle `protobuf:"varint,3,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle" json:"style,omitempty"`
 }
 
@@ -3475,16 +3485,16 @@ func (m *RpcBlockSetTextStyleRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetTextStyleRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextStyleRequest) GetBlockId() string {
+func (m *RpcBlockSetTextStyleRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetTextStyleRequest) GetContextId() string {
+func (m *RpcBlockSetTextStyleRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -3629,8 +3639,8 @@ func (m *RpcBlockSetTextMark) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetTextMark proto.InternalMessageInfo
 
 type RpcBlockSetTextMarkRequest struct {
-	BlockId   string                      `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string                      `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string                      `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string                      `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Mark      *model.BlockContentTextMark `protobuf:"bytes,3,opt,name=mark,proto3" json:"mark,omitempty"`
 }
 
@@ -3667,16 +3677,16 @@ func (m *RpcBlockSetTextMarkRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetTextMarkRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextMarkRequest) GetBlockId() string {
+func (m *RpcBlockSetTextMarkRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetTextMarkRequest) GetContextId() string {
+func (m *RpcBlockSetTextMarkRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -3821,8 +3831,8 @@ func (m *RpcBlockSetTextToggleable) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetTextToggleable proto.InternalMessageInfo
 
 type RpcBlockSetTextToggleableRequest struct {
-	BlockId    string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId  string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId  string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId    string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Toggleable bool   `protobuf:"varint,3,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
 }
 
@@ -3859,16 +3869,16 @@ func (m *RpcBlockSetTextToggleableRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetTextToggleableRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextToggleableRequest) GetBlockId() string {
+func (m *RpcBlockSetTextToggleableRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetTextToggleableRequest) GetContextId() string {
+func (m *RpcBlockSetTextToggleableRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -4015,8 +4025,8 @@ func (m *RpcBlockSetTextMarker) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetTextMarker proto.InternalMessageInfo
 
 type RpcBlockSetTextMarkerRequest struct {
-	BlockId   string                       `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string                       `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string                       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string                       `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Marker    model.BlockContentTextMarker `protobuf:"varint,3,opt,name=marker,proto3,enum=anytype.model.BlockContentTextMarker" json:"marker,omitempty"`
 }
 
@@ -4053,16 +4063,16 @@ func (m *RpcBlockSetTextMarkerRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetTextMarkerRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextMarkerRequest) GetBlockId() string {
+func (m *RpcBlockSetTextMarkerRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetTextMarkerRequest) GetContextId() string {
+func (m *RpcBlockSetTextMarkerRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -4207,8 +4217,8 @@ func (m *RpcBlockSetTextCheckable) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetTextCheckable proto.InternalMessageInfo
 
 type RpcBlockSetTextCheckableRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Checkable bool   `protobuf:"varint,3,opt,name=checkable,proto3" json:"checkable,omitempty"`
 }
 
@@ -4245,16 +4255,16 @@ func (m *RpcBlockSetTextCheckableRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetTextCheckableRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextCheckableRequest) GetBlockId() string {
+func (m *RpcBlockSetTextCheckableRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetTextCheckableRequest) GetContextId() string {
+func (m *RpcBlockSetTextCheckableRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -4399,8 +4409,8 @@ func (m *RpcBlockSetTextCheck) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetTextCheck proto.InternalMessageInfo
 
 type RpcBlockSetTextCheckRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Check     bool   `protobuf:"varint,3,opt,name=check,proto3" json:"check,omitempty"`
 }
 
@@ -4437,16 +4447,16 @@ func (m *RpcBlockSetTextCheckRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetTextCheckRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetTextCheckRequest) GetBlockId() string {
+func (m *RpcBlockSetTextCheckRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetTextCheckRequest) GetContextId() string {
+func (m *RpcBlockSetTextCheckRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -4627,8 +4637,8 @@ func (m *RpcBlockSetFileName) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetFileName proto.InternalMessageInfo
 
 type RpcBlockSetFileNameRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Name      string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -4665,16 +4675,16 @@ func (m *RpcBlockSetFileNameRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetFileNameRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetFileNameRequest) GetBlockId() string {
+func (m *RpcBlockSetFileNameRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetFileNameRequest) GetContextId() string {
+func (m *RpcBlockSetFileNameRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -4855,8 +4865,8 @@ func (m *RpcBlockSetImageName) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetImageName proto.InternalMessageInfo
 
 type RpcBlockSetImageNameRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Name      string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -4893,16 +4903,16 @@ func (m *RpcBlockSetImageNameRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetImageNameRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetImageNameRequest) GetBlockId() string {
+func (m *RpcBlockSetImageNameRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetImageNameRequest) GetContextId() string {
+func (m *RpcBlockSetImageNameRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -5047,8 +5057,8 @@ func (m *RpcBlockSetImageWidth) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetImageWidth proto.InternalMessageInfo
 
 type RpcBlockSetImageWidthRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
@@ -5085,16 +5095,16 @@ func (m *RpcBlockSetImageWidthRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetImageWidthRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetImageWidthRequest) GetBlockId() string {
+func (m *RpcBlockSetImageWidthRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetImageWidthRequest) GetContextId() string {
+func (m *RpcBlockSetImageWidthRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -5275,8 +5285,8 @@ func (m *RpcBlockSetVideoName) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetVideoName proto.InternalMessageInfo
 
 type RpcBlockSetVideoNameRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Name      string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -5313,16 +5323,16 @@ func (m *RpcBlockSetVideoNameRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetVideoNameRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetVideoNameRequest) GetBlockId() string {
+func (m *RpcBlockSetVideoNameRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetVideoNameRequest) GetContextId() string {
+func (m *RpcBlockSetVideoNameRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -5467,8 +5477,8 @@ func (m *RpcBlockSetVideoWidth) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetVideoWidth proto.InternalMessageInfo
 
 type RpcBlockSetVideoWidthRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
@@ -5505,16 +5515,16 @@ func (m *RpcBlockSetVideoWidthRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetVideoWidthRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetVideoWidthRequest) GetBlockId() string {
+func (m *RpcBlockSetVideoWidthRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetVideoWidthRequest) GetContextId() string {
+func (m *RpcBlockSetVideoWidthRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -5695,8 +5705,8 @@ func (m *RpcBlockSetIconName) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockSetIconName proto.InternalMessageInfo
 
 type RpcBlockSetIconNameRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Name      string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -5733,16 +5743,16 @@ func (m *RpcBlockSetIconNameRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockSetIconNameRequest proto.InternalMessageInfo
 
-func (m *RpcBlockSetIconNameRequest) GetBlockId() string {
+func (m *RpcBlockSetIconNameRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetIconNameRequest) GetContextId() string {
+func (m *RpcBlockSetIconNameRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -5926,7 +5936,7 @@ var xxx_messageInfo_RpcBlockGetMarks proto.InternalMessageInfo
 
 type RpcBlockGetMarksRequest struct {
 	ContextId string       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	TargetId  string       `protobuf:"bytes,2,opt,name=targetId,proto3" json:"targetId,omitempty"`
+	BlockId   string       `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	Range     *model.Range `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
 }
 
@@ -5970,9 +5980,9 @@ func (m *RpcBlockGetMarksRequest) GetContextId() string {
 	return ""
 }
 
-func (m *RpcBlockGetMarksRequest) GetTargetId() string {
+func (m *RpcBlockGetMarksRequest) GetBlockId() string {
 	if m != nil {
-		return m.TargetId
+		return m.BlockId
 	}
 	return ""
 }
@@ -6162,9 +6172,9 @@ func (m *RpcBlockHistoryMove) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockHistoryMove proto.InternalMessageInfo
 
 type RpcBlockHistoryMoveRequest struct {
-	BlockId     string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	MoveForward bool   `protobuf:"varint,2,opt,name=moveForward,proto3" json:"moveForward,omitempty"`
-	ContextId   string `protobuf:"bytes,3,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId   string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId     string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	MoveForward bool   `protobuf:"varint,3,opt,name=moveForward,proto3" json:"moveForward,omitempty"`
 }
 
 func (m *RpcBlockHistoryMoveRequest) Reset()         { *m = RpcBlockHistoryMoveRequest{} }
@@ -6200,6 +6210,13 @@ func (m *RpcBlockHistoryMoveRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockHistoryMoveRequest proto.InternalMessageInfo
 
+func (m *RpcBlockHistoryMoveRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
 func (m *RpcBlockHistoryMoveRequest) GetBlockId() string {
 	if m != nil {
 		return m.BlockId
@@ -6212,13 +6229,6 @@ func (m *RpcBlockHistoryMoveRequest) GetMoveForward() bool {
 		return m.MoveForward
 	}
 	return false
-}
-
-func (m *RpcBlockHistoryMoveRequest) GetContextId() string {
-	if m != nil {
-		return m.ContextId
-	}
-	return ""
 }
 
 type RpcBlockHistoryMoveResponse struct {
@@ -6370,8 +6380,8 @@ func (m *RpcBlockOpen) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockOpen proto.InternalMessageInfo
 
 type RpcBlockOpenRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 }
 
 func (m *RpcBlockOpenRequest) Reset()         { *m = RpcBlockOpenRequest{} }
@@ -6407,16 +6417,16 @@ func (m *RpcBlockOpenRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockOpenRequest proto.InternalMessageInfo
 
-func (m *RpcBlockOpenRequest) GetBlockId() string {
+func (m *RpcBlockOpenRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockOpenRequest) GetContextId() string {
+func (m *RpcBlockOpenRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -6521,14 +6531,14 @@ func (m *RpcBlockOpenResponseError) GetDescription() string {
 // Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
 // **Example scenario**
 // 1A. Create Page on a dashboard
-//     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+//     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = "")
 //     2. Front -> MW: Rpc.Block.Close.Request(block: dashboard.id)
 //     3. Front <- MW: Rpc.Block.Close.Response(err)
 //     4. Front <- MW: Rpc.Block.Create.Response(page.id)
 //     5. Front <- MW: Rpc.Block.Open.Response(err)
 //     6. Front <- MW: Event.Block.Show(page)
 // 1B. Create Page on a Page
-//     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+//     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = "")
 //     2. Front <- MW: Rpc.Block.Create.Response(newPage.id)
 //     3. Front <- MW: Event.Block.Show(newPage)
 type RpcBlockCreate struct {
@@ -6568,10 +6578,10 @@ func (m *RpcBlockCreate) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockCreate proto.InternalMessageInfo
 
 type RpcBlockCreateRequest struct {
-	Block     *model.Block        `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
-	TargetId  string              `protobuf:"bytes,2,opt,name=targetId,proto3" json:"targetId,omitempty"`
-	Position  model.BlockPosition `protobuf:"varint,3,opt,name=position,proto3,enum=anytype.model.BlockPosition" json:"position,omitempty"`
-	ContextId string              `protobuf:"bytes,4,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string              `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string              `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	Block     *model.Block        `protobuf:"bytes,3,opt,name=block,proto3" json:"block,omitempty"`
+	Position  model.BlockPosition `protobuf:"varint,4,opt,name=position,proto3,enum=anytype.model.BlockPosition" json:"position,omitempty"`
 	ParentId  string              `protobuf:"bytes,5,opt,name=parentId,proto3" json:"parentId,omitempty"`
 }
 
@@ -6608,6 +6618,20 @@ func (m *RpcBlockCreateRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockCreateRequest proto.InternalMessageInfo
 
+func (m *RpcBlockCreateRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockCreateRequest) GetBlockId() string {
+	if m != nil {
+		return m.BlockId
+	}
+	return ""
+}
+
 func (m *RpcBlockCreateRequest) GetBlock() *model.Block {
 	if m != nil {
 		return m.Block
@@ -6615,25 +6639,11 @@ func (m *RpcBlockCreateRequest) GetBlock() *model.Block {
 	return nil
 }
 
-func (m *RpcBlockCreateRequest) GetTargetId() string {
-	if m != nil {
-		return m.TargetId
-	}
-	return ""
-}
-
 func (m *RpcBlockCreateRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
 	return model.Block_Before
-}
-
-func (m *RpcBlockCreateRequest) GetContextId() string {
-	if m != nil {
-		return m.ContextId
-	}
-	return ""
 }
 
 func (m *RpcBlockCreateRequest) GetParentId() string {
@@ -6838,7 +6848,7 @@ func (m *RpcBlockUnlinkRequest) GetTargets() []*RpcBlockUnlinkRequestTarget {
 }
 
 type RpcBlockUnlinkRequestTarget struct {
-	TargetId string `protobuf:"bytes,1,opt,name=targetId,proto3" json:"targetId,omitempty"`
+	BlockId  string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
 	ParentId string `protobuf:"bytes,2,opt,name=parentId,proto3" json:"parentId,omitempty"`
 }
 
@@ -6875,9 +6885,9 @@ func (m *RpcBlockUnlinkRequestTarget) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockUnlinkRequestTarget proto.InternalMessageInfo
 
-func (m *RpcBlockUnlinkRequestTarget) GetTargetId() string {
+func (m *RpcBlockUnlinkRequestTarget) GetBlockId() string {
 	if m != nil {
-		return m.TargetId
+		return m.BlockId
 	}
 	return ""
 }
@@ -7025,8 +7035,8 @@ func (m *RpcBlockClose) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcBlockClose proto.InternalMessageInfo
 
 type RpcBlockCloseRequest struct {
-	BlockId   string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	ContextId string `protobuf:"bytes,2,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
 }
 
 func (m *RpcBlockCloseRequest) Reset()         { *m = RpcBlockCloseRequest{} }
@@ -7062,16 +7072,16 @@ func (m *RpcBlockCloseRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlockCloseRequest proto.InternalMessageInfo
 
-func (m *RpcBlockCloseRequest) GetBlockId() string {
+func (m *RpcBlockCloseRequest) GetContextId() string {
 	if m != nil {
-		return m.BlockId
+		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockCloseRequest) GetContextId() string {
+func (m *RpcBlockCloseRequest) GetBlockId() string {
 	if m != nil {
-		return m.ContextId
+		return m.BlockId
 	}
 	return ""
 }
@@ -8074,7 +8084,7 @@ var xxx_messageInfo_RpcAccountSelect proto.InternalMessageInfo
 // Front end to middleware request-to-launch-a specific account using account id and a root path
 // User can select an account from those, that came with an AccountAdd events
 type RpcAccountSelectRequest struct {
-	BlockId  string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	Id       string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	RootPath string `protobuf:"bytes,2,opt,name=rootPath,proto3" json:"rootPath,omitempty"`
 }
 
@@ -8111,9 +8121,9 @@ func (m *RpcAccountSelectRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcAccountSelectRequest proto.InternalMessageInfo
 
-func (m *RpcAccountSelectRequest) GetBlockId() string {
+func (m *RpcAccountSelectRequest) GetId() string {
 	if m != nil {
-		return m.BlockId
+		return m.Id
 	}
 	return ""
 }
@@ -9409,7 +9419,7 @@ func init() {
 	proto.RegisterEnum("anytype.RpcBlockSetFieldsResponseErrorCode", RpcBlockSetFieldsResponseErrorCode_name, RpcBlockSetFieldsResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetPermissionsResponseErrorCode", RpcBlockSetPermissionsResponseErrorCode_name, RpcBlockSetPermissionsResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetIsArchivedResponseErrorCode", RpcBlockSetIsArchivedResponseErrorCode_name, RpcBlockSetIsArchivedResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcBlockSetTextTextResponseErrorCode", RpcBlockSetTextTextResponseErrorCode_name, RpcBlockSetTextTextResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockSetTextTextInRangeResponseErrorCode", RpcBlockSetTextTextInRangeResponseErrorCode_name, RpcBlockSetTextTextInRangeResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetTextStyleResponseErrorCode", RpcBlockSetTextStyleResponseErrorCode_name, RpcBlockSetTextStyleResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetTextMarkResponseErrorCode", RpcBlockSetTextMarkResponseErrorCode_name, RpcBlockSetTextMarkResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetTextToggleableResponseErrorCode", RpcBlockSetTextToggleableResponseErrorCode_name, RpcBlockSetTextToggleableResponseErrorCode_value)
@@ -9482,10 +9492,10 @@ func init() {
 	proto.RegisterType((*RpcBlockSetIsArchivedResponse)(nil), "anytype.Rpc.Block.Set.IsArchived.Response")
 	proto.RegisterType((*RpcBlockSetIsArchivedResponseError)(nil), "anytype.Rpc.Block.Set.IsArchived.Response.Error")
 	proto.RegisterType((*RpcBlockSetText)(nil), "anytype.Rpc.Block.Set.Text")
-	proto.RegisterType((*RpcBlockSetTextText)(nil), "anytype.Rpc.Block.Set.Text.Text")
-	proto.RegisterType((*RpcBlockSetTextTextRequest)(nil), "anytype.Rpc.Block.Set.Text.Text.Request")
-	proto.RegisterType((*RpcBlockSetTextTextResponse)(nil), "anytype.Rpc.Block.Set.Text.Text.Response")
-	proto.RegisterType((*RpcBlockSetTextTextResponseError)(nil), "anytype.Rpc.Block.Set.Text.Text.Response.Error")
+	proto.RegisterType((*RpcBlockSetTextTextInRange)(nil), "anytype.Rpc.Block.Set.Text.TextInRange")
+	proto.RegisterType((*RpcBlockSetTextTextInRangeRequest)(nil), "anytype.Rpc.Block.Set.Text.TextInRange.Request")
+	proto.RegisterType((*RpcBlockSetTextTextInRangeResponse)(nil), "anytype.Rpc.Block.Set.Text.TextInRange.Response")
+	proto.RegisterType((*RpcBlockSetTextTextInRangeResponseError)(nil), "anytype.Rpc.Block.Set.Text.TextInRange.Response.Error")
 	proto.RegisterType((*RpcBlockSetTextStyle)(nil), "anytype.Rpc.Block.Set.Text.Style")
 	proto.RegisterType((*RpcBlockSetTextStyleRequest)(nil), "anytype.Rpc.Block.Set.Text.Style.Request")
 	proto.RegisterType((*RpcBlockSetTextStyleResponse)(nil), "anytype.Rpc.Block.Set.Text.Style.Response")
@@ -9618,173 +9628,173 @@ func init() {
 func init() { proto.RegisterFile("pb/protos/commands.proto", fileDescriptor_8261c968b2e6f45c) }
 
 var fileDescriptor_8261c968b2e6f45c = []byte{
-	// 2641 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5b, 0x5f, 0x8c, 0x1b, 0x47,
-	0x19, 0x3f, 0xef, 0xda, 0xbe, 0xf3, 0x5c, 0x12, 0xb6, 0xab, 0xa3, 0x1c, 0x43, 0xb8, 0x9e, 0x12,
-	0x48, 0xd3, 0x34, 0xd9, 0x0b, 0xd7, 0x16, 0x91, 0x88, 0x90, 0xf8, 0xec, 0xf5, 0xc5, 0x89, 0x6f,
-	0x7d, 0xac, 0xd7, 0x77, 0xc0, 0xcb, 0x6a, 0x6d, 0xcf, 0xf9, 0x96, 0xd8, 0x5e, 0xb3, 0xbb, 0x77,
-	0x69, 0x2a, 0x21, 0x81, 0xaa, 0x08, 0x04, 0x42, 0xaa, 0x22, 0xa4, 0x22, 0x1e, 0x28, 0x02, 0x2a,
-	0x0a, 0x24, 0xa2, 0x2f, 0x51, 0xab, 0x4a, 0x15, 0x12, 0x45, 0x08, 0x10, 0x48, 0xe5, 0x8f, 0x00,
-	0xa9, 0x2a, 0x4a, 0x13, 0x78, 0x40, 0x55, 0x41, 0x88, 0x82, 0x84, 0x00, 0x15, 0xcd, 0xec, 0x1f,
-	0xef, 0x1a, 0xaf, 0x6f, 0xd7, 0xe7, 0x4d, 0x22, 0xf5, 0xe5, 0xe4, 0x99, 0x9d, 0xf9, 0x7d, 0xb3,
-	0xbf, 0xdf, 0xb7, 0xf3, 0xcd, 0x37, 0x33, 0x07, 0x66, 0xbb, 0xb5, 0x85, 0xae, 0xae, 0x99, 0x9a,
-	0xb1, 0x50, 0xd7, 0xda, 0x6d, 0xa5, 0xd3, 0x30, 0x38, 0x52, 0x66, 0x27, 0x95, 0xce, 0x25, 0xf3,
-	0x52, 0x17, 0xc1, 0xf3, 0xdb, 0xa8, 0xd3, 0xd0, 0xf4, 0x85, 0xa6, 0x6a, 0x6e, 0x6e, 0xd5, 0xb8,
-	0xba, 0xd6, 0x5e, 0xb0, 0x1f, 0xa9, 0xda, 0x42, 0x53, 0x3b, 0x66, 0x17, 0x8e, 0xb5, 0xd4, 0x9a,
-	0xae, 0xe8, 0x97, 0x16, 0xba, 0xb5, 0x85, 0xb6, 0xd6, 0x40, 0x2d, 0x07, 0x97, 0x14, 0x6c, 0x54,
-	0xb8, 0xbf, 0xa9, 0x69, 0xcd, 0x16, 0xb2, 0x9e, 0xd5, 0xb6, 0x36, 0x16, 0x0c, 0x53, 0xdf, 0xaa,
-	0x9b, 0xd6, 0xd3, 0x03, 0xbf, 0x31, 0x01, 0x2d, 0x76, 0xeb, 0xf0, 0x4f, 0x7b, 0x40, 0x66, 0xa9,
-	0xa5, 0xd5, 0x2f, 0x94, 0x54, 0xc3, 0x84, 0x4f, 0xd2, 0x20, 0xb9, 0xa2, 0x6d, 0x23, 0xf8, 0xd5,
-	0x04, 0x98, 0x14, 0xd1, 0xa7, 0xb6, 0x90, 0x61, 0xb2, 0xfb, 0x41, 0xa6, 0xae, 0x75, 0x4c, 0xf4,
-	0xa8, 0x59, 0x6c, 0xcc, 0x26, 0xe6, 0x13, 0x87, 0x33, 0x62, 0xaf, 0x82, 0x85, 0x60, 0xca, 0x54,
-	0xf4, 0x26, 0xc2, 0x0f, 0x29, 0xf2, 0xd0, 0x2d, 0xe3, 0x67, 0x35, 0x8c, 0x6d, 0x14, 0x1b, 0xb3,
-	0xf4, 0x3c, 0x8d, 0x9f, 0x39, 0x65, 0xf6, 0x04, 0x98, 0xea, 0x6a, 0x86, 0x6a, 0xaa, 0x5a, 0x67,
-	0x36, 0x39, 0x9f, 0x38, 0xbc, 0x6f, 0xf1, 0xbd, 0x9c, 0xfd, 0x7e, 0x1c, 0x79, 0x0f, 0x8e, 0x0c,
-	0x8b, 0x5b, 0xb5, 0x1b, 0x89, 0x6e, 0x73, 0xf8, 0xb7, 0x04, 0x98, 0x12, 0x91, 0xd1, 0xd5, 0x3a,
-	0x06, 0x62, 0xcf, 0x80, 0x14, 0xd2, 0x75, 0x4d, 0x27, 0x23, 0x9b, 0x5e, 0x3c, 0xe2, 0x82, 0x88,
-	0xdd, 0x3a, 0xe7, 0xbe, 0x19, 0x87, 0xdf, 0x8a, 0x73, 0x3a, 0x71, 0x3c, 0xee, 0x21, 0x5a, 0x1d,
-	0xe1, 0x37, 0x12, 0x20, 0x45, 0x2a, 0xd8, 0x1c, 0x48, 0xd6, 0xb5, 0x06, 0x22, 0x50, 0xfb, 0x16,
-	0x17, 0xc2, 0x43, 0x71, 0x39, 0xad, 0x81, 0x44, 0xd2, 0x99, 0x9d, 0x07, 0xd3, 0x0d, 0x64, 0xd4,
-	0x75, 0xb5, 0x4b, 0xde, 0xcd, 0xe2, 0xc4, 0x5b, 0x75, 0x60, 0x11, 0x24, 0x71, 0x7b, 0x76, 0x0a,
-	0x24, 0x85, 0x6a, 0xa9, 0xc4, 0x4c, 0xb0, 0xf7, 0x80, 0xbd, 0x55, 0xe1, 0xbc, 0x50, 0x5e, 0x17,
-	0x64, 0x5e, 0x14, 0xcb, 0x22, 0x93, 0x60, 0xf7, 0x82, 0xcc, 0x52, 0x36, 0x2f, 0x17, 0x85, 0xd5,
-	0xaa, 0xc4, 0x50, 0xf0, 0xc5, 0x0c, 0xa0, 0x2b, 0xc8, 0x84, 0xd7, 0x33, 0x20, 0x29, 0xa1, 0x47,
-	0x4d, 0x78, 0x85, 0x06, 0xa9, 0x8a, 0x79, 0xa9, 0x85, 0xe0, 0x67, 0x3c, 0x5a, 0xcd, 0x82, 0x49,
-	0xc2, 0x30, 0x51, 0x0a, 0x13, 0xee, 0x14, 0xfd, 0x2a, 0x52, 0xfd, 0x2a, 0x9e, 0x02, 0x29, 0x03,
-	0x83, 0xcd, 0xd2, 0xe4, 0xd5, 0xef, 0x1f, 0x28, 0x45, 0x0e, 0x37, 0xef, 0x98, 0x1c, 0xb6, 0xcf,
-	0x11, 0xdb, 0xa2, 0xd5, 0x0b, 0x5e, 0xa6, 0x3c, 0x8a, 0x9c, 0xf3, 0x2b, 0xf2, 0x70, 0x00, 0x8d,
-	0x15, 0xe4, 0x45, 0x0a, 0xd0, 0xe6, 0xaa, 0xab, 0xcd, 0x8a, 0x4f, 0x9b, 0x13, 0xa3, 0x80, 0xc6,
-	0xaf, 0xd2, 0x57, 0x68, 0x90, 0x5e, 0x51, 0xf4, 0x0b, 0x48, 0x87, 0x8f, 0x8f, 0x41, 0x95, 0x33,
-	0x20, 0xdd, 0x26, 0x68, 0xb6, 0x2c, 0x87, 0x77, 0x96, 0xc5, 0xb2, 0x2e, 0xda, 0xfd, 0xe0, 0xe7,
-	0xbc, 0xc2, 0x9c, 0xf7, 0x0b, 0xf3, 0xc8, 0x4e, 0x1c, 0x5a, 0x58, 0x01, 0xca, 0x5c, 0x73, 0x95,
-	0x11, 0x7c, 0xca, 0x9c, 0x1c, 0x09, 0x35, 0x7e, 0x69, 0xfe, 0x43, 0x81, 0x4c, 0x6e, 0x13, 0xd5,
-	0x2f, 0x28, 0xb5, 0x16, 0x82, 0xf2, 0xee, 0xc5, 0xc1, 0x4f, 0x1d, 0x3c, 0xa2, 0xcf, 0x94, 0xd8,
-	0xab, 0x80, 0x5f, 0xf2, 0x12, 0x2f, 0xf8, 0x89, 0xff, 0xd0, 0x4e, 0x14, 0xb9, 0xe3, 0x0c, 0xe0,
-	0xfe, 0x59, 0x97, 0xfb, 0x8f, 0xfa, 0xb8, 0x3f, 0x35, 0x2a, 0x70, 0xfc, 0xf4, 0x7f, 0xb9, 0x00,
-	0x52, 0x64, 0x40, 0xf0, 0x0d, 0x0a, 0xa4, 0xab, 0xdd, 0x96, 0xa6, 0x34, 0xa0, 0xe1, 0x0b, 0x32,
-	0x2d, 0xad, 0xae, 0xb4, 0x56, 0x15, 0x73, 0xd3, 0x09, 0x32, 0x6e, 0x05, 0xcb, 0x00, 0x7a, 0x4b,
-	0x6f, 0xd9, 0x63, 0xc1, 0x3f, 0x7d, 0x61, 0x87, 0xee, 0x0b, 0x3b, 0x3e, 0xdd, 0x92, 0x7d, 0xba,
-	0xc1, 0x37, 0xbc, 0xd1, 0xe3, 0x23, 0x7e, 0x65, 0x0e, 0xff, 0x3f, 0x81, 0x9c, 0x35, 0xd6, 0x00,
-	0x25, 0xbe, 0xee, 0x2a, 0x91, 0xf5, 0x29, 0x71, 0x2c, 0x2c, 0x50, 0xfc, 0xcc, 0xbf, 0x44, 0x81,
-	0xa9, 0xbc, 0x76, 0xb1, 0x43, 0x18, 0xcf, 0xf5, 0x18, 0xf7, 0x32, 0x98, 0x18, 0xc6, 0x60, 0xbf,
-	0xe7, 0x47, 0x8d, 0xbf, 0x9c, 0x63, 0x7d, 0xf7, 0xf1, 0x37, 0x08, 0x2a, 0x7e, 0x16, 0x7f, 0xc7,
-	0x59, 0xf1, 0xf7, 0x4d, 0x0a, 0xa4, 0x0b, 0x2a, 0x6a, 0x35, 0x0c, 0xa8, 0x07, 0xcc, 0x21, 0x89,
-	0xf0, 0x73, 0xc8, 0x02, 0x48, 0x6f, 0x10, 0x30, 0xe2, 0xc3, 0xd3, 0x8b, 0xef, 0xe2, 0xac, 0x45,
-	0x1b, 0xe7, 0x2c, 0xda, 0xb8, 0x0a, 0x59, 0xb4, 0x89, 0x76, 0x33, 0xf8, 0x0f, 0x2f, 0xf5, 0x4b,
-	0x7e, 0xea, 0x8f, 0x0e, 0xe0, 0x0b, 0x7f, 0xf9, 0xd6, 0x70, 0x03, 0xc8, 0xff, 0x96, 0x4b, 0x3e,
-	0xef, 0x23, 0xff, 0x03, 0x51, 0xc0, 0xe2, 0xa7, 0xff, 0x49, 0x1a, 0x4c, 0xaf, 0x22, 0xbd, 0xad,
-	0x1a, 0x86, 0xaa, 0x75, 0x0c, 0x78, 0x39, 0xb1, 0x7b, 0xf2, 0x97, 0xc0, 0x74, 0xb7, 0x07, 0x69,
-	0x2b, 0x30, 0x3f, 0x78, 0x11, 0xda, 0x6b, 0x27, 0x7a, 0x3b, 0xc1, 0xb7, 0xbc, 0x7a, 0x2c, 0xfb,
-	0xf5, 0x08, 0xa2, 0xd0, 0x03, 0x16, 0x20, 0xca, 0x77, 0x5c, 0x51, 0xce, 0xf9, 0x44, 0xf9, 0x60,
-	0x64, 0xc4, 0xf8, 0x95, 0xf9, 0x2b, 0x05, 0x40, 0xd1, 0xc8, 0xea, 0xf5, 0x4d, 0x75, 0x1b, 0x35,
-	0xa0, 0xb2, 0x7b, 0x5d, 0xe6, 0xbc, 0x80, 0x76, 0x64, 0xf5, 0x9a, 0xf8, 0xaf, 0x97, 0xf3, 0x82,
-	0x9f, 0xf3, 0xe3, 0x01, 0x0c, 0xf5, 0xba, 0x07, 0x50, 0xfe, 0x8c, 0x4b, 0x79, 0xd1, 0x47, 0xf9,
-	0x23, 0x51, 0x01, 0xe3, 0x67, 0xfc, 0xc6, 0x8c, 0x9d, 0x02, 0xbc, 0x42, 0xd9, 0x3f, 0xaa, 0xbb,
-	0x27, 0x9d, 0x05, 0x49, 0xfc, 0xcb, 0x8e, 0xa5, 0xe4, 0x37, 0xfc, 0xb7, 0x97, 0x68, 0xde, 0x4f,
-	0xf4, 0x42, 0x00, 0x2f, 0x64, 0x99, 0x41, 0xfe, 0x0c, 0xe6, 0xf9, 0xdb, 0x2e, 0xcf, 0x67, 0x7d,
-	0x3c, 0x3f, 0x1c, 0x11, 0x2f, 0x7e, 0x9a, 0xbf, 0xb0, 0x73, 0x82, 0x95, 0xb8, 0x6d, 0x09, 0xd6,
-	0x28, 0x3e, 0xbf, 0x63, 0x72, 0x15, 0xd5, 0xe7, 0xef, 0x60, 0x62, 0xf5, 0x38, 0x0d, 0x92, 0x38,
-	0x71, 0x80, 0x9f, 0xde, 0xbd, 0x14, 0x27, 0x41, 0x12, 0x67, 0x47, 0xf6, 0x84, 0x7f, 0x28, 0x5c,
-	0x4e, 0x25, 0x92, 0x3e, 0xa3, 0x7f, 0x12, 0x18, 0x63, 0x9c, 0x9f, 0xc4, 0x00, 0xbc, 0xf8, 0x55,
-	0xf8, 0x17, 0x05, 0x80, 0xa4, 0x35, 0x9b, 0x2d, 0x44, 0x72, 0x9c, 0xf1, 0xcc, 0xf5, 0xa6, 0x0b,
-	0xe8, 0xcc, 0xf5, 0xbd, 0x9a, 0xa8, 0xf9, 0xab, 0x67, 0xca, 0x70, 0x31, 0x76, 0x9f, 0xbf, 0x86,
-	0x40, 0x8d, 0x9f, 0xfb, 0x27, 0x42, 0x6c, 0x2d, 0x24, 0x6e, 0xe7, 0xd6, 0xc2, 0x28, 0x4b, 0x9f,
-	0x9d, 0xb7, 0x15, 0xa2, 0x2e, 0x7d, 0xee, 0xe4, 0x96, 0xc2, 0x9b, 0xa1, 0xb6, 0x14, 0x12, 0xe3,
-	0xda, 0x52, 0x88, 0xb8, 0xc9, 0x16, 0x7e, 0x3b, 0x21, 0xc2, 0x26, 0xdb, 0xdd, 0xb0, 0x95, 0x70,
-	0x83, 0x02, 0x29, 0x62, 0x1d, 0xae, 0xef, 0x9e, 0xf2, 0x19, 0x90, 0x22, 0x0c, 0xdb, 0x74, 0x5b,
-	0x85, 0xd1, 0xc3, 0x2d, 0x19, 0xd7, 0x38, 0xc3, 0xed, 0x20, 0xc0, 0xf8, 0x29, 0xfe, 0x23, 0x05,
-	0x92, 0x05, 0xb5, 0x85, 0xc8, 0x12, 0x53, 0x50, 0xda, 0x68, 0x4c, 0x4b, 0xcc, 0x8e, 0xd2, 0x46,
-	0xce, 0x12, 0x13, 0xff, 0x1e, 0x29, 0x9e, 0xe2, 0x81, 0x71, 0x78, 0x50, 0x63, 0x8a, 0xa7, 0x41,
-	0x78, 0xf1, 0xd3, 0xfc, 0xf3, 0x14, 0x48, 0x15, 0xdb, 0x4a, 0x13, 0xc1, 0x57, 0x63, 0xe6, 0x79,
-	0xa4, 0x9c, 0x09, 0x8f, 0x6c, 0x18, 0xd1, 0x91, 0x73, 0xa6, 0x20, 0xc0, 0xf8, 0x99, 0xbe, 0x49,
-	0x81, 0xd4, 0xba, 0xda, 0x30, 0x37, 0xc7, 0x34, 0x67, 0x5c, 0xc4, 0x58, 0x84, 0xe1, 0x94, 0x68,
-	0x15, 0x46, 0x8a, 0x87, 0x16, 0x23, 0x64, 0x60, 0x63, 0x8a, 0x87, 0xc1, 0x88, 0xb7, 0xc7, 0x9d,
-	0xd7, 0xd4, 0x06, 0xd2, 0xee, 0x4a, 0x77, 0x26, 0x23, 0x1b, 0xa7, 0x3b, 0x07, 0x02, 0xbe, 0x6d,
-	0xdd, 0xd9, 0x62, 0x64, 0x9c, 0xee, 0x1c, 0x8c, 0x78, 0x7b, 0x82, 0x60, 0xb1, 0xae, 0x75, 0xee,
-	0xca, 0x20, 0x88, 0x07, 0x36, 0xce, 0x20, 0x18, 0x84, 0x17, 0x3f, 0xcd, 0xff, 0xa4, 0x00, 0xbd,
-	0x8c, 0x4c, 0xf8, 0x17, 0x0a, 0xa4, 0xf0, 0x42, 0xde, 0x80, 0xda, 0x38, 0xee, 0x1e, 0x1c, 0x01,
-	0x29, 0x5d, 0xe9, 0x34, 0x91, 0x9d, 0xe6, 0xcf, 0xf4, 0xe5, 0x37, 0x22, 0x7e, 0x26, 0x5a, 0x4d,
-	0xe0, 0xdf, 0xbd, 0x02, 0x64, 0xfd, 0x02, 0x3c, 0x38, 0x80, 0xb0, 0x65, 0x64, 0xe5, 0x1c, 0x41,
-	0xfb, 0xb7, 0xdf, 0x74, 0xc9, 0xcf, 0xfb, 0xc8, 0x3f, 0x1e, 0x01, 0x2b, 0x7e, 0xe2, 0x2f, 0xd3,
-	0x60, 0xf2, 0xac, 0x6a, 0x98, 0x9a, 0x7e, 0x09, 0x67, 0xf6, 0xd6, 0xc5, 0x8f, 0x7a, 0x18, 0x17,
-	0x9f, 0x07, 0xd3, 0x6d, 0x6d, 0x1b, 0x15, 0x34, 0xfd, 0xa2, 0xa2, 0x5b, 0xd4, 0x4f, 0x89, 0xde,
-	0x2a, 0xbf, 0x6e, 0x74, 0xff, 0x01, 0xd2, 0x17, 0xbd, 0x99, 0x4c, 0xde, 0xcf, 0x37, 0x37, 0x80,
-	0x23, 0x7b, 0x94, 0xc3, 0x2e, 0x71, 0x3c, 0xef, 0x52, 0xbe, 0xec, 0xa3, 0xfc, 0xa1, 0x68, 0x70,
-	0xd1, 0x58, 0xcf, 0x47, 0x67, 0x9d, 0x65, 0xc0, 0x9e, 0x5c, 0x56, 0x90, 0x85, 0xb2, 0x24, 0xaf,
-	0x94, 0xd7, 0x78, 0x86, 0x86, 0xd7, 0x29, 0x90, 0x2c, 0x77, 0x51, 0x07, 0x66, 0x77, 0x3d, 0xbd,
-	0xc0, 0x3f, 0x7b, 0x3d, 0xf9, 0xc3, 0x7e, 0x66, 0x0f, 0x0d, 0xa0, 0x02, 0xdb, 0x0d, 0x60, 0xf4,
-	0x6b, 0x2e, 0xa3, 0xa7, 0x7d, 0x8c, 0x3e, 0x18, 0x0e, 0x26, 0x7e, 0xff, 0x7d, 0x85, 0x06, 0xe9,
-	0x9c, 0x8e, 0x14, 0x13, 0xc1, 0x1f, 0x7b, 0x76, 0x44, 0x8e, 0x80, 0x14, 0xe1, 0xca, 0x7e, 0xeb,
-	0x99, 0x41, 0x1b, 0x1b, 0xa2, 0xd5, 0x64, 0xe8, 0x04, 0xe2, 0xbd, 0xa0, 0x44, 0x47, 0xba, 0xa0,
-	0x34, 0xfc, 0x00, 0x1a, 0x1b, 0xed, 0x2a, 0x3a, 0xea, 0xe0, 0x87, 0x29, 0xcb, 0xa8, 0x53, 0xf6,
-	0xef, 0x77, 0x85, 0x38, 0x9c, 0xb6, 0xde, 0x7f, 0xb0, 0x82, 0x5e, 0x27, 0xa2, 0x7c, 0x4e, 0x14,
-	0xe9, 0xd8, 0x7a, 0xa0, 0x89, 0xf8, 0xd5, 0x7d, 0x86, 0x06, 0xe9, 0x6a, 0xa7, 0xa5, 0x76, 0x2e,
-	0xc0, 0x6b, 0xa1, 0x2f, 0xa3, 0x2d, 0x81, 0x49, 0x4b, 0x3f, 0x63, 0x96, 0x9a, 0xa7, 0x83, 0x0e,
-	0xf4, 0x09, 0x2a, 0x67, 0x23, 0x72, 0x12, 0xe9, 0x20, 0x3a, 0x1d, 0xe1, 0x19, 0x90, 0xb6, 0xaa,
-	0x86, 0x9e, 0x90, 0x7b, 0x45, 0xa4, 0xfa, 0x44, 0x8c, 0x7c, 0xc3, 0xc0, 0x19, 0xd0, 0xae, 0x6f,
-	0x18, 0x0c, 0x02, 0x8a, 0x5f, 0xaa, 0xe7, 0x29, 0x90, 0xca, 0xb5, 0x34, 0x03, 0x8d, 0x63, 0x06,
-	0x7b, 0xdd, 0x4b, 0xde, 0x29, 0x3f, 0x79, 0xf7, 0x0f, 0x72, 0x4f, 0x6c, 0x38, 0x80, 0xbb, 0xa7,
-	0x5c, 0xee, 0xce, 0xf8, 0xb8, 0x3b, 0x1a, 0x12, 0x27, 0x7e, 0xea, 0x7e, 0x91, 0x02, 0xe9, 0x75,
-	0xa5, 0xd5, 0x42, 0x26, 0xfc, 0x03, 0xe5, 0x4e, 0x67, 0xef, 0xf7, 0xdd, 0xd2, 0xd0, 0x35, 0xcd,
-	0xf4, 0x5c, 0x8b, 0x71, 0xcb, 0xf0, 0xaa, 0x77, 0xb2, 0x38, 0xed, 0xa7, 0xea, 0x01, 0xdf, 0x2b,
-	0x5a, 0x26, 0x86, 0xcf, 0x16, 0x10, 0x4c, 0xb5, 0x3b, 0xa8, 0xad, 0x75, 0xd4, 0xba, 0xe3, 0xd1,
-	0x4e, 0x19, 0xfe, 0xd0, 0x25, 0x72, 0xc9, 0x47, 0x24, 0x17, 0xda, 0x4a, 0x34, 0x2a, 0x2b, 0x23,
-	0x04, 0xd6, 0xfb, 0xc0, 0x7b, 0x0a, 0xd9, 0x62, 0x89, 0xcf, 0xcb, 0x52, 0x59, 0xce, 0x89, 0x7c,
-	0x56, 0xe2, 0xe5, 0x52, 0x39, 0x97, 0x2d, 0xc9, 0x22, 0xbf, 0x5a, 0x66, 0x10, 0x7c, 0x8d, 0xc2,
-	0xb4, 0xd6, 0xb5, 0x6d, 0xa4, 0x7b, 0x1d, 0x75, 0x08, 0xc3, 0x43, 0x39, 0xb9, 0x42, 0x85, 0xbd,
-	0x05, 0x63, 0xf3, 0x62, 0xdb, 0x0e, 0xf0, 0xd5, 0x97, 0x42, 0xdd, 0x82, 0x19, 0x0a, 0x75, 0x17,
-	0x70, 0xfc, 0xf4, 0x1e, 0x30, 0x99, 0xad, 0xd7, 0xb5, 0xad, 0x8e, 0x09, 0x9f, 0x4d, 0xba, 0x0e,
-	0x7d, 0xb1, 0x47, 0xb7, 0x93, 0x00, 0x25, 0x7a, 0x09, 0x10, 0x7b, 0x04, 0xbc, 0x43, 0xd9, 0x56,
-	0x4c, 0x45, 0x2f, 0xb9, 0x57, 0xc0, 0xc8, 0x80, 0xcf, 0x4e, 0x88, 0xfd, 0x0f, 0xd8, 0x03, 0x60,
-	0xda, 0xaa, 0xca, 0x69, 0x2d, 0xcd, 0x3a, 0xbd, 0xc0, 0xed, 0xbc, 0x95, 0x4b, 0x53, 0x20, 0x6d,
-	0x15, 0xe1, 0x55, 0x3a, 0xac, 0x48, 0xf6, 0xa8, 0x87, 0x7f, 0x23, 0xc7, 0xc1, 0xa4, 0x62, 0xb5,
-	0x23, 0x03, 0x9c, 0x5e, 0xbc, 0xb7, 0x6f, 0x49, 0x60, 0xa3, 0x88, 0x4e, 0x33, 0xf8, 0x3d, 0x2a,
-	0x8c, 0xac, 0x43, 0x8d, 0x47, 0x93, 0xf5, 0x85, 0xc4, 0x08, 0xba, 0x1e, 0x05, 0x87, 0xb3, 0xb9,
-	0x5c, 0xb9, 0x2a, 0x48, 0xb6, 0xaa, 0x79, 0x79, 0xa9, 0x2a, 0xc9, 0x3d, 0xad, 0x2b, 0x52, 0x56,
-	0x94, 0x64, 0xa1, 0x9c, 0xe7, 0x19, 0x2c, 0xd7, 0xa1, 0x1d, 0x5a, 0xf3, 0x92, 0x2c, 0x64, 0x57,
-	0x78, 0x66, 0x23, 0x04, 0x32, 0x2f, 0xc9, 0xd9, 0xb5, 0xac, 0x94, 0x15, 0x99, 0x26, 0xfc, 0x11,
-	0xdd, 0xfb, 0x44, 0x33, 0xae, 0xcf, 0xc0, 0x6b, 0x74, 0xd8, 0xfc, 0xcc, 0x21, 0x72, 0xf8, 0xb7,
-	0xf6, 0x2a, 0x15, 0x26, 0x3f, 0x1b, 0x8e, 0x15, 0x4d, 0x95, 0xd7, 0x47, 0x51, 0xe5, 0x9d, 0xe0,
-	0x1e, 0xa1, 0x2c, 0xdb, 0xf4, 0x55, 0xe4, 0x42, 0xb9, 0x2a, 0xe4, 0x19, 0x6c, 0x6d, 0xbf, 0xc0,
-	0x5b, 0xe4, 0x89, 0x7c, 0xae, 0xbc, 0xc6, 0x8b, 0xf2, 0x7a, 0xb6, 0x54, 0xe2, 0x25, 0xb9, 0x50,
-	0x14, 0x2b, 0x12, 0xb3, 0xb1, 0xd3, 0x67, 0xda, 0x64, 0x0f, 0x82, 0xfb, 0x7a, 0x65, 0x99, 0xff,
-	0x58, 0xb1, 0x22, 0x55, 0x88, 0x2e, 0xb9, 0xb2, 0x28, 0x56, 0x57, 0x25, 0x3e, 0xcf, 0x6c, 0xb2,
-	0xf7, 0x02, 0xb6, 0x87, 0x22, 0x56, 0x05, 0x4b, 0x7e, 0x15, 0xdb, 0xb7, 0xed, 0x39, 0xe6, 0x71,
-	0x32, 0xb3, 0xca, 0x8b, 0x85, 0xb2, 0xb8, 0xc2, 0xe7, 0x99, 0x4f, 0xc2, 0xa7, 0x92, 0x20, 0x5d,
-	0x41, 0x2d, 0x54, 0x37, 0xe1, 0xe9, 0x30, 0x2b, 0x02, 0xef, 0x14, 0x4c, 0xf5, 0x05, 0xb9, 0x5f,
-	0x47, 0xfe, 0x82, 0x2d, 0xcb, 0x63, 0xfb, 0x82, 0x7f, 0x15, 0xe9, 0x0b, 0x1e, 0x68, 0x3c, 0x9a,
-	0xaf, 0xbc, 0x96, 0x88, 0x61, 0x66, 0x0e, 0x23, 0xf9, 0x46, 0x80, 0xe4, 0x4d, 0x3f, 0x7a, 0xa1,
-	0x28, 0xe4, 0x1d, 0xaf, 0x94, 0x8b, 0x42, 0xa1, 0xcc, 0x6c, 0xb2, 0x1c, 0x38, 0xe2, 0x41, 0xc7,
-	0xfe, 0x60, 0x5b, 0xc8, 0x0a, 0x79, 0x79, 0x45, 0xe0, 0x57, 0xca, 0x42, 0x31, 0x47, 0xea, 0x2b,
-	0xbc, 0xc4, 0xa8, 0xf0, 0x07, 0x34, 0xa0, 0x4b, 0x5a, 0x13, 0x3e, 0x47, 0x83, 0x64, 0x05, 0x75,
-	0x1a, 0xf0, 0xbb, 0xfe, 0x33, 0xed, 0x36, 0x32, 0x0c, 0xa5, 0xe9, 0x44, 0x09, 0xa7, 0xc8, 0x9e,
-	0x00, 0xa9, 0x16, 0xda, 0x46, 0xd6, 0x4d, 0xe0, 0x7d, 0x8b, 0x07, 0x7d, 0x12, 0x94, 0xb4, 0x26,
-	0x87, 0xb1, 0xdc, 0x95, 0x7d, 0x09, 0x37, 0x15, 0xad, 0x1e, 0x07, 0xce, 0x81, 0x14, 0x29, 0xb3,
-	0x19, 0x90, 0xca, 0xf3, 0x4b, 0xd5, 0x65, 0x66, 0x02, 0xff, 0x74, 0xe8, 0xcc, 0x80, 0x54, 0x21,
-	0x2b, 0x65, 0x4b, 0x0c, 0x85, 0x69, 0x27, 0x6f, 0x45, 0xe3, 0xca, 0xd5, 0xac, 0x50, 0xcc, 0x31,
-	0x49, 0x76, 0x1a, 0x4c, 0xae, 0x67, 0x45, 0xa1, 0x28, 0x2c, 0x33, 0x29, 0xf8, 0x59, 0x6f, 0xe8,
-	0x3f, 0xe9, 0xf7, 0xc9, 0xf7, 0x05, 0x8d, 0x69, 0xf8, 0xae, 0xc5, 0x29, 0x9f, 0x6f, 0x3d, 0x10,
-	0x06, 0x24, 0x9a, 0x57, 0x09, 0x23, 0x38, 0xd5, 0x5e, 0x90, 0xc1, 0x92, 0x39, 0x13, 0xcf, 0x34,
-	0x98, 0x94, 0x8a, 0x2b, 0x7c, 0xb9, 0x2a, 0x31, 0x1b, 0xf0, 0xb7, 0x14, 0x98, 0x5c, 0x43, 0xba,
-	0xa1, 0x6a, 0x1d, 0xf8, 0x33, 0x7b, 0x0b, 0xcf, 0x33, 0x65, 0x3f, 0x47, 0x85, 0x5d, 0xc6, 0xdb,
-	0x20, 0x64, 0x23, 0x2c, 0x30, 0x8f, 0xdd, 0xb6, 0x1a, 0x39, 0x79, 0xac, 0x5d, 0x84, 0xbf, 0x0c,
-	0xb5, 0xc0, 0x0f, 0xb6, 0x10, 0x8d, 0xc2, 0xc6, 0x08, 0x14, 0xce, 0x00, 0x66, 0x8d, 0x17, 0x2b,
-	0xc5, 0xb2, 0x20, 0x17, 0x2b, 0x32, 0xbf, 0xb2, 0x2a, 0x7d, 0x9c, 0xa1, 0x87, 0x12, 0xfb, 0x42,
-	0x06, 0x24, 0x8b, 0xdd, 0x0d, 0x03, 0xbe, 0xe5, 0x1c, 0xc2, 0x3a, 0x3b, 0xa4, 0x07, 0x43, 0xcc,
-	0xa5, 0xf0, 0xa7, 0xa1, 0x93, 0x02, 0x6c, 0xc4, 0x3a, 0xfc, 0x0c, 0xa6, 0x9e, 0x05, 0xc9, 0x86,
-	0x62, 0x2a, 0x84, 0x8d, 0x3d, 0x22, 0xf9, 0xcd, 0xce, 0x80, 0x54, 0x1b, 0x35, 0x54, 0xc5, 0xde,
-	0xd7, 0xb3, 0x0a, 0xee, 0xba, 0x2e, 0xe9, 0xd9, 0xd8, 0x7e, 0x31, 0x54, 0xda, 0x30, 0x6c, 0x1c,
-	0x77, 0xd6, 0xc7, 0xbf, 0x9f, 0x76, 0xce, 0x67, 0x9f, 0x4e, 0x5b, 0x12, 0x7c, 0x9e, 0x06, 0xc9,
-	0xa5, 0x96, 0x56, 0x83, 0x62, 0x98, 0xb8, 0x76, 0x0c, 0x24, 0x0d, 0xf5, 0x31, 0x64, 0xcf, 0x56,
-	0xef, 0xee, 0x8b, 0x34, 0xd6, 0x51, 0x5d, 0x45, 0x7d, 0x0c, 0x89, 0xa4, 0x19, 0x5e, 0x2b, 0x86,
-	0x3c, 0x07, 0x20, 0x94, 0x59, 0xfd, 0x31, 0x67, 0x78, 0x44, 0xc1, 0x02, 0xd6, 0x5a, 0x5a, 0xcd,
-	0x11, 0x10, 0xff, 0xf6, 0xa4, 0x1a, 0xc3, 0xce, 0x06, 0x76, 0xb6, 0x71, 0x67, 0xc5, 0xb9, 0x42,
-	0xdb, 0x9f, 0x47, 0x1c, 0x52, 0x5c, 0x1f, 0x55, 0x0a, 0xe2, 0xc7, 0x83, 0xa5, 0xf0, 0xfd, 0x8b,
-	0x0b, 0xd5, 0xf7, 0x2f, 0x2e, 0xa3, 0x89, 0x32, 0xc0, 0xda, 0x1d, 0x15, 0x65, 0x69, 0xff, 0x4f,
-	0x6e, 0xce, 0x25, 0x5e, 0xbe, 0x39, 0x97, 0xb8, 0x71, 0x73, 0x2e, 0xf1, 0xc4, 0xad, 0xb9, 0x89,
-	0x97, 0x6f, 0xcd, 0x4d, 0xfc, 0xfe, 0xd6, 0xdc, 0xc4, 0x27, 0xa8, 0x6e, 0xad, 0x96, 0x26, 0xff,
-	0xd6, 0xf0, 0xd0, 0xff, 0x02, 0x00, 0x00, 0xff, 0xff, 0x21, 0xea, 0xd1, 0x84, 0x0b, 0x3b, 0x00,
-	0x00,
+	// 2648 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5b, 0x6d, 0x8c, 0x1b, 0x47,
+	0x19, 0x3e, 0xef, 0xda, 0xbe, 0xf3, 0x38, 0x0d, 0xee, 0x2a, 0x2d, 0xc7, 0x10, 0xae, 0xa7, 0x14,
+	0xd2, 0x6b, 0x9a, 0xac, 0xc3, 0xb5, 0x41, 0x24, 0x90, 0x36, 0x3e, 0x7b, 0x7d, 0x71, 0xe2, 0x5b,
+	0x1f, 0xeb, 0xf5, 0x1d, 0xf0, 0x67, 0xb5, 0xb6, 0xe7, 0x7c, 0x4b, 0xd6, 0x5e, 0x77, 0x77, 0xef,
+	0xd2, 0x54, 0x42, 0xa2, 0xaa, 0x22, 0xa0, 0x08, 0xa9, 0x8a, 0x84, 0x00, 0x21, 0x28, 0x2a, 0xdf,
+	0x34, 0x85, 0xfe, 0x89, 0x5a, 0x55, 0xaa, 0x10, 0xd0, 0x1f, 0x80, 0x40, 0x2a, 0x20, 0x21, 0x10,
+	0x2a, 0x6a, 0x13, 0xfe, 0xa0, 0x50, 0x21, 0x44, 0x41, 0x42, 0x80, 0x8a, 0x66, 0xf6, 0xc3, 0xbb,
+	0x87, 0xd7, 0xb7, 0xeb, 0x8f, 0x24, 0x12, 0xff, 0x76, 0xc6, 0x33, 0xcf, 0x3b, 0xfb, 0x3c, 0xef,
+	0xcc, 0x3b, 0xef, 0xec, 0x18, 0xcc, 0x76, 0xeb, 0xd9, 0xae, 0xae, 0x99, 0x9a, 0x91, 0x6d, 0x68,
+	0xed, 0xb6, 0xdc, 0x69, 0x1a, 0x2c, 0x29, 0x33, 0xd3, 0x72, 0xe7, 0x82, 0x79, 0xa1, 0x8b, 0xe0,
+	0xd9, 0x6d, 0xd4, 0x69, 0x6a, 0x7a, 0xb6, 0xa5, 0x98, 0x9b, 0x5b, 0x75, 0xb6, 0xa1, 0xb5, 0xb3,
+	0xf6, 0x4f, 0x8a, 0x96, 0x6d, 0x69, 0x47, 0xec, 0xc2, 0x11, 0x55, 0xa9, 0xeb, 0xb2, 0x7e, 0x21,
+	0xdb, 0xad, 0x67, 0xdb, 0x5a, 0x13, 0xa9, 0x0e, 0x2e, 0x29, 0xd8, 0xa8, 0x70, 0x7f, 0x4b, 0xd3,
+	0x5a, 0x2a, 0xb2, 0x7e, 0xab, 0x6f, 0x6d, 0x64, 0x0d, 0x53, 0xdf, 0x6a, 0x98, 0xd6, 0xaf, 0x07,
+	0x9e, 0xd8, 0x02, 0xb4, 0xd0, 0x6d, 0xc0, 0x37, 0xf6, 0x80, 0xd4, 0x92, 0xaa, 0x35, 0xce, 0x95,
+	0x15, 0xc3, 0x84, 0x4f, 0xd1, 0x20, 0xbe, 0xa2, 0x6d, 0x23, 0xf8, 0x74, 0x0c, 0x4c, 0x0b, 0xe8,
+	0xe1, 0x2d, 0x64, 0x98, 0xcc, 0x7e, 0x90, 0x6a, 0x68, 0x1d, 0x13, 0x3d, 0x62, 0x96, 0x9a, 0xb3,
+	0xb1, 0xf9, 0xd8, 0x42, 0x4a, 0xe8, 0x55, 0x30, 0x10, 0xcc, 0xd4, 0x71, 0x7f, 0xa3, 0xd4, 0x9c,
+	0xa5, 0xe6, 0xe9, 0x85, 0x94, 0xe0, 0x96, 0x99, 0x03, 0x60, 0x4f, 0x53, 0xd7, 0xba, 0xa2, 0xac,
+	0xb7, 0x10, 0xee, 0x4c, 0x93, 0xce, 0xbe, 0x3a, 0xe6, 0x38, 0x98, 0xe9, 0x6a, 0x86, 0x62, 0x2a,
+	0x5a, 0x67, 0x36, 0x3e, 0x1f, 0x5b, 0xd8, 0xbb, 0xf8, 0x2e, 0xd6, 0x7e, 0x4f, 0x96, 0xbc, 0x0f,
+	0x4b, 0x86, 0xc7, 0xae, 0xda, 0x8d, 0x04, 0xb7, 0x39, 0xfc, 0x6b, 0x0c, 0xcc, 0x08, 0xc8, 0xe8,
+	0x6a, 0x1d, 0x03, 0x31, 0xa7, 0x40, 0x02, 0xe9, 0xba, 0xa6, 0x93, 0x11, 0xa6, 0x17, 0x0f, 0xb9,
+	0x20, 0x42, 0xb7, 0xc1, 0xba, 0x6f, 0xc8, 0xe2, 0xb7, 0x63, 0x9d, 0x4e, 0x2c, 0x87, 0x7b, 0x08,
+	0x56, 0x47, 0xfc, 0xce, 0x09, 0x52, 0xc1, 0xe4, 0x41, 0xbc, 0xa1, 0x35, 0x11, 0x81, 0xda, 0xbb,
+	0x98, 0x0d, 0x0f, 0xc5, 0xe6, 0xb5, 0x26, 0x12, 0x48, 0x67, 0x66, 0x1e, 0xa4, 0x9b, 0xc8, 0x68,
+	0xe8, 0x4a, 0x97, 0xbc, 0x1b, 0x45, 0xde, 0xdd, 0x5b, 0x75, 0x60, 0x11, 0xc4, 0x71, 0x7b, 0x66,
+	0x06, 0xc4, 0xf9, 0x5a, 0xb9, 0x9c, 0x99, 0x62, 0x6e, 0x07, 0xb7, 0xd5, 0xf8, 0xb3, 0x7c, 0x65,
+	0x9d, 0x97, 0x38, 0x41, 0xa8, 0x08, 0x99, 0x18, 0x73, 0x1b, 0x48, 0x2d, 0xe5, 0x0a, 0x52, 0x89,
+	0x5f, 0xad, 0x89, 0x19, 0x0a, 0xbe, 0x94, 0x02, 0x74, 0x15, 0x99, 0xf0, 0x4a, 0x0a, 0xc4, 0x45,
+	0xf4, 0x88, 0x09, 0x2f, 0xd1, 0x20, 0x51, 0x35, 0x2f, 0xa8, 0x08, 0x7e, 0x22, 0xb4, 0x66, 0xb3,
+	0x60, 0x9a, 0x68, 0xe4, 0x4a, 0xe6, 0x14, 0x99, 0x93, 0x20, 0x61, 0x60, 0x30, 0x22, 0xd5, 0xde,
+	0xc5, 0x7b, 0xfa, 0x4a, 0x91, 0xc7, 0x40, 0x1d, 0x93, 0xc5, 0xf6, 0x59, 0x62, 0x5b, 0xb0, 0x7a,
+	0xc1, 0x8b, 0x94, 0x47, 0x91, 0x33, 0x7e, 0x45, 0x1e, 0x08, 0xa0, 0xb1, 0x8a, 0xbc, 0x48, 0x01,
+	0xda, 0x5c, 0x76, 0xb5, 0x59, 0xf1, 0x69, 0x73, 0x7c, 0x18, 0xd0, 0xc9, 0xab, 0xf4, 0x05, 0x1a,
+	0x24, 0x57, 0x64, 0xfd, 0x1c, 0xd2, 0xe1, 0xe3, 0x63, 0x50, 0xe5, 0x14, 0x48, 0xb6, 0x09, 0x9a,
+	0x2d, 0xcb, 0xc2, 0xee, 0xb2, 0x58, 0xd6, 0x05, 0xbb, 0x1f, 0xfc, 0xa4, 0x57, 0x98, 0xb3, 0x7e,
+	0x61, 0x8e, 0xed, 0xc6, 0xa1, 0x85, 0x15, 0xa0, 0xcc, 0xb3, 0xae, 0x32, 0xbc, 0x4f, 0x99, 0x13,
+	0x43, 0xa1, 0x4e, 0x5e, 0x9a, 0x7f, 0x53, 0x20, 0x95, 0xdf, 0x44, 0x8d, 0x73, 0x72, 0x5d, 0x45,
+	0x50, 0x1a, 0x5d, 0x1c, 0xdc, 0xcf, 0xc1, 0x23, 0xfa, 0xcc, 0x08, 0xbd, 0x0a, 0xf8, 0x59, 0x2f,
+	0xf1, 0xbc, 0x9f, 0xf8, 0xf7, 0xef, 0x46, 0x91, 0x3b, 0xce, 0x00, 0xee, 0x9f, 0x73, 0xb9, 0xff,
+	0x90, 0x8f, 0xfb, 0x93, 0xc3, 0x02, 0x4f, 0x9e, 0xfe, 0x9f, 0x17, 0x41, 0x82, 0x0c, 0x08, 0x5e,
+	0xa7, 0x40, 0xb2, 0xd6, 0x55, 0x35, 0xb9, 0x09, 0x1f, 0x1e, 0x4a, 0x85, 0xd8, 0x0e, 0x15, 0x54,
+	0xad, 0x21, 0xab, 0xab, 0xb2, 0xb9, 0x69, 0xc7, 0x99, 0x5e, 0x05, 0x93, 0x01, 0xf4, 0x96, 0xae,
+	0x92, 0xf8, 0x92, 0x12, 0xf0, 0x23, 0x7c, 0xc3, 0x1b, 0x3b, 0x1e, 0xf4, 0xeb, 0xb2, 0xf0, 0xbf,
+	0xf4, 0xb1, 0xd6, 0x48, 0x03, 0x74, 0xf8, 0xaa, 0xab, 0x43, 0xce, 0xa7, 0xc3, 0x91, 0xb0, 0x40,
+	0x93, 0xe7, 0xfd, 0x87, 0x14, 0x98, 0x29, 0x68, 0xe7, 0x3b, 0x84, 0xef, 0xdc, 0xc8, 0x7c, 0x47,
+	0x8d, 0xbd, 0xac, 0x63, 0x7b, 0xf4, 0xd8, 0x1b, 0x04, 0x35, 0x79, 0x0e, 0xbf, 0x98, 0xb5, 0x62,
+	0xef, 0x9b, 0x14, 0x48, 0x16, 0x15, 0xa4, 0x36, 0x0d, 0xa8, 0x8f, 0xee, 0xb9, 0x59, 0x90, 0xdc,
+	0x20, 0x60, 0xc4, 0x6d, 0xd3, 0x8b, 0x6f, 0x67, 0xad, 0x8d, 0x1b, 0xeb, 0x6c, 0xdc, 0xd8, 0x2a,
+	0xd9, 0xb8, 0x09, 0x76, 0x33, 0xf8, 0x77, 0x2f, 0xf5, 0x4b, 0x7e, 0xea, 0x0f, 0xf7, 0xe1, 0x0b,
+	0xcf, 0x7a, 0x6b, 0xb8, 0x01, 0xe4, 0x7f, 0xdd, 0x25, 0x9f, 0xf3, 0x91, 0xff, 0xde, 0x28, 0x60,
+	0x93, 0xa7, 0xff, 0xf3, 0x34, 0x48, 0xaf, 0x22, 0xbd, 0xad, 0x18, 0x86, 0xa2, 0x75, 0x0c, 0x78,
+	0x31, 0x36, 0x3a, 0xf9, 0x4b, 0x20, 0xdd, 0xed, 0x41, 0xda, 0x0a, 0xcc, 0xf7, 0xdf, 0x80, 0xf6,
+	0xda, 0x09, 0xde, 0x4e, 0xf0, 0x2d, 0xaf, 0x1e, 0xcb, 0x7e, 0x3d, 0x82, 0x28, 0xf4, 0x80, 0x05,
+	0x88, 0xf2, 0x1d, 0x57, 0x94, 0x33, 0x3e, 0x51, 0xde, 0x17, 0x19, 0x71, 0xf2, 0xca, 0xfc, 0x85,
+	0x02, 0xa0, 0x64, 0xe4, 0xf4, 0xc6, 0xa6, 0xb2, 0x8d, 0x9a, 0x50, 0x1e, 0x5d, 0x97, 0x39, 0x2f,
+	0xa0, 0x1d, 0x55, 0xbd, 0x26, 0xfe, 0xe3, 0xe5, 0xbc, 0xe8, 0xe7, 0xfc, 0x68, 0x00, 0x43, 0xbd,
+	0xee, 0x01, 0x94, 0x7f, 0xdb, 0xa5, 0xbc, 0xe4, 0xa3, 0xfc, 0x58, 0x54, 0xc0, 0xc9, 0x33, 0xfe,
+	0xf4, 0x1d, 0xf6, 0xf6, 0xff, 0xcb, 0x34, 0x48, 0xe3, 0x87, 0x52, 0x47, 0x90, 0x3b, 0x2d, 0x04,
+	0x1f, 0x1b, 0xc3, 0xa4, 0x60, 0x40, 0x1c, 0xb7, 0xb1, 0xc3, 0x28, 0x79, 0x66, 0x0e, 0x81, 0x84,
+	0x8e, 0x0d, 0x90, 0x18, 0x9a, 0x5e, 0xdc, 0xb7, 0x63, 0x8a, 0x10, 0xe3, 0x82, 0xd5, 0x04, 0x7e,
+	0xda, 0xbb, 0xe7, 0x29, 0xfb, 0xc5, 0x09, 0x72, 0x5f, 0xb2, 0x2d, 0xf1, 0xbc, 0x48, 0x80, 0x44,
+	0xdf, 0x73, 0x25, 0xaa, 0xf8, 0x24, 0xfa, 0xc0, 0x70, 0xb0, 0x93, 0x17, 0xea, 0x89, 0x51, 0xd3,
+	0xb3, 0xd8, 0x18, 0xd3, 0xb3, 0x61, 0x66, 0xcd, 0xae, 0xa9, 0x59, 0xd4, 0x59, 0x73, 0x13, 0xd3,
+	0xb2, 0xc7, 0x69, 0x10, 0xc7, 0x69, 0x07, 0xfc, 0xf8, 0xe8, 0x52, 0x9c, 0x00, 0x71, 0x9c, 0x5b,
+	0xd9, 0x21, 0xe3, 0x60, 0xb8, 0x8c, 0x4c, 0x20, 0x7d, 0xe0, 0xbf, 0xbc, 0x3a, 0x70, 0x7e, 0x1d,
+	0xb2, 0x83, 0x68, 0xc3, 0x18, 0x01, 0x32, 0x7c, 0xcb, 0x95, 0xe1, 0xb4, 0x4f, 0x86, 0x07, 0x22,
+	0xe2, 0x4d, 0x5e, 0x85, 0x7f, 0x52, 0x00, 0x88, 0x5a, 0xab, 0xa5, 0x22, 0x92, 0x21, 0x8d, 0x27,
+	0x5a, 0x98, 0x2e, 0xa0, 0x13, 0x2d, 0x7a, 0x35, 0x51, 0xb3, 0x5f, 0xcf, 0xca, 0xe1, 0x62, 0x8c,
+	0x9e, 0xfd, 0x86, 0x40, 0x9d, 0x3c, 0xf7, 0x4f, 0x8e, 0x7c, 0x30, 0x11, 0x1b, 0xef, 0xc1, 0xc4,
+	0x30, 0x9b, 0xa7, 0xdd, 0x0f, 0x25, 0xa2, 0x6e, 0x9e, 0x6e, 0xe6, 0x81, 0xc4, 0x9b, 0x63, 0x38,
+	0x90, 0x88, 0x85, 0x3f, 0x90, 0x88, 0x78, 0x44, 0x17, 0xfe, 0x30, 0x22, 0xc2, 0x11, 0xdd, 0xad,
+	0x70, 0x10, 0xf1, 0x1a, 0x05, 0x12, 0xc4, 0x3a, 0x5c, 0x1f, 0x9d, 0xf2, 0x7d, 0x20, 0x41, 0x18,
+	0xb6, 0xe9, 0xb6, 0x0a, 0xc3, 0x87, 0x5b, 0x32, 0xae, 0x71, 0x86, 0xdb, 0x7e, 0x80, 0x93, 0xa7,
+	0xf8, 0x8f, 0x14, 0x88, 0x17, 0x15, 0x15, 0xc1, 0xdf, 0x53, 0x20, 0xce, 0xcb, 0x6d, 0x04, 0x6b,
+	0x63, 0xd9, 0x9c, 0x76, 0xe4, 0x36, 0x72, 0x36, 0xa7, 0xf8, 0x79, 0xa8, 0x78, 0x8a, 0x07, 0xc6,
+	0xe2, 0x41, 0x8d, 0x29, 0x9e, 0x06, 0xe1, 0xdd, 0x80, 0x23, 0xb5, 0x04, 0x48, 0x94, 0xda, 0x72,
+	0x0b, 0xc1, 0x57, 0x27, 0xcc, 0xf3, 0x50, 0x59, 0x17, 0x1e, 0xd9, 0x20, 0xa2, 0x23, 0x67, 0x5d,
+	0x41, 0x80, 0x93, 0x67, 0xfa, 0x2a, 0x05, 0x12, 0xeb, 0x4a, 0xd3, 0xdc, 0x1c, 0xd3, 0x9a, 0x71,
+	0x1e, 0x63, 0x11, 0x86, 0x13, 0x82, 0x55, 0x18, 0x2a, 0x1e, 0x5a, 0x8c, 0x90, 0x81, 0x8d, 0x29,
+	0x1e, 0x06, 0x23, 0xde, 0x18, 0x77, 0x5e, 0x53, 0x9a, 0x48, 0xbb, 0x25, 0xdd, 0x99, 0x8c, 0x6c,
+	0x9c, 0xee, 0x1c, 0x08, 0xf8, 0x7f, 0xeb, 0xce, 0x16, 0x23, 0xe3, 0x74, 0xe7, 0x60, 0xc4, 0x1b,
+	0x13, 0x04, 0x4b, 0x0d, 0xad, 0x73, 0x4b, 0x06, 0x41, 0x3c, 0xb0, 0x71, 0x06, 0xc1, 0x20, 0xbc,
+	0x1b, 0xb2, 0x8b, 0xa6, 0x97, 0x91, 0x09, 0xff, 0x4c, 0x81, 0x04, 0xde, 0xc8, 0x1b, 0xb0, 0x3d,
+	0x3a, 0xcd, 0xee, 0xa1, 0x17, 0xbd, 0xfb, 0xa1, 0xd7, 0xdf, 0xbc, 0xf4, 0xe7, 0xfc, 0xf4, 0xdf,
+	0xd7, 0x87, 0xae, 0x65, 0x64, 0x65, 0x1c, 0x41, 0xe7, 0xbf, 0x5f, 0x73, 0xa9, 0x2f, 0xf8, 0xa8,
+	0x3f, 0x1a, 0x01, 0x6b, 0xf2, 0xb4, 0x5f, 0xa4, 0xc1, 0xf4, 0x69, 0xc5, 0x30, 0x35, 0xfd, 0x02,
+	0xce, 0xeb, 0xad, 0xcb, 0x23, 0x8d, 0xd1, 0x99, 0x9f, 0x07, 0xe9, 0xb6, 0xb6, 0x8d, 0x8a, 0x9a,
+	0x7e, 0x5e, 0xd6, 0x9d, 0x03, 0x60, 0x6f, 0x15, 0xfc, 0x8c, 0x37, 0x8f, 0x29, 0xf8, 0xf9, 0x66,
+	0xfb, 0x70, 0x64, 0x8f, 0x72, 0xd0, 0x05, 0x90, 0x17, 0x5c, 0xca, 0x97, 0x7d, 0x94, 0xdf, 0x1f,
+	0x0d, 0x2e, 0x1a, 0xeb, 0x85, 0xe8, 0xac, 0x33, 0x19, 0xb0, 0x27, 0x9f, 0xe3, 0x25, 0xbe, 0x22,
+	0x4a, 0x2b, 0x95, 0x35, 0x2e, 0x43, 0xc3, 0x2b, 0x14, 0x88, 0x57, 0xba, 0xa8, 0x33, 0x8e, 0x4f,
+	0x7b, 0x7f, 0xf2, 0x7a, 0xf2, 0x07, 0xfd, 0xcc, 0x1e, 0xec, 0x43, 0x05, 0xb6, 0x1b, 0xc0, 0xe8,
+	0x57, 0x5c, 0x46, 0x1f, 0xf2, 0x31, 0x7a, 0x5f, 0x38, 0x98, 0xc9, 0xfb, 0xef, 0xef, 0x68, 0x90,
+	0xcc, 0xeb, 0x48, 0x36, 0x11, 0x7c, 0x39, 0x36, 0x96, 0x05, 0x83, 0x3c, 0x06, 0x2c, 0x18, 0xe4,
+	0x45, 0x05, 0xab, 0xc9, 0x08, 0x17, 0x9f, 0x18, 0x08, 0x66, 0xba, 0xb2, 0x8e, 0x3a, 0x78, 0x74,
+	0x09, 0x32, 0x02, 0xb7, 0xec, 0x3f, 0xeb, 0x0a, 0xf1, 0x61, 0xdb, 0x7a, 0xfb, 0xfe, 0xfa, 0x0d,
+	0x70, 0x92, 0x28, 0x9f, 0xbc, 0xfb, 0x9a, 0x98, 0xbc, 0xb6, 0xdf, 0xa4, 0x41, 0xb2, 0xd6, 0x51,
+	0x95, 0xce, 0x39, 0xf8, 0x4c, 0x68, 0x6d, 0x97, 0xc0, 0xb4, 0x49, 0xae, 0xa6, 0x19, 0xe4, 0x9e,
+	0x47, 0xc0, 0x65, 0x00, 0x82, 0xca, 0xda, 0x88, 0xac, 0x75, 0x97, 0x4d, 0x70, 0x3a, 0xc2, 0x07,
+	0x41, 0xd2, 0xaa, 0xf2, 0xf2, 0x17, 0xf3, 0x7b, 0x8a, 0x57, 0x42, 0x6a, 0x87, 0x84, 0x91, 0xef,
+	0x26, 0x38, 0xc3, 0x19, 0xf9, 0x6e, 0x42, 0x3f, 0xa0, 0xc9, 0x0b, 0xf5, 0x02, 0x05, 0x12, 0x79,
+	0x55, 0x33, 0xd0, 0x38, 0x56, 0xaf, 0xeb, 0x5e, 0xf2, 0x4e, 0xfa, 0xc9, 0xbb, 0xa7, 0x9f, 0x73,
+	0x62, 0xc3, 0x01, 0xdc, 0x3d, 0xe5, 0x72, 0x77, 0xca, 0xc7, 0xdd, 0xe1, 0x90, 0x38, 0x93, 0xa7,
+	0xee, 0x17, 0x09, 0x90, 0x5c, 0x97, 0x55, 0x15, 0x99, 0xf0, 0x0f, 0x94, 0xbb, 0x94, 0xbd, 0xa7,
+	0x47, 0x23, 0x04, 0x33, 0xba, 0xa6, 0x99, 0xe4, 0x5a, 0x8c, 0xc5, 0xa2, 0x5b, 0x86, 0x97, 0xbd,
+	0x4b, 0xc5, 0x43, 0x7e, 0xaa, 0xee, 0xf5, 0xbd, 0xa2, 0x65, 0x62, 0xf0, 0x5a, 0x01, 0xc1, 0x4c,
+	0xbb, 0x83, 0xda, 0x5a, 0x47, 0x69, 0x38, 0x1e, 0xed, 0x94, 0xe1, 0x8f, 0x5c, 0x22, 0x97, 0x7c,
+	0x44, 0xb2, 0xa1, 0xad, 0x44, 0xa3, 0xb2, 0x3a, 0x44, 0x50, 0xbd, 0x0b, 0xbc, 0xb3, 0x98, 0x2b,
+	0x95, 0xb9, 0x82, 0x24, 0x56, 0xa4, 0xbc, 0xc0, 0xe5, 0x44, 0x4e, 0x2a, 0x57, 0xf2, 0xb9, 0xb2,
+	0x24, 0x70, 0xab, 0x95, 0x0c, 0x82, 0xaf, 0x53, 0x98, 0xd6, 0x86, 0xb6, 0x8d, 0x74, 0xaf, 0xa3,
+	0x0e, 0x60, 0x78, 0x20, 0x27, 0x97, 0xa8, 0xb0, 0x37, 0x68, 0x6c, 0x5e, 0x6c, 0xdb, 0x01, 0xbe,
+	0xfa, 0xe3, 0x50, 0x37, 0x68, 0x06, 0x42, 0xdd, 0x02, 0x1c, 0x7f, 0x69, 0x0f, 0x98, 0xce, 0x35,
+	0x1a, 0xda, 0x56, 0xc7, 0x84, 0xcf, 0xc5, 0x5d, 0x87, 0x3e, 0xdf, 0xa3, 0xdb, 0x49, 0x7d, 0x62,
+	0xbd, 0xd4, 0x87, 0x39, 0x04, 0xde, 0x26, 0x6f, 0xcb, 0xa6, 0xac, 0x97, 0xdd, 0x2b, 0x60, 0x64,
+	0xc0, 0xa7, 0xa7, 0x84, 0x9d, 0x3f, 0x30, 0x07, 0x40, 0xda, 0xaa, 0xca, 0x6b, 0xaa, 0x66, 0x7d,
+	0xb7, 0xc0, 0xed, 0xbc, 0x95, 0x4b, 0x33, 0x20, 0x69, 0x15, 0xe1, 0x65, 0x3a, 0xac, 0x48, 0xf6,
+	0xa8, 0x07, 0xcf, 0x91, 0xa3, 0x60, 0x5a, 0xb6, 0xda, 0x91, 0x01, 0xa6, 0x17, 0xef, 0xdc, 0x11,
+	0xf2, 0x6d, 0x14, 0xc1, 0x69, 0x06, 0x9f, 0xa1, 0xc2, 0xc8, 0x3a, 0xd0, 0x78, 0x34, 0x59, 0x5f,
+	0x8c, 0x0d, 0xa1, 0xeb, 0x61, 0xb0, 0x90, 0xcb, 0xe7, 0x2b, 0x35, 0x5e, 0xb4, 0x55, 0x2d, 0x48,
+	0x4b, 0x35, 0x51, 0xea, 0x69, 0x5d, 0x15, 0x73, 0x82, 0x28, 0xf1, 0x95, 0x02, 0x97, 0xc1, 0x72,
+	0x1d, 0xdc, 0xa5, 0x35, 0x27, 0x4a, 0x7c, 0x6e, 0x85, 0xcb, 0x6c, 0x84, 0x40, 0xe6, 0x44, 0x29,
+	0xb7, 0x96, 0x13, 0x73, 0x42, 0xa6, 0x05, 0x5f, 0xa6, 0x7b, 0x53, 0x34, 0xe5, 0xfa, 0x0c, 0x7c,
+	0x96, 0x0e, 0x9b, 0x9b, 0x39, 0x44, 0x0e, 0x9e, 0x6b, 0xaf, 0x52, 0x61, 0x72, 0xb3, 0xc1, 0x58,
+	0xd1, 0x54, 0xb9, 0x3e, 0x8c, 0x2a, 0x77, 0x80, 0xdb, 0xf9, 0x8a, 0x64, 0xd3, 0x57, 0x95, 0x8a,
+	0x95, 0x1a, 0x5f, 0xc8, 0x60, 0x6b, 0xfb, 0x79, 0xce, 0x22, 0x4f, 0xe0, 0xf2, 0x95, 0x35, 0x4e,
+	0x90, 0xd6, 0x73, 0xe5, 0x32, 0x27, 0x4a, 0xc5, 0x92, 0x50, 0x15, 0x33, 0x1b, 0xbb, 0x4d, 0xd3,
+	0x16, 0x73, 0x37, 0xb8, 0xab, 0x57, 0x96, 0xb8, 0x0f, 0x97, 0xaa, 0x62, 0x95, 0xe8, 0x92, 0xaf,
+	0x08, 0x42, 0x6d, 0x55, 0xe4, 0x0a, 0x99, 0x4d, 0xe6, 0x4e, 0xc0, 0xf4, 0x50, 0x84, 0x1a, 0x6f,
+	0xc9, 0xaf, 0x60, 0xfb, 0xb6, 0x3d, 0xc7, 0x3c, 0x4e, 0x64, 0x56, 0x39, 0xa1, 0x58, 0x11, 0x56,
+	0xb8, 0x42, 0xe6, 0x63, 0xf0, 0x73, 0x71, 0x90, 0xac, 0x22, 0x15, 0x35, 0x4c, 0x78, 0xac, 0x37,
+	0xf3, 0xf7, 0x02, 0x4a, 0x71, 0xb6, 0x02, 0x94, 0xd2, 0xf4, 0x2d, 0xbc, 0xd4, 0x8e, 0xd0, 0xf6,
+	0xeb, 0xc8, 0xf3, 0xd6, 0xb2, 0x37, 0xb6, 0x79, 0xfb, 0xab, 0x48, 0xf3, 0xb6, 0xaf, 0xf1, 0x68,
+	0x1e, 0xf2, 0x7a, 0x6c, 0x02, 0xeb, 0x71, 0x18, 0xa1, 0x37, 0x02, 0x84, 0x6e, 0xf9, 0xd1, 0x8b,
+	0x25, 0xbe, 0xe0, 0xf8, 0xa2, 0x54, 0xe2, 0x8b, 0x95, 0xcc, 0x26, 0xc3, 0x82, 0x43, 0x1e, 0x74,
+	0xec, 0x05, 0xb6, 0x85, 0x1c, 0x5f, 0x90, 0x56, 0x78, 0x6e, 0xa5, 0xc2, 0x97, 0xf2, 0xa4, 0xbe,
+	0xca, 0x89, 0x19, 0x05, 0xfe, 0x80, 0x06, 0x74, 0x59, 0x6b, 0xc1, 0xe7, 0x69, 0x10, 0xaf, 0xa2,
+	0x4e, 0x13, 0x7e, 0xd7, 0xb3, 0xaf, 0x9f, 0x05, 0xd3, 0x6d, 0x64, 0x18, 0x72, 0xcb, 0x89, 0x0d,
+	0x4e, 0x91, 0x39, 0x0e, 0x12, 0x2a, 0xda, 0x46, 0x2a, 0xa1, 0x6d, 0xef, 0xe2, 0xdd, 0x3e, 0x09,
+	0xca, 0x5a, 0x8b, 0xc5, 0x58, 0xee, 0x6e, 0xbe, 0x8c, 0x9b, 0x0a, 0x56, 0x8f, 0x03, 0x67, 0x40,
+	0x82, 0x94, 0x99, 0x14, 0x48, 0x14, 0xb8, 0xa5, 0xda, 0x72, 0x66, 0x0a, 0x3f, 0x3a, 0x74, 0xa6,
+	0x40, 0xa2, 0x98, 0x13, 0x73, 0xe5, 0x0c, 0x85, 0x69, 0x27, 0x6f, 0x45, 0xe3, 0xca, 0xd5, 0x1c,
+	0x5f, 0xca, 0x67, 0xe2, 0x4c, 0x1a, 0x4c, 0xaf, 0xe7, 0x04, 0xbe, 0xc4, 0x2f, 0x67, 0x12, 0xf0,
+	0x31, 0x6f, 0xc0, 0x3f, 0xe1, 0xf7, 0xc9, 0x77, 0x07, 0x8d, 0x69, 0xf0, 0x39, 0xc5, 0x49, 0x9f,
+	0x6f, 0xdd, 0x1b, 0x06, 0x24, 0x9a, 0x57, 0xf1, 0x43, 0x38, 0xd5, 0x6d, 0x20, 0x85, 0x25, 0x73,
+	0x96, 0x9b, 0x34, 0x98, 0x16, 0x4b, 0x2b, 0x5c, 0xa5, 0x26, 0x66, 0x36, 0xe0, 0x6f, 0x28, 0x30,
+	0xbd, 0x86, 0x74, 0x43, 0xd1, 0x3a, 0xf0, 0x67, 0xf6, 0x91, 0x9d, 0x67, 0xa1, 0x7e, 0x9e, 0x0a,
+	0xbb, 0x79, 0xb7, 0x41, 0xc8, 0xd1, 0x57, 0x60, 0xee, 0xba, 0x6d, 0x35, 0x72, 0x52, 0x04, 0xbb,
+	0x08, 0x7f, 0x19, 0x6a, 0x5b, 0x1f, 0x6c, 0x21, 0x1a, 0x85, 0xcd, 0x21, 0x28, 0xdc, 0x07, 0x32,
+	0x6b, 0x9c, 0x50, 0x2d, 0x55, 0x78, 0xa9, 0x54, 0x95, 0xb8, 0x95, 0x55, 0xf1, 0x23, 0x19, 0x7a,
+	0x20, 0xb1, 0x2f, 0xa6, 0x40, 0xbc, 0xd4, 0xdd, 0x30, 0xe0, 0x5b, 0xce, 0x47, 0xd7, 0x7f, 0xd8,
+	0xf4, 0xde, 0xed, 0x9b, 0x22, 0xfd, 0xd3, 0x51, 0xf8, 0xd3, 0xd0, 0xa9, 0x00, 0x36, 0x62, 0x7d,
+	0xec, 0x0c, 0xa6, 0x9e, 0x01, 0xf1, 0xa6, 0x6c, 0xca, 0x84, 0x8d, 0x3d, 0x02, 0x79, 0x66, 0xf6,
+	0x81, 0x44, 0x1b, 0x35, 0x15, 0xd9, 0x3e, 0xb3, 0xb6, 0x0a, 0xee, 0x6e, 0x2e, 0xee, 0x39, 0xc8,
+	0x7e, 0x29, 0x54, 0xb2, 0x30, 0x68, 0x1c, 0x37, 0xd7, 0xc7, 0xbf, 0x9f, 0x74, 0xbe, 0xc7, 0x7e,
+	0x23, 0x69, 0x49, 0xf0, 0x29, 0x1a, 0xc4, 0x97, 0x54, 0xad, 0x0e, 0x85, 0x10, 0x5a, 0x30, 0x47,
+	0x40, 0xdc, 0x50, 0x1e, 0x45, 0xf6, 0x6a, 0xf5, 0x8e, 0x1d, 0x91, 0xc6, 0xfa, 0x34, 0x57, 0x55,
+	0x1e, 0x45, 0x02, 0x69, 0x86, 0x77, 0x88, 0x21, 0xcf, 0xfd, 0x09, 0x65, 0x56, 0x7f, 0xcc, 0x19,
+	0x1e, 0x51, 0xb0, 0x80, 0x75, 0x55, 0xab, 0x3b, 0x02, 0xe2, 0x67, 0x4f, 0x82, 0x31, 0xe8, 0x5b,
+	0xc0, 0xee, 0x36, 0x6e, 0xae, 0x38, 0x97, 0x68, 0x7b, 0x7a, 0x4c, 0x42, 0x8a, 0x2b, 0xc3, 0x4a,
+	0x41, 0xfc, 0xb8, 0xbf, 0x14, 0xbe, 0x3f, 0xb6, 0x50, 0x3b, 0xfe, 0xd8, 0x32, 0x9c, 0x28, 0x7d,
+	0xac, 0xdd, 0x54, 0x51, 0x96, 0xf6, 0xff, 0xe4, 0xea, 0x5c, 0xec, 0x95, 0xab, 0x73, 0xb1, 0xd7,
+	0xae, 0xce, 0xc5, 0x9e, 0xbc, 0x36, 0x37, 0xf5, 0xca, 0xb5, 0xb9, 0xa9, 0xdf, 0x5e, 0x9b, 0x9b,
+	0xfa, 0x28, 0xd5, 0xad, 0xd7, 0x93, 0xe4, 0x8f, 0x10, 0xf7, 0xff, 0x37, 0x00, 0x00, 0xff, 0xff,
+	0x7c, 0x1e, 0xf0, 0x34, 0x41, 0x3b, 0x00, 0x00,
 }
 
 func (m *Rpc) Marshal() (dAtA []byte, err error) {
@@ -9881,21 +9891,21 @@ func (m *RpcBlockListMoveRequest) MarshalToSizedBuffer(dAtA []byte) (int, error)
 		i--
 		dAtA[i] = 0x20
 	}
+	if len(m.DropTargetId) > 0 {
+		i -= len(m.DropTargetId)
+		copy(dAtA[i:], m.DropTargetId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.DropTargetId)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.BlocksId) > 0 {
 		for iNdEx := len(m.BlocksId) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.BlocksId[iNdEx])
 			copy(dAtA[i:], m.BlocksId[iNdEx])
 			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlocksId[iNdEx])))
 			i--
-			dAtA[i] = 0x1a
+			dAtA[i] = 0x12
 		}
-	}
-	if len(m.TargetId) > 0 {
-		i -= len(m.TargetId)
-		copy(dAtA[i:], m.TargetId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
-		i--
-		dAtA[i] = 0x12
 	}
 	if len(m.ContextId) > 0 {
 		i -= len(m.ContextId)
@@ -10071,21 +10081,21 @@ func (m *RpcBlockListSetTextStyleRequest) MarshalToSizedBuffer(dAtA []byte) (int
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		for iNdEx := len(m.BlockId) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.BlockId[iNdEx])
 			copy(dAtA[i:], m.BlockId[iNdEx])
 			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId[iNdEx])))
 			i--
-			dAtA[i] = 0xa
+			dAtA[i] = 0x12
 		}
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -10208,21 +10218,21 @@ func (m *RpcBlockListSetTextMarkerRequest) MarshalToSizedBuffer(dAtA []byte) (in
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		for iNdEx := len(m.BlockId) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.BlockId[iNdEx])
 			copy(dAtA[i:], m.BlockId[iNdEx])
 			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId[iNdEx])))
 			i--
-			dAtA[i] = 0xa
+			dAtA[i] = 0x12
 		}
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -10350,21 +10360,21 @@ func (m *RpcBlockListSetTextCheckableRequest) MarshalToSizedBuffer(dAtA []byte) 
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		for iNdEx := len(m.BlockId) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.BlockId[iNdEx])
 			copy(dAtA[i:], m.BlockId[iNdEx])
 			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId[iNdEx])))
 			i--
-			dAtA[i] = 0xa
+			dAtA[i] = 0x12
 		}
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -10505,31 +10515,31 @@ func (m *RpcBlockUploadRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x22
-	}
-	if len(m.TargetId) > 0 {
-		i -= len(m.TargetId)
-		copy(dAtA[i:], m.TargetId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
-		i--
-		dAtA[i] = 0x1a
-	}
 	if len(m.Url) > 0 {
 		i -= len(m.Url)
 		copy(dAtA[i:], m.Url)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.Url)))
 		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x22
 	}
 	if len(m.LocalPath) > 0 {
 		i -= len(m.LocalPath)
 		copy(dAtA[i:], m.LocalPath)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.LocalPath)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -10649,17 +10659,17 @@ func (m *RpcBlockDownloadRequest) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	_ = i
 	var l int
 	_ = l
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if len(m.ContextId) > 0 {
 		i -= len(m.ContextId)
 		copy(dAtA[i:], m.ContextId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.TargetId) > 0 {
-		i -= len(m.TargetId)
-		copy(dAtA[i:], m.TargetId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -10814,17 +10824,17 @@ func (m *RpcBlockSetFieldsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -10956,17 +10966,17 @@ func (m *RpcBlockSetPermissionsRequest) MarshalToSizedBuffer(dAtA []byte) (int, 
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -11096,17 +11106,17 @@ func (m *RpcBlockSetIsArchivedRequest) MarshalToSizedBuffer(dAtA []byte) (int, e
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -11206,7 +11216,7 @@ func (m *RpcBlockSetText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetTextText) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetTextTextInRange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -11216,12 +11226,12 @@ func (m *RpcBlockSetTextText) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetTextText) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRange) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetTextText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRange) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -11229,7 +11239,7 @@ func (m *RpcBlockSetTextText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetTextTextRequest) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetTextTextInRangeRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -11239,16 +11249,28 @@ func (m *RpcBlockSetTextTextRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetTextTextRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRangeRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetTextTextRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRangeRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if m.Range != nil {
+		{
+			size, err := m.Range.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
 	if len(m.Text) > 0 {
 		i -= len(m.Text)
 		copy(dAtA[i:], m.Text)
@@ -11256,24 +11278,24 @@ func (m *RpcBlockSetTextTextRequest) MarshalToSizedBuffer(dAtA []byte) (int, err
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetTextTextResponse) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetTextTextInRangeResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -11283,12 +11305,12 @@ func (m *RpcBlockSetTextTextResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetTextTextResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRangeResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetTextTextResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRangeResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -11308,7 +11330,7 @@ func (m *RpcBlockSetTextTextResponse) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetTextTextResponseError) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetTextTextInRangeResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -11318,12 +11340,12 @@ func (m *RpcBlockSetTextTextResponseError) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetTextTextResponseError) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRangeResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetTextTextResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetTextTextInRangeResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -11391,17 +11413,17 @@ func (m *RpcBlockSetTextStyleRequest) MarshalToSizedBuffer(dAtA []byte) (int, er
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -11533,17 +11555,17 @@ func (m *RpcBlockSetTextMarkRequest) MarshalToSizedBuffer(dAtA []byte) (int, err
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -11673,17 +11695,17 @@ func (m *RpcBlockSetTextToggleableRequest) MarshalToSizedBuffer(dAtA []byte) (in
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -11808,17 +11830,17 @@ func (m *RpcBlockSetTextMarkerRequest) MarshalToSizedBuffer(dAtA []byte) (int, e
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -11948,17 +11970,17 @@ func (m *RpcBlockSetTextCheckableRequest) MarshalToSizedBuffer(dAtA []byte) (int
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -12088,17 +12110,17 @@ func (m *RpcBlockSetTextCheckRequest) MarshalToSizedBuffer(dAtA []byte) (int, er
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -12248,17 +12270,17 @@ func (m *RpcBlockSetFileNameRequest) MarshalToSizedBuffer(dAtA []byte) (int, err
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -12408,17 +12430,17 @@ func (m *RpcBlockSetImageNameRequest) MarshalToSizedBuffer(dAtA []byte) (int, er
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -12543,17 +12565,17 @@ func (m *RpcBlockSetImageWidthRequest) MarshalToSizedBuffer(dAtA []byte) (int, e
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -12703,17 +12725,17 @@ func (m *RpcBlockSetVideoNameRequest) MarshalToSizedBuffer(dAtA []byte) (int, er
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -12838,17 +12860,17 @@ func (m *RpcBlockSetVideoWidthRequest) MarshalToSizedBuffer(dAtA []byte) (int, e
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -12998,17 +13020,17 @@ func (m *RpcBlockSetIconNameRequest) MarshalToSizedBuffer(dAtA []byte) (int, err
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -13163,10 +13185,10 @@ func (m *RpcBlockGetMarksRequest) MarshalToSizedBuffer(dAtA []byte) (int, error)
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.TargetId) > 0 {
-		i -= len(m.TargetId)
-		copy(dAtA[i:], m.TargetId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -13316,13 +13338,6 @@ func (m *RpcBlockHistoryMoveRequest) MarshalToSizedBuffer(dAtA []byte) (int, err
 	_ = i
 	var l int
 	_ = l
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x1a
-	}
 	if m.MoveForward {
 		i--
 		if m.MoveForward {
@@ -13331,12 +13346,19 @@ func (m *RpcBlockHistoryMoveRequest) MarshalToSizedBuffer(dAtA []byte) (int, err
 			dAtA[i] = 0
 		}
 		i--
-		dAtA[i] = 0x10
+		dAtA[i] = 0x18
 	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -13456,17 +13478,17 @@ func (m *RpcBlockOpenRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -13593,24 +13615,10 @@ func (m *RpcBlockCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x2a
 	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x22
-	}
 	if m.Position != 0 {
 		i = encodeVarintCommands(dAtA, i, uint64(m.Position))
 		i--
-		dAtA[i] = 0x18
-	}
-	if len(m.TargetId) > 0 {
-		i -= len(m.TargetId)
-		copy(dAtA[i:], m.TargetId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
-		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x20
 	}
 	if m.Block != nil {
 		{
@@ -13621,6 +13629,20 @@ func (m *RpcBlockCreateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			i -= size
 			i = encodeVarintCommands(dAtA, i, uint64(size))
 		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -13798,10 +13820,10 @@ func (m *RpcBlockUnlinkRequestTarget) MarshalToSizedBuffer(dAtA []byte) (int, er
 		i--
 		dAtA[i] = 0x12
 	}
-	if len(m.TargetId) > 0 {
-		i -= len(m.TargetId)
-		copy(dAtA[i:], m.TargetId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.TargetId)))
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -13921,17 +13943,17 @@ func (m *RpcBlockCloseRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0x12
-	}
 	if len(m.BlockId) > 0 {
 		i -= len(m.BlockId)
 		copy(dAtA[i:], m.BlockId)
 		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -14652,10 +14674,10 @@ func (m *RpcAccountSelectRequest) MarshalToSizedBuffer(dAtA []byte) (int, error)
 		i--
 		dAtA[i] = 0x12
 	}
-	if len(m.BlockId) > 0 {
-		i -= len(m.BlockId)
-		copy(dAtA[i:], m.BlockId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Id)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -15595,15 +15617,15 @@ func (m *RpcBlockListMoveRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.TargetId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
 	if len(m.BlocksId) > 0 {
 		for _, s := range m.BlocksId {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
+	}
+	l = len(m.DropTargetId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
 	}
 	if m.Position != 0 {
 		n += 1 + sovCommands(uint64(m.Position))
@@ -15673,15 +15695,15 @@ func (m *RpcBlockListSetTextStyleRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	if len(m.BlockId) > 0 {
 		for _, s := range m.BlockId {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
-	}
-	l = len(m.ContextId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
 	}
 	if m.Style != 0 {
 		n += 1 + sovCommands(uint64(m.Style))
@@ -15733,15 +15755,15 @@ func (m *RpcBlockListSetTextMarkerRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	if len(m.BlockId) > 0 {
 		for _, s := range m.BlockId {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
-	}
-	l = len(m.ContextId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
 	}
 	if m.Marker != 0 {
 		n += 1 + sovCommands(uint64(m.Marker))
@@ -15793,15 +15815,15 @@ func (m *RpcBlockListSetTextCheckableRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	if len(m.BlockId) > 0 {
 		for _, s := range m.BlockId {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
-	}
-	l = len(m.ContextId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
 	}
 	if m.Checkable {
 		n += 2
@@ -15862,19 +15884,19 @@ func (m *RpcBlockUploadRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	l = len(m.LocalPath)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
 	l = len(m.Url)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	l = len(m.TargetId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -15925,11 +15947,11 @@ func (m *RpcBlockDownloadRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.TargetId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -15989,11 +16011,11 @@ func (m *RpcBlockSetFieldsRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16048,11 +16070,11 @@ func (m *RpcBlockSetPermissionsRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16107,11 +16129,11 @@ func (m *RpcBlockSetIsArchivedRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16159,7 +16181,7 @@ func (m *RpcBlockSetText) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockSetTextText) Size() (n int) {
+func (m *RpcBlockSetTextTextInRange) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -16168,17 +16190,17 @@ func (m *RpcBlockSetTextText) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockSetTextTextRequest) Size() (n int) {
+func (m *RpcBlockSetTextTextInRangeRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16186,10 +16208,14 @@ func (m *RpcBlockSetTextTextRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
+	if m.Range != nil {
+		l = m.Range.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	return n
 }
 
-func (m *RpcBlockSetTextTextResponse) Size() (n int) {
+func (m *RpcBlockSetTextTextInRangeResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -16202,7 +16228,7 @@ func (m *RpcBlockSetTextTextResponse) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockSetTextTextResponseError) Size() (n int) {
+func (m *RpcBlockSetTextTextInRangeResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -16233,11 +16259,11 @@ func (m *RpcBlockSetTextStyleRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16291,11 +16317,11 @@ func (m *RpcBlockSetTextMarkRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16350,11 +16376,11 @@ func (m *RpcBlockSetTextToggleableRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16408,11 +16434,11 @@ func (m *RpcBlockSetTextMarkerRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16466,11 +16492,11 @@ func (m *RpcBlockSetTextCheckableRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16524,11 +16550,11 @@ func (m *RpcBlockSetTextCheckRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16591,11 +16617,11 @@ func (m *RpcBlockSetFileNameRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16659,11 +16685,11 @@ func (m *RpcBlockSetImageNameRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16718,11 +16744,11 @@ func (m *RpcBlockSetImageWidthRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16785,11 +16811,11 @@ func (m *RpcBlockSetVideoNameRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16844,11 +16870,11 @@ func (m *RpcBlockSetVideoWidthRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16911,11 +16937,11 @@ func (m *RpcBlockSetIconNameRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -16983,7 +17009,7 @@ func (m *RpcBlockGetMarksRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.TargetId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -17047,16 +17073,16 @@ func (m *RpcBlockHistoryMoveRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
 	if m.MoveForward {
 		n += 2
-	}
-	l = len(m.ContextId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
 	}
 	return n
 }
@@ -17105,11 +17131,11 @@ func (m *RpcBlockOpenRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -17160,20 +17186,20 @@ func (m *RpcBlockCreateRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	if m.Block != nil {
 		l = m.Block.Size()
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.TargetId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
 	if m.Position != 0 {
 		n += 1 + sovCommands(uint64(m.Position))
-	}
-	l = len(m.ContextId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
 	}
 	l = len(m.ParentId)
 	if l > 0 {
@@ -17249,7 +17275,7 @@ func (m *RpcBlockUnlinkRequestTarget) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.TargetId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -17304,11 +17330,11 @@ func (m *RpcBlockCloseRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.ContextId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	l = len(m.ContextId)
+	l = len(m.BlockId)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -17612,7 +17638,7 @@ func (m *RpcAccountSelectRequest) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BlockId)
+	l = len(m.Id)
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
@@ -18222,38 +18248,6 @@ func (m *RpcBlockListMoveRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.TargetId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field BlocksId", wireType)
 			}
 			var stringLen uint64
@@ -18283,6 +18277,38 @@ func (m *RpcBlockListMoveRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.BlocksId = append(m.BlocksId, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DropTargetId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DropTargetId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
@@ -18710,38 +18736,6 @@ func (m *RpcBlockListSetTextStyleRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -18771,6 +18765,38 @@ func (m *RpcBlockListSetTextStyleRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -19092,38 +19118,6 @@ func (m *RpcBlockListSetTextMarkerRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -19153,6 +19147,38 @@ func (m *RpcBlockListSetTextMarkerRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -19474,38 +19500,6 @@ func (m *RpcBlockListSetTextCheckableRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -19535,6 +19529,38 @@ func (m *RpcBlockListSetTextCheckableRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -19910,6 +19936,70 @@ func (m *RpcBlockUploadRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LocalPath", wireType)
 			}
 			var stringLen uint64
@@ -19940,7 +20030,7 @@ func (m *RpcBlockUploadRequest) Unmarshal(dAtA []byte) error {
 			}
 			m.LocalPath = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
 			}
@@ -19971,70 +20061,6 @@ func (m *RpcBlockUploadRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Url = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.TargetId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ContextId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -20337,38 +20363,6 @@ func (m *RpcBlockDownloadRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.TargetId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -20398,6 +20392,38 @@ func (m *RpcBlockDownloadRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -20753,38 +20779,6 @@ func (m *RpcBlockSetFieldsRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -20814,6 +20808,38 @@ func (m *RpcBlockSetFieldsRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -21152,38 +21178,6 @@ func (m *RpcBlockSetPermissionsRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -21213,6 +21207,38 @@ func (m *RpcBlockSetPermissionsRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -21551,38 +21577,6 @@ func (m *RpcBlockSetIsArchivedRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -21612,6 +21606,38 @@ func (m *RpcBlockSetIsArchivedRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -21903,7 +21929,7 @@ func (m *RpcBlockSetText) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetTextText) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetTextTextInRange) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -21926,10 +21952,10 @@ func (m *RpcBlockSetTextText) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Text: wiretype end group for non-group")
+			return fmt.Errorf("proto: TextInRange: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Text: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TextInRange: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -21956,7 +21982,7 @@ func (m *RpcBlockSetTextText) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetTextTextRequest) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetTextTextInRangeRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -21987,38 +22013,6 @@ func (m *RpcBlockSetTextTextRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -22048,6 +22042,38 @@ func (m *RpcBlockSetTextTextRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -22081,6 +22107,42 @@ func (m *RpcBlockSetTextTextRequest) Unmarshal(dAtA []byte) error {
 			}
 			m.Text = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Range", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Range == nil {
+				m.Range = &model.Range{}
+			}
+			if err := m.Range.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipCommands(dAtA[iNdEx:])
@@ -22105,7 +22167,7 @@ func (m *RpcBlockSetTextTextRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetTextTextResponse) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetTextTextInRangeResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -22164,7 +22226,7 @@ func (m *RpcBlockSetTextTextResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &RpcBlockSetTextTextResponseError{}
+				m.Error = &RpcBlockSetTextTextInRangeResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -22194,7 +22256,7 @@ func (m *RpcBlockSetTextTextResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetTextTextResponseError) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetTextTextInRangeResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -22237,7 +22299,7 @@ func (m *RpcBlockSetTextTextResponseError) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= RpcBlockSetTextTextResponseErrorCode(b&0x7F) << shift
+				m.Code |= RpcBlockSetTextTextInRangeResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -22382,38 +22444,6 @@ func (m *RpcBlockSetTextStyleRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -22443,6 +22473,38 @@ func (m *RpcBlockSetTextStyleRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -22764,38 +22826,6 @@ func (m *RpcBlockSetTextMarkRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -22825,6 +22855,38 @@ func (m *RpcBlockSetTextMarkRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -23163,38 +23225,6 @@ func (m *RpcBlockSetTextToggleableRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -23224,6 +23254,38 @@ func (m *RpcBlockSetTextToggleableRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -23546,38 +23608,6 @@ func (m *RpcBlockSetTextMarkerRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -23607,6 +23637,38 @@ func (m *RpcBlockSetTextMarkerRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -23928,38 +23990,6 @@ func (m *RpcBlockSetTextCheckableRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -23989,6 +24019,38 @@ func (m *RpcBlockSetTextCheckableRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -24311,38 +24373,6 @@ func (m *RpcBlockSetTextCheckRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -24372,6 +24402,38 @@ func (m *RpcBlockSetTextCheckRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -24747,38 +24809,6 @@ func (m *RpcBlockSetFileNameRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -24808,6 +24838,38 @@ func (m *RpcBlockSetFileNameRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -25195,38 +25257,6 @@ func (m *RpcBlockSetImageNameRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -25256,6 +25286,38 @@ func (m *RpcBlockSetImageNameRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -25590,38 +25652,6 @@ func (m *RpcBlockSetImageWidthRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -25651,6 +25681,38 @@ func (m *RpcBlockSetImageWidthRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -26025,38 +26087,6 @@ func (m *RpcBlockSetVideoNameRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -26086,6 +26116,38 @@ func (m *RpcBlockSetVideoNameRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -26420,38 +26482,6 @@ func (m *RpcBlockSetVideoWidthRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -26481,6 +26511,38 @@ func (m *RpcBlockSetVideoWidthRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -26855,38 +26917,6 @@ func (m *RpcBlockSetIconNameRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -26916,6 +26946,38 @@ func (m *RpcBlockSetIconNameRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -27335,7 +27397,7 @@ func (m *RpcBlockGetMarksRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -27363,7 +27425,7 @@ func (m *RpcBlockGetMarksRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TargetId = string(dAtA[iNdEx:postIndex])
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -27755,58 +27817,6 @@ func (m *RpcBlockHistoryMoveRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MoveForward", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.MoveForward = bool(v != 0)
-		case 3:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -27837,6 +27847,58 @@ func (m *RpcBlockHistoryMoveRequest) Unmarshal(dAtA []byte) error {
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MoveForward", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.MoveForward = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipCommands(dAtA[iNdEx:])
@@ -28138,38 +28200,6 @@ func (m *RpcBlockOpenRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -28199,6 +28229,38 @@ func (m *RpcBlockOpenRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -28501,6 +28563,70 @@ func (m *RpcBlockCreateRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Block", wireType)
 			}
 			var msglen int
@@ -28535,39 +28661,7 @@ func (m *RpcBlockCreateRequest) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.TargetId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Position", wireType)
 			}
@@ -28586,38 +28680,6 @@ func (m *RpcBlockCreateRequest) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ContextId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ParentId", wireType)
@@ -29102,7 +29164,7 @@ func (m *RpcBlockUnlinkRequestTarget) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TargetId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -29130,7 +29192,7 @@ func (m *RpcBlockUnlinkRequestTarget) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TargetId = string(dAtA[iNdEx:postIndex])
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -29465,38 +29527,6 @@ func (m *RpcBlockCloseRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
 			}
 			var stringLen uint64
@@ -29526,6 +29556,38 @@ func (m *RpcBlockCloseRequest) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -31390,7 +31452,7 @@ func (m *RpcAccountSelectRequest) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -31418,7 +31480,7 @@ func (m *RpcAccountSelectRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
+			m.Id = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {

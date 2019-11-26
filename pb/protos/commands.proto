@@ -17,8 +17,8 @@ message Rpc {
         message Move {
             message Request {
                 string contextId = 1;
-                string targetId = 2;
-                repeated string blocksId = 3;
+                repeated string blocksId = 2;
+                string dropTargetId = 3;
                 anytype.model.Block.Position position = 4;
             }
 
@@ -43,8 +43,8 @@ message Rpc {
             message Text {
                 message Style {
                     message Request {
-                        repeated string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        repeated string blockId = 2;
                         anytype.model.Block.Content.Text.Style style = 3;
                     }
 
@@ -67,8 +67,8 @@ message Rpc {
 
                 message Marker {
                     message Request {
-                        repeated string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        repeated string blockId = 2;
                         anytype.model.Block.Content.Text.Marker marker = 3;
                     }
 
@@ -91,8 +91,8 @@ message Rpc {
 
                 message Checkable {
                     message Request {
-                        repeated string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        repeated string blockId = 2;
                         bool checkable =3;
                     }
 
@@ -122,10 +122,10 @@ message Rpc {
     message Block {
         message Upload {
             message Request {
-                string localPath = 1;
-                string url = 2;
-                string targetId = 3;
-                string contextId = 4;
+                string contextId = 1;
+                string blockId = 2;
+                string localPath = 3;
+                string url = 4;
             }
 
             message Response {
@@ -147,8 +147,8 @@ message Rpc {
 
         message Download {
             message Request {
-                string targetId = 1;
-                string contextId = 2;
+                string contextId = 1;
+                string blockId = 2;
             }
 
             message Response {
@@ -171,8 +171,8 @@ message Rpc {
         message Set {
             message Fields {
                 message Request {
-                    string blockId = 1;
-                    string contextId = 2;
+                    string contextId = 1;
+                    string blockId = 2;
                     google.protobuf.Struct fields = 3;
                 }
 
@@ -194,8 +194,8 @@ message Rpc {
             }
             message Permissions {
                 message Request {
-                    string blockId = 1;
-                    string contextId = 2;
+                    string contextId = 1;
+                    string blockId = 2;
                     anytype.model.Block.Permissions permissions = 3;
                 }
 
@@ -218,8 +218,8 @@ message Rpc {
 
             message IsArchived {
                 message Request {
-                    string blockId = 1;
-                    string contextId = 2;
+                    string contextId = 1;
+                    string blockId = 2;
                     bool IsArchived = 3;
                 }
 
@@ -241,11 +241,12 @@ message Rpc {
             }
 
             message Text {
-                message Text {
+                message TextInRange {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         string text = 3;
+                        anytype.model.Range range = 4;
                     }
 
                     message Response {
@@ -267,8 +268,8 @@ message Rpc {
 
                 message Style {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         anytype.model.Block.Content.Text.Style style = 3;
                     }
 
@@ -291,8 +292,8 @@ message Rpc {
 
                 message Mark {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         anytype.model.Block.Content.Text.Mark mark = 3;
                     }
 
@@ -315,8 +316,8 @@ message Rpc {
 
                 message Toggleable {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         bool toggleable = 3;
                     }
 
@@ -339,8 +340,8 @@ message Rpc {
 
                 message Marker {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         anytype.model.Block.Content.Text.Marker marker = 3;
                     }
 
@@ -363,8 +364,8 @@ message Rpc {
 
                 message Checkable {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         bool checkable = 3;
                     }
 
@@ -387,8 +388,8 @@ message Rpc {
 
                 message Check {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         bool check = 3;
                     }
 
@@ -413,8 +414,8 @@ message Rpc {
             message File {
                 message Name {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         string name = 3;
                     }
 
@@ -439,8 +440,8 @@ message Rpc {
             message Image {
                 message Name {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         string name = 3;
                     }
 
@@ -463,8 +464,8 @@ message Rpc {
 
                 message Width {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         int32 width = 3;
                     }
 
@@ -489,8 +490,8 @@ message Rpc {
             message Video {
                 message Name {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         string name = 3;
                     }
 
@@ -513,8 +514,8 @@ message Rpc {
 
                 message Width {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         int32 width = 3;
                     }
 
@@ -539,8 +540,8 @@ message Rpc {
             message Icon {
                 message Name {
                     message Request {
-                        string blockId = 1;
-                        string contextId = 2;
+                        string contextId = 1;
+                        string blockId = 2;
                         string name = 3;
                     }
 
@@ -570,7 +571,7 @@ message Rpc {
             message Marks {
                 message Request {
                     string contextId = 1;
-                    string targetId = 2;
+                    string blockId = 2;
                     anytype.model.Range range = 3;
                 }
 
@@ -605,9 +606,9 @@ message Rpc {
         message History {
             message Move {
                 message Request {
-                    string blockId = 1;
-                    bool moveForward = 2; // Move direction. If true, move forward
-                    string contextId = 3; // id of the context block
+                    string contextId = 1; // id of the context block
+                    string blockId = 2;
+                    bool moveForward = 3; // Move direction. If true, move forward
                 }
 
                 message Response {
@@ -648,8 +649,8 @@ message Rpc {
         */
         message Open {
             message Request {
-                string blockId = 1;
-                string contextId = 2; // id of the context block
+                string contextId = 1; // id of the context blo1k
+                string blockId = 2;
             }
 
             message Response {
@@ -673,23 +674,23 @@ message Rpc {
          * Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
          * **Example scenario**
          * 1A. Create Page on a dashboard
-         *     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+         *     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = "")
          *     2. Front -> MW: Rpc.Block.Close.Request(block: dashboard.id)
          *     3. Front <- MW: Rpc.Block.Close.Response(err)
          *     4. Front <- MW: Rpc.Block.Create.Response(page.id)
          *     5. Front <- MW: Rpc.Block.Open.Response(err)
          *     6. Front <- MW: Event.Block.Show(page)
          * 1B. Create Page on a Page
-         *     1. Front -> MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+         *     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = "")
          *     2. Front <- MW: Rpc.Block.Create.Response(newPage.id)
          *     3. Front <- MW: Event.Block.Show(newPage)
         */
         message Create {
             message Request {
-                anytype.model.Block block = 1;
-                string targetId = 2;
-                anytype.model.Block.Position position = 3;
-                string contextId = 4; // id of the context block
+                string contextId = 1; // id of the context block
+                string blockId = 2;
+                anytype.model.Block block = 3;
+                anytype.model.Block.Position position = 4;
                 string parentId = 5; // id of the parent block
             }
 
@@ -720,7 +721,7 @@ message Rpc {
                 repeated Target targets = 2; // targets to remove
 
                 message Target {
-                    string targetId = 1; // id of the block to remove
+                    string blockId = 1; // id of the block to remove
                     string parentId = 2; // id of the parent block
                 }
             }
@@ -748,8 +749,8 @@ message Rpc {
         */
         message Close {
             message Request {
-                string blockId = 1;
-                string contextId = 2; // id of the context block
+                string contextId = 1; // id of the context blo1k
+                string blockId = 2;
             }
 
             message Response {
@@ -913,7 +914,7 @@ message Rpc {
             * User can select an account from those, that came with an AccountAdd events
             */
             message Request {
-                string blockId = 1; // Id of a selected account
+                string id = 1; // Id of a selected account
                 string rootPath = 2; // Root path is optional, set if this is a first request
             }
 

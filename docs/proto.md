@@ -105,10 +105,10 @@
     - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
     - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
     - [Rpc.Block.Set.Text.Style.Response.Error](#anytype.Rpc.Block.Set.Text.Style.Response.Error)
-    - [Rpc.Block.Set.Text.Text](#anytype.Rpc.Block.Set.Text.Text)
-    - [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request)
-    - [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response)
-    - [Rpc.Block.Set.Text.Text.Response.Error](#anytype.Rpc.Block.Set.Text.Text.Response.Error)
+    - [Rpc.Block.Set.Text.TextInRange](#anytype.Rpc.Block.Set.Text.TextInRange)
+    - [Rpc.Block.Set.Text.TextInRange.Request](#anytype.Rpc.Block.Set.Text.TextInRange.Request)
+    - [Rpc.Block.Set.Text.TextInRange.Response](#anytype.Rpc.Block.Set.Text.TextInRange.Response)
+    - [Rpc.Block.Set.Text.TextInRange.Response.Error](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error)
     - [Rpc.Block.Set.Text.Toggleable](#anytype.Rpc.Block.Set.Text.Toggleable)
     - [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request)
     - [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response)
@@ -207,7 +207,7 @@
     - [Rpc.Block.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Mark.Response.Error.Code)
     - [Rpc.Block.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
-    - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
+    - [Rpc.Block.Set.Text.TextInRange.Response.Error.Code](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code)
     - [Rpc.Block.Set.Text.Toggleable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
@@ -249,7 +249,7 @@
     - [Event.Block.Set.Image](#anytype.Event.Block.Set.Image)
     - [Event.Block.Set.Image.LocalFilePath](#anytype.Event.Block.Set.Image.LocalFilePath)
     - [Event.Block.Set.Image.Name](#anytype.Event.Block.Set.Image.Name)
-    - [Event.Block.Set.Image.PreviewFilePath](#anytype.Event.Block.Set.Image.PreviewFilePath)
+    - [Event.Block.Set.Image.PreviewLocalFilePath](#anytype.Event.Block.Set.Image.PreviewLocalFilePath)
     - [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State)
     - [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
@@ -263,7 +263,7 @@
     - [Event.Block.Set.Video](#anytype.Event.Block.Set.Video)
     - [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath)
     - [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name)
-    - [Event.Block.Set.Video.PreviewFilePath](#anytype.Event.Block.Set.Video.PreviewFilePath)
+    - [Event.Block.Set.Video.PreviewLocalFilePath](#anytype.Event.Block.Set.Video.PreviewLocalFilePath)
     - [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State)
     - [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width)
     - [Event.Block.Show](#anytype.Event.Block.Show)
@@ -371,7 +371,7 @@
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockListSetTextMarker | [Rpc.BlockList.Set.Text.Marker.Request](#anytype.Rpc.BlockList.Set.Text.Marker.Request) | [Rpc.BlockList.Set.Text.Marker.Response](#anytype.Rpc.BlockList.Set.Text.Marker.Response) |  |
 | BlockListSetCheckable | [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request) | [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response) |  |
-| BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
+| BlockSetTextTextInRange | [Rpc.Block.Set.Text.TextInRange.Request](#anytype.Rpc.Block.Set.Text.TextInRange.Request) | [Rpc.Block.Set.Text.TextInRange.Response](#anytype.Rpc.Block.Set.Text.TextInRange.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextMark | [Rpc.Block.Set.Text.Mark.Request](#anytype.Rpc.Block.Set.Text.Mark.Request) | [Rpc.Block.Set.Text.Mark.Response](#anytype.Rpc.Block.Set.Text.Mark.Response) |  |
 | BlockSetTextToggleable | [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request) | [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response) |  |
@@ -549,7 +549,7 @@ User can select an account from those, that came with an AccountAdd events
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  | Id of a selected account |
+| id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  | Root path is optional, set if this is a first request |
 
 
@@ -618,8 +618,8 @@ Precondition: block should be opened.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context blo1k |
 | blockId | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -663,14 +663,14 @@ Precondition: block should be opened.
 Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
 **Example scenario**
 1A. Create Page on a dashboard
-    1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
     2. Front -&gt; MW: Rpc.Block.Close.Request(block: dashboard.id)
     3. Front &lt;- MW: Rpc.Block.Close.Response(err)
     4. Front &lt;- MW: Rpc.Block.Create.Response(page.id)
     5. Front &lt;- MW: Rpc.Block.Open.Response(err)
     6. Front &lt;- MW: Event.Block.Show(page)
 1B. Create Page on a Page
-    1. Front -&gt; MW: Rpc.Block.Create.Request(targetId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
     2. Front &lt;- MW: Rpc.Block.Create.Response(newPage.id)
     3. Front &lt;- MW: Event.Block.Show(newPage)
 
@@ -687,10 +687,10 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| block | [model.Block](#anytype.model.Block) |  |  |
-| targetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 | contextId | [string](#string) |  | id of the context block |
+| blockId | [string](#string) |  |  |
+| block | [model.Block](#anytype.model.Block) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 | parentId | [string](#string) |  | id of the parent block |
 
 
@@ -748,8 +748,8 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 
 
 
@@ -816,7 +816,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | range | [model.Range](#anytype.model.Range) |  |  |
 
 
@@ -890,9 +890,9 @@ Block history: switch between versions (lib context: switch block head), move fo
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
 | blockId | [string](#string) |  |  |
 | moveForward | [bool](#bool) |  | Move direction. If true, move forward |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -962,8 +962,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context blo1k |
 | blockId | [string](#string) |  |  |
-| contextId | [string](#string) |  | id of the context block |
 
 
 
@@ -1029,8 +1029,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
@@ -1097,8 +1097,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 
 
@@ -1165,8 +1165,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 
 
@@ -1233,8 +1233,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 
 
@@ -1291,8 +1291,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
 
 
@@ -1349,8 +1349,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | IsArchived | [bool](#bool) |  |  |
 
 
@@ -1407,8 +1407,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
 
 
@@ -1475,8 +1475,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | check | [bool](#bool) |  |  |
 
 
@@ -1533,8 +1533,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | checkable | [bool](#bool) |  |  |
 
 
@@ -1591,8 +1591,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | mark | [model.Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) |  |  |
 
 
@@ -1649,8 +1649,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
 
 
@@ -1707,8 +1707,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 
 
@@ -1747,57 +1747,58 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Text"></a>
+<a name="anytype.Rpc.Block.Set.Text.TextInRange"></a>
 
-### Rpc.Block.Set.Text.Text
-
-
+### Rpc.Block.Set.Text.TextInRange
 
 
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Text.Request"></a>
 
-### Rpc.Block.Set.Text.Text.Request
+
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Request"></a>
+
+### Rpc.Block.Set.Text.TextInRange.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | text | [string](#string) |  |  |
+| range | [model.Range](#anytype.model.Range) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Text.Response"></a>
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response"></a>
 
-### Rpc.Block.Set.Text.Text.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Text.Text.Response.Error](#anytype.Rpc.Block.Set.Text.Text.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Text.Response.Error"></a>
-
-### Rpc.Block.Set.Text.Text.Response.Error
+### Rpc.Block.Set.Text.TextInRange.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code) |  |  |
+| error | [Rpc.Block.Set.Text.TextInRange.Response.Error](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response.Error"></a>
+
+### Rpc.Block.Set.Text.TextInRange.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.TextInRange.Response.Error.Code](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1823,8 +1824,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | toggleable | [bool](#bool) |  |  |
 
 
@@ -1891,8 +1892,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 
 
@@ -1949,8 +1950,8 @@ Image/Video/File blocks then:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
 
 
@@ -2023,7 +2024,7 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  | id of the block to remove |
+| blockId | [string](#string) |  | id of the block to remove |
 | parentId | [string](#string) |  | id of the parent block |
 
 
@@ -2080,10 +2081,10 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | url | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
-| contextId | [string](#string) |  |  |
 
 
 
@@ -2150,8 +2151,8 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
 | blocksId | [string](#string) | repeated |  |
+| dropTargetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
 
@@ -2228,8 +2229,8 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) | repeated |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) | repeated |  |
 | checkable | [bool](#bool) |  |  |
 
 
@@ -2286,8 +2287,8 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) | repeated |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) | repeated |  |
 | marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
 
 
@@ -2344,8 +2345,8 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) | repeated |  |
 | contextId | [string](#string) |  |  |
+| blockId | [string](#string) | repeated |  |
 | style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 
 
@@ -3144,9 +3145,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Text.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code"></a>
 
-### Rpc.Block.Set.Text.Text.Response.Error.Code
+### Rpc.Block.Set.Text.TextInRange.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -3510,8 +3511,8 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| filePath | [string](#string) | repeated | filepaths to the files |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
+| filePath | [string](#string) | repeated | filepaths to the files |
 
 
 
@@ -3549,6 +3550,15 @@ Precondition: user A opened a block
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
+| state | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
+| localFilePath | [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath) |  |  |
+| icon | [Event.Block.Set.File.Icon](#anytype.Event.Block.Set.File.Icon) |  |  |
+
+
 
 
 
@@ -3561,8 +3571,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3577,8 +3586,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| path | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3593,8 +3601,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| name | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3609,8 +3616,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| state | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| value | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
 
 
 
@@ -3621,6 +3627,12 @@ Precondition: user A opened a block
 
 ### Event.Block.Set.Icon
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name) |  |  |
 
 
 
@@ -3635,8 +3647,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| name | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3647,6 +3658,16 @@ Precondition: user A opened a block
 
 ### Event.Block.Set.Image
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.Image.Name](#anytype.Event.Block.Set.Image.Name) |  |  |
+| width | [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width) |  |  |
+| state | [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State) |  |  |
+| localFilePath | [Event.Block.Set.Image.LocalFilePath](#anytype.Event.Block.Set.Image.LocalFilePath) |  |  |
+| previewLocalFilePath | [Event.Block.Set.Image.PreviewLocalFilePath](#anytype.Event.Block.Set.Image.PreviewLocalFilePath) |  |  |
 
 
 
@@ -3661,8 +3682,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| path | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3677,24 +3697,22 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| name | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Set.Image.PreviewFilePath"></a>
+<a name="anytype.Event.Block.Set.Image.PreviewLocalFilePath"></a>
 
-### Event.Block.Set.Image.PreviewFilePath
+### Event.Block.Set.Image.PreviewLocalFilePath
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| path | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3709,8 +3727,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| state | [model.Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
+| value | [model.Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
 
 
 
@@ -3725,8 +3742,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
+| value | [int32](#int32) |  |  |
 
 
 
@@ -3737,6 +3753,18 @@ Precondition: user A opened a block
 
 ### Event.Block.Set.Text
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| text | [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text) |  |  |
+| style | [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style) |  |  |
+| marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
+| toggleable | [Event.Block.Set.Text.Toggleable](#anytype.Event.Block.Set.Text.Toggleable) |  |  |
+| marker | [Event.Block.Set.Text.Marker](#anytype.Event.Block.Set.Text.Marker) |  |  |
+| checkable | [Event.Block.Set.Text.Checkable](#anytype.Event.Block.Set.Text.Checkable) |  |  |
+| check | [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check) |  |  |
 
 
 
@@ -3751,8 +3779,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| check | [bool](#bool) |  |  |
+| value | [bool](#bool) |  |  |
 
 
 
@@ -3767,8 +3794,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| checkable | [bool](#bool) |  |  |
+| value | [bool](#bool) |  |  |
 
 
 
@@ -3783,8 +3809,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
+| value | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
 
 
 
@@ -3799,8 +3824,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| marks | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
+| value | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
 
 
 
@@ -3815,8 +3839,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+| value | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 
 
 
@@ -3831,8 +3854,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| text | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3847,8 +3869,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| toggleable | [bool](#bool) |  |  |
+| value | [bool](#bool) |  |  |
 
 
 
@@ -3859,6 +3880,16 @@ Precondition: user A opened a block
 
 ### Event.Block.Set.Video
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name) |  |  |
+| width | [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width) |  |  |
+| state | [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State) |  |  |
+| localFilePath | [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath) |  |  |
+| previewLocalFilePath | [Event.Block.Set.Video.PreviewLocalFilePath](#anytype.Event.Block.Set.Video.PreviewLocalFilePath) |  |  |
 
 
 
@@ -3873,8 +3904,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| path | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3889,24 +3919,22 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| name | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Set.Video.PreviewFilePath"></a>
+<a name="anytype.Event.Block.Set.Video.PreviewLocalFilePath"></a>
 
-### Event.Block.Set.Video.PreviewFilePath
+### Event.Block.Set.Video.PreviewLocalFilePath
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| path | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -3921,8 +3949,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| state | [model.Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
+| value | [model.Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
 
 
 
@@ -3937,8 +3964,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
+| value | [int32](#int32) |  |  |
 
 
 
@@ -3975,27 +4001,11 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
 | marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
-| blockSetFileIcon | [Event.Block.Set.File.Icon](#anytype.Event.Block.Set.File.Icon) |  |  |
-| blockSetFileLocalFilePath | [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath) |  |  |
-| blockSetFileName | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
-| blockSetFileState | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
-| blockSetImageLocalFilePath | [Event.Block.Set.Image.LocalFilePath](#anytype.Event.Block.Set.Image.LocalFilePath) |  |  |
-| blockSetImageName | [Event.Block.Set.Image.Name](#anytype.Event.Block.Set.Image.Name) |  |  |
-| blockSetImagePreviewFilePath | [Event.Block.Set.Image.PreviewFilePath](#anytype.Event.Block.Set.Image.PreviewFilePath) |  |  |
-| blockSetImageState | [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State) |  |  |
-| blockSetImageWidth | [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width) |  |  |
-| blockSetTextCheck | [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check) |  |  |
-| blockSetTextCheckable | [Event.Block.Set.Text.Checkable](#anytype.Event.Block.Set.Text.Checkable) |  |  |
-| blockSetTextMarker | [Event.Block.Set.Text.Marker](#anytype.Event.Block.Set.Text.Marker) |  |  |
-| blockSetTextMarks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
-| blockSetTextStyle | [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style) |  |  |
-| blockSetTextTextInRange | [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text) |  |  |
-| blockSetTextToggleable | [Event.Block.Set.Text.Toggleable](#anytype.Event.Block.Set.Text.Toggleable) |  |  |
-| blockSetVideoLocalFilePath | [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath) |  |  |
-| blockSetVideoName | [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name) |  |  |
-| blockSetVideoPreviewFilePath | [Event.Block.Set.Video.PreviewFilePath](#anytype.Event.Block.Set.Video.PreviewFilePath) |  |  |
-| blockSetVideoState | [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State) |  |  |
-| blockSetVideoWidth | [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width) |  |  |
+| blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
+| blockSetImage | [Event.Block.Set.Image](#anytype.Event.Block.Set.Image) |  |  |
+| blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
+| blockSetVideo | [Event.Block.Set.Video](#anytype.Event.Block.Set.Video) |  |  |
+| blockSetIcon | [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
