@@ -18,6 +18,7 @@ var (
 
 type smartBlock interface {
 	Open(b anytype.Block) error
+	Init()
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
@@ -35,6 +36,7 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 	if id == testPageId {
 		sb = &testPage{s: s}
 		sb.Open(nil)
+		sb.Init()
 		return
 	}
 
@@ -56,15 +58,17 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		return nil, ErrUnexpectedSmartBlockType
 	}
 	if err = sb.Open(b); err != nil {
+		sb.Close()
 		return
 	}
+	sb.Init()
 	return
 }
 
 type commonSmart struct {
 	s        *service
 	block    anytype.Block
-	versions map[string]core.BlockVersion
+	versions map[string]simple
 
 	m sync.RWMutex
 
@@ -83,15 +87,18 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.closeWg = new(sync.WaitGroup)
+	p.versions = make(map[string]simple)
+
 	p.block = block
 	ver, err := p.block.GetCurrentVersion()
 	if err != nil {
 		return
 	}
-	p.versions = ver.DependentBlocks()
-	p.versions[p.GetId()] = ver
 
-	p.show()
+	for id, v := range ver.DependentBlocks() {
+		p.versions[id] = &simpleBlock{v.Model()}
+	}
+	p.versions[p.GetId()] = &simpleBlock{ver.Model()}
 
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
@@ -110,10 +117,16 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	return
 }
 
+func (p *commonSmart) Init() {
+	p.m.RLock()
+	defer p.m.RUnlock()
+	p.show()
+}
+
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	p.m.RLock()
 	defer p.m.RUnlock()
-
+	fmt.Println("middle: create block request in:", p.GetId())
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
 	}
@@ -123,7 +136,7 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 	}
 	parent := parentVer.Model()
-	var target core.BlockVersion
+	var target simple
 	if req.TargetId != "" {
 		target, ok = p.versions[req.TargetId]
 		if !ok {
@@ -145,21 +158,24 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	}
 
 	newBlock, err := p.block.NewBlock(*req.Block)
+	fmt.Println("middle: creating new block in lib:", err)
 	if err != nil {
 		return
 	}
-	newBlockVer, err := newBlock.GetCurrentVersion()
-	if err != nil {
-		return
-	}
+	req.Block.Id = newBlock.GetId()
+
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, newBlock.GetId(), pos)
 
-	vers, err := p.block.AddVersions([]*model.Block{newBlockVer.Model(), parent})
+	p.versions[newBlock.GetId()] = &simpleBlock{req.Block}
+	vers, err := p.block.AddVersions([]*model.Block{p.toSave(req.Block), p.toSave(parent)})
+	fmt.Println("middle: save updates in lib:", err)
 	if err != nil {
+		delete(p.versions, newBlock.GetId())
 		return
 	}
-	id = vers[0].Model().Id
-	p.sendCreateEvents(parent, newBlockVer.Model())
+	id = req.Block.Id
+	fmt.Println("middle block created:", req.Block.Id, vers[0].Model().Id)
+	p.sendCreateEvents(parent, req.Block)
 	return
 }
 
@@ -173,21 +189,18 @@ func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
 					},
 				},
 			},
-		},
-		ContextId: p.GetId(),
-	})
-	p.s.sendEvent(&pb.Event{
-		Messages: []*pb.EventMessage{
 			{
 				&pb.EventMessageValueOfBlockSetChildrenIds{
-					// TODO: childrenIds
+					BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
+						Id:          parent.Id,
+						ChildrenIds: parent.ChildrenIds,
+					},
 				},
 			},
 		},
-		// ContextId: TODO
-		// Initiator: TODO
-	},
-	)
+		ContextId: p.GetId(),
+	})
+
 	return
 }
 
@@ -196,6 +209,7 @@ func (p *commonSmart) show() {
 	for _, b := range p.versions {
 		blocks = append(blocks, b.Model())
 	}
+
 	event := &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -225,6 +239,31 @@ func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) 
 	for versions := range blockChanges {
 		p.versionsChange(versions)
 	}
+}
+
+func (p *commonSmart) excludeVirtualIds(ids []string) []string {
+	res := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if v, ok := p.versions[id]; ok && !v.Virtual() {
+			res = append(res, id)
+		}
+	}
+	return res
+}
+
+func (p *commonSmart) toSave(b *model.Block) *model.Block {
+	return &model.Block{
+		Id:          b.Id,
+		Fields:      b.Fields,
+		Permissions: b.Permissions,
+		ChildrenIds: p.excludeVirtualIds(b.ChildrenIds),
+		IsArchived:  b.IsArchived,
+		Content:     b.Content,
+	}
+}
+
+func (p *commonSmart) root() *model.Block {
+	return p.versions[p.block.GetId()].Model()
 }
 
 func (p *commonSmart) Close() error {

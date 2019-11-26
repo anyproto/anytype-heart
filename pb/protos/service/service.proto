@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 package anytype;
 option go_package = "lib";
 
@@ -15,6 +15,7 @@ service ClientCommands {
 
     rpc VersionGet (anytype.Rpc.Version.Get.Request) returns (anytype.Rpc.Version.Get.Response);
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
+    rpc ConfigGet (anytype.Rpc.Config.Get.Request) returns (anytype.Rpc.Config.Get.Response);
 
     rpc BlockUpload (anytype.Rpc.Block.Upload.Request) returns (anytype.Rpc.Block.Upload.Response);
     rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);

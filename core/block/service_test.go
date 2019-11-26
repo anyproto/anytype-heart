@@ -21,6 +21,7 @@ func TestService_OpenBlock(t *testing.T) {
 			expErr    = errors.New("test err")
 		)
 		fx := newFixture(t, accountId)
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(nil, expErr)
@@ -34,6 +35,7 @@ func TestService_OpenBlock(t *testing.T) {
 			blockId   = "456"
 		)
 		fx := newFixture(t, accountId)
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockCoreContentOfDashboard{
@@ -41,7 +43,6 @@ func TestService_OpenBlock(t *testing.T) {
 		}, nil, nil)
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
-		mb.EXPECT().SubscribeClientEvents(gomock.Any())
 
 		err := fx.OpenBlock(blockId)
 		require.NoError(t, err)
@@ -57,6 +58,7 @@ func TestService_OpenBlock(t *testing.T) {
 			blockId   = "456"
 		)
 		fx := newFixture(t, accountId)
+		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockCoreContentOfPage{
@@ -64,7 +66,6 @@ func TestService_OpenBlock(t *testing.T) {
 		}, nil, nil)
 
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
-		mb.EXPECT().SubscribeClientEvents(gomock.Any())
 
 		err := fx.OpenBlock(blockId)
 		require.NoError(t, err)
@@ -72,31 +73,6 @@ func TestService_OpenBlock(t *testing.T) {
 
 		assert.Len(t, fx.events, 1)
 		assert.Equal(t, smartBlockTypePage, fx.Service.(*service).smartBlocks[blockId].Type())
-	})
-	t.Run("should replace home id to real", func(t *testing.T) {
-		var (
-			accountId  = "123"
-			blockId    = "home"
-			realHomeId = "realHome"
-		)
-		fx := newFixture(t, accountId)
-		defer fx.tearDown()
-
-		mb, _ := fx.newMockBlockWithContent(realHomeId, &model.BlockCoreContentOfPage{
-			Page: &model.BlockContentPage{},
-		}, nil, nil)
-
-		fx.anytype.EXPECT().PredefinedBlockIds().Times(2).Return(core.PredefinedBlockIds{Home: realHomeId})
-
-		fx.anytype.EXPECT().GetBlock(realHomeId).Return(mb, nil)
-		mb.EXPECT().SubscribeClientEvents(gomock.Any())
-
-		err := fx.OpenBlock(blockId)
-		require.NoError(t, err)
-		defer func() { require.NoError(t, fx.CloseBlock(blockId)) }()
-
-		assert.Len(t, fx.events, 1)
-		assert.Equal(t, smartBlockTypePage, fx.Service.(*service).smartBlocks[realHomeId].Type())
 	})
 }
 
@@ -124,7 +100,7 @@ func (fx *fixture) sendEvent(e *pb.Event) {
 	fx.events = append(fx.events, e)
 }
 
-func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockCoreContent, childrenIds []string, db map[string]core.BlockVersion) (b *testMock.MockBlock, v *testMock.MockBlockVersion) {
+func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockCoreContent, childrenIds []string, db map[string]core.BlockVersion) (b *blockWrapper, v *testMock.MockBlockVersion) {
 	if db == nil {
 		db = make(map[string]core.BlockVersion)
 	}
@@ -134,9 +110,10 @@ func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockCoreC
 		ChildrenIds: childrenIds,
 	})
 	v.EXPECT().DependentBlocks().AnyTimes().Return(db)
-	b = testMock.NewMockBlock(fx.ctrl)
+	b = &blockWrapper{MockBlock: testMock.NewMockBlock(fx.ctrl)}
 	b.EXPECT().GetId().AnyTimes().Return(id)
 	b.EXPECT().GetCurrentVersion().AnyTimes().Return(v, nil)
+	fx.anytype.EXPECT().PredefinedBlockIds().AnyTimes().Return(core.PredefinedBlockIds{Home: "realHomeId"})
 	return
 }
 
@@ -148,7 +125,6 @@ func (fx *fixture) newMockVersion(m *model.Block) (v *testMock.MockBlockVersion)
 
 func (fx *fixture) tearDown() {
 	require.NoError(fx.t, fx.Close())
-	fx.ctrl.Finish()
 }
 
 type matcher struct {
