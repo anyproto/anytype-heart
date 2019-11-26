@@ -164,22 +164,25 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 }
 
 func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
-	p.s.sendEvent(&pb.Event{Message: &pb.EventMessageOfBlockAdd{BlockAdd: &pb.EventBlockAdd{
+	p.s.sendEvent(&pb.Event{Message: &pb.EventMsg{Msg: &pb.EventMessageOfBlockAdd{BlockAdd: &pb.EventBlockAdd{
 		Blocks:    []*model.Block{new},
 		ContextId: p.GetId(),
-	}}})
-	p.s.sendEvent(&pb.Event{
-		Message: &pb.EventMessageOfBlockUpdate{
-			BlockUpdate: &pb.EventBlockUpdate{
-				Changes: &pb.Changes{
-					Changes: []*pb.ChangesBlock{
-						// TODO: How to get block.children?
+	}}}})
+	p.s.sendEvent(&pb.Event{Messages: []*pb.EventMessage{
+		{
+			&pb.EventMessageOfBlockUpdate{
+				BlockUpdate: &pb.EventBlockUpdate{
+					Changes: &pb.Changes{
+						Changes: []*pb.ChangesBlock{
+							// TODO: How to get block.children?
+						},
+						Author: &model.Account{}, // TODO: How to get an Account?
 					},
-					Author: &model.Account{}, // TODO: How to get an Account?
 				},
 			},
 		},
-	})
+	}},
+	)
 	return
 }
 

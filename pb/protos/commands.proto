@@ -688,7 +688,7 @@ message Rpc {
         message Create {
             message Request {
                 string contextId = 1; // id of the context block
-                string blockId = 2;
+                string targetId = 2; // id of the closest block
                 anytype.model.Block block = 3;
                 anytype.model.Block.Position position = 4;
                 string parentId = 5; // id of the parent block

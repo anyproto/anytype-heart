@@ -239,6 +239,8 @@
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo)
     - [Event.Block.Set](#anytype.Event.Block.Set)
+    - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
+    - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
     - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
     - [Event.Block.Set.File.Icon](#anytype.Event.Block.Set.File.Icon)
     - [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath)
@@ -252,6 +254,8 @@
     - [Event.Block.Set.Image.PreviewLocalFilePath](#anytype.Event.Block.Set.Image.PreviewLocalFilePath)
     - [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State)
     - [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width)
+    - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
+    - [Event.Block.Set.Permissions](#anytype.Event.Block.Set.Permissions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check)
     - [Event.Block.Set.Text.Checkable](#anytype.Event.Block.Set.Text.Checkable)
@@ -267,7 +271,7 @@
     - [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State)
     - [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width)
     - [Event.Block.Show](#anytype.Event.Block.Show)
-    - [Event.Msg](#anytype.Event.Msg)
+    - [Event.Message](#anytype.Event.Message)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
@@ -688,7 +692,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
-| blockId | [string](#string) |  |  |
+| targetId | [string](#string) |  | id of the closest block |
 | block | [model.Block](#anytype.model.Block) |  |  |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 | parentId | [string](#string) |  | id of the parent block |
@@ -3417,7 +3421,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| msg | [Event.Msg](#anytype.Event.Msg) | repeated |  |
+| messages | [Event.Message](#anytype.Event.Message) | repeated |  |
 | contextId | [string](#string) |  |  |
 
 
@@ -3538,6 +3542,38 @@ Precondition: user A opened a block
 
 ### Event.Block.Set
 
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.ChildrenIds"></a>
+
+### Event.Block.Set.ChildrenIds
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| childrenIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Fields"></a>
+
+### Event.Block.Set.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 
@@ -3743,6 +3779,38 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.IsArchived"></a>
+
+### Event.Block.Set.IsArchived
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| IsArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Permissions"></a>
+
+### Event.Block.Set.Permissions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
 
 
 
@@ -3988,9 +4056,9 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 
 
-<a name="anytype.Event.Msg"></a>
+<a name="anytype.Event.Message"></a>
 
-### Event.Msg
+### Event.Message
 
 
 
@@ -4001,9 +4069,13 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
 | marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
+| blockSetFields | [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields) |  |  |
+| blockSetChildrenIds | [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds) |  |  |
+| blockSetPermissions | [Event.Block.Set.Permissions](#anytype.Event.Block.Set.Permissions) |  |  |
+| blockSetIsArchived | [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived) |  |  |
+| blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
 | blockSetImage | [Event.Block.Set.Image](#anytype.Event.Block.Set.Image) |  |  |
-| blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetVideo | [Event.Block.Set.Video](#anytype.Event.Block.Set.Video) |  |  |
 | blockSetIcon | [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |

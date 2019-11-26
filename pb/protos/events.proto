@@ -3,16 +3,17 @@ package anytype;
 option go_package = "pb";
 
 import "vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto";
+import "google/protobuf/struct.proto";
 
 /*
  * Event – type of message, that could be sent from a middleware to the corresponding front-end.
 */
 message Event {
-    repeated Msg msg = 1;
+    repeated Message messages = 1;
     string contextId = 2;
 
-    message Msg {
-        oneof msg {
+    message Message {
+        oneof message {
             Account.Show accountShow  = 1;
 
             Block.Add blockAdd = 2;
@@ -20,18 +21,22 @@ message Event {
             Block.FilesUpload filesUpload = 4;
             Block.MarksInfo marksInfo = 5;
 
-            Block.Set.File blockSetFile = 6;
-            Block.Set.Image blockSetImage = 7;
-            Block.Set.Text blockSetText = 8;
-            Block.Set.Video blockSetVideo = 9;
-            Block.Set.Icon blockSetIcon = 10;
+            Block.Set.Fields blockSetFields = 6;
+            Block.Set.ChildrenIds blockSetChildrenIds = 7;
+            Block.Set.Permissions blockSetPermissions = 8;
+            Block.Set.IsArchived blockSetIsArchived = 9;
 
-            Block.Show blockShow = 11;
+            Block.Set.Text blockSetText = 10;
+            Block.Set.File blockSetFile = 11;
+            Block.Set.Image blockSetImage = 12;
+            Block.Set.Video blockSetVideo = 13;
+            Block.Set.Icon blockSetIcon = 14;
 
-            User.Block.Join userBlockJoin = 12;
-            User.Block.Left userBlockLeft = 13;
-            User.Block.SelectRange userBlockSelectRange = 14;
-            User.Block.TextRange userBlockTextRange = 15;
+            Block.Show blockShow = 15;
+            User.Block.Join userBlockJoin = 16;
+            User.Block.Left userBlockLeft = 17;
+            User.Block.SelectRange userBlockSelectRange = 18;
+            User.Block.TextRange userBlockTextRange = 19;
         }
     }
 
@@ -94,6 +99,27 @@ message Event {
         }
 
         message Set {
+
+            message Fields {
+                string id = 1;
+                google.protobuf.Struct fields = 2;
+            }
+
+            message ChildrenIds {
+                string id = 1;
+                repeated string childrenIds = 2;
+            }
+
+            message Permissions {
+                string id = 1;
+                anytype.model.Block.Permissions permissions = 2;
+            }
+
+            message IsArchived {
+                string id = 1;
+                bool IsArchived = 2;
+            }
+
             message Text {
                 string id = 1;
                 Text text = 2;

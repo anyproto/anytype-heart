@@ -56,31 +56,9 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockUpdate(req *pb.RpcBlockUpdateRequest) *pb.RpcBlockUpdateResponse {
-	response := func(code pb.RpcBlockUpdateResponseErrorCode, err error) *pb.RpcBlockUpdateResponse {
-		m := &pb.RpcBlockUpdateResponse{Error: &pb.RpcBlockUpdateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-
-	/*
-		 changes := &pb.RpcBlockChanges{} // TODO
-
-		 m := &pb.Event{Message: &pb.EventBlockUpdate{&pb.RpcBlockUpdate{changes}}}
-
-		if mw.SendEvent != nil {
-			mw.SendEvent(m)
-		}*/
-
-	return response(pb.RpcBlockUpdateResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockContentUpload(req *pb.RpcBlockActionContentUploadRequest) *pb.RpcBlockActionContentUploadResponse {
-	response := func(code pb.RpcBlockActionContentUploadResponseErrorCode, err error) *pb.RpcBlockActionContentUploadResponse {
-		m := &pb.RpcBlockActionContentUploadResponse{Error: &pb.RpcBlockActionContentUploadResponseError{Code: code}}
+func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
+	response := func(code pb.RpcBlockUploadResponseErrorCode, err error) *pb.RpcBlockUploadResponse {
+		m := &pb.RpcBlockUploadResponse{Error: &pb.RpcBlockUploadResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -88,7 +66,7 @@ func (mw *Middleware) BlockContentUpload(req *pb.RpcBlockActionContentUploadRequ
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockActionContentUploadResponseError_NULL, nil)
+	return response(pb.RpcBlockUploadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnlinkResponse {
@@ -104,9 +82,9 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockContentDownload(req *pb.RpcBlockActionContentDownloadRequest) *pb.RpcBlockActionContentDownloadResponse {
-	response := func(code pb.RpcBlockActionContentDownloadResponseErrorCode, err error) *pb.RpcBlockActionContentDownloadResponse {
-		m := &pb.RpcBlockActionContentDownloadResponse{Error: &pb.RpcBlockActionContentDownloadResponseError{Code: code}}
+func (mw *Middleware) BlockDownload(req *pb.RpcBlockDownloadRequest) *pb.RpcBlockDownloadResponse {
+	response := func(code pb.RpcBlockDownloadResponseErrorCode, err error) *pb.RpcBlockDownloadResponse {
+		m := &pb.RpcBlockDownloadResponse{Error: &pb.RpcBlockDownloadResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -114,12 +92,12 @@ func (mw *Middleware) BlockContentDownload(req *pb.RpcBlockActionContentDownload
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockActionContentDownloadResponseError_NULL, nil)
+	return response(pb.RpcBlockDownloadResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockMarkSet(req *pb.RpcBlockActionMarkSetRequest) *pb.RpcBlockActionMarkSetResponse {
-	response := func(code pb.RpcBlockActionMarkSetResponseErrorCode, err error) *pb.RpcBlockActionMarkSetResponse {
-		m := &pb.RpcBlockActionMarkSetResponse{Error: &pb.RpcBlockActionMarkSetResponseError{Code: code}}
+func (mw *Middleware) BlockGetMarks(req *pb.RpcBlockGetMarksRequest) *pb.RpcBlockGetMarksResponse {
+	response := func(code pb.RpcBlockGetMarksResponseErrorCode, err error) *pb.RpcBlockGetMarksResponse {
+		m := &pb.RpcBlockGetMarksResponse{Error: &pb.RpcBlockGetMarksResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -127,12 +105,12 @@ func (mw *Middleware) BlockMarkSet(req *pb.RpcBlockActionMarkSetRequest) *pb.Rpc
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockActionMarkSetResponseError_NULL, nil)
+	return response(pb.RpcBlockGetMarksResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockMarksGet(req *pb.RpcBlockActionMarksGetRequest) *pb.RpcBlockActionMarksGetResponse {
-	response := func(code pb.RpcBlockActionMarksGetResponseErrorCode, err error) *pb.RpcBlockActionMarksGetResponse {
-		m := &pb.RpcBlockActionMarksGetResponse{Error: &pb.RpcBlockActionMarksGetResponseError{Code: code}}
+func (mw *Middleware) BlockHistoryMove(req *pb.RpcBlockHistoryMoveRequest) *pb.RpcBlockHistoryMoveResponse {
+	response := func(code pb.RpcBlockHistoryMoveResponseErrorCode, err error) *pb.RpcBlockHistoryMoveResponse {
+		m := &pb.RpcBlockHistoryMoveResponse{Error: &pb.RpcBlockHistoryMoveResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -140,12 +118,12 @@ func (mw *Middleware) BlockMarksGet(req *pb.RpcBlockActionMarksGetRequest) *pb.R
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockActionMarksGetResponseError_NULL, nil)
+	return response(pb.RpcBlockHistoryMoveResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlocksDrop(req *pb.RpcBlockActionBlocksDropRequest) *pb.RpcBlockActionBlocksDropResponse {
-	response := func(code pb.RpcBlockActionBlocksDropResponseErrorCode, err error) *pb.RpcBlockActionBlocksDropResponse {
-		m := &pb.RpcBlockActionBlocksDropResponse{Error: &pb.RpcBlockActionBlocksDropResponseError{Code: code}}
+func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
+	response := func(code pb.RpcBlockSetFieldsResponseErrorCode, err error) *pb.RpcBlockSetFieldsResponse {
+		m := &pb.RpcBlockSetFieldsResponse{Error: &pb.RpcBlockSetFieldsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -153,7 +131,254 @@ func (mw *Middleware) BlocksDrop(req *pb.RpcBlockActionBlocksDropRequest) *pb.Rp
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockActionBlocksDropResponseError_NULL, nil)
+	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetPermissions(req *pb.RpcBlockSetPermissionsRequest) *pb.RpcBlockSetPermissionsResponse {
+	response := func(code pb.RpcBlockSetPermissionsResponseErrorCode, err error) *pb.RpcBlockSetPermissionsResponse {
+		m := &pb.RpcBlockSetPermissionsResponse{Error: &pb.RpcBlockSetPermissionsResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetPermissionsResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetIsArchived(req *pb.RpcBlockSetIsArchivedRequest) *pb.RpcBlockSetIsArchivedResponse {
+	response := func(code pb.RpcBlockSetIsArchivedResponseErrorCode, err error) *pb.RpcBlockSetIsArchivedResponse {
+		m := &pb.RpcBlockSetIsArchivedResponse{Error: &pb.RpcBlockSetIsArchivedResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetIsArchivedResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBlockListMoveResponse {
+	response := func(code pb.RpcBlockListMoveResponseErrorCode, err error) *pb.RpcBlockListMoveResponse {
+		m := &pb.RpcBlockListMoveResponse{Error: &pb.RpcBlockListMoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockListMoveResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse {
+	response := func(code pb.RpcBlockListSetTextStyleResponseErrorCode, err error) *pb.RpcBlockListSetTextStyleResponse {
+		m := &pb.RpcBlockListSetTextStyleResponse{Error: &pb.RpcBlockListSetTextStyleResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetTextMarker(req *pb.RpcBlockListSetTextMarkerRequest) *pb.RpcBlockListSetTextMarkerResponse {
+	response := func(code pb.RpcBlockListSetTextMarkerResponseErrorCode, err error) *pb.RpcBlockListSetTextMarkerResponse {
+		m := &pb.RpcBlockListSetTextMarkerResponse{Error: &pb.RpcBlockListSetTextMarkerResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockListSetTextMarkerResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetCheckable(req *pb.RpcBlockListSetCheckableRequest) *pb.RpcBlockListSetCheckableResponse {
+	response := func(code pb.RpcBlockListSetCheckableResponseErrorCode, err error) *pb.RpcBlockListSetCheckableResponse {
+		m := &pb.RpcBlockListSetCheckableResponse{Error: &pb.RpcBlockListSetCheckableResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockListSetCheckableResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextTextInRange(req *pb.RpcBlockSetTextTextInRangeRequest) *pb.RpcBlockSetTextTextInRangeResponse {
+	response := func(code pb.RpcBlockSetTextTextInRangeResponseErrorCode, err error) *pb.RpcBlockSetTextTextInRangeResponse {
+		m := &pb.RpcBlockSetTextTextInRangeResponse{Error: &pb.RpcBlockSetTextTextInRangeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextTextInRangeResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse {
+	response := func(code pb.RpcBlockSetTextStyleResponseErrorCode, err error) *pb.RpcBlockSetTextStyleResponse {
+		m := &pb.RpcBlockSetTextStyleResponse{Error: &pb.RpcBlockSetTextStyleResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextMark(req *pb.RpcBlockSetTextMarkRequest) *pb.RpcBlockSetTextMarkResponse {
+	response := func(code pb.RpcBlockSetTextMarkResponseErrorCode, err error) *pb.RpcBlockSetTextMarkResponse {
+		m := &pb.RpcBlockSetTextMarkResponse{Error: &pb.RpcBlockSetTextMarkResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextMarkResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextToggleable(req *pb.RpcBlockSetTextToggleableRequest) *pb.RpcBlockSetTextToggleableResponse {
+	response := func(code pb.RpcBlockSetTextToggleableResponseErrorCode, err error) *pb.RpcBlockSetTextToggleableResponse {
+		m := &pb.RpcBlockSetTextToggleableResponse{Error: &pb.RpcBlockSetTextToggleableResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextToggleableResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextMarker(req *pb.RpcBlockSetTextMarkerRequest) *pb.RpcBlockSetTextMarkerResponse {
+	response := func(code pb.RpcBlockSetTextMarkerResponseErrorCode, err error) *pb.RpcBlockSetTextMarkerResponse {
+		m := &pb.RpcBlockSetTextMarkerResponse{Error: &pb.RpcBlockSetTextMarkerResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextMarkerResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextCheckable(req *pb.RpcBlockSetTextCheckableRequest) *pb.RpcBlockSetTextCheckableResponse {
+	response := func(code pb.RpcBlockSetTextCheckableResponseErrorCode, err error) *pb.RpcBlockSetTextCheckableResponse {
+		m := &pb.RpcBlockSetTextCheckableResponse{Error: &pb.RpcBlockSetTextCheckableResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextCheckableResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextCheck(req *pb.RpcBlockSetTextCheckRequest) *pb.RpcBlockSetTextCheckResponse {
+	response := func(code pb.RpcBlockSetTextCheckResponseErrorCode, err error) *pb.RpcBlockSetTextCheckResponse {
+		m := &pb.RpcBlockSetTextCheckResponse{Error: &pb.RpcBlockSetTextCheckResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextCheckResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetFileName(req *pb.RpcBlockSetFileNameRequest) *pb.RpcBlockSetFileNameResponse {
+	response := func(code pb.RpcBlockSetFileNameResponseErrorCode, err error) *pb.RpcBlockSetFileNameResponse {
+		m := &pb.RpcBlockSetFileNameResponse{Error: &pb.RpcBlockSetFileNameResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetFileNameResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetImageName(req *pb.RpcBlockSetImageNameRequest) *pb.RpcBlockSetImageNameResponse {
+	response := func(code pb.RpcBlockSetImageNameResponseErrorCode, err error) *pb.RpcBlockSetImageNameResponse {
+		m := &pb.RpcBlockSetImageNameResponse{Error: &pb.RpcBlockSetImageNameResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetImageNameResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetImageWidth(req *pb.RpcBlockSetImageWidthRequest) *pb.RpcBlockSetImageWidthResponse {
+	response := func(code pb.RpcBlockSetImageWidthResponseErrorCode, err error) *pb.RpcBlockSetImageWidthResponse {
+		m := &pb.RpcBlockSetImageWidthResponse{Error: &pb.RpcBlockSetImageWidthResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetImageWidthResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetVideoName(req *pb.RpcBlockSetVideoNameRequest) *pb.RpcBlockSetVideoNameResponse {
+	response := func(code pb.RpcBlockSetVideoNameResponseErrorCode, err error) *pb.RpcBlockSetVideoNameResponse {
+		m := &pb.RpcBlockSetVideoNameResponse{Error: &pb.RpcBlockSetVideoNameResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetVideoNameResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetVideoWidth(req *pb.RpcBlockSetVideoWidthRequest) *pb.RpcBlockSetVideoWidthResponse {
+	response := func(code pb.RpcBlockSetVideoWidthResponseErrorCode, err error) *pb.RpcBlockSetVideoWidthResponse {
+		m := &pb.RpcBlockSetVideoWidthResponse{Error: &pb.RpcBlockSetVideoWidthResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetVideoWidthResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetIconName(req *pb.RpcBlockSetIconNameRequest) *pb.RpcBlockSetIconNameResponse {
+	response := func(code pb.RpcBlockSetIconNameResponseErrorCode, err error) *pb.RpcBlockSetIconNameResponse {
+		m := &pb.RpcBlockSetIconNameResponse{Error: &pb.RpcBlockSetIconNameResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetIconNameResponseError_NULL, nil)
 }
 
 func (mw *Middleware) switchAccount(accountId string) {
