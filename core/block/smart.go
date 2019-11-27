@@ -183,6 +183,9 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 }
 
 func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	block, ok := p.versions[id]
 	if !ok {
 		return ErrBlockNotFound
@@ -195,7 +198,19 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error)
 	if err := apply(textCopy); err != nil {
 		return err
 	}
-
+	diff := textBlock.Diff(textCopy)
+	if len(diff) == 0 {
+		// no changes
+		return nil
+	}
+	if _, err := p.block.AddVersions([]*model.Block{p.toSave(textCopy.Model())}); err != nil {
+		return err
+	}
+	p.versions[id] = textCopy
+	p.s.sendEvent(&pb.Event{
+		Messages:  diff,
+		ContextId: p.GetId(),
+	})
 	return nil
 }
 

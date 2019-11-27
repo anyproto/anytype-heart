@@ -253,7 +253,9 @@ func (mw *Middleware) BlockSetTextToggleable(req *pb.RpcBlockSetTextToggleableRe
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextToggleable(*req); err != nil {
+		return response(pb.RpcBlockSetTextToggleableResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextToggleableResponseError_NULL, nil)
 }
 
@@ -266,7 +268,9 @@ func (mw *Middleware) BlockSetTextMarker(req *pb.RpcBlockSetTextMarkerRequest) *
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextMarker(*req); err != nil {
+		return response(pb.RpcBlockSetTextMarkerResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextMarkerResponseError_NULL, nil)
 }
 
@@ -279,7 +283,9 @@ func (mw *Middleware) BlockSetTextCheckable(req *pb.RpcBlockSetTextCheckableRequ
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextCheckable(*req); err != nil {
+		return response(pb.RpcBlockSetTextCheckableResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextCheckableResponseError_NULL, nil)
 }
 
@@ -292,7 +298,9 @@ func (mw *Middleware) BlockSetTextCheck(req *pb.RpcBlockSetTextCheckRequest) *pb
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextCheck(*req); err != nil {
+		return response(pb.RpcBlockSetTextCheckResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextCheckResponseError_NULL, nil)
 }
 

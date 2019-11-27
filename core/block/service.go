@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -25,6 +26,10 @@ type Service interface {
 	SetTextInRange(req pb.RpcBlockSetTextTextInRangeRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextMark(req pb.RpcBlockSetTextMarkRequest) error
+	SetTextToggleable(req pb.RpcBlockSetTextToggleableRequest) error
+	SetTextMarker(req pb.RpcBlockSetTextMarkerRequest) error
+	SetTextCheckable(req pb.RpcBlockSetTextCheckableRequest) error
+	SetTextCheck(req pb.RpcBlockSetTextCheckRequest) error
 
 	Close() error
 }
@@ -85,15 +90,53 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 }
 
 func (s *service) SetTextInRange(req pb.RpcBlockSetTextTextInRangeRequest) error {
-	panic("implement me")
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		if req.Range == nil {
+			req.Range = &model.Range{}
+		}
+		return b.SetText(req.Text, *req.Range)
+	})
 }
 
 func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
-	panic("implement me")
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		b.SetStyle(req.Style)
+		return nil
+	})
 }
 
 func (s *service) SetTextMark(req pb.RpcBlockSetTextMarkRequest) error {
-	panic("implement me")
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		return b.SetMark(req.Mark)
+	})
+}
+
+func (s *service) SetTextToggleable(req pb.RpcBlockSetTextToggleableRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		b.SetToggleable(req.Toggleable)
+		return nil
+	})
+}
+
+func (s *service) SetTextMarker(req pb.RpcBlockSetTextMarkerRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		b.SetMarker(req.Marker)
+		return nil
+	})
+}
+
+func (s *service) SetTextCheckable(req pb.RpcBlockSetTextCheckableRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		b.SetCheckable(req.Checkable)
+		return nil
+	})
+}
+
+func (s *service) SetTextCheck(req pb.RpcBlockSetTextCheckRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		b.SetChecked(req.Check)
+		return nil
+	})
 }
 
 func (s *service) updateTextBlock(contextId, blockId string, apply func(b *text.Text) error) (err error) {
