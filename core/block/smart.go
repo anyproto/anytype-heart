@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
 )
@@ -23,7 +24,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
-	Update(req pb.RpcBlockUpdateRequest) (err error)
+	UpdateTextBlock(id string, apply func(t *text.Text) error) error
 	Close() error
 }
 
@@ -181,43 +182,21 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	return
 }
 
-func (p *commonSmart) Update(req pb.RpcBlockUpdateRequest) (err error) {
-	if req.Changes == nil || req.Changes.Changes == nil {
-		return
+func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+	block, ok := p.versions[id]
+	if !ok {
+		return ErrBlockNotFound
+	}
+	textBlock, ok := block.(*text.Text)
+	if !ok {
+		return ErrUnexpectedBlockType
+	}
+	textCopy := text.NewText(textBlock.Model())
+	if err := apply(textCopy); err != nil {
+		return err
 	}
 
-	p.m.Lock()
-	defer p.m.Unlock()
-
-	var (
-		oldBlocks = make([]simple.Block, len(req.Changes.Changes))
-		updateCtx = make(uniqueIds)
-	)
-
-	var rollback = func() {
-		for _, ob := range oldBlocks {
-			if ob != nil {
-				p.versions[ob.Model().Id] = ob
-			}
-		}
-	}
-	for i, changes := range req.Changes.Changes {
-		if oldBlocks[i], err = p.applyChanges(updateCtx, changes); err != nil {
-			rollback()
-			return
-		}
-	}
-
-	var updatedBlocks = make([]*model.Block, 0, len(updateCtx))
-	for id := range updateCtx {
-		updatedBlocks = append(updatedBlocks, p.toSave(p.versions[id].Model()))
-	}
-
-	if _, err = p.block.AddVersions(updatedBlocks); err != nil {
-		rollback()
-		return
-	}
-	return
+	return nil
 }
 
 func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {

@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestText_AddMark(t *testing.T) {
+func TestText_SetMark(t *testing.T) {
 	t.Run("out of range validation", func(t *testing.T) {
 		block := NewText(&model.Block{
 			Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{Text: &model.BlockContentText{
@@ -31,7 +32,7 @@ func TestText_AddMark(t *testing.T) {
 			{},
 		}
 		for _, m := range outOfRangeMarks {
-			err := block.AddMark(m)
+			err := block.SetMark(m)
 			assert.Equal(t, ErrOutOfRange, err)
 		}
 	})
@@ -62,7 +63,7 @@ func TestText_AddMark(t *testing.T) {
 		block := testBlock()
 		assert.Len(t, block.content.Marks.Marks, 1)
 
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{To: 10},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -74,7 +75,7 @@ func TestText_AddMark(t *testing.T) {
 		block := testBlock()
 		assert.Len(t, block.content.Marks.Marks, 1)
 
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{To: 5},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -87,7 +88,7 @@ func TestText_AddMark(t *testing.T) {
 		block := testBlock()
 		assert.Len(t, block.content.Marks.Marks, 1)
 
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 5, To: 10},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -100,7 +101,7 @@ func TestText_AddMark(t *testing.T) {
 		block := testBlock()
 		assert.Len(t, block.content.Marks.Marks, 1)
 
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 3, To: 6},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -111,24 +112,24 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("overlap inner", func(t *testing.T) {
 		block := testBlock()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 12, To: 14},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 16, To: 18},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 22, To: 28},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
 		assert.Len(t, block.content.Marks.Marks, 4)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 14, To: 22},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -139,19 +140,19 @@ func TestText_AddMark(t *testing.T) {
 
 	t.Run("overlap outer", func(t *testing.T) {
 		block := testBlock()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 12, To: 14},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 22, To: 28},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
 		assert.Len(t, block.content.Marks.Marks, 3)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 11, To: 29},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -161,19 +162,19 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("merge with param", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 12, To: 14},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 16, To: 18},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 20, To: 25},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
@@ -181,7 +182,7 @@ func TestText_AddMark(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, block.content.Marks.Marks, 3)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 9, To: 21},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
@@ -192,19 +193,19 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("merge left param; right drop", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 12, To: 14},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 16, To: 18},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 20, To: 25},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -212,7 +213,7 @@ func TestText_AddMark(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, block.content.Marks.Marks, 3)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 9, To: 28},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
@@ -223,19 +224,19 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("merge left param; right split", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 12, To: 14},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 16, To: 18},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 20, To: 25},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -243,7 +244,7 @@ func TestText_AddMark(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, block.content.Marks.Marks, 3)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 9, To: 22},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
@@ -255,19 +256,19 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("merge right param; left drop", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 12, To: 14},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 16, To: 18},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 20, To: 25},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -275,7 +276,7 @@ func TestText_AddMark(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, block.content.Marks.Marks, 3)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 9, To: 22},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -286,19 +287,19 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("merge right param; left split", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 12, To: 14},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 16, To: 18},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 20, To: 25},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -306,7 +307,7 @@ func TestText_AddMark(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, block.content.Marks.Marks, 3)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 13, To: 28},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -318,13 +319,13 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("split center", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 10, To: 20},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 13, To: 18},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -341,13 +342,13 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("left color", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 10, To: 20},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 10, To: 15},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -360,7 +361,7 @@ func TestText_AddMark(t *testing.T) {
 		assert.Equal(t, &model.Range{From: 15, To: 20}, block.content.Marks.Marks[1].Range)
 		assert.Equal(t, "red", block.content.Marks.Marks[1].Param)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 8, To: 12},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
@@ -377,13 +378,13 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("right color", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 10, To: 20},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 15, To: 22},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -396,7 +397,7 @@ func TestText_AddMark(t *testing.T) {
 		assert.Equal(t, &model.Range{From: 15, To: 22}, block.content.Marks.Marks[1].Range)
 		assert.Equal(t, "green", block.content.Marks.Marks[1].Param)
 
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 20, To: 25},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
@@ -413,13 +414,13 @@ func TestText_AddMark(t *testing.T) {
 	})
 	t.Run("replace color", func(t *testing.T) {
 		block := testBlockColor()
-		err := block.AddMark(&model.BlockContentTextMark{
+		err := block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 10, To: 20},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "red",
 		})
 		require.NoError(t, err)
-		err = block.AddMark(&model.BlockContentTextMark{
+		err = block.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 10, To: 20},
 			Type:  model.BlockContentTextMark_TextColor,
 			Param: "green",
@@ -480,12 +481,12 @@ func TestText_SetText(t *testing.T) {
 	t.Run("prepend text, move marks", func(t *testing.T) {
 		b := testBlock()
 		b.content.Text = "1234567890"
-		err := b.AddMark(&model.BlockContentTextMark{
+		err := b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 5, To: 6},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
-		err = b.AddMark(&model.BlockContentTextMark{
+		err = b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 8, To: 10},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -502,12 +503,12 @@ func TestText_SetText(t *testing.T) {
 	t.Run("insert into mark", func(t *testing.T) {
 		b := testBlock()
 		b.content.Text = "1234567890"
-		err := b.AddMark(&model.BlockContentTextMark{
+		err := b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 5, To: 8},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
-		err = b.AddMark(&model.BlockContentTextMark{
+		err = b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 9, To: 10},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -524,12 +525,12 @@ func TestText_SetText(t *testing.T) {
 	t.Run("insert over mark", func(t *testing.T) {
 		b := testBlock()
 		b.content.Text = "1234567890"
-		err := b.AddMark(&model.BlockContentTextMark{
+		err := b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 5, To: 8},
 			Type:  model.BlockContentTextMark_Bold,
 		})
 		require.NoError(t, err)
-		err = b.AddMark(&model.BlockContentTextMark{
+		err = b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 9, To: 10},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -546,7 +547,7 @@ func TestText_SetText(t *testing.T) {
 	t.Run("marks overlap right", func(t *testing.T) {
 		b := testBlock()
 		b.content.Text = "1234567890"
-		err := b.AddMark(&model.BlockContentTextMark{
+		err := b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 5, To: 8},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -562,7 +563,7 @@ func TestText_SetText(t *testing.T) {
 	t.Run("marks overlap left", func(t *testing.T) {
 		b := testBlock()
 		b.content.Text = "1234567890"
-		err := b.AddMark(&model.BlockContentTextMark{
+		err := b.SetMark(&model.BlockContentTextMark{
 			Range: &model.Range{From: 5, To: 8},
 			Type:  model.BlockContentTextMark_Bold,
 		})
@@ -574,5 +575,52 @@ func TestText_SetText(t *testing.T) {
 		assert.Equal(t, "123456XXXXX0", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 1)
 		assert.Equal(t, model.Range{From: 5, To: 6}, *b.content.Marks.Marks[0].Range)
+	})
+}
+
+func TestText_Diff(t *testing.T) {
+	testBlock := func() *Text {
+		return NewText(&model.Block{
+			Permissions: &model.BlockPermissions{},
+			Content:     &model.BlockCore{Content: &model.BlockCoreContentOfText{Text: &model.BlockContentText{}}},
+		})
+	}
+
+	t.Run("no diff", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := testBlock()
+		b1.SetText("same text", model.Range{})
+		b2.SetText("same text", model.Range{})
+		assert.Len(t, b1.Diff(b2), 0)
+	})
+	t.Run("base diff", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := testBlock()
+		b2.Permissions.Read = true
+		assert.Len(t, b1.Diff(b2), 1)
+	})
+	t.Run("content diff", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := testBlock()
+		b2.SetText("text", model.Range{})
+		b2.SetMark(&model.BlockContentTextMark{
+			Range: &model.Range{1, 2},
+			Type:  model.BlockContentTextMark_Italic,
+		})
+		b2.SetStyle(model.BlockContentText_Header2)
+		b2.SetChecked(true)
+		b2.SetCheckable(true)
+		b2.SetMarker(model.BlockContentText_Number)
+		b2.SetToggleable(true)
+		diff := b1.Diff(b2)
+		require.Len(t, diff, 1)
+		textChange := diff[0].Value.(*pb.EventMessageValueOfBlockSetText).BlockSetText
+		assert.NotNil(t, textChange.Toggleable)
+		assert.NotNil(t, textChange.Marker)
+		assert.NotNil(t, textChange.Style)
+		assert.NotNil(t, textChange.Checkable)
+		assert.NotNil(t, textChange.Check)
+		assert.NotNil(t, textChange.Text)
+		assert.NotNil(t, textChange.Marks)
 	})
 }

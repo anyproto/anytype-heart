@@ -10,7 +10,6 @@ import (
 type Block interface {
 	Virtual() bool
 	Model() *model.Block
-	ApplyContentChanges(content model.IsBlockCoreContent) (err error)
 }
 
 func New(block *model.Block) (b Block) {

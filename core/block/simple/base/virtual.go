@@ -1,8 +1,6 @@
 package base
 
 import (
-	"fmt"
-
 	"github.com/anytypeio/go-anytype-library/pb/model"
 )
 
@@ -20,8 +18,4 @@ func (v *Virtual) Virtual() bool {
 
 func (v *Virtual) Model() *model.Block {
 	return v.Block
-}
-
-func (v *Virtual) ApplyContentChanges(content model.IsBlockCoreContent) (err error) {
-	return fmt.Errorf("can't change virtual block")
 }

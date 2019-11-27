@@ -60,3 +60,54 @@ func inInt(s []int, i int) bool {
 	}
 	return false
 }
+
+func marksByTypesEq(m1, m2 map[model.BlockContentTextMarkType]ranges) bool {
+	for k, v := range m1 {
+		if len(v) == 0 {
+			delete(m1, k)
+		}
+	}
+	for k, v := range m2 {
+		if len(v) == 0 {
+			delete(m2, k)
+		}
+	}
+	if len(m1) != len(m2) {
+		return false
+	}
+	for k, v := range m1 {
+		if v2, ok := m2[k]; ok {
+			if !rangesEq(v, v2) {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
+func rangesEq(s1, s2 ranges) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+	for i, v := range s1 {
+		if !markEq(v, s2[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func markEq(m1, m2 *model.BlockContentTextMark) bool {
+	if m1.Type != m2.Type {
+		return false
+	}
+	if m1.Param != m2.Param {
+		return false
+	}
+	if *m1.Range != *m2.Range {
+		return false
+	}
+	return true
+}

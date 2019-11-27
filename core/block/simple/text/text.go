@@ -7,6 +7,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/mohae/deepcopy"
 )
 
 var (
@@ -41,15 +43,69 @@ func toTextContent(content model.IsBlockCoreContent) (textContent *model.BlockCo
 	return nil, fmt.Errorf("unexpected content type: %T; want text", content)
 }
 
-func (t *Text) ApplyContentChanges(content model.IsBlockCoreContent) (err error) {
-	tc, err := toTextContent(content)
-	if err != nil {
-		return
+func (t *Text) Copy() *Text {
+	return NewText(deepcopy.Copy(t.Model()).(*model.Block))
+}
+
+func (t *Text) Diff(text *Text) (msgs []*pb.EventMessage) {
+	msgs = t.Base.Diff(text.Model())
+	changes := &pb.EventBlockSetText{
+		Id: text.Id,
 	}
-	t.content = tc
-	t.Model().Content = &model.BlockCore{Content: &model.BlockCoreContentOfText{Text: tc}}
-	t.initMarks()
-	return nil
+	hasChanges := false
+
+	if t.content.Text != text.content.Text {
+		hasChanges = true
+		changes.Text = &pb.EventBlockSetTextText{Value: text.content.Text}
+	}
+	if t.content.Style != text.content.Style {
+		hasChanges = true
+		changes.Style = &pb.EventBlockSetTextStyle{Value: text.content.Style}
+	}
+	if t.content.Toggleable != text.content.Toggleable {
+		hasChanges = true
+		changes.Toggleable = &pb.EventBlockSetTextToggleable{Value: text.content.Toggleable}
+	}
+	if t.content.Marker != text.content.Marker {
+		hasChanges = true
+		changes.Marker = &pb.EventBlockSetTextMarker{Value: text.content.Marker}
+	}
+	if t.content.Checkable != text.content.Checkable {
+		hasChanges = true
+		changes.Checkable = &pb.EventBlockSetTextCheckable{Value: text.content.Checkable}
+	}
+	if t.content.Checked != text.content.Checked {
+		hasChanges = true
+		changes.Check = &pb.EventBlockSetTextCheck{Value: text.content.Checked}
+	}
+	if !marksByTypesEq(t.markTypes, text.markTypes) {
+		hasChanges = true
+		changes.Marks = &pb.EventBlockSetTextMarks{Value: text.content.Marks}
+	}
+	if hasChanges {
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}})
+	}
+	return
+}
+
+func (t *Text) SetStyle(style model.BlockContentTextStyle) {
+	t.content.Style = style
+}
+
+func (t *Text) SetChecked(v bool) {
+	t.content.Checked = v
+}
+
+func (t *Text) SetCheckable(v bool) {
+	t.content.Checkable = v
+}
+
+func (t *Text) SetToggleable(v bool) {
+	t.content.Toggleable = v
+}
+
+func (t *Text) SetMarker(v model.BlockContentTextMarker) {
+	t.content.Marker = v
 }
 
 func (t *Text) SetText(text string, r model.Range) (err error) {
@@ -80,13 +136,10 @@ func (t *Text) initMarks() {
 	for _, v := range t.markTypes {
 		sort.Sort(v)
 	}
-
-	// TODO: group validate and join here
 }
 
 func (t *Text) moveMarks(r model.Range, newTextLen int32) {
 	moveTo := newTextLen - (r.To - r.From)
-	fmt.Println("move to", moveTo)
 	for tp, marks := range t.markTypes {
 		var toDeleteIdx []int
 		for i, mark := range marks {
@@ -120,7 +173,7 @@ func (t *Text) moveMarks(r model.Range, newTextLen int32) {
 	t.makeMarks()
 }
 
-func (t *Text) AddMark(m *model.BlockContentTextMark) (err error) {
+func (t *Text) SetMark(m *model.BlockContentTextMark) (err error) {
 	// validate range
 	if m.Range == nil || m.Range.From < 0 || m.Range.To <= 0 || m.Range.To <= m.Range.From {
 		return ErrOutOfRange

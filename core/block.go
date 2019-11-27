@@ -208,7 +208,9 @@ func (mw *Middleware) BlockSetTextTextInRange(req *pb.RpcBlockSetTextTextInRange
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextInRange(*req); err != nil {
+		return response(pb.RpcBlockSetTextTextInRangeResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextTextInRangeResponseError_NULL, nil)
 }
 
@@ -221,7 +223,9 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextStyle(*req); err != nil {
+		return response(pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
 }
 
@@ -234,7 +238,9 @@ func (mw *Middleware) BlockSetTextMark(req *pb.RpcBlockSetTextMarkRequest) *pb.R
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextMark(*req); err != nil {
+		return response(pb.RpcBlockSetTextMarkResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextMarkResponseError_NULL, nil)
 }
 

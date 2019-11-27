@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 )
@@ -645,6 +646,10 @@ type testPage struct {
 	s *service
 }
 
+func (t *testPage) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+	return fmt.Errorf("can't update block in the test page")
+}
+
 func (t *testPage) Open(b anytype.Block) error {
 	return nil
 }
@@ -671,10 +676,6 @@ func (t *testPage) Type() smartBlockType {
 
 func (t *testPage) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	return "", fmt.Errorf("can't create block in the test page")
-}
-
-func (t *testPage) Update(req pb.RpcBlockUpdateRequest) (err error) {
-	return fmt.Errorf("can't update blocks in the test page")
 }
 
 func (t *testPage) Close() error {
