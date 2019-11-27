@@ -31,7 +31,15 @@ func (mw *Middleware) Ping(req *pb.RpcPingRequest) *pb.RpcPingResponse {
 	for i := 0; i < int(req.NumberOfEventsToSend); i++ {
 		n = time.Now()
 		fmt.Printf("%d.%d go send ping event %d\n", n.Unix(), nsToMs(n.UnixNano()), i)
-		mw.SendEvent(&pb.Event{&pb.EventMessageOfPing{Ping: &pb.EventPing{Index: int32(i)}}})
+
+		mw.SendEvent(&pb.Event{
+			Messages: []*pb.EventMessage{
+				&pb.EventMessage{
+					Value: &pb.EventMessageValueOfPing{
+						Ping: &pb.EventPing{Index: int32(i)},
+					},
+				}},
+		})
 	}
 
 	return response(req.Index, pb.RpcPingResponseError_NULL, nil)
