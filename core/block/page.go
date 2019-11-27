@@ -37,6 +37,13 @@ func (p *page) addName(title string) {
 	var b = virtualBlock{
 		&model.Block{
 			Id: p.block.GetId() + pageTitleSuffix,
+			Permissions:&model.BlockPermissions{
+				Read:   true,
+				Edit:   true,
+				Remove: false,
+				Drag:   false,
+				DropOn: true,
+			},
 			Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 				Text: &model.BlockContentText{
 					Text:  title,
@@ -53,6 +60,13 @@ func (p *page) addIcon(icon string) {
 	var b = virtualBlock{
 		&model.Block{
 			Id: p.block.GetId() + pageIconSuffix,
+			Permissions:&model.BlockPermissions{
+				Read:   true,
+				Edit:   true,
+				Remove: false,
+				Drag:   false,
+				DropOn: false,
+			},
 			Content: &model.BlockCore{Content: &model.BlockCoreContentOfIcon{
 				Icon: &model.BlockContentIcon{
 					Name: icon,

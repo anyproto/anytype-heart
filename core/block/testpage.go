@@ -88,10 +88,15 @@ var testBlocks = []*model.Block{
 	},
 	{
 		Id: "6",
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				"lang": testStringValue("js"),
+			},
+		},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Why? Notion and Airtable use one standard design for all databases - one fits all approach. It works well for a generic case - pages. Anytype customizes the design of a database for each object: page, task, file, link, music file, video, etc. It makes Anytype's tools look native, like apps not spreadsheets.",
-				Style: model.BlockContentText_Paragraph,
+				Style: model.BlockContentText_Code,
 			},
 		}},
 	},
