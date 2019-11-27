@@ -53,7 +53,7 @@ func TestAccountRecoverLocalWithoutRestart(t *testing.T) {
 
 	var accountCh = make(chan *model.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
+		if aa, ok := event.Messages[0].Value.(*pb.EventMessageValueOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -97,7 +97,7 @@ func TestAccountRecoverLocalAfterRestart(t *testing.T) {
 
 	var accountCh = make(chan *model.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
+		if aa, ok := event.Messages[0].Value.(*pb.EventMessageValueOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}
@@ -131,7 +131,7 @@ func TestAccountRecoverRemoteNotExisting(t *testing.T) {
 
 	var account *model.Account
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
+		if aa, ok := event.Messages[0].Value.(*pb.EventMessageValueOfAccountShow); ok {
 			account = aa.AccountShow.Account
 		}
 	}
@@ -151,7 +151,7 @@ func TestRecoverRemoteExisting(t *testing.T) {
 
 	var accountCh = make(chan *model.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
-		if aa, ok := event.Message.(*pb.EventMessageOfAccountShow); ok {
+		if aa, ok := event.Messages[0].Value.(*pb.EventMessageValueOfAccountShow); ok {
 			if aa.AccountShow.Index != 0 {
 				return
 			}

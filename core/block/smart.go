@@ -221,25 +221,27 @@ func (p *commonSmart) Update(req pb.RpcBlockUpdateRequest) (err error) {
 }
 
 func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
-	p.s.sendEvent(&pb.Event{Message: &pb.EventMessageOfBlockAdd{BlockAdd: &pb.EventBlockAdd{
-		Blocks:    []*model.Block{new},
-		ContextId: p.GetId(),
-	}}})
 	p.s.sendEvent(&pb.Event{
-		Message: &pb.EventMessageOfBlockUpdate{
-			BlockUpdate: &pb.EventBlockUpdate{
-				Changes: &pb.Changes{
-					Changes: []*pb.ChangesBlock{
-						{
-							Id:          parent.Id,
-							ChildrenIds: &pb.ChangesBlockChildrenIds{ChildrenIds: parent.ChildrenIds},
-						},
+		Messages: []*pb.EventMessage{
+			{
+				&pb.EventMessageValueOfBlockAdd{
+					BlockAdd: &pb.EventBlockAdd{
+						Blocks: []*model.Block{new},
 					},
-					Author: &model.Account{}, // TODO: How to get an Account?
+				},
+			},
+			{
+				&pb.EventMessageValueOfBlockSetChildrenIds{
+					BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
+						Id:          parent.Id,
+						ChildrenIds: parent.ChildrenIds,
+					},
 				},
 			},
 		},
+		ContextId: p.GetId(),
 	})
+
 	return
 }
 
@@ -250,10 +252,14 @@ func (p *commonSmart) show() {
 	}
 
 	event := &pb.Event{
-		Message: &pb.EventMessageOfBlockShow{
-			BlockShow: &pb.EventBlockShow{
-				RootId: p.GetId(),
-				Blocks: blocks,
+		Messages: []*pb.EventMessage{
+			{
+				&pb.EventMessageValueOfBlockShow{
+					BlockShow: &pb.EventBlockShow{
+						RootId: p.GetId(),
+						Blocks: blocks,
+					},
+				},
 			},
 		},
 	}

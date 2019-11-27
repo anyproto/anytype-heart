@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	pageTitleSuffix = "/title"
-	pageIconSuffix  = "/icon"
+	pageTitleSuffix = "-title"
+	pageIconSuffix  = "-icon"
 )
 
 func newPage(s *service, block anytype.Block) (smartBlock, error) {
@@ -25,16 +25,16 @@ func (p *page) Init() {
 	p.m.Lock()
 	defer p.m.Unlock()
 	root := p.root()
+	if name, ok := fieldsGetString(root.Fields, "name"); ok {
+		p.addName(name)
+	}
 	if icon, ok := fieldsGetString(root.Fields, "icon"); ok {
 		p.addIcon(icon)
-	}
-	if title, ok := fieldsGetString(root.Fields, "title"); ok {
-		p.addTitle(title)
 	}
 	p.show()
 }
 
-func (p *page) addTitle(title string) {
+func (p *page) addName(title string) {
 	var b = simple.NewVirtual(&model.Block{
 		Id: p.block.GetId() + pageTitleSuffix,
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{

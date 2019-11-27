@@ -3,26 +3,42 @@ package anytype;
 option go_package = "pb";
 
 import "vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto";
-import "pb/protos/changes.proto";
+import "google/protobuf/struct.proto";
 
 /*
  * Event – type of message, that could be sent from a middleware to the corresponding front-end.
 */
 message Event {
-    oneof message {
-        Account.Show accountShow  = 1; // show wallet's accounts that were loaded from local or remote source
-        Block.Add blockAdd = 2;
-        Block.Show blockShow = 3;
-        Block.Update blockUpdate = 4;
-        Block.Delete blockDelete = 5;
+    repeated Message messages = 1;
+    string contextId = 2;
+    anytype.model.Account initiator = 3;
 
-        User.Block.TextRange userBlockTextRange = 6;
-        User.Block.Join userBlockJoin = 7;
-        User.Block.Left userBlockLeft = 8;
-        User.Block.SelectRange userBlockSelectRange = 9;
+    message Message {
+        oneof value {
+            Account.Show accountShow  = 1;
 
-        Block.FilesUpload filesUpload = 10;
-        Block.MarksInfo marksInfo = 11;
+            Block.Add blockAdd = 2;
+            Block.Delete blockDelete = 3;
+            Block.FilesUpload filesUpload = 4;
+            Block.MarksInfo marksInfo = 5;
+
+            Block.Set.Fields blockSetFields = 6;
+            Block.Set.ChildrenIds blockSetChildrenIds = 7;
+            Block.Set.Permissions blockSetPermissions = 8;
+            Block.Set.IsArchived blockSetIsArchived = 9;
+
+            Block.Set.Text blockSetText = 10;
+            Block.Set.File blockSetFile = 11;
+            Block.Set.Image blockSetImage = 12;
+            Block.Set.Video blockSetVideo = 13;
+            Block.Set.Icon blockSetIcon = 14;
+
+            Block.Show blockShow = 15;
+            User.Block.Join userBlockJoin = 16;
+            User.Block.Left userBlockLeft = 17;
+            User.Block.SelectRange userBlockSelectRange = 18;
+            User.Block.TextRange userBlockTextRange = 19;
+        }
     }
 
     message Account {
@@ -30,7 +46,7 @@ message Event {
         * Message, that will be sent to the front on each account found after an AccountRecoverRequest
         */
         message Show {
-            int64  index  = 1; // Number of an account in an all found accounts list
+            int64 index  = 1; // Number of an account in an all found accounts list
             anytype.model.Account account = 2; // An Account, that has been found for the mnemonic
         }
     }
@@ -49,7 +65,6 @@ message Event {
         */
         message Add {
             repeated anytype.model.Block blocks = 1; // id -> block
-            string contextId = 2; // id of the context block
         }
 
         /*
@@ -59,17 +74,6 @@ message Event {
         message Show {
             string rootId = 1; // Root block id
             repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
-            string contextId = 3; // id of the context block
-        }
-
-        /*
-         * Updates from different clients, or from the local middleware
-         * Example scenarios:
-         * Page opened, TextBlock updated on a different client, BlockUpdate(changes)
-        */
-        message Update {
-            Changes changes = 1;
-            string contextId = 2; // id of the context block
         }
 
         /**
@@ -79,9 +83,9 @@ message Event {
         * 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
         */
         message FilesUpload {
-            repeated string filePath = 1; // filepaths to the files
-            string blockId = 2; // if empty => create new blocks
-            string contextId = 3; // id of the context block
+            string blockId = 1; // if empty => create new blocks
+            repeated string filePath = 2; // filepaths to the files
+
         }
 
         /*
@@ -89,11 +93,163 @@ message Event {
         */
         message Delete {
             string blockId = 1;
-            string contextId = 2; // id of the context block
         }
 
         message MarksInfo {
             repeated anytype.model.Block.Content.Text.Mark.Type marksInRange = 1;
+        }
+
+        message Set {
+
+            message Fields {
+                string id = 1;
+                google.protobuf.Struct fields = 2;
+            }
+
+            message ChildrenIds {
+                string id = 1;
+                repeated string childrenIds = 2;
+            }
+
+            message Permissions {
+                string id = 1;
+                anytype.model.Block.Permissions permissions = 2;
+            }
+
+            message IsArchived {
+                string id = 1;
+                bool IsArchived = 2;
+            }
+
+            message Text {
+                string id = 1;
+                Text text = 2;
+                Style style = 3;
+                Marks marks = 4;
+                Toggleable toggleable = 5;
+                Marker marker = 6;
+                Checkable checkable = 7;
+                Check check = 8;
+
+                message Text {
+                    string value = 1;
+                }
+
+                message Style {
+                    anytype.model.Block.Content.Text.Style value = 1;
+                }
+
+                message Marks {
+                    anytype.model.Block.Content.Text.Marks value = 1;
+                }
+
+                message Toggleable {
+                    bool value = 1;
+                }
+
+                message Marker {
+                    anytype.model.Block.Content.Text.Marker value = 1;
+                }
+
+                message Checkable {
+                    bool value = 1;
+                }
+
+                message Check {
+                    bool value = 1;
+                }
+            }
+
+            message File {
+                string id = 1;
+                Name name = 2;
+                State state = 3;
+                LocalFilePath localFilePath = 4;
+                Icon icon = 5;
+
+                message Name {
+                    string value = 1;
+                }
+
+                message State {
+                    anytype.model.Block.Content.File.State value = 1;
+                }
+
+                message LocalFilePath {
+                    string value = 1;
+                }
+
+                message Icon {
+                    string value = 1;
+                }
+            }
+
+            message Image {
+                string id = 1;
+                Name name = 2;
+                Width width = 3;
+                State state = 4;
+                LocalFilePath localFilePath = 5;
+                PreviewLocalFilePath previewLocalFilePath = 6;
+
+                message Name {
+                    string value = 1;
+                }
+
+                message Width {
+                    int32 value = 1;
+                }
+
+                message State {
+                    anytype.model.Block.Content.Image.State value = 1;
+                }
+
+                message LocalFilePath {
+                    string value = 1;
+                }
+
+                message PreviewLocalFilePath {
+                    string value = 1;
+                }
+            }
+
+            message Video {
+                string id = 1;
+                Name name = 2;
+                Width width = 3;
+                State state = 4;
+                LocalFilePath localFilePath = 5;
+                PreviewLocalFilePath previewLocalFilePath = 6;
+
+                message Name {
+                    string value = 1;
+                }
+
+                message Width {
+                    int32 value = 1;
+                }
+
+                message State {
+                    anytype.model.Block.Content.Video.State value = 1;
+                }
+
+                message LocalFilePath {
+                    string value = 1;
+                }
+
+                message PreviewLocalFilePath {
+                    string value = 1;
+                }
+            }
+
+            message Icon {
+                string id = 1;
+                Name name = 2;
+
+                message Name {
+                    string value = 1;
+                }
+            }
         }
     }
 
@@ -108,7 +264,6 @@ message Event {
             */
             message Join {
                 Account account = 1; // Account of the user, that opened a block
-                string contextId = 2; // id of the context block
             }
 
             /**
@@ -119,7 +274,6 @@ message Event {
             */
             message Left {
                 Account account = 1; // Account of the user, that left the block
-                string contextId = 2; // id of the context block
             }
 
             /**
@@ -132,7 +286,6 @@ message Event {
                 Account account = 1; // Account of the user, that selected a text
                 string blockId = 2; // Id of the text block, that have a selection
                 anytype.model.Range range = 3; // Range of the selection
-                string contextId = 4; // id of the context block
             }
 
             /**
@@ -144,7 +297,6 @@ message Event {
             message SelectRange {
                 Account account = 1; // Account of the user, that selected blocks
                 repeated string blockIdsArray = 2; // Ids of selected blocks.
-                string contextId = 3; // id of the context block
             }
         }
     }
