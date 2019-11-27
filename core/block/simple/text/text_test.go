@@ -15,8 +15,6 @@ func TestText_AddMark(t *testing.T) {
 				Text: "012345678901234567890123456789",
 			}}},
 		})
-
-		// should return out of range error
 		outOfRangeMarks := []*model.BlockContentTextMark{
 			{
 				Range: &model.Range{-1, 10},
@@ -430,5 +428,151 @@ func TestText_AddMark(t *testing.T) {
 		require.Len(t, block.content.Marks.Marks, 1)
 		assert.Equal(t, &model.Range{From: 10, To: 20}, block.content.Marks.Marks[0].Range)
 		assert.Equal(t, "green", block.content.Marks.Marks[0].Param)
+	})
+}
+
+func TestText_SetText(t *testing.T) {
+	testBlock := func() *Text {
+		return NewText(&model.Block{
+			Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{Text: &model.BlockContentText{}}},
+		})
+	}
+
+	t.Run("ErrOutOfRange", func(t *testing.T) {
+		b := testBlock()
+		var testRanges = []model.Range{
+			{-1, 0},
+			{0, -1},
+			{0, 2},
+		}
+		for _, r := range testRanges {
+			assert.Equal(t, ErrOutOfRange, b.SetText("123", r))
+		}
+	})
+
+	t.Run("add text to empty block", func(t *testing.T) {
+		b := testBlock()
+		text := "1"
+		err := b.SetText(text, model.Range{})
+		require.NoError(t, err)
+		assert.Equal(t, text, b.content.Text)
+	})
+
+	t.Run("add text to end of block", func(t *testing.T) {
+		b := testBlock()
+		b.content.Text = "1"
+		err := b.SetText("2", model.Range{From: 1, To: 1})
+		require.NoError(t, err)
+		assert.Equal(t, "12", b.content.Text)
+	})
+
+	t.Run("replace text in block", func(t *testing.T) {
+		b := testBlock()
+		b.content.Text = "1"
+		err := b.SetText("222", model.Range{
+			From: 0,
+			To:   1,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "222", b.content.Text)
+	})
+
+	t.Run("prepend text, move marks", func(t *testing.T) {
+		b := testBlock()
+		b.content.Text = "1234567890"
+		err := b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 5, To: 6},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+		err = b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 8, To: 10},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+
+		err = b.SetText("000", model.Range{})
+		require.NoError(t, err)
+
+		assert.Equal(t, "0001234567890", b.content.Text)
+		assert.Equal(t, model.Range{From: 8, To: 9}, *b.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 11, To: 13}, *b.content.Marks.Marks[1].Range)
+	})
+
+	t.Run("insert into mark", func(t *testing.T) {
+		b := testBlock()
+		b.content.Text = "1234567890"
+		err := b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 5, To: 8},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+		err = b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 9, To: 10},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+
+		err = b.SetText("0000", model.Range{5, 5})
+		require.NoError(t, err)
+
+		assert.Equal(t, "12345000067890", b.content.Text)
+		assert.Equal(t, model.Range{From: 5, To: 12}, *b.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 13, To: 14}, *b.content.Marks.Marks[1].Range)
+	})
+
+	t.Run("insert over mark", func(t *testing.T) {
+		b := testBlock()
+		b.content.Text = "1234567890"
+		err := b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 5, To: 8},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+		err = b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 9, To: 10},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+
+		err = b.SetText("XXXXX", model.Range{4, 8})
+		require.NoError(t, err)
+
+		assert.Equal(t, "1234XXXXX90", b.content.Text)
+		require.Len(t, b.content.Marks.Marks, 1)
+		assert.Equal(t, model.Range{From: 10, To: 11}, *b.content.Marks.Marks[0].Range)
+	})
+
+	t.Run("marks overlap right", func(t *testing.T) {
+		b := testBlock()
+		b.content.Text = "1234567890"
+		err := b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 5, To: 8},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+
+		err = b.SetText("XXXXX", model.Range{4, 7})
+		require.NoError(t, err)
+
+		assert.Equal(t, "1234XXXXX890", b.content.Text)
+		require.Len(t, b.content.Marks.Marks, 1)
+		assert.Equal(t, model.Range{From: 9, To: 10}, *b.content.Marks.Marks[0].Range)
+	})
+	t.Run("marks overlap left", func(t *testing.T) {
+		b := testBlock()
+		b.content.Text = "1234567890"
+		err := b.AddMark(&model.BlockContentTextMark{
+			Range: &model.Range{From: 5, To: 8},
+			Type:  model.BlockContentTextMark_Bold,
+		})
+		require.NoError(t, err)
+
+		err = b.SetText("XXXXX", model.Range{6, 9})
+		require.NoError(t, err)
+
+		assert.Equal(t, "123456XXXXX0", b.content.Text)
+		require.Len(t, b.content.Marks.Marks, 1)
+		assert.Equal(t, model.Range{From: 5, To: 6}, *b.content.Marks.Marks[0].Range)
 	})
 }

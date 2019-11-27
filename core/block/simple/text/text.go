@@ -52,6 +52,19 @@ func (t *Text) ApplyContentChanges(content model.IsBlockCoreContent) (err error)
 	return nil
 }
 
+func (t *Text) SetText(text string, r model.Range) (err error) {
+	if r.From < 0 || r.To < r.From || int(r.To) > utf8.RuneCountInString(t.content.Text) {
+		return ErrOutOfRange
+	}
+
+	newTextRunes := []rune(text)
+	textRunes := []rune(t.content.Text)
+	textRunes = append(textRunes[0:r.From], append(newTextRunes, textRunes[r.To:]...)...)
+	t.content.Text = string(textRunes)
+	t.moveMarks(r, int32(len(newTextRunes)))
+	return
+}
+
 func (t *Text) initMarks() {
 	t.markTypes = make(map[model.BlockContentTextMarkType]ranges)
 	if t.content.Marks == nil {
@@ -69,6 +82,42 @@ func (t *Text) initMarks() {
 	}
 
 	// TODO: group validate and join here
+}
+
+func (t *Text) moveMarks(r model.Range, newTextLen int32) {
+	moveTo := newTextLen - (r.To - r.From)
+	fmt.Println("move to", moveTo)
+	for tp, marks := range t.markTypes {
+		var toDeleteIdx []int
+		for i, mark := range marks {
+			switch overlap(&r, mark.Range) {
+			case outer:
+				toDeleteIdx = append(toDeleteIdx, i)
+			case equal, inner, innerLeft, innerRight:
+				mark.Range.To += moveTo
+			case left:
+				mark.Range.From = r.To
+				mark.Range.From += moveTo
+				mark.Range.To += moveTo
+			case right:
+				mark.Range.To = r.From
+			case before:
+				mark.Range.From += moveTo
+				mark.Range.To += moveTo
+			}
+		}
+		if len(toDeleteIdx) > 0 {
+			newMarks := make(ranges, 0, len(marks))
+			for i, m := range marks {
+				if !inInt(toDeleteIdx, i) {
+					newMarks = append(newMarks, m)
+				}
+			}
+			marks = newMarks
+		}
+		t.markTypes[tp] = marks
+	}
+	t.makeMarks()
 }
 
 func (t *Text) AddMark(m *model.BlockContentTextMark) (err error) {
@@ -90,40 +139,6 @@ func (t *Text) AddMark(m *model.BlockContentTextMark) (err error) {
 		}
 	}()
 
-	const (
-		notOverlap int = iota
-		equal          // a equal b
-		outer          // b inside a
-		inner          // a inside b
-		innerLeft      // a inside b, left side eq
-		innerRight     // a inside b, right side eq
-		left           // a-b
-		right          // b-a
-		stop
-	)
-
-	overlap := func(a, b *model.BlockContentTextMark) int {
-		switch {
-		case *a.Range == *b.Range:
-			return equal
-		case a.Range.From <= b.Range.From && a.Range.To >= b.Range.To:
-			return outer
-		case a.Range.From > b.Range.From && a.Range.To < b.Range.To:
-			return inner
-		case a.Range.From == b.Range.From && a.Range.To < b.Range.To:
-			return innerLeft
-		case a.Range.From > b.Range.From && a.Range.To == b.Range.To:
-			return innerRight
-		case a.Range.From < b.Range.From && b.Range.From <= a.Range.To:
-			return left
-		case a.Range.From > b.Range.From && b.Range.To >= a.Range.From:
-			return right
-		case a.Range.To < b.Range.From:
-			return stop
-		}
-		return notOverlap
-	}
-
 	addM := true
 
 	for i := 0; i < len(marks); i++ {
@@ -131,7 +146,7 @@ func (t *Text) AddMark(m *model.BlockContentTextMark) (err error) {
 			delete bool
 			e      = marks[i]
 		)
-		switch overlap(m, e) {
+		switch overlap(m.Range, e.Range) {
 		case equal:
 			if m.Param == "" {
 				delete = true
@@ -177,7 +192,7 @@ func (t *Text) AddMark(m *model.BlockContentTextMark) (err error) {
 			} else {
 				e.Range.To = m.Range.From
 			}
-		case stop:
+		case before:
 			i = len(marks)
 		}
 		if delete {
@@ -205,9 +220,3 @@ func (t *Text) makeMarks() {
 		t.content.Marks.Marks = append(t.content.Marks.Marks, ms...)
 	}
 }
-
-type ranges []*model.BlockContentTextMark
-
-func (a ranges) Len() int           { return len(a) }
-func (a ranges) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ranges) Less(i, j int) bool { return a[i].Range.From < a[j].Range.From }
