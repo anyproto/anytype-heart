@@ -7,19 +7,25 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 var (
-	ErrBlockNotFound    = errors.New("block not found")
-	ErrBlockAlreadyOpen = errors.New("block already open")
+	ErrBlockNotFound       = errors.New("block not found")
+	ErrBlockAlreadyOpen    = errors.New("block already open")
+	ErrUnexpectedBlockType = errors.New("unexpected block type")
 )
 
 type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
-	UpdateBlock(req pb.RpcBlockUpdateRequest) (err error)
+
+	SetTextInRange(req pb.RpcBlockSetTextTextInRangeRequest) error
+	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
+	SetTextMark(req pb.RpcBlockSetTextMarkRequest) error
+
 	Close() error
 }
 
@@ -78,13 +84,27 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	return "", ErrBlockNotFound
 }
 
-func (s *service) UpdateBlock(req pb.RpcBlockUpdateRequest) (err error) {
+func (s *service) SetTextInRange(req pb.RpcBlockSetTextTextInRangeRequest) error {
+	panic("implement me")
+}
+
+func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
+	panic("implement me")
+}
+
+func (s *service) SetTextMark(req pb.RpcBlockSetTextMarkRequest) error {
+	panic("implement me")
+}
+
+func (s *service) updateTextBlock(contextId, blockId string, apply func(b *text.Text) error) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Update(req)
+	sb, ok := s.smartBlocks[contextId]
+	if ! ok {
+		err = ErrBlockNotFound
+		return
 	}
-	return ErrBlockNotFound
+	return sb.UpdateTextBlock(blockId, apply)
 }
 
 func (s *service) Close() error {
