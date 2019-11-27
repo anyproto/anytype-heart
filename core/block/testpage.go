@@ -32,7 +32,7 @@ var testBlocks = []*model.Block{
 				"icon": testStringValue(":deciduous_tree:"),
 			},
 		},
-		ChildrenIds: []string{"2", "3", "4", "5", "7", "12", "13", "16", "19", "21", "22", "23", "28", "29", "30", "31", "32", "37"},
+		ChildrenIds: []string{"2", "3", "4", "4a", "5", "7", "12", "13", "16", "19", "21", "22", "23", "28", "29", "30", "31", "32", "37"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{
 			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		}},
@@ -59,19 +59,29 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Why Anytype is better vs. Notion?",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Style:  model.BlockContentText_Header1,
+				Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
 	{
-		Id:          "5",
+		Id: "4a",
+		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
+			Text: &model.BlockContentText{
+				Text:   "Test break for numbering check",
+				Style:  model.BlockContentText_Paragraph,
+				Marker: model.BlockContentText_Number,
+			},
+		}},
+	},
+	{
+		Id: "5",
 		ChildrenIds: []string{"6"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:   "Better looking and more pleasant to use:",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Style:  model.BlockContentText_Header1,
+				Marker: model.BlockContentText_Number,
 				Marks: &model.BlockContentTextMarks{
 					Marks: []*model.BlockContentTextMark{
 						{
@@ -96,12 +106,32 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Why? Notion and Airtable use one standard design for all databases - one fits all approach. It works well for a generic case - pages. Anytype customizes the design of a database for each object: page, task, file, link, music file, video, etc. It makes Anytype's tools look native, like apps not spreadsheets.",
-				Style: model.BlockContentText_Code,
+				Style: model.BlockContentText_Paragraph,
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   7,
+							},
+							Type: model.BlockContentTextMark_TextColor,
+							Param: "#ff0000",
+						},
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   7,
+							},
+							Type: model.BlockContentTextMark_BackgroundColor,
+							Param: "#00ff00",
+						},
+					},
+				},
 			},
 		}},
 	},
 	{
-		Id:          "7",
+		Id: "7",
 		ChildrenIds: []string{"8", "10"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -110,7 +140,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "8",
+		Id: "8",
 		ChildrenIds: []string{"9", "14"},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -152,7 +182,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "10",
+		Id: "10",
 		ChildrenIds: []string{"11", "15"},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -194,7 +224,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "16",
+		Id: "16",
 		ChildrenIds: []string{"17", "18"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -229,7 +259,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "19",
+		Id: "19",
 		ChildrenIds: []string{"20"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
@@ -274,7 +304,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "23",
+		Id: "23",
 		ChildrenIds: []string{"24", "27"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -283,7 +313,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "24",
+		Id: "24",
 		ChildrenIds: []string{"25", "26"},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -300,7 +330,6 @@ var testBlocks = []*model.Block{
 		Id: "25",
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
-				"width": testFloatValue(0.5),
 				"name":  testStringValue("Test page"),
 				"icon":  testStringValue(":deciduous_tree:"),
 			},
@@ -313,7 +342,6 @@ var testBlocks = []*model.Block{
 		Id: "26",
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
-				"width": testFloatValue(0.5),
 				"name":  testStringValue("Test page"),
 				"icon":  testStringValue(":deciduous_tree:"),
 			},
@@ -368,7 +396,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "32",
+		Id: "32",
 		ChildrenIds: []string{"33"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
@@ -379,7 +407,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "33",
+		Id: "33",
 		ChildrenIds: []string{"34", "35", "36"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
@@ -420,7 +448,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "37",
+		Id: "37",
 		ChildrenIds: []string{"38", "47"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
@@ -431,7 +459,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "38",
+		Id: "38",
 		ChildrenIds: []string{"39", "40", "41", "42", "46"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
@@ -473,7 +501,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "42",
+		Id: "42",
 		ChildrenIds: []string{"43", "44", "45"},
 		Content: &model.BlockCore{&model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
@@ -533,7 +561,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "47",
+		Id: "47",
 		ChildrenIds: []string{"48", "49", "50", "51"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
@@ -575,7 +603,7 @@ var testBlocks = []*model.Block{
 		}},
 	},
 	{
-		Id:          "51",
+		Id: "51",
 		ChildrenIds: []string{"52", "53", "54", "55", "56"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
