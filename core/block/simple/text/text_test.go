@@ -574,7 +574,7 @@ func TestText_SetText(t *testing.T) {
 
 		assert.Equal(t, "123456XXXXX0", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 1)
-		assert.Equal(t, model.Range{From: 5, To: 6}, *b.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{From: 5, To: 9}, *b.content.Marks.Marks[0].Range)
 	})
 }
 

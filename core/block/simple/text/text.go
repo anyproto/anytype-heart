@@ -153,7 +153,7 @@ func (t *Text) moveMarks(r model.Range, newTextLen int32) {
 				mark.Range.From += moveTo
 				mark.Range.To += moveTo
 			case right:
-				mark.Range.To = r.From
+				mark.Range.To = r.To
 			case before:
 				mark.Range.From += moveTo
 				mark.Range.To += moveTo
