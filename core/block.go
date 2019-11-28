@@ -225,19 +225,6 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetTextMark(req *pb.RpcBlockSetTextMarkRequest) *pb.RpcBlockSetTextMarkResponse {
-	response := func(code pb.RpcBlockSetTextMarkResponseErrorCode, err error) *pb.RpcBlockSetTextMarkResponse {
-		m := &pb.RpcBlockSetTextMarkResponse{Error: &pb.RpcBlockSetTextMarkResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcBlockSetTextMarkResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockSetTextToggleable(req *pb.RpcBlockSetTextToggleableRequest) *pb.RpcBlockSetTextToggleableResponse {
 	response := func(code pb.RpcBlockSetTextToggleableResponseErrorCode, err error) *pb.RpcBlockSetTextToggleableResponse {
 		m := &pb.RpcBlockSetTextToggleableResponse{Error: &pb.RpcBlockSetTextToggleableResponseError{Code: code}}
