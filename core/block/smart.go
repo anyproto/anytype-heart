@@ -194,11 +194,12 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error)
 	if !ok {
 		return ErrUnexpectedBlockType
 	}
-	textCopy := text.NewText(textBlock.Model())
+	textCopy := textBlock.Copy()
 	if err := apply(textCopy); err != nil {
 		return err
 	}
 	diff := textBlock.Diff(textCopy)
+	fmt.Println("middle: text update diff:", diff)
 	if len(diff) == 0 {
 		// no changes
 		return nil

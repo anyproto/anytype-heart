@@ -112,7 +112,7 @@ func (t *Text) SetText(text string, r model.Range) (err error) {
 	if r.From < 0 || r.To < r.From || int(r.To) > utf8.RuneCountInString(t.content.Text) {
 		return ErrOutOfRange
 	}
-
+	fmt.Println("middle: set text:", text)
 	newTextRunes := []rune(text)
 	textRunes := []rune(t.content.Text)
 	textRunes = append(textRunes[0:r.From], append(newTextRunes, textRunes[r.To:]...)...)
