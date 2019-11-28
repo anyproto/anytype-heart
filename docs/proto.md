@@ -105,10 +105,10 @@
     - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
     - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
     - [Rpc.Block.Set.Text.Style.Response.Error](#anytype.Rpc.Block.Set.Text.Style.Response.Error)
-    - [Rpc.Block.Set.Text.TextInRange](#anytype.Rpc.Block.Set.Text.TextInRange)
-    - [Rpc.Block.Set.Text.TextInRange.Request](#anytype.Rpc.Block.Set.Text.TextInRange.Request)
-    - [Rpc.Block.Set.Text.TextInRange.Response](#anytype.Rpc.Block.Set.Text.TextInRange.Response)
-    - [Rpc.Block.Set.Text.TextInRange.Response.Error](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error)
+    - [Rpc.Block.Set.Text.Text](#anytype.Rpc.Block.Set.Text.Text)
+    - [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request)
+    - [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response)
+    - [Rpc.Block.Set.Text.Text.Response.Error](#anytype.Rpc.Block.Set.Text.Text.Response.Error)
     - [Rpc.Block.Set.Text.Toggleable](#anytype.Rpc.Block.Set.Text.Toggleable)
     - [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request)
     - [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response)
@@ -212,7 +212,7 @@
     - [Rpc.Block.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Mark.Response.Error.Code)
     - [Rpc.Block.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
-    - [Rpc.Block.Set.Text.TextInRange.Response.Error.Code](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
     - [Rpc.Block.Set.Text.Toggleable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
@@ -382,7 +382,7 @@
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockListSetTextMarker | [Rpc.BlockList.Set.Text.Marker.Request](#anytype.Rpc.BlockList.Set.Text.Marker.Request) | [Rpc.BlockList.Set.Text.Marker.Response](#anytype.Rpc.BlockList.Set.Text.Marker.Response) |  |
 | BlockListSetTextCheckable | [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request) | [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response) |  |
-| BlockSetTextTextInRange | [Rpc.Block.Set.Text.TextInRange.Request](#anytype.Rpc.Block.Set.Text.TextInRange.Request) | [Rpc.Block.Set.Text.TextInRange.Response](#anytype.Rpc.Block.Set.Text.TextInRange.Response) |  |
+| BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextMark | [Rpc.Block.Set.Text.Mark.Request](#anytype.Rpc.Block.Set.Text.Mark.Request) | [Rpc.Block.Set.Text.Mark.Response](#anytype.Rpc.Block.Set.Text.Mark.Response) |  |
 | BlockSetTextToggleable | [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request) | [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response) |  |
@@ -1758,19 +1758,19 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.TextInRange"></a>
+<a name="anytype.Rpc.Block.Set.Text.Text"></a>
 
-### Rpc.Block.Set.Text.TextInRange
-
-
+### Rpc.Block.Set.Text.Text
 
 
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.TextInRange.Request"></a>
 
-### Rpc.Block.Set.Text.TextInRange.Request
+
+<a name="anytype.Rpc.Block.Set.Text.Text.Request"></a>
+
+### Rpc.Block.Set.Text.Text.Request
 
 
 
@@ -1779,37 +1779,37 @@ Image/Video/File blocks then:
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | text | [string](#string) |  |  |
-| range | [model.Range](#anytype.model.Range) |  |  |
+| marks | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response"></a>
+<a name="anytype.Rpc.Block.Set.Text.Text.Response"></a>
 
-### Rpc.Block.Set.Text.TextInRange.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Text.TextInRange.Response.Error](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response.Error"></a>
-
-### Rpc.Block.Set.Text.TextInRange.Response.Error
+### Rpc.Block.Set.Text.Text.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Text.TextInRange.Response.Error.Code](#anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code) |  |  |
+| error | [Rpc.Block.Set.Text.Text.Response.Error](#anytype.Rpc.Block.Set.Text.Text.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Text.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Text.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -3218,9 +3218,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.TextInRange.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Set.Text.Text.Response.Error.Code"></a>
 
-### Rpc.Block.Set.Text.TextInRange.Response.Error.Code
+### Rpc.Block.Set.Text.Text.Response.Error.Code
 
 
 | Name | Number | Description |

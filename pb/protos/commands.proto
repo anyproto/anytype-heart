@@ -241,12 +241,12 @@ message Rpc {
             }
 
             message Text {
-                message TextInRange {
+                message Text {
                     message Request {
                         string contextId = 1;
                         string blockId = 2;
                         string text = 3;
-                        anytype.model.Range range = 4;
+                        anytype.model.Block.Content.Text.Marks marks = 4;
                     }
 
                     message Response {

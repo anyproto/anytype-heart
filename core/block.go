@@ -199,9 +199,9 @@ func (mw *Middleware) BlockListSetTextCheckable(req *pb.RpcBlockListSetTextCheck
 	return response(pb.RpcBlockListSetTextCheckableResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetTextTextInRange(req *pb.RpcBlockSetTextTextInRangeRequest) *pb.RpcBlockSetTextTextInRangeResponse {
-	response := func(code pb.RpcBlockSetTextTextInRangeResponseErrorCode, err error) *pb.RpcBlockSetTextTextInRangeResponse {
-		m := &pb.RpcBlockSetTextTextInRangeResponse{Error: &pb.RpcBlockSetTextTextInRangeResponseError{Code: code}}
+func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
+	response := func(code pb.RpcBlockSetTextTextResponseErrorCode, err error) *pb.RpcBlockSetTextTextResponse {
+		m := &pb.RpcBlockSetTextTextResponse{Error: &pb.RpcBlockSetTextTextResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -209,7 +209,7 @@ func (mw *Middleware) BlockSetTextTextInRange(req *pb.RpcBlockSetTextTextInRange
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockSetTextTextInRangeResponseError_NULL, nil)
+	return response(pb.RpcBlockSetTextTextResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse {
