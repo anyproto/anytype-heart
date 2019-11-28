@@ -37,6 +37,9 @@ service ClientCommands {
     rpc BlockSetTextStyle (anytype.Rpc.Block.Set.Text.Style.Request) returns (anytype.Rpc.Block.Set.Text.Style.Response);
     rpc BlockSetTextCheck (anytype.Rpc.Block.Set.Text.Check.Request) returns (anytype.Rpc.Block.Set.Text.Check.Response);
 
+    rpc BlockCopy (anytype.Rpc.Block.Copy.Request) returns (anytype.Rpc.Block.Copy.Response);
+    rpc BlockPaste (anytype.Rpc.Block.Paste.Request) returns (anytype.Rpc.Block.Paste.Response);
+
     rpc BlockSetFileName (anytype.Rpc.Block.Set.File.Name.Request) returns (anytype.Rpc.Block.Set.File.Name.Response);
     rpc BlockSetImageName (anytype.Rpc.Block.Set.Image.Name.Request) returns (anytype.Rpc.Block.Set.Image.Name.Response);
     rpc BlockSetImageWidth (anytype.Rpc.Block.Set.Image.Width.Request) returns (anytype.Rpc.Block.Set.Image.Width.Response);

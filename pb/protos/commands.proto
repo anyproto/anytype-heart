@@ -119,6 +119,7 @@ message Rpc {
 
                 message Error {
                     Code code = 1;
+                    string description = 2;
 
                     enum Code {
                         NULL = 0;
