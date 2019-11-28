@@ -136,6 +136,62 @@ func (RpcBlockListSetTextCheckableResponseErrorCode) EnumDescriptor() ([]byte, [
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 0, 1, 0, 2, 1, 0, 0}
 }
 
+type RpcBlockCopyResponseErrorCode int32
+
+const (
+	RpcBlockCopyResponseError_NULL          RpcBlockCopyResponseErrorCode = 0
+	RpcBlockCopyResponseError_UNKNOWN_ERROR RpcBlockCopyResponseErrorCode = 1
+	RpcBlockCopyResponseError_BAD_INPUT     RpcBlockCopyResponseErrorCode = 2
+)
+
+var RpcBlockCopyResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockCopyResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockCopyResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockCopyResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockCopyResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 1, 0, 0}
+}
+
+type RpcBlockPasteResponseErrorCode int32
+
+const (
+	RpcBlockPasteResponseError_NULL          RpcBlockPasteResponseErrorCode = 0
+	RpcBlockPasteResponseError_UNKNOWN_ERROR RpcBlockPasteResponseErrorCode = 1
+	RpcBlockPasteResponseError_BAD_INPUT     RpcBlockPasteResponseErrorCode = 2
+)
+
+var RpcBlockPasteResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockPasteResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockPasteResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockPasteResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockPasteResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 1, 0, 0}
+}
+
 type RpcBlockUploadResponseErrorCode int32
 
 const (
@@ -161,7 +217,7 @@ func (x RpcBlockUploadResponseErrorCode) String() string {
 }
 
 func (RpcBlockUploadResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 0, 0}
 }
 
 type RpcBlockDownloadResponseErrorCode int32
@@ -189,7 +245,7 @@ func (x RpcBlockDownloadResponseErrorCode) String() string {
 }
 
 func (RpcBlockDownloadResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 1, 0, 0}
 }
 
 type RpcBlockSetFieldsResponseErrorCode int32
@@ -217,7 +273,7 @@ func (x RpcBlockSetFieldsResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetFieldsResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 1, 0, 0}
 }
 
 type RpcBlockSetPermissionsResponseErrorCode int32
@@ -245,7 +301,7 @@ func (x RpcBlockSetPermissionsResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetPermissionsResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 1, 1, 0, 0}
 }
 
 type RpcBlockSetIsArchivedResponseErrorCode int32
@@ -273,7 +329,7 @@ func (x RpcBlockSetIsArchivedResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetIsArchivedResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 2, 1, 0, 0}
 }
 
 type RpcBlockSetTextTextResponseErrorCode int32
@@ -301,7 +357,7 @@ func (x RpcBlockSetTextTextResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextTextResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 0, 1, 0, 0}
 }
 
 type RpcBlockSetTextStyleResponseErrorCode int32
@@ -329,7 +385,7 @@ func (x RpcBlockSetTextStyleResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextStyleResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 1, 1, 0, 0}
 }
 
 type RpcBlockSetTextToggleableResponseErrorCode int32
@@ -357,7 +413,7 @@ func (x RpcBlockSetTextToggleableResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextToggleableResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 2, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 2, 1, 0, 0}
 }
 
 type RpcBlockSetTextMarkerResponseErrorCode int32
@@ -385,7 +441,7 @@ func (x RpcBlockSetTextMarkerResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextMarkerResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 3, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 3, 1, 0, 0}
 }
 
 type RpcBlockSetTextCheckableResponseErrorCode int32
@@ -413,7 +469,7 @@ func (x RpcBlockSetTextCheckableResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextCheckableResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 4, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 4, 1, 0, 0}
 }
 
 type RpcBlockSetTextCheckResponseErrorCode int32
@@ -441,7 +497,7 @@ func (x RpcBlockSetTextCheckResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextCheckResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 5, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 5, 1, 0, 0}
 }
 
 type RpcBlockSetFileNameResponseErrorCode int32
@@ -469,7 +525,7 @@ func (x RpcBlockSetFileNameResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetFileNameResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 4, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 4, 0, 1, 0, 0}
 }
 
 type RpcBlockSetImageNameResponseErrorCode int32
@@ -497,7 +553,7 @@ func (x RpcBlockSetImageNameResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetImageNameResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 0, 1, 0, 0}
 }
 
 type RpcBlockSetImageWidthResponseErrorCode int32
@@ -525,7 +581,7 @@ func (x RpcBlockSetImageWidthResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetImageWidthResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 1, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 1, 1, 0, 0}
 }
 
 type RpcBlockSetVideoNameResponseErrorCode int32
@@ -553,7 +609,7 @@ func (x RpcBlockSetVideoNameResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetVideoNameResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 0, 1, 0, 0}
 }
 
 type RpcBlockSetVideoWidthResponseErrorCode int32
@@ -581,7 +637,7 @@ func (x RpcBlockSetVideoWidthResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetVideoWidthResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 1, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 1, 1, 0, 0}
 }
 
 type RpcBlockSetIconNameResponseErrorCode int32
@@ -609,7 +665,7 @@ func (x RpcBlockSetIconNameResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetIconNameResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 7, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 7, 0, 1, 0, 0}
 }
 
 type RpcBlockGetMarksResponseErrorCode int32
@@ -637,7 +693,7 @@ func (x RpcBlockGetMarksResponseErrorCode) String() string {
 }
 
 func (RpcBlockGetMarksResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 0, 1, 0, 0}
 }
 
 type RpcBlockHistoryMoveResponseErrorCode int32
@@ -668,7 +724,7 @@ func (x RpcBlockHistoryMoveResponseErrorCode) String() string {
 }
 
 func (RpcBlockHistoryMoveResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 0, 1, 0, 0}
 }
 
 type RpcBlockOpenResponseErrorCode int32
@@ -696,7 +752,7 @@ func (x RpcBlockOpenResponseErrorCode) String() string {
 }
 
 func (RpcBlockOpenResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 1, 0, 0}
 }
 
 type RpcBlockCreateResponseErrorCode int32
@@ -724,7 +780,7 @@ func (x RpcBlockCreateResponseErrorCode) String() string {
 }
 
 func (RpcBlockCreateResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 1, 0, 0}
 }
 
 type RpcBlockUnlinkResponseErrorCode int32
@@ -752,7 +808,7 @@ func (x RpcBlockUnlinkResponseErrorCode) String() string {
 }
 
 func (RpcBlockUnlinkResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 9, 1, 0, 0}
 }
 
 type RpcBlockCloseResponseErrorCode int32
@@ -780,7 +836,7 @@ func (x RpcBlockCloseResponseErrorCode) String() string {
 }
 
 func (RpcBlockCloseResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 10, 1, 0, 0}
 }
 
 type RpcWalletCreateResponseErrorCode int32
@@ -1324,7 +1380,7 @@ var xxx_messageInfo_RpcBlockListMove proto.InternalMessageInfo
 
 type RpcBlockListMoveRequest struct {
 	ContextId    string              `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	BlocksId     []string            `protobuf:"bytes,2,rep,name=blocksId,proto3" json:"blocksId,omitempty"`
+	BlockIds     []string            `protobuf:"bytes,2,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
 	DropTargetId string              `protobuf:"bytes,3,opt,name=dropTargetId,proto3" json:"dropTargetId,omitempty"`
 	Position     model.BlockPosition `protobuf:"varint,4,opt,name=position,proto3,enum=anytype.model.BlockPosition" json:"position,omitempty"`
 }
@@ -1369,9 +1425,9 @@ func (m *RpcBlockListMoveRequest) GetContextId() string {
 	return ""
 }
 
-func (m *RpcBlockListMoveRequest) GetBlocksId() []string {
+func (m *RpcBlockListMoveRequest) GetBlockIds() []string {
 	if m != nil {
-		return m.BlocksId
+		return m.BlockIds
 	}
 	return nil
 }
@@ -1596,7 +1652,7 @@ var xxx_messageInfo_RpcBlockListSetTextStyle proto.InternalMessageInfo
 
 type RpcBlockListSetTextStyleRequest struct {
 	ContextId string                      `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	BlockId   []string                    `protobuf:"bytes,2,rep,name=blockId,proto3" json:"blockId,omitempty"`
+	BlockIds  []string                    `protobuf:"bytes,2,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
 	Style     model.BlockContentTextStyle `protobuf:"varint,3,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle" json:"style,omitempty"`
 }
 
@@ -1640,9 +1696,9 @@ func (m *RpcBlockListSetTextStyleRequest) GetContextId() string {
 	return ""
 }
 
-func (m *RpcBlockListSetTextStyleRequest) GetBlockId() []string {
+func (m *RpcBlockListSetTextStyleRequest) GetBlockIds() []string {
 	if m != nil {
-		return m.BlockId
+		return m.BlockIds
 	}
 	return nil
 }
@@ -1788,7 +1844,7 @@ var xxx_messageInfo_RpcBlockListSetTextMarker proto.InternalMessageInfo
 
 type RpcBlockListSetTextMarkerRequest struct {
 	ContextId string                       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	BlockId   []string                     `protobuf:"bytes,2,rep,name=blockId,proto3" json:"blockId,omitempty"`
+	BlockIds  []string                     `protobuf:"bytes,2,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
 	Marker    model.BlockContentTextMarker `protobuf:"varint,3,opt,name=marker,proto3,enum=anytype.model.BlockContentTextMarker" json:"marker,omitempty"`
 }
 
@@ -1832,9 +1888,9 @@ func (m *RpcBlockListSetTextMarkerRequest) GetContextId() string {
 	return ""
 }
 
-func (m *RpcBlockListSetTextMarkerRequest) GetBlockId() []string {
+func (m *RpcBlockListSetTextMarkerRequest) GetBlockIds() []string {
 	if m != nil {
-		return m.BlockId
+		return m.BlockIds
 	}
 	return nil
 }
@@ -1982,7 +2038,7 @@ var xxx_messageInfo_RpcBlockListSetTextCheckable proto.InternalMessageInfo
 
 type RpcBlockListSetTextCheckableRequest struct {
 	ContextId string   `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	BlockId   []string `protobuf:"bytes,2,rep,name=blockId,proto3" json:"blockId,omitempty"`
+	BlockIds  []string `protobuf:"bytes,2,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
 	Checkable bool     `protobuf:"varint,3,opt,name=checkable,proto3" json:"checkable,omitempty"`
 }
 
@@ -2026,9 +2082,9 @@ func (m *RpcBlockListSetTextCheckableRequest) GetContextId() string {
 	return ""
 }
 
-func (m *RpcBlockListSetTextCheckableRequest) GetBlockId() []string {
+func (m *RpcBlockListSetTextCheckableRequest) GetBlockIds() []string {
 	if m != nil {
-		return m.BlockId
+		return m.BlockIds
 	}
 	return nil
 }
@@ -2176,6 +2232,446 @@ func (m *RpcBlock) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcBlock proto.InternalMessageInfo
 
+type RpcBlockCopy struct {
+}
+
+func (m *RpcBlockCopy) Reset()         { *m = RpcBlockCopy{} }
+func (m *RpcBlockCopy) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCopy) ProtoMessage()    {}
+func (*RpcBlockCopy) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0}
+}
+func (m *RpcBlockCopy) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockCopy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockCopy.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockCopy) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCopy.Merge(m, src)
+}
+func (m *RpcBlockCopy) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockCopy) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCopy.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockCopy proto.InternalMessageInfo
+
+type RpcBlockCopyRequest struct {
+	ContextId         string       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	FocusedBlockId    string       `protobuf:"bytes,2,opt,name=focusedBlockId,proto3" json:"focusedBlockId,omitempty"`
+	SelectedTextRange *model.Range `protobuf:"bytes,3,opt,name=selectedTextRange,proto3" json:"selectedTextRange,omitempty"`
+	SelectedBlocks    []string     `protobuf:"bytes,4,rep,name=selectedBlocks,proto3" json:"selectedBlocks,omitempty"`
+}
+
+func (m *RpcBlockCopyRequest) Reset()         { *m = RpcBlockCopyRequest{} }
+func (m *RpcBlockCopyRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCopyRequest) ProtoMessage()    {}
+func (*RpcBlockCopyRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 0}
+}
+func (m *RpcBlockCopyRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockCopyRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockCopyRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockCopyRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCopyRequest.Merge(m, src)
+}
+func (m *RpcBlockCopyRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockCopyRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCopyRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockCopyRequest proto.InternalMessageInfo
+
+func (m *RpcBlockCopyRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockCopyRequest) GetFocusedBlockId() string {
+	if m != nil {
+		return m.FocusedBlockId
+	}
+	return ""
+}
+
+func (m *RpcBlockCopyRequest) GetSelectedTextRange() *model.Range {
+	if m != nil {
+		return m.SelectedTextRange
+	}
+	return nil
+}
+
+func (m *RpcBlockCopyRequest) GetSelectedBlocks() []string {
+	if m != nil {
+		return m.SelectedBlocks
+	}
+	return nil
+}
+
+type RpcBlockCopyResponse struct {
+	Error         *RpcBlockCopyResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	ClipboardText string                     `protobuf:"bytes,2,opt,name=clipboardText,proto3" json:"clipboardText,omitempty"`
+	ClipboardHtml string                     `protobuf:"bytes,3,opt,name=clipboardHtml,proto3" json:"clipboardHtml,omitempty"`
+	ClipboardAny  string                     `protobuf:"bytes,4,opt,name=clipboardAny,proto3" json:"clipboardAny,omitempty"`
+}
+
+func (m *RpcBlockCopyResponse) Reset()         { *m = RpcBlockCopyResponse{} }
+func (m *RpcBlockCopyResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCopyResponse) ProtoMessage()    {}
+func (*RpcBlockCopyResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 1}
+}
+func (m *RpcBlockCopyResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockCopyResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockCopyResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockCopyResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCopyResponse.Merge(m, src)
+}
+func (m *RpcBlockCopyResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockCopyResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCopyResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockCopyResponse proto.InternalMessageInfo
+
+func (m *RpcBlockCopyResponse) GetError() *RpcBlockCopyResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (m *RpcBlockCopyResponse) GetClipboardText() string {
+	if m != nil {
+		return m.ClipboardText
+	}
+	return ""
+}
+
+func (m *RpcBlockCopyResponse) GetClipboardHtml() string {
+	if m != nil {
+		return m.ClipboardHtml
+	}
+	return ""
+}
+
+func (m *RpcBlockCopyResponse) GetClipboardAny() string {
+	if m != nil {
+		return m.ClipboardAny
+	}
+	return ""
+}
+
+type RpcBlockCopyResponseError struct {
+	Code        RpcBlockCopyResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockCopyResponseErrorCode" json:"code,omitempty"`
+	Description string                        `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockCopyResponseError) Reset()         { *m = RpcBlockCopyResponseError{} }
+func (m *RpcBlockCopyResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockCopyResponseError) ProtoMessage()    {}
+func (*RpcBlockCopyResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 1, 0}
+}
+func (m *RpcBlockCopyResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockCopyResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockCopyResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockCopyResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockCopyResponseError.Merge(m, src)
+}
+func (m *RpcBlockCopyResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockCopyResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockCopyResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockCopyResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockCopyResponseError) GetCode() RpcBlockCopyResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockCopyResponseError_NULL
+}
+
+func (m *RpcBlockCopyResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+type RpcBlockPaste struct {
+}
+
+func (m *RpcBlockPaste) Reset()         { *m = RpcBlockPaste{} }
+func (m *RpcBlockPaste) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockPaste) ProtoMessage()    {}
+func (*RpcBlockPaste) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1}
+}
+func (m *RpcBlockPaste) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockPaste) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockPaste.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockPaste) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockPaste.Merge(m, src)
+}
+func (m *RpcBlockPaste) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockPaste) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockPaste.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockPaste proto.InternalMessageInfo
+
+type RpcBlockPasteRequest struct {
+	ContextId         string       `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	FocusedBlockId    string       `protobuf:"bytes,2,opt,name=focusedBlockId,proto3" json:"focusedBlockId,omitempty"`
+	SelectedTextRange *model.Range `protobuf:"bytes,3,opt,name=selectedTextRange,proto3" json:"selectedTextRange,omitempty"`
+	SelectedBlocks    []string     `protobuf:"bytes,4,rep,name=selectedBlocks,proto3" json:"selectedBlocks,omitempty"`
+	ClipboardText     string       `protobuf:"bytes,5,opt,name=clipboardText,proto3" json:"clipboardText,omitempty"`
+	ClipboardHtml     string       `protobuf:"bytes,6,opt,name=clipboardHtml,proto3" json:"clipboardHtml,omitempty"`
+	ClipboardAny      string       `protobuf:"bytes,7,opt,name=clipboardAny,proto3" json:"clipboardAny,omitempty"`
+}
+
+func (m *RpcBlockPasteRequest) Reset()         { *m = RpcBlockPasteRequest{} }
+func (m *RpcBlockPasteRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockPasteRequest) ProtoMessage()    {}
+func (*RpcBlockPasteRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 0}
+}
+func (m *RpcBlockPasteRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockPasteRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockPasteRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockPasteRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockPasteRequest.Merge(m, src)
+}
+func (m *RpcBlockPasteRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockPasteRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockPasteRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockPasteRequest proto.InternalMessageInfo
+
+func (m *RpcBlockPasteRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockPasteRequest) GetFocusedBlockId() string {
+	if m != nil {
+		return m.FocusedBlockId
+	}
+	return ""
+}
+
+func (m *RpcBlockPasteRequest) GetSelectedTextRange() *model.Range {
+	if m != nil {
+		return m.SelectedTextRange
+	}
+	return nil
+}
+
+func (m *RpcBlockPasteRequest) GetSelectedBlocks() []string {
+	if m != nil {
+		return m.SelectedBlocks
+	}
+	return nil
+}
+
+func (m *RpcBlockPasteRequest) GetClipboardText() string {
+	if m != nil {
+		return m.ClipboardText
+	}
+	return ""
+}
+
+func (m *RpcBlockPasteRequest) GetClipboardHtml() string {
+	if m != nil {
+		return m.ClipboardHtml
+	}
+	return ""
+}
+
+func (m *RpcBlockPasteRequest) GetClipboardAny() string {
+	if m != nil {
+		return m.ClipboardAny
+	}
+	return ""
+}
+
+type RpcBlockPasteResponse struct {
+	Error *RpcBlockPasteResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockPasteResponse) Reset()         { *m = RpcBlockPasteResponse{} }
+func (m *RpcBlockPasteResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockPasteResponse) ProtoMessage()    {}
+func (*RpcBlockPasteResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 1}
+}
+func (m *RpcBlockPasteResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockPasteResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockPasteResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockPasteResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockPasteResponse.Merge(m, src)
+}
+func (m *RpcBlockPasteResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockPasteResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockPasteResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockPasteResponse proto.InternalMessageInfo
+
+func (m *RpcBlockPasteResponse) GetError() *RpcBlockPasteResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockPasteResponseError struct {
+	Code RpcBlockPasteResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockPasteResponseErrorCode" json:"code,omitempty"`
+}
+
+func (m *RpcBlockPasteResponseError) Reset()         { *m = RpcBlockPasteResponseError{} }
+func (m *RpcBlockPasteResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockPasteResponseError) ProtoMessage()    {}
+func (*RpcBlockPasteResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 1, 0}
+}
+func (m *RpcBlockPasteResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockPasteResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockPasteResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockPasteResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockPasteResponseError.Merge(m, src)
+}
+func (m *RpcBlockPasteResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockPasteResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockPasteResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockPasteResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockPasteResponseError) GetCode() RpcBlockPasteResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockPasteResponseError_NULL
+}
+
 type RpcBlockUpload struct {
 }
 
@@ -2183,7 +2679,7 @@ func (m *RpcBlockUpload) Reset()         { *m = RpcBlockUpload{} }
 func (m *RpcBlockUpload) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUpload) ProtoMessage()    {}
 func (*RpcBlockUpload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2}
 }
 func (m *RpcBlockUpload) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2223,7 +2719,7 @@ func (m *RpcBlockUploadRequest) Reset()         { *m = RpcBlockUploadRequest{} }
 func (m *RpcBlockUploadRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUploadRequest) ProtoMessage()    {}
 func (*RpcBlockUploadRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0}
 }
 func (m *RpcBlockUploadRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2288,7 +2784,7 @@ func (m *RpcBlockUploadResponse) Reset()         { *m = RpcBlockUploadResponse{}
 func (m *RpcBlockUploadResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUploadResponse) ProtoMessage()    {}
 func (*RpcBlockUploadResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1}
 }
 func (m *RpcBlockUploadResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2333,7 +2829,7 @@ func (m *RpcBlockUploadResponseError) Reset()         { *m = RpcBlockUploadRespo
 func (m *RpcBlockUploadResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUploadResponseError) ProtoMessage()    {}
 func (*RpcBlockUploadResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 0}
 }
 func (m *RpcBlockUploadResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2383,7 +2879,7 @@ func (m *RpcBlockDownload) Reset()         { *m = RpcBlockDownload{} }
 func (m *RpcBlockDownload) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockDownload) ProtoMessage()    {}
 func (*RpcBlockDownload) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3}
 }
 func (m *RpcBlockDownload) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2421,7 +2917,7 @@ func (m *RpcBlockDownloadRequest) Reset()         { *m = RpcBlockDownloadRequest
 func (m *RpcBlockDownloadRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockDownloadRequest) ProtoMessage()    {}
 func (*RpcBlockDownloadRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 0}
 }
 func (m *RpcBlockDownloadRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2472,7 +2968,7 @@ func (m *RpcBlockDownloadResponse) Reset()         { *m = RpcBlockDownloadRespon
 func (m *RpcBlockDownloadResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockDownloadResponse) ProtoMessage()    {}
 func (*RpcBlockDownloadResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 1}
 }
 func (m *RpcBlockDownloadResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2517,7 +3013,7 @@ func (m *RpcBlockDownloadResponseError) Reset()         { *m = RpcBlockDownloadR
 func (m *RpcBlockDownloadResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockDownloadResponseError) ProtoMessage()    {}
 func (*RpcBlockDownloadResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 1, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 1, 0}
 }
 func (m *RpcBlockDownloadResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2567,7 +3063,7 @@ func (m *RpcBlockSet) Reset()         { *m = RpcBlockSet{} }
 func (m *RpcBlockSet) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSet) ProtoMessage()    {}
 func (*RpcBlockSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4}
 }
 func (m *RpcBlockSet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2603,7 +3099,7 @@ func (m *RpcBlockSetFields) Reset()         { *m = RpcBlockSetFields{} }
 func (m *RpcBlockSetFields) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFields) ProtoMessage()    {}
 func (*RpcBlockSetFields) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0}
 }
 func (m *RpcBlockSetFields) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2642,7 +3138,7 @@ func (m *RpcBlockSetFieldsRequest) Reset()         { *m = RpcBlockSetFieldsReque
 func (m *RpcBlockSetFieldsRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFieldsRequest) ProtoMessage()    {}
 func (*RpcBlockSetFieldsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 0}
 }
 func (m *RpcBlockSetFieldsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2700,7 +3196,7 @@ func (m *RpcBlockSetFieldsResponse) Reset()         { *m = RpcBlockSetFieldsResp
 func (m *RpcBlockSetFieldsResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFieldsResponse) ProtoMessage()    {}
 func (*RpcBlockSetFieldsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 1}
 }
 func (m *RpcBlockSetFieldsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2745,7 +3241,7 @@ func (m *RpcBlockSetFieldsResponseError) Reset()         { *m = RpcBlockSetField
 func (m *RpcBlockSetFieldsResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFieldsResponseError) ProtoMessage()    {}
 func (*RpcBlockSetFieldsResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 1, 0}
 }
 func (m *RpcBlockSetFieldsResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2795,7 +3291,7 @@ func (m *RpcBlockSetPermissions) Reset()         { *m = RpcBlockSetPermissions{}
 func (m *RpcBlockSetPermissions) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetPermissions) ProtoMessage()    {}
 func (*RpcBlockSetPermissions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 1}
 }
 func (m *RpcBlockSetPermissions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2834,7 +3330,7 @@ func (m *RpcBlockSetPermissionsRequest) Reset()         { *m = RpcBlockSetPermis
 func (m *RpcBlockSetPermissionsRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetPermissionsRequest) ProtoMessage()    {}
 func (*RpcBlockSetPermissionsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 1, 0}
 }
 func (m *RpcBlockSetPermissionsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2892,7 +3388,7 @@ func (m *RpcBlockSetPermissionsResponse) Reset()         { *m = RpcBlockSetPermi
 func (m *RpcBlockSetPermissionsResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetPermissionsResponse) ProtoMessage()    {}
 func (*RpcBlockSetPermissionsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 1, 1}
 }
 func (m *RpcBlockSetPermissionsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2937,7 +3433,7 @@ func (m *RpcBlockSetPermissionsResponseError) Reset()         { *m = RpcBlockSet
 func (m *RpcBlockSetPermissionsResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetPermissionsResponseError) ProtoMessage()    {}
 func (*RpcBlockSetPermissionsResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 1, 1, 0}
 }
 func (m *RpcBlockSetPermissionsResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2987,7 +3483,7 @@ func (m *RpcBlockSetIsArchived) Reset()         { *m = RpcBlockSetIsArchived{} }
 func (m *RpcBlockSetIsArchived) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIsArchived) ProtoMessage()    {}
 func (*RpcBlockSetIsArchived) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 2}
 }
 func (m *RpcBlockSetIsArchived) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3026,7 +3522,7 @@ func (m *RpcBlockSetIsArchivedRequest) Reset()         { *m = RpcBlockSetIsArchi
 func (m *RpcBlockSetIsArchivedRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIsArchivedRequest) ProtoMessage()    {}
 func (*RpcBlockSetIsArchivedRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 2, 0}
 }
 func (m *RpcBlockSetIsArchivedRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3084,7 +3580,7 @@ func (m *RpcBlockSetIsArchivedResponse) Reset()         { *m = RpcBlockSetIsArch
 func (m *RpcBlockSetIsArchivedResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIsArchivedResponse) ProtoMessage()    {}
 func (*RpcBlockSetIsArchivedResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 2, 1}
 }
 func (m *RpcBlockSetIsArchivedResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3129,7 +3625,7 @@ func (m *RpcBlockSetIsArchivedResponseError) Reset()         { *m = RpcBlockSetI
 func (m *RpcBlockSetIsArchivedResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIsArchivedResponseError) ProtoMessage()    {}
 func (*RpcBlockSetIsArchivedResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 2, 1, 0}
 }
 func (m *RpcBlockSetIsArchivedResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3179,7 +3675,7 @@ func (m *RpcBlockSetText) Reset()         { *m = RpcBlockSetText{} }
 func (m *RpcBlockSetText) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetText) ProtoMessage()    {}
 func (*RpcBlockSetText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3}
 }
 func (m *RpcBlockSetText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3215,7 +3711,7 @@ func (m *RpcBlockSetTextText) Reset()         { *m = RpcBlockSetTextText{} }
 func (m *RpcBlockSetTextText) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextText) ProtoMessage()    {}
 func (*RpcBlockSetTextText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 0}
 }
 func (m *RpcBlockSetTextText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3255,7 +3751,7 @@ func (m *RpcBlockSetTextTextRequest) Reset()         { *m = RpcBlockSetTextTextR
 func (m *RpcBlockSetTextTextRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextTextRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextTextRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 0, 0}
 }
 func (m *RpcBlockSetTextTextRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3320,7 +3816,7 @@ func (m *RpcBlockSetTextTextResponse) Reset()         { *m = RpcBlockSetTextText
 func (m *RpcBlockSetTextTextResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextTextResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextTextResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 0, 1}
 }
 func (m *RpcBlockSetTextTextResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3365,7 +3861,7 @@ func (m *RpcBlockSetTextTextResponseError) Reset()         { *m = RpcBlockSetTex
 func (m *RpcBlockSetTextTextResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextTextResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextTextResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 0, 1, 0}
 }
 func (m *RpcBlockSetTextTextResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3415,7 +3911,7 @@ func (m *RpcBlockSetTextStyle) Reset()         { *m = RpcBlockSetTextStyle{} }
 func (m *RpcBlockSetTextStyle) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyle) ProtoMessage()    {}
 func (*RpcBlockSetTextStyle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 1}
 }
 func (m *RpcBlockSetTextStyle) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3454,7 +3950,7 @@ func (m *RpcBlockSetTextStyleRequest) Reset()         { *m = RpcBlockSetTextStyl
 func (m *RpcBlockSetTextStyleRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyleRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextStyleRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 1, 0}
 }
 func (m *RpcBlockSetTextStyleRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3512,7 +4008,7 @@ func (m *RpcBlockSetTextStyleResponse) Reset()         { *m = RpcBlockSetTextSty
 func (m *RpcBlockSetTextStyleResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyleResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextStyleResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 1, 1}
 }
 func (m *RpcBlockSetTextStyleResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3557,7 +4053,7 @@ func (m *RpcBlockSetTextStyleResponseError) Reset()         { *m = RpcBlockSetTe
 func (m *RpcBlockSetTextStyleResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyleResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextStyleResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 1, 1, 0}
 }
 func (m *RpcBlockSetTextStyleResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3607,7 +4103,7 @@ func (m *RpcBlockSetTextToggleable) Reset()         { *m = RpcBlockSetTextToggle
 func (m *RpcBlockSetTextToggleable) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextToggleable) ProtoMessage()    {}
 func (*RpcBlockSetTextToggleable) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 2}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 2}
 }
 func (m *RpcBlockSetTextToggleable) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3646,7 +4142,7 @@ func (m *RpcBlockSetTextToggleableRequest) Reset()         { *m = RpcBlockSetTex
 func (m *RpcBlockSetTextToggleableRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextToggleableRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextToggleableRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 2, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 2, 0}
 }
 func (m *RpcBlockSetTextToggleableRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3704,7 +4200,7 @@ func (m *RpcBlockSetTextToggleableResponse) Reset()         { *m = RpcBlockSetTe
 func (m *RpcBlockSetTextToggleableResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextToggleableResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextToggleableResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 2, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 2, 1}
 }
 func (m *RpcBlockSetTextToggleableResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3751,7 +4247,7 @@ func (m *RpcBlockSetTextToggleableResponseError) Reset() {
 func (m *RpcBlockSetTextToggleableResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextToggleableResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextToggleableResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 2, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 2, 1, 0}
 }
 func (m *RpcBlockSetTextToggleableResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3801,7 +4297,7 @@ func (m *RpcBlockSetTextMarker) Reset()         { *m = RpcBlockSetTextMarker{} }
 func (m *RpcBlockSetTextMarker) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextMarker) ProtoMessage()    {}
 func (*RpcBlockSetTextMarker) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 3}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 3}
 }
 func (m *RpcBlockSetTextMarker) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3840,7 +4336,7 @@ func (m *RpcBlockSetTextMarkerRequest) Reset()         { *m = RpcBlockSetTextMar
 func (m *RpcBlockSetTextMarkerRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextMarkerRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextMarkerRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 3, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 3, 0}
 }
 func (m *RpcBlockSetTextMarkerRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3898,7 +4394,7 @@ func (m *RpcBlockSetTextMarkerResponse) Reset()         { *m = RpcBlockSetTextMa
 func (m *RpcBlockSetTextMarkerResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextMarkerResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextMarkerResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 3, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 3, 1}
 }
 func (m *RpcBlockSetTextMarkerResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3943,7 +4439,7 @@ func (m *RpcBlockSetTextMarkerResponseError) Reset()         { *m = RpcBlockSetT
 func (m *RpcBlockSetTextMarkerResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextMarkerResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextMarkerResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 3, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 3, 1, 0}
 }
 func (m *RpcBlockSetTextMarkerResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3993,7 +4489,7 @@ func (m *RpcBlockSetTextCheckable) Reset()         { *m = RpcBlockSetTextCheckab
 func (m *RpcBlockSetTextCheckable) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckable) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckable) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 4}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 4}
 }
 func (m *RpcBlockSetTextCheckable) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4032,7 +4528,7 @@ func (m *RpcBlockSetTextCheckableRequest) Reset()         { *m = RpcBlockSetText
 func (m *RpcBlockSetTextCheckableRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckableRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckableRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 4, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 4, 0}
 }
 func (m *RpcBlockSetTextCheckableRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4090,7 +4586,7 @@ func (m *RpcBlockSetTextCheckableResponse) Reset()         { *m = RpcBlockSetTex
 func (m *RpcBlockSetTextCheckableResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckableResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckableResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 4, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 4, 1}
 }
 func (m *RpcBlockSetTextCheckableResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4135,7 +4631,7 @@ func (m *RpcBlockSetTextCheckableResponseError) Reset()         { *m = RpcBlockS
 func (m *RpcBlockSetTextCheckableResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckableResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckableResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 4, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 4, 1, 0}
 }
 func (m *RpcBlockSetTextCheckableResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4185,7 +4681,7 @@ func (m *RpcBlockSetTextCheck) Reset()         { *m = RpcBlockSetTextCheck{} }
 func (m *RpcBlockSetTextCheck) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheck) ProtoMessage()    {}
 func (*RpcBlockSetTextCheck) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 5}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 5}
 }
 func (m *RpcBlockSetTextCheck) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4224,7 +4720,7 @@ func (m *RpcBlockSetTextCheckRequest) Reset()         { *m = RpcBlockSetTextChec
 func (m *RpcBlockSetTextCheckRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 5, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 5, 0}
 }
 func (m *RpcBlockSetTextCheckRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4282,7 +4778,7 @@ func (m *RpcBlockSetTextCheckResponse) Reset()         { *m = RpcBlockSetTextChe
 func (m *RpcBlockSetTextCheckResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 5, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 5, 1}
 }
 func (m *RpcBlockSetTextCheckResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4327,7 +4823,7 @@ func (m *RpcBlockSetTextCheckResponseError) Reset()         { *m = RpcBlockSetTe
 func (m *RpcBlockSetTextCheckResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 5, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 3, 5, 1, 0}
 }
 func (m *RpcBlockSetTextCheckResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4377,7 +4873,7 @@ func (m *RpcBlockSetFile) Reset()         { *m = RpcBlockSetFile{} }
 func (m *RpcBlockSetFile) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFile) ProtoMessage()    {}
 func (*RpcBlockSetFile) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 4}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 4}
 }
 func (m *RpcBlockSetFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4413,7 +4909,7 @@ func (m *RpcBlockSetFileName) Reset()         { *m = RpcBlockSetFileName{} }
 func (m *RpcBlockSetFileName) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFileName) ProtoMessage()    {}
 func (*RpcBlockSetFileName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 4, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 4, 0}
 }
 func (m *RpcBlockSetFileName) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4452,7 +4948,7 @@ func (m *RpcBlockSetFileNameRequest) Reset()         { *m = RpcBlockSetFileNameR
 func (m *RpcBlockSetFileNameRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFileNameRequest) ProtoMessage()    {}
 func (*RpcBlockSetFileNameRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 4, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 4, 0, 0}
 }
 func (m *RpcBlockSetFileNameRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4510,7 +5006,7 @@ func (m *RpcBlockSetFileNameResponse) Reset()         { *m = RpcBlockSetFileName
 func (m *RpcBlockSetFileNameResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFileNameResponse) ProtoMessage()    {}
 func (*RpcBlockSetFileNameResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 4, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 4, 0, 1}
 }
 func (m *RpcBlockSetFileNameResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4555,7 +5051,7 @@ func (m *RpcBlockSetFileNameResponseError) Reset()         { *m = RpcBlockSetFil
 func (m *RpcBlockSetFileNameResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetFileNameResponseError) ProtoMessage()    {}
 func (*RpcBlockSetFileNameResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 4, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 4, 0, 1, 0}
 }
 func (m *RpcBlockSetFileNameResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4605,7 +5101,7 @@ func (m *RpcBlockSetImage) Reset()         { *m = RpcBlockSetImage{} }
 func (m *RpcBlockSetImage) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImage) ProtoMessage()    {}
 func (*RpcBlockSetImage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5}
 }
 func (m *RpcBlockSetImage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4641,7 +5137,7 @@ func (m *RpcBlockSetImageName) Reset()         { *m = RpcBlockSetImageName{} }
 func (m *RpcBlockSetImageName) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageName) ProtoMessage()    {}
 func (*RpcBlockSetImageName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 0}
 }
 func (m *RpcBlockSetImageName) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4680,7 +5176,7 @@ func (m *RpcBlockSetImageNameRequest) Reset()         { *m = RpcBlockSetImageNam
 func (m *RpcBlockSetImageNameRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageNameRequest) ProtoMessage()    {}
 func (*RpcBlockSetImageNameRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 0, 0}
 }
 func (m *RpcBlockSetImageNameRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4738,7 +5234,7 @@ func (m *RpcBlockSetImageNameResponse) Reset()         { *m = RpcBlockSetImageNa
 func (m *RpcBlockSetImageNameResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageNameResponse) ProtoMessage()    {}
 func (*RpcBlockSetImageNameResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 0, 1}
 }
 func (m *RpcBlockSetImageNameResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4783,7 +5279,7 @@ func (m *RpcBlockSetImageNameResponseError) Reset()         { *m = RpcBlockSetIm
 func (m *RpcBlockSetImageNameResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageNameResponseError) ProtoMessage()    {}
 func (*RpcBlockSetImageNameResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 0, 1, 0}
 }
 func (m *RpcBlockSetImageNameResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4833,7 +5329,7 @@ func (m *RpcBlockSetImageWidth) Reset()         { *m = RpcBlockSetImageWidth{} }
 func (m *RpcBlockSetImageWidth) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageWidth) ProtoMessage()    {}
 func (*RpcBlockSetImageWidth) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 1}
 }
 func (m *RpcBlockSetImageWidth) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4872,7 +5368,7 @@ func (m *RpcBlockSetImageWidthRequest) Reset()         { *m = RpcBlockSetImageWi
 func (m *RpcBlockSetImageWidthRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageWidthRequest) ProtoMessage()    {}
 func (*RpcBlockSetImageWidthRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 1, 0}
 }
 func (m *RpcBlockSetImageWidthRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4930,7 +5426,7 @@ func (m *RpcBlockSetImageWidthResponse) Reset()         { *m = RpcBlockSetImageW
 func (m *RpcBlockSetImageWidthResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageWidthResponse) ProtoMessage()    {}
 func (*RpcBlockSetImageWidthResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 1, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 1, 1}
 }
 func (m *RpcBlockSetImageWidthResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4975,7 +5471,7 @@ func (m *RpcBlockSetImageWidthResponseError) Reset()         { *m = RpcBlockSetI
 func (m *RpcBlockSetImageWidthResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetImageWidthResponseError) ProtoMessage()    {}
 func (*RpcBlockSetImageWidthResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 5, 1, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 5, 1, 1, 0}
 }
 func (m *RpcBlockSetImageWidthResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5025,7 +5521,7 @@ func (m *RpcBlockSetVideo) Reset()         { *m = RpcBlockSetVideo{} }
 func (m *RpcBlockSetVideo) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideo) ProtoMessage()    {}
 func (*RpcBlockSetVideo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6}
 }
 func (m *RpcBlockSetVideo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5061,7 +5557,7 @@ func (m *RpcBlockSetVideoName) Reset()         { *m = RpcBlockSetVideoName{} }
 func (m *RpcBlockSetVideoName) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoName) ProtoMessage()    {}
 func (*RpcBlockSetVideoName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 0}
 }
 func (m *RpcBlockSetVideoName) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5100,7 +5596,7 @@ func (m *RpcBlockSetVideoNameRequest) Reset()         { *m = RpcBlockSetVideoNam
 func (m *RpcBlockSetVideoNameRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoNameRequest) ProtoMessage()    {}
 func (*RpcBlockSetVideoNameRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 0, 0}
 }
 func (m *RpcBlockSetVideoNameRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5158,7 +5654,7 @@ func (m *RpcBlockSetVideoNameResponse) Reset()         { *m = RpcBlockSetVideoNa
 func (m *RpcBlockSetVideoNameResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoNameResponse) ProtoMessage()    {}
 func (*RpcBlockSetVideoNameResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 0, 1}
 }
 func (m *RpcBlockSetVideoNameResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5203,7 +5699,7 @@ func (m *RpcBlockSetVideoNameResponseError) Reset()         { *m = RpcBlockSetVi
 func (m *RpcBlockSetVideoNameResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoNameResponseError) ProtoMessage()    {}
 func (*RpcBlockSetVideoNameResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 0, 1, 0}
 }
 func (m *RpcBlockSetVideoNameResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5253,7 +5749,7 @@ func (m *RpcBlockSetVideoWidth) Reset()         { *m = RpcBlockSetVideoWidth{} }
 func (m *RpcBlockSetVideoWidth) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoWidth) ProtoMessage()    {}
 func (*RpcBlockSetVideoWidth) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 1}
 }
 func (m *RpcBlockSetVideoWidth) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5292,7 +5788,7 @@ func (m *RpcBlockSetVideoWidthRequest) Reset()         { *m = RpcBlockSetVideoWi
 func (m *RpcBlockSetVideoWidthRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoWidthRequest) ProtoMessage()    {}
 func (*RpcBlockSetVideoWidthRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 1, 0}
 }
 func (m *RpcBlockSetVideoWidthRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5350,7 +5846,7 @@ func (m *RpcBlockSetVideoWidthResponse) Reset()         { *m = RpcBlockSetVideoW
 func (m *RpcBlockSetVideoWidthResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoWidthResponse) ProtoMessage()    {}
 func (*RpcBlockSetVideoWidthResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 1, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 1, 1}
 }
 func (m *RpcBlockSetVideoWidthResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5395,7 +5891,7 @@ func (m *RpcBlockSetVideoWidthResponseError) Reset()         { *m = RpcBlockSetV
 func (m *RpcBlockSetVideoWidthResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetVideoWidthResponseError) ProtoMessage()    {}
 func (*RpcBlockSetVideoWidthResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 6, 1, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 6, 1, 1, 0}
 }
 func (m *RpcBlockSetVideoWidthResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5445,7 +5941,7 @@ func (m *RpcBlockSetIcon) Reset()         { *m = RpcBlockSetIcon{} }
 func (m *RpcBlockSetIcon) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIcon) ProtoMessage()    {}
 func (*RpcBlockSetIcon) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 7}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 7}
 }
 func (m *RpcBlockSetIcon) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5481,7 +5977,7 @@ func (m *RpcBlockSetIconName) Reset()         { *m = RpcBlockSetIconName{} }
 func (m *RpcBlockSetIconName) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIconName) ProtoMessage()    {}
 func (*RpcBlockSetIconName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 7, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 7, 0}
 }
 func (m *RpcBlockSetIconName) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5520,7 +6016,7 @@ func (m *RpcBlockSetIconNameRequest) Reset()         { *m = RpcBlockSetIconNameR
 func (m *RpcBlockSetIconNameRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIconNameRequest) ProtoMessage()    {}
 func (*RpcBlockSetIconNameRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 7, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 7, 0, 0}
 }
 func (m *RpcBlockSetIconNameRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5578,7 +6074,7 @@ func (m *RpcBlockSetIconNameResponse) Reset()         { *m = RpcBlockSetIconName
 func (m *RpcBlockSetIconNameResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIconNameResponse) ProtoMessage()    {}
 func (*RpcBlockSetIconNameResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 7, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 7, 0, 1}
 }
 func (m *RpcBlockSetIconNameResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5623,7 +6119,7 @@ func (m *RpcBlockSetIconNameResponseError) Reset()         { *m = RpcBlockSetIco
 func (m *RpcBlockSetIconNameResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetIconNameResponseError) ProtoMessage()    {}
 func (*RpcBlockSetIconNameResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 7, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 7, 0, 1, 0}
 }
 func (m *RpcBlockSetIconNameResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5673,7 +6169,7 @@ func (m *RpcBlockGet) Reset()         { *m = RpcBlockGet{} }
 func (m *RpcBlockGet) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGet) ProtoMessage()    {}
 func (*RpcBlockGet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5}
 }
 func (m *RpcBlockGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5711,7 +6207,7 @@ func (m *RpcBlockGetMarks) Reset()         { *m = RpcBlockGetMarks{} }
 func (m *RpcBlockGetMarks) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarks) ProtoMessage()    {}
 func (*RpcBlockGetMarks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 0}
 }
 func (m *RpcBlockGetMarks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5750,7 +6246,7 @@ func (m *RpcBlockGetMarksRequest) Reset()         { *m = RpcBlockGetMarksRequest
 func (m *RpcBlockGetMarksRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarksRequest) ProtoMessage()    {}
 func (*RpcBlockGetMarksRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 0, 0}
 }
 func (m *RpcBlockGetMarksRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5808,7 +6304,7 @@ func (m *RpcBlockGetMarksResponse) Reset()         { *m = RpcBlockGetMarksRespon
 func (m *RpcBlockGetMarksResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarksResponse) ProtoMessage()    {}
 func (*RpcBlockGetMarksResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 0, 1}
 }
 func (m *RpcBlockGetMarksResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5853,7 +6349,7 @@ func (m *RpcBlockGetMarksResponseError) Reset()         { *m = RpcBlockGetMarksR
 func (m *RpcBlockGetMarksResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarksResponseError) ProtoMessage()    {}
 func (*RpcBlockGetMarksResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 3, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 0, 1, 0}
 }
 func (m *RpcBlockGetMarksResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5912,7 +6408,7 @@ func (m *RpcBlockHistory) Reset()         { *m = RpcBlockHistory{} }
 func (m *RpcBlockHistory) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockHistory) ProtoMessage()    {}
 func (*RpcBlockHistory) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6}
 }
 func (m *RpcBlockHistory) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5948,7 +6444,7 @@ func (m *RpcBlockHistoryMove) Reset()         { *m = RpcBlockHistoryMove{} }
 func (m *RpcBlockHistoryMove) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockHistoryMove) ProtoMessage()    {}
 func (*RpcBlockHistoryMove) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 0}
 }
 func (m *RpcBlockHistoryMove) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5987,7 +6483,7 @@ func (m *RpcBlockHistoryMoveRequest) Reset()         { *m = RpcBlockHistoryMoveR
 func (m *RpcBlockHistoryMoveRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockHistoryMoveRequest) ProtoMessage()    {}
 func (*RpcBlockHistoryMoveRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 0, 0}
 }
 func (m *RpcBlockHistoryMoveRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6045,7 +6541,7 @@ func (m *RpcBlockHistoryMoveResponse) Reset()         { *m = RpcBlockHistoryMove
 func (m *RpcBlockHistoryMoveResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockHistoryMoveResponse) ProtoMessage()    {}
 func (*RpcBlockHistoryMoveResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 0, 1}
 }
 func (m *RpcBlockHistoryMoveResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6090,7 +6586,7 @@ func (m *RpcBlockHistoryMoveResponseError) Reset()         { *m = RpcBlockHistor
 func (m *RpcBlockHistoryMoveResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockHistoryMoveResponseError) ProtoMessage()    {}
 func (*RpcBlockHistoryMoveResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 4, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 0, 1, 0}
 }
 func (m *RpcBlockHistoryMoveResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6156,7 +6652,7 @@ func (m *RpcBlockOpen) Reset()         { *m = RpcBlockOpen{} }
 func (m *RpcBlockOpen) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpen) ProtoMessage()    {}
 func (*RpcBlockOpen) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7}
 }
 func (m *RpcBlockOpen) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6194,7 +6690,7 @@ func (m *RpcBlockOpenRequest) Reset()         { *m = RpcBlockOpenRequest{} }
 func (m *RpcBlockOpenRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenRequest) ProtoMessage()    {}
 func (*RpcBlockOpenRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 0}
 }
 func (m *RpcBlockOpenRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6245,7 +6741,7 @@ func (m *RpcBlockOpenResponse) Reset()         { *m = RpcBlockOpenResponse{} }
 func (m *RpcBlockOpenResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenResponse) ProtoMessage()    {}
 func (*RpcBlockOpenResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 1}
 }
 func (m *RpcBlockOpenResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6290,7 +6786,7 @@ func (m *RpcBlockOpenResponseError) Reset()         { *m = RpcBlockOpenResponseE
 func (m *RpcBlockOpenResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenResponseError) ProtoMessage()    {}
 func (*RpcBlockOpenResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 5, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 1, 0}
 }
 func (m *RpcBlockOpenResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6354,7 +6850,7 @@ func (m *RpcBlockCreate) Reset()         { *m = RpcBlockCreate{} }
 func (m *RpcBlockCreate) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreate) ProtoMessage()    {}
 func (*RpcBlockCreate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8}
 }
 func (m *RpcBlockCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6395,7 +6891,7 @@ func (m *RpcBlockCreateRequest) Reset()         { *m = RpcBlockCreateRequest{} }
 func (m *RpcBlockCreateRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreateRequest) ProtoMessage()    {}
 func (*RpcBlockCreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 0}
 }
 func (m *RpcBlockCreateRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6468,7 +6964,7 @@ func (m *RpcBlockCreateResponse) Reset()         { *m = RpcBlockCreateResponse{}
 func (m *RpcBlockCreateResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreateResponse) ProtoMessage()    {}
 func (*RpcBlockCreateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 1}
 }
 func (m *RpcBlockCreateResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6520,7 +7016,7 @@ func (m *RpcBlockCreateResponseError) Reset()         { *m = RpcBlockCreateRespo
 func (m *RpcBlockCreateResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreateResponseError) ProtoMessage()    {}
 func (*RpcBlockCreateResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 6, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 1, 0}
 }
 func (m *RpcBlockCreateResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6572,7 +7068,7 @@ func (m *RpcBlockUnlink) Reset()         { *m = RpcBlockUnlink{} }
 func (m *RpcBlockUnlink) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlink) ProtoMessage()    {}
 func (*RpcBlockUnlink) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 9}
 }
 func (m *RpcBlockUnlink) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6610,7 +7106,7 @@ func (m *RpcBlockUnlinkRequest) Reset()         { *m = RpcBlockUnlinkRequest{} }
 func (m *RpcBlockUnlinkRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlinkRequest) ProtoMessage()    {}
 func (*RpcBlockUnlinkRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 9, 0}
 }
 func (m *RpcBlockUnlinkRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6662,7 +7158,7 @@ func (m *RpcBlockUnlinkRequestTarget) Reset()         { *m = RpcBlockUnlinkReque
 func (m *RpcBlockUnlinkRequestTarget) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlinkRequestTarget) ProtoMessage()    {}
 func (*RpcBlockUnlinkRequestTarget) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 9, 0, 0}
 }
 func (m *RpcBlockUnlinkRequestTarget) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6713,7 +7209,7 @@ func (m *RpcBlockUnlinkResponse) Reset()         { *m = RpcBlockUnlinkResponse{}
 func (m *RpcBlockUnlinkResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlinkResponse) ProtoMessage()    {}
 func (*RpcBlockUnlinkResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 9, 1}
 }
 func (m *RpcBlockUnlinkResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6758,7 +7254,7 @@ func (m *RpcBlockUnlinkResponseError) Reset()         { *m = RpcBlockUnlinkRespo
 func (m *RpcBlockUnlinkResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlinkResponseError) ProtoMessage()    {}
 func (*RpcBlockUnlinkResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 7, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 9, 1, 0}
 }
 func (m *RpcBlockUnlinkResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6811,7 +7307,7 @@ func (m *RpcBlockClose) Reset()         { *m = RpcBlockClose{} }
 func (m *RpcBlockClose) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockClose) ProtoMessage()    {}
 func (*RpcBlockClose) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 10}
 }
 func (m *RpcBlockClose) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6849,7 +7345,7 @@ func (m *RpcBlockCloseRequest) Reset()         { *m = RpcBlockCloseRequest{} }
 func (m *RpcBlockCloseRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCloseRequest) ProtoMessage()    {}
 func (*RpcBlockCloseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 10, 0}
 }
 func (m *RpcBlockCloseRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6900,7 +7396,7 @@ func (m *RpcBlockCloseResponse) Reset()         { *m = RpcBlockCloseResponse{} }
 func (m *RpcBlockCloseResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCloseResponse) ProtoMessage()    {}
 func (*RpcBlockCloseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 10, 1}
 }
 func (m *RpcBlockCloseResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6945,7 +7441,7 @@ func (m *RpcBlockCloseResponseError) Reset()         { *m = RpcBlockCloseRespons
 func (m *RpcBlockCloseResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCloseResponseError) ProtoMessage()    {}
 func (*RpcBlockCloseResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 8, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 10, 1, 0}
 }
 func (m *RpcBlockCloseResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9432,6 +9928,8 @@ func init() {
 	proto.RegisterEnum("anytype.RpcBlockListSetTextStyleResponseErrorCode", RpcBlockListSetTextStyleResponseErrorCode_name, RpcBlockListSetTextStyleResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockListSetTextMarkerResponseErrorCode", RpcBlockListSetTextMarkerResponseErrorCode_name, RpcBlockListSetTextMarkerResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockListSetTextCheckableResponseErrorCode", RpcBlockListSetTextCheckableResponseErrorCode_name, RpcBlockListSetTextCheckableResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockCopyResponseErrorCode", RpcBlockCopyResponseErrorCode_name, RpcBlockCopyResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockPasteResponseErrorCode", RpcBlockPasteResponseErrorCode_name, RpcBlockPasteResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockUploadResponseErrorCode", RpcBlockUploadResponseErrorCode_name, RpcBlockUploadResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockDownloadResponseErrorCode", RpcBlockDownloadResponseErrorCode_name, RpcBlockDownloadResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetFieldsResponseErrorCode", RpcBlockSetFieldsResponseErrorCode_name, RpcBlockSetFieldsResponseErrorCode_value)
@@ -9488,6 +9986,14 @@ func init() {
 	proto.RegisterType((*RpcBlockListSetTextCheckableResponse)(nil), "anytype.Rpc.BlockList.Set.Text.Checkable.Response")
 	proto.RegisterType((*RpcBlockListSetTextCheckableResponseError)(nil), "anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error")
 	proto.RegisterType((*RpcBlock)(nil), "anytype.Rpc.Block")
+	proto.RegisterType((*RpcBlockCopy)(nil), "anytype.Rpc.Block.Copy")
+	proto.RegisterType((*RpcBlockCopyRequest)(nil), "anytype.Rpc.Block.Copy.Request")
+	proto.RegisterType((*RpcBlockCopyResponse)(nil), "anytype.Rpc.Block.Copy.Response")
+	proto.RegisterType((*RpcBlockCopyResponseError)(nil), "anytype.Rpc.Block.Copy.Response.Error")
+	proto.RegisterType((*RpcBlockPaste)(nil), "anytype.Rpc.Block.Paste")
+	proto.RegisterType((*RpcBlockPasteRequest)(nil), "anytype.Rpc.Block.Paste.Request")
+	proto.RegisterType((*RpcBlockPasteResponse)(nil), "anytype.Rpc.Block.Paste.Response")
+	proto.RegisterType((*RpcBlockPasteResponseError)(nil), "anytype.Rpc.Block.Paste.Response.Error")
 	proto.RegisterType((*RpcBlockUpload)(nil), "anytype.Rpc.Block.Upload")
 	proto.RegisterType((*RpcBlockUploadRequest)(nil), "anytype.Rpc.Block.Upload.Request")
 	proto.RegisterType((*RpcBlockUploadResponse)(nil), "anytype.Rpc.Block.Upload.Response")
@@ -9647,173 +10153,183 @@ func init() {
 func init() { proto.RegisterFile("pb/protos/commands.proto", fileDescriptor_8261c968b2e6f45c) }
 
 var fileDescriptor_8261c968b2e6f45c = []byte{
-	// 2646 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5b, 0x6d, 0x8c, 0xdc, 0x46,
-	0x19, 0xbe, 0xb5, 0x77, 0xf7, 0x6e, 0x67, 0xd3, 0xe0, 0x5a, 0xa1, 0x5c, 0x87, 0x70, 0x3d, 0xa5,
-	0xd0, 0x5e, 0xd3, 0xc4, 0x57, 0xae, 0x2d, 0x22, 0x15, 0x69, 0xb3, 0x1f, 0xbe, 0xcb, 0x26, 0x7b,
-	0xde, 0xc3, 0xeb, 0xbd, 0x03, 0xfe, 0x58, 0xde, 0xdd, 0xb9, 0x3d, 0x13, 0xef, 0x7a, 0x6b, 0xfb,
-	0x2e, 0x4d, 0x7f, 0x81, 0x50, 0x04, 0x02, 0x21, 0xb5, 0x11, 0x08, 0x44, 0x50, 0x8b, 0x00, 0x01,
-	0xa5, 0xa9, 0xd4, 0x3f, 0x51, 0x2b, 0xa4, 0x0a, 0xf1, 0xa1, 0x0a, 0x10, 0x48, 0x05, 0x24, 0x84,
-	0x54, 0x15, 0xb5, 0x09, 0x7f, 0x50, 0x5a, 0x21, 0x44, 0xfb, 0x03, 0xf1, 0xa9, 0x19, 0x7f, 0xac,
-	0x7d, 0x5d, 0xef, 0xd9, 0xfb, 0x91, 0x44, 0xe2, 0xcf, 0xc9, 0x33, 0x3b, 0xf3, 0xbc, 0xaf, 0x9f,
-	0xe7, 0x9d, 0x8f, 0x77, 0x3c, 0x07, 0x66, 0xbb, 0xf5, 0xc5, 0xae, 0xa1, 0x5b, 0xba, 0xb9, 0xd8,
-	0xd0, 0xdb, 0x6d, 0xa5, 0xd3, 0x34, 0x39, 0x52, 0x66, 0xa7, 0x95, 0xce, 0x39, 0xeb, 0x5c, 0x17,
-	0xc1, 0xd3, 0x3b, 0xa8, 0xd3, 0xd4, 0x8d, 0xc5, 0x96, 0x6a, 0x6d, 0x6d, 0xd7, 0xb9, 0x86, 0xde,
-	0x5e, 0x74, 0x7e, 0x52, 0xf5, 0xc5, 0x96, 0x7e, 0xd4, 0x29, 0x1c, 0xd5, 0xd4, 0xba, 0xa1, 0x18,
-	0xe7, 0x16, 0xbb, 0xf5, 0xc5, 0xb6, 0xde, 0x44, 0x9a, 0x8b, 0x4b, 0x0a, 0x0e, 0x2a, 0x3c, 0xd8,
-	0xd2, 0xf5, 0x96, 0x86, 0xec, 0xdf, 0xea, 0xdb, 0x9b, 0x8b, 0xa6, 0x65, 0x6c, 0x37, 0x2c, 0xfb,
-	0xd7, 0x43, 0x17, 0x2c, 0x40, 0x8b, 0xdd, 0x06, 0x7c, 0x6b, 0x1f, 0xc8, 0xe4, 0x35, 0xbd, 0x71,
-	0xa6, 0xac, 0x9a, 0x16, 0x7c, 0x9a, 0x06, 0xc9, 0x55, 0x7d, 0x07, 0xc1, 0x6f, 0x27, 0xc0, 0xb4,
-	0x88, 0x1e, 0xdd, 0x46, 0xa6, 0xc5, 0x1e, 0x04, 0x99, 0x86, 0xde, 0xb1, 0xd0, 0x63, 0x56, 0xa9,
-	0x39, 0x9b, 0x98, 0x4f, 0x2c, 0x64, 0xc4, 0x5e, 0x05, 0x0b, 0xc1, 0x4c, 0x1d, 0xf7, 0x37, 0x4b,
-	0xcd, 0x59, 0x6a, 0x9e, 0x5e, 0xc8, 0x88, 0x5e, 0x99, 0x3d, 0x04, 0xf6, 0x35, 0x0d, 0xbd, 0x2b,
-	0x29, 0x46, 0x0b, 0xe1, 0xce, 0x34, 0xe9, 0x1c, 0xa8, 0x63, 0x8f, 0x81, 0x99, 0xae, 0x6e, 0xaa,
-	0x96, 0xaa, 0x77, 0x66, 0x93, 0xf3, 0x89, 0x85, 0xfd, 0x4b, 0x1f, 0xe0, 0x9c, 0xf7, 0xe4, 0xc8,
-	0xfb, 0x70, 0xc4, 0x3d, 0x6e, 0xcd, 0x69, 0x24, 0x7a, 0xcd, 0xe1, 0xdf, 0x12, 0x60, 0x46, 0x44,
-	0x66, 0x57, 0xef, 0x98, 0x88, 0x3d, 0x01, 0x52, 0xc8, 0x30, 0x74, 0x83, 0x78, 0x98, 0x5d, 0x3a,
-	0xec, 0x81, 0x88, 0xdd, 0x06, 0xe7, 0xbd, 0x21, 0x87, 0xdf, 0x8e, 0x73, 0x3b, 0x71, 0x3c, 0xee,
-	0x21, 0xda, 0x1d, 0xf1, 0x3b, 0xa7, 0x48, 0x05, 0x5b, 0x00, 0xc9, 0x86, 0xde, 0x44, 0x04, 0x6a,
-	0xff, 0xd2, 0x62, 0x74, 0x28, 0xae, 0xa0, 0x37, 0x91, 0x48, 0x3a, 0xb3, 0xf3, 0x20, 0xdb, 0x44,
-	0x66, 0xc3, 0x50, 0xbb, 0xe4, 0xdd, 0x28, 0xf2, 0xee, 0xfe, 0xaa, 0x43, 0x4b, 0x20, 0x89, 0xdb,
-	0xb3, 0x33, 0x20, 0x29, 0xd4, 0xca, 0x65, 0x66, 0x8a, 0xbd, 0x15, 0xdc, 0x52, 0x13, 0x4e, 0x0b,
-	0x95, 0x0d, 0x41, 0xe6, 0x45, 0xb1, 0x22, 0x32, 0x09, 0xf6, 0x16, 0x90, 0xc9, 0xe7, 0x8a, 0x72,
-	0x49, 0x58, 0xab, 0x49, 0x0c, 0x05, 0x5f, 0xca, 0x00, 0xba, 0x8a, 0x2c, 0x78, 0x39, 0x03, 0x92,
-	0x12, 0x7a, 0xcc, 0x82, 0x17, 0x68, 0x90, 0xaa, 0x5a, 0xe7, 0x34, 0x04, 0x3f, 0x13, 0x59, 0xb3,
-	0x59, 0x30, 0x4d, 0x34, 0xf2, 0x24, 0x73, 0x8b, 0xec, 0x71, 0x90, 0x32, 0x31, 0x18, 0x91, 0x6a,
-	0xff, 0xd2, 0xdd, 0x7d, 0xa5, 0x28, 0x60, 0xa0, 0x8e, 0xc5, 0x61, 0xfb, 0x1c, 0xb1, 0x2d, 0xda,
-	0xbd, 0xe0, 0x79, 0xca, 0xa7, 0xc8, 0xa9, 0xa0, 0x22, 0x0f, 0x84, 0xd0, 0x58, 0x45, 0x7e, 0xa4,
-	0x10, 0x6d, 0x2e, 0x79, 0xda, 0xac, 0x06, 0xb4, 0x39, 0x36, 0x0c, 0xe8, 0xe4, 0x55, 0xfa, 0x3a,
-	0x0d, 0xd2, 0xab, 0x8a, 0x71, 0x06, 0x19, 0xf0, 0x73, 0x63, 0x50, 0xe5, 0x04, 0x48, 0xb7, 0x09,
-	0x9a, 0x23, 0xcb, 0xc2, 0xde, 0xb2, 0xd8, 0xd6, 0x45, 0xa7, 0x1f, 0xfc, 0xbc, 0x5f, 0x98, 0xd3,
-	0x41, 0x61, 0x1e, 0xdc, 0x8b, 0x43, 0x1b, 0x2b, 0x44, 0x99, 0xe7, 0x3c, 0x65, 0x84, 0x80, 0x32,
-	0x0f, 0x0d, 0x85, 0x3a, 0x79, 0x69, 0xfe, 0x45, 0x81, 0x4c, 0x61, 0x0b, 0x35, 0xce, 0x28, 0x75,
-	0x0d, 0x41, 0x79, 0x74, 0x71, 0x70, 0x3f, 0x17, 0x8f, 0xe8, 0x33, 0x23, 0xf6, 0x2a, 0xe0, 0x97,
-	0xfd, 0xc4, 0x0b, 0x41, 0xe2, 0x3f, 0xba, 0x17, 0x45, 0x9e, 0x9f, 0x21, 0xdc, 0x3f, 0xef, 0x71,
-	0xff, 0xf1, 0x00, 0xf7, 0xc7, 0x87, 0x05, 0x9e, 0x3c, 0xfd, 0x2f, 0x17, 0x40, 0x8a, 0x38, 0x04,
-	0xaf, 0x51, 0x20, 0x5d, 0xeb, 0x6a, 0xba, 0xd2, 0x84, 0x8f, 0x0e, 0xa5, 0x42, 0x62, 0x97, 0x0a,
-	0x9a, 0xde, 0x50, 0xb4, 0x35, 0xc5, 0xda, 0x72, 0xd6, 0x99, 0x5e, 0x05, 0xcb, 0x00, 0x7a, 0xdb,
-	0xd0, 0xc8, 0xfa, 0x92, 0x11, 0xf1, 0x23, 0x7c, 0xcb, 0xbf, 0x76, 0x3c, 0x1c, 0xd4, 0x65, 0xe1,
-	0xdd, 0xf4, 0x71, 0xb6, 0xa7, 0x21, 0x3a, 0x7c, 0xcb, 0xd3, 0x21, 0x17, 0xd0, 0xe1, 0x68, 0x54,
-	0xa0, 0xc9, 0xf3, 0xfe, 0x13, 0x0a, 0xcc, 0x14, 0xf5, 0xb3, 0x1d, 0xc2, 0x77, 0x6e, 0x64, 0xbe,
-	0xe3, 0xae, 0xbd, 0x9c, 0x6b, 0x7b, 0xf4, 0xb5, 0x37, 0x0c, 0x6a, 0xf2, 0x1c, 0x3e, 0x79, 0xc4,
-	0x5e, 0x7b, 0xdf, 0xa6, 0x40, 0x7a, 0x59, 0x45, 0x5a, 0xd3, 0x84, 0xc6, 0xe8, 0x91, 0xbb, 0x08,
-	0xd2, 0x9b, 0x04, 0x8c, 0x84, 0x6d, 0x76, 0xe9, 0x7d, 0x9c, 0xbd, 0x71, 0xe3, 0xdc, 0x8d, 0x1b,
-	0x57, 0x25, 0x1b, 0x37, 0xd1, 0x69, 0x06, 0xdf, 0xf1, 0x53, 0x9f, 0x0f, 0x52, 0x7f, 0xa4, 0x0f,
-	0x5f, 0x78, 0xd4, 0xdb, 0xee, 0x86, 0x90, 0xff, 0x5d, 0x8f, 0x7c, 0x3e, 0x40, 0xfe, 0x87, 0xe3,
-	0x80, 0x4d, 0x9e, 0xfe, 0xaf, 0xd1, 0x20, 0xbb, 0x86, 0x8c, 0xb6, 0x6a, 0x9a, 0xaa, 0xde, 0x31,
-	0xe1, 0xf9, 0xc4, 0xe8, 0xe4, 0xe7, 0x41, 0xb6, 0xdb, 0x83, 0x74, 0x14, 0x98, 0xef, 0xbf, 0x01,
-	0xed, 0xb5, 0x13, 0xfd, 0x9d, 0xe0, 0x7f, 0xfd, 0x7a, 0xac, 0x04, 0xf5, 0x08, 0xa3, 0xd0, 0x07,
-	0x16, 0x22, 0xca, 0x33, 0x9e, 0x28, 0xa7, 0x02, 0xa2, 0x7c, 0x24, 0x36, 0xe2, 0xe4, 0x95, 0xf9,
-	0x2b, 0x05, 0x40, 0xc9, 0xcc, 0x19, 0x8d, 0x2d, 0x75, 0x07, 0x35, 0xa1, 0x32, 0xba, 0x2e, 0x73,
-	0x7e, 0x40, 0x67, 0x55, 0xf5, 0x9b, 0xf8, 0xb7, 0x9f, 0xf3, 0xe5, 0x20, 0xe7, 0xf7, 0x85, 0x30,
-	0xd4, 0xeb, 0x1e, 0x42, 0xf9, 0x0f, 0x3c, 0xca, 0x4b, 0x01, 0xca, 0x1f, 0x8c, 0x0b, 0x38, 0x79,
-	0xc6, 0xbf, 0xc1, 0x3a, 0xdb, 0xff, 0x8b, 0xb4, 0xf3, 0xf0, 0x95, 0x31, 0x8c, 0x06, 0x16, 0x24,
-	0x71, 0x1b, 0x67, 0xfd, 0x24, 0xcf, 0x38, 0x23, 0xc0, 0x7b, 0x48, 0x93, 0x2c, 0x9e, 0xd9, 0x28,
-	0x19, 0x01, 0xde, 0xd8, 0x99, 0xa2, 0xdd, 0x0b, 0xfe, 0xd3, 0x2f, 0x14, 0x1f, 0x14, 0x6a, 0x31,
-	0x84, 0x57, 0x82, 0x42, 0xfe, 0xf4, 0xd7, 0xe9, 0xfb, 0x9e, 0x4e, 0x27, 0x03, 0x3a, 0x3d, 0x10,
-	0x13, 0x6f, 0xf2, 0x32, 0x7d, 0x71, 0xd4, 0xe4, 0x2c, 0x31, 0xc6, 0xe4, 0x6c, 0x98, 0x31, 0xb3,
-	0x67, 0x62, 0x16, 0x77, 0xcc, 0xdc, 0xc0, 0xa4, 0xec, 0x1f, 0x14, 0x00, 0x92, 0xde, 0x6a, 0x69,
-	0x88, 0xec, 0xcc, 0xc7, 0x33, 0x4b, 0x59, 0x1e, 0xa0, 0x3b, 0x4b, 0xf5, 0x6a, 0xe2, 0x66, 0x5d,
-	0xbe, 0x60, 0xf5, 0x30, 0x46, 0xcf, 0xba, 0x22, 0xa0, 0x4e, 0x9e, 0xfb, 0x27, 0x46, 0x4e, 0x88,
-	0x13, 0xe3, 0x4d, 0x88, 0x87, 0x59, 0xb4, 0xf7, 0x4e, 0x86, 0xe3, 0x2e, 0xda, 0x37, 0x32, 0x11,
-	0x7e, 0x7b, 0x0c, 0x89, 0x70, 0x22, 0x7a, 0x22, 0x1c, 0xf3, 0x68, 0x28, 0x7a, 0x12, 0x1c, 0xe3,
-	0x68, 0xe8, 0x66, 0x48, 0x80, 0x5f, 0xa7, 0x40, 0x8a, 0x58, 0x87, 0x1b, 0xa3, 0x53, 0x7e, 0x00,
-	0xa4, 0x08, 0xc3, 0x0e, 0xdd, 0x76, 0x61, 0xf8, 0x89, 0x9e, 0xf8, 0x35, 0xce, 0x89, 0xbe, 0x1f,
-	0xe0, 0xe4, 0x29, 0xfe, 0x33, 0x05, 0x92, 0xcb, 0xaa, 0x86, 0xe0, 0xab, 0x14, 0x48, 0x0a, 0x4a,
-	0x1b, 0xc1, 0xda, 0x58, 0xf6, 0x46, 0x1d, 0xa5, 0x8d, 0xdc, 0xbd, 0x11, 0x7e, 0x1e, 0x6a, 0x73,
-	0x83, 0x1d, 0xe3, 0xb0, 0x53, 0x63, 0xda, 0xdc, 0x84, 0xe1, 0x4d, 0x9e, 0xe6, 0x5f, 0xa7, 0x40,
-	0xaa, 0xd4, 0x56, 0x5a, 0x08, 0xbe, 0x36, 0x61, 0x9e, 0x87, 0xda, 0xed, 0x63, 0xcf, 0x06, 0x11,
-	0x1d, 0x7b, 0xb7, 0x1f, 0x06, 0x38, 0x79, 0xa6, 0xaf, 0x50, 0x20, 0xb5, 0xa1, 0x36, 0xad, 0xad,
-	0x31, 0xcd, 0x19, 0x67, 0x31, 0x16, 0x61, 0x38, 0x25, 0xda, 0x85, 0xa1, 0xd6, 0x43, 0x9b, 0x11,
-	0xe2, 0xd8, 0x98, 0xd6, 0xc3, 0x70, 0xc4, 0xeb, 0x13, 0xce, 0xeb, 0x6a, 0x13, 0xe9, 0x37, 0x65,
-	0x38, 0x13, 0xcf, 0xc6, 0x19, 0xce, 0xa1, 0x80, 0xff, 0xb7, 0xe1, 0x6c, 0x33, 0x32, 0xce, 0x70,
-	0x0e, 0x47, 0xbc, 0x3e, 0x8b, 0x60, 0xa9, 0xa1, 0x77, 0x6e, 0xca, 0x45, 0x10, 0x3b, 0x36, 0xce,
-	0x45, 0x30, 0x0c, 0xef, 0xba, 0xec, 0xa2, 0xe9, 0x15, 0x64, 0xc1, 0x37, 0x29, 0x90, 0x22, 0x07,
-	0x1f, 0xb0, 0x3d, 0x3a, 0xcd, 0x87, 0x41, 0xca, 0x50, 0x3a, 0x2d, 0xe4, 0x9c, 0x47, 0x1e, 0xd8,
-	0x95, 0xdd, 0x88, 0xf8, 0x37, 0xd1, 0x6e, 0x02, 0xff, 0xee, 0xa7, 0x3f, 0x17, 0xa4, 0xff, 0xde,
-	0x3e, 0x74, 0xad, 0x20, 0xe7, 0x84, 0x26, 0x84, 0xfa, 0xef, 0x78, 0xd4, 0x17, 0x03, 0xd4, 0xdf,
-	0x17, 0x03, 0x6b, 0xf2, 0xb4, 0x9f, 0xa7, 0xc1, 0xf4, 0x49, 0xd5, 0xb4, 0x74, 0xe3, 0x1c, 0xce,
-	0xeb, 0xed, 0x4b, 0x0b, 0x8d, 0xd1, 0x99, 0x9f, 0x07, 0xd9, 0xb6, 0xbe, 0x83, 0x96, 0x75, 0xe3,
-	0xac, 0x62, 0xb8, 0x07, 0x8f, 0xfe, 0x2a, 0xf8, 0x25, 0x7f, 0x1e, 0x53, 0x0c, 0xf2, 0xcd, 0xf5,
-	0xe1, 0xc8, 0xf1, 0x72, 0xd0, 0xc5, 0x83, 0x17, 0x3d, 0xca, 0x57, 0x02, 0x94, 0xdf, 0x1f, 0x0f,
-	0x2e, 0x1e, 0xeb, 0xc5, 0xf8, 0xac, 0xb3, 0x0c, 0xd8, 0x57, 0xc8, 0x09, 0xb2, 0x50, 0x91, 0xe4,
-	0xd5, 0xca, 0x3a, 0xcf, 0xd0, 0xf0, 0x32, 0x05, 0x92, 0x95, 0x2e, 0xea, 0x8c, 0xe3, 0x93, 0xd2,
-	0x5f, 0xfc, 0x91, 0xfc, 0xb1, 0x20, 0xb3, 0x77, 0xf5, 0xa1, 0x02, 0xdb, 0x0d, 0x61, 0xf4, 0x29,
-	0x8f, 0xd1, 0x47, 0x02, 0x8c, 0xde, 0x1b, 0x0d, 0x66, 0xf2, 0xf1, 0xfb, 0x2a, 0x0d, 0xd2, 0x05,
-	0x03, 0x29, 0x16, 0x82, 0x2f, 0xc7, 0xb9, 0x6a, 0x63, 0xb9, 0x57, 0x69, 0x6c, 0x3f, 0xbc, 0x32,
-	0x9e, 0x32, 0x08, 0x8f, 0x21, 0x53, 0x06, 0x79, 0x55, 0xd1, 0x6e, 0x32, 0xc2, 0x95, 0x1b, 0xec,
-	0x42, 0x57, 0x31, 0x50, 0x07, 0xbb, 0x90, 0xb2, 0x5d, 0x70, 0xcb, 0xc1, 0xd3, 0xae, 0x08, 0x9f,
-	0x54, 0xed, 0xf7, 0xef, 0xaf, 0xe0, 0x80, 0x30, 0x89, 0xf3, 0xb1, 0xb5, 0xaf, 0x89, 0xc9, 0xab,
-	0xfb, 0x3d, 0x1a, 0xa4, 0x6b, 0x1d, 0x4d, 0xed, 0x9c, 0x81, 0xcf, 0x46, 0x56, 0x37, 0x0f, 0xa6,
-	0x6d, 0x35, 0x4d, 0x72, 0xc3, 0x20, 0xe4, 0x33, 0x34, 0x41, 0xe5, 0x1c, 0x44, 0xce, 0xbe, 0x45,
-	0x25, 0xba, 0x1d, 0xe1, 0xc3, 0x20, 0x6d, 0x57, 0xf9, 0xf9, 0x4b, 0x04, 0xa7, 0x38, 0xbf, 0x84,
-	0xd4, 0x2e, 0x09, 0x63, 0x7f, 0x15, 0x77, 0xdd, 0x19, 0xf9, 0xab, 0x78, 0x3f, 0xa0, 0xc9, 0x0b,
-	0xf5, 0x22, 0x05, 0x52, 0x05, 0x4d, 0x37, 0xd1, 0x38, 0xe6, 0xaf, 0x6b, 0x7e, 0xf2, 0x8e, 0x07,
-	0xc9, 0xbb, 0xbb, 0x5f, 0x70, 0x62, 0xc3, 0x21, 0xdc, 0x3d, 0xed, 0x71, 0x77, 0x22, 0xc0, 0xdd,
-	0x91, 0x88, 0x38, 0x93, 0xa7, 0xee, 0x37, 0x29, 0x90, 0xde, 0x50, 0x34, 0x0d, 0x59, 0xf0, 0x4f,
-	0x94, 0x37, 0x99, 0x7d, 0xa8, 0x47, 0x23, 0x04, 0x33, 0x86, 0xae, 0x5b, 0xe4, 0x42, 0x86, 0xcd,
-	0xa2, 0x57, 0x86, 0x97, 0xfc, 0x53, 0xc5, 0x23, 0x41, 0xaa, 0xee, 0x09, 0xbc, 0xa2, 0x6d, 0x62,
-	0xf0, 0x5c, 0x01, 0xc1, 0x4c, 0xbb, 0x83, 0xda, 0x7a, 0x47, 0x6d, 0xb8, 0x11, 0xed, 0x96, 0xe1,
-	0x4f, 0x3d, 0x22, 0xf3, 0x01, 0x22, 0xb9, 0xc8, 0x56, 0xe2, 0x51, 0x59, 0x1d, 0x62, 0x59, 0xbd,
-	0x03, 0xbc, 0x7f, 0x39, 0x57, 0x2a, 0xf3, 0x45, 0x59, 0xaa, 0xc8, 0x05, 0x91, 0xcf, 0x49, 0xbc,
-	0x5c, 0xae, 0x14, 0x72, 0x65, 0x59, 0xe4, 0xd7, 0x2a, 0x0c, 0x82, 0x6f, 0x50, 0x98, 0xd6, 0x86,
-	0xbe, 0x83, 0x0c, 0x7f, 0xa0, 0x0e, 0x60, 0x78, 0x20, 0x27, 0x17, 0xa8, 0xa8, 0x77, 0x37, 0x1c,
-	0x5e, 0x1c, 0xdb, 0x21, 0xb1, 0xfa, 0xb3, 0x48, 0x77, 0x37, 0x06, 0x42, 0xdd, 0x04, 0x1c, 0x5f,
-	0xdc, 0x07, 0xa6, 0x73, 0x8d, 0x86, 0xbe, 0xdd, 0xb1, 0xe0, 0xf3, 0x49, 0x2f, 0xa0, 0xcf, 0xf6,
-	0xe8, 0x76, 0x93, 0x9f, 0x44, 0x2f, 0xf9, 0x61, 0x0f, 0x83, 0xf7, 0x28, 0x3b, 0x8a, 0xa5, 0x18,
-	0x65, 0xef, 0xf2, 0x11, 0x71, 0xf8, 0xe4, 0x94, 0xb8, 0xfb, 0x07, 0xf6, 0x10, 0xc8, 0xda, 0x55,
-	0x05, 0x5d, 0xd3, 0xed, 0x2f, 0x17, 0xb8, 0x9d, 0xbf, 0x32, 0x3f, 0x03, 0xd2, 0x76, 0x11, 0x5e,
-	0xa2, 0xa3, 0x8a, 0xe4, 0x78, 0x3d, 0x78, 0x8c, 0xdc, 0x07, 0xa6, 0x15, 0xbb, 0x1d, 0x71, 0x30,
-	0xbb, 0x74, 0xdb, 0xae, 0x25, 0xdf, 0x41, 0x11, 0xdd, 0x66, 0xf0, 0x59, 0x2a, 0x8a, 0xac, 0x03,
-	0x8d, 0xc7, 0x93, 0xf5, 0x47, 0x89, 0x21, 0x74, 0x3d, 0x02, 0x16, 0x72, 0x85, 0x42, 0xa5, 0x26,
-	0x48, 0x8e, 0xaa, 0x45, 0x39, 0x5f, 0x93, 0xe4, 0x9e, 0xd6, 0x55, 0x29, 0x27, 0x4a, 0xb2, 0x50,
-	0x29, 0xf2, 0x0c, 0x96, 0xeb, 0xae, 0x3d, 0x5a, 0xf3, 0x92, 0x2c, 0xe4, 0x56, 0x79, 0x66, 0x33,
-	0x02, 0x32, 0x2f, 0xc9, 0xb9, 0xf5, 0x9c, 0x94, 0x13, 0x99, 0x16, 0xfc, 0x39, 0xdd, 0x1b, 0xa2,
-	0x19, 0x2f, 0x66, 0xe0, 0x73, 0x74, 0xd4, 0xec, 0xcc, 0x25, 0x72, 0xf0, 0x58, 0x7b, 0x8d, 0x8a,
-	0x92, 0x9d, 0x0d, 0xc6, 0x8a, 0xa7, 0xca, 0xb5, 0x61, 0x54, 0x79, 0x2f, 0xb8, 0x55, 0xa8, 0xc8,
-	0x0e, 0x7d, 0x55, 0x79, 0xb9, 0x52, 0x13, 0x8a, 0x0c, 0xb6, 0x76, 0x50, 0xe0, 0x6d, 0xf2, 0x44,
-	0xbe, 0x50, 0x59, 0xe7, 0x45, 0x79, 0x23, 0x57, 0x2e, 0xf3, 0x92, 0xbc, 0x5c, 0x12, 0xab, 0x12,
-	0xb3, 0xb9, 0xd7, 0x30, 0x6d, 0xb1, 0x77, 0x82, 0x3b, 0x7a, 0x65, 0x99, 0xff, 0x44, 0xa9, 0x2a,
-	0x55, 0x89, 0x2e, 0x85, 0x8a, 0x28, 0xd6, 0xd6, 0x24, 0xbe, 0xc8, 0x6c, 0xb1, 0xb7, 0x01, 0xb6,
-	0x87, 0x22, 0xd6, 0x04, 0x5b, 0x7e, 0x15, 0xdb, 0x77, 0xec, 0xb9, 0xe6, 0x71, 0x2a, 0xb3, 0xc6,
-	0x8b, 0xcb, 0x15, 0x71, 0x95, 0x2f, 0x32, 0x9f, 0x86, 0x5f, 0x4d, 0x82, 0x74, 0x15, 0x69, 0xa8,
-	0x61, 0xc1, 0x07, 0x7b, 0x23, 0x7f, 0x3f, 0xa0, 0x54, 0x77, 0x2b, 0x40, 0xa9, 0xcd, 0xc0, 0xc4,
-	0x4b, 0xed, 0x5a, 0xda, 0x7e, 0x1f, 0x7b, 0xdc, 0xda, 0xf6, 0xc6, 0x36, 0x6e, 0x7f, 0x17, 0x6b,
-	0xdc, 0xf6, 0x35, 0x1e, 0x2f, 0x42, 0xde, 0x48, 0x4c, 0x60, 0x3e, 0x8e, 0x22, 0xf4, 0x66, 0x88,
-	0xd0, 0xad, 0x20, 0xfa, 0x72, 0x49, 0x28, 0xba, 0xb1, 0x28, 0x97, 0x84, 0xe5, 0x0a, 0xb3, 0xc5,
-	0x72, 0xe0, 0xb0, 0x0f, 0x1d, 0x47, 0x81, 0x63, 0x21, 0x27, 0x14, 0xe5, 0x55, 0x81, 0x5f, 0xad,
-	0x08, 0xa5, 0x02, 0xa9, 0xaf, 0xf2, 0x12, 0xa3, 0xc2, 0x1f, 0xd3, 0x80, 0x2e, 0xeb, 0x2d, 0xf8,
-	0x02, 0x0d, 0x92, 0x55, 0xd4, 0x69, 0xc2, 0x1f, 0xfa, 0xf6, 0xf5, 0xb3, 0x60, 0xba, 0x8d, 0x4c,
-	0x53, 0x69, 0xb9, 0x6b, 0x83, 0x5b, 0x64, 0x8f, 0x81, 0x94, 0x86, 0x76, 0x90, 0x46, 0x68, 0xdb,
-	0xbf, 0x74, 0x67, 0x40, 0x82, 0xb2, 0xde, 0xe2, 0x30, 0x96, 0xb7, 0x9b, 0x2f, 0xe3, 0xa6, 0xa2,
-	0xdd, 0xe3, 0xd0, 0x29, 0x90, 0x22, 0x65, 0x36, 0x03, 0x52, 0x45, 0x3e, 0x5f, 0x5b, 0x61, 0xa6,
-	0xf0, 0xa3, 0x4b, 0x67, 0x06, 0xa4, 0x96, 0x73, 0x52, 0xae, 0xcc, 0x50, 0x98, 0x76, 0xf2, 0x56,
-	0x34, 0xae, 0x5c, 0xcb, 0x09, 0xa5, 0x02, 0x93, 0x64, 0xb3, 0x60, 0x7a, 0x23, 0x27, 0x0a, 0x25,
-	0x61, 0x85, 0x49, 0xc1, 0xcf, 0xfa, 0x17, 0xfc, 0x87, 0x82, 0x31, 0xf9, 0xc1, 0x30, 0x9f, 0x06,
-	0x9f, 0x54, 0x1c, 0x0f, 0xc4, 0xd6, 0x3d, 0x51, 0x40, 0xe2, 0x45, 0x95, 0x30, 0x44, 0x50, 0xdd,
-	0x02, 0x32, 0x58, 0x32, 0x77, 0xba, 0xc9, 0x82, 0x69, 0xa9, 0xb4, 0xca, 0x57, 0x6a, 0x12, 0xb3,
-	0x09, 0xff, 0x40, 0x81, 0xe9, 0x75, 0x64, 0x98, 0xaa, 0xde, 0x81, 0xbf, 0x72, 0x0e, 0xed, 0x7c,
-	0x13, 0xf5, 0x0b, 0x54, 0xd4, 0xcd, 0xbb, 0x03, 0x42, 0x0e, 0xbf, 0x42, 0x73, 0xd7, 0x1d, 0xbb,
-	0x91, 0x9b, 0x22, 0x38, 0x45, 0xf8, 0xdb, 0x48, 0xdb, 0xfa, 0x70, 0x0b, 0xf1, 0x28, 0x6c, 0x0e,
-	0x41, 0xe1, 0x01, 0xc0, 0xac, 0xf3, 0x62, 0xb5, 0x54, 0x11, 0xe4, 0x52, 0x55, 0xe6, 0x57, 0xd7,
-	0xa4, 0x4f, 0x32, 0xf4, 0x40, 0x62, 0xbf, 0x99, 0x01, 0xc9, 0x52, 0x77, 0xd3, 0x84, 0xef, 0xb8,
-	0x9f, 0x5d, 0xdf, 0x74, 0xe8, 0xbd, 0x3d, 0x74, 0x06, 0x85, 0xbf, 0x8c, 0x9c, 0x00, 0x60, 0x68,
-	0xfb, 0x23, 0x67, 0x38, 0xe1, 0x2c, 0x48, 0x36, 0x15, 0x4b, 0x21, 0x1c, 0xec, 0x13, 0xc9, 0x33,
-	0x7b, 0x00, 0xa4, 0xda, 0xa8, 0xa9, 0x2a, 0xce, 0x59, 0xb5, 0x5d, 0xf0, 0xf6, 0x70, 0x49, 0xdf,
-	0x01, 0xf6, 0x4b, 0x91, 0x52, 0x84, 0x41, 0x7e, 0xdc, 0xd8, 0xc8, 0xbe, 0x98, 0x76, 0xbf, 0xc3,
-	0x3e, 0x99, 0xb6, 0x89, 0xff, 0x0f, 0x05, 0x92, 0x79, 0x4d, 0xaf, 0xc3, 0x93, 0xe1, 0x6b, 0xd8,
-	0x51, 0x90, 0x34, 0xd5, 0xc7, 0x91, 0x33, 0x33, 0xdd, 0xbe, 0x6b, 0x55, 0xb1, 0x3f, 0xc4, 0x55,
-	0xd5, 0xc7, 0x91, 0x48, 0x9a, 0xe1, 0xdd, 0x60, 0xc4, 0x53, 0x7e, 0x42, 0x94, 0xdd, 0x1f, 0x33,
-	0x85, 0xfd, 0x08, 0x97, 0xad, 0xae, 0xe9, 0x75, 0x57, 0x36, 0xfc, 0xec, 0x4b, 0x26, 0x06, 0x9d,
-	0xfc, 0xef, 0x6d, 0xe3, 0xc6, 0x4a, 0xf2, 0x05, 0xda, 0x19, 0x0a, 0xe3, 0x13, 0xe0, 0xf2, 0xb0,
-	0x02, 0x90, 0x98, 0xed, 0x2f, 0x40, 0xe0, 0x9f, 0x26, 0xa8, 0x5d, 0xff, 0x34, 0x31, 0x9c, 0x14,
-	0x7d, 0xac, 0xdd, 0x58, 0x29, 0x9e, 0xa1, 0x40, 0xba, 0xa0, 0x77, 0x36, 0xd5, 0x16, 0x7c, 0xea,
-	0xdd, 0xd3, 0x7e, 0xe0, 0x34, 0x7f, 0xe0, 0x99, 0xb3, 0x8d, 0x31, 0x60, 0x12, 0x9a, 0x07, 0xd9,
-	0x2d, 0xbd, 0x8d, 0xf2, 0x81, 0xc3, 0x21, 0x7f, 0x55, 0xc4, 0x53, 0xe9, 0x50, 0x43, 0x13, 0x3f,
-	0xd3, 0xc9, 0x1f, 0xfc, 0xc5, 0x95, 0xb9, 0xc4, 0x2b, 0x57, 0xe6, 0x12, 0xaf, 0x5f, 0x99, 0x4b,
-	0x3c, 0x71, 0x75, 0x6e, 0xea, 0x95, 0xab, 0x73, 0x53, 0x7f, 0xbc, 0x3a, 0x37, 0xf5, 0x29, 0xaa,
-	0x5b, 0xaf, 0xa7, 0xc9, 0x3f, 0x24, 0xdc, 0xff, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x57, 0x26,
-	0x4a, 0xb7, 0xc9, 0x3a, 0x00, 0x00,
+	// 2814 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5b, 0x6d, 0x8c, 0x1b, 0x47,
+	0xf9, 0x3f, 0xef, 0xfa, 0xe5, 0x3c, 0x4e, 0xee, 0xef, 0xae, 0xf2, 0x2f, 0xd7, 0x21, 0x5c, 0x4f,
+	0x69, 0x69, 0xaf, 0xa1, 0xd9, 0x2b, 0xd7, 0x16, 0xd1, 0x8a, 0xb4, 0xf1, 0xcb, 0xde, 0xc5, 0x89,
+	0x6f, 0x7d, 0xac, 0xed, 0x3b, 0xe0, 0x8b, 0xb5, 0xb6, 0xe7, 0x7c, 0x4b, 0xd6, 0x1e, 0x77, 0x77,
+	0xef, 0xd2, 0xab, 0x40, 0x2a, 0xa0, 0x08, 0x44, 0x85, 0xd4, 0x22, 0x10, 0x12, 0x41, 0x6d, 0x05,
+	0x08, 0x28, 0x49, 0xa5, 0x7e, 0xa9, 0x5a, 0x51, 0x01, 0x82, 0x22, 0x54, 0x10, 0x48, 0x05, 0x24,
+	0x04, 0xaa, 0x8a, 0xda, 0x84, 0x2f, 0x28, 0x41, 0x08, 0xb5, 0xfd, 0x80, 0x10, 0x05, 0xcd, 0xec,
+	0x8b, 0x77, 0x2f, 0x5e, 0xdf, 0xae, 0xcf, 0x4e, 0x82, 0xf8, 0x72, 0xda, 0x99, 0x9b, 0xf9, 0xcd,
+	0x33, 0xbf, 0xdf, 0x33, 0x6f, 0xcf, 0x8c, 0xc1, 0x74, 0xb7, 0x3e, 0xdf, 0xd5, 0xb0, 0x81, 0xf5,
+	0xf9, 0x06, 0x6e, 0xb7, 0xe5, 0x4e, 0x53, 0xe7, 0x69, 0x9a, 0x4b, 0xc8, 0x9d, 0x6d, 0x63, 0xbb,
+	0x8b, 0xe0, 0xc9, 0x2d, 0xd4, 0x69, 0x62, 0x6d, 0xbe, 0xa5, 0x18, 0x1b, 0x9b, 0x75, 0xbe, 0x81,
+	0xdb, 0xf3, 0xd6, 0xbf, 0x14, 0x3c, 0xdf, 0xc2, 0x47, 0xac, 0xc4, 0x11, 0x55, 0xa9, 0x6b, 0xb2,
+	0xb6, 0x3d, 0xdf, 0xad, 0xcf, 0xb7, 0x71, 0x13, 0xa9, 0x36, 0x2e, 0x4d, 0x58, 0xa8, 0xf0, 0x60,
+	0x0b, 0xe3, 0x96, 0x8a, 0xcc, 0xff, 0xd5, 0x37, 0xd7, 0xe7, 0x75, 0x43, 0xdb, 0x6c, 0x18, 0xe6,
+	0x7f, 0x0f, 0xfd, 0xe8, 0x53, 0x80, 0x95, 0xba, 0x0d, 0xf8, 0xd6, 0x3e, 0x90, 0xcc, 0xaa, 0xb8,
+	0x71, 0xaa, 0xa8, 0xe8, 0x06, 0x7c, 0x8a, 0x05, 0xd1, 0x65, 0xbc, 0x85, 0xe0, 0x37, 0x23, 0x20,
+	0x21, 0xa1, 0x87, 0x36, 0x91, 0x6e, 0x70, 0x07, 0x41, 0xb2, 0x81, 0x3b, 0x06, 0x7a, 0xd8, 0x28,
+	0x34, 0xa7, 0x23, 0xb3, 0x91, 0xb9, 0xa4, 0xd4, 0xcb, 0xe0, 0x20, 0x98, 0xac, 0x93, 0xfa, 0x85,
+	0xa6, 0x3e, 0xcd, 0xcc, 0xb2, 0x73, 0x49, 0xc9, 0x49, 0x73, 0x87, 0xc0, 0xbe, 0xa6, 0x86, 0xbb,
+	0x15, 0x59, 0x6b, 0x21, 0x52, 0x99, 0xa5, 0x95, 0x3d, 0x79, 0xdc, 0x7d, 0x60, 0xb2, 0x8b, 0x75,
+	0xc5, 0x50, 0x70, 0x67, 0x3a, 0x3a, 0x1b, 0x99, 0x9b, 0x5a, 0x78, 0x1f, 0x6f, 0xf5, 0x93, 0xa7,
+	0xfd, 0xe1, 0xa9, 0x79, 0xfc, 0x8a, 0x55, 0x48, 0x72, 0x8a, 0xc3, 0xbf, 0x47, 0xc0, 0xa4, 0x84,
+	0xf4, 0x2e, 0xee, 0xe8, 0x88, 0x3b, 0x06, 0x62, 0x48, 0xd3, 0xb0, 0x46, 0x2d, 0x4c, 0x2d, 0x1c,
+	0x76, 0x40, 0xa4, 0x6e, 0x83, 0x77, 0x7a, 0xc8, 0x93, 0xde, 0xf1, 0x76, 0x25, 0x5e, 0x20, 0x35,
+	0x24, 0xb3, 0x22, 0xe9, 0x73, 0x8c, 0x66, 0x70, 0x39, 0x10, 0x6d, 0xe0, 0x26, 0xa2, 0x50, 0x53,
+	0x0b, 0xf3, 0xc1, 0xa1, 0xf8, 0x1c, 0x6e, 0x22, 0x89, 0x56, 0xe6, 0x66, 0x41, 0xaa, 0x89, 0xf4,
+	0x86, 0xa6, 0x74, 0x69, 0xdf, 0x18, 0xda, 0x77, 0x77, 0xd6, 0xa1, 0x05, 0x10, 0x25, 0xe5, 0xb9,
+	0x49, 0x10, 0x15, 0xab, 0xc5, 0x62, 0x7a, 0x82, 0xbb, 0x01, 0xec, 0xaf, 0x8a, 0x27, 0xc5, 0xd2,
+	0x9a, 0x58, 0x13, 0x24, 0xa9, 0x24, 0xa5, 0x23, 0xdc, 0x7e, 0x90, 0xcc, 0x66, 0xf2, 0xb5, 0x82,
+	0xb8, 0x52, 0xad, 0xa4, 0x19, 0xf8, 0x72, 0x12, 0xb0, 0x65, 0x64, 0xc0, 0x97, 0x92, 0x20, 0x5a,
+	0x41, 0x0f, 0x1b, 0xf0, 0x2b, 0x2c, 0x88, 0x95, 0x8d, 0x6d, 0x15, 0xc1, 0xcf, 0x8e, 0x44, 0xb3,
+	0xa3, 0x20, 0xa6, 0x13, 0x38, 0x2a, 0xd6, 0xd4, 0xc2, 0xed, 0x7d, 0xc5, 0xc8, 0x11, 0xa8, 0x8e,
+	0xc1, 0x13, 0x0b, 0x78, 0xda, 0xba, 0x64, 0xd6, 0x82, 0x67, 0x18, 0x97, 0x26, 0x27, 0xbc, 0x9a,
+	0xdc, 0xe3, 0x43, 0x64, 0x19, 0xb9, 0x91, 0x7c, 0xd4, 0x39, 0xef, 0xa8, 0xb3, 0xec, 0x51, 0xe7,
+	0xbe, 0x61, 0x40, 0xc7, 0xaf, 0xd3, 0xd7, 0x59, 0x10, 0x5f, 0x96, 0xb5, 0x53, 0x48, 0x83, 0x67,
+	0x46, 0xa2, 0xcb, 0x31, 0x10, 0x6f, 0x53, 0x3c, 0x4b, 0x98, 0xb9, 0xdd, 0x85, 0x31, 0xdb, 0x97,
+	0xac, 0x7a, 0xf0, 0xf3, 0x6e, 0x69, 0x4e, 0x7a, 0xa5, 0xb9, 0x77, 0x37, 0x16, 0x4d, 0x2c, 0x1f,
+	0x6d, 0x9e, 0x75, 0xb4, 0x11, 0x3d, 0xda, 0xdc, 0x3f, 0x14, 0xea, 0xf8, 0xc5, 0x79, 0x97, 0x01,
+	0xc9, 0xdc, 0x06, 0x6a, 0x9c, 0x92, 0xeb, 0x2a, 0x82, 0xf2, 0x28, 0xe4, 0x21, 0x35, 0x6d, 0x44,
+	0xaa, 0xd0, 0xa4, 0xd4, 0xcb, 0x80, 0x5f, 0x72, 0x53, 0x2f, 0x7a, 0xa9, 0xff, 0xf0, 0x6e, 0x24,
+	0x39, 0x96, 0xfa, 0xb0, 0xff, 0x9c, 0xc3, 0xfe, 0x47, 0x3d, 0xec, 0x1f, 0x1d, 0x16, 0x78, 0xfc,
+	0x02, 0x5c, 0x3e, 0x09, 0x62, 0xd4, 0x20, 0xf8, 0x74, 0x94, 0x54, 0xef, 0x6e, 0xc3, 0x97, 0x02,
+	0x8f, 0x92, 0xdb, 0xc0, 0xd4, 0x3a, 0x6e, 0x6c, 0xea, 0xa8, 0x99, 0x35, 0xd9, 0xb7, 0xac, 0xda,
+	0x91, 0xcb, 0x65, 0xc1, 0x0d, 0x3a, 0x52, 0x51, 0xc3, 0x40, 0x4d, 0xd2, 0x5d, 0x49, 0xee, 0xb4,
+	0x4c, 0x69, 0x52, 0x0b, 0x07, 0x76, 0x0c, 0x1e, 0xfa, 0x3f, 0xe9, 0xca, 0xe2, 0xa4, 0x2d, 0x3b,
+	0x93, 0xc2, 0xea, 0xd3, 0x51, 0x2a, 0xfc, 0x8e, 0x5c, 0xf8, 0x47, 0xb7, 0xc0, 0x1f, 0xf1, 0x0a,
+	0x7c, 0xdb, 0x95, 0x3a, 0xf0, 0xa4, 0xcb, 0xfd, 0xe5, 0xe4, 0x6e, 0x05, 0xfb, 0x1b, 0xaa, 0xd2,
+	0xad, 0x63, 0x59, 0xa3, 0x86, 0x58, 0xbd, 0xf3, 0x66, 0x7a, 0x4a, 0x1d, 0x37, 0xda, 0xaa, 0xb5,
+	0xb6, 0x7a, 0x33, 0xc9, 0x02, 0xec, 0x64, 0x64, 0x3a, 0xdb, 0x74, 0x81, 0x4d, 0x4a, 0x9e, 0x3c,
+	0xf8, 0xa4, 0xe3, 0x3e, 0x0f, 0x7a, 0xdc, 0xe7, 0x03, 0xc1, 0xcc, 0x1e, 0xbf, 0xb3, 0x3c, 0x1a,
+	0x05, 0xb1, 0x15, 0x59, 0x37, 0x10, 0x3c, 0xc7, 0xfc, 0x17, 0xfb, 0xc8, 0x95, 0xc2, 0xc6, 0x02,
+	0x09, 0x1b, 0x0f, 0x22, 0x6c, 0xa2, 0x8f, 0xb0, 0xaf, 0xb8, 0xb7, 0x47, 0x47, 0xbd, 0x3e, 0x79,
+	0x7b, 0x1f, 0x71, 0x29, 0xc7, 0x3e, 0x73, 0xcc, 0xa7, 0x6d, 0x1f, 0x39, 0xe6, 0xf1, 0x91, 0x3b,
+	0x03, 0xc2, 0xb8, 0x9c, 0x64, 0x28, 0x17, 0xb8, 0xc4, 0x80, 0x78, 0xb5, 0xab, 0x62, 0xb9, 0x09,
+	0x1f, 0x0a, 0xea, 0x02, 0xd3, 0x20, 0x51, 0xf7, 0x68, 0x6f, 0x27, 0x49, 0x3d, 0x15, 0x37, 0x64,
+	0x75, 0x45, 0x36, 0x36, 0xac, 0x71, 0xd3, 0xcb, 0xe0, 0xd2, 0x80, 0xdd, 0xd4, 0x54, 0x6b, 0xa8,
+	0x90, 0x4f, 0xf8, 0x57, 0x37, 0x91, 0x0f, 0x78, 0x89, 0x9c, 0xeb, 0xc3, 0x80, 0x69, 0xa9, 0x0f,
+	0x93, 0x4f, 0x3b, 0xc3, 0x2d, 0xe3, 0xa1, 0xf2, 0x48, 0x50, 0xa0, 0xf1, 0x0f, 0xb8, 0x9f, 0x30,
+	0x60, 0x32, 0x8f, 0x4f, 0x77, 0x28, 0xdf, 0x99, 0x3d, 0xf3, 0x1d, 0x76, 0x9f, 0xce, 0xdb, 0x6d,
+	0xef, 0x7d, 0x9f, 0xee, 0x07, 0x35, 0x7e, 0x0e, 0x9f, 0xb8, 0xd3, 0xdc, 0xa7, 0xbf, 0xcd, 0x80,
+	0xf8, 0xa2, 0x82, 0xd4, 0xa6, 0x0e, 0xb5, 0xbd, 0x7b, 0xee, 0x3c, 0x88, 0xaf, 0x53, 0x30, 0x6b,
+	0x8e, 0x7a, 0x0f, 0x6f, 0x1e, 0xf2, 0x78, 0xfb, 0x90, 0xc7, 0x97, 0xe9, 0x21, 0x4f, 0xb2, 0x8a,
+	0xc1, 0x77, 0xdc, 0xd4, 0x67, 0xbd, 0xd4, 0xf7, 0x1b, 0xbc, 0x64, 0x6f, 0x60, 0x9a, 0xeb, 0x43,
+	0xfe, 0xb7, 0x1d, 0xf2, 0x05, 0x0f, 0xf9, 0x1f, 0x0c, 0x03, 0x36, 0x7e, 0xfa, 0xbf, 0xc6, 0x82,
+	0xd4, 0x0a, 0xd2, 0xda, 0x8a, 0xae, 0x2b, 0xb8, 0xa3, 0x87, 0xd8, 0x83, 0xfb, 0x93, 0x9f, 0x05,
+	0xa9, 0x6e, 0x0f, 0xd2, 0x52, 0x60, 0xb6, 0xff, 0x61, 0xb5, 0x57, 0x4e, 0x72, 0x57, 0x82, 0xff,
+	0x76, 0xeb, 0xb1, 0xe4, 0xd5, 0xc3, 0x8f, 0x42, 0x17, 0x98, 0x8f, 0x28, 0xcf, 0x38, 0xa2, 0x9c,
+	0xf0, 0x88, 0xf2, 0xa1, 0xd0, 0x88, 0xe3, 0x57, 0xe6, 0x6f, 0x0c, 0x00, 0x05, 0x3d, 0xa3, 0x35,
+	0x36, 0x94, 0x2d, 0xd4, 0x0c, 0xbe, 0xf9, 0xf6, 0xd7, 0x65, 0xc6, 0x0d, 0x68, 0xed, 0xbd, 0xdd,
+	0x4d, 0xfc, 0xcb, 0xcd, 0xf9, 0xa2, 0x97, 0xf3, 0xbb, 0x7c, 0x18, 0xea, 0x55, 0xf7, 0xa1, 0xfc,
+	0x7b, 0x0e, 0xe5, 0x05, 0x0f, 0xe5, 0xf7, 0x86, 0x05, 0xbc, 0x0a, 0x47, 0x51, 0xce, 0x0a, 0x15,
+	0x9c, 0x65, 0xed, 0x98, 0xc1, 0x08, 0x46, 0x03, 0x07, 0xa2, 0xa4, 0x8c, 0xb5, 0x7e, 0xd2, 0x6f,
+	0xb2, 0xc9, 0x20, 0x67, 0x4d, 0x9d, 0x2e, 0x9e, 0xa9, 0x20, 0xb1, 0x03, 0x72, 0x00, 0xd4, 0x25,
+	0xb3, 0x16, 0xfc, 0xa7, 0x5b, 0x28, 0xc1, 0x2b, 0xd4, 0xbc, 0x0f, 0xaf, 0x14, 0x85, 0xfe, 0xe9,
+	0xaf, 0xd3, 0x77, 0x1d, 0x9d, 0x8e, 0x7b, 0x74, 0xba, 0x27, 0x24, 0xde, 0xf8, 0x65, 0xfa, 0xa2,
+	0x13, 0xc8, 0x79, 0x74, 0x04, 0xf2, 0xec, 0x31, 0x8c, 0x33, 0xcc, 0x98, 0xd9, 0x35, 0x84, 0x13,
+	0x76, 0xcc, 0x5c, 0xc3, 0xf0, 0xcd, 0x3f, 0x18, 0x00, 0x2a, 0xb8, 0xd5, 0x52, 0x51, 0xb8, 0x10,
+	0xc1, 0xc0, 0x59, 0xca, 0x70, 0x00, 0xed, 0x59, 0xaa, 0x97, 0x13, 0x36, 0x3a, 0xe3, 0x72, 0x56,
+	0x07, 0x63, 0xef, 0xd1, 0x99, 0x00, 0xa8, 0xe3, 0xe7, 0xfe, 0xf1, 0x5e, 0xe8, 0xec, 0x73, 0x23,
+	0x18, 0x09, 0x7b, 0x0f, 0x9c, 0x0d, 0xb3, 0x68, 0xef, 0x1e, 0x34, 0x0b, 0xbb, 0x68, 0x5f, 0xcb,
+	0x80, 0xd9, 0xdb, 0x9e, 0x80, 0x59, 0x6d, 0x24, 0x47, 0xb0, 0x01, 0xe1, 0xb2, 0x90, 0x41, 0xe4,
+	0xe0, 0xa1, 0xb2, 0x10, 0x41, 0xe4, 0xeb, 0x21, 0x4c, 0xf6, 0x06, 0x03, 0x62, 0xb4, 0x75, 0xb8,
+	0xb6, 0x77, 0xca, 0x0f, 0x80, 0x18, 0x65, 0xd8, 0xa2, 0xdb, 0x4c, 0x0c, 0x3f, 0xd1, 0x53, 0xbb,
+	0x46, 0x39, 0xd1, 0xf7, 0x03, 0x1c, 0x3f, 0xc5, 0x7f, 0x66, 0x40, 0x74, 0x51, 0x51, 0x11, 0x7c,
+	0x8d, 0x01, 0x51, 0x51, 0x6e, 0x23, 0x58, 0x1d, 0xc9, 0xde, 0xa8, 0x23, 0xb7, 0x91, 0xbd, 0x37,
+	0x22, 0xdf, 0x43, 0x6d, 0x6e, 0x88, 0x61, 0x3c, 0x31, 0x6a, 0x44, 0x9b, 0x1b, 0x3f, 0xbc, 0xf1,
+	0xd3, 0xfc, 0xab, 0x18, 0x88, 0x15, 0xda, 0x72, 0x0b, 0xc1, 0xd7, 0xc7, 0xcc, 0xf3, 0x50, 0xbb,
+	0x7d, 0x62, 0xd9, 0x20, 0xa2, 0x43, 0xef, 0xf6, 0xfd, 0x00, 0xc7, 0xcf, 0xf4, 0x05, 0x06, 0xc4,
+	0xd6, 0x94, 0xa6, 0xb1, 0x31, 0xa2, 0x39, 0xe3, 0x34, 0xc1, 0xa2, 0x0c, 0xc7, 0x24, 0x33, 0x31,
+	0xd4, 0x7a, 0x68, 0x32, 0x42, 0x0d, 0x1b, 0xd1, 0x7a, 0xe8, 0x8f, 0x78, 0x75, 0xdc, 0x79, 0x55,
+	0x69, 0x22, 0x7c, 0x5d, 0xba, 0x33, 0xb5, 0x6c, 0x94, 0xee, 0xec, 0x0b, 0xf8, 0x3f, 0xeb, 0xce,
+	0x26, 0x23, 0xa3, 0x74, 0x67, 0x7f, 0xc4, 0xab, 0xb3, 0x08, 0x16, 0x1a, 0xb8, 0x73, 0x5d, 0x2e,
+	0x82, 0xc4, 0xb0, 0x51, 0x2e, 0x82, 0x7e, 0x78, 0x57, 0x65, 0x17, 0xcd, 0x2e, 0x21, 0x03, 0x5e,
+	0x66, 0x40, 0x8c, 0x06, 0x3e, 0x60, 0x7b, 0xef, 0x34, 0x1f, 0x06, 0x31, 0x6d, 0xd7, 0x5b, 0x2b,
+	0xb3, 0x08, 0x7c, 0xcb, 0x4d, 0x7f, 0xc6, 0x4b, 0x7f, 0xbf, 0xeb, 0xbe, 0x25, 0x64, 0x45, 0x68,
+	0x7c, 0xa8, 0xff, 0x96, 0x43, 0x7d, 0xde, 0x43, 0xfd, 0x5d, 0x21, 0xb0, 0xc6, 0x4f, 0xfb, 0x19,
+	0x16, 0x24, 0x8e, 0x2b, 0xba, 0x81, 0xb5, 0x6d, 0x72, 0xae, 0x37, 0x1f, 0x38, 0x35, 0xf6, 0xce,
+	0xfc, 0x2c, 0x48, 0xb5, 0xf1, 0x16, 0x5a, 0xc4, 0xda, 0x69, 0x59, 0xb3, 0x03, 0x8f, 0xee, 0x2c,
+	0xf8, 0x98, 0xfb, 0x1c, 0x93, 0xf7, 0xf2, 0xcd, 0xf7, 0xe1, 0xc8, 0xb2, 0x72, 0xd0, 0x23, 0xa5,
+	0x17, 0x1d, 0xca, 0x97, 0x3c, 0x94, 0xdf, 0x1d, 0x0e, 0x2e, 0x1c, 0xeb, 0xf9, 0xf0, 0xac, 0x73,
+	0x69, 0xb0, 0x2f, 0x97, 0x11, 0x6b, 0x62, 0xa9, 0x52, 0x5b, 0x2e, 0xad, 0x0a, 0x69, 0x16, 0x3e,
+	0xcf, 0x80, 0x68, 0xa9, 0x8b, 0x3a, 0xa3, 0xb8, 0x52, 0xfa, 0x4b, 0x24, 0xdc, 0x7d, 0x3b, 0x69,
+	0xd7, 0x87, 0xd1, 0x30, 0xf7, 0xdf, 0x7d, 0x60, 0xc6, 0xef, 0xbf, 0xaf, 0xb1, 0x20, 0x9e, 0xd3,
+	0x90, 0x6c, 0x20, 0xf8, 0xf3, 0x30, 0x4f, 0x89, 0x0c, 0xfb, 0xd9, 0x9d, 0x69, 0x87, 0x93, 0x26,
+	0x53, 0x06, 0xe5, 0xd1, 0x67, 0xca, 0xa0, 0x5d, 0x95, 0xcc, 0x22, 0x7b, 0x78, 0x9e, 0x47, 0x4c,
+	0xe8, 0xca, 0x1a, 0xea, 0x10, 0x13, 0xcc, 0xab, 0x6e, 0x27, 0xed, 0x8d, 0x76, 0x05, 0xb8, 0x52,
+	0x35, 0xfb, 0xef, 0xf3, 0x62, 0xc2, 0xdf, 0x4d, 0xc2, 0x5c, 0xb6, 0xf6, 0x6d, 0x62, 0xfc, 0xea,
+	0x7e, 0x87, 0x05, 0xf1, 0x6a, 0x47, 0x55, 0x3a, 0xa7, 0xe0, 0xb9, 0xc0, 0xea, 0x66, 0x41, 0xc2,
+	0x54, 0xd3, 0x7c, 0x88, 0xe4, 0x73, 0x0d, 0x4d, 0x51, 0x79, 0x0b, 0x91, 0x37, 0x5f, 0x5c, 0x4a,
+	0x76, 0x45, 0xf8, 0x00, 0x88, 0x9b, 0x59, 0x6e, 0xfe, 0x22, 0xde, 0x29, 0xce, 0x2d, 0x21, 0xb3,
+	0x43, 0xc2, 0xd0, 0xb7, 0xe2, 0xb6, 0x39, 0x7b, 0xbe, 0x15, 0xef, 0x07, 0x34, 0x7e, 0xa1, 0x5e,
+	0x64, 0x40, 0x2c, 0xa7, 0x62, 0x1d, 0x8d, 0x62, 0xfe, 0xba, 0x14, 0xf2, 0x6d, 0x06, 0x6d, 0xd8,
+	0x87, 0xbb, 0xa7, 0x22, 0xc1, 0x1f, 0x67, 0xf4, 0xc3, 0x19, 0x3f, 0x75, 0xbf, 0x8e, 0x81, 0xf8,
+	0x9a, 0xac, 0xaa, 0xc8, 0x80, 0x7f, 0x62, 0x9c, 0xc9, 0xec, 0xfd, 0x3d, 0x1a, 0x21, 0x98, 0xd4,
+	0x30, 0x36, 0xe8, 0x83, 0x0c, 0x93, 0x45, 0x27, 0x0d, 0xcf, 0xbb, 0xa7, 0x8a, 0x07, 0xbd, 0x54,
+	0xdd, 0xe1, 0xe9, 0xa2, 0xd9, 0xc4, 0xe0, 0xb9, 0x02, 0x82, 0xc9, 0x76, 0x07, 0xb5, 0x71, 0x47,
+	0x69, 0xd8, 0x1e, 0x6d, 0xa7, 0xe1, 0x4f, 0x1d, 0x22, 0xb3, 0x1e, 0x22, 0xf9, 0xc0, 0xad, 0x84,
+	0xa3, 0xb2, 0x3c, 0xc4, 0xb2, 0x7a, 0x33, 0x78, 0xef, 0x62, 0xa6, 0x50, 0x14, 0xf2, 0xb5, 0x4a,
+	0xa9, 0x96, 0x93, 0x84, 0x4c, 0x45, 0xa8, 0x15, 0x4b, 0xb9, 0x4c, 0xb1, 0x26, 0x09, 0x2b, 0xa5,
+	0x34, 0x82, 0x6f, 0xd2, 0x37, 0x52, 0x0d, 0xbc, 0x85, 0x34, 0xb7, 0xa3, 0x0e, 0x60, 0x78, 0x20,
+	0x27, 0x5f, 0x66, 0x82, 0xbe, 0xdd, 0xb0, 0x78, 0xb1, 0xda, 0xf6, 0xf1, 0xd5, 0x97, 0x03, 0xbd,
+	0xdd, 0x18, 0x08, 0x75, 0x1d, 0x70, 0x7c, 0x76, 0x1f, 0x48, 0x64, 0x1a, 0x0d, 0xbc, 0xd9, 0x31,
+	0xe0, 0x73, 0x51, 0xc7, 0xa1, 0x4f, 0xf7, 0xe8, 0xb6, 0x0f, 0x3f, 0x91, 0xde, 0xe1, 0x87, 0x3b,
+	0x0c, 0xfe, 0x4f, 0xde, 0x92, 0x0d, 0x59, 0x2b, 0x3a, 0x8f, 0x8f, 0xa8, 0xc1, 0xc7, 0x27, 0xa4,
+	0x9d, 0xff, 0xe0, 0x0e, 0x81, 0x94, 0x99, 0x95, 0xc3, 0x2a, 0x36, 0x6f, 0x2e, 0x48, 0x39, 0x77,
+	0x66, 0x76, 0x12, 0xc4, 0xcd, 0x24, 0x3c, 0xcf, 0x06, 0x15, 0xc9, 0xb2, 0x7a, 0xf0, 0x18, 0xb9,
+	0x0b, 0x24, 0x64, 0xb3, 0x1c, 0x35, 0x30, 0xb5, 0x70, 0xe3, 0x8e, 0x25, 0xdf, 0x42, 0x91, 0xec,
+	0x62, 0xf0, 0x1c, 0x13, 0x44, 0xd6, 0x81, 0x8d, 0x87, 0x93, 0xf5, 0x07, 0x91, 0x21, 0x74, 0xbd,
+	0x13, 0xcc, 0x65, 0x72, 0xb9, 0x52, 0x55, 0xac, 0x58, 0xaa, 0xe6, 0x6b, 0xd9, 0x6a, 0xa5, 0xd6,
+	0xd3, 0xba, 0x5c, 0xc9, 0x48, 0x95, 0x9a, 0x58, 0xca, 0x0b, 0x69, 0x22, 0xd7, 0x6d, 0xbb, 0x94,
+	0x16, 0x2a, 0x35, 0x31, 0xb3, 0x2c, 0xa4, 0xd7, 0x03, 0x20, 0x0b, 0x95, 0x5a, 0x66, 0x35, 0x53,
+	0xc9, 0x48, 0xe9, 0x16, 0xfc, 0x19, 0xdb, 0x1b, 0xa2, 0x49, 0xc7, 0x67, 0xe0, 0xb3, 0x6c, 0xd0,
+	0xd3, 0x99, 0x4d, 0xe4, 0xe0, 0xb1, 0xf6, 0x3a, 0x13, 0xe4, 0x74, 0x36, 0x18, 0x2b, 0x9c, 0x2a,
+	0x97, 0x86, 0x51, 0xe5, 0xff, 0xc1, 0x0d, 0x62, 0xa9, 0x66, 0xd1, 0x57, 0xae, 0x2d, 0x96, 0xaa,
+	0x62, 0x3e, 0x4d, 0x5a, 0x3b, 0x28, 0x0a, 0x26, 0x79, 0x92, 0x90, 0x2b, 0xad, 0x0a, 0x52, 0x6d,
+	0x2d, 0x53, 0x2c, 0x0a, 0x95, 0xda, 0x62, 0x41, 0x2a, 0x57, 0xd2, 0xeb, 0xbb, 0x0d, 0xd3, 0x16,
+	0x77, 0x0b, 0xb8, 0xb9, 0x97, 0xae, 0x09, 0x1f, 0x2b, 0x94, 0x2b, 0x65, 0xaa, 0x4b, 0xae, 0x24,
+	0x49, 0xd5, 0x95, 0x8a, 0x90, 0x4f, 0x6f, 0x70, 0x37, 0x02, 0xae, 0x87, 0x22, 0x55, 0x45, 0x53,
+	0x7e, 0x85, 0xb4, 0x6f, 0xb5, 0x67, 0x37, 0x4f, 0x8e, 0x32, 0x2b, 0x82, 0xb4, 0x58, 0x92, 0x96,
+	0x85, 0x7c, 0xfa, 0x93, 0xf0, 0xab, 0x51, 0x10, 0x2f, 0xd3, 0x27, 0x9e, 0xf0, 0xde, 0xde, 0xc8,
+	0x9f, 0x02, 0x8c, 0x62, 0x6f, 0x05, 0x18, 0xa5, 0xe9, 0x99, 0x78, 0x99, 0x1d, 0x4b, 0xdb, 0xef,
+	0x42, 0x8f, 0x5b, 0xb3, 0xbd, 0x91, 0x8d, 0xdb, 0xdf, 0x86, 0x1a, 0xb7, 0x7d, 0x1b, 0x0f, 0xe7,
+	0x21, 0x6f, 0x46, 0xc6, 0x30, 0x1f, 0x07, 0x11, 0x7a, 0xdd, 0x47, 0xe8, 0x96, 0x17, 0x7d, 0xb1,
+	0x20, 0xe6, 0x6d, 0x5f, 0xac, 0x15, 0xc4, 0xc5, 0x52, 0x7a, 0x83, 0xe3, 0xc1, 0x61, 0x17, 0x3a,
+	0xf1, 0x02, 0xab, 0x85, 0x8c, 0x98, 0xaf, 0x2d, 0x8b, 0xc2, 0x72, 0x49, 0x2c, 0xe4, 0x68, 0x7e,
+	0x59, 0xa8, 0xa4, 0x15, 0xf8, 0x63, 0x16, 0xb0, 0x45, 0xdc, 0x82, 0x2f, 0xb0, 0x20, 0x5a, 0x46,
+	0x9d, 0x26, 0xfc, 0xbe, 0x6b, 0x5f, 0x3f, 0x0d, 0x12, 0x6d, 0xa4, 0xeb, 0x72, 0xcb, 0x5e, 0x1b,
+	0xec, 0x24, 0x77, 0x1f, 0x88, 0xa9, 0x68, 0x0b, 0xa9, 0x94, 0xb6, 0xa9, 0x85, 0x5b, 0x3c, 0x12,
+	0x14, 0x71, 0x8b, 0x27, 0x58, 0xce, 0x6e, 0xbe, 0x48, 0x8a, 0x4a, 0x66, 0x8d, 0x43, 0x27, 0x40,
+	0x8c, 0xa6, 0xb9, 0x24, 0x88, 0xe5, 0x85, 0x6c, 0x75, 0x29, 0x3d, 0x41, 0x3e, 0x6d, 0x3a, 0x93,
+	0x20, 0xb6, 0x98, 0xa9, 0x64, 0x8a, 0x69, 0x86, 0xd0, 0x4e, 0x7b, 0xc5, 0x92, 0xcc, 0x95, 0x8c,
+	0x58, 0xc8, 0xa5, 0xa3, 0x5c, 0x0a, 0x24, 0xd6, 0x32, 0x92, 0x58, 0x10, 0x97, 0xd2, 0x31, 0xf8,
+	0x19, 0xf7, 0x82, 0x7f, 0xbf, 0xd7, 0x27, 0x6f, 0xf5, 0xb3, 0x69, 0x70, 0xa4, 0xe2, 0xa8, 0xc7,
+	0xb7, 0xee, 0x08, 0x02, 0x12, 0xce, 0xab, 0xc4, 0x21, 0x9c, 0x6a, 0x3f, 0x48, 0x12, 0xc9, 0xec,
+	0xe9, 0x26, 0x05, 0x12, 0x95, 0xc2, 0xb2, 0x50, 0xaa, 0x56, 0xd2, 0xeb, 0xf0, 0xf7, 0x0c, 0x48,
+	0xac, 0x22, 0x4d, 0x57, 0x70, 0x07, 0xfe, 0xd2, 0x0a, 0xda, 0xb9, 0x26, 0xea, 0x17, 0x98, 0xa0,
+	0x9b, 0x77, 0x0b, 0x84, 0x06, 0xbf, 0x7c, 0xcf, 0xae, 0x5b, 0x66, 0x21, 0xfb, 0x88, 0x60, 0x25,
+	0xe1, 0x6f, 0x02, 0x6d, 0xeb, 0xfd, 0x5b, 0x08, 0x47, 0x61, 0x73, 0x08, 0x0a, 0x0f, 0x80, 0xf4,
+	0xaa, 0x20, 0x95, 0x0b, 0x25, 0xb1, 0x56, 0x28, 0xd7, 0x84, 0xe5, 0x95, 0xca, 0xc7, 0xd3, 0xec,
+	0x40, 0x62, 0xbf, 0x91, 0x04, 0xd1, 0x42, 0x77, 0x5d, 0x87, 0xef, 0xd8, 0xd7, 0xae, 0x97, 0x2d,
+	0x7a, 0x6f, 0xf2, 0x9d, 0x41, 0xe1, 0x2f, 0x02, 0x1f, 0x00, 0x08, 0xb4, 0x79, 0xc9, 0xe9, 0x4f,
+	0x38, 0x07, 0xa2, 0x4d, 0xd9, 0x90, 0x29, 0x07, 0xfb, 0x24, 0xfa, 0xcd, 0x1d, 0x00, 0xb1, 0x36,
+	0x6a, 0x2a, 0xb2, 0x15, 0xab, 0x36, 0x13, 0xce, 0x1e, 0x2e, 0xea, 0x0a, 0x60, 0xff, 0x30, 0xd0,
+	0x11, 0x61, 0x90, 0x1d, 0xd7, 0xd6, 0xb3, 0xcf, 0xc6, 0xed, 0x7b, 0xd8, 0x27, 0xe2, 0x26, 0xf1,
+	0xef, 0x32, 0x20, 0x9a, 0x55, 0x71, 0x1d, 0x1e, 0xf7, 0x5f, 0xc3, 0x8e, 0x80, 0xa8, 0xae, 0x3c,
+	0x82, 0xac, 0x99, 0xe9, 0xa6, 0x1d, 0xab, 0x8a, 0x79, 0x11, 0x57, 0x56, 0x1e, 0x41, 0x12, 0x2d,
+	0x46, 0x76, 0x83, 0x01, 0xa3, 0xfc, 0x94, 0x28, 0xb3, 0x3e, 0x61, 0x8a, 0xd8, 0xe1, 0x2f, 0x5b,
+	0x5d, 0xc5, 0x75, 0x5b, 0x36, 0xf2, 0xed, 0x3a, 0x4c, 0x0c, 0x8a, 0xfc, 0xef, 0xde, 0xc6, 0xb5,
+	0x95, 0xe4, 0x0b, 0xac, 0x35, 0x14, 0x46, 0x27, 0xc0, 0xf3, 0xc3, 0x0a, 0x40, 0x7d, 0xb6, 0xbf,
+	0x00, 0x9e, 0x1f, 0x4d, 0x30, 0x3b, 0x7e, 0x34, 0x31, 0x9c, 0x14, 0x7d, 0x5a, 0xbb, 0xb6, 0x52,
+	0x3c, 0xc3, 0x80, 0x78, 0x0e, 0x77, 0xd6, 0x95, 0x16, 0x7c, 0xf2, 0xca, 0x69, 0xff, 0xb1, 0xc0,
+	0xbf, 0xf1, 0x32, 0x31, 0x06, 0x4c, 0x42, 0xb3, 0x20, 0xb5, 0x81, 0xdb, 0xc8, 0xfb, 0xdb, 0x24,
+	0x77, 0x56, 0xc0, 0xa8, 0xb4, 0x6f, 0x43, 0x63, 0x8f, 0xe9, 0x64, 0x0f, 0xbe, 0x72, 0x61, 0x26,
+	0xf2, 0xea, 0x85, 0x99, 0xc8, 0x1b, 0x17, 0x66, 0x22, 0x8f, 0x5f, 0x9c, 0x99, 0x78, 0xf5, 0xe2,
+	0xcc, 0xc4, 0x1f, 0x2e, 0xce, 0x4c, 0x7c, 0x82, 0xe9, 0xd6, 0xeb, 0x71, 0xfa, 0x83, 0x84, 0xbb,
+	0xff, 0x13, 0x00, 0x00, 0xff, 0xff, 0x00, 0x5a, 0x51, 0x04, 0xf5, 0x3e, 0x00, 0x00,
 }
 
 func (m *Rpc) Marshal() (dAtA []byte, err error) {
@@ -9917,11 +10433,11 @@ func (m *RpcBlockListMoveRequest) MarshalToSizedBuffer(dAtA []byte) (int, error)
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.BlocksId) > 0 {
-		for iNdEx := len(m.BlocksId) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.BlocksId[iNdEx])
-			copy(dAtA[i:], m.BlocksId[iNdEx])
-			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlocksId[iNdEx])))
+	if len(m.BlockIds) > 0 {
+		for iNdEx := len(m.BlockIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BlockIds[iNdEx])
+			copy(dAtA[i:], m.BlockIds[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockIds[iNdEx])))
 			i--
 			dAtA[i] = 0x12
 		}
@@ -10100,11 +10616,11 @@ func (m *RpcBlockListSetTextStyleRequest) MarshalToSizedBuffer(dAtA []byte) (int
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.BlockId) > 0 {
-		for iNdEx := len(m.BlockId) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.BlockId[iNdEx])
-			copy(dAtA[i:], m.BlockId[iNdEx])
-			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId[iNdEx])))
+	if len(m.BlockIds) > 0 {
+		for iNdEx := len(m.BlockIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BlockIds[iNdEx])
+			copy(dAtA[i:], m.BlockIds[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockIds[iNdEx])))
 			i--
 			dAtA[i] = 0x12
 		}
@@ -10237,11 +10753,11 @@ func (m *RpcBlockListSetTextMarkerRequest) MarshalToSizedBuffer(dAtA []byte) (in
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.BlockId) > 0 {
-		for iNdEx := len(m.BlockId) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.BlockId[iNdEx])
-			copy(dAtA[i:], m.BlockId[iNdEx])
-			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId[iNdEx])))
+	if len(m.BlockIds) > 0 {
+		for iNdEx := len(m.BlockIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BlockIds[iNdEx])
+			copy(dAtA[i:], m.BlockIds[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockIds[iNdEx])))
 			i--
 			dAtA[i] = 0x12
 		}
@@ -10379,11 +10895,11 @@ func (m *RpcBlockListSetTextCheckableRequest) MarshalToSizedBuffer(dAtA []byte) 
 		i--
 		dAtA[i] = 0x18
 	}
-	if len(m.BlockId) > 0 {
-		for iNdEx := len(m.BlockId) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.BlockId[iNdEx])
-			copy(dAtA[i:], m.BlockId[iNdEx])
-			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId[iNdEx])))
+	if len(m.BlockIds) > 0 {
+		for iNdEx := len(m.BlockIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BlockIds[iNdEx])
+			copy(dAtA[i:], m.BlockIds[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockIds[iNdEx])))
 			i--
 			dAtA[i] = 0x12
 		}
@@ -10488,6 +11004,343 @@ func (m *RpcBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockCopy) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockCopy) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockCopy) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockCopyRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockCopyRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockCopyRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.SelectedBlocks) > 0 {
+		for iNdEx := len(m.SelectedBlocks) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SelectedBlocks[iNdEx])
+			copy(dAtA[i:], m.SelectedBlocks[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.SelectedBlocks[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if m.SelectedTextRange != nil {
+		{
+			size, err := m.SelectedTextRange.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.FocusedBlockId) > 0 {
+		i -= len(m.FocusedBlockId)
+		copy(dAtA[i:], m.FocusedBlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.FocusedBlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockCopyResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockCopyResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockCopyResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.ClipboardAny) > 0 {
+		i -= len(m.ClipboardAny)
+		copy(dAtA[i:], m.ClipboardAny)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ClipboardAny)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.ClipboardHtml) > 0 {
+		i -= len(m.ClipboardHtml)
+		copy(dAtA[i:], m.ClipboardHtml)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ClipboardHtml)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.ClipboardText) > 0 {
+		i -= len(m.ClipboardText)
+		copy(dAtA[i:], m.ClipboardText)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ClipboardText)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockCopyResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockCopyResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockCopyResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockPaste) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockPaste) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockPaste) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockPasteRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockPasteRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockPasteRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.ClipboardAny) > 0 {
+		i -= len(m.ClipboardAny)
+		copy(dAtA[i:], m.ClipboardAny)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ClipboardAny)))
+		i--
+		dAtA[i] = 0x3a
+	}
+	if len(m.ClipboardHtml) > 0 {
+		i -= len(m.ClipboardHtml)
+		copy(dAtA[i:], m.ClipboardHtml)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ClipboardHtml)))
+		i--
+		dAtA[i] = 0x32
+	}
+	if len(m.ClipboardText) > 0 {
+		i -= len(m.ClipboardText)
+		copy(dAtA[i:], m.ClipboardText)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ClipboardText)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.SelectedBlocks) > 0 {
+		for iNdEx := len(m.SelectedBlocks) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SelectedBlocks[iNdEx])
+			copy(dAtA[i:], m.SelectedBlocks[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.SelectedBlocks[iNdEx])))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if m.SelectedTextRange != nil {
+		{
+			size, err := m.SelectedTextRange.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.FocusedBlockId) > 0 {
+		i -= len(m.FocusedBlockId)
+		copy(dAtA[i:], m.FocusedBlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.FocusedBlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockPasteResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockPasteResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockPasteResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockPasteResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockPasteResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockPasteResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -15640,8 +16493,8 @@ func (m *RpcBlockListMoveRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	if len(m.BlocksId) > 0 {
-		for _, s := range m.BlocksId {
+	if len(m.BlockIds) > 0 {
+		for _, s := range m.BlockIds {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
@@ -15722,8 +16575,8 @@ func (m *RpcBlockListSetTextStyleRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	if len(m.BlockId) > 0 {
-		for _, s := range m.BlockId {
+	if len(m.BlockIds) > 0 {
+		for _, s := range m.BlockIds {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
@@ -15782,8 +16635,8 @@ func (m *RpcBlockListSetTextMarkerRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	if len(m.BlockId) > 0 {
-		for _, s := range m.BlockId {
+	if len(m.BlockIds) > 0 {
+		for _, s := range m.BlockIds {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
@@ -15842,8 +16695,8 @@ func (m *RpcBlockListSetTextCheckableRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
-	if len(m.BlockId) > 0 {
-		for _, s := range m.BlockId {
+	if len(m.BlockIds) > 0 {
+		for _, s := range m.BlockIds {
 			l = len(s)
 			n += 1 + l + sovCommands(uint64(l))
 		}
@@ -15889,6 +16742,156 @@ func (m *RpcBlock) Size() (n int) {
 	}
 	var l int
 	_ = l
+	return n
+}
+
+func (m *RpcBlockCopy) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockCopyRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.FocusedBlockId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if m.SelectedTextRange != nil {
+		l = m.SelectedTextRange.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if len(m.SelectedBlocks) > 0 {
+		for _, s := range m.SelectedBlocks {
+			l = len(s)
+			n += 1 + l + sovCommands(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *RpcBlockCopyResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.ClipboardText)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.ClipboardHtml)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.ClipboardAny)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockCopyResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockPaste) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockPasteRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.FocusedBlockId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if m.SelectedTextRange != nil {
+		l = m.SelectedTextRange.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if len(m.SelectedBlocks) > 0 {
+		for _, s := range m.SelectedBlocks {
+			l = len(s)
+			n += 1 + l + sovCommands(uint64(l))
+		}
+	}
+	l = len(m.ClipboardText)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.ClipboardHtml)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.ClipboardAny)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockPasteResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockPasteResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
 	return n
 }
 
@@ -18272,7 +19275,7 @@ func (m *RpcBlockListMoveRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlocksId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockIds", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -18300,7 +19303,7 @@ func (m *RpcBlockListMoveRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.BlocksId = append(m.BlocksId, string(dAtA[iNdEx:postIndex]))
+			m.BlockIds = append(m.BlockIds, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -18792,7 +19795,7 @@ func (m *RpcBlockListSetTextStyleRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockIds", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -18820,7 +19823,7 @@ func (m *RpcBlockListSetTextStyleRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
+			m.BlockIds = append(m.BlockIds, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -19174,7 +20177,7 @@ func (m *RpcBlockListSetTextMarkerRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockIds", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -19202,7 +20205,7 @@ func (m *RpcBlockListSetTextMarkerRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
+			m.BlockIds = append(m.BlockIds, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -19556,7 +20559,7 @@ func (m *RpcBlockListSetTextCheckableRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockIds", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -19584,7 +20587,7 @@ func (m *RpcBlockListSetTextCheckableRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.BlockId = append(m.BlockId, string(dAtA[iNdEx:postIndex]))
+			m.BlockIds = append(m.BlockIds, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -19852,6 +20855,1028 @@ func (m *RpcBlock) Unmarshal(dAtA []byte) error {
 			return fmt.Errorf("proto: Block: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockCopy) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Copy: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Copy: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockCopyRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FocusedBlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FocusedBlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectedTextRange", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SelectedTextRange == nil {
+				m.SelectedTextRange = &model.Range{}
+			}
+			if err := m.SelectedTextRange.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectedBlocks", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SelectedBlocks = append(m.SelectedBlocks, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockCopyResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockCopyResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClipboardText", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ClipboardText = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClipboardHtml", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ClipboardHtml = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClipboardAny", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ClipboardAny = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockCopyResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockCopyResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockPaste) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Paste: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Paste: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockPasteRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FocusedBlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FocusedBlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectedTextRange", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SelectedTextRange == nil {
+				m.SelectedTextRange = &model.Range{}
+			}
+			if err := m.SelectedTextRange.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectedBlocks", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SelectedBlocks = append(m.SelectedBlocks, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClipboardText", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ClipboardText = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClipboardHtml", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ClipboardHtml = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClipboardAny", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ClipboardAny = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockPasteResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockPasteResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockPasteResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockPasteResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipCommands(dAtA[iNdEx:])

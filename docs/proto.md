@@ -30,6 +30,10 @@
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
     - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
     - [Rpc.Block.Close.Response.Error](#anytype.Rpc.Block.Close.Response.Error)
+    - [Rpc.Block.Copy](#anytype.Rpc.Block.Copy)
+    - [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request)
+    - [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response)
+    - [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error)
     - [Rpc.Block.Create](#anytype.Rpc.Block.Create)
     - [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request)
     - [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response)
@@ -52,6 +56,10 @@
     - [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request)
     - [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response)
     - [Rpc.Block.Open.Response.Error](#anytype.Rpc.Block.Open.Response.Error)
+    - [Rpc.Block.Paste](#anytype.Rpc.Block.Paste)
+    - [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request)
+    - [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response)
+    - [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error)
     - [Rpc.Block.Set](#anytype.Rpc.Block.Set)
     - [Rpc.Block.Set.Fields](#anytype.Rpc.Block.Set.Fields)
     - [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request)
@@ -191,11 +199,13 @@
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
+    - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
+    - [Rpc.Block.Paste.Response.Error.Code](#anytype.Rpc.Block.Paste.Response.Error.Code)
     - [Rpc.Block.Set.Fields.Response.Error.Code](#anytype.Rpc.Block.Set.Fields.Response.Error.Code)
     - [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code)
     - [Rpc.Block.Set.Icon.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Icon.Name.Response.Error.Code)
@@ -662,6 +672,68 @@ Precondition: block should be opened.
 
 
 
+<a name="anytype.Rpc.Block.Copy"></a>
+
+### Rpc.Block.Copy
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Copy.Request"></a>
+
+### Rpc.Block.Copy.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| focusedBlockId | [string](#string) |  |  |
+| selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
+| selectedBlocks | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Copy.Response"></a>
+
+### Rpc.Block.Copy.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error) |  |  |
+| clipboardText | [string](#string) |  |  |
+| clipboardHtml | [string](#string) |  |  |
+| clipboardAny | [string](#string) |  | TODO: type – is string ok? |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Copy.Response.Error"></a>
+
+### Rpc.Block.Copy.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Create"></a>
 
 ### Rpc.Block.Create
@@ -1000,6 +1072,67 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Paste"></a>
+
+### Rpc.Block.Paste
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Paste.Request"></a>
+
+### Rpc.Block.Paste.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| focusedBlockId | [string](#string) |  |  |
+| selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
+| selectedBlocks | [string](#string) | repeated |  |
+| clipboardText | [string](#string) |  |  |
+| clipboardHtml | [string](#string) |  |  |
+| clipboardAny | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Paste.Response"></a>
+
+### Rpc.Block.Paste.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Paste.Response.Error"></a>
+
+### Rpc.Block.Paste.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Paste.Response.Error.Code](#anytype.Rpc.Block.Paste.Response.Error.Code) |  |  |
 
 
 
@@ -2098,7 +2231,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blocksId | [string](#string) | repeated |  |
+| blockIds | [string](#string) | repeated |  |
 | dropTargetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
@@ -2177,7 +2310,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockId | [string](#string) | repeated |  |
+| blockIds | [string](#string) | repeated |  |
 | checkable | [bool](#bool) |  |  |
 
 
@@ -2235,7 +2368,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockId | [string](#string) | repeated |  |
+| blockIds | [string](#string) | repeated |  |
 | marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
 
 
@@ -2293,7 +2426,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockId | [string](#string) | repeated |  |
+| blockIds | [string](#string) | repeated |  |
 | style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 
 
@@ -2932,6 +3065,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Copy.Response.Error.Code"></a>
+
+### Rpc.Block.Copy.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Create.Response.Error.Code"></a>
 
 ### Rpc.Block.Create.Response.Error.Code
@@ -2988,6 +3134,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Open.Response.Error.Code"></a>
 
 ### Rpc.Block.Open.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Paste.Response.Error.Code"></a>
+
+### Rpc.Block.Paste.Response.Error.Code
 
 
 | Name | Number | Description |
