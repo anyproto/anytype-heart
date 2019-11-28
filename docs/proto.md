@@ -97,14 +97,6 @@
     - [Rpc.Block.Set.Text.Check.Request](#anytype.Rpc.Block.Set.Text.Check.Request)
     - [Rpc.Block.Set.Text.Check.Response](#anytype.Rpc.Block.Set.Text.Check.Response)
     - [Rpc.Block.Set.Text.Check.Response.Error](#anytype.Rpc.Block.Set.Text.Check.Response.Error)
-    - [Rpc.Block.Set.Text.Checkable](#anytype.Rpc.Block.Set.Text.Checkable)
-    - [Rpc.Block.Set.Text.Checkable.Request](#anytype.Rpc.Block.Set.Text.Checkable.Request)
-    - [Rpc.Block.Set.Text.Checkable.Response](#anytype.Rpc.Block.Set.Text.Checkable.Response)
-    - [Rpc.Block.Set.Text.Checkable.Response.Error](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error)
-    - [Rpc.Block.Set.Text.Marker](#anytype.Rpc.Block.Set.Text.Marker)
-    - [Rpc.Block.Set.Text.Marker.Request](#anytype.Rpc.Block.Set.Text.Marker.Request)
-    - [Rpc.Block.Set.Text.Marker.Response](#anytype.Rpc.Block.Set.Text.Marker.Response)
-    - [Rpc.Block.Set.Text.Marker.Response.Error](#anytype.Rpc.Block.Set.Text.Marker.Response.Error)
     - [Rpc.Block.Set.Text.Style](#anytype.Rpc.Block.Set.Text.Style)
     - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
     - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
@@ -113,10 +105,6 @@
     - [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request)
     - [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response)
     - [Rpc.Block.Set.Text.Text.Response.Error](#anytype.Rpc.Block.Set.Text.Text.Response.Error)
-    - [Rpc.Block.Set.Text.Toggleable](#anytype.Rpc.Block.Set.Text.Toggleable)
-    - [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request)
-    - [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response)
-    - [Rpc.Block.Set.Text.Toggleable.Response.Error](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error)
     - [Rpc.Block.Set.Video](#anytype.Rpc.Block.Set.Video)
     - [Rpc.Block.Set.Video.Name](#anytype.Rpc.Block.Set.Video.Name)
     - [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request)
@@ -142,14 +130,6 @@
     - [Rpc.BlockList.Move.Response.Error](#anytype.Rpc.BlockList.Move.Response.Error)
     - [Rpc.BlockList.Set](#anytype.Rpc.BlockList.Set)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
-    - [Rpc.BlockList.Set.Text.Checkable](#anytype.Rpc.BlockList.Set.Text.Checkable)
-    - [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request)
-    - [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response)
-    - [Rpc.BlockList.Set.Text.Checkable.Response.Error](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error)
-    - [Rpc.BlockList.Set.Text.Marker](#anytype.Rpc.BlockList.Set.Text.Marker)
-    - [Rpc.BlockList.Set.Text.Marker.Request](#anytype.Rpc.BlockList.Set.Text.Marker.Request)
-    - [Rpc.BlockList.Set.Text.Marker.Response](#anytype.Rpc.BlockList.Set.Text.Marker.Response)
-    - [Rpc.BlockList.Set.Text.Marker.Response.Error](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error)
     - [Rpc.BlockList.Set.Text.Style](#anytype.Rpc.BlockList.Set.Text.Style)
     - [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request)
     - [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response)
@@ -214,18 +194,13 @@
     - [Rpc.Block.Set.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.IsArchived.Response.Error.Code)
     - [Rpc.Block.Set.Permissions.Response.Error.Code](#anytype.Rpc.Block.Set.Permissions.Response.Error.Code)
     - [Rpc.Block.Set.Text.Check.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Check.Response.Error.Code)
-    - [Rpc.Block.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error.Code)
-    - [Rpc.Block.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
     - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
-    - [Rpc.Block.Set.Text.Toggleable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
-    - [Rpc.BlockList.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error.Code)
-    - [Rpc.BlockList.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
@@ -269,12 +244,9 @@
     - [Event.Block.Set.Permissions](#anytype.Event.Block.Set.Permissions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check)
-    - [Event.Block.Set.Text.Checkable](#anytype.Event.Block.Set.Text.Checkable)
-    - [Event.Block.Set.Text.Marker](#anytype.Event.Block.Set.Text.Marker)
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
-    - [Event.Block.Set.Text.Toggleable](#anytype.Event.Block.Set.Text.Toggleable)
     - [Event.Block.Set.Video](#anytype.Event.Block.Set.Video)
     - [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath)
     - [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name)
@@ -385,13 +357,8 @@
 | BlockSetIsArchived | [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request) | [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
-| BlockListSetTextMarker | [Rpc.BlockList.Set.Text.Marker.Request](#anytype.Rpc.BlockList.Set.Text.Marker.Request) | [Rpc.BlockList.Set.Text.Marker.Response](#anytype.Rpc.BlockList.Set.Text.Marker.Response) |  |
-| BlockListSetTextCheckable | [Rpc.BlockList.Set.Text.Checkable.Request](#anytype.Rpc.BlockList.Set.Text.Checkable.Request) | [Rpc.BlockList.Set.Text.Checkable.Response](#anytype.Rpc.BlockList.Set.Text.Checkable.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
-| BlockSetTextToggleable | [Rpc.Block.Set.Text.Toggleable.Request](#anytype.Rpc.Block.Set.Text.Toggleable.Request) | [Rpc.Block.Set.Text.Toggleable.Response](#anytype.Rpc.Block.Set.Text.Toggleable.Response) |  |
-| BlockSetTextMarker | [Rpc.Block.Set.Text.Marker.Request](#anytype.Rpc.Block.Set.Text.Marker.Request) | [Rpc.Block.Set.Text.Marker.Response](#anytype.Rpc.Block.Set.Text.Marker.Response) |  |
-| BlockSetTextCheckable | [Rpc.Block.Set.Text.Checkable.Request](#anytype.Rpc.Block.Set.Text.Checkable.Request) | [Rpc.Block.Set.Text.Checkable.Response](#anytype.Rpc.Block.Set.Text.Checkable.Response) |  |
 | BlockSetTextCheck | [Rpc.Block.Set.Text.Check.Request](#anytype.Rpc.Block.Set.Text.Check.Request) | [Rpc.Block.Set.Text.Check.Response](#anytype.Rpc.Block.Set.Text.Check.Response) |  |
 | BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
 | BlockSetImageName | [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request) | [Rpc.Block.Set.Image.Name.Response](#anytype.Rpc.Block.Set.Image.Name.Response) |  |
@@ -1653,122 +1620,6 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Checkable"></a>
-
-### Rpc.Block.Set.Text.Checkable
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Checkable.Request"></a>
-
-### Rpc.Block.Set.Text.Checkable.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| checkable | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Checkable.Response"></a>
-
-### Rpc.Block.Set.Text.Checkable.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Text.Checkable.Response.Error](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Checkable.Response.Error"></a>
-
-### Rpc.Block.Set.Text.Checkable.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checkable.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Marker"></a>
-
-### Rpc.Block.Set.Text.Marker
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Marker.Request"></a>
-
-### Rpc.Block.Set.Text.Marker.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Marker.Response"></a>
-
-### Rpc.Block.Set.Text.Marker.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Text.Marker.Response.Error](#anytype.Rpc.Block.Set.Text.Marker.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Marker.Response.Error"></a>
-
-### Rpc.Block.Set.Text.Marker.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Block.Set.Text.Style"></a>
 
 ### Rpc.Block.Set.Text.Style
@@ -1879,64 +1730,6 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Toggleable"></a>
-
-### Rpc.Block.Set.Text.Toggleable
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Toggleable.Request"></a>
-
-### Rpc.Block.Set.Text.Toggleable.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| toggleable | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Toggleable.Response"></a>
-
-### Rpc.Block.Set.Text.Toggleable.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Text.Toggleable.Response.Error](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Toggleable.Response.Error"></a>
-
-### Rpc.Block.Set.Text.Toggleable.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Text.Toggleable.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2285,122 +2078,6 @@ Remove blocks from the childrenIds of its parents
 
 ### Rpc.BlockList.Set.Text
 
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Checkable"></a>
-
-### Rpc.BlockList.Set.Text.Checkable
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Request"></a>
-
-### Rpc.BlockList.Set.Text.Checkable.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
-| checkable | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Response"></a>
-
-### Rpc.BlockList.Set.Text.Checkable.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockList.Set.Text.Checkable.Response.Error](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error"></a>
-
-### Rpc.BlockList.Set.Text.Checkable.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockList.Set.Text.Checkable.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Marker"></a>
-
-### Rpc.BlockList.Set.Text.Marker
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Marker.Request"></a>
-
-### Rpc.BlockList.Set.Text.Marker.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
-| marker | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Marker.Response"></a>
-
-### Rpc.BlockList.Set.Text.Marker.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockList.Set.Text.Marker.Response.Error](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Marker.Response.Error"></a>
-
-### Rpc.BlockList.Set.Text.Marker.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockList.Set.Text.Marker.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Marker.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -3261,32 +2938,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Checkable.Response.Error.Code"></a>
-
-### Rpc.Block.Set.Text.Checkable.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Marker.Response.Error.Code"></a>
-
-### Rpc.Block.Set.Text.Marker.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.Block.Set.Text.Style.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Text.Style.Response.Error.Code
@@ -3303,19 +2954,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Set.Text.Text.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Text.Text.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Toggleable.Response.Error.Code"></a>
-
-### Rpc.Block.Set.Text.Toggleable.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -3381,32 +3019,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.BlockList.Move.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Move.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Checkable.Response.Error.Code"></a>
-
-### Rpc.BlockList.Set.Text.Checkable.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.Marker.Response.Error.Code"></a>
-
-### Rpc.BlockList.Set.Text.Marker.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -3994,9 +3606,6 @@ Precondition: user A opened a block
 | text | [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text) |  |  |
 | style | [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style) |  |  |
 | marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
-| toggleable | [Event.Block.Set.Text.Toggleable](#anytype.Event.Block.Set.Text.Toggleable) |  |  |
-| marker | [Event.Block.Set.Text.Marker](#anytype.Event.Block.Set.Text.Marker) |  |  |
-| checkable | [Event.Block.Set.Text.Checkable](#anytype.Event.Block.Set.Text.Checkable) |  |  |
 | check | [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check) |  |  |
 
 
@@ -4013,36 +3622,6 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Text.Checkable"></a>
-
-### Event.Block.Set.Text.Checkable
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Text.Marker"></a>
-
-### Event.Block.Set.Text.Marker
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [model.Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  |  |
 
 
 
@@ -4088,21 +3667,6 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Text.Toggleable"></a>
-
-### Event.Block.Set.Text.Toggleable
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [bool](#bool) |  |  |
 
 
 

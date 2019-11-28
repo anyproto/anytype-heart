@@ -173,32 +173,6 @@ func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequ
 	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockListSetTextMarker(req *pb.RpcBlockListSetTextMarkerRequest) *pb.RpcBlockListSetTextMarkerResponse {
-	response := func(code pb.RpcBlockListSetTextMarkerResponseErrorCode, err error) *pb.RpcBlockListSetTextMarkerResponse {
-		m := &pb.RpcBlockListSetTextMarkerResponse{Error: &pb.RpcBlockListSetTextMarkerResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcBlockListSetTextMarkerResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockListSetTextCheckable(req *pb.RpcBlockListSetTextCheckableRequest) *pb.RpcBlockListSetTextCheckableResponse {
-	response := func(code pb.RpcBlockListSetTextCheckableResponseErrorCode, err error) *pb.RpcBlockListSetTextCheckableResponse {
-		m := &pb.RpcBlockListSetTextCheckableResponse{Error: &pb.RpcBlockListSetTextCheckableResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcBlockListSetTextCheckableResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
 	response := func(code pb.RpcBlockSetTextTextResponseErrorCode, err error) *pb.RpcBlockSetTextTextResponse {
 		m := &pb.RpcBlockSetTextTextResponse{Error: &pb.RpcBlockSetTextTextResponseError{Code: code}}
@@ -223,45 +197,6 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 	}
 	// TODO
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockSetTextToggleable(req *pb.RpcBlockSetTextToggleableRequest) *pb.RpcBlockSetTextToggleableResponse {
-	response := func(code pb.RpcBlockSetTextToggleableResponseErrorCode, err error) *pb.RpcBlockSetTextToggleableResponse {
-		m := &pb.RpcBlockSetTextToggleableResponse{Error: &pb.RpcBlockSetTextToggleableResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcBlockSetTextToggleableResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockSetTextMarker(req *pb.RpcBlockSetTextMarkerRequest) *pb.RpcBlockSetTextMarkerResponse {
-	response := func(code pb.RpcBlockSetTextMarkerResponseErrorCode, err error) *pb.RpcBlockSetTextMarkerResponse {
-		m := &pb.RpcBlockSetTextMarkerResponse{Error: &pb.RpcBlockSetTextMarkerResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcBlockSetTextMarkerResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockSetTextCheckable(req *pb.RpcBlockSetTextCheckableRequest) *pb.RpcBlockSetTextCheckableResponse {
-	response := func(code pb.RpcBlockSetTextCheckableResponseErrorCode, err error) *pb.RpcBlockSetTextCheckableResponse {
-		m := &pb.RpcBlockSetTextCheckableResponse{Error: &pb.RpcBlockSetTextCheckableResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcBlockSetTextCheckableResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextCheck(req *pb.RpcBlockSetTextCheckRequest) *pb.RpcBlockSetTextCheckResponse {
