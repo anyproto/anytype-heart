@@ -6,6 +6,7 @@
   "private": true,
   "dependencies": {
     "bindings": "~1.2.1",
+    "microtime": "^3.0.0",
     "protobufjs": "^6.8.8"
   },
   "devDependencies": {

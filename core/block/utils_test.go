@@ -24,3 +24,10 @@ func Test_insertToSlice(t *testing.T) {
 	s = insertToSlice(s, "2", 2)
 	assert.Equal(t, []string{"0", "1", "2", "3"}, s)
 }
+
+func Test_uniqueIds(t *testing.T) {
+	var ids = make(uniqueIds)
+	assert.False(t, ids.Add("1"))
+	assert.False(t, ids.Add("2"))
+	assert.True(t, ids.Add("1"))
+}

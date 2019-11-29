@@ -8,6 +8,8 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
 )
@@ -22,6 +24,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	UpdateTextBlock(id string, apply func(t *text.Text) error) error
 	Close() error
 }
 
@@ -68,7 +71,7 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 type commonSmart struct {
 	s        *service
 	block    anytype.Block
-	versions map[string]simple
+	versions map[string]simple.Block
 
 	m sync.RWMutex
 
@@ -87,7 +90,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.closeWg = new(sync.WaitGroup)
-	p.versions = make(map[string]simple)
+	p.versions = make(map[string]simple.Block)
 
 	p.block = block
 	ver, err := p.block.GetCurrentVersion()
@@ -96,9 +99,9 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	}
 
 	for id, v := range ver.DependentBlocks() {
-		p.versions[id] = &simpleBlock{v.Model()}
+		p.versions[id] = simple.New(v.Model())
 	}
-	p.versions[p.GetId()] = &simpleBlock{ver.Model()}
+	p.versions[p.GetId()] = simple.New(ver.Model())
 
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
@@ -136,7 +139,7 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
 	}
 	parent := parentVer.Model()
-	var target simple
+	var target simple.Block
 	if req.TargetId != "" {
 		target, ok = p.versions[req.TargetId]
 		if !ok {
@@ -166,7 +169,7 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, newBlock.GetId(), pos)
 
-	p.versions[newBlock.GetId()] = &simpleBlock{req.Block}
+	p.versions[newBlock.GetId()] = simple.New(req.Block)
 	vers, err := p.block.AddVersions([]*model.Block{p.toSave(req.Block), p.toSave(parent)})
 	fmt.Println("middle: save updates in lib:", err)
 	if err != nil {
@@ -177,6 +180,39 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	fmt.Println("middle block created:", req.Block.Id, vers[0].Model().Id)
 	p.sendCreateEvents(parent, req.Block)
 	return
+}
+
+func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	block, ok := p.versions[id]
+	if !ok {
+		return ErrBlockNotFound
+	}
+	textBlock, ok := block.(*text.Text)
+	if !ok {
+		return ErrUnexpectedBlockType
+	}
+	textCopy := textBlock.Copy()
+	if err := apply(textCopy); err != nil {
+		return err
+	}
+	diff := textBlock.Diff(textCopy)
+	fmt.Println("middle: text update diff:", diff)
+	if len(diff) == 0 {
+		// no changes
+		return nil
+	}
+	if _, err := p.block.AddVersions([]*model.Block{p.toSave(textCopy.Model())}); err != nil {
+		return err
+	}
+	p.versions[id] = textCopy
+	p.s.sendEvent(&pb.Event{
+		Messages:  diff,
+		ContextId: p.GetId(),
+	})
+	return nil
 }
 
 func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {

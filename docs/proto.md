@@ -160,6 +160,10 @@
     - [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request)
     - [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response)
     - [Rpc.Log.Send.Response.Error](#anytype.Rpc.Log.Send.Response.Error)
+    - [Rpc.Ping](#anytype.Rpc.Ping)
+    - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
+    - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
+    - [Rpc.Ping.Response.Error](#anytype.Rpc.Ping.Response.Error)
     - [Rpc.Version](#anytype.Rpc.Version)
     - [Rpc.Version.Get](#anytype.Rpc.Version.Get)
     - [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request)
@@ -208,6 +212,7 @@
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
+    - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
@@ -255,6 +260,7 @@
     - [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width)
     - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Message](#anytype.Event.Message)
+    - [Event.Ping](#anytype.Event.Ping)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
@@ -364,6 +370,7 @@
 | BlockSetVideoName | [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request) | [Rpc.Block.Set.Video.Name.Response](#anytype.Rpc.Block.Set.Video.Name.Response) |  |
 | BlockSetVideoWidth | [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request) | [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response) |  |
 | BlockSetIconName | [Rpc.Block.Set.Icon.Name.Request](#anytype.Rpc.Block.Set.Icon.Name.Request) | [Rpc.Block.Set.Icon.Name.Response](#anytype.Rpc.Block.Set.Icon.Name.Response) |  |
+| Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 
  
 
@@ -2486,6 +2493,64 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.Ping"></a>
+
+### Rpc.Ping
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Ping.Request"></a>
+
+### Rpc.Ping.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| index | [int32](#int32) |  |  |
+| numberOfEventsToSend | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ping.Response"></a>
+
+### Rpc.Ping.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Ping.Response.Error](#anytype.Rpc.Ping.Response.Error) |  |  |
+| index | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ping.Response.Error"></a>
+
+### Rpc.Ping.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Version"></a>
 
 ### Rpc.Version
@@ -3127,6 +3192,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.Ping.Response.Error.Code"></a>
+
+### Rpc.Ping.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -3811,6 +3889,22 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
 | userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
+| ping | [Event.Ping](#anytype.Event.Ping) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Ping"></a>
+
+### Event.Ping
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| index | [int32](#int32) |  |  |
 
 
 
