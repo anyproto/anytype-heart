@@ -131,8 +131,8 @@ func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion
 		newVersion.model.Block.ChildrenIds = lastVersion.Model().ChildrenIds
 	}
 
-	if newVersion.model.Block.Permissions == nil {
-		newVersion.model.Block.Permissions = lastVersion.Model().Permissions
+	if newVersion.model.Block.Restrictions == nil {
+		newVersion.model.Block.Restrictions = lastVersion.Model().Restrictions
 	}
 
 	lastVersionB, _ := proto.Marshal(lastVersion.Model())
@@ -232,8 +232,8 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 				blockVersion.model.Block.Fields = block.Fields
 			}
 
-			if block.Permissions != nil {
-				blockVersion.model.Block.Permissions = block.Permissions
+			if block.Restrictions != nil {
+				blockVersion.model.Block.Restrictions = block.Restrictions
 			}
 
 			// only add dashboardVersion in case it was intentionally passed to AddVersions blocks
@@ -263,8 +263,8 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 					blockVersion.model.BlockById[block.Id].ChildrenIds = block.ChildrenIds
 				}
 
-				if block.Permissions != nil {
-					blockVersion.model.BlockById[block.Id].Permissions = block.Permissions
+				if block.Restrictions != nil {
+					blockVersion.model.BlockById[block.Id].Restrictions = block.Restrictions
 				}
 
 				if block.Fields != nil {
@@ -386,7 +386,7 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 		return nil
 	}
 
-	perms := blockPermissionsFull()
+	restr := blockRestrictionsFull()
 	return &SmartBlockVersion{
 		node: smartBlock.node,
 		model: &storage.BlockWithDependentBlocks{
@@ -396,8 +396,8 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 					"name": {Kind: &types.Value_StringValue{StringValue: "Untitled"}},
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":page_facing_up:"}},
 				}},
-				Permissions: &perms,
-				Content:     &model.BlockCore{content},
+				Restrictions: &restr,
+				Content:      &model.BlockCore{content},
 			}},
 	}
 }
