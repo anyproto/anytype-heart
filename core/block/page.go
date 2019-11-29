@@ -37,12 +37,12 @@ func (p *page) addName(title string) {
 	var b = virtualBlock{
 		&model.Block{
 			Id: p.block.GetId() + pageTitleSuffix,
-			Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
+			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{
 					Text:  title,
 					Style: model.BlockContentText_Title,
 				},
-			}},
+			},
 		},
 	}
 	p.versions[b.Model().Id] = b
@@ -53,11 +53,11 @@ func (p *page) addIcon(icon string) {
 	var b = virtualBlock{
 		&model.Block{
 			Id: p.block.GetId() + pageIconSuffix,
-			Content: &model.BlockCore{Content: &model.BlockCoreContentOfIcon{
+			Content: &model.BlockContentOfIcon{
 				Icon: &model.BlockContentIcon{
 					Name: icon,
 				},
-			}},
+			},
 		},
 	}
 	p.versions[b.Model().Id] = b
