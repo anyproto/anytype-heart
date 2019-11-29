@@ -58,9 +58,9 @@ var testBlocks = []*model.Block{
 		Id: "4",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Why Anytype is better vs. Notion?",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "Why Anytype is better vs. Notion?",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -69,9 +69,9 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"6"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Better looking and more pleasant to use:",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "Better looking and more pleasant to use:",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 				Marks: &model.BlockContentTextMarks{
 					Marks: []*model.BlockContentTextMark{
 						{
@@ -228,9 +228,9 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"20"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Free with no storage and upload limits",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "Free with no storage and upload limits",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 				Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
@@ -264,8 +264,7 @@ var testBlocks = []*model.Block{
 	{
 		Id: "22",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfDiv{
-			Div: &model.BlockContentDiv{
-			},
+			Div: &model.BlockContentDiv{},
 		}},
 	},
 	{
@@ -333,8 +332,7 @@ var testBlocks = []*model.Block{
 	{
 		Id: "28",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfDiv{
-			Div: &model.BlockContentDiv{
-			},
+			Div: &model.BlockContentDiv{},
 		}},
 	},
 	{
@@ -349,8 +347,7 @@ var testBlocks = []*model.Block{
 	{
 		Id: "30",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfVideo{
-			Video: &model.BlockContentVideo{
-			},
+			Video: &model.BlockContentVideo{},
 		}},
 	},
 	{
@@ -367,9 +364,9 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"33"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Is used to add a new block",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "Is used to add a new block",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -378,9 +375,9 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"34", "35", "36"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "How it works:",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "How it works:",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -388,9 +385,9 @@ var testBlocks = []*model.Block{
 		Id: "34",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "User hits \"+\" button",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "User hits \"+\" button",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -398,9 +395,9 @@ var testBlocks = []*model.Block{
 		Id: "35",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Add block menu appears",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "Add block menu appears",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -408,9 +405,9 @@ var testBlocks = []*model.Block{
 		Id: "36",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "User can visually click on one of the options and the block of the corresponding type will appear",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "User can visually click on one of the options and the block of the corresponding type will appear",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -419,9 +416,9 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"38", "47"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Is used as a Power Tool that allows to call for almost any action - change color, turn block into another, delete block",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "Is used as a Power Tool that allows to call for almost any action - change color, turn block into another, delete block",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -430,10 +427,10 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"39", "40", "41", "42", "46"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:       "How it works",
-				Style:      model.BlockContentText_Paragraph,
-				Marker:     model.BlockContentText_Bullet,
-				Toggleable: true,
+				Text:  "How it works",
+				Style: model.BlockContentText_Paragraph,
+				// Marker:     model.BlockContentText_Bullet,
+				// Toggleable: true,
 			},
 		}},
 	},
@@ -441,9 +438,9 @@ var testBlocks = []*model.Block{
 		Id: "39",
 		Content: &model.BlockCore{&model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "User hits \"+\" button",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "User hits \"+\" button",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -451,9 +448,9 @@ var testBlocks = []*model.Block{
 		Id: "40",
 		Content: &model.BlockCore{&model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Add block menu appears",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "Add block menu appears",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -461,9 +458,9 @@ var testBlocks = []*model.Block{
 		Id: "41",
 		Content: &model.BlockCore{&model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "User starts typing \"page\"",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "User starts typing \"page\"",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -472,10 +469,10 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"43", "44", "45"},
 		Content: &model.BlockCore{&model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:       "Items connected to page appear:",
-				Style:      model.BlockContentText_Paragraph,
-				Marker:     model.BlockContentText_Number,
-				Toggleable: true,
+				Text:  "Items connected to page appear:",
+				Style: model.BlockContentText_Paragraph,
+				// Marker:     model.BlockContentText_Number,
+				// Toggleable: true,
 			},
 		}},
 	},
@@ -501,9 +498,9 @@ var testBlocks = []*model.Block{
 		Id: "44",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "new page",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "new page",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -511,9 +508,9 @@ var testBlocks = []*model.Block{
 		Id: "45",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "new page",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "new page",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -521,9 +518,9 @@ var testBlocks = []*model.Block{
 		Id: "46",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "User chooses one from the list",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "User chooses one from the list",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -532,10 +529,10 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"48", "49", "50", "51"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:       "Alternative example",
-				Style:      model.BlockContentText_Paragraph,
-				Marker:     model.BlockContentText_Bullet,
-				Toggleable: true,
+				Text:  "Alternative example",
+				Style: model.BlockContentText_Paragraph,
+				// Marker:     model.BlockContentText_Bullet,
+				// Toggleable: true,
 			},
 		}},
 	},
@@ -543,9 +540,9 @@ var testBlocks = []*model.Block{
 		Id: "48",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "User hits \"+\" button",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "User hits \"+\" button",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -553,9 +550,9 @@ var testBlocks = []*model.Block{
 		Id: "49",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "Add block menu appears",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "Add block menu appears",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -563,9 +560,9 @@ var testBlocks = []*model.Block{
 		Id: "50",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "User starts typing \"turn into\"",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Number,
+				Text:  "User starts typing \"turn into\"",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Number,
 			},
 		}},
 	},
@@ -574,10 +571,10 @@ var testBlocks = []*model.Block{
 		ChildrenIds: []string{"52", "53", "54", "55", "56"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:       "Items connected to turn into appear:",
-				Style:      model.BlockContentText_Paragraph,
-				Marker:     model.BlockContentText_Number,
-				Toggleable: true,
+				Text:  "Items connected to turn into appear:",
+				Style: model.BlockContentText_Paragraph,
+				// Marker:     model.BlockContentText_Number,
+				// Toggleable: true,
 			},
 		}},
 	},
@@ -604,9 +601,9 @@ var testBlocks = []*model.Block{
 		Id: "53",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "text",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "text",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -614,9 +611,9 @@ var testBlocks = []*model.Block{
 		Id: "54",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "page",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "page",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -624,8 +621,8 @@ var testBlocks = []*model.Block{
 		Id: "55",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "heading",
-				Marker: model.BlockContentText_Bullet,
+				Text: "heading",
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -633,9 +630,9 @@ var testBlocks = []*model.Block{
 		Id: "56",
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
-				Text:   "list",
-				Style:  model.BlockContentText_Paragraph,
-				Marker: model.BlockContentText_Bullet,
+				Text:  "list",
+				Style: model.BlockContentText_Paragraph,
+				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},

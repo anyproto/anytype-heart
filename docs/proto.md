@@ -88,15 +88,15 @@
     - [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request)
     - [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response)
     - [Rpc.Block.Set.IsArchived.Response.Error](#anytype.Rpc.Block.Set.IsArchived.Response.Error)
-    - [Rpc.Block.Set.Permissions](#anytype.Rpc.Block.Set.Permissions)
-    - [Rpc.Block.Set.Permissions.Request](#anytype.Rpc.Block.Set.Permissions.Request)
-    - [Rpc.Block.Set.Permissions.Response](#anytype.Rpc.Block.Set.Permissions.Response)
-    - [Rpc.Block.Set.Permissions.Response.Error](#anytype.Rpc.Block.Set.Permissions.Response.Error)
+    - [Rpc.Block.Set.Restrictions](#anytype.Rpc.Block.Set.Restrictions)
+    - [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request)
+    - [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response)
+    - [Rpc.Block.Set.Restrictions.Response.Error](#anytype.Rpc.Block.Set.Restrictions.Response.Error)
     - [Rpc.Block.Set.Text](#anytype.Rpc.Block.Set.Text)
-    - [Rpc.Block.Set.Text.Check](#anytype.Rpc.Block.Set.Text.Check)
-    - [Rpc.Block.Set.Text.Check.Request](#anytype.Rpc.Block.Set.Text.Check.Request)
-    - [Rpc.Block.Set.Text.Check.Response](#anytype.Rpc.Block.Set.Text.Check.Response)
-    - [Rpc.Block.Set.Text.Check.Response.Error](#anytype.Rpc.Block.Set.Text.Check.Response.Error)
+    - [Rpc.Block.Set.Text.Checked](#anytype.Rpc.Block.Set.Text.Checked)
+    - [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request)
+    - [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response)
+    - [Rpc.Block.Set.Text.Checked.Response.Error](#anytype.Rpc.Block.Set.Text.Checked.Response.Error)
     - [Rpc.Block.Set.Text.Style](#anytype.Rpc.Block.Set.Text.Style)
     - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
     - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
@@ -192,8 +192,8 @@
     - [Rpc.Block.Set.Image.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Name.Response.Error.Code)
     - [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code)
     - [Rpc.Block.Set.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.IsArchived.Response.Error.Code)
-    - [Rpc.Block.Set.Permissions.Response.Error.Code](#anytype.Rpc.Block.Set.Permissions.Response.Error.Code)
-    - [Rpc.Block.Set.Text.Check.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Check.Response.Error.Code)
+    - [Rpc.Block.Set.Restrictions.Response.Error.Code](#anytype.Rpc.Block.Set.Restrictions.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Checked.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
     - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
@@ -241,9 +241,9 @@
     - [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State)
     - [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width)
     - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
-    - [Event.Block.Set.Permissions](#anytype.Event.Block.Set.Permissions)
+    - [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
-    - [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check)
+    - [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked)
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
@@ -276,7 +276,6 @@
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
-    - [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Image](#anytype.model.Block.Content.Image)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
@@ -286,9 +285,8 @@
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Content.Video](#anytype.model.Block.Content.Video)
-    - [Block.Content.Video.Preview](#anytype.model.Block.Content.Video.Preview)
     - [Block.Core](#anytype.model.Block.Core)
-    - [Block.Permissions](#anytype.model.Block.Permissions)
+    - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
     - [Video](#anytype.model.Video)
@@ -300,7 +298,6 @@
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
     - [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
-    - [Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Content.Video.State](#anytype.model.Block.Content.Video.State)
     - [Block.Position](#anytype.model.Block.Position)
@@ -353,13 +350,13 @@
 | BlockGetMarks | [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request) | [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response) |  |
 | BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) |  |
 | BlockSetFields | [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request) | [Rpc.Block.Set.Fields.Response](#anytype.Rpc.Block.Set.Fields.Response) |  |
-| BlockSetPermissions | [Rpc.Block.Set.Permissions.Request](#anytype.Rpc.Block.Set.Permissions.Request) | [Rpc.Block.Set.Permissions.Response](#anytype.Rpc.Block.Set.Permissions.Response) |  |
+| BlockSetRestrictions | [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request) | [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response) |  |
 | BlockSetIsArchived | [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request) | [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
-| BlockSetTextCheck | [Rpc.Block.Set.Text.Check.Request](#anytype.Rpc.Block.Set.Text.Check.Request) | [Rpc.Block.Set.Text.Check.Response](#anytype.Rpc.Block.Set.Text.Check.Response) |  |
+| BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
 | BlockPaste | [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request) | [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response) |  |
 | BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
@@ -1497,19 +1494,19 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Set.Permissions"></a>
+<a name="anytype.Rpc.Block.Set.Restrictions"></a>
 
-### Rpc.Block.Set.Permissions
-
-
+### Rpc.Block.Set.Restrictions
 
 
 
 
 
-<a name="anytype.Rpc.Block.Set.Permissions.Request"></a>
 
-### Rpc.Block.Set.Permissions.Request
+
+<a name="anytype.Rpc.Block.Set.Restrictions.Request"></a>
+
+### Rpc.Block.Set.Restrictions.Request
 
 
 
@@ -1517,37 +1514,37 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
+| restrictions | [model.Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Block.Set.Permissions.Response"></a>
+<a name="anytype.Rpc.Block.Set.Restrictions.Response"></a>
 
-### Rpc.Block.Set.Permissions.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Permissions.Response.Error](#anytype.Rpc.Block.Set.Permissions.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Permissions.Response.Error"></a>
-
-### Rpc.Block.Set.Permissions.Response.Error
+### Rpc.Block.Set.Restrictions.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Permissions.Response.Error.Code](#anytype.Rpc.Block.Set.Permissions.Response.Error.Code) |  |  |
+| error | [Rpc.Block.Set.Restrictions.Response.Error](#anytype.Rpc.Block.Set.Restrictions.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Restrictions.Response.Error"></a>
+
+### Rpc.Block.Set.Restrictions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Restrictions.Response.Error.Code](#anytype.Rpc.Block.Set.Restrictions.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1565,19 +1562,19 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Check"></a>
+<a name="anytype.Rpc.Block.Set.Text.Checked"></a>
 
-### Rpc.Block.Set.Text.Check
-
-
+### Rpc.Block.Set.Text.Checked
 
 
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Check.Request"></a>
 
-### Rpc.Block.Set.Text.Check.Request
+
+<a name="anytype.Rpc.Block.Set.Text.Checked.Request"></a>
+
+### Rpc.Block.Set.Text.Checked.Request
 
 
 
@@ -1592,30 +1589,30 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Check.Response"></a>
+<a name="anytype.Rpc.Block.Set.Text.Checked.Response"></a>
 
-### Rpc.Block.Set.Text.Check.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Text.Check.Response.Error](#anytype.Rpc.Block.Set.Text.Check.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.Check.Response.Error"></a>
-
-### Rpc.Block.Set.Text.Check.Response.Error
+### Rpc.Block.Set.Text.Checked.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Text.Check.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Check.Response.Error.Code) |  |  |
+| error | [Rpc.Block.Set.Text.Checked.Response.Error](#anytype.Rpc.Block.Set.Text.Checked.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Checked.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Checked.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Checked.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2915,9 +2912,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.Permissions.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Set.Restrictions.Response.Error.Code"></a>
 
-### Rpc.Block.Set.Permissions.Response.Error.Code
+### Rpc.Block.Set.Restrictions.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -2928,9 +2925,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.Check.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code"></a>
 
-### Rpc.Block.Set.Text.Check.Response.Error.Code
+### Rpc.Block.Set.Text.Checked.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -3581,16 +3578,16 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.Permissions"></a>
+<a name="anytype.Event.Block.Set.Restrictions"></a>
 
-### Event.Block.Set.Permissions
+### Event.Block.Set.Restrictions
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| permissions | [model.Block.Permissions](#anytype.model.Block.Permissions) |  |  |
+| restrictions | [model.Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
 
 
 
@@ -3609,16 +3606,16 @@ Precondition: user A opened a block
 | text | [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text) |  |  |
 | style | [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style) |  |  |
 | marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
-| check | [Event.Block.Set.Text.Check](#anytype.Event.Block.Set.Text.Check) |  |  |
+| checked | [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked) |  |  |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Set.Text.Check"></a>
+<a name="anytype.Event.Block.Set.Text.Checked"></a>
 
-### Event.Block.Set.Text.Check
+### Event.Block.Set.Text.Checked
 
 
 
@@ -3803,7 +3800,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
 | blockSetFields | [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields) |  |  |
 | blockSetChildrenIds | [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds) |  |  |
-| blockSetPermissions | [Event.Block.Set.Permissions](#anytype.Event.Block.Set.Permissions) |  |  |
+| blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  |  |
 | blockSetIsArchived | [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived) |  |  |
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
@@ -3975,7 +3972,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| permissions | [Block.Permissions](#anytype.model.Block.Permissions) |  |  |
+| restrictions | [Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
 | isArchived | [bool](#bool) |  |  |
 | content | [Block.Core](#anytype.model.Block.Core) |  |  |
@@ -4052,24 +4049,9 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | localFilePath | [string](#string) |  | Path to the file on a local machine |
-| state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
-| preview | [Block.Content.File.Preview](#anytype.model.Block.Content.File.Preview) |  | Content to show before the main content downloaded |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.File.Preview"></a>
-
-### Block.Content.File.Preview
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | icon | [string](#string) |  |  |
+| state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
 
 
 
@@ -4172,9 +4154,6 @@ Link: block to link some content from an external sources.
 | text | [string](#string) |  |  |
 | style | [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 | marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
-| toggleable | [bool](#bool) |  | can be toggled or not |
-| marker | [Block.Content.Text.Marker](#anytype.model.Block.Content.Text.Marker) |  | if no – it&#39;s not a list. If number/bullet – it should be a list with its list-siblings. |
-| checkable | [bool](#bool) |  | can be checked or not |
 | checked | [bool](#bool) |  |  |
 
 
@@ -4223,25 +4202,10 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | localFilePath | [string](#string) |  |  |
-| state | [Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
-| preview | [Block.Content.Video.Preview](#anytype.model.Block.Content.Video.Preview) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Video.Preview"></a>
-
-### Block.Content.Video.Preview
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | icon | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
+| state | [Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
 
 
 
@@ -4274,9 +4238,9 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype.model.Block.Permissions"></a>
+<a name="anytype.model.Block.Restrictions"></a>
 
-### Block.Permissions
+### Block.Restrictions
 
 
 
@@ -4441,19 +4405,6 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.model.Block.Content.Text.Marker"></a>
-
-### Block.Content.Text.Marker
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| None | 0 |  |
-| Number | 1 |  |
-| Bullet | 2 |  |
-
-
-
 <a name="anytype.model.Block.Content.Text.Style"></a>
 
 ### Block.Content.Text.Style
@@ -4469,6 +4420,10 @@ General purpose structure, uses in Mark.
 | Quote | 5 |  |
 | Code | 6 |  |
 | Title | 7 |  |
+| Checkbox | 8 |  |
+| Marked | 9 |  |
+| Numbered | 10 |  |
+| Toggle | 11 |  |
 
 
 

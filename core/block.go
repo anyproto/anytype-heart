@@ -199,9 +199,9 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetTextCheck(req *pb.RpcBlockSetTextCheckRequest) *pb.RpcBlockSetTextCheckResponse {
-	response := func(code pb.RpcBlockSetTextCheckResponseErrorCode, err error) *pb.RpcBlockSetTextCheckResponse {
-		m := &pb.RpcBlockSetTextCheckResponse{Error: &pb.RpcBlockSetTextCheckResponseError{Code: code}}
+func (mw *Middleware) BlockSetTextChecked(req *pb.RpcBlockSetTextCheckedRequest) *pb.RpcBlockSetTextCheckedResponse {
+	response := func(code pb.RpcBlockSetTextCheckedResponseErrorCode, err error) *pb.RpcBlockSetTextCheckedResponse {
+		m := &pb.RpcBlockSetTextCheckedResponse{Error: &pb.RpcBlockSetTextCheckedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -209,7 +209,7 @@ func (mw *Middleware) BlockSetTextCheck(req *pb.RpcBlockSetTextCheckRequest) *pb
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockSetTextCheckResponseError_NULL, nil)
+	return response(pb.RpcBlockSetTextCheckedResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetFileName(req *pb.RpcBlockSetFileNameRequest) *pb.RpcBlockSetFileNameResponse {
