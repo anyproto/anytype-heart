@@ -6,7 +6,6 @@ import (
 	"log"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -23,9 +22,8 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 
-	SetTextInRange(req pb.RpcBlockSetTextTextInRangeRequest) error
+	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
-	SetTextMark(req pb.RpcBlockSetTextMarkRequest) error
 	SetTextToggleable(req pb.RpcBlockSetTextToggleableRequest) error
 	SetTextMarker(req pb.RpcBlockSetTextMarkerRequest) error
 	SetTextCheckable(req pb.RpcBlockSetTextCheckableRequest) error
@@ -89,12 +87,9 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	return "", ErrBlockNotFound
 }
 
-func (s *service) SetTextInRange(req pb.RpcBlockSetTextTextInRangeRequest) error {
+func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
 	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
-		if req.Range == nil {
-			req.Range = &model.Range{}
-		}
-		return b.SetText(req.Text, *req.Range)
+		return b.SetText(req.Text, req.Marks)
 	})
 }
 
@@ -102,12 +97,6 @@ func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
 	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
 		b.SetStyle(req.Style)
 		return nil
-	})
-}
-
-func (s *service) SetTextMark(req pb.RpcBlockSetTextMarkRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
-		return b.SetMark(req.Mark)
 	})
 }
 

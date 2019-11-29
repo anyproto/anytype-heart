@@ -208,7 +208,9 @@ func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.R
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextText(*req); err != nil {
+		return response(pb.RpcBlockSetTextTextResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextTextResponseError_NULL, nil)
 }
 

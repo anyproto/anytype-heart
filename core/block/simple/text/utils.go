@@ -1,98 +1,49 @@
 package text
 
-import "github.com/anytypeio/go-anytype-library/pb/model"
+import (
+	"sort"
 
-type ranges []*model.BlockContentTextMark
-
-func (a ranges) Len() int           { return len(a) }
-func (a ranges) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ranges) Less(i, j int) bool { return a[i].Range.From < a[j].Range.From }
-
-const (
-	// a equal b
-	equal int = iota
-	// b inside a
-	outer
-	// a inside b
-	inner
-	// a inside b, left side eq
-	innerLeft
-	// a inside b, right side eq
-	innerRight
-	// a-b
-	left
-	// b-a
-	right
-	// a ... b
-	before
-	// b ... a
-	after
+	"github.com/anytypeio/go-anytype-library/pb/model"
 )
 
-func overlap(a, b *model.Range) int {
-	switch {
-	case *a == *b:
-		return equal
-	case a.To < b.From:
-		return before
-	case a.From > b.To:
-		return after
-	case a.From <= b.From && a.To >= b.To:
-		return outer
-	case a.From > b.From && a.To < b.To:
-		return inner
-	case a.From == b.From && a.To < b.To:
-		return innerLeft
-	case a.From > b.From && a.To == b.To:
-		return innerRight
-	case a.From < b.From && b.From <= a.To:
-		return left
-	default:
-		return right
-	}
+type sortedMarks []*model.BlockContentTextMark
+
+func (s sortedMarks) Len() int {
+	return len(s)
 }
 
-func inInt(s []int, i int) bool {
-	for _, si := range s {
-		if si == i {
-			return true
-		}
+func (s sortedMarks) Less(i, j int) bool {
+	if s[i].Type == s[j].Type {
+		return getSafeRangeFrom(s[i].Range) < getSafeRangeFrom(s[j].Range)
 	}
-	return false
+	return s[i].Type < s[j].Type
 }
 
-func marksByTypesEq(m1, m2 map[model.BlockContentTextMarkType]ranges) bool {
-	for k, v := range m1 {
-		if len(v) == 0 {
-			delete(m1, k)
-		}
+func (s sortedMarks) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func getSafeRangeFrom(r *model.Range) int32 {
+	if r == nil {
+		return 0
 	}
-	for k, v := range m2 {
-		if len(v) == 0 {
-			delete(m2, k)
-		}
+	return r.From
+}
+
+func marksEq(s1, s2 *model.BlockContentTextMarks) bool {
+	if s1 == nil {
+		s1 = &model.BlockContentTextMarks{}
 	}
-	if len(m1) != len(m2) {
+	if s2 == nil {
+		s2 = &model.BlockContentTextMarks{}
+	}
+	if len(s1.Marks) != len(s2.Marks) {
 		return false
 	}
-	for k, v := range m1 {
-		if v2, ok := m2[k]; ok {
-			if !rangesEq(v, v2) {
-				return false
-			}
-		} else {
-			return false
-		}
-	}
-	return true
-}
-
-func rangesEq(s1, s2 ranges) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	for i, v := range s1 {
-		if !markEq(v, s2[i]) {
+	sort.Sort(sortedMarks(s1.Marks))
+	sort.Sort(sortedMarks(s2.Marks))
+	for i, v := range s1.Marks {
+		if !markEq(v, s2.Marks[i]) {
 			return false
 		}
 	}
