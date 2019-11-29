@@ -7,11 +7,11 @@ import "google/protobuf/struct.proto";
 message Block {
     string id = 1;
     google.protobuf.Struct fields = 2;
-    Permissions permissions = 3;
+    Restrictions restrictions = 3;
     repeated string childrenIds = 4;
     bool isArchived = 5;
 
-    message Permissions {
+    message Restrictions {
         bool read = 1;
         bool edit = 2;
         bool remove = 3;
@@ -135,7 +135,7 @@ message Block {
                 Quote = 5;
                 Code = 6;
                 Title = 7;
-                Check = 8;
+                Checkbox = 8;
                 Marked = 9;
                 Numbered = 10;
                 Toggle = 11;
