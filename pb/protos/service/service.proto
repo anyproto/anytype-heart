@@ -27,20 +27,18 @@ service ClientCommands {
     rpc BlockHistoryMove (anytype.Rpc.Block.History.Move.Request) returns (anytype.Rpc.Block.History.Move.Response);
 
     rpc BlockSetFields (anytype.Rpc.Block.Set.Fields.Request) returns (anytype.Rpc.Block.Set.Fields.Response);
-    rpc BlockSetPermissions (anytype.Rpc.Block.Set.Permissions.Request) returns (anytype.Rpc.Block.Set.Permissions.Response);
+    rpc BlockSetRestrictions (anytype.Rpc.Block.Set.Restrictions.Request) returns (anytype.Rpc.Block.Set.Restrictions.Response);
     rpc BlockSetIsArchived (anytype.Rpc.Block.Set.IsArchived.Request) returns (anytype.Rpc.Block.Set.IsArchived.Response);
 
     rpc BlockListMove (anytype.Rpc.BlockList.Move.Request) returns (anytype.Rpc.BlockList.Move.Response);
     rpc BlockListSetTextStyle (anytype.Rpc.BlockList.Set.Text.Style.Request) returns (anytype.Rpc.BlockList.Set.Text.Style.Response);
-    rpc BlockListSetTextMarker (anytype.Rpc.BlockList.Set.Text.Marker.Request) returns (anytype.Rpc.BlockList.Set.Text.Marker.Response);
-    rpc BlockListSetTextCheckable (anytype.Rpc.BlockList.Set.Text.Checkable.Request) returns (anytype.Rpc.BlockList.Set.Text.Checkable.Response);
 
     rpc BlockSetTextText (anytype.Rpc.Block.Set.Text.Text.Request) returns (anytype.Rpc.Block.Set.Text.Text.Response);
     rpc BlockSetTextStyle (anytype.Rpc.Block.Set.Text.Style.Request) returns (anytype.Rpc.Block.Set.Text.Style.Response);
-    rpc BlockSetTextToggleable (anytype.Rpc.Block.Set.Text.Toggleable.Request) returns (anytype.Rpc.Block.Set.Text.Toggleable.Response);
-    rpc BlockSetTextMarker (anytype.Rpc.Block.Set.Text.Marker.Request) returns (anytype.Rpc.Block.Set.Text.Marker.Response);
-    rpc BlockSetTextCheckable (anytype.Rpc.Block.Set.Text.Checkable.Request) returns (anytype.Rpc.Block.Set.Text.Checkable.Response);
-    rpc BlockSetTextCheck (anytype.Rpc.Block.Set.Text.Check.Request) returns (anytype.Rpc.Block.Set.Text.Check.Response);
+    rpc BlockSetTextChecked (anytype.Rpc.Block.Set.Text.Checked.Request) returns (anytype.Rpc.Block.Set.Text.Checked.Response);
+
+    rpc BlockCopy (anytype.Rpc.Block.Copy.Request) returns (anytype.Rpc.Block.Copy.Response);
+    rpc BlockPaste (anytype.Rpc.Block.Paste.Request) returns (anytype.Rpc.Block.Paste.Response);
 
     rpc BlockSetFileName (anytype.Rpc.Block.Set.File.Name.Request) returns (anytype.Rpc.Block.Set.File.Name.Response);
     rpc BlockSetImageName (anytype.Rpc.Block.Set.Image.Name.Request) returns (anytype.Rpc.Block.Set.Image.Name.Response);

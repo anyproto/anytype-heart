@@ -24,7 +24,7 @@ message Event {
 
             Block.Set.Fields blockSetFields = 6;
             Block.Set.ChildrenIds blockSetChildrenIds = 7;
-            Block.Set.Permissions blockSetPermissions = 8;
+            Block.Set.Restrictions blockSetRestrictions = 8;
             Block.Set.IsArchived blockSetIsArchived = 9;
 
             Block.Set.Text blockSetText = 10;
@@ -111,9 +111,9 @@ message Event {
                 repeated string childrenIds = 2;
             }
 
-            message Permissions {
+            message Restrictions {
                 string id = 1;
-                anytype.model.Block.Permissions permissions = 2;
+                anytype.model.Block.Restrictions restrictions = 2;
             }
 
             message IsArchived {
@@ -126,10 +126,7 @@ message Event {
                 Text text = 2;
                 Style style = 3;
                 Marks marks = 4;
-                Toggleable toggleable = 5;
-                Marker marker = 6;
-                Checkable checkable = 7;
-                Check check = 8;
+                Checked checked = 5;
 
                 message Text {
                     string value = 1;
@@ -143,19 +140,7 @@ message Event {
                     anytype.model.Block.Content.Text.Marks value = 1;
                 }
 
-                message Toggleable {
-                    bool value = 1;
-                }
-
-                message Marker {
-                    anytype.model.Block.Content.Text.Marker value = 1;
-                }
-
-                message Checkable {
-                    bool value = 1;
-                }
-
-                message Check {
+                message Checked {
                     bool value = 1;
                 }
             }
