@@ -9,6 +9,7 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 	"unsafe"
 
 	"github.com/anytypeio/go-anytype-middleware/lib"
@@ -37,6 +38,8 @@ func SetEventHandler(proxyFunc C.proxyFunc, ctx unsafe.Pointer) {
 //export Command
 func Command(cmd *C.char, data unsafe.Pointer, dataLen C.int, callback C.proxyFunc, callbackContext unsafe.Pointer) {
 	lib.CommandAsync(C.GoString(cmd), C.GoBytes(data, dataLen), func(data []byte) {
+		// workaround for callback coming before the last event
+		time.Sleep(time.Millisecond*30)
 		C.ProxyCall(callback, callbackContext, C.CString(""), C.CString(string(data)), C.int(len(data)))
 	})
 }
