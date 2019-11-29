@@ -386,7 +386,7 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 		return nil
 	}
 
-	restr := blockRestrictionsFull()
+	restr := blockRestrictionsEmpty()
 	return &SmartBlockVersion{
 		node: smartBlock.node,
 		model: &storage.BlockWithDependentBlocks{

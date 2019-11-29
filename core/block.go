@@ -59,7 +59,7 @@ func (anytype *Anytype) getThreadForBlock(b *model.Block) (*tcore.Thread, error)
 	}
 }
 
-func blockRestrictionsFull() model.BlockRestrictions {
+func blockRestrictionsEmpty() model.BlockRestrictions {
 	return model.BlockRestrictions{
 		Read:   false,
 		Edit:   false,

@@ -105,7 +105,7 @@ func (simpleBlock *SimpleBlock) AddVersions(blocks []*model.Block) ([]BlockVersi
 }
 
 func (simpleBlock *SimpleBlock) EmptyVersion() BlockVersion {
-	restr := blockRestrictionsFull()
+	restr := blockRestrictionsEmpty()
 	return &SimpleBlockVersion{
 		model: &model.Block{
 			Id:           simpleBlock.id,
