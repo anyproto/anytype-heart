@@ -199,19 +199,17 @@ func (mw *Middleware) BlockListSetTextCheckable(req *pb.RpcBlockListSetTextCheck
 	return response(pb.RpcBlockListSetTextCheckableResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetTextTextInRange(req *pb.RpcBlockSetTextTextInRangeRequest) *pb.RpcBlockSetTextTextInRangeResponse {
-	response := func(code pb.RpcBlockSetTextTextInRangeResponseErrorCode, err error) *pb.RpcBlockSetTextTextInRangeResponse {
-		m := &pb.RpcBlockSetTextTextInRangeResponse{Error: &pb.RpcBlockSetTextTextInRangeResponseError{Code: code}}
+func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
+	response := func(code pb.RpcBlockSetTextTextResponseErrorCode, err error) *pb.RpcBlockSetTextTextResponse {
+		m := &pb.RpcBlockSetTextTextResponse{Error: &pb.RpcBlockSetTextTextResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	if err := mw.blockService.SetTextInRange(*req); err != nil {
-		return response(pb.RpcBlockSetTextTextInRangeResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockSetTextTextInRangeResponseError_NULL, nil)
+	// TODO
+	return response(pb.RpcBlockSetTextTextResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse {
@@ -227,21 +225,6 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 		return response(pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockSetTextMark(req *pb.RpcBlockSetTextMarkRequest) *pb.RpcBlockSetTextMarkResponse {
-	response := func(code pb.RpcBlockSetTextMarkResponseErrorCode, err error) *pb.RpcBlockSetTextMarkResponse {
-		m := &pb.RpcBlockSetTextMarkResponse{Error: &pb.RpcBlockSetTextMarkResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	if err := mw.blockService.SetTextMark(*req); err != nil {
-		return response(pb.RpcBlockSetTextMarkResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockSetTextMarkResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextToggleable(req *pb.RpcBlockSetTextToggleableRequest) *pb.RpcBlockSetTextToggleableResponse {
