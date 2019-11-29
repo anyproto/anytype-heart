@@ -105,11 +105,11 @@ func (simpleBlock *SimpleBlock) AddVersions(blocks []*model.Block) ([]BlockVersi
 }
 
 func (simpleBlock *SimpleBlock) EmptyVersion() BlockVersion {
-	perms := blockPermissionsFull()
+	restr := blockRestrictionsEmpty()
 	return &SimpleBlockVersion{
 		model: &model.Block{
-			Id:          simpleBlock.id,
-			Permissions: &perms,
+			Id:           simpleBlock.id,
+			Restrictions: &restr,
 		},
 		//todo: not possible to pass parentSmartBlockVersion here
 		// do we actually need it?

@@ -59,12 +59,12 @@ func (anytype *Anytype) getThreadForBlock(b *model.Block) (*tcore.Thread, error)
 	}
 }
 
-func blockPermissionsFull() model.BlockPermissions {
-	return model.BlockPermissions{
-		Read:   true,
-		Edit:   true,
-		Remove: true,
-		Drag:   true,
-		DropOn: true,
+func blockRestrictionsEmpty() model.BlockRestrictions {
+	return model.BlockRestrictions{
+		Read:   false,
+		Edit:   false,
+		Remove: false,
+		Drag:   false,
+		DropOn: false,
 	}
 }

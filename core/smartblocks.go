@@ -53,7 +53,7 @@ func (a *Anytype) GetSmartBlock(id string) (*SmartBlock, error) {
 	}
 }
 
-func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVersion {
+func (a *Anytype) smartBlockVersionWithFullRestrictions(id string) *SmartBlockVersion {
 	return &SmartBlockVersion{
 		node: a,
 		model: &storage.BlockWithDependentBlocks{
@@ -63,8 +63,12 @@ func (a *Anytype) smartBlockVersionWithoutPermissions(id string) *SmartBlockVers
 					"name": {Kind: &types.Value_StringValue{StringValue: "Inaccessible block"}},
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":no_entry_sign:"}},
 				}},
-				Permissions: &model.BlockPermissions{
-					// all permissions are false by default
+				Restrictions: &model.BlockRestrictions{
+					Read:   true,
+					Edit:   true,
+					Remove: true,
+					Drag:   true,
+					DropOn: true,
 				},
 				// we don't know the block type for sure, lets set a page
 				Content: &model.BlockCore{&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}},

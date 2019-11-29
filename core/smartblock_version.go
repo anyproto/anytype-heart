@@ -71,7 +71,7 @@ func (version *SmartBlockVersion) DependentBlocks() map[string]BlockVersion {
 
 		smartBlock, err := version.node.GetBlock(child)
 		if err != nil {
-			m[child] = version.node.smartBlockVersionWithoutPermissions(child)
+			m[child] = version.node.smartBlockVersionWithFullRestrictions(child)
 		} else {
 
 			smartBlockVersion, err := smartBlock.GetCurrentVersion()
