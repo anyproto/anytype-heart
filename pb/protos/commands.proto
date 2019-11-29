@@ -203,11 +203,11 @@ message Rpc {
                     }
                 }
             }
-            message Permissions {
+            message Restrictions {
                 message Request {
                     string contextId = 1;
                     string blockId = 2;
-                    anytype.model.Block.Permissions permissions = 3;
+                    anytype.model.Block.Restrictions restrictions = 3;
                 }
 
                 message Response {
@@ -301,7 +301,7 @@ message Rpc {
                     }
                 }
 
-                message Check {
+                message Checked {
                     message Request {
                         string contextId = 1;
                         string blockId = 2;

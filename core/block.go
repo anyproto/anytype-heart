@@ -121,9 +121,9 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetPermissions(req *pb.RpcBlockSetPermissionsRequest) *pb.RpcBlockSetPermissionsResponse {
-	response := func(code pb.RpcBlockSetPermissionsResponseErrorCode, err error) *pb.RpcBlockSetPermissionsResponse {
-		m := &pb.RpcBlockSetPermissionsResponse{Error: &pb.RpcBlockSetPermissionsResponseError{Code: code}}
+func (mw *Middleware) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsRequest) *pb.RpcBlockSetRestrictionsResponse {
+	response := func(code pb.RpcBlockSetRestrictionsResponseErrorCode, err error) *pb.RpcBlockSetRestrictionsResponse {
+		m := &pb.RpcBlockSetRestrictionsResponse{Error: &pb.RpcBlockSetRestrictionsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -131,7 +131,7 @@ func (mw *Middleware) BlockSetPermissions(req *pb.RpcBlockSetPermissionsRequest)
 		return m
 	}
 	// TODO
-	return response(pb.RpcBlockSetPermissionsResponseError_NULL, nil)
+	return response(pb.RpcBlockSetRestrictionsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetIsArchived(req *pb.RpcBlockSetIsArchivedRequest) *pb.RpcBlockSetIsArchivedResponse {
