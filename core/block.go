@@ -182,7 +182,9 @@ func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.R
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextText(*req); err != nil {
+		return response(pb.RpcBlockSetTextTextResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextTextResponseError_NULL, nil)
 }
 
@@ -195,7 +197,9 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextStyle(*req); err != nil {
+		return response(pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
 }
 
@@ -208,7 +212,9 @@ func (mw *Middleware) BlockSetTextChecked(req *pb.RpcBlockSetTextCheckedRequest)
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextChecked(*req); err != nil {
+		return response(pb.RpcBlockSetTextCheckedResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextCheckedResponseError_NULL, nil)
 }
 
@@ -294,5 +300,6 @@ func (mw *Middleware) switchAccount(accountId string) {
 	if mw.blockService != nil {
 		mw.blockService.Close()
 	}
+
 	mw.blockService = block.NewService(accountId, mw.Anytype, mw.SendEvent)
 }

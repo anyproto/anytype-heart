@@ -7,18 +7,25 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 var (
-	ErrBlockNotFound    = errors.New("block not found")
-	ErrBlockAlreadyOpen = errors.New("block already open")
+	ErrBlockNotFound       = errors.New("block not found")
+	ErrBlockAlreadyOpen    = errors.New("block already open")
+	ErrUnexpectedBlockType = errors.New("unexpected block type")
 )
 
 type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
+
+	SetTextText(req pb.RpcBlockSetTextTextRequest) error
+	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
+	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
+
 	Close() error
 }
 
@@ -75,6 +82,37 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 		return sb.Create(req)
 	}
 	return "", ErrBlockNotFound
+}
+
+func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		return b.SetText(req.Text, req.Marks)
+	})
+}
+
+func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		b.SetStyle(req.Style)
+		return nil
+	})
+}
+
+func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+		b.SetChecked(req.Check)
+		return nil
+	})
+}
+
+func (s *service) updateTextBlock(contextId, blockId string, apply func(b *text.Text) error) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[contextId]
+	if !ok {
+		err = ErrBlockNotFound
+		return
+	}
+	return sb.UpdateTextBlock(blockId, apply)
 }
 
 func (s *service) Close() error {

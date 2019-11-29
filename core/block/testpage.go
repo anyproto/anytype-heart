@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 )
@@ -32,7 +33,7 @@ var testBlocks = []*model.Block{
 				"icon": testStringValue(":deciduous_tree:"),
 			},
 		},
-		ChildrenIds: []string{"2", "3", "4", "5", "7", "12", "13", "16", "19", "21", "22", "23", "28", "29", "30", "31", "32", "37"},
+		ChildrenIds: []string{"2", "3", "4", "4a", "5", "7", "12", "13", "16", "19", "21", "22", "23", "28", "29", "30", "31", "32", "37"},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{
 			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		}},
@@ -59,8 +60,16 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Why Anytype is better vs. Notion?",
+				Style: model.BlockContentText_Header1,
+			},
+		}},
+	},
+	{
+		Id: "4a",
+		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
+			Text: &model.BlockContentText{
+				Text:  "Test break for numbering check",
 				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
 			},
 		}},
 	},
@@ -70,8 +79,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Better looking and more pleasant to use:",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Header1,
 				Marks: &model.BlockContentTextMarks{
 					Marks: []*model.BlockContentTextMark{
 						{
@@ -88,10 +96,35 @@ var testBlocks = []*model.Block{
 	},
 	{
 		Id: "6",
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				"lang": testStringValue("js"),
+			},
+		},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Why? Notion and Airtable use one standard design for all databases - one fits all approach. It works well for a generic case - pages. Anytype customizes the design of a database for each object: page, task, file, link, music file, video, etc. It makes Anytype's tools look native, like apps not spreadsheets.",
 				Style: model.BlockContentText_Paragraph,
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   7,
+							},
+							Type:  model.BlockContentTextMark_TextColor,
+							Param: "#ff0000",
+						},
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   7,
+							},
+							Type:  model.BlockContentTextMark_BackgroundColor,
+							Param: "#00ff00",
+						},
+					},
+				},
 			},
 		}},
 	},
@@ -294,9 +327,8 @@ var testBlocks = []*model.Block{
 		Id: "25",
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
-				"width": testFloatValue(0.5),
-				"name":  testStringValue("Test page"),
-				"icon":  testStringValue(":deciduous_tree:"),
+				"name": testStringValue("Test page"),
+				"icon": testStringValue(":deciduous_tree:"),
 			},
 		},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{
@@ -307,9 +339,8 @@ var testBlocks = []*model.Block{
 		Id: "26",
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
-				"width": testFloatValue(0.5),
-				"name":  testStringValue("Test page"),
-				"icon":  testStringValue(":deciduous_tree:"),
+				"name": testStringValue("Test page"),
+				"icon": testStringValue(":deciduous_tree:"),
 			},
 		},
 		Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{
@@ -640,6 +671,10 @@ var testBlocks = []*model.Block{
 
 type testPage struct {
 	s *service
+}
+
+func (t *testPage) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+	return fmt.Errorf("can't update block in the test page")
 }
 
 func (t *testPage) Open(b anytype.Block) error {
