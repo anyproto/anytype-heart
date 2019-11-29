@@ -39,16 +39,16 @@ func (s *Base) Diff(m *model.Block) (msgs []*pb.EventMessage) {
 		msgs = append(msgs, m)
 	}
 
-	if s.Permissions == nil {
-		s.Permissions = &model.BlockPermissions{}
+	if s.Restrictions == nil {
+		s.Restrictions = &model.BlockRestrictions{}
 	}
-	if m.Permissions == nil {
-		m.Permissions = &model.BlockPermissions{}
+	if m.Restrictions == nil {
+		m.Restrictions = &model.BlockRestrictions{}
 	}
-	if *s.Permissions != *m.Permissions {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetPermissions{BlockSetPermissions: &pb.EventBlockSetPermissions{
-			Id:          s.Id,
-			Permissions: m.Permissions,
+	if *s.Restrictions != *m.Restrictions {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetRestrictions{BlockSetRestrictions: &pb.EventBlockSetRestrictions{
+			Id:           s.Id,
+			Restrictions: m.Restrictions,
 		}}}
 		msgs = append(msgs, m)
 	}

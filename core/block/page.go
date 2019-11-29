@@ -37,13 +37,13 @@ func (p *page) Init() {
 func (p *page) addName(title string) {
 	var b = simple.NewVirtual(&model.Block{
 		Id: p.block.GetId() + pageTitleSuffix,
-		Permissions:&model.BlockPermissions{
-				Read:   true,
-				Edit:   true,
-				Remove: false,
-				Drag:   false,
-				DropOn: true,
-			},Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
+		Restrictions: &model.BlockRestrictions{
+			Read:   false,
+			Edit:   false,
+			Remove: true,
+			Drag:   true,
+			DropOn: false,
+		}, Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
 			Text: &model.BlockContentText{
 				Text:  title,
 				Style: model.BlockContentText_Title,
@@ -57,13 +57,13 @@ func (p *page) addName(title string) {
 func (p *page) addIcon(icon string) {
 	var b = simple.NewVirtual(&model.Block{
 		Id: p.block.GetId() + pageIconSuffix,
-		Permissions:&model.BlockPermissions{
-				Read:   true,
-				Edit:   true,
-				Remove: false,
-				Drag:   false,
-				DropOn: false,
-			},Content: &model.BlockCore{Content: &model.BlockCoreContentOfIcon{
+		Restrictions: &model.BlockRestrictions{
+			Read:   false,
+			Edit:   false,
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		}, Content: &model.BlockCore{Content: &model.BlockCoreContentOfIcon{
 			Icon: &model.BlockContentIcon{
 				Name: icon,
 			},

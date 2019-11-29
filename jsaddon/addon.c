@@ -86,9 +86,6 @@ static void CallJs(napi_env env, napi_value js_cb, void * context, void * data) 
     const napi_extended_error_info *result;                                                \
 
 	napi_get_last_error_info(env, &result);                                                \
-	printf("error : %s\n", result->error_message);              \
-
-    printf("napi_call_function status %d\n", status);
   }
 }
 
@@ -115,8 +112,7 @@ static void CallJsProxy(void * adata, char * method, char * data, int data_lengt
 
   assert(napi_call_threadsafe_function(addon_data->tsfn,
     item,
-    napi_tsfn_nonblocking) == napi_ok);
-
+    napi_tsfn_blocking) == napi_ok);
 }
 
 // This binding can be called from JavaScript to set the event handler
@@ -152,7 +148,7 @@ static napi_value SetEventHandlerProxy(napi_env env, napi_callback_info info) {
     js_cb,
     NULL,
     work_name,
-    0,
+    1,
     1,
     addon_data,
     ThreadFinished,
@@ -328,7 +324,7 @@ static napi_value SendCommand(napi_env env, napi_callback_info info) {
     argv[2],
     NULL,
     work_name,
-    0,
+    1,
     1,
     addon_data,
     ThreadFinished,

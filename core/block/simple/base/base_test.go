@@ -20,12 +20,12 @@ func TestBase_Diff(t *testing.T) {
 					},
 				},
 			},
-			Permissions: &model.BlockPermissions{
-				Read:   true,
-				Edit:   true,
-				Remove: true,
-				Drag:   true,
-				DropOn: true,
+			Restrictions: &model.BlockRestrictions{
+				Read:   false,
+				Edit:   false,
+				Remove: false,
+				Drag:   false,
+				DropOn: false,
 			},
 			ChildrenIds: []string{"1", "2", "3"},
 			IsArchived:  false,
@@ -52,13 +52,13 @@ func TestBase_Diff(t *testing.T) {
 		require.Len(t, diff, 1)
 		assert.Equal(t, b2.IsArchived, diff[0].Value.(*pb.EventMessageValueOfBlockSetIsArchived).BlockSetIsArchived.IsArchived)
 	})
-	t.Run("permissions", func(t *testing.T) {
+	t.Run("restrictions", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.Permissions.Read = !b1.Permissions.Read
+		b2.Restrictions.Read = !b1.Restrictions.Read
 		diff := b1.Diff(b2.Model())
 		require.Len(t, diff, 1)
-		assert.Equal(t, b2.Permissions, diff[0].Value.(*pb.EventMessageValueOfBlockSetPermissions).BlockSetPermissions.Permissions)
+		assert.Equal(t, b2.Restrictions, diff[0].Value.(*pb.EventMessageValueOfBlockSetRestrictions).BlockSetRestrictions.Restrictions)
 	})
 	t.Run("fields", func(t *testing.T) {
 		b1 := testBlock()

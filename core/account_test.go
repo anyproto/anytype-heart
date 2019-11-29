@@ -146,7 +146,7 @@ func TestAccountRecoverRemoteNotExisting(t *testing.T) {
 }
 
 func TestRecoverRemoteExisting(t *testing.T) {
-	mw := recoverWallet(t, "input blame switch simple fatigue fragile grab goose unusual identify abuse use")
+	mw := recoverWallet(t, "salt rug lawsuit three agent battle impact human monster mechanic width shoulder")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
 
 	var accountCh = make(chan *model.Account, 10)

@@ -277,7 +277,7 @@ func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) 
 	}
 }
 
-func (p *commonSmart) excludeVirtualIds(ids []string) ([]string) {
+func (p *commonSmart) excludeVirtualIds(ids []string) []string {
 	res := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if v, ok := p.versions[id]; ok && !v.Virtual() {
@@ -289,12 +289,12 @@ func (p *commonSmart) excludeVirtualIds(ids []string) ([]string) {
 
 func (p *commonSmart) toSave(b *model.Block) *model.Block {
 	return &model.Block{
-		Id:          b.Id,
-		Fields:      b.Fields,
-		Permissions: b.Permissions,
-		ChildrenIds: p.excludeVirtualIds(b.ChildrenIds),
-		IsArchived:  b.IsArchived,
-		Content:     b.Content,
+		Id:           b.Id,
+		Fields:       b.Fields,
+		Restrictions: b.Restrictions,
+		ChildrenIds:  p.excludeVirtualIds(b.ChildrenIds),
+		IsArchived:   b.IsArchived,
+		Content:      b.Content,
 	}
 }
 

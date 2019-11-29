@@ -95,7 +95,7 @@ type EventMessage struct {
 	//	*EventMessageValueOfMarksInfo
 	//	*EventMessageValueOfBlockSetFields
 	//	*EventMessageValueOfBlockSetChildrenIds
-	//	*EventMessageValueOfBlockSetPermissions
+	//	*EventMessageValueOfBlockSetRestrictions
 	//	*EventMessageValueOfBlockSetIsArchived
 	//	*EventMessageValueOfBlockSetText
 	//	*EventMessageValueOfBlockSetFile
@@ -107,6 +107,7 @@ type EventMessage struct {
 	//	*EventMessageValueOfUserBlockLeft
 	//	*EventMessageValueOfUserBlockSelectRange
 	//	*EventMessageValueOfUserBlockTextRange
+	//	*EventMessageValueOfPing
 	Value IsEventMessageValue `protobuf_oneof:"value"`
 }
 
@@ -170,8 +171,8 @@ type EventMessageValueOfBlockSetFields struct {
 type EventMessageValueOfBlockSetChildrenIds struct {
 	BlockSetChildrenIds *EventBlockSetChildrenIds `protobuf:"bytes,7,opt,name=blockSetChildrenIds,proto3,oneof" json:"blockSetChildrenIds,omitempty"`
 }
-type EventMessageValueOfBlockSetPermissions struct {
-	BlockSetPermissions *EventBlockSetPermissions `protobuf:"bytes,8,opt,name=blockSetPermissions,proto3,oneof" json:"blockSetPermissions,omitempty"`
+type EventMessageValueOfBlockSetRestrictions struct {
+	BlockSetRestrictions *EventBlockSetRestrictions `protobuf:"bytes,8,opt,name=blockSetRestrictions,proto3,oneof" json:"blockSetRestrictions,omitempty"`
 }
 type EventMessageValueOfBlockSetIsArchived struct {
 	BlockSetIsArchived *EventBlockSetIsArchived `protobuf:"bytes,9,opt,name=blockSetIsArchived,proto3,oneof" json:"blockSetIsArchived,omitempty"`
@@ -206,6 +207,9 @@ type EventMessageValueOfUserBlockSelectRange struct {
 type EventMessageValueOfUserBlockTextRange struct {
 	UserBlockTextRange *EventUserBlockTextRange `protobuf:"bytes,19,opt,name=userBlockTextRange,proto3,oneof" json:"userBlockTextRange,omitempty"`
 }
+type EventMessageValueOfPing struct {
+	Ping *EventPing `protobuf:"bytes,100,opt,name=ping,proto3,oneof" json:"ping,omitempty"`
+}
 
 func (*EventMessageValueOfAccountShow) IsEventMessageValue()          {}
 func (*EventMessageValueOfBlockAdd) IsEventMessageValue()             {}
@@ -214,7 +218,7 @@ func (*EventMessageValueOfFilesUpload) IsEventMessageValue()          {}
 func (*EventMessageValueOfMarksInfo) IsEventMessageValue()            {}
 func (*EventMessageValueOfBlockSetFields) IsEventMessageValue()       {}
 func (*EventMessageValueOfBlockSetChildrenIds) IsEventMessageValue()  {}
-func (*EventMessageValueOfBlockSetPermissions) IsEventMessageValue()  {}
+func (*EventMessageValueOfBlockSetRestrictions) IsEventMessageValue() {}
 func (*EventMessageValueOfBlockSetIsArchived) IsEventMessageValue()   {}
 func (*EventMessageValueOfBlockSetText) IsEventMessageValue()         {}
 func (*EventMessageValueOfBlockSetFile) IsEventMessageValue()         {}
@@ -226,6 +230,7 @@ func (*EventMessageValueOfUserBlockJoin) IsEventMessageValue()        {}
 func (*EventMessageValueOfUserBlockLeft) IsEventMessageValue()        {}
 func (*EventMessageValueOfUserBlockSelectRange) IsEventMessageValue() {}
 func (*EventMessageValueOfUserBlockTextRange) IsEventMessageValue()   {}
+func (*EventMessageValueOfPing) IsEventMessageValue()                 {}
 
 func (m *EventMessage) GetValue() IsEventMessageValue {
 	if m != nil {
@@ -283,9 +288,9 @@ func (m *EventMessage) GetBlockSetChildrenIds() *EventBlockSetChildrenIds {
 	return nil
 }
 
-func (m *EventMessage) GetBlockSetPermissions() *EventBlockSetPermissions {
-	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetPermissions); ok {
-		return x.BlockSetPermissions
+func (m *EventMessage) GetBlockSetRestrictions() *EventBlockSetRestrictions {
+	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetRestrictions); ok {
+		return x.BlockSetRestrictions
 	}
 	return nil
 }
@@ -367,6 +372,13 @@ func (m *EventMessage) GetUserBlockTextRange() *EventUserBlockTextRange {
 	return nil
 }
 
+func (m *EventMessage) GetPing() *EventPing {
+	if x, ok := m.GetValue().(*EventMessageValueOfPing); ok {
+		return x.Ping
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*EventMessage) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -377,7 +389,7 @@ func (*EventMessage) XXX_OneofWrappers() []interface{} {
 		(*EventMessageValueOfMarksInfo)(nil),
 		(*EventMessageValueOfBlockSetFields)(nil),
 		(*EventMessageValueOfBlockSetChildrenIds)(nil),
-		(*EventMessageValueOfBlockSetPermissions)(nil),
+		(*EventMessageValueOfBlockSetRestrictions)(nil),
 		(*EventMessageValueOfBlockSetIsArchived)(nil),
 		(*EventMessageValueOfBlockSetText)(nil),
 		(*EventMessageValueOfBlockSetFile)(nil),
@@ -389,6 +401,7 @@ func (*EventMessage) XXX_OneofWrappers() []interface{} {
 		(*EventMessageValueOfUserBlockLeft)(nil),
 		(*EventMessageValueOfUserBlockSelectRange)(nil),
 		(*EventMessageValueOfUserBlockTextRange)(nil),
+		(*EventMessageValueOfPing)(nil),
 	}
 }
 
@@ -915,23 +928,23 @@ func (m *EventBlockSetChildrenIds) GetChildrenIds() []string {
 	return nil
 }
 
-type EventBlockSetPermissions struct {
-	Id          string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Permissions *model.BlockPermissions `protobuf:"bytes,2,opt,name=permissions,proto3" json:"permissions,omitempty"`
+type EventBlockSetRestrictions struct {
+	Id           string                   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Restrictions *model.BlockRestrictions `protobuf:"bytes,2,opt,name=restrictions,proto3" json:"restrictions,omitempty"`
 }
 
-func (m *EventBlockSetPermissions) Reset()         { *m = EventBlockSetPermissions{} }
-func (m *EventBlockSetPermissions) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetPermissions) ProtoMessage()    {}
-func (*EventBlockSetPermissions) Descriptor() ([]byte, []int) {
+func (m *EventBlockSetRestrictions) Reset()         { *m = EventBlockSetRestrictions{} }
+func (m *EventBlockSetRestrictions) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetRestrictions) ProtoMessage()    {}
+func (*EventBlockSetRestrictions) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 2}
 }
-func (m *EventBlockSetPermissions) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockSetRestrictions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *EventBlockSetPermissions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockSetRestrictions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_EventBlockSetPermissions.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockSetRestrictions.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -941,28 +954,28 @@ func (m *EventBlockSetPermissions) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *EventBlockSetPermissions) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetPermissions.Merge(m, src)
+func (m *EventBlockSetRestrictions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetRestrictions.Merge(m, src)
 }
-func (m *EventBlockSetPermissions) XXX_Size() int {
+func (m *EventBlockSetRestrictions) XXX_Size() int {
 	return m.Size()
 }
-func (m *EventBlockSetPermissions) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetPermissions.DiscardUnknown(m)
+func (m *EventBlockSetRestrictions) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetRestrictions.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_EventBlockSetPermissions proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockSetRestrictions proto.InternalMessageInfo
 
-func (m *EventBlockSetPermissions) GetId() string {
+func (m *EventBlockSetRestrictions) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *EventBlockSetPermissions) GetPermissions() *model.BlockPermissions {
+func (m *EventBlockSetRestrictions) GetRestrictions() *model.BlockRestrictions {
 	if m != nil {
-		return m.Permissions
+		return m.Restrictions
 	}
 	return nil
 }
@@ -1020,14 +1033,11 @@ func (m *EventBlockSetIsArchived) GetIsArchived() bool {
 }
 
 type EventBlockSetText struct {
-	Id         string                       `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Text       *EventBlockSetTextText       `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	Style      *EventBlockSetTextStyle      `protobuf:"bytes,3,opt,name=style,proto3" json:"style,omitempty"`
-	Marks      *EventBlockSetTextMarks      `protobuf:"bytes,4,opt,name=marks,proto3" json:"marks,omitempty"`
-	Toggleable *EventBlockSetTextToggleable `protobuf:"bytes,5,opt,name=toggleable,proto3" json:"toggleable,omitempty"`
-	Marker     *EventBlockSetTextMarker     `protobuf:"bytes,6,opt,name=marker,proto3" json:"marker,omitempty"`
-	Checkable  *EventBlockSetTextCheckable  `protobuf:"bytes,7,opt,name=checkable,proto3" json:"checkable,omitempty"`
-	Check      *EventBlockSetTextCheck      `protobuf:"bytes,8,opt,name=check,proto3" json:"check,omitempty"`
+	Id      string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Text    *EventBlockSetTextText    `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Style   *EventBlockSetTextStyle   `protobuf:"bytes,3,opt,name=style,proto3" json:"style,omitempty"`
+	Marks   *EventBlockSetTextMarks   `protobuf:"bytes,4,opt,name=marks,proto3" json:"marks,omitempty"`
+	Checked *EventBlockSetTextChecked `protobuf:"bytes,5,opt,name=checked,proto3" json:"checked,omitempty"`
 }
 
 func (m *EventBlockSetText) Reset()         { *m = EventBlockSetText{} }
@@ -1091,30 +1101,9 @@ func (m *EventBlockSetText) GetMarks() *EventBlockSetTextMarks {
 	return nil
 }
 
-func (m *EventBlockSetText) GetToggleable() *EventBlockSetTextToggleable {
+func (m *EventBlockSetText) GetChecked() *EventBlockSetTextChecked {
 	if m != nil {
-		return m.Toggleable
-	}
-	return nil
-}
-
-func (m *EventBlockSetText) GetMarker() *EventBlockSetTextMarker {
-	if m != nil {
-		return m.Marker
-	}
-	return nil
-}
-
-func (m *EventBlockSetText) GetCheckable() *EventBlockSetTextCheckable {
-	if m != nil {
-		return m.Checkable
-	}
-	return nil
-}
-
-func (m *EventBlockSetText) GetCheck() *EventBlockSetTextCheck {
-	if m != nil {
-		return m.Check
+		return m.Checked
 	}
 	return nil
 }
@@ -1251,22 +1240,22 @@ func (m *EventBlockSetTextMarks) GetValue() *model.BlockContentTextMarks {
 	return nil
 }
 
-type EventBlockSetTextToggleable struct {
+type EventBlockSetTextChecked struct {
 	Value bool `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
 }
 
-func (m *EventBlockSetTextToggleable) Reset()         { *m = EventBlockSetTextToggleable{} }
-func (m *EventBlockSetTextToggleable) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetTextToggleable) ProtoMessage()    {}
-func (*EventBlockSetTextToggleable) Descriptor() ([]byte, []int) {
+func (m *EventBlockSetTextChecked) Reset()         { *m = EventBlockSetTextChecked{} }
+func (m *EventBlockSetTextChecked) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetTextChecked) ProtoMessage()    {}
+func (*EventBlockSetTextChecked) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 3}
 }
-func (m *EventBlockSetTextToggleable) XXX_Unmarshal(b []byte) error {
+func (m *EventBlockSetTextChecked) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *EventBlockSetTextToggleable) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *EventBlockSetTextChecked) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_EventBlockSetTextToggleable.Marshal(b, m, deterministic)
+		return xxx_messageInfo_EventBlockSetTextChecked.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1276,151 +1265,19 @@ func (m *EventBlockSetTextToggleable) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *EventBlockSetTextToggleable) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetTextToggleable.Merge(m, src)
+func (m *EventBlockSetTextChecked) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetTextChecked.Merge(m, src)
 }
-func (m *EventBlockSetTextToggleable) XXX_Size() int {
+func (m *EventBlockSetTextChecked) XXX_Size() int {
 	return m.Size()
 }
-func (m *EventBlockSetTextToggleable) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetTextToggleable.DiscardUnknown(m)
+func (m *EventBlockSetTextChecked) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetTextChecked.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_EventBlockSetTextToggleable proto.InternalMessageInfo
+var xxx_messageInfo_EventBlockSetTextChecked proto.InternalMessageInfo
 
-func (m *EventBlockSetTextToggleable) GetValue() bool {
-	if m != nil {
-		return m.Value
-	}
-	return false
-}
-
-type EventBlockSetTextMarker struct {
-	Value model.BlockContentTextMarker `protobuf:"varint,1,opt,name=value,proto3,enum=anytype.model.BlockContentTextMarker" json:"value,omitempty"`
-}
-
-func (m *EventBlockSetTextMarker) Reset()         { *m = EventBlockSetTextMarker{} }
-func (m *EventBlockSetTextMarker) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetTextMarker) ProtoMessage()    {}
-func (*EventBlockSetTextMarker) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 4}
-}
-func (m *EventBlockSetTextMarker) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *EventBlockSetTextMarker) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_EventBlockSetTextMarker.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *EventBlockSetTextMarker) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetTextMarker.Merge(m, src)
-}
-func (m *EventBlockSetTextMarker) XXX_Size() int {
-	return m.Size()
-}
-func (m *EventBlockSetTextMarker) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetTextMarker.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EventBlockSetTextMarker proto.InternalMessageInfo
-
-func (m *EventBlockSetTextMarker) GetValue() model.BlockContentTextMarker {
-	if m != nil {
-		return m.Value
-	}
-	return model.BlockContentText_None
-}
-
-type EventBlockSetTextCheckable struct {
-	Value bool `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
-}
-
-func (m *EventBlockSetTextCheckable) Reset()         { *m = EventBlockSetTextCheckable{} }
-func (m *EventBlockSetTextCheckable) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetTextCheckable) ProtoMessage()    {}
-func (*EventBlockSetTextCheckable) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 5}
-}
-func (m *EventBlockSetTextCheckable) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *EventBlockSetTextCheckable) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_EventBlockSetTextCheckable.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *EventBlockSetTextCheckable) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetTextCheckable.Merge(m, src)
-}
-func (m *EventBlockSetTextCheckable) XXX_Size() int {
-	return m.Size()
-}
-func (m *EventBlockSetTextCheckable) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetTextCheckable.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EventBlockSetTextCheckable proto.InternalMessageInfo
-
-func (m *EventBlockSetTextCheckable) GetValue() bool {
-	if m != nil {
-		return m.Value
-	}
-	return false
-}
-
-type EventBlockSetTextCheck struct {
-	Value bool `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
-}
-
-func (m *EventBlockSetTextCheck) Reset()         { *m = EventBlockSetTextCheck{} }
-func (m *EventBlockSetTextCheck) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetTextCheck) ProtoMessage()    {}
-func (*EventBlockSetTextCheck) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 6}
-}
-func (m *EventBlockSetTextCheck) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *EventBlockSetTextCheck) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_EventBlockSetTextCheck.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *EventBlockSetTextCheck) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetTextCheck.Merge(m, src)
-}
-func (m *EventBlockSetTextCheck) XXX_Size() int {
-	return m.Size()
-}
-func (m *EventBlockSetTextCheck) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetTextCheck.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EventBlockSetTextCheck proto.InternalMessageInfo
-
-func (m *EventBlockSetTextCheck) GetValue() bool {
+func (m *EventBlockSetTextChecked) GetValue() bool {
 	if m != nil {
 		return m.Value
 	}
@@ -2679,6 +2536,50 @@ func (m *EventUserBlockSelectRange) GetBlockIdsArray() []string {
 	return nil
 }
 
+type EventPing struct {
+	Index int32 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+}
+
+func (m *EventPing) Reset()         { *m = EventPing{} }
+func (m *EventPing) String() string { return proto.CompactTextString(m) }
+func (*EventPing) ProtoMessage()    {}
+func (*EventPing) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 4}
+}
+func (m *EventPing) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventPing) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventPing.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventPing) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventPing.Merge(m, src)
+}
+func (m *EventPing) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventPing) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventPing.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventPing proto.InternalMessageInfo
+
+func (m *EventPing) GetIndex() int32 {
+	if m != nil {
+		return m.Index
+	}
+	return 0
+}
+
 func init() {
 	proto.RegisterType((*Event)(nil), "anytype.Event")
 	proto.RegisterType((*EventMessage)(nil), "anytype.Event.Message")
@@ -2693,16 +2594,13 @@ func init() {
 	proto.RegisterType((*EventBlockSet)(nil), "anytype.Event.Block.Set")
 	proto.RegisterType((*EventBlockSetFields)(nil), "anytype.Event.Block.Set.Fields")
 	proto.RegisterType((*EventBlockSetChildrenIds)(nil), "anytype.Event.Block.Set.ChildrenIds")
-	proto.RegisterType((*EventBlockSetPermissions)(nil), "anytype.Event.Block.Set.Permissions")
+	proto.RegisterType((*EventBlockSetRestrictions)(nil), "anytype.Event.Block.Set.Restrictions")
 	proto.RegisterType((*EventBlockSetIsArchived)(nil), "anytype.Event.Block.Set.IsArchived")
 	proto.RegisterType((*EventBlockSetText)(nil), "anytype.Event.Block.Set.Text")
 	proto.RegisterType((*EventBlockSetTextText)(nil), "anytype.Event.Block.Set.Text.Text")
 	proto.RegisterType((*EventBlockSetTextStyle)(nil), "anytype.Event.Block.Set.Text.Style")
 	proto.RegisterType((*EventBlockSetTextMarks)(nil), "anytype.Event.Block.Set.Text.Marks")
-	proto.RegisterType((*EventBlockSetTextToggleable)(nil), "anytype.Event.Block.Set.Text.Toggleable")
-	proto.RegisterType((*EventBlockSetTextMarker)(nil), "anytype.Event.Block.Set.Text.Marker")
-	proto.RegisterType((*EventBlockSetTextCheckable)(nil), "anytype.Event.Block.Set.Text.Checkable")
-	proto.RegisterType((*EventBlockSetTextCheck)(nil), "anytype.Event.Block.Set.Text.Check")
+	proto.RegisterType((*EventBlockSetTextChecked)(nil), "anytype.Event.Block.Set.Text.Checked")
 	proto.RegisterType((*EventBlockSetFile)(nil), "anytype.Event.Block.Set.File")
 	proto.RegisterType((*EventBlockSetFileName)(nil), "anytype.Event.Block.Set.File.Name")
 	proto.RegisterType((*EventBlockSetFileState)(nil), "anytype.Event.Block.Set.File.State")
@@ -2728,106 +2626,105 @@ func init() {
 	proto.RegisterType((*EventUserBlockLeft)(nil), "anytype.Event.User.Block.Left")
 	proto.RegisterType((*EventUserBlockTextRange)(nil), "anytype.Event.User.Block.TextRange")
 	proto.RegisterType((*EventUserBlockSelectRange)(nil), "anytype.Event.User.Block.SelectRange")
+	proto.RegisterType((*EventPing)(nil), "anytype.Event.Ping")
 }
 
 func init() { proto.RegisterFile("pb/protos/events.proto", fileDescriptor_a966342d378ae5f5) }
 
 var fileDescriptor_a966342d378ae5f5 = []byte{
-	// 1499 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0x4f, 0x73, 0xdb, 0x44,
-	0x14, 0xb7, 0x1d, 0xcb, 0x8e, 0x9f, 0x9a, 0x00, 0xdb, 0x4c, 0x50, 0xd5, 0xd4, 0x84, 0x24, 0x1d,
-	0x02, 0x6d, 0x65, 0x26, 0x65, 0x4a, 0xcb, 0x94, 0x76, 0x92, 0xb4, 0xc1, 0x86, 0xb6, 0x94, 0x75,
-	0xcb, 0xff, 0x8b, 0x2c, 0x6d, 0x6c, 0x4d, 0x65, 0xc9, 0x23, 0x29, 0x69, 0x73, 0x66, 0x86, 0x33,
-	0x17, 0x3e, 0x05, 0x7c, 0x07, 0xae, 0x1c, 0x7b, 0x83, 0x63, 0xa7, 0xb9, 0x70, 0xe5, 0x1b, 0x30,
-	0xfb, 0x47, 0xf2, 0x4a, 0xc8, 0x56, 0x1c, 0xa6, 0x33, 0xdc, 0xbc, 0xbb, 0xbf, 0xdf, 0x6f, 0xdf,
-	0xee, 0x7b, 0xfb, 0xf4, 0x9e, 0x61, 0x79, 0xd4, 0x6b, 0x8d, 0x02, 0x3f, 0xf2, 0xc3, 0x16, 0x39,
-	0x24, 0x5e, 0x14, 0x1a, 0x6c, 0x84, 0xea, 0xa6, 0x77, 0x14, 0x1d, 0x8d, 0x88, 0xfe, 0xd9, 0x21,
-	0xf1, 0x6c, 0x3f, 0x68, 0xf5, 0x9d, 0x68, 0x70, 0xd0, 0x33, 0x2c, 0x7f, 0xd8, 0x12, 0x4b, 0x8e,
-	0xdf, 0xea, 0xfb, 0x57, 0xc4, 0xe0, 0x8a, 0xeb, 0xf4, 0x02, 0x33, 0x38, 0x6a, 0x8d, 0x7a, 0xad,
-	0xa1, 0x6f, 0x13, 0x37, 0x56, 0x65, 0x03, 0xa1, 0xaa, 0xaf, 0xf4, 0x7d, 0xbf, 0xef, 0x12, 0xbe,
-	0xd6, 0x3b, 0xd8, 0x6f, 0x85, 0x51, 0x70, 0x60, 0x45, 0x7c, 0x75, 0xed, 0xe7, 0x77, 0x41, 0xb9,
-	0x4b, 0x8d, 0x40, 0x5b, 0x30, 0x3f, 0x24, 0x61, 0x68, 0xf6, 0x49, 0xa8, 0x95, 0x57, 0xe7, 0x36,
-	0xd5, 0xad, 0x65, 0x43, 0x6c, 0x64, 0x30, 0x84, 0x71, 0x9f, 0x2f, 0xe3, 0x04, 0x87, 0x56, 0xa0,
-	0x61, 0xf9, 0x5e, 0x44, 0x9e, 0x45, 0x1d, 0x5b, 0xab, 0xac, 0x96, 0x37, 0x1b, 0x78, 0x3c, 0x81,
-	0x3e, 0x80, 0x86, 0xe3, 0x39, 0x91, 0x63, 0x46, 0x7e, 0xa0, 0xcd, 0xad, 0x96, 0x53, 0x92, 0xcc,
-	0x46, 0x63, 0xdb, 0xb2, 0xfc, 0x03, 0x2f, 0xc2, 0x63, 0xa0, 0xfe, 0xa3, 0x0a, 0x75, 0xb1, 0x13,
-	0xba, 0x0d, 0xaa, 0xc9, 0x11, 0xdd, 0x81, 0xff, 0x54, 0x2b, 0x33, 0x8d, 0xf3, 0x19, 0xb3, 0x84,
-	0x86, 0x41, 0x21, 0xed, 0x12, 0x96, 0x19, 0xe8, 0x1a, 0xcc, 0xf7, 0x5c, 0xdf, 0x7a, 0xb2, 0x6d,
-	0x73, 0xfb, 0xd4, 0x2d, 0x2d, 0xc3, 0xde, 0xa1, 0xcb, 0xc6, 0xb6, 0x6d, 0xb7, 0x4b, 0x38, 0xc1,
-	0xd2, 0x8d, 0xd9, 0xef, 0x3b, 0xc4, 0x25, 0x11, 0x11, 0xc6, 0x9f, 0xcf, 0xa5, 0x72, 0x08, 0xdd,
-	0x58, 0x62, 0xa0, 0x3b, 0xa0, 0xee, 0x3b, 0x2e, 0x09, 0x1f, 0x8f, 0x5c, 0xdf, 0xb4, 0xb5, 0x2a,
-	0x13, 0x58, 0xcd, 0x15, 0xd8, 0x1b, 0xe3, 0xa8, 0x8a, 0x44, 0x43, 0xb7, 0xa0, 0x31, 0x34, 0x83,
-	0x27, 0x61, 0xc7, 0xdb, 0xf7, 0x35, 0x85, 0x69, 0x34, 0x73, 0x35, 0xee, 0xc7, 0xa8, 0x76, 0x09,
-	0x8f, 0x29, 0xa8, 0x03, 0x8b, 0xcc, 0xa8, 0x2e, 0x89, 0xf6, 0x1c, 0xe2, 0xda, 0xa1, 0x56, 0x63,
-	0x22, 0x6f, 0xe5, 0x8a, 0x74, 0x49, 0x64, 0x70, 0x58, 0xbb, 0x84, 0x33, 0x44, 0xf4, 0x35, 0x9c,
-	0x8d, 0x67, 0x76, 0x07, 0x8e, 0x6b, 0x07, 0xc4, 0xeb, 0xd8, 0xa1, 0x56, 0x67, 0x7a, 0x1b, 0x13,
-	0xf5, 0x24, 0x6c, 0xbb, 0x84, 0xf3, 0x24, 0x64, 0xe5, 0x87, 0x24, 0x18, 0x3a, 0x61, 0xe8, 0xf8,
-	0x5e, 0xa8, 0xcd, 0x17, 0x28, 0x4b, 0x58, 0x59, 0x59, 0x9a, 0x46, 0x8f, 0x01, 0xc5, 0xd3, 0x9d,
-	0x70, 0x3b, 0xb0, 0x06, 0xce, 0x21, 0xb1, 0xb5, 0x06, 0x13, 0x5e, 0x9f, 0x28, 0x3c, 0x86, 0xb6,
-	0x4b, 0x38, 0x47, 0x00, 0xed, 0xc2, 0x99, 0x78, 0xf6, 0x11, 0x79, 0x16, 0x69, 0xc0, 0x04, 0x2f,
-	0x4c, 0x14, 0xa4, 0xa0, 0x76, 0x09, 0xa7, 0x48, 0xb2, 0x08, 0x0d, 0x00, 0x4d, 0x2d, 0x10, 0xa1,
-	0x20, 0x59, 0x84, 0x8e, 0xd1, 0x1e, 0x2c, 0x24, 0xf6, 0x0d, 0xcd, 0x3e, 0xd1, 0xce, 0x4c, 0x89,
-	0x11, 0x76, 0x36, 0x8a, 0x6a, 0x97, 0x70, 0x9a, 0x26, 0xeb, 0x7c, 0xe9, 0xd8, 0xc4, 0xd7, 0x16,
-	0x0a, 0x74, 0x18, 0x4a, 0xd6, 0x61, 0x13, 0xf2, 0xa1, 0x3a, 0x96, 0xef, 0x69, 0x8b, 0x05, 0x87,
-	0xa2, 0x20, 0xf9, 0x50, 0x74, 0x8c, 0x6e, 0x40, 0x83, 0x8f, 0xe9, 0x93, 0x7f, 0x8d, 0x29, 0x9c,
-	0xcb, 0x57, 0xe0, 0x0f, 0x7e, 0x8c, 0xa6, 0xe7, 0x38, 0x08, 0x49, 0xc0, 0x96, 0x3f, 0xf5, 0x1d,
-	0x4f, 0x7b, 0x3d, 0xf7, 0x1c, 0x8f, 0x43, 0x12, 0x08, 0x0d, 0x8a, 0xa2, 0xe7, 0x48, 0xd1, 0x52,
-	0x3a, 0xf7, 0xc8, 0x7e, 0xa4, 0xbd, 0x51, 0xa4, 0x43, 0x51, 0x29, 0x1d, 0x3a, 0x81, 0xbe, 0x83,
-	0xa5, 0x64, 0xa2, 0x4b, 0x5c, 0x62, 0x45, 0xd8, 0xf4, 0xfa, 0x44, 0x43, 0x4c, 0xee, 0xe2, 0x64,
-	0x39, 0x09, 0xdc, 0x2e, 0xe1, 0x5c, 0x11, 0x1a, 0xdd, 0xc9, 0x3c, 0x0d, 0x29, 0x2e, 0x7d, 0x36,
-	0x37, 0xba, 0x25, 0xe9, 0x04, 0x4a, 0xa3, 0xfb, 0xdf, 0x02, 0x3b, 0x75, 0x50, 0x0e, 0x4d, 0xf7,
-	0x80, 0xe8, 0xdf, 0x40, 0x5d, 0xa4, 0x56, 0xfd, 0x01, 0x54, 0xd9, 0xfd, 0x2e, 0x81, 0xe2, 0x78,
-	0x36, 0x79, 0xc6, 0x32, 0xf1, 0x1c, 0xe6, 0x03, 0xf4, 0x3e, 0xd4, 0x45, 0xce, 0x15, 0x39, 0x76,
-	0x52, 0x96, 0x8f, 0x61, 0xfa, 0x2f, 0xe7, 0x40, 0x61, 0xdb, 0xea, 0x57, 0x61, 0x8e, 0xe6, 0xdb,
-	0xcb, 0x50, 0x63, 0x5e, 0x8c, 0x3f, 0x3d, 0x4b, 0x19, 0x05, 0x06, 0xc6, 0x02, 0xa3, 0xdf, 0x13,
-	0xe6, 0x2c, 0x43, 0x2d, 0xf0, 0x7d, 0xfa, 0xed, 0x29, 0xb3, 0x6f, 0x8f, 0x18, 0x49, 0x6a, 0x95,
-	0x13, 0xa8, 0xed, 0x82, 0x2a, 0xa5, 0x60, 0xa4, 0x41, 0x9d, 0x2d, 0x24, 0xaa, 0xf1, 0x10, 0xe9,
-	0x30, 0x4f, 0x93, 0xf3, 0x43, 0x33, 0x1a, 0x30, 0xe1, 0x06, 0x4e, 0xc6, 0xfa, 0x1a, 0xd4, 0x44,
-	0xe6, 0x9f, 0xc8, 0xd7, 0xbf, 0x87, 0x46, 0x92, 0xa7, 0xd1, 0xe7, 0x70, 0x46, 0xe4, 0x69, 0xee,
-	0x37, 0x7a, 0xee, 0xc5, 0xad, 0x4b, 0x79, 0x96, 0x1a, 0xbb, 0xf4, 0x93, 0xea, 0xf1, 0x44, 0xc2,
-	0x52, 0xbd, 0xf1, 0xe8, 0x68, 0x44, 0x70, 0x4a, 0x40, 0xff, 0x63, 0x19, 0xe6, 0xba, 0x24, 0xd2,
-	0x3b, 0x50, 0x13, 0x29, 0x7b, 0x11, 0x2a, 0x4e, 0x6c, 0x44, 0xc5, 0xb1, 0x51, 0x0b, 0x6a, 0xfb,
-	0xfc, 0x2b, 0xc0, 0xdd, 0xf4, 0xa6, 0xc1, 0x4b, 0x03, 0x23, 0x2e, 0x0d, 0x8c, 0x2e, 0x2b, 0x0d,
-	0xb0, 0x80, 0xe9, 0xb7, 0x41, 0x95, 0x13, 0x75, 0x56, 0x6f, 0x15, 0x54, 0x4b, 0xfa, 0x14, 0xf0,
-	0x2b, 0x91, 0xa7, 0x74, 0x13, 0x54, 0x39, 0x1f, 0x67, 0x05, 0x76, 0x40, 0x1d, 0x49, 0x19, 0xbf,
-	0x92, 0xf9, 0x48, 0xca, 0x57, 0x20, 0xc9, 0x60, 0x99, 0xa4, 0xdf, 0x04, 0x90, 0x52, 0x73, 0x76,
-	0x87, 0xa6, 0xbc, 0xca, 0x36, 0x98, 0xc7, 0xd2, 0x8c, 0xfe, 0x6b, 0x0d, 0xaa, 0x2c, 0x1d, 0x67,
-	0x89, 0xd7, 0xa0, 0x4a, 0xab, 0x18, 0x61, 0xd3, 0xda, 0xd4, 0xdc, 0xce, 0x9f, 0x14, 0xc3, 0xa3,
-	0x1b, 0xa0, 0x84, 0xd1, 0x91, 0x1b, 0x97, 0x0c, 0xeb, 0xd3, 0x89, 0x5d, 0x0a, 0xc5, 0x9c, 0x41,
-	0xa9, 0xcc, 0xa1, 0xa2, 0x58, 0x28, 0xa0, 0xb2, 0x48, 0xc2, 0x9c, 0x81, 0xda, 0x00, 0x91, 0xdf,
-	0xef, 0xbb, 0xc4, 0xec, 0xb9, 0x44, 0x14, 0x0a, 0x9b, 0x05, 0x36, 0x27, 0x78, 0x2c, 0x71, 0xd1,
-	0x4d, 0xa8, 0x51, 0x49, 0x12, 0x88, 0x4a, 0x61, 0xa3, 0xd8, 0x0a, 0x12, 0x60, 0xc1, 0x41, 0x77,
-	0xa1, 0x61, 0x0d, 0x88, 0xf5, 0x84, 0x99, 0xc1, 0x4b, 0x83, 0x77, 0xa6, 0x0b, 0xec, 0xc6, 0x70,
-	0x3c, 0x66, 0xd2, 0x9b, 0x60, 0x03, 0x51, 0x03, 0xac, 0x9f, 0x40, 0x02, 0x73, 0x86, 0xbe, 0x22,
-	0xfc, 0xb9, 0x24, 0xb2, 0x98, 0x70, 0xa9, 0x48, 0x69, 0x7b, 0xa0, 0xb0, 0x2b, 0x47, 0x1f, 0xcb,
-	0xcb, 0x8b, 0x92, 0x91, 0x13, 0x9f, 0x9d, 0x70, 0x55, 0xa2, 0xc3, 0xee, 0x3f, 0xad, 0xa3, 0x9e,
-	0x44, 0x47, 0xf8, 0x8d, 0xeb, 0xac, 0x01, 0x8c, 0xfd, 0x90, 0xb6, 0x79, 0x3e, 0xc6, 0xb4, 0xa1,
-	0xc6, 0x6f, 0x19, 0xdd, 0x4a, 0x1b, 0xbd, 0x79, 0xb2, 0xcd, 0x48, 0x10, 0x2b, 0xbd, 0x0d, 0x8d,
-	0xe4, 0xba, 0x27, 0x6c, 0x76, 0x01, 0x14, 0x06, 0x99, 0xb0, 0xfc, 0xdb, 0x1c, 0x54, 0x59, 0xe1,
-	0x91, 0xf3, 0x5c, 0x3c, 0x73, 0x48, 0x0a, 0x9f, 0x0b, 0x25, 0x1b, 0x0f, 0xcc, 0x21, 0xc1, 0x0c,
-	0xcf, 0x9f, 0x8b, 0x19, 0x15, 0x3f, 0x17, 0x46, 0xec, 0x52, 0x28, 0xe6, 0x0c, 0xf4, 0x05, 0x2c,
-	0xb8, 0xbe, 0x65, 0xba, 0x7b, 0x71, 0x4a, 0xe6, 0xcf, 0xe6, 0xd2, 0x74, 0x89, 0x7b, 0x32, 0x05,
-	0xa7, 0x15, 0xe8, 0x29, 0x1c, 0x5a, 0xb6, 0x28, 0x27, 0x39, 0x05, 0xad, 0x55, 0x30, 0xc3, 0xd3,
-	0xa0, 0xa3, 0x67, 0x9a, 0x16, 0x74, 0xd4, 0xe2, 0x99, 0x82, 0x4e, 0x3e, 0x30, 0xd7, 0xb9, 0x08,
-	0x0b, 0x29, 0xeb, 0x27, 0x6c, 0xb7, 0x02, 0x55, 0x56, 0x46, 0xe5, 0xaf, 0xbe, 0xa8, 0x82, 0xc2,
-	0x6b, 0xbe, 0xac, 0x0b, 0x3f, 0x4c, 0xb9, 0x70, 0x7d, 0x7a, 0x09, 0x29, 0xfb, 0xf0, 0x23, 0x50,
-	0x9e, 0x3a, 0x76, 0x34, 0x10, 0x3e, 0xdc, 0x28, 0x60, 0x7e, 0x45, 0xb1, 0x98, 0x53, 0x28, 0x97,
-	0xfb, 0xbf, 0x7a, 0x22, 0x6e, 0x2a, 0x00, 0x70, 0x36, 0x00, 0xb8, 0xdb, 0x2e, 0x17, 0x68, 0x4c,
-	0x8d, 0x80, 0x3e, 0x2c, 0x8d, 0x02, 0x72, 0xe8, 0x90, 0xa7, 0x29, 0x98, 0x48, 0x86, 0x57, 0x0b,
-	0xa4, 0x1f, 0xe6, 0x50, 0x71, 0xae, 0x60, 0x41, 0xc8, 0x5c, 0x00, 0x85, 0x5d, 0x53, 0x7a, 0x59,
-	0x89, 0x97, 0x3f, 0x89, 0x23, 0x6a, 0xa6, 0x8c, 0x90, 0xba, 0xc2, 0x99, 0x42, 0xea, 0x32, 0x2c,
-	0xe5, 0x1d, 0x6d, 0x4a, 0x88, 0xf1, 0x76, 0xe0, 0xb4, 0x21, 0xc6, 0xd8, 0xa7, 0x0a, 0x31, 0xce,
-	0x3c, 0x5d, 0x88, 0x71, 0xee, 0x7f, 0x0b, 0x31, 0xae, 0xf1, 0x4a, 0x42, 0x8c, 0x4b, 0xff, 0xbf,
-	0x43, 0x2c, 0x75, 0x85, 0xaf, 0x30, 0xc4, 0x5c, 0x91, 0xe3, 0x4e, 0xfb, 0x19, 0xa2, 0x64, 0x29,
-	0xbe, 0x0a, 0xae, 0xea, 0xef, 0x0a, 0x54, 0x69, 0x03, 0xa5, 0xff, 0x55, 0x89, 0xdb, 0x96, 0xeb,
-	0x50, 0x65, 0x8d, 0xa2, 0xd4, 0xfa, 0x94, 0x33, 0xad, 0x4f, 0xea, 0xcf, 0xa9, 0x71, 0xeb, 0x73,
-	0x1d, 0xaa, 0xac, 0x35, 0x9c, 0x9d, 0xf9, 0x43, 0x19, 0x1a, 0x49, 0x9b, 0x36, 0x3b, 0x5f, 0x6e,
-	0x4c, 0x2a, 0xe9, 0xc6, 0xe6, 0x3d, 0x50, 0x02, 0xd6, 0x84, 0xf0, 0xe7, 0x95, 0x6d, 0x97, 0xd8,
-	0x86, 0x98, 0x43, 0x74, 0x02, 0xaa, 0xdc, 0x84, 0xce, 0x6e, 0xc6, 0x86, 0xf8, 0xaf, 0xa1, 0x63,
-	0x87, 0xdb, 0x41, 0x60, 0x1e, 0x89, 0xbe, 0x21, 0x3d, 0xb9, 0xb3, 0xf2, 0xfb, 0xcb, 0x66, 0xf9,
-	0xf9, 0xcb, 0x66, 0xf9, 0xc5, 0xcb, 0x66, 0xf9, 0xa7, 0xe3, 0x66, 0xe9, 0xf9, 0x71, 0xb3, 0xf4,
-	0xe7, 0x71, 0xb3, 0xf4, 0x6d, 0x65, 0xd4, 0xeb, 0xd5, 0x58, 0xc7, 0x72, 0xf5, 0x9f, 0x00, 0x00,
-	0x00, 0xff, 0xff, 0x88, 0x0b, 0xf4, 0x2d, 0x4a, 0x15, 0x00, 0x00,
+	// 1458 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0xcd, 0x73, 0xdb, 0x44,
+	0x14, 0x97, 0x6d, 0xc9, 0x8e, 0x9f, 0x93, 0x00, 0x5b, 0x4f, 0x10, 0x6a, 0xea, 0x86, 0x7e, 0x4c,
+	0x0b, 0x6d, 0x65, 0x26, 0x65, 0x4a, 0xcb, 0x40, 0x3b, 0x69, 0xda, 0x60, 0x43, 0x5b, 0xca, 0xba,
+	0xe5, 0xfb, 0x22, 0x4b, 0x1b, 0x5b, 0x53, 0x59, 0xf2, 0x48, 0x4a, 0x5a, 0x9f, 0x7b, 0x66, 0x86,
+	0x3f, 0x86, 0x3b, 0x57, 0x8e, 0x3d, 0x30, 0x03, 0xc7, 0x4e, 0x73, 0xe1, 0xca, 0x7f, 0xc0, 0xec,
+	0x87, 0xec, 0x95, 0x90, 0xad, 0x24, 0x4c, 0x67, 0xb8, 0x65, 0x77, 0x7f, 0xbf, 0x9f, 0xde, 0xdb,
+	0xf7, 0xfc, 0xde, 0xdb, 0xc0, 0xda, 0xb8, 0xdf, 0x1e, 0x87, 0x41, 0x1c, 0x44, 0x6d, 0xb2, 0x4f,
+	0xfc, 0x38, 0x32, 0xd9, 0x0a, 0xd5, 0x2c, 0x7f, 0x12, 0x4f, 0xc6, 0xc4, 0xf8, 0x62, 0x9f, 0xf8,
+	0x4e, 0x10, 0xb6, 0x07, 0x6e, 0x3c, 0xdc, 0xeb, 0x9b, 0x76, 0x30, 0x6a, 0x8b, 0x23, 0x37, 0x68,
+	0x0f, 0x82, 0x2b, 0x62, 0x71, 0xc5, 0x73, 0xfb, 0xa1, 0x15, 0x4e, 0xda, 0xe3, 0x7e, 0x7b, 0x14,
+	0x38, 0xc4, 0x4b, 0x54, 0xd9, 0x42, 0xa8, 0x1a, 0xeb, 0x83, 0x20, 0x18, 0x78, 0x84, 0x9f, 0xf5,
+	0xf7, 0x76, 0xdb, 0x51, 0x1c, 0xee, 0xd9, 0x31, 0x3f, 0x3d, 0xf3, 0xd3, 0x05, 0xd0, 0xee, 0x52,
+	0x23, 0xd0, 0x26, 0x2c, 0x8d, 0x48, 0x14, 0x59, 0x03, 0x12, 0xe9, 0xa5, 0x8d, 0xca, 0xc5, 0xc6,
+	0xe6, 0x9a, 0x29, 0x3e, 0x64, 0x32, 0x84, 0x79, 0x9f, 0x1f, 0xe3, 0x29, 0x0e, 0xad, 0x43, 0xdd,
+	0x0e, 0xfc, 0x98, 0x3c, 0x8b, 0xbb, 0x8e, 0x5e, 0xde, 0x28, 0x5d, 0xac, 0xe3, 0xd9, 0x06, 0xfa,
+	0x10, 0xea, 0xae, 0xef, 0xc6, 0xae, 0x15, 0x07, 0xa1, 0x5e, 0xd9, 0x28, 0xa5, 0x24, 0x99, 0x8d,
+	0xe6, 0x96, 0x6d, 0x07, 0x7b, 0x7e, 0x8c, 0x67, 0x40, 0xe3, 0x97, 0x06, 0xd4, 0xc4, 0x97, 0xd0,
+	0x2d, 0x68, 0x58, 0x1c, 0xd1, 0x1b, 0x06, 0x4f, 0xf5, 0x12, 0xd3, 0x38, 0x99, 0x31, 0x4b, 0x68,
+	0x98, 0x14, 0xd2, 0x51, 0xb0, 0xcc, 0x40, 0xd7, 0x60, 0xa9, 0xef, 0x05, 0xf6, 0x93, 0x2d, 0x87,
+	0xdb, 0xd7, 0xd8, 0xd4, 0x33, 0xec, 0xdb, 0xf4, 0xd8, 0xdc, 0x72, 0x9c, 0x8e, 0x82, 0xa7, 0x58,
+	0xfa, 0x61, 0xf6, 0xf7, 0x1d, 0xe2, 0x91, 0x98, 0x08, 0xe3, 0x4f, 0xe6, 0x52, 0x39, 0x84, 0x7e,
+	0x58, 0x62, 0xa0, 0x3b, 0xd0, 0xd8, 0x75, 0x3d, 0x12, 0x3d, 0x1e, 0x7b, 0x81, 0xe5, 0xe8, 0x2a,
+	0x13, 0xd8, 0xc8, 0x15, 0xd8, 0x99, 0xe1, 0xa8, 0x8a, 0x44, 0x43, 0x37, 0xa1, 0x3e, 0xb2, 0xc2,
+	0x27, 0x51, 0xd7, 0xdf, 0x0d, 0x74, 0x8d, 0x69, 0xb4, 0x72, 0x35, 0xee, 0x27, 0xa8, 0x8e, 0x82,
+	0x67, 0x14, 0xd4, 0x85, 0x55, 0x66, 0x54, 0x8f, 0xc4, 0x3b, 0x2e, 0xf1, 0x9c, 0x48, 0xaf, 0x32,
+	0x91, 0xd3, 0xb9, 0x22, 0x3d, 0x12, 0x9b, 0x1c, 0xd6, 0x51, 0x70, 0x86, 0x88, 0xbe, 0x85, 0x13,
+	0xc9, 0xce, 0xf6, 0xd0, 0xf5, 0x9c, 0x90, 0xf8, 0x5d, 0x27, 0xd2, 0x6b, 0x4c, 0xef, 0xdc, 0x5c,
+	0x3d, 0x09, 0xdb, 0x51, 0x70, 0x9e, 0x04, 0xfa, 0x01, 0x9a, 0xc9, 0x36, 0x26, 0x51, 0x1c, 0xba,
+	0x76, 0xec, 0x06, 0x7e, 0xa4, 0x2f, 0x31, 0xe9, 0xf3, 0x73, 0xa5, 0x65, 0x70, 0x47, 0xc1, 0xb9,
+	0x22, 0xe8, 0x31, 0xa0, 0x64, 0xbf, 0x1b, 0x6d, 0x85, 0xf6, 0xd0, 0xdd, 0x27, 0x8e, 0x5e, 0x67,
+	0xd2, 0x67, 0xe7, 0x4a, 0xcf, 0xa0, 0x1d, 0x05, 0xe7, 0x08, 0xa0, 0x6d, 0x58, 0x4e, 0x76, 0x1f,
+	0x91, 0x67, 0xb1, 0x0e, 0x4c, 0xf0, 0xd4, 0x5c, 0x41, 0x0a, 0xea, 0x28, 0x38, 0x45, 0x92, 0x45,
+	0x68, 0x0e, 0xe8, 0x8d, 0x02, 0x11, 0x0a, 0x92, 0x45, 0xe8, 0x1a, 0xed, 0xc0, 0xca, 0xd4, 0xbe,
+	0x91, 0x35, 0x20, 0xfa, 0xf2, 0x82, 0x34, 0x61, 0xbe, 0x51, 0x54, 0x47, 0xc1, 0x69, 0x9a, 0xac,
+	0xf3, 0xb5, 0xeb, 0x90, 0x40, 0x5f, 0x29, 0xd0, 0x61, 0x28, 0x59, 0x87, 0x6d, 0xc8, 0x4e, 0x75,
+	0xed, 0xc0, 0xd7, 0x57, 0x0b, 0x9c, 0xa2, 0x20, 0xd9, 0x29, 0xba, 0x46, 0x37, 0xa0, 0xce, 0xd7,
+	0xf4, 0x57, 0xff, 0x06, 0x53, 0x78, 0x27, 0x5f, 0x81, 0xff, 0xe6, 0x67, 0x68, 0xea, 0xc7, 0x5e,
+	0x44, 0x42, 0x76, 0xfc, 0x79, 0xe0, 0xfa, 0xfa, 0x9b, 0xb9, 0x7e, 0x3c, 0x8e, 0x48, 0x28, 0x34,
+	0x28, 0x8a, 0xfa, 0x91, 0xa2, 0xa5, 0x74, 0xee, 0x91, 0xdd, 0x58, 0x7f, 0xab, 0x48, 0x87, 0xa2,
+	0x52, 0x3a, 0x74, 0x83, 0x66, 0xf7, 0x74, 0xa3, 0x47, 0x3c, 0x62, 0xc7, 0xd8, 0xf2, 0x07, 0x44,
+	0x47, 0xb9, 0xd9, 0x2d, 0xc9, 0x49, 0x60, 0x9a, 0xdd, 0x79, 0x22, 0x34, 0xbb, 0xa7, 0xfb, 0x34,
+	0xa5, 0xb8, 0xf4, 0x89, 0xdc, 0xec, 0x96, 0xa4, 0xa7, 0x50, 0x9a, 0xdd, 0xff, 0x16, 0x40, 0xef,
+	0x81, 0x3a, 0x76, 0xfd, 0x81, 0xee, 0x30, 0xa1, 0x13, 0x19, 0xa1, 0x87, 0xae, 0x3f, 0xe8, 0x28,
+	0x98, 0x41, 0x6e, 0xd7, 0x40, 0xdb, 0xb7, 0xbc, 0x3d, 0x62, 0x7c, 0x07, 0x35, 0x51, 0x88, 0x8d,
+	0x07, 0xa0, 0xb2, 0x50, 0x34, 0x41, 0x73, 0x7d, 0x87, 0x3c, 0x63, 0x75, 0xbb, 0x82, 0xf9, 0x02,
+	0x7d, 0x00, 0x35, 0x51, 0xa1, 0x45, 0x45, 0x9e, 0xd7, 0x13, 0x12, 0x98, 0xf1, 0xc7, 0x1a, 0x68,
+	0xcc, 0x42, 0xe3, 0x2a, 0x54, 0x68, 0x75, 0xbe, 0x0c, 0x55, 0x16, 0xf0, 0xa4, 0x51, 0x35, 0x33,
+	0x0a, 0x0c, 0x8c, 0x05, 0xc6, 0xb8, 0x27, 0xcc, 0x59, 0x83, 0x6a, 0x18, 0x04, 0xb4, 0x53, 0x95,
+	0x58, 0xa7, 0x12, 0x2b, 0x49, 0xad, 0x7c, 0x08, 0xb5, 0x6d, 0x68, 0x48, 0x05, 0x1b, 0xe9, 0x50,
+	0x63, 0x07, 0x53, 0xd5, 0x64, 0x89, 0x0c, 0x58, 0xa2, 0xa5, 0xfc, 0xa1, 0x15, 0x0f, 0x99, 0x70,
+	0x1d, 0x4f, 0xd7, 0xc6, 0x19, 0xa8, 0x8a, 0x3e, 0x31, 0x97, 0x6f, 0xfc, 0x08, 0xf5, 0x69, 0x55,
+	0x47, 0x5f, 0xc2, 0xb2, 0xa8, 0xea, 0x3c, 0xc4, 0xd4, 0xef, 0xd5, 0xcd, 0x4b, 0x79, 0x96, 0x9a,
+	0xdb, 0xb4, 0x01, 0xfb, 0xbc, 0xe6, 0xb0, 0xc6, 0x60, 0x3e, 0x9a, 0x8c, 0x09, 0x4e, 0x09, 0x18,
+	0xcf, 0x9b, 0x50, 0xe9, 0x91, 0xd8, 0xe8, 0x42, 0x55, 0x14, 0xf8, 0x55, 0x28, 0xbb, 0x89, 0x11,
+	0x65, 0xd7, 0x41, 0x6d, 0xa8, 0xee, 0xf2, 0x9e, 0xc1, 0xc3, 0xf4, 0xb6, 0xc9, 0x07, 0x09, 0x33,
+	0x19, 0x24, 0xcc, 0x1e, 0x1b, 0x24, 0xb0, 0x80, 0x19, 0xb7, 0xa0, 0x21, 0x97, 0xf5, 0xac, 0xde,
+	0x06, 0x34, 0x6c, 0xa9, 0x71, 0xf0, 0x2b, 0x91, 0xb7, 0x0c, 0x02, 0xcb, 0xa9, 0xda, 0x9d, 0x55,
+	0xb8, 0x0b, 0xcb, 0xa1, 0xdc, 0x20, 0xb8, 0x5d, 0xef, 0xe6, 0x5e, 0x82, 0x2c, 0x84, 0x53, 0x34,
+	0xe3, 0x13, 0x00, 0xa9, 0x92, 0x67, 0x3f, 0xd2, 0x92, 0x4f, 0xd9, 0x27, 0x96, 0xb0, 0xb4, 0x63,
+	0xfc, 0x5e, 0x01, 0x95, 0x55, 0xef, 0x2c, 0xf1, 0x1a, 0xa8, 0x74, 0xee, 0x11, 0x56, 0x9d, 0x59,
+	0xd8, 0x0a, 0xf8, 0x2f, 0x90, 0xe1, 0xd1, 0x0d, 0xd0, 0xa2, 0x78, 0xe2, 0x25, 0x43, 0xc6, 0xd9,
+	0xc5, 0xc4, 0x1e, 0x85, 0x62, 0xce, 0xa0, 0x54, 0x16, 0x54, 0x31, 0x5e, 0x14, 0x50, 0x59, 0x36,
+	0x61, 0xce, 0x40, 0xb7, 0xa0, 0x66, 0x0f, 0x89, 0xfd, 0x84, 0x38, 0x62, 0xae, 0x38, 0xbf, 0x98,
+	0xbc, 0xcd, 0xc1, 0x38, 0x61, 0x19, 0xeb, 0xe2, 0x1a, 0x9a, 0xa2, 0x00, 0x88, 0x9b, 0x10, 0xd5,
+	0x60, 0x07, 0x34, 0x66, 0x29, 0xfa, 0x54, 0x3e, 0x5e, 0xdd, 0xbc, 0x50, 0x9c, 0xb1, 0xc2, 0xc3,
+	0xa9, 0x0e, 0x33, 0x3b, 0xad, 0xd3, 0x38, 0x8c, 0x8e, 0x70, 0x97, 0xeb, 0x9c, 0x86, 0x9a, 0xf0,
+	0x20, 0x6d, 0xf0, 0x52, 0x02, 0xf8, 0xb5, 0x02, 0x2a, 0xeb, 0xa7, 0x39, 0x61, 0xf5, 0xad, 0x11,
+	0x29, 0x0c, 0x2b, 0x25, 0x9b, 0x0f, 0xac, 0x11, 0xc1, 0x0c, 0xcf, 0xc3, 0x6a, 0xc5, 0xc5, 0x61,
+	0x65, 0xc4, 0x1e, 0x85, 0x62, 0xce, 0x40, 0x5f, 0xc1, 0x8a, 0x17, 0xd8, 0x96, 0xb7, 0x93, 0x94,
+	0x0f, 0x1e, 0xde, 0x4b, 0x8b, 0x25, 0xee, 0xc9, 0x14, 0x9c, 0x56, 0xa0, 0x5e, 0xb8, 0xb4, 0x1b,
+	0x6b, 0x87, 0xf1, 0x82, 0xb6, 0x60, 0xcc, 0xf0, 0x34, 0xca, 0xd4, 0xa7, 0x45, 0x51, 0xa6, 0x16,
+	0x1f, 0x29, 0xca, 0xb2, 0xc3, 0x5c, 0xe7, 0x3c, 0xac, 0xa4, 0xac, 0x9f, 0xf3, 0xb9, 0x75, 0x50,
+	0xd9, 0x74, 0x90, 0x7f, 0xfa, 0x52, 0x05, 0x8d, 0x8f, 0x32, 0xd9, 0x10, 0x7e, 0x94, 0x0a, 0xe1,
+	0xd9, 0xc5, 0x93, 0x91, 0x1c, 0xc3, 0x8f, 0x41, 0x7b, 0xea, 0x3a, 0xf1, 0x50, 0xc4, 0xf0, 0x5c,
+	0x01, 0xf3, 0x1b, 0x8a, 0xc5, 0x9c, 0x42, 0xb9, 0x3c, 0xfe, 0xea, 0xa1, 0xb8, 0xa9, 0x04, 0xc0,
+	0xd9, 0x04, 0xe0, 0x61, 0xbb, 0x5c, 0xa0, 0xb1, 0x30, 0x03, 0x06, 0xd0, 0x1c, 0x87, 0x64, 0xdf,
+	0x25, 0x4f, 0x53, 0x30, 0xf1, 0x20, 0xb8, 0x5a, 0x20, 0xfd, 0x30, 0x87, 0x8a, 0x73, 0x05, 0x0b,
+	0x52, 0xe6, 0x14, 0x68, 0xec, 0x9a, 0xd2, 0xc7, 0x5a, 0x72, 0xfc, 0x59, 0x92, 0x51, 0x37, 0xd3,
+	0x19, 0x75, 0x71, 0x61, 0x46, 0xa5, 0xae, 0xf0, 0x48, 0x29, 0x75, 0x19, 0x9a, 0x79, 0xae, 0x2d,
+	0x48, 0x31, 0x3e, 0xe5, 0x1e, 0x37, 0xc5, 0x18, 0xfb, 0x58, 0x29, 0xc6, 0x99, 0xc7, 0x4b, 0x31,
+	0xce, 0xfd, 0x6f, 0x29, 0xc6, 0x35, 0x5e, 0x4b, 0x8a, 0x71, 0xe9, 0xff, 0x77, 0x8a, 0xa5, 0xae,
+	0xf0, 0x35, 0xa6, 0x98, 0x27, 0x6a, 0xdc, 0x71, 0xdb, 0x10, 0x25, 0x4b, 0xf9, 0x55, 0x70, 0x55,
+	0x7f, 0x97, 0x41, 0xa5, 0xef, 0x02, 0xe3, 0xaf, 0x72, 0x32, 0x62, 0x5f, 0x07, 0x95, 0xbd, 0x7f,
+	0xa4, 0x31, 0xbd, 0x94, 0x19, 0xd3, 0x53, 0xff, 0x76, 0x99, 0x8d, 0xe9, 0xd7, 0x41, 0x65, 0x2f,
+	0x9e, 0xa3, 0x33, 0x9f, 0x97, 0xa0, 0x3e, 0x7b, 0x7d, 0x1c, 0x99, 0x2f, 0x0f, 0xd1, 0xe5, 0xf4,
+	0x10, 0xfe, 0x3e, 0x68, 0x21, 0x1b, 0x98, 0xf9, 0xcf, 0x2b, 0x3b, 0xda, 0xb3, 0x0f, 0x62, 0x0e,
+	0x31, 0x08, 0x34, 0xe4, 0xb7, 0xd5, 0xd1, 0xcd, 0x38, 0x27, 0x9e, 0xd0, 0x5d, 0x27, 0xda, 0x0a,
+	0x43, 0x6b, 0x22, 0x66, 0xdc, 0xf4, 0x26, 0x8d, 0x08, 0x7d, 0x41, 0xa5, 0x5f, 0x47, 0x9a, 0x78,
+	0x1d, 0xdd, 0x5e, 0xff, 0xed, 0x55, 0xab, 0xf4, 0xe2, 0x55, 0xab, 0xf4, 0xf2, 0x55, 0xab, 0xf4,
+	0xf3, 0x41, 0x4b, 0x79, 0x71, 0xd0, 0x52, 0xfe, 0x3c, 0x68, 0x29, 0xdf, 0x97, 0xc7, 0xfd, 0x7e,
+	0x95, 0xcd, 0xde, 0x57, 0xff, 0x09, 0x00, 0x00, 0xff, 0xff, 0x80, 0xc4, 0x9a, 0xcc, 0x42, 0x14,
+	0x00, 0x00,
 }
 
 func (m *Event) Marshal() (dAtA []byte, err error) {
@@ -3065,16 +2962,16 @@ func (m *EventMessageValueOfBlockSetChildrenIds) MarshalToSizedBuffer(dAtA []byt
 	}
 	return len(dAtA) - i, nil
 }
-func (m *EventMessageValueOfBlockSetPermissions) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventMessageValueOfBlockSetRestrictions) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventMessageValueOfBlockSetPermissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventMessageValueOfBlockSetRestrictions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.BlockSetPermissions != nil {
+	if m.BlockSetRestrictions != nil {
 		{
-			size, err := m.BlockSetPermissions.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.BlockSetRestrictions.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -3322,6 +3219,29 @@ func (m *EventMessageValueOfUserBlockTextRange) MarshalToSizedBuffer(dAtA []byte
 		dAtA[i] = 0x1
 		i--
 		dAtA[i] = 0x9a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *EventMessageValueOfPing) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventMessageValueOfPing) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Ping != nil {
+		{
+			size, err := m.Ping.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xa2
 	}
 	return len(dAtA) - i, nil
 }
@@ -3582,20 +3502,20 @@ func (m *EventBlockMarksInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.MarksInRange) > 0 {
-		dAtA23 := make([]byte, len(m.MarksInRange)*10)
-		var j22 int
+		dAtA24 := make([]byte, len(m.MarksInRange)*10)
+		var j23 int
 		for _, num := range m.MarksInRange {
 			for num >= 1<<7 {
-				dAtA23[j22] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA24[j23] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j22++
+				j23++
 			}
-			dAtA23[j22] = uint8(num)
-			j22++
+			dAtA24[j23] = uint8(num)
+			j23++
 		}
-		i -= j22
-		copy(dAtA[i:], dAtA23[:j22])
-		i = encodeVarintEvents(dAtA, i, uint64(j22))
+		i -= j23
+		copy(dAtA[i:], dAtA24[:j23])
+		i = encodeVarintEvents(dAtA, i, uint64(j23))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -3706,7 +3626,7 @@ func (m *EventBlockSetChildrenIds) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *EventBlockSetPermissions) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockSetRestrictions) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3716,19 +3636,19 @@ func (m *EventBlockSetPermissions) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *EventBlockSetPermissions) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockSetRestrictions) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventBlockSetPermissions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockSetRestrictions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Permissions != nil {
+	if m.Restrictions != nil {
 		{
-			size, err := m.Permissions.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Restrictions.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -3808,45 +3728,9 @@ func (m *EventBlockSetText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Check != nil {
+	if m.Checked != nil {
 		{
-			size, err := m.Check.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvents(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x42
-	}
-	if m.Checkable != nil {
-		{
-			size, err := m.Checkable.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvents(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x3a
-	}
-	if m.Marker != nil {
-		{
-			size, err := m.Marker.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvents(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x32
-	}
-	if m.Toggleable != nil {
-		{
-			size, err := m.Toggleable.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Checked.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -3995,7 +3879,7 @@ func (m *EventBlockSetTextMarks) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *EventBlockSetTextToggleable) Marshal() (dAtA []byte, err error) {
+func (m *EventBlockSetTextChecked) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -4005,106 +3889,12 @@ func (m *EventBlockSetTextToggleable) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *EventBlockSetTextToggleable) MarshalTo(dAtA []byte) (int, error) {
+func (m *EventBlockSetTextChecked) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *EventBlockSetTextToggleable) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Value {
-		i--
-		if m.Value {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *EventBlockSetTextMarker) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *EventBlockSetTextMarker) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *EventBlockSetTextMarker) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Value != 0 {
-		i = encodeVarintEvents(dAtA, i, uint64(m.Value))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *EventBlockSetTextCheckable) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *EventBlockSetTextCheckable) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *EventBlockSetTextCheckable) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Value {
-		i--
-		if m.Value {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *EventBlockSetTextCheck) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *EventBlockSetTextCheck) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *EventBlockSetTextCheck) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *EventBlockSetTextChecked) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5076,6 +4866,34 @@ func (m *EventUserBlockSelectRange) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
+func (m *EventPing) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventPing) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventPing) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Index != 0 {
+		i = encodeVarintEvents(dAtA, i, uint64(m.Index))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintEvents(dAtA []byte, offset int, v uint64) int {
 	offset -= sovEvents(v)
 	base := offset
@@ -5206,14 +5024,14 @@ func (m *EventMessageValueOfBlockSetChildrenIds) Size() (n int) {
 	}
 	return n
 }
-func (m *EventMessageValueOfBlockSetPermissions) Size() (n int) {
+func (m *EventMessageValueOfBlockSetRestrictions) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.BlockSetPermissions != nil {
-		l = m.BlockSetPermissions.Size()
+	if m.BlockSetRestrictions != nil {
+		l = m.BlockSetRestrictions.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -5346,6 +5164,18 @@ func (m *EventMessageValueOfUserBlockTextRange) Size() (n int) {
 	_ = l
 	if m.UserBlockTextRange != nil {
 		l = m.UserBlockTextRange.Size()
+		n += 2 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+func (m *EventMessageValueOfPing) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Ping != nil {
+		l = m.Ping.Size()
 		n += 2 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -5511,7 +5341,7 @@ func (m *EventBlockSetChildrenIds) Size() (n int) {
 	return n
 }
 
-func (m *EventBlockSetPermissions) Size() (n int) {
+func (m *EventBlockSetRestrictions) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5521,8 +5351,8 @@ func (m *EventBlockSetPermissions) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovEvents(uint64(l))
 	}
-	if m.Permissions != nil {
-		l = m.Permissions.Size()
+	if m.Restrictions != nil {
+		l = m.Restrictions.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -5566,20 +5396,8 @@ func (m *EventBlockSetText) Size() (n int) {
 		l = m.Marks.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
-	if m.Toggleable != nil {
-		l = m.Toggleable.Size()
-		n += 1 + l + sovEvents(uint64(l))
-	}
-	if m.Marker != nil {
-		l = m.Marker.Size()
-		n += 1 + l + sovEvents(uint64(l))
-	}
-	if m.Checkable != nil {
-		l = m.Checkable.Size()
-		n += 1 + l + sovEvents(uint64(l))
-	}
-	if m.Check != nil {
-		l = m.Check.Size()
+	if m.Checked != nil {
+		l = m.Checked.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -5623,43 +5441,7 @@ func (m *EventBlockSetTextMarks) Size() (n int) {
 	return n
 }
 
-func (m *EventBlockSetTextToggleable) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Value {
-		n += 2
-	}
-	return n
-}
-
-func (m *EventBlockSetTextMarker) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Value != 0 {
-		n += 1 + sovEvents(uint64(m.Value))
-	}
-	return n
-}
-
-func (m *EventBlockSetTextCheckable) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Value {
-		n += 2
-	}
-	return n
-}
-
-func (m *EventBlockSetTextCheck) Size() (n int) {
+func (m *EventBlockSetTextChecked) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6053,6 +5835,18 @@ func (m *EventUserBlockSelectRange) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovEvents(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *EventPing) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Index != 0 {
+		n += 1 + sovEvents(uint64(m.Index))
 	}
 	return n
 }
@@ -6494,7 +6288,7 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetPermissions", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetRestrictions", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -6521,11 +6315,11 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &EventBlockSetPermissions{}
+			v := &EventBlockSetRestrictions{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Value = &EventMessageValueOfBlockSetPermissions{v}
+			m.Value = &EventMessageValueOfBlockSetRestrictions{v}
 			iNdEx = postIndex
 		case 9:
 			if wireType != 2 {
@@ -6911,6 +6705,41 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Value = &EventMessageValueOfUserBlockTextRange{v}
+			iNdEx = postIndex
+		case 100:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ping", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &EventPing{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &EventMessageValueOfPing{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -7971,7 +7800,7 @@ func (m *EventBlockSetChildrenIds) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EventBlockSetPermissions) Unmarshal(dAtA []byte) error {
+func (m *EventBlockSetRestrictions) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7994,10 +7823,10 @@ func (m *EventBlockSetPermissions) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Permissions: wiretype end group for non-group")
+			return fmt.Errorf("proto: Restrictions: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Permissions: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Restrictions: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -8034,7 +7863,7 @@ func (m *EventBlockSetPermissions) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Permissions", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Restrictions", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -8061,10 +7890,10 @@ func (m *EventBlockSetPermissions) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Permissions == nil {
-				m.Permissions = &model.BlockPermissions{}
+			if m.Restrictions == nil {
+				m.Restrictions = &model.BlockRestrictions{}
 			}
-			if err := m.Permissions.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Restrictions.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8368,7 +8197,7 @@ func (m *EventBlockSetText) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Toggleable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Checked", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -8395,118 +8224,10 @@ func (m *EventBlockSetText) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Toggleable == nil {
-				m.Toggleable = &EventBlockSetTextToggleable{}
+			if m.Checked == nil {
+				m.Checked = &EventBlockSetTextChecked{}
 			}
-			if err := m.Toggleable.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Marker", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvents
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Marker == nil {
-				m.Marker = &EventBlockSetTextMarker{}
-			}
-			if err := m.Marker.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Checkable", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvents
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Checkable == nil {
-				m.Checkable = &EventBlockSetTextCheckable{}
-			}
-			if err := m.Checkable.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Check", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvents
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Check == nil {
-				m.Check = &EventBlockSetTextCheck{}
-			}
-			if err := m.Check.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Checked.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8780,7 +8501,7 @@ func (m *EventBlockSetTextMarks) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *EventBlockSetTextToggleable) Unmarshal(dAtA []byte) error {
+func (m *EventBlockSetTextChecked) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8803,228 +8524,10 @@ func (m *EventBlockSetTextToggleable) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Toggleable: wiretype end group for non-group")
+			return fmt.Errorf("proto: Checked: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Toggleable: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Value = bool(v != 0)
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvents(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *EventBlockSetTextMarker) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvents
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Marker: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Marker: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
-			}
-			m.Value = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Value |= model.BlockContentTextMarker(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvents(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *EventBlockSetTextCheckable) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvents
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Checkable: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Checkable: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.Value = bool(v != 0)
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvents(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *EventBlockSetTextCheck) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvents
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Check: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Check: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Checked: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -11699,6 +11202,78 @@ func (m *EventUserBlockSelectRange) Unmarshal(dAtA []byte) error {
 			}
 			m.BlockIdsArray = append(m.BlockIdsArray, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventPing) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Ping: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Ping: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+			}
+			m.Index = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Index |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEvents(dAtA[iNdEx:])

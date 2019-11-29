@@ -59,21 +59,9 @@ func (t *Text) Diff(text *Text) (msgs []*pb.EventMessage) {
 		hasChanges = true
 		changes.Style = &pb.EventBlockSetTextStyle{Value: text.content.Style}
 	}
-	if t.content.Toggleable != text.content.Toggleable {
-		hasChanges = true
-		changes.Toggleable = &pb.EventBlockSetTextToggleable{Value: text.content.Toggleable}
-	}
-	if t.content.Marker != text.content.Marker {
-		hasChanges = true
-		changes.Marker = &pb.EventBlockSetTextMarker{Value: text.content.Marker}
-	}
-	if t.content.Checkable != text.content.Checkable {
-		hasChanges = true
-		changes.Checkable = &pb.EventBlockSetTextCheckable{Value: text.content.Checkable}
-	}
 	if t.content.Checked != text.content.Checked {
 		hasChanges = true
-		changes.Check = &pb.EventBlockSetTextCheck{Value: text.content.Checked}
+		changes.Checked = &pb.EventBlockSetTextChecked{Value: text.content.Checked}
 	}
 	if !marksEq(t.content.Marks, text.content.Marks) {
 		hasChanges = true
@@ -91,18 +79,6 @@ func (t *Text) SetStyle(style model.BlockContentTextStyle) {
 
 func (t *Text) SetChecked(v bool) {
 	t.content.Checked = v
-}
-
-func (t *Text) SetCheckable(v bool) {
-	t.content.Checkable = v
-}
-
-func (t *Text) SetToggleable(v bool) {
-	t.content.Toggleable = v
-}
-
-func (t *Text) SetMarker(v model.BlockContentTextMarker) {
-	t.content.Marker = v
 }
 
 func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {

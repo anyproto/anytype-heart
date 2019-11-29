@@ -24,10 +24,7 @@ type Service interface {
 
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
-	SetTextToggleable(req pb.RpcBlockSetTextToggleableRequest) error
-	SetTextMarker(req pb.RpcBlockSetTextMarkerRequest) error
-	SetTextCheckable(req pb.RpcBlockSetTextCheckableRequest) error
-	SetTextCheck(req pb.RpcBlockSetTextCheckRequest) error
+	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
 
 	Close() error
 }
@@ -100,28 +97,7 @@ func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
 	})
 }
 
-func (s *service) SetTextToggleable(req pb.RpcBlockSetTextToggleableRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
-		b.SetToggleable(req.Toggleable)
-		return nil
-	})
-}
-
-func (s *service) SetTextMarker(req pb.RpcBlockSetTextMarkerRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
-		b.SetMarker(req.Marker)
-		return nil
-	})
-}
-
-func (s *service) SetTextCheckable(req pb.RpcBlockSetTextCheckableRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
-		b.SetCheckable(req.Checkable)
-		return nil
-	})
-}
-
-func (s *service) SetTextCheck(req pb.RpcBlockSetTextCheckRequest) error {
+func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
 	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
 		b.SetChecked(req.Check)
 		return nil
@@ -132,7 +108,7 @@ func (s *service) updateTextBlock(contextId, blockId string, apply func(b *text.
 	s.m.RLock()
 	defer s.m.RUnlock()
 	sb, ok := s.smartBlocks[contextId]
-	if ! ok {
+	if !ok {
 		err = ErrBlockNotFound
 		return
 	}
