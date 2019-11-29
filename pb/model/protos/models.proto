@@ -11,6 +11,23 @@ message Block {
     repeated string childrenIds = 4;
     bool isArchived = 5;
 
+    oneof content {
+        Content.Dashboard dashboard = 11;
+        Content.Page page = 12;
+        Content.Dataview dataview = 13;
+
+        Content.Text text = 14;
+        Content.Video video = 15;
+        Content.Image image = 16;
+        Content.File file = 17;
+        Content.Layout layout = 18;
+        Content.Div div = 19;
+        Content.Bookmark bookmark = 20;
+        Content.Icon icon = 21;
+        Content.Link link = 22;
+    }
+
+
     message Restrictions {
         bool read = 1;
         bool edit = 2;
@@ -22,26 +39,6 @@ message Block {
     enum Position {
         Before = 0;
         After = 1;
-    }
-
-    Core content = 6;
-
-    message Core {
-        oneof content {
-            Content.Dashboard dashboard = 11;
-            Content.Page page = 12;
-            Content.Dataview dataview = 13;
-
-            Content.Text text = 14;
-            Content.Video video = 15;
-            Content.Image image = 16;
-            Content.File file = 17;
-            Content.Layout layout = 18;
-            Content.Div div = 19;
-            Content.Bookmark bookmark = 20;
-            Content.Icon icon = 21;
-            Content.Link link = 22;
-        }
     }
 
     message Content {

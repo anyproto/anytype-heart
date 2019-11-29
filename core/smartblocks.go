@@ -71,7 +71,7 @@ func (a *Anytype) smartBlockVersionWithFullRestrictions(id string) *SmartBlockVe
 					DropOn: true,
 				},
 				// we don't know the block type for sure, lets set a page
-				Content: &model.BlockCore{&model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}},
+				Content: &model.BlockContentOfPage{Page: &model.BlockContentPage{}},
 			}},
 	}
 }

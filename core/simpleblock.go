@@ -73,8 +73,8 @@ func (simpleBlock *SimpleBlock) AddVersion(block *model.Block) (BlockVersion, er
 		return nil, fmt.Errorf("simpleBlock simpleBlocks can't store fields")
 	}
 
-	switch block.Content.Content.(type) {
-	case *model.BlockCoreContentOfPage, *model.BlockCoreContentOfDashboard, *model.BlockCoreContentOfDataview:
+	switch block.Content.(type) {
+	case *model.BlockContentOfPage, *model.BlockContentOfDashboard, *model.BlockContentOfDataview:
 		return nil, fmt.Errorf("unxpected smartsimpleBlock type")
 	}
 
