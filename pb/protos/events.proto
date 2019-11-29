@@ -38,6 +38,8 @@ message Event {
             User.Block.Left userBlockLeft = 17;
             User.Block.SelectRange userBlockSelectRange = 18;
             User.Block.TextRange userBlockTextRange = 19;
+
+            Ping ping  = 100;
         }
     }
 
@@ -284,5 +286,9 @@ message Event {
                 repeated string blockIdsArray = 2; // Ids of selected blocks.
             }
         }
+    }
+
+    message Ping {
+        int32 index = 1;
     }
 }
