@@ -99,7 +99,7 @@ func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
 	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
-		b.SetChecked(req.Check)
+		b.SetChecked(req.Checked)
 		return nil
 	})
 }
