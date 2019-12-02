@@ -3,7 +3,7 @@ package block
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -35,7 +35,7 @@ func (p *page) Init() {
 }
 
 func (p *page) addName(title string) {
-	var b = simple.NewVirtual(&model.Block{
+	var b = base.NewVirtual(&model.Block{
 		Id: p.block.GetId() + pageTitleSuffix,
 		Restrictions: &model.BlockRestrictions{
 			Read:   false,
@@ -57,7 +57,7 @@ func (p *page) addName(title string) {
 
 func (p *page) addIcon(icon string) {
 
-	var b = simple.NewVirtual(&model.Block{
+	var b = base.NewVirtual(&model.Block{
 		Id: p.block.GetId() + pageIconSuffix,
 		Restrictions: &model.BlockRestrictions{
 			Read:   false,

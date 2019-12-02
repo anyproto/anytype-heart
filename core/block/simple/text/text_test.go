@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,21 +15,30 @@ func TestText_Diff(t *testing.T) {
 		return NewText(&model.Block{
 			Restrictions: &model.BlockRestrictions{},
 			Content:      &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		})
+		}).(*Text)
 	}
-
+	t.Run("type error", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := base.NewBase(&model.Block{})
+		_, err := b1.Diff(b2)
+		assert.Error(t, err)
+	})
 	t.Run("no diff", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b1.SetText("same text", &model.BlockContentTextMarks{})
 		b2.SetText("same text", &model.BlockContentTextMarks{})
-		assert.Len(t, b1.Diff(b2), 0)
+		d, err := b1.Diff(b2)
+		require.NoError(t, err)
+		assert.Len(t, d, 0)
 	})
 	t.Run("base diff", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.Restrictions.Read = true
-		assert.Len(t, b1.Diff(b2), 1)
+		d, err := b1.Diff(b2)
+		require.NoError(t, err)
+		assert.Len(t, d, 1)
 	})
 	t.Run("content diff", func(t *testing.T) {
 		b1 := testBlock()
@@ -43,7 +53,8 @@ func TestText_Diff(t *testing.T) {
 		})
 		b2.SetStyle(model.BlockContentText_Header2)
 		b2.SetChecked(true)
-		diff := b1.Diff(b2)
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		textChange := diff[0].Value.(*pb.EventMessageValueOfBlockSetText).BlockSetText
 		assert.NotNil(t, textChange.Style)

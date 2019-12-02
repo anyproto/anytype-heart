@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -25,6 +26,7 @@ type smartBlock interface {
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	UpdateTextBlock(id string, apply func(t *text.Text) error) error
+	SetFields(id string, fields *types.Struct) (err error)
 	Close() error
 }
 
@@ -195,11 +197,13 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error)
 		return ErrUnexpectedBlockType
 	}
 	textCopy := textBlock.Copy()
-	if err := apply(textCopy); err != nil {
+	if err := apply(textCopy.(*text.Text)); err != nil {
 		return err
 	}
-	diff := textBlock.Diff(textCopy)
-	fmt.Println("middle: text update diff:", diff)
+	diff, err := textBlock.Diff(textCopy)
+	if err != nil {
+		return err
+	}
 	if len(diff) == 0 {
 		// no changes
 		return nil
@@ -213,6 +217,34 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error)
 		ContextId: p.GetId(),
 	})
 	return nil
+}
+
+func (p *commonSmart) SetFields(id string, fields *types.Struct) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	b, err := p.getNonVirtualBlock(id)
+	if err != nil {
+		return
+	}
+	copy := b.Copy()
+	copy.Model().Fields = fields
+	diff, err := b.Diff(copy)
+	if err != nil {
+		return
+	}
+	if len(diff) == 0 {
+		// no changes
+		return nil
+	}
+	if _, err = p.block.AddVersions([]*model.Block{p.toSave(copy.Model())}); err != nil {
+		return
+	}
+	p.versions[id] = copy
+	p.s.sendEvent(&pb.Event{
+		Messages:  diff,
+		ContextId: p.GetId(),
+	})
+	return
 }
 
 func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
@@ -311,4 +343,15 @@ func (p *commonSmart) Close() error {
 	}
 	p.closeWg.Wait()
 	return nil
+}
+
+func (p *commonSmart) getNonVirtualBlock(id string) (simple.Block, error) {
+	b, ok := p.versions[id]
+	if ! ok {
+		return nil, ErrBlockNotFound
+	}
+	if b.Virtual() {
+		return nil, ErrUnexpectedBlockType
+	}
+	return b, nil
 }

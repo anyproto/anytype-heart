@@ -117,7 +117,9 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetFields(*req); err != nil {
+		return response(pb.RpcBlockSetFieldsResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
 }
 

@@ -22,6 +22,8 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 
+	SetFields(req pb.RpcBlockSetFieldsRequest) error
+
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
@@ -82,6 +84,15 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 		return sb.Create(req)
 	}
 	return "", ErrBlockNotFound
+}
+
+func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.SetFields(req.BlockId, req.Fields)
+	}
+	return ErrBlockNotFound
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {

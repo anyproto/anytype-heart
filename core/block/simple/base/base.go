@@ -2,11 +2,19 @@ package base
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
+	"github.com/mohae/deepcopy"
 )
 
-func NewBase(block *model.Block) *Base {
+func init() {
+	simple.RegisterFallback(func(m *model.Block) simple.Block {
+		return NewBase(m)
+	})
+}
+
+func NewBase(block *model.Block) simple.Block {
 	return &Base{Block: block}
 }
 
@@ -22,7 +30,8 @@ func (s *Base) Model() *model.Block {
 	return s.Block
 }
 
-func (s *Base) Diff(m *model.Block) (msgs []*pb.EventMessage) {
+func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
+	m := block.Model()
 	if m.IsArchived != s.IsArchived {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetIsArchived{BlockSetIsArchived: &pb.EventBlockSetIsArchived{
 			Id:         s.Id,
@@ -60,6 +69,10 @@ func (s *Base) Diff(m *model.Block) (msgs []*pb.EventMessage) {
 		msgs = append(msgs, m)
 	}
 	return
+}
+
+func (b *Base) Copy() simple.Block {
+	return NewBase(deepcopy.Copy(b.Model()).(*model.Block))
 }
 
 func stringSlicesEq(s1, s2 []string) bool {
