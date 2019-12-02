@@ -42,6 +42,10 @@
     - [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request)
     - [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response)
     - [Rpc.Block.Download.Response.Error](#anytype.Rpc.Block.Download.Response.Error)
+    - [Rpc.Block.Duplicate](#anytype.Rpc.Block.Duplicate)
+    - [Rpc.Block.Duplicate.Request](#anytype.Rpc.Block.Duplicate.Request)
+    - [Rpc.Block.Duplicate.Response](#anytype.Rpc.Block.Duplicate.Response)
+    - [Rpc.Block.Duplicate.Response.Error](#anytype.Rpc.Block.Duplicate.Response.Error)
     - [Rpc.Block.Get](#anytype.Rpc.Block.Get)
     - [Rpc.Block.Get.Marks](#anytype.Rpc.Block.Get.Marks)
     - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
@@ -186,6 +190,7 @@
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
+    - [Rpc.Block.Duplicate.Response.Error.Code](#anytype.Rpc.Block.Duplicate.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
@@ -291,6 +296,7 @@
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Content.Video](#anytype.model.Block.Content.Video)
+    - [Block.Core](#anytype.model.Block.Core)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
@@ -829,6 +835,63 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Duplicate"></a>
+
+### Rpc.Block.Duplicate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Duplicate.Request"></a>
+
+### Rpc.Block.Duplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Duplicate.Response"></a>
+
+### Rpc.Block.Duplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Duplicate.Response.Error](#anytype.Rpc.Block.Duplicate.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Duplicate.Response.Error"></a>
+
+### Rpc.Block.Duplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Duplicate.Response.Error.Code](#anytype.Rpc.Block.Duplicate.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2845,6 +2908,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Duplicate.Response.Error.Code"></a>
+
+### Rpc.Block.Duplicate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Get.Marks.Response.Error.Code"></a>
 
 ### Rpc.Block.Get.Marks.Response.Error.Code
@@ -4068,18 +4144,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | restrictions | [Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
 | isArchived | [bool](#bool) |  |  |
-| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
-| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
-| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
-| text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
-| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
-| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
-| file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
-| layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
-| div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
-| bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
-| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
-| link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
+| content | [Block.Core](#anytype.model.Block.Core) |  |  |
 
 
 
@@ -4310,6 +4375,32 @@ Link: block to link some content from an external sources.
 | icon | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
 | state | [Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Core"></a>
+
+### Block.Core
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
+| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
+| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
+| text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
+| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
+| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
+| file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
+| layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
+| div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
+| bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
+| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
+| link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
 
 
 
