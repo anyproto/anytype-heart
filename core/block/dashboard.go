@@ -37,9 +37,9 @@ func (p *dashboard) addTestPage() {
 			},
 		},
 		ChildrenIds: []string{},
-		Content: &model.BlockCore{Content: &model.BlockCoreContentOfPage{
+		Content: &model.BlockContentOfPage{
 			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
-		}},
+		},
 	})
 	p.versions[p.block.GetId()].Model().ChildrenIds = append(p.versions[p.block.GetId()].Model().ChildrenIds, testPageId)
 }

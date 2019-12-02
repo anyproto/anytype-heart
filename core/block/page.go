@@ -43,18 +43,20 @@ func (p *page) addName(title string) {
 			Remove: true,
 			Drag:   true,
 			DropOn: false,
-		}, Content: &model.BlockCore{Content: &model.BlockCoreContentOfText{
+		}, Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  title,
 				Style: model.BlockContentText_Title,
 			},
-		}},
+		},
 	})
+
 	p.versions[b.Model().Id] = b
 	p.root().ChildrenIds = append([]string{b.Model().Id}, p.root().ChildrenIds...)
 }
 
 func (p *page) addIcon(icon string) {
+
 	var b = simple.NewVirtual(&model.Block{
 		Id: p.block.GetId() + pageIconSuffix,
 		Restrictions: &model.BlockRestrictions{
@@ -63,12 +65,13 @@ func (p *page) addIcon(icon string) {
 			Remove: true,
 			Drag:   true,
 			DropOn: true,
-		}, Content: &model.BlockCore{Content: &model.BlockCoreContentOfIcon{
+		}, Content: &model.BlockContentOfIcon{
 			Icon: &model.BlockContentIcon{
 				Name: icon,
 			},
-		}},
+		},
 	})
+
 	p.versions[b.Model().Id] = b
 	p.root().ChildrenIds = append([]string{b.Model().Id}, p.root().ChildrenIds...)
 }

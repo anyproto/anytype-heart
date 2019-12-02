@@ -39,6 +39,8 @@ github.com/anytypeio/go-anytype-library v0.0.0-20191129125056-1ae98485b827 h1:nm
 github.com/anytypeio/go-anytype-library v0.0.0-20191129125056-1ae98485b827/go.mod h1:y/AxtJs2jNQ2711DtGkuhdzg6ZaPG/ofuQL7Yoe5N6g=
 github.com/anytypeio/go-anytype-library v0.0.0-20191129133739-bc8f374f75ef h1:mPZ7VY1V4A5/pklalOjqDo/k0VRkVGqzFbhsgsmY/O0=
 github.com/anytypeio/go-anytype-library v0.0.0-20191129133739-bc8f374f75ef/go.mod h1:y/AxtJs2jNQ2711DtGkuhdzg6ZaPG/ofuQL7Yoe5N6g=
+github.com/anytypeio/go-anytype-library v0.0.0-20191202091929-d4363fa7578e h1:ZlHmq6SO33L7dNjP/S8lAU+Pb34UO0tYZZXL55LNA7o=
+github.com/anytypeio/go-anytype-library v0.0.0-20191202091929-d4363fa7578e/go.mod h1:y/AxtJs2jNQ2711DtGkuhdzg6ZaPG/ofuQL7Yoe5N6g=
 github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec h1:f/fnKGgxS33FvG0g96HcwasQrf6V1CjsAt1suWz8kF0=
 github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec/go.mod h1:upnwIsP8dsXfGQEjJ8BL9AY6yJHU6etVWozxVN4PyXc=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=

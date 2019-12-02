@@ -13,7 +13,7 @@ func TestText_Diff(t *testing.T) {
 	testBlock := func() *Text {
 		return NewText(&model.Block{
 			Restrictions: &model.BlockRestrictions{},
-			Content:      &model.BlockCore{Content: &model.BlockCoreContentOfText{Text: &model.BlockContentText{}}},
+			Content:      &model.BlockContentOfText{Text: &model.BlockContentText{}},
 		})
 	}
 

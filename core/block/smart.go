@@ -52,10 +52,10 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		return
 	}
 
-	switch ver.Model().Content.Content.(type) {
-	case *model.BlockCoreContentOfDashboard:
+	switch ver.Model().Content.(type) {
+	case *model.BlockContentOfDashboard:
 		sb, err = newDashboard(s, b)
-	case *model.BlockCoreContentOfPage:
+	case *model.BlockContentOfPage:
 		sb, err = newPage(s, b)
 	default:
 		return nil, ErrUnexpectedSmartBlockType

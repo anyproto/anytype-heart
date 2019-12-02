@@ -16,8 +16,8 @@ func New(block *model.Block) (b Block) {
 	if block.Content == nil {
 		return base.NewBase(block)
 	}
-	switch block.Content.Content.(type) {
-	case *model.BlockCoreContentOfText:
+	switch block.Content.(type) {
+	case *model.BlockContentOfText:
 		return text.NewText(block)
 	default:
 		return base.NewBase(block)
