@@ -263,8 +263,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Free with no storage and upload limits",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 				Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
@@ -397,8 +396,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Is used to add a new block",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -408,8 +406,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "How it works:",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -418,8 +415,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -428,8 +424,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -438,8 +433,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User can visually click on one of the options and the block of the corresponding type will appear",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -449,8 +443,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Is used as a Power Tool that allows to call for almost any action - change color, turn block into another, delete block",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -460,9 +453,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "How it works",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Bullet,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -471,8 +462,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -481,8 +471,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -491,8 +480,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User starts typing \"page\"",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -502,9 +490,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Items connected to page appear:",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Number,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -531,8 +517,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "new page",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -541,8 +526,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "new page",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -551,8 +535,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User chooses one from the list",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -562,9 +545,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Alternative example",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Bullet,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -573,8 +554,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -583,8 +563,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -593,8 +572,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User starts typing \"turn into\"",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -604,9 +582,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Items connected to turn into appear:",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Number,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -633,8 +609,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "text",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -643,8 +618,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "page",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -653,7 +627,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text: "heading",
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -662,8 +636,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "list",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
