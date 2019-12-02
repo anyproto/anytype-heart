@@ -31,8 +31,8 @@ func (version *SmartBlockVersion) Date() *types.Timestamp {
 	return version.date
 }
 
-func (version *SmartBlockVersion) GetContent() model.IsBlockCoreContent {
-	return version.model.Block.Content.Content
+func (version *SmartBlockVersion) GetContent() model.IsBlockContent {
+	return version.model.Block.Content
 }
 
 func (version *SmartBlockVersion) DependentBlocks() map[string]BlockVersion {
@@ -40,8 +40,8 @@ func (version *SmartBlockVersion) DependentBlocks() map[string]BlockVersion {
 	var allChildrenMap = make(map[string]struct{}, 0)
 	var m = make(map[string]BlockVersion, len(version.model.BlockById))
 	for blockId, block := range version.model.BlockById {
-		switch block.Content.Content.(type) {
-		case *model.BlockCoreContentOfDashboard, *model.BlockCoreContentOfPage:
+		switch block.Content.(type) {
+		case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
 			// not supported
 
 		default:

@@ -159,11 +159,11 @@ func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, erro
 	if block.Content != nil {
 		switch strings.ToLower(smartBlock.thread.Schema.Name) {
 		case "dashboard":
-			if _, ok := block.Content.Content.(*model.BlockCoreContentOfDashboard); !ok {
+			if _, ok := block.Content.(*model.BlockContentOfDashboard); !ok {
 				return nil, fmt.Errorf("unxpected smartblock type")
 			}
 		case "page":
-			if _, ok := block.Content.Content.(*model.BlockCoreContentOfPage); !ok {
+			if _, ok := block.Content.(*model.BlockContentOfPage); !ok {
 				return nil, fmt.Errorf("unxpected smartblock type")
 			}
 		default:
@@ -181,7 +181,7 @@ func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, erro
 	}
 
 	if block.Content == nil {
-		block.Content = &model.BlockCore{Content: &model.BlockCoreContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}}
+		block.Content = &model.BlockContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
 	}
 
 	var err error
@@ -350,14 +350,14 @@ func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Bloc
 		return nil, fmt.Errorf("content not set")
 	}
 
-	switch block.Content.Content.(type) {
-	case *model.BlockCoreContentOfPage:
+	switch block.Content.(type) {
+	case *model.BlockContentOfPage:
 		thrd, err := smartBlock.node.newBlockThread(schema.Page)
 		if err != nil {
 			return nil, err
 		}
 		return &Page{&SmartBlock{thread: thrd, node: smartBlock.node}}, nil
-	case *model.BlockCoreContentOfDashboard:
+	case *model.BlockContentOfDashboard:
 		thrd, err := smartBlock.node.newBlockThread(schema.Dashboard)
 		if err != nil {
 			return nil, err
@@ -375,12 +375,12 @@ func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Bloc
 
 func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 
-	var content model.IsBlockCoreContent
+	var content model.IsBlockContent
 	switch strings.ToLower(smartBlock.thread.Schema.Name) {
 	case "dashboard":
-		content = &model.BlockCoreContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
+		content = &model.BlockContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
 	case "page":
-		content = &model.BlockCoreContentOfPage{Page: &model.BlockContentPage{}}
+		content = &model.BlockContentOfPage{Page: &model.BlockContentPage{}}
 	default:
 		// shouldn't happen as checks for the schema performed before
 		return nil
@@ -397,7 +397,7 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 					"icon": {Kind: &types.Value_StringValue{StringValue: ":page_facing_up:"}},
 				}},
 				Restrictions: &restr,
-				Content:      &model.BlockCore{content},
+				Content:      content,
 			}},
 	}
 }
