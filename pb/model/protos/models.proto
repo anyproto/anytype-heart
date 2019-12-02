@@ -62,6 +62,7 @@ message Block {
             string targetBlockId = 1; // id of the target block
             Style style = 2;
             google.protobuf.Struct fields = 3;
+            bool isArchived = 4;
 
             enum Style {
                 Page = 0;
