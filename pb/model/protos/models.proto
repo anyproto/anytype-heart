@@ -60,7 +60,13 @@ message Block {
         */
         message Link {
             string contentId = 1; // id of a linked content
-            bool isLazyRender = 2; // Should render internal content by default, or on request only
+            Style style = 2;
+
+            enum Style {
+                Page = 0;
+                Dataview = 1;
+                // ...
+            }
         }
 
         /*
