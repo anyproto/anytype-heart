@@ -136,8 +136,3 @@ func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, ch chan<- []core.
 		close(bw.blockVersionsChan)
 	}, nil
 }
-
-func (bw *blockWrapper) EmptyVersion() core.BlockVersion {
-	// TODO
-	return &core.SimpleBlockVersion{}
-}
