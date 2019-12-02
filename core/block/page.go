@@ -43,7 +43,7 @@ func (p *page) addName(title string) {
 			Remove: true,
 			Drag:   true,
 			DropOn: false,
-		}, Content: &model.BlockCoreContentOfText{
+		}, Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  title,
 				Style: model.BlockContentText_Title,
@@ -65,7 +65,7 @@ func (p *page) addIcon(icon string) {
 			Remove: true,
 			Drag:   true,
 			DropOn: true,
-		}, Content: &model.BlockCoreContentOfIcon{
+		}, Content: &model.BlockContentOfIcon{
 			Icon: &model.BlockContentIcon{
 				Name: icon,
 			},

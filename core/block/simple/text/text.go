@@ -15,7 +15,7 @@ var (
 )
 
 func NewText(block *model.Block) *Text {
-	tc := mustTextContent(block.Content.Content)
+	tc := mustTextContent(block.Content)
 	t := &Text{Base: base.NewBase(block), content: tc}
 	return t
 }
@@ -25,7 +25,7 @@ type Text struct {
 	content *model.BlockContentText
 }
 
-func mustTextContent(content model.IsBlockCoreContent) *model.BlockContentText {
+func mustTextContent(content model.IsBlockContent) *model.BlockContentText {
 	res, err := toTextContent(content)
 	if err != nil {
 		panic(err)
@@ -33,8 +33,8 @@ func mustTextContent(content model.IsBlockCoreContent) *model.BlockContentText {
 	return res
 }
 
-func toTextContent(content model.IsBlockCoreContent) (textContent *model.BlockContentText, err error) {
-	if cot, ok := content.(*model.BlockCoreContentOfText); ok {
+func toTextContent(content model.IsBlockContent) (textContent *model.BlockContentText, err error) {
+	if cot, ok := content.(*model.BlockContentOfText); ok {
 		return cot.Text, nil
 	}
 	return nil, fmt.Errorf("unexpected content type: %T; want text", content)
