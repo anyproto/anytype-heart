@@ -59,8 +59,9 @@ message Block {
         * Link: block to link some content from an external sources.
         */
         message Link {
-            string contentId = 1; // id of a linked content
+            string targetBlockId = 1; // id of the target block
             Style style = 2;
+            google.protobuf.Struct fields = 3;
 
             enum Style {
                 Page = 0;
