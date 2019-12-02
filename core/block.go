@@ -303,3 +303,29 @@ func (mw *Middleware) switchAccount(accountId string) {
 
 	mw.blockService = block.NewService(accountId, mw.Anytype, mw.SendEvent)
 }
+
+func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
+	response := func(code pb.RpcBlockSplitResponseErrorCode, err error) *pb.RpcBlockSplitResponse {
+		m := &pb.RpcBlockSplitResponse{Error: &pb.RpcBlockSplitResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSplitResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
+	response := func(code pb.RpcBlockMergeResponseErrorCode, err error) *pb.RpcBlockMergeResponse {
+		m := &pb.RpcBlockMergeResponse{Error: &pb.RpcBlockMergeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockMergeResponseError_NULL, nil)
+}
