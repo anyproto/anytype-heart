@@ -30,6 +30,13 @@ func NewText(block *model.Block) simple.Block {
 	return t
 }
 
+type Block interface {
+	simple.Block
+	SetText(text string, marks *model.BlockContentTextMarks) (err error)
+	SetStyle(style model.BlockContentTextStyle)
+	SetChecked(v bool)
+}
+
 type Text struct {
 	*base.Base
 	content *model.BlockContentText

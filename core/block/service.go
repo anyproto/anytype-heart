@@ -96,26 +96,26 @@ func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
 		return b.SetText(req.Text, req.Marks)
 	})
 }
 
 func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
 		b.SetStyle(req.Style)
 		return nil
 	})
 }
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
 		b.SetChecked(req.Check)
 		return nil
 	})
 }
 
-func (s *service) updateTextBlock(contextId, blockId string, apply func(b *text.Text) error) (err error) {
+func (s *service) updateTextBlock(contextId, blockId string, apply func(b text.Block) error) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	sb, ok := s.smartBlocks[contextId]

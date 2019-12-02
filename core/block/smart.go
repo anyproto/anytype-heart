@@ -25,7 +25,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
-	UpdateTextBlock(id string, apply func(t *text.Text) error) error
+	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	SetFields(id string, fields *types.Struct) (err error)
 	Close() error
 }
@@ -53,6 +53,10 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 	if err != nil {
 		return
 	}
+
+	fmt.Printf("block: %+v\n", b)
+	fmt.Printf("version: %+v\n", ver)
+
 	switch ver.Model().Content.(type) {
 	case *model.BlockContentOfDashboard:
 		sb, err = newDashboard(s, b)
@@ -183,7 +187,7 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	return
 }
 
-func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error) error {
 	p.m.Lock()
 	defer p.m.Unlock()
 
@@ -191,12 +195,12 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error)
 	if !ok {
 		return ErrBlockNotFound
 	}
-	textBlock, ok := block.(*text.Text)
+	textBlock, ok := block.(text.Block)
 	if !ok {
 		return ErrUnexpectedBlockType
 	}
 	textCopy := textBlock.Copy()
-	if err := apply(textCopy.(*text.Text)); err != nil {
+	if err := apply(textCopy.(text.Block)); err != nil {
 		return err
 	}
 	diff, err := textBlock.Diff(textCopy)
@@ -207,8 +211,10 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error)
 		// no changes
 		return nil
 	}
-	if _, err := p.block.AddVersions([]*model.Block{p.toSave(textCopy.Model())}); err != nil {
-		return err
+	if ! textCopy.Virtual() {
+		if _, err := p.block.AddVersions([]*model.Block{p.toSave(textCopy.Model())}); err != nil {
+			return err
+		}
 	}
 	p.versions[id] = textCopy
 	p.s.sendEvent(&pb.Event{
@@ -221,6 +227,10 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error)
 func (p *commonSmart) SetFields(id string, fields *types.Struct) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
+	return p.setFields(id, fields)
+}
+
+func (p *commonSmart) setFields(id string, fields *types.Struct) (err error) {
 	b, err := p.getNonVirtualBlock(id)
 	if err != nil {
 		return

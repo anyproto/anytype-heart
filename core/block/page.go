@@ -3,7 +3,9 @@ package block
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -83,3 +85,31 @@ func (p *page) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 func (p *page) Type() smartBlockType {
 	return smartBlockTypePage
 }
+
+type pageTitleBlock struct {
+	text.Block
+	page *page
+}
+
+func (b *pageTitleBlock) Virtual() bool {
+	return true
+}
+
+func (b *pageTitleBlock) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
+	if err = b.Block.SetText(text, nil); err != nil {
+		return
+	}
+	fields := b.page.versions[b.page.GetId()].Model().Fields
+	fields.Fields["name"] = testStringValue(text)
+	return b.page.setFields(b.page.GetId(), fields)
+}
+
+func (b *pageTitleBlock) Copy() simple.Block {
+	return &pageTitleBlock{
+		Block: b.Block.Copy().(text.Block),
+		page:  b.page,
+	}
+}
+
+func (b *pageTitleBlock) SetStyle(style model.BlockContentTextStyle) {}
+func (b *pageTitleBlock) SetChecked(v bool)                          {}
