@@ -74,7 +74,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 		return err
 	}
 
-	if version, _ := block.GetCurrentVersion(); version == nil {
+	if version, _ := block.GetCurrentVersion(); version == nil || version.Model() == nil || version.Model().Content == nil {
 		// version not yet created
 		log.Debugf("create predefined archive block")
 		_, err = block.AddVersion(&model.Block{
@@ -109,7 +109,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 		return err
 	}
 
-	if version, _ := block.GetCurrentVersion(); version == nil {
+	if version, _ := block.GetCurrentVersion(); version == nil || version.Model() == nil || version.Model().Content == nil {
 		// version not yet created
 		log.Debugf("create predefined home block")
 
