@@ -53,14 +53,13 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 	if err != nil {
 		return
 	}
-
 	switch ver.Model().Content.(type) {
 	case *model.BlockContentOfDashboard:
 		sb, err = newDashboard(s, b)
 	case *model.BlockContentOfPage:
 		sb, err = newPage(s, b)
 	default:
-		return nil, ErrUnexpectedSmartBlockType
+		return nil, fmt.Errorf("%v %T", ErrUnexpectedSmartBlockType, ver.Model().Content)
 	}
 	if err = sb.Open(b); err != nil {
 		sb.Close()

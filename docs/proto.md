@@ -306,7 +306,6 @@
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Content.Video](#anytype.model.Block.Content.Video)
-    - [Block.Core](#anytype.model.Block.Core)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
@@ -317,6 +316,7 @@
     - [Block.Content.Image.State](#anytype.model.Block.Content.Image.State)
     - [Block.Content.Image.Type](#anytype.model.Block.Content.Image.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
+    - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
     - [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
@@ -4298,7 +4298,18 @@ Avatar of a user&#39;s account. It could be an image or color
 | restrictions | [Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
 | isArchived | [bool](#bool) |  |  |
-| content | [Block.Core](#anytype.model.Block.Core) |  |  |
+| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
+| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
+| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
+| text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
+| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
+| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
+| file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
+| layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
+| div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
+| bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
+| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
+| link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
 
 
 
@@ -4443,8 +4454,10 @@ Link: block to link some content from an external sources.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contentId | [string](#string) |  | id of a linked content |
-| isLazyRender | [bool](#bool) |  | Should render internal content by default, or on request only |
+| targetBlockId | [string](#string) |  | id of the target block |
+| style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| isArchived | [bool](#bool) |  |  |
 
 
 
@@ -4529,32 +4542,6 @@ Link: block to link some content from an external sources.
 | icon | [string](#string) |  |  |
 | width | [int32](#int32) |  |  |
 | state | [Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Core"></a>
-
-### Block.Core
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
-| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
-| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
-| text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
-| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
-| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
-| file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
-| layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
-| div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
-| bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
-| icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
-| link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
 
 
 
@@ -4694,6 +4681,18 @@ General purpose structure, uses in Mark.
 | ---- | ------ | ----------- |
 | Row | 0 |  |
 | Column | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Link.Style"></a>
+
+### Block.Content.Link.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Page | 0 |  |
+| Dataview | 1 | ... |
 
 
 
