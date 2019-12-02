@@ -132,8 +132,8 @@ func (p *commonSmart) Init() {
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
-	p.m.RLock()
-	defer p.m.RUnlock()
+	p.m.Lock()
+	defer p.m.Unlock()
 	fmt.Println("middle: create block request in:", p.GetId())
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
@@ -197,10 +197,10 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error)
 	}
 	textBlock, ok := block.(text.Block)
 	if !ok {
-		return ErrUnexpectedBlockType
+		return fmt.Errorf("%v %T", ErrUnexpectedBlockType, textBlock)
 	}
-	textCopy := textBlock.Copy()
-	if err := apply(textCopy.(text.Block)); err != nil {
+	textCopy := textBlock.Copy().(text.Block)
+	if err := apply(textCopy); err != nil {
 		return err
 	}
 	diff, err := textBlock.Diff(textCopy)

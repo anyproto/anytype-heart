@@ -106,6 +106,9 @@ func (t *Text) SetChecked(v bool) {
 
 func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
 	t.content.Text = text
+	if marks == nil {
+		marks = &model.BlockContentTextMarks{}
+	}
 	t.content.Marks = marks
 	sort.Sort(sortedMarks(t.content.Marks.Marks))
 	return

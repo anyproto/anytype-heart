@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -37,21 +38,24 @@ func (p *page) Init() {
 }
 
 func (p *page) addName(title string) {
-	var b = base.NewVirtual(&model.Block{
-		Id: p.block.GetId() + pageTitleSuffix,
-		Restrictions: &model.BlockRestrictions{
-			Read:   false,
-			Edit:   false,
-			Remove: true,
-			Drag:   true,
-			DropOn: false,
-		}, Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:  title,
-				Style: model.BlockContentText_Title,
+	var b = &pageTitleBlock{
+		Block: simple.New(&model.Block{
+			Id: p.block.GetId() + pageTitleSuffix,
+			Restrictions: &model.BlockRestrictions{
+				Read:   false,
+				Edit:   false,
+				Remove: true,
+				Drag:   true,
+				DropOn: false,
+			}, Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  title,
+					Style: model.BlockContentText_Title,
+				},
 			},
-		},
-	})
+		}).(text.Block),
+		page: p,
+	}
 
 	p.versions[b.Model().Id] = b
 	p.root().ChildrenIds = append([]string{b.Model().Id}, p.root().ChildrenIds...)
@@ -86,6 +90,30 @@ func (p *page) Type() smartBlockType {
 	return smartBlockTypePage
 }
 
+func (p *page) SetFields(id string, fields *types.Struct) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if err = p.setFields(id, fields); err != nil {
+		return
+	}
+	if id == p.GetId() {
+		// apply changes to virtual blocks
+		name, _ := fieldsGetString(p.versions[id].Model().Fields, "name")
+		nameId := p.block.GetId() + pageTitleSuffix
+		nameBlock := p.versions[nameId].Copy().(*pageTitleBlock)
+		nameBlock.Block.SetText(name, nil)
+		diff, _ := p.versions[nameId].Diff(nameBlock)
+		if len(diff) > 0 {
+			p.s.sendEvent(&pb.Event{
+				Messages:  diff,
+				ContextId: p.GetId(),
+			})
+			p.versions[nameId] = nameBlock
+		}
+	}
+	return
+}
+
 type pageTitleBlock struct {
 	text.Block
 	page *page
@@ -99,7 +127,7 @@ func (b *pageTitleBlock) SetText(text string, marks *model.BlockContentTextMarks
 	if err = b.Block.SetText(text, nil); err != nil {
 		return
 	}
-	fields := b.page.versions[b.page.GetId()].Model().Fields
+	fields := b.page.versions[b.page.GetId()].Copy().Model().Fields
 	fields.Fields["name"] = testStringValue(text)
 	return b.page.setFields(b.page.GetId(), fields)
 }
@@ -109,6 +137,10 @@ func (b *pageTitleBlock) Copy() simple.Block {
 		Block: b.Block.Copy().(text.Block),
 		page:  b.page,
 	}
+}
+
+func (b *pageTitleBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
+	return b.Block.Diff(block.(*pageTitleBlock).Block)
 }
 
 func (b *pageTitleBlock) SetStyle(style model.BlockContentTextStyle) {}
