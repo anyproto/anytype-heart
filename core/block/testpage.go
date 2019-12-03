@@ -325,26 +325,34 @@ var testBlocks = []*model.Block{
 	},
 	{
 		Id: "25",
-		Fields: &types.Struct{
-			Fields: map[string]*types.Value{
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				Style: model.BlockContentLink_Page,
+				TargetBlockId: "testpage",
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": testStringValue("Test page"),
+						"icon": testStringValue(":deciduous_tree:"),
+					},
+				},
+				IsArchived: true,
 			},
-		},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		},
 	},
 	{
 		Id: "26",
-		Fields: &types.Struct{
-			Fields: map[string]*types.Value{
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				Style: model.BlockContentLink_Page,
+				TargetBlockId: "testpage",
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": testStringValue("Test page"),
+						"icon": testStringValue(":family:"),
+					},
+				},
+				IsArchived: false,
 			},
-		},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		},
 	},
 	{
@@ -352,12 +360,20 @@ var testBlocks = []*model.Block{
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
 				"width": testFloatValue(0.5),
-				"name":  testStringValue("Test page"),
-				"icon":  testStringValue(":deciduous_tree:"),
 			},
 		},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				Style: model.BlockContentLink_Page,
+				TargetBlockId: "testpage",
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": testStringValue("Test page"),
+						"icon": testStringValue(":wastebasket:"),
+					},
+				},
+				IsArchived: true,
+			},
 		},
 	},
 	{
