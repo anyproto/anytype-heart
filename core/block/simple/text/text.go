@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/mohae/deepcopy"
@@ -14,10 +15,26 @@ var (
 	ErrOutOfRange = fmt.Errorf("out of range")
 )
 
-func NewText(block *model.Block) *Text {
+func init() {
+	simple.RegisterCreator(func(m *model.Block) simple.Block {
+		if _, err := toTextContent(m.Content); err != nil {
+			return nil
+		}
+		return NewText(m)
+	})
+}
+
+func NewText(block *model.Block) simple.Block {
 	tc := mustTextContent(block.Content)
-	t := &Text{Base: base.NewBase(block), content: tc}
+	t := &Text{Base: base.NewBase(block).(*base.Base), content: tc}
 	return t
+}
+
+type Block interface {
+	simple.Block
+	SetText(text string, marks *model.BlockContentTextMarks) (err error)
+	SetStyle(style model.BlockContentTextStyle)
+	SetChecked(v bool)
 }
 
 type Text struct {
@@ -40,12 +57,18 @@ func toTextContent(content model.IsBlockContent) (textContent *model.BlockConten
 	return nil, fmt.Errorf("unexpected content type: %T; want text", content)
 }
 
-func (t *Text) Copy() *Text {
+func (t *Text) Copy() simple.Block {
 	return NewText(deepcopy.Copy(t.Model()).(*model.Block))
 }
 
-func (t *Text) Diff(text *Text) (msgs []*pb.EventMessage) {
-	msgs = t.Base.Diff(text.Model())
+func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
+	text, ok := b.(*Text)
+	if ! ok {
+		return nil, fmt.Errorf("can't make diff with different block type")
+	}
+	if msgs, err = t.Base.Diff(text); err != nil {
+		return
+	}
 	changes := &pb.EventBlockSetText{
 		Id: text.Id,
 	}
@@ -83,6 +106,9 @@ func (t *Text) SetChecked(v bool) {
 
 func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
 	t.content.Text = text
+	if marks == nil {
+		marks = &model.BlockContentTextMarks{}
+	}
 	t.content.Marks = marks
 	sort.Sort(sortedMarks(t.content.Marks.Marks))
 	return

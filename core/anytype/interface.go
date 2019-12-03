@@ -5,12 +5,13 @@ import (
 )
 
 type Anytype interface {
-	GetBlock(id string) (core.Block, error)
+	GetBlock(id string) (Block, error)
 	PredefinedBlockIds() core.PredefinedBlockIds
 }
 
 type Block interface {
 	core.Block
+	Close() error
 }
 
 type BlockVersion interface {

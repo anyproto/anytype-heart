@@ -9,9 +9,11 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -24,7 +26,10 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
-	UpdateTextBlock(id string, apply func(t *text.Text) error) error
+	Unlink(id ...string) (err error)
+	UpdateTextBlock(id string, apply func(t text.Block) error) error
+	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
+	SetFields(id string, fields *types.Struct) (err error)
 	Close() error
 }
 
@@ -41,6 +46,7 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		sb.Open(nil)
 		sb.Init()
 		return
+		return
 	}
 
 	b, err := s.anytype.GetBlock(id)
@@ -52,13 +58,16 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		return
 	}
 
+	fmt.Printf("block: %+v\n", b)
+	fmt.Printf("version: %+v\n", ver)
+
 	switch ver.Model().Content.(type) {
 	case *model.BlockContentOfDashboard:
 		sb, err = newDashboard(s, b)
 	case *model.BlockContentOfPage:
 		sb, err = newPage(s, b)
 	default:
-		return nil, ErrUnexpectedSmartBlockType
+		return nil, fmt.Errorf("%v %T", ErrUnexpectedSmartBlockType, ver.Model().Content)
 	}
 	if err = sb.Open(b); err != nil {
 		sb.Close()
@@ -127,8 +136,8 @@ func (p *commonSmart) Init() {
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
-	p.m.RLock()
-	defer p.m.RUnlock()
+	p.m.Lock()
+	defer p.m.Unlock()
 	fmt.Println("middle: create block request in:", p.GetId())
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
@@ -170,49 +179,159 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, newBlock.GetId(), pos)
 
 	p.versions[newBlock.GetId()] = simple.New(req.Block)
-	vers, err := p.block.AddVersions([]*model.Block{p.toSave(req.Block), p.toSave(parent)})
+	_, err = p.block.AddVersions([]*model.Block{p.toSave(req.Block), p.toSave(parent)})
 	fmt.Println("middle: save updates in lib:", err)
 	if err != nil {
 		delete(p.versions, newBlock.GetId())
 		return
 	}
 	id = req.Block.Id
-	fmt.Println("middle block created:", req.Block.Id, vers[0].Model().Id)
 	p.sendCreateEvents(parent, req.Block)
 	return
 }
 
-func (p *commonSmart) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+func (p *commonSmart) Unlink(ids ...string) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
+	var toUpdateBlockIds = make(uniqueIds)
+	for _, id := range ids {
+		_, ok := p.versions[id]
+		if ! ok {
+			return ErrBlockNotFound
+		}
+		parent := p.findParentOf(id)
+		if parent != nil {
+			parent.Model().ChildrenIds = removeFromSlice(parent.Model().ChildrenIds, id)
+			toUpdateBlockIds.Add(parent.Model().Id)
+		}
+		delete(p.versions, id)
+	}
+	var msgs []*pb.EventMessage
+	var parentBlocks []*model.Block
+	for id := range toUpdateBlockIds {
+		parent := p.versions[id].Model()
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetChildrenIds{
+			BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
+				Id:          id,
+				ChildrenIds: parent.ChildrenIds,
+			},
+		}})
+		parentBlocks = append(parentBlocks, p.toSave(parent))
+	}
+	for _, id := range ids {
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDelete{
+			BlockDelete: &pb.EventBlockDelete{
+				BlockId: id,
+			},
+		}})
+	}
+	if len(msgs) > 0 {
+		p.s.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: p.GetId(),
+		})
+	}
+	if len(parentBlocks) > 0 {
+		if _, err := p.block.AddVersions(parentBlocks); err != nil {
+			return err
+		}
+	}
+	return
+}
 
+func (p *commonSmart) findParentOf(id string) simple.Block {
+	for _, v := range p.versions {
+		for _, cid := range v.Model().ChildrenIds {
+			if cid == id {
+				return v
+			}
+		}
+	}
+	return nil
+}
+
+func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	return p.updateBlock(id, func(b simple.Block) error {
+		if iconBlock, ok := b.(base.IconBlock); ok {
+			return apply(iconBlock)
+		}
+		return ErrUnexpectedBlockType
+	})
+}
+
+func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	return p.updateBlock(id, func(b simple.Block) error {
+		if textBlock, ok := b.(text.Block); ok {
+			return apply(textBlock)
+		}
+		return ErrUnexpectedBlockType
+	})
+}
+
+func (p *commonSmart) updateBlock(id string, apply func(b simple.Block) error) error {
 	block, ok := p.versions[id]
 	if !ok {
 		return ErrBlockNotFound
 	}
-	textBlock, ok := block.(*text.Text)
-	if !ok {
-		return ErrUnexpectedBlockType
-	}
-	textCopy := textBlock.Copy()
-	if err := apply(textCopy); err != nil {
+	blockCopy := block.Copy()
+	if err := apply(blockCopy); err != nil {
 		return err
 	}
-	diff := textBlock.Diff(textCopy)
-	fmt.Println("middle: text update diff:", diff)
+	diff, err := block.Diff(blockCopy)
+	if err != nil {
+		return err
+	}
 	if len(diff) == 0 {
 		// no changes
 		return nil
 	}
-	if _, err := p.block.AddVersions([]*model.Block{p.toSave(textCopy.Model())}); err != nil {
-		return err
+	if ! blockCopy.Virtual() {
+		if _, err := p.block.AddVersions([]*model.Block{p.toSave(blockCopy.Model())}); err != nil {
+			return err
+		}
 	}
-	p.versions[id] = textCopy
+	p.versions[id] = blockCopy
 	p.s.sendEvent(&pb.Event{
 		Messages:  diff,
 		ContextId: p.GetId(),
 	})
 	return nil
+}
+
+func (p *commonSmart) SetFields(id string, fields *types.Struct) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	return p.setFields(id, fields)
+}
+
+func (p *commonSmart) setFields(id string, fields *types.Struct) (err error) {
+	b, err := p.getNonVirtualBlock(id)
+	if err != nil {
+		return
+	}
+	copy := b.Copy()
+	copy.Model().Fields = fields
+	diff, err := b.Diff(copy)
+	if err != nil {
+		return
+	}
+	if len(diff) == 0 {
+		// no changes
+		return nil
+	}
+	if _, err = p.block.AddVersions([]*model.Block{p.toSave(copy.Model())}); err != nil {
+		return
+	}
+	p.versions[id] = copy
+	p.s.sendEvent(&pb.Event{
+		Messages:  diff,
+		ContextId: p.GetId(),
+	})
+	return
 }
 
 func (p *commonSmart) sendCreateEvents(parent, new *model.Block) {
@@ -310,5 +429,19 @@ func (p *commonSmart) Close() error {
 		p.blockChangesCancel()
 	}
 	p.closeWg.Wait()
+	if p.block != nil {
+		p.block.Close()
+	}
 	return nil
+}
+
+func (p *commonSmart) getNonVirtualBlock(id string) (simple.Block, error) {
+	b, ok := p.versions[id]
+	if ! ok {
+		return nil, ErrBlockNotFound
+	}
+	if b.Virtual() {
+		return nil, ErrUnexpectedBlockType
+	}
+	return b, nil
 }

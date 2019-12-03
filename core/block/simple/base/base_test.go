@@ -29,18 +29,21 @@ func TestBase_Diff(t *testing.T) {
 			},
 			ChildrenIds: []string{"1", "2", "3"},
 			IsArchived:  false,
-		})
+		}).(*Base)
 	}
 	t.Run("equals", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		assert.Len(t, b1.Diff(b2.Model()), 0)
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
+		assert.Len(t, diff, 0)
 	})
 	t.Run("children ids", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.ChildrenIds[0], b2.ChildrenIds[1] = b2.ChildrenIds[1], b2.ChildrenIds[2]
-		diff := b1.Diff(b2.Model())
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, b2.ChildrenIds, diff[0].Value.(*pb.EventMessageValueOfBlockSetChildrenIds).BlockSetChildrenIds.ChildrenIds)
 	})
@@ -48,7 +51,8 @@ func TestBase_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.IsArchived = !b1.IsArchived
-		diff := b1.Diff(b2.Model())
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, b2.IsArchived, diff[0].Value.(*pb.EventMessageValueOfBlockSetIsArchived).BlockSetIsArchived.IsArchived)
 	})
@@ -56,7 +60,8 @@ func TestBase_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		b2.Restrictions.Read = !b1.Restrictions.Read
-		diff := b1.Diff(b2.Model())
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, b2.Restrictions, diff[0].Value.(*pb.EventMessageValueOfBlockSetRestrictions).BlockSetRestrictions.Restrictions)
 	})
@@ -66,7 +71,8 @@ func TestBase_Diff(t *testing.T) {
 		b2.Fields.Fields["diff"] = &types.Value{
 			Kind: &types.Value_StringValue{StringValue: "value"},
 		}
-		diff := b1.Diff(b2.Model())
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, b2.Fields, diff[0].Value.(*pb.EventMessageValueOfBlockSetFields).BlockSetFields.Fields)
 	})

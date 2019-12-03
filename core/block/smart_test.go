@@ -32,7 +32,7 @@ func TestCommonSmart_Open(t *testing.T) {
 				"3": fx.newMockVersion(&model.Block{Id: "3"}),
 			},
 		)
-
+		block.EXPECT().Close()
 		err := sb.Open(block)
 		require.NoError(t, err)
 		sb.Init()
@@ -72,7 +72,7 @@ func TestCommonSmart_Create(t *testing.T) {
 				"3": fx.newMockVersion(&model.Block{Id: "3"}),
 			},
 		)
-
+		block.EXPECT().Close()
 		err := sb.Open(block)
 		require.NoError(t, err)
 		sb.Init()

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -21,10 +22,15 @@ type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
+	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
+
+	SetFields(req pb.RpcBlockSetFieldsRequest) error
 
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
+
+	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
 	Close() error
 }
@@ -84,27 +90,49 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	return "", ErrBlockNotFound
 }
 
+func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		ids := make([]string, len(req.Targets))
+		for i, t := range req.Targets {
+			ids[i] = t.BlockId
+		}
+		return sb.Unlink(ids...)
+	}
+	return ErrBlockNotFound
+}
+
+func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.SetFields(req.BlockId, req.Fields)
+	}
+	return ErrBlockNotFound
+}
+
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
 		return b.SetText(req.Text, req.Marks)
 	})
 }
 
 func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
 		b.SetStyle(req.Style)
 		return nil
 	})
 }
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b *text.Text) error {
-		b.SetChecked(req.Check)
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
+		b.SetChecked(req.Checked)
 		return nil
 	})
 }
 
-func (s *service) updateTextBlock(contextId, blockId string, apply func(b *text.Text) error) (err error) {
+func (s *service) updateTextBlock(contextId, blockId string, apply func(b text.Block) error) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	sb, ok := s.smartBlocks[contextId]
@@ -113,6 +141,19 @@ func (s *service) updateTextBlock(contextId, blockId string, apply func(b *text.
 		return
 	}
 	return sb.UpdateTextBlock(blockId, apply)
+}
+
+func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[req.ContextId]
+	if !ok {
+		err = ErrBlockNotFound
+		return
+	}
+	return sb.UpdateIconBlock(req.BlockId, func(t base.IconBlock) error {
+		return t.SetIconName(req.Name)
+	})
 }
 
 func (s *service) Close() error {

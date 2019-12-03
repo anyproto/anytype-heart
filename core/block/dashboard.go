@@ -3,7 +3,7 @@ package block
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 )
@@ -28,7 +28,7 @@ func (p *dashboard) Init() {
 }
 
 func (p *dashboard) addTestPage() {
-	p.versions[testPageId] = simple.NewVirtual(&model.Block{
+	p.versions[testPageId] = base.NewVirtual(&model.Block{
 		Id: testPageId,
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -45,6 +45,7 @@ func (p *dashboard) addTestPage() {
 }
 
 func (p *dashboard) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
+	// add empty text block on new page after create
 	return p.commonSmart.Create(req)
 }
 

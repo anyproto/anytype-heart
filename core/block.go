@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -75,10 +76,11 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-	// TODO
+	if err := mw.blockService.UnlinkBlock(*req); err != nil {
+		return response(pb.RpcBlockUnlinkResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
 }
 
@@ -117,7 +119,9 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetFields(*req); err != nil {
+		return response(pb.RpcBlockSetFieldsResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
 }
 
@@ -292,7 +296,9 @@ func (mw *Middleware) BlockSetIconName(req *pb.RpcBlockSetIconNameRequest) *pb.R
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetIconName(*req); err != nil {
+		return response(pb.RpcBlockSetIconNameResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetIconNameResponseError_NULL, nil)
 }
 
@@ -301,7 +307,7 @@ func (mw *Middleware) switchAccount(accountId string) {
 		mw.blockService.Close()
 	}
 
-	mw.blockService = block.NewService(accountId, mw.Anytype, mw.SendEvent)
+	mw.blockService = block.NewService(accountId, anytype.NewAnytype(mw.Anytype), mw.SendEvent)
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
@@ -263,8 +264,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Free with no storage and upload limits",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 				Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
 					{
 						Range: &model.Range{
@@ -326,26 +326,34 @@ var testBlocks = []*model.Block{
 	},
 	{
 		Id: "25",
-		Fields: &types.Struct{
-			Fields: map[string]*types.Value{
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				Style:         model.BlockContentLink_Page,
+				TargetBlockId: "testpage",
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": testStringValue("Test page"),
+						"icon": testStringValue(":deciduous_tree:"),
+					},
+				},
+				IsArchived: true,
 			},
-		},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		},
 	},
 	{
 		Id: "26",
-		Fields: &types.Struct{
-			Fields: map[string]*types.Value{
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				Style:         model.BlockContentLink_Page,
+				TargetBlockId: "testpage",
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": testStringValue("Test page"),
+						"icon": testStringValue(":family:"),
+					},
+				},
+				IsArchived: false,
 			},
-		},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
 		},
 	},
 	{
@@ -353,12 +361,20 @@ var testBlocks = []*model.Block{
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
 				"width": testFloatValue(0.5),
-				"name":  testStringValue("Test page"),
-				"icon":  testStringValue(":deciduous_tree:"),
 			},
 		},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				Style:         model.BlockContentLink_Page,
+				TargetBlockId: "testpage",
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": testStringValue("Test page"),
+						"icon": testStringValue(":wastebasket:"),
+					},
+				},
+				IsArchived: true,
+			},
 		},
 	},
 	{
@@ -397,8 +413,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Is used to add a new block",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -408,8 +423,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "How it works:",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -418,8 +432,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -428,8 +441,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -438,8 +450,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User can visually click on one of the options and the block of the corresponding type will appear",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -449,8 +460,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Is used as a Power Tool that allows to call for almost any action - change color, turn block into another, delete block",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -460,9 +470,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "How it works",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Bullet,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -471,8 +479,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -481,8 +488,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -491,8 +497,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User starts typing \"page\"",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -502,9 +507,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Items connected to page appear:",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Number,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -531,8 +534,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "new page",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -541,8 +543,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "new page",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -551,8 +552,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User chooses one from the list",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -562,9 +562,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Alternative example",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Bullet,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -573,8 +571,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User hits \"+\" button",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -583,8 +580,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Add block menu appears",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -593,8 +589,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "User starts typing \"turn into\"",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Number,
+				Style: model.BlockContentText_Numbered,
 			},
 		},
 	},
@@ -604,9 +599,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "Items connected to turn into appear:",
-				Style: model.BlockContentText_Paragraph,
-				// Marker:     model.BlockContentText_Number,
-				// Toggleable: true,
+				Style: model.BlockContentText_Toggle,
 			},
 		},
 	},
@@ -633,8 +626,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "text",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -643,8 +635,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "page",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -652,8 +643,8 @@ var testBlocks = []*model.Block{
 		Id: "55",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text: "heading",
-				// Marker: model.BlockContentText_Bullet,
+				Text:  "heading",
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -662,8 +653,7 @@ var testBlocks = []*model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Text:  "list",
-				Style: model.BlockContentText_Paragraph,
-				// Marker: model.BlockContentText_Bullet,
+				Style: model.BlockContentText_Marked,
 			},
 		},
 	},
@@ -673,7 +663,19 @@ type testPage struct {
 	s *service
 }
 
-func (t *testPage) UpdateTextBlock(id string, apply func(t *text.Text) error) error {
+func (t *testPage) Unlink(id ...string) (err error) {
+	return fmt.Errorf("can't update block in the test page")
+}
+
+func (t *testPage) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {
+	return fmt.Errorf("can't update block in the test page")
+}
+
+func (t *testPage) SetFields(id string, fields *types.Struct) (err error) {
+	return fmt.Errorf("can't update block in the test page")
+}
+
+func (t *testPage) UpdateTextBlock(id string, apply func(t text.Block) error) error {
 	return fmt.Errorf("can't update block in the test page")
 }
 
