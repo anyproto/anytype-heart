@@ -6,6 +6,9 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/golang/mock/gomock"
@@ -73,6 +76,23 @@ func TestService_OpenBlock(t *testing.T) {
 
 		assert.Len(t, fx.events, 1)
 		assert.Equal(t, smartBlockTypePage, fx.Service.(*service).smartBlocks[blockId].Type())
+	})
+}
+
+func Test_BlockTypes(t *testing.T) {
+	t.Run("text block", func(t *testing.T) {
+		assert.Implements(t, (*text.Block)(nil), simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{},
+			},
+		}))
+	})
+	t.Run("icon block", func(t *testing.T) {
+		assert.Implements(t, (*base.IconBlock)(nil), simple.New(&model.Block{
+			Content: &model.BlockContentOfIcon{
+				Icon: &model.BlockContentIcon{},
+			},
+		}))
 	})
 }
 

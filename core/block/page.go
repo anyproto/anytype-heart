@@ -187,5 +187,5 @@ func (b *pageIconBlock) SetIconName(name string) error {
 }
 
 func (b *pageIconBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
-	return b.IconBlock.Diff(block.(*pageTitleBlock).Block)
+	return b.IconBlock.Diff(block.(*pageIconBlock).IconBlock)
 }

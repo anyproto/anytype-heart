@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/mohae/deepcopy"
 )
 
 func NewIcon(m *model.Block) simple.Block {
@@ -46,4 +47,8 @@ func (i *Icon) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 		})
 	}
 	return
+}
+
+func (i *Icon) Copy() simple.Block {
+	return NewIcon(deepcopy.Copy(i.Model()).(*model.Block))
 }
