@@ -45,6 +45,7 @@ func (p *dashboard) addTestPage() {
 }
 
 func (p *dashboard) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
+	// add empty text block on new page after create
 	return p.commonSmart.Create(req)
 }
 

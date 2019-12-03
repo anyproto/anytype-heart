@@ -9,6 +9,12 @@ import (
 )
 
 func init() {
+	simple.RegisterCreator(func(m *model.Block) simple.Block {
+		if m.GetIcon() != nil {
+			return NewIcon(m)
+		}
+		return nil
+	})
 	simple.RegisterFallback(func(m *model.Block) simple.Block {
 		return NewBase(m)
 	})

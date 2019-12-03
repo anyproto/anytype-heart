@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
@@ -671,6 +672,10 @@ var testBlocks = []*model.Block{
 
 type testPage struct {
 	s *service
+}
+
+func (t *testPage) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {
+	return fmt.Errorf("can't update block in the test page")
 }
 
 func (t *testPage) SetFields(id string, fields *types.Struct) (err error) {

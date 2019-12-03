@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -27,6 +28,8 @@ type Service interface {
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
+
+	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
 	Close() error
 }
@@ -124,6 +127,19 @@ func (s *service) updateTextBlock(contextId, blockId string, apply func(b text.B
 		return
 	}
 	return sb.UpdateTextBlock(blockId, apply)
+}
+
+func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[req.ContextId]
+	if !ok {
+		err = ErrBlockNotFound
+		return
+	}
+	return sb.UpdateIconBlock(req.BlockId, func(t base.IconBlock) error {
+		return t.SetIconName(req.Name)
+	})
 }
 
 func (s *service) Close() error {

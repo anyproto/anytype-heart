@@ -62,21 +62,23 @@ func (p *page) addName(title string) {
 }
 
 func (p *page) addIcon(icon string) {
-
-	var b = base.NewVirtual(&model.Block{
-		Id: p.block.GetId() + pageIconSuffix,
-		Restrictions: &model.BlockRestrictions{
-			Read:   false,
-			Edit:   false,
-			Remove: true,
-			Drag:   true,
-			DropOn: true,
-		}, Content: &model.BlockContentOfIcon{
-			Icon: &model.BlockContentIcon{
-				Name: icon,
+	var b = &pageIconBlock{
+		IconBlock: simple.New(&model.Block{
+			Id: p.block.GetId() + pageIconSuffix,
+			Restrictions: &model.BlockRestrictions{
+				Read:   false,
+				Edit:   false,
+				Remove: true,
+				Drag:   true,
+				DropOn: true,
+			}, Content: &model.BlockContentOfIcon{
+				Icon: &model.BlockContentIcon{
+					Name: icon,
+				},
 			},
-		},
-	})
+		}).(base.IconBlock),
+		page: p,
+	}
 
 	p.versions[b.Model().Id] = b
 	p.root().ChildrenIds = append([]string{b.Model().Id}, p.root().ChildrenIds...)
@@ -104,11 +106,24 @@ func (p *page) SetFields(id string, fields *types.Struct) (err error) {
 		nameBlock.Block.SetText(name, nil)
 		diff, _ := p.versions[nameId].Diff(nameBlock)
 		if len(diff) > 0 {
+			p.versions[nameId] = nameBlock
+		}
+		msgs := diff
+
+		icon, _ := fieldsGetString(p.versions[id].Model().Fields, "icon")
+		iconId := p.block.GetId() + pageIconSuffix
+		iconBlock := p.versions[iconId].Copy().(*pageIconBlock)
+		iconBlock.IconBlock.SetIconName(icon)
+		diff, _ = p.versions[iconId].Diff(iconBlock)
+		if len(diff) > 0 {
+			p.versions[iconId] = iconBlock
+			msgs = append(msgs, diff...)
+		}
+		if len(msgs) > 0 {
 			p.s.sendEvent(&pb.Event{
-				Messages:  diff,
+				Messages:  msgs,
 				ContextId: p.GetId(),
 			})
-			p.versions[nameId] = nameBlock
 		}
 	}
 	return
@@ -145,3 +160,32 @@ func (b *pageTitleBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
 
 func (b *pageTitleBlock) SetStyle(style model.BlockContentTextStyle) {}
 func (b *pageTitleBlock) SetChecked(v bool)                          {}
+
+type pageIconBlock struct {
+	base.IconBlock
+	page *page
+}
+
+func (b *pageIconBlock) Virtual() bool {
+	return true
+}
+
+func (b *pageIconBlock) Copy() simple.Block {
+	return &pageIconBlock{
+		IconBlock: b.IconBlock.Copy().(base.IconBlock),
+		page:      b.page,
+	}
+}
+
+func (b *pageIconBlock) SetIconName(name string) error {
+	if err := b.IconBlock.SetIconName(name); err != nil {
+		return err
+	}
+	fields := b.page.versions[b.page.GetId()].Copy().Model().Fields
+	fields.Fields["icon"] = testStringValue(name)
+	return b.page.setFields(b.page.GetId(), fields)
+}
+
+func (b *pageIconBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
+	return b.IconBlock.Diff(block.(*pageTitleBlock).Block)
+}

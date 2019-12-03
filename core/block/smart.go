@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
@@ -26,6 +27,7 @@ type smartBlock interface {
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
+	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
 	Close() error
 }
@@ -187,23 +189,38 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	return
 }
 
+func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	return p.updateBlock(id, func(b simple.Block) error {
+		if iconBlock, ok := b.(base.IconBlock); ok {
+			return apply(iconBlock)
+		}
+		return ErrUnexpectedBlockType
+	})
+}
+
 func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error) error {
 	p.m.Lock()
 	defer p.m.Unlock()
+	return p.updateBlock(id, func(b simple.Block) error {
+		if textBlock, ok := b.(text.Block); ok {
+			return apply(textBlock)
+		}
+		return ErrUnexpectedBlockType
+	})
+}
 
+func (p *commonSmart) updateBlock(id string, apply func(b simple.Block) error) error {
 	block, ok := p.versions[id]
 	if !ok {
 		return ErrBlockNotFound
 	}
-	textBlock, ok := block.(text.Block)
-	if !ok {
-		return fmt.Errorf("%v %T", ErrUnexpectedBlockType, textBlock)
-	}
-	textCopy := textBlock.Copy().(text.Block)
-	if err := apply(textCopy); err != nil {
+	blockCopy := block.Copy()
+	if err := apply(blockCopy); err != nil {
 		return err
 	}
-	diff, err := textBlock.Diff(textCopy)
+	diff, err := block.Diff(blockCopy)
 	if err != nil {
 		return err
 	}
@@ -211,12 +228,12 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error)
 		// no changes
 		return nil
 	}
-	if ! textCopy.Virtual() {
-		if _, err := p.block.AddVersions([]*model.Block{p.toSave(textCopy.Model())}); err != nil {
+	if ! blockCopy.Virtual() {
+		if _, err := p.block.AddVersions([]*model.Block{p.toSave(blockCopy.Model())}); err != nil {
 			return err
 		}
 	}
-	p.versions[id] = textCopy
+	p.versions[id] = blockCopy
 	p.s.sendEvent(&pb.Event{
 		Messages:  diff,
 		ContextId: p.GetId(),
