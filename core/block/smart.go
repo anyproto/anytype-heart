@@ -26,6 +26,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	Unlink(id ...string) (err error)
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
@@ -187,6 +188,66 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	fmt.Println("middle block created:", req.Block.Id, vers[0].Model().Id)
 	p.sendCreateEvents(parent, req.Block)
 	return
+}
+
+func (p *commonSmart) Unlink(ids ...string) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	var toUpdateBlockIds = make(uniqueIds)
+	for _, id := range ids {
+		_, ok := p.versions[id]
+		if ! ok {
+			return ErrBlockNotFound
+		}
+		parent := p.findParentOf(id)
+		if parent != nil {
+			parent.Model().ChildrenIds = removeFromSlice(parent.Model().ChildrenIds, id)
+			toUpdateBlockIds.Add(parent.Model().Id)
+		}
+		delete(p.versions, id)
+	}
+	var msgs []*pb.EventMessage
+	var parentBlocks []*model.Block
+	for id := range toUpdateBlockIds {
+		parent := p.versions[id].Model()
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetChildrenIds{
+			BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
+				Id:          id,
+				ChildrenIds: parent.ChildrenIds,
+			},
+		}})
+		parentBlocks = append(parentBlocks, p.toSave(parent))
+	}
+	for _, id := range ids {
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDelete{
+			BlockDelete: &pb.EventBlockDelete{
+				BlockId: id,
+			},
+		}})
+	}
+	if len(msgs) > 0 {
+		p.s.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: p.GetId(),
+		})
+	}
+	if len(parentBlocks) > 0 {
+		if _, err := p.block.AddVersions(parentBlocks); err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (p *commonSmart) findParentOf(id string) simple.Block {
+	for _, v := range p.versions {
+		for _, cid := range v.Model().ChildrenIds {
+			if cid == id {
+				return v
+			}
+		}
+	}
+	return nil
 }
 
 func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {

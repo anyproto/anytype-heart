@@ -25,6 +25,17 @@ func insertToSlice(s []string, v string, pos int) []string {
 	return append(s[:pos], append([]string{v}, s[pos:]...)...)
 }
 
+func removeFromSlice(s []string, v string) []string {
+	var n int
+	for _, x := range s {
+		if x != v {
+			s[n] = x
+			n++
+		}
+	}
+	return s[:n]
+}
+
 func fieldsGetString(field *types.Struct, key string) (value string, ok bool) {
 	if field != nil && field.Fields != nil {
 		if value, ok := field.Fields[key]; ok {

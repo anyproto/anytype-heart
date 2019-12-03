@@ -22,6 +22,7 @@ type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
+	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 
@@ -87,6 +88,19 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 		return sb.Create(req)
 	}
 	return "", ErrBlockNotFound
+}
+
+func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		ids := make([]string, len(req.Targets))
+		for i, t := range req.Targets {
+			ids[i] = t.BlockId
+		}
+		return sb.Unlink(ids...)
+	}
+	return ErrBlockNotFound
 }
 
 func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {

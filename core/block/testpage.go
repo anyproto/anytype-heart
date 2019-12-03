@@ -328,7 +328,7 @@ var testBlocks = []*model.Block{
 		Id: "25",
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
-				Style: model.BlockContentLink_Page,
+				Style:         model.BlockContentLink_Page,
 				TargetBlockId: "testpage",
 				Fields: &types.Struct{
 					Fields: map[string]*types.Value{
@@ -344,7 +344,7 @@ var testBlocks = []*model.Block{
 		Id: "26",
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
-				Style: model.BlockContentLink_Page,
+				Style:         model.BlockContentLink_Page,
 				TargetBlockId: "testpage",
 				Fields: &types.Struct{
 					Fields: map[string]*types.Value{
@@ -365,7 +365,7 @@ var testBlocks = []*model.Block{
 		},
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
-				Style: model.BlockContentLink_Page,
+				Style:         model.BlockContentLink_Page,
 				TargetBlockId: "testpage",
 				Fields: &types.Struct{
 					Fields: map[string]*types.Value{
@@ -643,7 +643,7 @@ var testBlocks = []*model.Block{
 		Id: "55",
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
-				Text: "heading",
+				Text:  "heading",
 				Style: model.BlockContentText_Marked,
 			},
 		},
@@ -661,6 +661,10 @@ var testBlocks = []*model.Block{
 
 type testPage struct {
 	s *service
+}
+
+func (t *testPage) Unlink(id ...string) (err error) {
+	return fmt.Errorf("can't update block in the test page")
 }
 
 func (t *testPage) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {

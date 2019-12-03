@@ -75,10 +75,11 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-	// TODO
+	if err := mw.blockService.UnlinkBlock(*req); err != nil {
+		return response(pb.RpcBlockUnlinkResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
 }
 
@@ -295,7 +296,7 @@ func (mw *Middleware) BlockSetIconName(req *pb.RpcBlockSetIconNameRequest) *pb.R
 		return m
 	}
 	if err := mw.blockService.SetIconName(*req); err != nil {
-		response(pb.RpcBlockSetIconNameResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcBlockSetIconNameResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetIconNameResponseError_NULL, nil)
 }
