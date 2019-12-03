@@ -46,6 +46,7 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		sb.Open(nil)
 		sb.Init()
 		return
+		return
 	}
 
 	b, err := s.anytype.GetBlock(id)
@@ -178,14 +179,13 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, newBlock.GetId(), pos)
 
 	p.versions[newBlock.GetId()] = simple.New(req.Block)
-	vers, err := p.block.AddVersions([]*model.Block{p.toSave(req.Block), p.toSave(parent)})
+	_, err = p.block.AddVersions([]*model.Block{p.toSave(req.Block), p.toSave(parent)})
 	fmt.Println("middle: save updates in lib:", err)
 	if err != nil {
 		delete(p.versions, newBlock.GetId())
 		return
 	}
 	id = req.Block.Id
-	fmt.Println("middle block created:", req.Block.Id, vers[0].Model().Id)
 	p.sendCreateEvents(parent, req.Block)
 	return
 }
@@ -429,6 +429,9 @@ func (p *commonSmart) Close() error {
 		p.blockChangesCancel()
 	}
 	p.closeWg.Wait()
+	if p.block != nil {
+		p.block.Close()
+	}
 	return nil
 }
 

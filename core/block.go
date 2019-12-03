@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -306,7 +307,7 @@ func (mw *Middleware) switchAccount(accountId string) {
 		mw.blockService.Close()
 	}
 
-	mw.blockService = block.NewService(accountId, mw.Anytype, mw.SendEvent)
+	mw.blockService = block.NewService(accountId, anytype.NewAnytype(mw.Anytype), mw.SendEvent)
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {

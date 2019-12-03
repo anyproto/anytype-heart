@@ -44,7 +44,7 @@ func TestService_OpenBlock(t *testing.T) {
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfDashboard{
 			Dashboard: &model.BlockContentDashboard{},
 		}, nil, nil)
-
+		mb.EXPECT().Close()
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
 
 		err := fx.OpenBlock(blockId)
@@ -67,7 +67,7 @@ func TestService_OpenBlock(t *testing.T) {
 		mb, _ := fx.newMockBlockWithContent(blockId, &model.BlockContentOfPage{
 			Page: &model.BlockContentPage{},
 		}, nil, nil)
-
+		mb.EXPECT().Close()
 		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
 
 		err := fx.OpenBlock(blockId)
