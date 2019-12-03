@@ -282,7 +282,7 @@ jobs:
       xcode: '10.2.1'
     environment:
       GOPATH: /Users/distiller/go
-      GOROOT: /Users/distiller/gosrc/go
+      GOROOT: /usr/local/go
     steps:
       - checkout
       - run:
@@ -295,7 +295,6 @@ jobs:
       - run:
           name: install golang
           command: |
-            export GOROOT=/usr/local/go
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
             sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
