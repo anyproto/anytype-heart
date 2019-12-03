@@ -3,6 +3,7 @@ package text
 import (
 	"fmt"
 	"sort"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -35,6 +36,7 @@ type Block interface {
 	SetText(text string, marks *model.BlockContentTextMarks) (err error)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
+	Split(pos int32) (simple.Block, error)
 }
 
 type Text struct {
@@ -112,4 +114,48 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 	t.content.Marks = marks
 	sort.Sort(sortedMarks(t.content.Marks.Marks))
 	return
+}
+
+func (t *Text) Split(pos int32) (simple.Block, error) {
+	if pos < 0 || int(pos) >= utf8.RuneCountInString(t.content.Text) {
+		return nil, ErrOutOfRange
+	}
+	runes := []rune(t.content.Text)
+	t.content.Text = string(runes[:pos])
+	if t.content.Marks == nil {
+		t.content.Marks = &model.BlockContentTextMarks{}
+	}
+	newMarks := &model.BlockContentTextMarks{}
+	oldMarks := &model.BlockContentTextMarks{}
+	for _, mark := range t.content.Marks.Marks {
+		if mark.Range.From >= pos {
+			mark.Range.From -= pos
+			mark.Range.To -= pos
+			newMarks.Marks = append(newMarks.Marks, mark)
+		} else if mark.Range.To <= pos {
+			oldMarks.Marks = append(oldMarks.Marks, mark)
+		} else {
+			newMark := &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: 0,
+					To:   mark.Range.To - pos,
+				},
+				Type:  mark.Type,
+				Param: mark.Param,
+			}
+			newMarks.Marks = append(newMarks.Marks, newMark)
+			mark.Range.To = pos
+			oldMarks.Marks = append(oldMarks.Marks, mark)
+		}
+	}
+	t.content.Marks = oldMarks
+	newBlock := NewText(&model.Block{
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text:    string(runes[pos:]),
+			Style:   t.content.Style,
+			Marks:   newMarks,
+			Checked: t.content.Checked,
+		}},
+	})
+	return newBlock, nil
 }

@@ -319,7 +319,9 @@ func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplit
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SplitBlock(*req); err != nil {
+		return response(pb.RpcBlockSplitResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSplitResponseError_NULL, nil)
 }
 

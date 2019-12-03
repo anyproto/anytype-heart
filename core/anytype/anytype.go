@@ -89,7 +89,7 @@ func (sb *smartBlock) doFlush() {
 		fmt.Printf("middle: can't save versions to lib: %v\n", err)
 		return
 	}
-	fmt.Printf("middle: flish %d versions to lib\n", len(blocksToSave))
+	fmt.Printf("middle: flush %d versions to lib\n", len(blocksToSave))
 	sb.buf = make(map[string]*model.Block)
 	return
 }

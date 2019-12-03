@@ -63,3 +63,58 @@ func TestText_Diff(t *testing.T) {
 		assert.NotNil(t, textChange.Marks)
 	})
 }
+
+func TestText_Split(t *testing.T) {
+	testBlock := func() *Text {
+		return NewText(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text: "1234567890",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Type: model.BlockContentTextMark_Bold,
+							Range: &model.Range{
+								From: 0,
+								To:   10,
+							},
+						},
+						{
+							Type: model.BlockContentTextMark_Italic,
+							Range: &model.Range{
+								From: 6,
+								To:   10,
+							},
+						},
+						{
+							Type: model.BlockContentTextMark_BackgroundColor,
+							Range: &model.Range{
+								From: 3,
+								To:   4,
+							},
+						},
+					},
+				},
+			}},
+		}).(*Text)
+	}
+	t.Run("should split block", func(t *testing.T) {
+		b := testBlock()
+		newBlock, err := b.Split(5)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, "12345", b.content.Text)
+		assert.Equal(t, "67890", nb.content.Text)
+		require.Len(t, b.content.Marks.Marks, 2)
+		require.Len(t, nb.content.Marks.Marks, 2)
+		assert.Equal(t, model.Range{0, 5}, *b.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{3, 4}, *b.content.Marks.Marks[1].Range)
+		assert.Equal(t, model.Range{0, 5}, *nb.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{1, 5}, *nb.content.Marks.Marks[1].Range)
+	})
+	t.Run("out of range", func(t *testing.T) {
+		b := testBlock()
+		_, err := b.Split(15)
+		require.Equal(t, ErrOutOfRange, err)
+	})
+}

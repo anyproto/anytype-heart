@@ -24,6 +24,8 @@ type Service interface {
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 
+	SplitBlock(req pb.RpcBlockSplitRequest) error
+
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
@@ -99,6 +101,15 @@ func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) error {
 			ids[i] = t.BlockId
 		}
 		return sb.Unlink(ids...)
+	}
+	return ErrBlockNotFound
+}
+
+func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Split(req.BlockId, req.CursorPosition)
 	}
 	return ErrBlockNotFound
 }

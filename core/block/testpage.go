@@ -663,6 +663,10 @@ type testPage struct {
 	s *service
 }
 
+func (t *testPage) Split(id string, pos int32) error {
+	return fmt.Errorf("can't update block in the test page")
+}
+
 func (t *testPage) Unlink(id ...string) (err error) {
 	return fmt.Errorf("can't update block in the test page")
 }

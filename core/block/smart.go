@@ -27,6 +27,7 @@ type smartBlock interface {
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	Unlink(id ...string) (err error)
+	Split(id string, pos int32) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
@@ -139,6 +140,10 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	p.m.Lock()
 	defer p.m.Unlock()
 	fmt.Println("middle: create block request in:", p.GetId())
+	return p.create(req)
+}
+
+func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
 	}
@@ -246,6 +251,32 @@ func (p *commonSmart) findParentOf(id string) simple.Block {
 				return v
 			}
 		}
+	}
+	return nil
+}
+
+func (p *commonSmart) Split(id string, pos int32) error {
+	err := p.UpdateTextBlock(id, func(t text.Block) error {
+		newBlock, err := t.Split(pos)
+		if err != nil {
+			return err
+		}
+		parent := p.findParentOf(id)
+		if parent == nil {
+			return fmt.Errorf("block %s has not parent", id)
+		}
+		if _, err = p.create(pb.RpcBlockCreateRequest{
+			TargetId: id,
+			Block:    newBlock.Model(),
+			Position: model.Block_After,
+			ParentId: parent.Model().Id,
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }
