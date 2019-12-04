@@ -19,6 +19,9 @@ lint:
 test:
 	go test github.com/anytypeio/go-anytype-middleware/...
 
+fast-test:
+	go test github.com/anytypeio/go-anytype-middleware/core/block/... -cover
+
 test-deps:
 	go install github.com/golang/mock/mockgen
 	go generate ./...
