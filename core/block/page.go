@@ -160,8 +160,12 @@ func (b *pageTitleBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
 	return b.Block.Diff(block.(*pageTitleBlock).Block)
 }
 
-func (b *pageTitleBlock) Split(pos int64) (simple.Block, error) {
+func (b *pageTitleBlock) Split(_ int64) (simple.Block, error) {
 	return nil, fmt.Errorf("page title can't be splitted")
+}
+
+func (b *pageTitleBlock) Merge(_ text.Block) error {
+	return fmt.Errorf("page title can't be merged ")
 }
 
 func (b *pageTitleBlock) SetStyle(style model.BlockContentTextStyle) {}

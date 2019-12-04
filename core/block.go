@@ -335,6 +335,8 @@ func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMerge
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.MergeBlock(*req); err != nil {
+		return response(pb.RpcBlockMergeResponseError_UNKNOWN_ERROR, nil)
+	}
 	return response(pb.RpcBlockMergeResponseError_NULL, nil)
 }

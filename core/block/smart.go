@@ -28,6 +28,7 @@ type smartBlock interface {
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
+	Merge(firstId, secondId string) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
@@ -198,6 +199,10 @@ func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error
 func (p *commonSmart) Unlink(ids ...string) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
+	return p.unlink(ids...)
+}
+
+func (p *commonSmart) unlink(ids ...string) (err error) {
 	var toUpdateBlockIds = make(uniqueIds)
 	for _, id := range ids {
 		_, ok := p.versions[id]
@@ -276,6 +281,20 @@ func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 		return nil
 	})
 	return
+}
+
+func (p *commonSmart) Merge(firstId, secondId string) error {
+	return p.UpdateTextBlock(firstId, func(t text.Block) error {
+		second, ok := p.versions[secondId]
+		if ! ok {
+			return ErrBlockNotFound
+		}
+		if err := t.Merge(second); err != nil {
+			return err
+		}
+
+		return p.unlink(secondId)
+	})
 }
 
 func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {

@@ -37,6 +37,7 @@ type Block interface {
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
 	Split(pos int32) (simple.Block, error)
+	Merge(b simple.Block) error
 }
 
 type Text struct {
@@ -112,7 +113,7 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 		marks = &model.BlockContentTextMarks{}
 	}
 	t.content.Marks = marks
-	sort.Sort(sortedMarks(t.content.Marks.Marks))
+	t.normalizeMarks()
 	return
 }
 
@@ -158,4 +159,42 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 		}},
 	})
 	return newBlock, nil
+}
+
+func (t *Text) Merge(b simple.Block) error {
+	text, ok := b.(*Text)
+	if ! ok {
+		return fmt.Errorf("unexpected block type for merge: %T", b)
+	}
+	curLen := int32(utf8.RuneCountInString(t.content.Text))
+	t.content.Text += text.content.Text
+	for _, m := range text.content.Marks.Marks {
+		t.content.Marks.Marks = append(t.content.Marks.Marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: m.Range.From + curLen,
+				To:   m.Range.To + curLen,
+			},
+			Type:  m.Type,
+			Param: m.Param,
+		})
+	}
+	t.normalizeMarks()
+	return nil
+}
+
+func (t *Text) normalizeMarks() {
+	sort.Sort(sortedMarks(t.content.Marks.Marks))
+	for i := 0; i < len(t.content.Marks.Marks); i++ {
+		if i+1 == len(t.content.Marks.Marks) {
+			break
+		}
+		m := t.content.Marks.Marks[i]
+		sm := t.content.Marks.Marks[i+1]
+		if m.Type == sm.Type && m.Param == sm.Param && m.Range.To >= sm.Range.From {
+			m.Range.To = sm.Range.To
+			t.content.Marks.Marks[i+1] = nil
+			t.content.Marks.Marks = append(t.content.Marks.Marks[:i+1], t.content.Marks.Marks[i+2:]...)
+			i = -1
+		}
+	}
 }

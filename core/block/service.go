@@ -27,6 +27,7 @@ type Service interface {
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
+	MergeBlock(req pb.RpcBlockMergeRequest) error
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
@@ -111,6 +112,15 @@ func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err e
 		return sb.Split(req.BlockId, req.CursorPosition)
 	}
 	return "", ErrBlockNotFound
+}
+
+func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Merge(req.FirstBlockId, req.SecondBlockId)
+	}
+	return ErrBlockNotFound
 }
 
 func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
