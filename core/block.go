@@ -311,18 +311,19 @@ func (mw *Middleware) switchAccount(accountId string) {
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
-	response := func(code pb.RpcBlockSplitResponseErrorCode, err error) *pb.RpcBlockSplitResponse {
-		m := &pb.RpcBlockSplitResponse{Error: &pb.RpcBlockSplitResponseError{Code: code}}
+	response := func(blockId string, code pb.RpcBlockSplitResponseErrorCode, err error) *pb.RpcBlockSplitResponse {
+		m := &pb.RpcBlockSplitResponse{BlockId: blockId, Error: &pb.RpcBlockSplitResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	if err := mw.blockService.SplitBlock(*req); err != nil {
-		return response(pb.RpcBlockSplitResponseError_UNKNOWN_ERROR, err)
+	blockId, err := mw.blockService.SplitBlock(*req)
+	if err != nil {
+		return response("", pb.RpcBlockSplitResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockSplitResponseError_NULL, nil)
+	return response(blockId, pb.RpcBlockSplitResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {

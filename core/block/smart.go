@@ -27,7 +27,7 @@ type smartBlock interface {
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	Unlink(id ...string) (err error)
-	Split(id string, pos int32) error
+	Split(id string, pos int32) (blockId string, err error)
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
@@ -255,8 +255,8 @@ func (p *commonSmart) findParentOf(id string) simple.Block {
 	return nil
 }
 
-func (p *commonSmart) Split(id string, pos int32) error {
-	err := p.UpdateTextBlock(id, func(t text.Block) error {
+func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
+	err = p.UpdateTextBlock(id, func(t text.Block) error {
 		newBlock, err := t.Split(pos)
 		if err != nil {
 			return err
@@ -265,7 +265,7 @@ func (p *commonSmart) Split(id string, pos int32) error {
 		if parent == nil {
 			return fmt.Errorf("block %s has not parent", id)
 		}
-		if _, err = p.create(pb.RpcBlockCreateRequest{
+		if blockId, err = p.create(pb.RpcBlockCreateRequest{
 			TargetId: id,
 			Block:    newBlock.Model(),
 			Position: model.Block_After,
@@ -275,10 +275,7 @@ func (p *commonSmart) Split(id string, pos int32) error {
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return
 }
 
 func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {
