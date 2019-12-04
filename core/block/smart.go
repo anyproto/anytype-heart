@@ -29,6 +29,7 @@ type smartBlock interface {
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
+	Move(req pb.RpcBlockListMoveRequest) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
@@ -249,11 +250,16 @@ func (p *commonSmart) unlink(ids ...string) (err error) {
 	return
 }
 
-func (p *commonSmart) findParentOf(id string) simple.Block {
-	for _, v := range p.versions {
-		for _, cid := range v.Model().ChildrenIds {
-			if cid == id {
-				return v
+func (p *commonSmart) findParentOf(id string, data ...map[string]simple.Block) simple.Block {
+	if len(data) == 0 {
+		data = []map[string]simple.Block{p.versions}
+	}
+	for _, d := range data {
+		for _, v := range d {
+			for _, cid := range v.Model().ChildrenIds {
+				if cid == id {
+					return v
+				}
 			}
 		}
 	}

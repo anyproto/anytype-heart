@@ -157,10 +157,11 @@ func (mw *Middleware) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBloc
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-	// TODO
+	if err := mw.blockService.MoveBlocks(*req); err != nil {
+		return response(pb.RpcBlockListMoveResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockListMoveResponseError_NULL, nil)
 }
 

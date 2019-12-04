@@ -663,6 +663,10 @@ type testPage struct {
 	s *service
 }
 
+func (t *testPage) Move(req pb.RpcBlockListMoveRequest) error {
+	return fmt.Errorf("can't update block in the test page")
+}
+
 func (t *testPage) Merge(firstId, secondId string) error {
 	return fmt.Errorf("can't update block in the test page")
 }
