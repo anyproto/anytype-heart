@@ -22,6 +22,7 @@ type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
+	DuplicateBlock(req pb.RpcBlockDuplicateRequest) (string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
@@ -90,6 +91,15 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Create(req)
+	}
+	return "", ErrBlockNotFound
+}
+
+func (s *service) DuplicateBlock(req pb.RpcBlockDuplicateRequest) (string, error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Duplicate(req)
 	}
 	return "", ErrBlockNotFound
 }

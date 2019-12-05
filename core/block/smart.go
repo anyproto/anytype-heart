@@ -26,6 +26,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
@@ -145,21 +146,36 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	return p.create(req)
 }
 
+func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	block, ok := p.versions[req.BlockId]
+	if ! ok {
+		return "", fmt.Errorf("block %s not found", req.BlockId)
+	}
+	return p.create(pb.RpcBlockCreateRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.TargetId,
+		Block:     block.Copy().Model(),
+		Position:  req.Position,
+	})
+}
+
 func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
 	}
 
-	parentVer, ok := p.versions[req.ParentId]
-	if !ok {
-		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
-	}
-	parent := parentVer.Model()
+	parent := p.versions[p.GetId()].Model()
 	var target simple.Block
 	if req.TargetId != "" {
+		var ok bool
 		target, ok = p.versions[req.TargetId]
 		if !ok {
-			return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
+			return "", fmt.Errorf("target block[%s] not found", req.TargetId)
+		}
+		if pv := p.findParentOf(req.TargetId); pv != nil {
+			parent = pv.Model()
 		}
 	}
 
@@ -169,10 +185,13 @@ func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error
 		if targetPos == -1 {
 			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
 		}
-		if req.Position == model.Block_After {
+		switch req.Position {
+		case model.Block_After:
 			pos = targetPos + 1
-		} else {
+		case model.Block_Before:
 			pos = targetPos
+		default:
+			return "", fmt.Errorf("unexpected position for create operation: %v", req.Position)
 		}
 	}
 
@@ -280,7 +299,6 @@ func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 			TargetId: id,
 			Block:    newBlock.Model(),
 			Position: model.Block_After,
-			ParentId: parent.Model().Id,
 		}); err != nil {
 			return err
 		}
