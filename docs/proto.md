@@ -758,7 +758,6 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | targetId | [string](#string) |  | id of the closest block |
 | block | [model.Block](#anytype.model.Block) |  |  |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
-| parentId | [string](#string) |  | id of the parent block |
 
 
 
@@ -2096,7 +2095,6 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  | id of the block to remove |
-| parentId | [string](#string) |  | id of the parent block |
 
 
 
