@@ -366,6 +366,7 @@
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockUnlink | [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request) | [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response) |  |
+| BlockDuplicate | [Rpc.Block.Duplicate.Request](#anytype.Rpc.Block.Duplicate.Request) | [Rpc.Block.Duplicate.Response](#anytype.Rpc.Block.Duplicate.Response) |  |
 | BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) |  |
 | BlockDownload | [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request) | [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response) |  |
 | BlockGetMarks | [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request) | [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response) |  |
@@ -856,7 +857,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 <a name="anytype.Rpc.Block.Duplicate"></a>
 
 ### Rpc.Block.Duplicate
-
+Makes block copy by given id and paste it to shown place
 
 
 
@@ -871,8 +872,10 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
+| contextId | [string](#string) |  | id of the context block |
+| targetId | [string](#string) |  | id of the closest block |
+| blockId | [string](#string) |  | id of block for duplicate |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
 
 
@@ -888,6 +891,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Duplicate.Response.Error](#anytype.Rpc.Block.Duplicate.Response.Error) |  |  |
+| blockId | [string](#string) |  |  |
 
 
 

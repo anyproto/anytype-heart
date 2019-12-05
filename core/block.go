@@ -84,6 +84,21 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockDuplicate(req *pb.RpcBlockDuplicateRequest) *pb.RpcBlockDuplicateResponse {
+	response := func(id string, code pb.RpcBlockDuplicateResponseErrorCode, err error) *pb.RpcBlockDuplicateResponse {
+		m := &pb.RpcBlockDuplicateResponse{BlockId: id, Error: &pb.RpcBlockDuplicateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	id, err := mw.blockService.DuplicateBlock(*req)
+	if err != nil {
+		return response("", pb.RpcBlockDuplicateResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(id, pb.RpcBlockDuplicateResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockDownload(req *pb.RpcBlockDownloadRequest) *pb.RpcBlockDownloadResponse {
 	response := func(code pb.RpcBlockDownloadResponseErrorCode, err error) *pb.RpcBlockDownloadResponse {
 		m := &pb.RpcBlockDownloadResponse{Error: &pb.RpcBlockDownloadResponseError{Code: code}}

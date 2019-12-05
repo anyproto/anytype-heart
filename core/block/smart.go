@@ -26,6 +26,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
@@ -142,6 +143,21 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	defer p.m.Unlock()
 	fmt.Println("middle: create block request in:", p.GetId())
 	return p.create(req)
+}
+
+func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	block, ok := p.versions[req.BlockId]
+	if ! ok {
+		return "", fmt.Errorf("block %s not found", req.BlockId)
+	}
+	return p.create(pb.RpcBlockCreateRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.TargetId,
+		Block:     block.Copy().Model(),
+		Position:  req.Position,
+	})
 }
 
 func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error) {
