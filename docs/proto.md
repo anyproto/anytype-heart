@@ -4774,8 +4774,12 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Before | 0 |  |
-| After | 1 |  |
+| None | 0 |  |
+| Before | 1 |  |
+| After | 2 |  |
+| Left | 3 |  |
+| Right | 4 |  |
+| Inner | 5 |  |
 
 
 
