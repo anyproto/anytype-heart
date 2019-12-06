@@ -216,6 +216,7 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 	}
 	id = newBlock.Model().Id
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, id, pos)
+	fmt.Println("parent add id", parent, id)
 	return
 }
 
@@ -422,22 +423,22 @@ func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) 
 	}
 }
 
-func (p *commonSmart) excludeVirtualIds(ids []string) []string {
+func (p *commonSmart) excludeVirtualIds(ids []string, sources ...map[string]simple.Block) []string {
 	res := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if v, ok := p.versions[id]; ok && !v.Virtual() {
+		if v := p.find(id, sources...); v != nil && !v.Virtual() {
 			res = append(res, id)
 		}
 	}
 	return res
 }
 
-func (p *commonSmart) toSave(b *model.Block) *model.Block {
+func (p *commonSmart) toSave(b *model.Block, sources ...map[string]simple.Block) *model.Block {
 	return &model.Block{
 		Id:           b.Id,
 		Fields:       b.Fields,
 		Restrictions: b.Restrictions,
-		ChildrenIds:  p.excludeVirtualIds(b.ChildrenIds),
+		ChildrenIds:  p.excludeVirtualIds(b.ChildrenIds, sources...),
 		IsArchived:   b.IsArchived,
 		Content:      b.Content,
 	}

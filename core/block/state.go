@@ -87,7 +87,7 @@ func (s *state) findParentOf(id string) simple.Block {
 		return b
 	}
 	copy := b.Copy()
-	s.blocks[id] = copy
+	s.blocks[b.Model().Id] = copy
 	return copy
 }
 
@@ -98,7 +98,7 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 		if findPosInSlice(s.toRemove, id) != -1 {
 			continue
 		}
-		_, ok := s.sb.versions[id]
+		orig, ok := s.sb.versions[id]
 		if ! ok {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfBlockAdd{
@@ -108,25 +108,18 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 				},
 			})
 			if !b.Virtual() {
-				toSave = append(toSave, s.sb.toSave(b.Model()))
+				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
-		}
-	}
-	for id, b := range s.blocks {
-		if findPosInSlice(s.toRemove, id) != -1 {
 			continue
 		}
-		orig, ok := s.sb.versions[id]
-		if ! ok {
-			continue
-		}
+
 		diff, err := orig.Diff(b)
 		if err != nil {
 			return nil, err
 		}
 		if len(diff) > 0 {
 			if !b.Virtual() {
-				toSave = append(toSave, s.sb.toSave(b.Model()))
+				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
 			msgs = append(msgs, diff...)
 		}
