@@ -22,10 +22,13 @@ type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
+	DuplicateBlock(req pb.RpcBlockDuplicateRequest) (string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 
+	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
+	MergeBlock(req pb.RpcBlockMergeRequest) error
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
@@ -90,6 +93,15 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 	return "", ErrBlockNotFound
 }
 
+func (s *service) DuplicateBlock(req pb.RpcBlockDuplicateRequest) (string, error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Duplicate(req)
+	}
+	return "", ErrBlockNotFound
+}
+
 func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) error {
 	s.m.RLock()
 	defer s.m.RUnlock()
@@ -99,6 +111,24 @@ func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) error {
 			ids[i] = t.BlockId
 		}
 		return sb.Unlink(ids...)
+	}
+	return ErrBlockNotFound
+}
+
+func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Split(req.BlockId, req.CursorPosition)
+	}
+	return "", ErrBlockNotFound
+}
+
+func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Merge(req.FirstBlockId, req.SecondBlockId)
 	}
 	return ErrBlockNotFound
 }

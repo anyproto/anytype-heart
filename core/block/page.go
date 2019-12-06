@@ -1,6 +1,8 @@
 package block
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -13,6 +15,11 @@ import (
 const (
 	pageTitleSuffix = "-title"
 	pageIconSuffix  = "-icon"
+)
+
+var (
+	_ text.Block     = (*pageTitleBlock)(nil)
+	_ base.IconBlock = (*pageIconBlock)(nil)
 )
 
 func newPage(s *service, block anytype.Block) (smartBlock, error) {
@@ -156,6 +163,14 @@ func (b *pageTitleBlock) Copy() simple.Block {
 
 func (b *pageTitleBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
 	return b.Block.Diff(block.(*pageTitleBlock).Block)
+}
+
+func (b *pageTitleBlock) Split(_ int32) (simple.Block, error) {
+	return nil, fmt.Errorf("page title can't be splitted")
+}
+
+func (b *pageTitleBlock) Merge(_ simple.Block) error {
+	return fmt.Errorf("page title can't be merged ")
 }
 
 func (b *pageTitleBlock) SetStyle(style model.BlockContentTextStyle) {}

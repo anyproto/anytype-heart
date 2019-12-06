@@ -19,6 +19,9 @@ lint:
 test:
 	go test github.com/anytypeio/go-anytype-middleware/...
 
+fast-test:
+	go test github.com/anytypeio/go-anytype-middleware/core/block/... -cover
+
 test-deps:
 	go install github.com/golang/mock/mockgen
 	go generate ./...
@@ -83,3 +86,11 @@ protos: protos_deps
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib/
 	protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
+
+build-dev-js:
+	go mod download
+	make build-lib build-js
+	npm run build:ts
+	cp -r jsaddon/build ../js-anytype/
+	cp build/ts/commands.js ../js-anytype/electron/proto/commands.js
+

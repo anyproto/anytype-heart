@@ -3,6 +3,7 @@ package text
 import (
 	"fmt"
 	"sort"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -35,6 +36,8 @@ type Block interface {
 	SetText(text string, marks *model.BlockContentTextMarks) (err error)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
+	Split(pos int32) (simple.Block, error)
+	Merge(b simple.Block) error
 }
 
 type Text struct {
@@ -110,6 +113,88 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 		marks = &model.BlockContentTextMarks{}
 	}
 	t.content.Marks = marks
-	sort.Sort(sortedMarks(t.content.Marks.Marks))
+	t.normalizeMarks()
 	return
+}
+
+func (t *Text) Split(pos int32) (simple.Block, error) {
+	if pos < 0 || int(pos) >= utf8.RuneCountInString(t.content.Text) {
+		return nil, ErrOutOfRange
+	}
+	runes := []rune(t.content.Text)
+	t.content.Text = string(runes[:pos])
+	if t.content.Marks == nil {
+		t.content.Marks = &model.BlockContentTextMarks{}
+	}
+	newMarks := &model.BlockContentTextMarks{}
+	oldMarks := &model.BlockContentTextMarks{}
+	for _, mark := range t.content.Marks.Marks {
+		if mark.Range.From >= pos {
+			mark.Range.From -= pos
+			mark.Range.To -= pos
+			newMarks.Marks = append(newMarks.Marks, mark)
+		} else if mark.Range.To <= pos {
+			oldMarks.Marks = append(oldMarks.Marks, mark)
+		} else {
+			newMark := &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: 0,
+					To:   mark.Range.To - pos,
+				},
+				Type:  mark.Type,
+				Param: mark.Param,
+			}
+			newMarks.Marks = append(newMarks.Marks, newMark)
+			mark.Range.To = pos
+			oldMarks.Marks = append(oldMarks.Marks, mark)
+		}
+	}
+	t.content.Marks = oldMarks
+	newBlock := NewText(&model.Block{
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text:    string(runes[pos:]),
+			Style:   t.content.Style,
+			Marks:   newMarks,
+			Checked: t.content.Checked,
+		}},
+	})
+	return newBlock, nil
+}
+
+func (t *Text) Merge(b simple.Block) error {
+	text, ok := b.(*Text)
+	if ! ok {
+		return fmt.Errorf("unexpected block type for merge: %T", b)
+	}
+	curLen := int32(utf8.RuneCountInString(t.content.Text))
+	t.content.Text += text.content.Text
+	for _, m := range text.content.Marks.Marks {
+		t.content.Marks.Marks = append(t.content.Marks.Marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: m.Range.From + curLen,
+				To:   m.Range.To + curLen,
+			},
+			Type:  m.Type,
+			Param: m.Param,
+		})
+	}
+	t.normalizeMarks()
+	return nil
+}
+
+func (t *Text) normalizeMarks() {
+	sort.Sort(sortedMarks(t.content.Marks.Marks))
+	for i := 0; i < len(t.content.Marks.Marks); i++ {
+		if i+1 == len(t.content.Marks.Marks) {
+			break
+		}
+		m := t.content.Marks.Marks[i]
+		sm := t.content.Marks.Marks[i+1]
+		if m.Type == sm.Type && m.Param == sm.Param && m.Range.To >= sm.Range.From {
+			m.Range.To = sm.Range.To
+			t.content.Marks.Marks[i+1] = nil
+			t.content.Marks.Marks = append(t.content.Marks.Marks[:i+1], t.content.Marks.Marks[i+2:]...)
+			i = -1
+		}
+	}
 }

@@ -84,6 +84,21 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockDuplicate(req *pb.RpcBlockDuplicateRequest) *pb.RpcBlockDuplicateResponse {
+	response := func(id string, code pb.RpcBlockDuplicateResponseErrorCode, err error) *pb.RpcBlockDuplicateResponse {
+		m := &pb.RpcBlockDuplicateResponse{BlockId: id, Error: &pb.RpcBlockDuplicateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	id, err := mw.blockService.DuplicateBlock(*req)
+	if err != nil {
+		return response("", pb.RpcBlockDuplicateResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(id, pb.RpcBlockDuplicateResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockDownload(req *pb.RpcBlockDownloadRequest) *pb.RpcBlockDownloadResponse {
 	response := func(code pb.RpcBlockDownloadResponseErrorCode, err error) *pb.RpcBlockDownloadResponse {
 		m := &pb.RpcBlockDownloadResponse{Error: &pb.RpcBlockDownloadResponseError{Code: code}}
@@ -311,16 +326,19 @@ func (mw *Middleware) switchAccount(accountId string) {
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
-	response := func(code pb.RpcBlockSplitResponseErrorCode, err error) *pb.RpcBlockSplitResponse {
-		m := &pb.RpcBlockSplitResponse{Error: &pb.RpcBlockSplitResponseError{Code: code}}
+	response := func(blockId string, code pb.RpcBlockSplitResponseErrorCode, err error) *pb.RpcBlockSplitResponse {
+		m := &pb.RpcBlockSplitResponse{BlockId: blockId, Error: &pb.RpcBlockSplitResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	// TODO
-	return response(pb.RpcBlockSplitResponseError_NULL, nil)
+	blockId, err := mw.blockService.SplitBlock(*req)
+	if err != nil {
+		return response("", pb.RpcBlockSplitResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(blockId, pb.RpcBlockSplitResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
@@ -332,6 +350,8 @@ func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMerge
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.MergeBlock(*req); err != nil {
+		return response(pb.RpcBlockMergeResponseError_UNKNOWN_ERROR, nil)
+	}
 	return response(pb.RpcBlockMergeResponseError_NULL, nil)
 }

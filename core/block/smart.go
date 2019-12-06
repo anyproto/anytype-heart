@@ -26,7 +26,10 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error)
 	Unlink(id ...string) (err error)
+	Split(id string, pos int32) (blockId string, err error)
+	Merge(firstId, secondId string) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
@@ -139,20 +142,39 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	p.m.Lock()
 	defer p.m.Unlock()
 	fmt.Println("middle: create block request in:", p.GetId())
+	return p.create(req)
+}
+
+func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	block, ok := p.versions[req.BlockId]
+	if ! ok {
+		return "", fmt.Errorf("block %s not found", req.BlockId)
+	}
+	return p.create(pb.RpcBlockCreateRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.TargetId,
+		Block:     block.Copy().Model(),
+		Position:  req.Position,
+	})
+}
+
+func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
 	}
 
-	parentVer, ok := p.versions[req.ParentId]
-	if !ok {
-		return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
-	}
-	parent := parentVer.Model()
+	parent := p.versions[p.GetId()].Model()
 	var target simple.Block
 	if req.TargetId != "" {
+		var ok bool
 		target, ok = p.versions[req.TargetId]
 		if !ok {
-			return "", fmt.Errorf("parent block[%s] not found", req.ParentId)
+			return "", fmt.Errorf("target block[%s] not found", req.TargetId)
+		}
+		if pv := p.findParentOf(req.TargetId); pv != nil {
+			parent = pv.Model()
 		}
 	}
 
@@ -162,10 +184,13 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 		if targetPos == -1 {
 			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
 		}
-		if req.Position == model.Block_After {
+		switch req.Position {
+		case model.Block_After:
 			pos = targetPos + 1
-		} else {
+		case model.Block_Before:
 			pos = targetPos
+		default:
+			return "", fmt.Errorf("unexpected position for create operation: %v", req.Position)
 		}
 	}
 
@@ -193,6 +218,10 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 func (p *commonSmart) Unlink(ids ...string) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
+	return p.unlink(ids...)
+}
+
+func (p *commonSmart) unlink(ids ...string) (err error) {
 	var toUpdateBlockIds = make(uniqueIds)
 	for _, id := range ids {
 		_, ok := p.versions[id]
@@ -248,6 +277,42 @@ func (p *commonSmart) findParentOf(id string) simple.Block {
 		}
 	}
 	return nil
+}
+
+func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
+	err = p.UpdateTextBlock(id, func(t text.Block) error {
+		newBlock, err := t.Split(pos)
+		if err != nil {
+			return err
+		}
+		parent := p.findParentOf(id)
+		if parent == nil {
+			return fmt.Errorf("block %s has not parent", id)
+		}
+		if blockId, err = p.create(pb.RpcBlockCreateRequest{
+			TargetId: id,
+			Block:    newBlock.Model(),
+			Position: model.Block_After,
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return
+}
+
+func (p *commonSmart) Merge(firstId, secondId string) error {
+	return p.UpdateTextBlock(firstId, func(t text.Block) error {
+		second, ok := p.versions[secondId]
+		if ! ok {
+			return ErrBlockNotFound
+		}
+		if err := t.Merge(second); err != nil {
+			return err
+		}
+
+		return p.unlink(secondId)
+	})
 }
 
 func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {

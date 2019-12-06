@@ -88,7 +88,6 @@ func TestCommonSmart_Create(t *testing.T) {
 			TargetId:  "3",
 			Position:  model.Block_Before,
 			ContextId: "1",
-			ParentId:  "1",
 		}
 		newBlockId := "23"
 		newBlock, _ := fx.newMockBlockWithContent(newBlockId, req.Block.Content, nil, nil)
