@@ -43,15 +43,22 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 		pos = targetPos + 1
 	case model.Block_Before:
 		pos = targetPos
+	case model.Block_Inner:
+		pos = -1
+		targetParent = target
+		targetParentM = target.Model()
 	default:
 		return fmt.Errorf("unexpected position")
 	}
 
-	for _, id := range req.BlockIds {
-		targetParentM.ChildrenIds = insertToSlice(targetParentM.ChildrenIds, id, pos)
-		pos++
+	if pos != -1 {
+		for _, id := range req.BlockIds {
+			targetParentM.ChildrenIds = insertToSlice(targetParentM.ChildrenIds, id, pos)
+			pos++
+		}
+	} else {
+		targetParentM.ChildrenIds = append(targetParentM.ChildrenIds, req.BlockIds...)
 	}
-
 	blocks[targetParentM.Id] = targetParent
 
 	var msgs []*pb.EventMessage
