@@ -271,11 +271,11 @@ func (p *commonSmart) unlink(ids ...string) (err error) {
 	return
 }
 
-func (p *commonSmart) findParentOf(id string, data ...map[string]simple.Block) simple.Block {
-	if len(data) == 0 {
-		data = []map[string]simple.Block{p.versions}
+func (p *commonSmart) findParentOf(id string, sources ...map[string]simple.Block) simple.Block {
+	if len(sources) == 0 {
+		sources = []map[string]simple.Block{p.versions}
 	}
-	for _, d := range data {
+	for _, d := range sources {
 		for _, v := range d {
 			for _, cid := range v.Model().ChildrenIds {
 				if cid == id {
@@ -285,6 +285,41 @@ func (p *commonSmart) findParentOf(id string, data ...map[string]simple.Block) s
 		}
 	}
 	return nil
+}
+
+func (p *commonSmart) find(id string, sources ...map[string]simple.Block) simple.Block {
+	if len(sources) == 0 {
+		sources = []map[string]simple.Block{p.versions}
+	}
+	for _, d := range sources {
+		if b, ok := d[id]; ok {
+			return b
+		}
+	}
+	return nil
+}
+
+func (p *commonSmart) validateBlock(b simple.Block, sources ...map[string]simple.Block) (err error) {
+	id := b.Model().Id
+	if id == p.GetId() {
+		return
+	}
+	var parentIds = []string{id}
+	for {
+		parent := p.findParentOf(id, sources...)
+		if parent == nil {
+			break
+		}
+		if parent.Model().Id == p.GetId() {
+			return nil
+		}
+		if findPosInSlice(parentIds, parent.Model().Id) != -1 {
+			return fmt.Errorf("cycle reference: %v", append(parentIds, parent.Model().Id))
+		}
+		id = parent.Model().Id
+		parentIds = append(parentIds, id)
+	}
+	return fmt.Errorf("block '%s' has not the page in parents", id)
 }
 
 func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {

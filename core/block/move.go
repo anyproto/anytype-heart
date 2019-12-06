@@ -21,8 +21,8 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 		return
 	}
 
-	target, ok := p.versions[req.DropTargetId]
-	if ! ok {
+	target := p.find(req.DropTargetId, blocks, p.versions)
+	if target == nil {
 		return fmt.Errorf("target block %s not found", req.DropTargetId)
 	}
 	target = target.Copy()
@@ -74,6 +74,9 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 				updBlocks = append(updBlocks, p.toSave(b.Model()))
 			}
 		}
+		if err := p.validateBlock(b, blocks, p.versions); err != nil {
+			return err
+		}
 	}
 	if _, err := p.block.AddVersions(updBlocks); err != nil {
 		return err
@@ -82,11 +85,12 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 		p.versions[b.Id] = blocks[b.Id]
 	}
 
-	p.s.sendEvent(&pb.Event{
-		Messages:  msgs,
-		ContextId: p.GetId(),
-	})
-
+	if len(msgs) > 0 {
+		p.s.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: p.GetId(),
+		})
+	}
 	return nil
 }
 
