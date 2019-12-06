@@ -190,6 +190,8 @@ func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error
 			pos = targetPos + 1
 		case model.Block_Before:
 			pos = targetPos
+		case model.Block_Inner:
+			parent = target.Model()
 		default:
 			return "", fmt.Errorf("unexpected position for create operation: %v", req.Position)
 		}
