@@ -102,38 +102,23 @@ func (p *page) Type() smartBlockType {
 func (p *page) SetFields(id string, fields *types.Struct) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
-	if err = p.setFields(id, fields); err != nil {
+	s := p.newState()
+	if err = p.setFields(s, id, fields); err != nil {
 		return
 	}
 	if id == p.GetId() {
 		// apply changes to virtual blocks
 		name, _ := fieldsGetString(p.versions[id].Model().Fields, "name")
 		nameId := p.block.GetId() + pageTitleSuffix
-		nameBlock := p.versions[nameId].Copy().(*pageTitleBlock)
+		nameBlock := s.get(nameId).(*pageTitleBlock)
 		nameBlock.Block.SetText(name, nil)
-		diff, _ := p.versions[nameId].Diff(nameBlock)
-		if len(diff) > 0 {
-			p.versions[nameId] = nameBlock
-		}
-		msgs := diff
 
 		icon, _ := fieldsGetString(p.versions[id].Model().Fields, "icon")
 		iconId := p.block.GetId() + pageIconSuffix
-		iconBlock := p.versions[iconId].Copy().(*pageIconBlock)
+		iconBlock := s.get(iconId).(*pageIconBlock)
 		iconBlock.IconBlock.SetIconName(icon)
-		diff, _ = p.versions[iconId].Diff(iconBlock)
-		if len(diff) > 0 {
-			p.versions[iconId] = iconBlock
-			msgs = append(msgs, diff...)
-		}
-		if len(msgs) > 0 {
-			p.s.sendEvent(&pb.Event{
-				Messages:  msgs,
-				ContextId: p.GetId(),
-			})
-		}
 	}
-	return
+	return p.applyAndSendEvent(s)
 }
 
 type pageTitleBlock struct {
@@ -149,9 +134,14 @@ func (b *pageTitleBlock) SetText(text string, marks *model.BlockContentTextMarks
 	if err = b.Block.SetText(text, nil); err != nil {
 		return
 	}
-	fields := b.page.versions[b.page.GetId()].Copy().Model().Fields
+	s := b.page.newState()
+	fields := s.get(b.page.GetId()).Model().Fields
 	fields.Fields["name"] = testStringValue(text)
-	return b.page.setFields(b.page.GetId(), fields)
+
+	if err = b.page.setFields(s, b.page.GetId(), fields); err != nil {
+		return
+	}
+	return b.page.applyAndSendEvent(s)
 }
 
 func (b *pageTitleBlock) Copy() simple.Block {
@@ -192,13 +182,17 @@ func (b *pageIconBlock) Copy() simple.Block {
 	}
 }
 
-func (b *pageIconBlock) SetIconName(name string) error {
+func (b *pageIconBlock) SetIconName(name string) (err error) {
 	if err := b.IconBlock.SetIconName(name); err != nil {
 		return err
 	}
 	fields := b.page.versions[b.page.GetId()].Copy().Model().Fields
 	fields.Fields["icon"] = testStringValue(name)
-	return b.page.setFields(b.page.GetId(), fields)
+	s := b.page.newState()
+	if err = b.page.setFields(s, b.page.GetId(), fields); err != nil {
+		return
+	}
+	return b.page.applyAndSendEvent(s)
 }
 
 func (b *pageIconBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
