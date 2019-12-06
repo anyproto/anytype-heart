@@ -95,7 +95,7 @@ func (p *commonSmart) cut(ids ...string) (blocks map[string]simple.Block, err er
 	for _, id := range ids {
 		if b, ok := p.versions[id]; ok {
 			blocks[id] = b.Copy()
-			if parent := p.findParentOf(id); parent != nil {
+			if parent := p.findParentOf(id, blocks, p.versions); parent != nil {
 				parent = parent.Copy()
 				parent.Model().ChildrenIds = removeFromSlice(parent.Model().ChildrenIds, id)
 				blocks[parent.Model().Id] = parent
