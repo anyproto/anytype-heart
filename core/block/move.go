@@ -3,6 +3,7 @@ package block
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -25,14 +26,52 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 		return fmt.Errorf("target block %s not found", req.DropTargetId)
 	}
 	target = target.Copy()
-	targetParent := p.findParentOf(req.DropTargetId, blocks, p.versions)
-	if targetParent == nil {
+	parent := p.findParentOf(req.DropTargetId, blocks, p.versions)
+	if parent == nil {
 		return fmt.Errorf("target has not parent")
 	}
-	targetParent = targetParent.Copy()
+	targetParent := parent.Copy()
+	targetParentM := targetParent.Model()
 
-	
+	targetPos := findPosInSlice(parent.Model().ChildrenIds, target.Model().Id)
+	if targetPos == -1 {
+		return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, targetParentM.Id)
+	}
+	var pos int
+	switch req.Position {
+	case model.Block_After:
+		pos = targetPos + 1
+	case model.Block_Before:
+		pos = targetPos
+	default:
+		return fmt.Errorf("unexpected position")
+	}
 
+	for _, id := range req.BlockIds {
+		targetParentM.ChildrenIds = insertToSlice(targetParentM.ChildrenIds, id, pos)
+		pos++
+	}
+
+	blocks[targetParentM.Id] = targetParent
+
+	var msgs []*pb.EventMessage
+	var updBlocks []*model.Block
+	for id, b := range blocks {
+		diff, err := p.versions[id].Diff(b)
+		if err != nil {
+			return err
+		}
+		if len(diff) > 0 {
+			msgs = append(msgs, diff...)
+			updBlocks = append(updBlocks, b.Model())
+		}
+	}
+	if _, err := p.block.AddVersions(updBlocks); err != nil {
+		return err
+	}
+	for _, b := range updBlocks {
+		p.versions[b.Id] = blocks[b.Id]
+	}
 	return nil
 }
 
