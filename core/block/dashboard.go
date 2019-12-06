@@ -22,7 +22,7 @@ func (p *dashboard) Init() {
 	defer p.m.Unlock()
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
-		p.addTestPage()
+		//p.addTestPage()
 	}
 	p.show()
 }

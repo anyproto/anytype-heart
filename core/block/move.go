@@ -63,7 +63,9 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 		}
 		if len(diff) > 0 {
 			msgs = append(msgs, diff...)
-			updBlocks = append(updBlocks, b.Model())
+			if ! b.Virtual() {
+				updBlocks = append(updBlocks, p.toSave(b.Model()))
+			}
 		}
 	}
 	if _, err := p.block.AddVersions(updBlocks); err != nil {
@@ -72,6 +74,12 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 	for _, b := range updBlocks {
 		p.versions[b.Id] = blocks[b.Id]
 	}
+
+	p.s.sendEvent(&pb.Event{
+		Messages:  msgs,
+		ContextId: p.GetId(),
+	})
+
 	return nil
 }
 
