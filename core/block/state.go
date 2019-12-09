@@ -123,7 +123,7 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 			}
 			msgs = append(msgs, diff...)
 		}
-		if err := s.sb.validateBlock(b, s.blocks, s.sb.versions); err != nil {
+		if err := s.validateBlock(b); err != nil {
 			return nil, err
 		}
 	}
@@ -145,4 +145,27 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 	}
 	fmt.Printf("middle: state apply: %d for save; %d for remove; for a %v\n", len(toSave), len(s.toRemove), time.Since(st))
 	return
+}
+
+func (s *state) validateBlock(b simple.Block) (err error) {
+	id := b.Model().Id
+	if id == s.sb.GetId() {
+		return
+	}
+	var parentIds = []string{id}
+	for {
+		parent := s.sb.findParentOf(id, s.blocks, s.sb.versions)
+		if parent == nil {
+			break
+		}
+		if parent.Model().Id == s.sb.GetId() {
+			return nil
+		}
+		if findPosInSlice(parentIds, parent.Model().Id) != -1 {
+			return fmt.Errorf("cycle reference: %v", append(parentIds, parent.Model().Id))
+		}
+		id = parent.Model().Id
+		parentIds = append(parentIds, id)
+	}
+	return fmt.Errorf("block '%s' has not the page in parents", id)
 }

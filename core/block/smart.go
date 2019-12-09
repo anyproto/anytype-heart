@@ -272,29 +272,6 @@ func (p *commonSmart) find(id string, sources ...map[string]simple.Block) simple
 	return nil
 }
 
-func (p *commonSmart) validateBlock(b simple.Block, sources ...map[string]simple.Block) (err error) {
-	id := b.Model().Id
-	if id == p.GetId() {
-		return
-	}
-	var parentIds = []string{id}
-	for {
-		parent := p.findParentOf(id, sources...)
-		if parent == nil {
-			break
-		}
-		if parent.Model().Id == p.GetId() {
-			return nil
-		}
-		if findPosInSlice(parentIds, parent.Model().Id) != -1 {
-			return fmt.Errorf("cycle reference: %v", append(parentIds, parent.Model().Id))
-		}
-		id = parent.Model().Id
-		parentIds = append(parentIds, id)
-	}
-	return fmt.Errorf("block '%s' has not the page in parents", id)
-}
-
 func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 	s := p.newState()
 	t, err := s.getText(id)

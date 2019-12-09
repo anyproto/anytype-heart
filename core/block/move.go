@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -12,28 +11,27 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
+	s := p.newState()
+
 	if findPosInSlice(req.BlockIds, req.DropTargetId) != -1 {
 		return fmt.Errorf("blockIds contains targetId")
 	}
 
-	blocks, err := p.cut(req.BlockIds...)
-	if err != nil {
+	if err = p.cut(s, req.BlockIds...); err != nil {
 		return
 	}
 
-	target := p.find(req.DropTargetId, blocks, p.versions)
+	target := s.get(req.DropTargetId)
 	if target == nil {
 		return fmt.Errorf("target block %s not found", req.DropTargetId)
 	}
-	target = target.Copy()
-	parent := p.findParentOf(req.DropTargetId, blocks, p.versions)
-	if parent == nil {
+	targetParent := s.findParentOf(req.DropTargetId)
+	if targetParent == nil {
 		return fmt.Errorf("target has not parent")
 	}
-	targetParent := parent.Copy()
 	targetParentM := targetParent.Model()
 
-	targetPos := findPosInSlice(parent.Model().ChildrenIds, target.Model().Id)
+	targetPos := findPosInSlice(targetParentM.ChildrenIds, target.Model().Id)
 	if targetPos == -1 {
 		return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, targetParentM.Id)
 	}
@@ -59,50 +57,14 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 	} else {
 		targetParentM.ChildrenIds = append(targetParentM.ChildrenIds, req.BlockIds...)
 	}
-	blocks[targetParentM.Id] = targetParent
-
-	var msgs []*pb.EventMessage
-	var updBlocks []*model.Block
-	for id, b := range blocks {
-		diff, err := p.versions[id].Diff(b)
-		if err != nil {
-			return err
-		}
-		if len(diff) > 0 {
-			msgs = append(msgs, diff...)
-			if ! b.Virtual() {
-				updBlocks = append(updBlocks, p.toSave(b.Model()))
-			}
-		}
-		if err := p.validateBlock(b, blocks, p.versions); err != nil {
-			return err
-		}
-	}
-	if _, err := p.block.AddVersions(updBlocks); err != nil {
-		return err
-	}
-	for _, b := range updBlocks {
-		p.versions[b.Id] = blocks[b.Id]
-	}
-
-	if len(msgs) > 0 {
-		p.s.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: p.GetId(),
-		})
-	}
-	return nil
+	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) cut(ids ...string) (blocks map[string]simple.Block, err error) {
-	blocks = make(map[string]simple.Block)
+func (p *commonSmart) cut(s *state, ids ...string) (err error) {
 	for _, id := range ids {
-		if b, ok := p.versions[id]; ok {
-			blocks[id] = b.Copy()
-			if parent := p.findParentOf(id, blocks, p.versions); parent != nil {
-				parent = parent.Copy()
+		if b := s.get(id); b != nil {
+			if parent := s.findParentOf(id); parent != nil {
 				parent.Model().ChildrenIds = removeFromSlice(parent.Model().ChildrenIds, id)
-				blocks[parent.Model().Id] = parent
 			}
 		} else {
 			err = fmt.Errorf("block '%s' not found", id)
