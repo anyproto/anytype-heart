@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 )
 
 func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
@@ -83,15 +84,37 @@ func (p *commonSmart) moveFromSide(s *state, target simple.Block, pos model.Bloc
 	if row == nil {
 		return fmt.Errorf("target block has not parent")
 	}
+	var width float64
 	if row.Model().GetLayout() == nil || row.Model().GetLayout().Style != model.BlockContentLayout_Row {
 		if row, err = p.wrapToRow(s, row, target); err != nil {
 			return
 		}
+		width = 0.5
 		target = s.get(row.Model().ChildrenIds[0])
 		fmt.Println("middle: creating row:", row.Model().Id)
 	}
+
+	if width == 0 {
+		width = 1 / float64(len(row.Model().ChildrenIds)+1)
+		for _, columnId := range row.Model().ChildrenIds {
+			cm := s.get(columnId).Model()
+			if cm.Fields == nil {
+				cm.Fields = &types.Struct{}
+			}
+			if cm.Fields.Fields == nil {
+				cm.Fields.Fields = make(map[string]*types.Value)
+			}
+			cm.Fields.Fields["width"] = testFloatValue(width)
+		}
+	}
+
 	column, err := s.create(&model.Block{
 		ChildrenIds: ids,
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				"width": testFloatValue(width),
+			},
+		},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Column,
@@ -118,6 +141,11 @@ func (p *commonSmart) moveFromSide(s *state, target simple.Block, pos model.Bloc
 func (p *commonSmart) wrapToRow(s *state, parent, b simple.Block) (row simple.Block, err error) {
 	column, err := s.create(&model.Block{
 		ChildrenIds: []string{b.Model().Id},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				"width": testFloatValue(0.5),
+			},
+		},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Column,
