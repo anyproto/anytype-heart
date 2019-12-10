@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 )
 
 func (s *commonSmart) newState() *state {
@@ -50,6 +51,19 @@ func (s *state) get(id string) simple.Block {
 	return nil
 }
 
+func (s *state) exists(id string) bool {
+	if findPosInSlice(s.toRemove, id) != -1 {
+		return false
+	}
+	if _, ok := s.blocks[id]; ok {
+		return true
+	}
+	if _, ok := s.sb.versions[id]; ok {
+		return true
+	}
+	return false
+}
+
 func (s *state) getText(id string) (text.Block, error) {
 	if b := s.get(id); b != nil {
 		tb, ok := b.(text.Block)
@@ -73,6 +87,9 @@ func (s *state) getIcon(id string) (base.IconBlock, error) {
 }
 
 func (s *state) remove(id string) {
+	if _, ok := s.blocks[id]; ok {
+		delete(s.blocks, id)
+	}
 	if findPosInSlice(s.toRemove, id) == -1 {
 		s.toRemove = append(s.toRemove, id)
 	}
@@ -83,16 +100,12 @@ func (s *state) findParentOf(id string) simple.Block {
 	if b == nil {
 		return nil
 	}
-	if b == s.blocks[b.Model().Id] {
-		return b
-	}
-	copy := b.Copy()
-	s.blocks[b.Model().Id] = copy
-	return copy
+	return s.get(b.Model().Id)
 }
 
 func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 	st := time.Now()
+	s.normalize()
 	var toSave []*model.Block
 	for id, b := range s.blocks {
 		if findPosInSlice(s.toRemove, id) != -1 {
@@ -134,8 +147,10 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 			},
 		})
 	}
-	if _, err = s.sb.block.AddVersions(toSave); err != nil {
-		return
+	if len(toSave) > 0 {
+		if _, err = s.sb.block.AddVersions(toSave); err != nil {
+			return
+		}
 	}
 	for id, b := range s.blocks {
 		s.sb.versions[id] = b
@@ -143,7 +158,123 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 	for _, id := range s.toRemove {
 		delete(s.sb.versions, id)
 	}
-	fmt.Printf("middle: state apply: %d for save; %d for remove; for a %v\n", len(toSave), len(s.toRemove), time.Since(st))
+	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
+	return
+}
+
+func (s *state) normalize() {
+	// remove invalid children
+	for _, b := range s.blocks {
+		s.normalizeChildren(b)
+	}
+	// remove empty layouts
+	for _, b := range s.blocks {
+		if layout := b.Model().GetLayout(); layout != nil {
+			if len(b.Model().ChildrenIds) == 0 {
+				s.removeFromChilds(b.Model().Id)
+				s.remove(b.Model().Id)
+				fmt.Println("normalize: remove empty layout:", b.Model().Id)
+			}
+			// pick parent for checking
+			s.findParentOf(b.Model().Id)
+		}
+	}
+	// normalize rows
+	for _, b := range s.blocks {
+		if layout := b.Model().GetLayout(); layout != nil {
+			s.normalizeLayoutRow(b)
+		}
+	}
+	return
+}
+
+func (s *state) normalizeChildren(b simple.Block) {
+	m := b.Model()
+	for _, cid := range m.ChildrenIds {
+		if !s.exists(cid) {
+			fmt.Println("normalize: remove missed children:", cid)
+			m.ChildrenIds = removeFromSlice(m.ChildrenIds, cid)
+			s.normalizeChildren(b)
+			return
+		}
+	}
+}
+
+func (s *state) normalizeLayoutRow(b simple.Block) {
+	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
+		return
+	}
+	// remove empty row
+	if len(b.Model().ChildrenIds) == 0 {
+		s.removeFromChilds(b.Model().Id)
+		s.remove(b.Model().Id)
+		fmt.Println("normalize: remove empty row:", b.Model().Id)
+		return
+	}
+	// one column - remove row
+	if len(b.Model().ChildrenIds) == 1 {
+		var (
+			contentIds   []string
+			removeColumn bool
+		)
+		column := s.get(b.Model().ChildrenIds[0])
+		if layout := column.Model().GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Column {
+			contentIds = column.Model().ChildrenIds
+			removeColumn = true
+		} else {
+			contentIds = append(contentIds, column.Model().Id)
+		}
+		if parent := s.findParentOf(b.Model().Id); parent != nil {
+			rowPos := findPosInSlice(parent.Model().ChildrenIds, b.Model().Id)
+			if rowPos != -1 {
+				parent.Model().ChildrenIds = removeFromSlice(parent.Model().ChildrenIds, b.Model().Id)
+				for _, id := range contentIds {
+					parent.Model().ChildrenIds = insertToSlice(parent.Model().ChildrenIds, id, rowPos)
+					rowPos++
+				}
+				if removeColumn {
+					s.remove(column.Model().Id)
+				}
+				s.remove(b.Model().Id)
+				fmt.Println("normalize: remove one column row:", b.Model().Id)
+			}
+		}
+		return
+	}
+
+	// recalculate columns width
+	var sumWidth float64
+	for _, id := range b.Model().ChildrenIds {
+		width, _ := fieldsGetFloat(s.get(id).Model().Fields, "width")
+		if width == 0 {
+			// column without width - recalculate
+			width = 2
+		}
+		sumWidth += width
+	}
+	if sumWidth > 1.01 || sumWidth < 0.99 {
+		width := 1 / float64(len(b.Model().ChildrenIds))
+		fmt.Println("normalize: set new column width", b.Model().Id, width)
+		for _, id := range b.Model().ChildrenIds {
+			cm := s.get(id).Model()
+			if cm.Fields == nil {
+				cm.Fields = &types.Struct{}
+			}
+			if cm.Fields.Fields == nil {
+				cm.Fields.Fields = make(map[string]*types.Value)
+			}
+			cm.Fields.Fields["width"] = testFloatValue(width)
+		}
+	}
+}
+
+func (s *state) removeFromChilds(id string) (ok bool) {
+	if parent := s.findParentOf(id); parent != nil {
+		if pos := findPosInSlice(parent.Model().ChildrenIds, id); pos != -1 {
+			parent.Model().ChildrenIds = removeFromSlice(parent.Model().ChildrenIds, id)
+			return true
+		}
+	}
 	return
 }
 

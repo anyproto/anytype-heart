@@ -45,12 +45,13 @@ func fieldsGetString(field *types.Struct, key string) (value string, ok bool) {
 	return
 }
 
-type uniqueIds map[string]struct{}
-
-func (u uniqueIds) Add(id string) (exists bool) {
-	if _, exists = u[id]; exists {
-		return
+func fieldsGetFloat(field *types.Struct, key string) (value float64, ok bool) {
+	if field != nil && field.Fields != nil {
+		if value, ok := field.Fields[key]; ok {
+			if s, ok := value.Kind.(*types.Value_NumberValue); ok {
+				return s.NumberValue, true
+			}
+		}
 	}
-	u[id] = struct{}{}
 	return
 }
