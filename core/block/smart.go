@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -116,6 +117,8 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	}
 	p.versions[p.GetId()] = simple.New(ver.Model())
 
+	p.normalize()
+
 	events := make(chan proto.Message)
 	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
 	if err != nil {
@@ -127,8 +130,10 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 		if err != nil {
 			return
 		}
+		p.closeWg.Add(1)
 		go p.versionChangesLoop(blockChanges)
 	}
+	p.closeWg.Add(1)
 	go p.clientEventsLoop(events)
 	return
 }
@@ -173,6 +178,38 @@ func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err
 		return
 	}
 	return
+}
+
+func (p *commonSmart) normalize() {
+	st := time.Now()
+	var usedIds = make(map[string]struct{})
+	p.normalizeBlock(usedIds, p.versions[p.GetId()])
+	cleanVersion := make(map[string]simple.Block)
+	for id := range usedIds {
+		cleanVersion[id] = p.versions[id]
+	}
+	before := len(p.versions)
+	p.versions = cleanVersion
+	after := len(p.versions)
+	fmt.Printf("normalize block: ignore %d blocks; %v\n", before-after, time.Since(st))
+}
+
+func (p *commonSmart) normalizeBlock(usedIds map[string]struct{}, b simple.Block) {
+	usedIds[b.Model().Id] = struct{}{}
+	for _, cid := range b.Model().ChildrenIds {
+		if _, ok := usedIds[cid]; ok {
+			b.Model().ChildrenIds = removeFromSlice(b.Model().ChildrenIds, cid)
+			p.normalizeBlock(usedIds, b)
+			return
+		}
+		if cb, ok := p.versions[cid]; ok {
+			p.normalizeBlock(usedIds, cb)
+		} else {
+			b.Model().ChildrenIds = removeFromSlice(b.Model().ChildrenIds, cid)
+			p.normalizeBlock(usedIds, b)
+			return
+		}
+	}
 }
 
 func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -385,7 +422,6 @@ func (p *commonSmart) show() {
 }
 
 func (p *commonSmart) clientEventsLoop(events chan proto.Message) {
-	p.closeWg.Add(1)
 	defer p.closeWg.Done()
 	for m := range events {
 		_ = m // TODO: handle client events
@@ -393,7 +429,6 @@ func (p *commonSmart) clientEventsLoop(events chan proto.Message) {
 }
 
 func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) {
-	p.closeWg.Add(1)
 	defer p.closeWg.Done()
 	for versions := range blockChanges {
 		p.versionsChange(versions)
