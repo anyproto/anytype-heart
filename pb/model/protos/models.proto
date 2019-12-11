@@ -38,8 +38,8 @@ message Block {
 
     enum Position {
         None = 0;
-        Before = 1;
-        After = 2;
+        Bottom = 1;
+        Top = 2;
         Left = 3;
         Right = 4;
         Inner = 5;
