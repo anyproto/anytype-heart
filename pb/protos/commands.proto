@@ -18,8 +18,9 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 repeated string blockIds = 2;
-                string dropTargetId = 3;
-                anytype.model.Block.Position position = 4;
+                string targetContextId = 3;
+                string dropTargetId = 4;
+                anytype.model.Block.Position position = 5;
             }
 
             message Response {

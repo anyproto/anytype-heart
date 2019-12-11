@@ -2225,6 +2225,7 @@ Remove blocks from the childrenIds of its parents
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
+| targetContextId | [string](#string) |  |  |
 | dropTargetId | [string](#string) |  |  |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
