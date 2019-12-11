@@ -45,7 +45,6 @@ func NewService(accountId string, lib anytype.Anytype, sendEvent func(event *pb.
 		accountId: accountId,
 		anytype:   lib,
 		sendEvent: func(event *pb.Event) {
-			fmt.Printf("middle: sending event: %v\n", event)
 			sendEvent(event)
 		},
 		smartBlocks: make(map[string]smartBlock),
