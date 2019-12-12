@@ -29,7 +29,7 @@ test-deps:
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
 	export GO111MODULE=on
-	go build -o dist/lib.a -ldflags "$(FLAGS) -w -s" -buildmode=c-archive -v ./lib/clib
+	go bugomobileild -o dist/lib.a -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
 
 build-js:
 	cp dist/lib.a jsaddon/lib.a
@@ -52,13 +52,13 @@ build-js:
 
 build-ios:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
-	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/lib
+	env go111module=off gomobile bind -ldflags "$(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/ios/ && cp -r Mobile.framework mobile/dist/ios/
 	rm -rf Mobile.framework
 
 build-android:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
-	env go111module=off gomobile bind -ldflags "-w $(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
+	env go111module=off gomobile bind -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/android/ && mv mobile.aar mobile/dist/android/
 
 setup-protoc:
