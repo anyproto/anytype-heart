@@ -25,6 +25,8 @@ type Service interface {
 	DuplicateBlock(req pb.RpcBlockDuplicateRequest) (string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 
+	MoveBlocks(req pb.RpcBlockListMoveRequest) error
+
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
@@ -43,7 +45,6 @@ func NewService(accountId string, lib anytype.Anytype, sendEvent func(event *pb.
 		accountId: accountId,
 		anytype:   lib,
 		sendEvent: func(event *pb.Event) {
-			fmt.Printf("middle: sending event: %v\n", event)
 			sendEvent(event)
 		},
 		smartBlocks: make(map[string]smartBlock),
@@ -129,6 +130,15 @@ func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) error {
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Merge(req.FirstBlockId, req.SecondBlockId)
+	}
+	return ErrBlockNotFound
+}
+
+func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Move(req)
 	}
 	return ErrBlockNotFound
 }

@@ -1415,7 +1415,7 @@ func (m *RpcBlockListMoveRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
-	return model.Block_Before
+	return model.Block_None
 }
 
 type RpcBlockListMoveResponse struct {
@@ -2311,7 +2311,7 @@ func (m *RpcBlockDuplicateRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
-	return model.Block_Before
+	return model.Block_None
 }
 
 type RpcBlockDuplicateResponse struct {
@@ -6560,7 +6560,7 @@ func (m *RpcBlockCreateRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
-	return model.Block_Before
+	return model.Block_None
 }
 
 type RpcBlockCreateResponse struct {
