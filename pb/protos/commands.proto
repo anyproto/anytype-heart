@@ -16,7 +16,9 @@ message Rpc {
     message ExternalDrop {
         message Files {
             message Request {
-                repeated string localFilePaths = 1;
+                string contextId = 1;
+                string focusedBlockId = 2; // can be null
+                repeated string localFilePaths = 3;
             }
 
             message Response {
@@ -38,7 +40,9 @@ message Rpc {
 
         message Content {
             message Request {
-                bytes content = 1; // TODO
+                string contextId = 1;
+                string focusedBlockId = 2; // can be null
+                bytes content = 3; // TODO
             }
 
             message Response {

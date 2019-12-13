@@ -2432,6 +2432,8 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| focusedBlockId | [string](#string) |  | can be null |
 | content | [bytes](#bytes) |  | TODO |
 
 
@@ -2488,6 +2490,8 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| focusedBlockId | [string](#string) |  | can be null |
 | localFilePaths | [string](#string) | repeated |  |
 
 
@@ -4690,13 +4694,8 @@ General purpose structure, uses in Mark.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | None | 0 |  |
-<<<<<<< HEAD
 | Bottom | 1 |  |
 | Top | 2 |  |
-=======
-| Before | 1 |  |
-| After | 2 |  |
->>>>>>> 553f475ef64be1a9902c4c3f30eb7b466f42c4df
 | Left | 3 |  |
 | Right | 4 |  |
 | Inner | 5 |  |
