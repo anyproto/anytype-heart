@@ -248,18 +248,14 @@
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
     - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
     - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
-    - [Event.Block.Set.File.Icon](#anytype.Event.Block.Set.File.Icon)
     - [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath)
     - [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name)
+    - [Event.Block.Set.File.PreviewLocalFilePath](#anytype.Event.Block.Set.File.PreviewLocalFilePath)
     - [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
+    - [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type)
+    - [Event.Block.Set.File.Width](#anytype.Event.Block.Set.File.Width)
     - [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon)
     - [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name)
-    - [Event.Block.Set.Image](#anytype.Event.Block.Set.Image)
-    - [Event.Block.Set.Image.LocalFilePath](#anytype.Event.Block.Set.Image.LocalFilePath)
-    - [Event.Block.Set.Image.Name](#anytype.Event.Block.Set.Image.Name)
-    - [Event.Block.Set.Image.PreviewLocalFilePath](#anytype.Event.Block.Set.Image.PreviewLocalFilePath)
-    - [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State)
-    - [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width)
     - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
     - [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
@@ -267,12 +263,6 @@
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
-    - [Event.Block.Set.Video](#anytype.Event.Block.Set.Video)
-    - [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath)
-    - [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name)
-    - [Event.Block.Set.Video.PreviewLocalFilePath](#anytype.Event.Block.Set.Video.PreviewLocalFilePath)
-    - [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State)
-    - [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width)
     - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
@@ -298,14 +288,13 @@
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
-    - [Block.Content.Image](#anytype.model.Block.Content.Image)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
     - [Block.Content.Link](#anytype.model.Block.Content.Link)
     - [Block.Content.Page](#anytype.model.Block.Content.Page)
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
-    - [Block.Content.Video](#anytype.model.Block.Content.Video)
+    - [Block.MediaData](#anytype.model.Block.MediaData)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
@@ -313,14 +302,12 @@
   
     - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
-    - [Block.Content.Image.State](#anytype.model.Block.Content.Image.State)
-    - [Block.Content.Image.Type](#anytype.model.Block.Content.Image.Type)
+    - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
     - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
     - [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
-    - [Block.Content.Video.State](#anytype.model.Block.Content.Video.State)
     - [Block.Position](#anytype.model.Block.Position)
     - [Image.Size](#anytype.model.Image.Size)
     - [Image.Style](#anytype.model.Image.Style)
@@ -3677,25 +3664,10 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
+| type | [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type) |  |  |
 | state | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
 | localFilePath | [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath) |  |  |
-| icon | [Event.Block.Set.File.Icon](#anytype.Event.Block.Set.File.Icon) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.File.Icon"></a>
-
-### Event.Block.Set.File.Icon
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
+| previewLocalFilePath | [Event.Block.Set.File.PreviewLocalFilePath](#anytype.Event.Block.Set.File.PreviewLocalFilePath) |  |  |
 
 
 
@@ -3732,6 +3704,21 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.File.PreviewLocalFilePath"></a>
+
+### Event.Block.Set.File.PreviewLocalFilePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.File.State"></a>
 
 ### Event.Block.Set.File.State
@@ -3741,6 +3728,36 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.Type"></a>
+
+### Event.Block.Set.File.Type
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.Width"></a>
+
+### Event.Block.Set.File.Width
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [int32](#int32) |  |  |
 
 
 
@@ -3772,101 +3789,6 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Image"></a>
-
-### Event.Block.Set.Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| name | [Event.Block.Set.Image.Name](#anytype.Event.Block.Set.Image.Name) |  |  |
-| width | [Event.Block.Set.Image.Width](#anytype.Event.Block.Set.Image.Width) |  |  |
-| state | [Event.Block.Set.Image.State](#anytype.Event.Block.Set.Image.State) |  |  |
-| localFilePath | [Event.Block.Set.Image.LocalFilePath](#anytype.Event.Block.Set.Image.LocalFilePath) |  |  |
-| previewLocalFilePath | [Event.Block.Set.Image.PreviewLocalFilePath](#anytype.Event.Block.Set.Image.PreviewLocalFilePath) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Image.LocalFilePath"></a>
-
-### Event.Block.Set.Image.LocalFilePath
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Image.Name"></a>
-
-### Event.Block.Set.Image.Name
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Image.PreviewLocalFilePath"></a>
-
-### Event.Block.Set.Image.PreviewLocalFilePath
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Image.State"></a>
-
-### Event.Block.Set.Image.State
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [model.Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Image.Width"></a>
-
-### Event.Block.Set.Image.Width
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [int32](#int32) |  |  |
 
 
 
@@ -3984,101 +3906,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.Video"></a>
-
-### Event.Block.Set.Video
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| name | [Event.Block.Set.Video.Name](#anytype.Event.Block.Set.Video.Name) |  |  |
-| width | [Event.Block.Set.Video.Width](#anytype.Event.Block.Set.Video.Width) |  |  |
-| state | [Event.Block.Set.Video.State](#anytype.Event.Block.Set.Video.State) |  |  |
-| localFilePath | [Event.Block.Set.Video.LocalFilePath](#anytype.Event.Block.Set.Video.LocalFilePath) |  |  |
-| previewLocalFilePath | [Event.Block.Set.Video.PreviewLocalFilePath](#anytype.Event.Block.Set.Video.PreviewLocalFilePath) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Video.LocalFilePath"></a>
-
-### Event.Block.Set.Video.LocalFilePath
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Video.Name"></a>
-
-### Event.Block.Set.Video.Name
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Video.PreviewLocalFilePath"></a>
-
-### Event.Block.Set.Video.PreviewLocalFilePath
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Video.State"></a>
-
-### Event.Block.Set.Video.State
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [model.Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Video.Width"></a>
-
-### Event.Block.Set.Video.Width
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [int32](#int32) |  |  |
-
-
-
-
-
-
 <a name="anytype.Event.Block.Show"></a>
 
 ### Event.Block.Show
@@ -4115,8 +3942,6 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetIsArchived | [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived) |  |  |
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
-| blockSetImage | [Event.Block.Set.Image](#anytype.Event.Block.Set.Image) |  |  |
-| blockSetVideo | [Event.Block.Set.Video](#anytype.Event.Block.Set.Video) |  |  |
 | blockSetIcon | [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
@@ -4306,8 +4131,6 @@ Avatar of a user&#39;s account. It could be an image or color
 | page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 | text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
-| video | [Block.Content.Video](#anytype.model.Block.Content.Video) |  |  |
-| image | [Block.Content.Image](#anytype.model.Block.Content.Image) |  |  |
 | file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
 | layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
 | div | [Block.Content.Div](#anytype.model.Block.Content.Div) |  |  |
@@ -4386,10 +4209,12 @@ Divider: block, that contains only one horizontal thin line
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  | Path to the file on a local machine |
-| name | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
+| localFilePath | [string](#string) |  |  |
+| previewFilePath | [string](#string) |  |  |
 | state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| type | [Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+| size | [int32](#int32) |  |  |
+| addedAt | [int32](#int32) |  |  |
 
 
 
@@ -4405,29 +4230,6 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Image"></a>
-
-### Block.Content.Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  |  |
-| previewFilePath | [string](#string) |  |  |
-| state | [Block.Content.Image.State](#anytype.model.Block.Content.Image.State) |  |  |
-| type | [Block.Content.Image.Type](#anytype.model.Block.Content.Image.Type) |  |  |
-| name | [string](#string) |  |  |
-| size | [int32](#int32) |  |  |
-| addedAt | [int32](#int32) |  |  |
-| width | [int32](#int32) |  |  |
-| widthToHeight | [int32](#int32) |  |  |
 
 
 
@@ -4533,19 +4335,10 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype.model.Block.Content.Video"></a>
+<a name="anytype.model.Block.MediaData"></a>
 
-### Block.Content.Video
+### Block.MediaData
 
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| icon | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
-| state | [Block.Content.Video.State](#anytype.model.Block.Content.Video.State) |  |  |
 
 
 
@@ -4649,30 +4442,16 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.model.Block.Content.Image.State"></a>
+<a name="anytype.model.Block.Content.File.Type"></a>
 
-### Block.Content.Image.State
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Empty | 0 | There is no image and preview, it&#39;s an empty block, that waits image. |
-| Uploading | 1 | There is stil no image/preview, but image already uploading |
-| PreviewDownloaded | 2 | Image exists, preview downloaded, but image – not. |
-| Downloading | 3 | Image exists, preview downloaded, but image downloading |
-| Done | 4 | Image and preview downloaded |
-
-
-
-<a name="anytype.model.Block.Content.Image.Type"></a>
-
-### Block.Content.Image.Type
+### Block.Content.File.Type
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Png | 0 |  |
-| Jpg | 1 | ... |
+| File | 0 |  |
+| Image | 1 |  |
+| Video | 2 |  |
 
 
 
@@ -4750,21 +4529,6 @@ General purpose structure, uses in Mark.
 | Marked | 9 |  |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
-
-
-
-<a name="anytype.model.Block.Content.Video.State"></a>
-
-### Block.Content.Video.State
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Empty | 0 | There is no video and preview, it&#39;s an empty block, that waits videos. |
-| Uploading | 1 | There is stil no video/preview, but video already uploading |
-| PreviewDownloaded | 2 | Video exists, preview downloaded, but video – not. |
-| Downloading | 3 | Video exists, preview downloaded, but video downloading |
-| Done | 4 | Video and preview downloaded |
 
 
 
