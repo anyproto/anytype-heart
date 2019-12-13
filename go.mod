@@ -17,3 +17,5 @@ require (
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
+
+replace github.com/anytypeio/go-anytype-library => ../go-anytype-library
