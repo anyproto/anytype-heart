@@ -1539,7 +1539,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
+| width | [int64](#int64) |  |  |
 
 
 
@@ -1966,7 +1966,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| width | [int32](#int32) |  |  |
+| width | [int64](#int64) |  |  |
 
 
 
@@ -2024,7 +2024,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| cursorPosition | [int32](#int32) |  |  |
+| cursorPosition | [int64](#int64) |  |  |
 
 
 
@@ -2827,8 +2827,8 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| index | [int32](#int32) |  |  |
-| numberOfEventsToSend | [int32](#int32) |  |  |
+| index | [int64](#int64) |  |  |
+| numberOfEventsToSend | [int64](#int64) |  |  |
 
 
 
@@ -2844,7 +2844,7 @@ Usage: send request with topic (Level) and description (message) from client to 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Ping.Response.Error](#anytype.Rpc.Ping.Response.Error) |  |  |
-| index | [int32](#int32) |  |  |
+| index | [int64](#int64) |  |  |
 
 
 
@@ -3917,7 +3917,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| value | [int32](#int32) |  |  |
+| value | [int64](#int64) |  |  |
 
 
 
@@ -4123,7 +4123,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| index | [int32](#int32) |  |  |
+| index | [int64](#int64) |  |  |
 
 
 

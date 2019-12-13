@@ -157,7 +157,7 @@ message Event {
                 }
 
                 message Width {
-                    int32 value = 1;
+                    int64 value = 1;
                 }
 
                 message State {
@@ -237,6 +237,6 @@ message Event {
     }
 
     message Ping {
-        int32 index = 1;
+        int64 index = 1;
     }
 }
