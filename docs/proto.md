@@ -151,6 +151,15 @@
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
     - [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response)
     - [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error)
+    - [Rpc.ExternalDrop](#anytype.Rpc.ExternalDrop)
+    - [Rpc.ExternalDrop.Content](#anytype.Rpc.ExternalDrop.Content)
+    - [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request)
+    - [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response)
+    - [Rpc.ExternalDrop.Content.Response.Error](#anytype.Rpc.ExternalDrop.Content.Response.Error)
+    - [Rpc.ExternalDrop.Files](#anytype.Rpc.ExternalDrop.Files)
+    - [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request)
+    - [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response)
+    - [Rpc.ExternalDrop.Files.Response.Error](#anytype.Rpc.ExternalDrop.Files.Response.Error)
     - [Rpc.Ipfs](#anytype.Rpc.Ipfs)
     - [Rpc.Ipfs.File](#anytype.Rpc.Ipfs.File)
     - [Rpc.Ipfs.File.Get](#anytype.Rpc.Ipfs.File.Get)
@@ -222,6 +231,8 @@
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
+    - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
+    - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
@@ -294,7 +305,6 @@
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
-    - [Block.MediaData](#anytype.model.Block.MediaData)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
@@ -349,6 +359,8 @@
 | VersionGet | [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request) | [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
+| ExternalDropFiles | [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request) | [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response) |  |
+| ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
@@ -2392,6 +2404,128 @@ Remove blocks from the childrenIds of its parents
 
 
 
+<a name="anytype.Rpc.ExternalDrop"></a>
+
+### Rpc.ExternalDrop
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Content"></a>
+
+### Rpc.ExternalDrop.Content
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Content.Request"></a>
+
+### Rpc.ExternalDrop.Content.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| content | [bytes](#bytes) |  | TODO |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Content.Response"></a>
+
+### Rpc.ExternalDrop.Content.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ExternalDrop.Content.Response.Error](#anytype.Rpc.ExternalDrop.Content.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Content.Response.Error"></a>
+
+### Rpc.ExternalDrop.Content.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Files"></a>
+
+### Rpc.ExternalDrop.Files
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Files.Request"></a>
+
+### Rpc.ExternalDrop.Files.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| localFilePaths | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Files.Response"></a>
+
+### Rpc.ExternalDrop.Files.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ExternalDrop.Files.Response.Error](#anytype.Rpc.ExternalDrop.Files.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Files.Response.Error"></a>
+
+### Rpc.ExternalDrop.Files.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ipfs"></a>
 
 ### Rpc.Ipfs
@@ -3337,6 +3471,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Content.Response.Error.Code"></a>
+
+### Rpc.ExternalDrop.Content.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ExternalDrop.Files.Response.Error.Code"></a>
+
+### Rpc.ExternalDrop.Files.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -4329,16 +4489,6 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | marks | [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.MediaData"></a>
-
-### Block.MediaData
-
 
 
 
