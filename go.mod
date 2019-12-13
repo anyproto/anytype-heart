@@ -3,7 +3,7 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.12
 
 require (
-	github.com/anytypeio/go-anytype-library v0.0.0-20191211195751-34462a381dca
+	github.com/anytypeio/go-anytype-library v0.0.0-20191213025204-dd1affb2ebd6
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.3.1
 	github.com/ipfs/go-log v0.0.1
@@ -17,5 +17,3 @@ require (
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.0.0-20190924115707-a0dcb5a893ec
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
-
-replace github.com/anytypeio/go-anytype-library => ../go-anytype-library
