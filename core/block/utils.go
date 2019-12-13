@@ -1,9 +1,7 @@
 package block
 
 import (
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
-	"github.com/mohae/deepcopy"
 )
 
 func findPosInSlice(s []string, v string) int {
@@ -47,19 +45,13 @@ func fieldsGetString(field *types.Struct, key string) (value string, ok bool) {
 	return
 }
 
-func blockCopy(b *model.Block) (c *model.Block) {
-	if b == nil {
-		return nil
+func fieldsGetFloat(field *types.Struct, key string) (value float64, ok bool) {
+	if field != nil && field.Fields != nil {
+		if value, ok := field.Fields[key]; ok {
+			if s, ok := value.Kind.(*types.Value_NumberValue); ok {
+				return s.NumberValue, true
+			}
+		}
 	}
-	return deepcopy.Copy(b).(*model.Block)
-}
-
-type uniqueIds map[string]struct{}
-
-func (u uniqueIds) Add(id string) (exists bool) {
-	if _, exists = u[id]; exists {
-		return
-	}
-	u[id] = struct{}{}
 	return
 }

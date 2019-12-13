@@ -55,6 +55,9 @@ func mustTextContent(content model.IsBlockContent) *model.BlockContentText {
 
 func toTextContent(content model.IsBlockContent) (textContent *model.BlockContentText, err error) {
 	if cot, ok := content.(*model.BlockContentOfText); ok {
+		if cot.Text.Marks == nil {
+			cot.Text.Marks = &model.BlockContentTextMarks{}
+		}
 		return cot.Text, nil
 	}
 	return nil, fmt.Errorf("unexpected content type: %T; want text", content)
