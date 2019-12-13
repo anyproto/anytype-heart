@@ -86,7 +86,7 @@ func TestCommonSmart_Create(t *testing.T) {
 				Content: &model.BlockContentOfPage{Page: &model.BlockContentPage{}},
 			},
 			TargetId:  "3",
-			Position:  model.Block_Before,
+			Position:  model.Block_Top,
 			ContextId: "1",
 		}
 		newBlockId := "23"

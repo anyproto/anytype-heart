@@ -149,7 +149,7 @@ func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err
 	p.m.Lock()
 	defer p.m.Unlock()
 	block, ok := p.versions[req.BlockId]
-	if ! ok {
+	if !ok {
 		return "", fmt.Errorf("block %s not found", req.BlockId)
 	}
 	return p.create(pb.RpcBlockCreateRequest{
@@ -185,9 +185,9 @@ func (p *commonSmart) create(req pb.RpcBlockCreateRequest) (id string, err error
 			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
 		}
 		switch req.Position {
-		case model.Block_After:
+		case model.Block_Bottom:
 			pos = targetPos + 1
-		case model.Block_Before:
+		case model.Block_Top:
 			pos = targetPos
 		default:
 			return "", fmt.Errorf("unexpected position for create operation: %v", req.Position)
@@ -225,7 +225,7 @@ func (p *commonSmart) unlink(ids ...string) (err error) {
 	var toUpdateBlockIds = make(uniqueIds)
 	for _, id := range ids {
 		_, ok := p.versions[id]
-		if ! ok {
+		if !ok {
 			return ErrBlockNotFound
 		}
 		parent := p.findParentOf(id)
@@ -292,7 +292,7 @@ func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 		if blockId, err = p.create(pb.RpcBlockCreateRequest{
 			TargetId: id,
 			Block:    newBlock.Model(),
-			Position: model.Block_After,
+			Position: model.Block_Bottom,
 		}); err != nil {
 			return err
 		}
@@ -304,7 +304,7 @@ func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 func (p *commonSmart) Merge(firstId, secondId string) error {
 	return p.UpdateTextBlock(firstId, func(t text.Block) error {
 		second, ok := p.versions[secondId]
-		if ! ok {
+		if !ok {
 			return ErrBlockNotFound
 		}
 		if err := t.Merge(second); err != nil {
@@ -354,7 +354,7 @@ func (p *commonSmart) updateBlock(id string, apply func(b simple.Block) error) e
 		// no changes
 		return nil
 	}
-	if ! blockCopy.Virtual() {
+	if !blockCopy.Virtual() {
 		if _, err := p.block.AddVersions([]*model.Block{p.toSave(blockCopy.Model())}); err != nil {
 			return err
 		}
@@ -502,7 +502,7 @@ func (p *commonSmart) Close() error {
 
 func (p *commonSmart) getNonVirtualBlock(id string) (simple.Block, error) {
 	b, ok := p.versions[id]
-	if ! ok {
+	if !ok {
 		return nil, ErrBlockNotFound
 	}
 	if b.Virtual() {
