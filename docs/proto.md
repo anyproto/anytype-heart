@@ -304,7 +304,6 @@
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
-    - [Block.MediaData](#anytype.model.Block.MediaData)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
@@ -4365,8 +4364,8 @@ Divider: block, that contains only one horizontal thin line
 | previewFilePath | [string](#string) |  |  |
 | state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
 | type | [Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
-| size | [int32](#int32) |  |  |
-| addedAt | [int32](#int32) |  |  |
+| size | [int64](#int64) |  |  |
+| addedAt | [int64](#int64) |  |  |
 
 
 
@@ -4481,16 +4480,6 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | marks | [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.MediaData"></a>
-
-### Block.MediaData
-
 
 
 
