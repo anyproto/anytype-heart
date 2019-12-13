@@ -19,6 +19,9 @@ lint:
 test:
 	go test github.com/anytypeio/go-anytype-middleware/...
 
+test-race:
+	go test -race github.com/anytypeio/go-anytype-middleware/...
+
 fast-test:
 	go test github.com/anytypeio/go-anytype-middleware/core/block/... -cover
 
@@ -29,7 +32,7 @@ test-deps:
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
 	export GO111MODULE=on
-	go bugomobileild -o dist/lib.a -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
+	go build -o dist/lib.a -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
 
 build-js:
 	cp dist/lib.a jsaddon/lib.a
