@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"time"
@@ -9,6 +10,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	tcore "github.com/textileio/go-textile/core"
+	"github.com/textileio/go-textile/gateway"
 	tmobile "github.com/textileio/go-textile/mobile"
 )
 
@@ -107,6 +109,13 @@ func (a *Anytype) Run() error {
 			break
 		}
 	}()
+
+	// start IPFS gateway
+	gateway.Host = &gateway.Gateway{
+		Node: a.Textile.Node(),
+	}
+	gateway.Host.Start(a.Textile.Node().Config().Addresses.Gateway)
+	fmt.Println("Gateway: " + a.Textile.Node().Config().Addresses.Gateway)
 
 	err = a.createPredefinedBlocks()
 	if err != nil {
