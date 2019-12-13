@@ -118,10 +118,6 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		<-accountSearchFinished
 	}
 
-	stopNode := func(anytype *core.Anytype) error {
-		return anytype.Textile.Node().Stop()
-	}
-
 	defer func() {
 		accountSearchFinished <- struct{}{}
 	}()
@@ -146,11 +142,12 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
-	anytype, err := core.New(mw.rootPath, account.Address())
+	mw.Anytype, err = core.New(mw.rootPath, account.Address())
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
 	}
-	err = anytype.Run()
+
+	err = mw.Anytype.Run()
 	if err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -159,19 +156,12 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
-	defer func() {
-		err = stopNode(anytype)
-		if err != nil {
-			log.Errorf("failed to stop node: %s", err.Error())
-		}
-	}()
-
 	if shouldCancel {
 		return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 	}
 
 	for {
-		if anytype.Textile.Node().Online() {
+		if mw.Anytype.Textile.Node().Online() {
 			break
 		}
 		time.Sleep(time.Second)
@@ -180,7 +170,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	for {
 		// wait for cafe registration
 		// in order to use cafeAPI instead of pubsub
-		if cs := anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
+		if cs := mw.Anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
 			break
 		}
 
@@ -197,7 +187,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 		var ctx context.Context
 		ctx, searchQueryCancel = context.WithCancel(context.Background())
-		contact, err := anytype.AccountRequestStoredContact(ctx, account.Address())
+		contact, err := mw.Anytype.AccountRequestStoredContact(ctx, account.Address())
 
 		if err != nil || contact == nil {
 			if index == 0 {
@@ -238,6 +228,31 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		}
 
 		return m
+	}
+
+	if mw.Anytype != nil && req.Id == mw.Anytype.Textile.Address() {
+		acc := &model.Account{Id: req.Id}
+
+		var err error
+		acc.Name, err = mw.Anytype.Textile.Name()
+		if err != nil {
+			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
+		}
+
+		avatarHashOrColor, err := mw.Anytype.Textile.Avatar()
+		if err != nil {
+			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
+		}
+
+		acc.Avatar = getAvatarFromString(avatarHashOrColor)
+		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
+	} else if mw.Anytype != nil {
+		// user chose account other than the first one
+		// we need to stop the first node that what used to search other accounts and then start the right one
+		err := mw.Stop()
+		if err != nil {
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
+		}
 	}
 
 	if req.RootPath != "" {

@@ -304,6 +304,7 @@
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
+    - [Block.MediaData](#anytype.model.Block.MediaData)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
@@ -3094,6 +3095,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_RUN_NODE | 103 |  |
 | FAILED_TO_FIND_ACCOUNT_INFO | 104 |  |
 | LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET | 105 |  |
+| FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
 
 
 
@@ -3515,6 +3517,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 | ... |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+| NODE_NOT_STARTED | 103 |  |
 
 
 
@@ -3530,6 +3533,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 | ... |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+| NODE_NOT_STARTED | 103 |  |
 
 
 
@@ -4477,6 +4481,16 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | marks | [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.MediaData"></a>
+
+### Block.MediaData
+
 
 
 
