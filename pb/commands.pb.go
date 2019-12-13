@@ -1423,7 +1423,7 @@ func (m *RpcBlockListMoveRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
-	return model.Block_Before
+	return model.Block_None
 }
 
 type RpcBlockListMoveResponse struct {
@@ -2319,7 +2319,7 @@ func (m *RpcBlockDuplicateRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
-	return model.Block_Before
+	return model.Block_None
 }
 
 type RpcBlockDuplicateResponse struct {
@@ -6457,14 +6457,14 @@ func (m *RpcBlockOpenResponseError) GetDescription() string {
 // Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
 // **Example scenario**
 // 1A. Create Page on a dashboard
-//     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+//     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:bottom, block: emtpy block with page content and id = "")
 //     2. Front -> MW: Rpc.Block.Close.Request(block: dashboard.id)
 //     3. Front <- MW: Rpc.Block.Close.Response(err)
 //     4. Front <- MW: Rpc.Block.Create.Response(page.id)
 //     5. Front <- MW: Rpc.Block.Open.Response(err)
 //     6. Front <- MW: Event.Block.Show(page)
 // 1B. Create Page on a Page
-//     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = "")
+//     1. Front -> MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:bottom, block: emtpy block with page content and id = "")
 //     2. Front <- MW: Rpc.Block.Create.Response(newPage.id)
 //     3. Front <- MW: Event.Block.Show(newPage)
 type RpcBlockCreate struct {
@@ -6568,7 +6568,7 @@ func (m *RpcBlockCreateRequest) GetPosition() model.BlockPosition {
 	if m != nil {
 		return m.Position
 	}
-	return model.Block_Before
+	return model.Block_None
 }
 
 type RpcBlockCreateResponse struct {

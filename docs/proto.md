@@ -731,14 +731,14 @@ Precondition: block should be opened.
 Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.
 **Example scenario**
 1A. Create Page on a dashboard
-    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:bottom, block: emtpy block with page content and id = &#34;&#34;)
     2. Front -&gt; MW: Rpc.Block.Close.Request(block: dashboard.id)
     3. Front &lt;- MW: Rpc.Block.Close.Response(err)
     4. Front &lt;- MW: Rpc.Block.Create.Response(page.id)
     5. Front &lt;- MW: Rpc.Block.Open.Response(err)
     6. Front &lt;- MW: Event.Block.Show(page)
 1B. Create Page on a Page
-    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:after, block: emtpy block with page content and id = &#34;&#34;)
+    1. Front -&gt; MW: Rpc.Block.Create.Request(blockId:dashboard.id, position:bottom, block: emtpy block with page content and id = &#34;&#34;)
     2. Front &lt;- MW: Rpc.Block.Create.Response(newPage.id)
     3. Front &lt;- MW: Event.Block.Show(newPage)
 
@@ -4775,8 +4775,12 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Before | 0 |  |
-| After | 1 |  |
+| None | 0 |  |
+| Bottom | 1 |  |
+| Top | 2 |  |
+| Left | 3 |  |
+| Right | 4 |  |
+| Inner | 5 |  |
 
 
 
