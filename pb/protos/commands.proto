@@ -128,7 +128,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                int64 cursorPosition = 3;
+                int32 cursorPosition = 3;
             }
 
             message Response {
@@ -509,7 +509,7 @@ message Rpc {
                     message Request {
                         string contextId = 1;
                         string blockId = 2;
-                        int64 width = 3;
+                        int32 width = 3;
                     }
 
                     message Response {
@@ -559,7 +559,7 @@ message Rpc {
                     message Request {
                         string contextId = 1;
                         string blockId = 2;
-                        int64 width = 3;
+                        int32 width = 3;
                     }
 
                     message Response {
@@ -1173,13 +1173,13 @@ message Rpc {
 
     message Ping {
         message Request {
-            int64 index = 1;
-            int64 numberOfEventsToSend = 2;
+            int32 index = 1;
+            int32 numberOfEventsToSend = 2;
         }
 
         message Response {
             Error error = 1;
-            int64 index = 2;
+            int32 index = 2;
 
             message Error {
                 Code code = 1;

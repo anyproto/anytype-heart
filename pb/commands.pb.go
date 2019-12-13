@@ -2348,7 +2348,7 @@ var xxx_messageInfo_RpcBlockSplit proto.InternalMessageInfo
 type RpcBlockSplitRequest struct {
 	ContextId      string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
 	BlockId        string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	CursorPosition int64  `protobuf:"varint,3,opt,name=cursorPosition,proto3" json:"cursorPosition,omitempty"`
+	CursorPosition int32  `protobuf:"varint,3,opt,name=cursorPosition,proto3" json:"cursorPosition,omitempty"`
 }
 
 func (m *RpcBlockSplitRequest) Reset()         { *m = RpcBlockSplitRequest{} }
@@ -2398,7 +2398,7 @@ func (m *RpcBlockSplitRequest) GetBlockId() string {
 	return ""
 }
 
-func (m *RpcBlockSplitRequest) GetCursorPosition() int64 {
+func (m *RpcBlockSplitRequest) GetCursorPosition() int32 {
 	if m != nil {
 		return m.CursorPosition
 	}
@@ -5470,7 +5470,7 @@ var xxx_messageInfo_RpcBlockSetImageWidth proto.InternalMessageInfo
 type RpcBlockSetImageWidthRequest struct {
 	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
 	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	Width     int64  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
+	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
 func (m *RpcBlockSetImageWidthRequest) Reset()         { *m = RpcBlockSetImageWidthRequest{} }
@@ -5520,7 +5520,7 @@ func (m *RpcBlockSetImageWidthRequest) GetBlockId() string {
 	return ""
 }
 
-func (m *RpcBlockSetImageWidthRequest) GetWidth() int64 {
+func (m *RpcBlockSetImageWidthRequest) GetWidth() int32 {
 	if m != nil {
 		return m.Width
 	}
@@ -5890,7 +5890,7 @@ var xxx_messageInfo_RpcBlockSetVideoWidth proto.InternalMessageInfo
 type RpcBlockSetVideoWidthRequest struct {
 	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
 	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	Width     int64  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
+	Width     int32  `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
 }
 
 func (m *RpcBlockSetVideoWidthRequest) Reset()         { *m = RpcBlockSetVideoWidthRequest{} }
@@ -5940,7 +5940,7 @@ func (m *RpcBlockSetVideoWidthRequest) GetBlockId() string {
 	return ""
 }
 
-func (m *RpcBlockSetVideoWidthRequest) GetWidth() int64 {
+func (m *RpcBlockSetVideoWidthRequest) GetWidth() int32 {
 	if m != nil {
 		return m.Width
 	}
@@ -10009,8 +10009,8 @@ func (m *RpcPing) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcPing proto.InternalMessageInfo
 
 type RpcPingRequest struct {
-	Index                int64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	NumberOfEventsToSend int64 `protobuf:"varint,2,opt,name=numberOfEventsToSend,proto3" json:"numberOfEventsToSend,omitempty"`
+	Index                int32 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	NumberOfEventsToSend int32 `protobuf:"varint,2,opt,name=numberOfEventsToSend,proto3" json:"numberOfEventsToSend,omitempty"`
 }
 
 func (m *RpcPingRequest) Reset()         { *m = RpcPingRequest{} }
@@ -10046,14 +10046,14 @@ func (m *RpcPingRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcPingRequest proto.InternalMessageInfo
 
-func (m *RpcPingRequest) GetIndex() int64 {
+func (m *RpcPingRequest) GetIndex() int32 {
 	if m != nil {
 		return m.Index
 	}
 	return 0
 }
 
-func (m *RpcPingRequest) GetNumberOfEventsToSend() int64 {
+func (m *RpcPingRequest) GetNumberOfEventsToSend() int32 {
 	if m != nil {
 		return m.NumberOfEventsToSend
 	}
@@ -10062,7 +10062,7 @@ func (m *RpcPingRequest) GetNumberOfEventsToSend() int64 {
 
 type RpcPingResponse struct {
 	Error *RpcPingResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Index int64                 `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	Index int32                 `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
 }
 
 func (m *RpcPingResponse) Reset()         { *m = RpcPingResponse{} }
@@ -10105,7 +10105,7 @@ func (m *RpcPingResponse) GetError() *RpcPingResponseError {
 	return nil
 }
 
-func (m *RpcPingResponse) GetIndex() int64 {
+func (m *RpcPingResponse) GetIndex() int32 {
 	if m != nil {
 		return m.Index
 	}
@@ -10445,7 +10445,7 @@ var fileDescriptor_8261c968b2e6f45c = []byte{
 	0xb9, 0x87, 0xd6, 0xe4, 0xb6, 0x08, 0x22, 0xeb, 0x38, 0x8c, 0x14, 0xa1, 0xce, 0xd3, 0x81, 0x3a,
 	0x4b, 0x94, 0x3a, 0xc7, 0x76, 0x03, 0x9a, 0xbe, 0x4e, 0xcf, 0x9c, 0x00, 0x8e, 0x38, 0x83, 0xfe,
 	0xc1, 0x00, 0x57, 0xef, 0x69, 0x6a, 0x82, 0x04, 0x38, 0x09, 0xf9, 0x16, 0x95, 0xf9, 0xfc, 0xa2,
-	0x93, 0x1a, 0x95, 0x75, 0xd3, 0x32, 0x4c, 0xbf, 0x3b, 0x10, 0x99, 0x58, 0x69, 0x5b, 0x2d, 0x2d,
+	0x93, 0x1a, 0x95, 0x75, 0xd3, 0x32, 0x4c, 0xbf, 0x3b, 0x10, 0x99, 0x38, 0x69, 0x5b, 0x2d, 0x2d,
 	0xc3, 0x9d, 0xb4, 0x0c, 0xd7, 0x5f, 0xc8, 0x98, 0x40, 0x1c, 0xec, 0xcf, 0x7c, 0xb4, 0x37, 0xe8,
 	0xcb, 0x81, 0x26, 0x77, 0x53, 0x9a, 0xdc, 0x14, 0xd3, 0x42, 0xfa, 0x32, 0xfc, 0x91, 0x01, 0x6e,
 	0x09, 0x9b, 0x1d, 0x8c, 0xee, 0x8f, 0x4b, 0xfe, 0x21, 0x98, 0x58, 0x55, 0x4d, 0xcb, 0xa6, 0xc7,
@@ -10577,13 +10577,13 @@ var fileDescriptor_8261c968b2e6f45c = []byte{
 	0xe2, 0xa1, 0xd8, 0xff, 0x59, 0xe1, 0x62, 0x0c, 0x48, 0x58, 0xd3, 0x30, 0xbe, 0x66, 0x74, 0x31,
 	0xfd, 0x1f, 0x01, 0xe1, 0xaa, 0x98, 0xdb, 0xcb, 0x91, 0x86, 0xd2, 0xdf, 0x21, 0x7a, 0x99, 0x81,
 	0xec, 0xb2, 0xaa, 0x77, 0x50, 0x7d, 0x2b, 0x98, 0x0f, 0x00, 0xa7, 0xea, 0x6d, 0x7c, 0x86, 0xf8,
-	0xca, 0x4a, 0x6e, 0x81, 0x9f, 0x85, 0x03, 0xfa, 0x7a, 0xb7, 0x85, 0xcd, 0xda, 0xaa, 0xb8, 0x81,
-	0x75, 0xdb, 0x6a, 0x18, 0xce, 0xec, 0x80, 0x38, 0xc2, 0x4a, 0x7d, 0x9f, 0xd1, 0x47, 0x4e, 0x77,
+	0xca, 0x49, 0x6e, 0x81, 0x9f, 0x85, 0x03, 0xfa, 0x7a, 0xb7, 0x85, 0xcd, 0xda, 0xaa, 0xb8, 0x81,
+	0x75, 0xdb, 0x6a, 0x18, 0xce, 0xec, 0x80, 0x38, 0xc2, 0x49, 0x7d, 0x9f, 0xd1, 0x47, 0x4e, 0x77,
 	0xd0, 0x5c, 0x4f, 0x53, 0x14, 0x38, 0x3e, 0x44, 0xb0, 0x1c, 0xb8, 0xc3, 0x84, 0xdc, 0x41, 0x8f,
 	0x04, 0xcc, 0x1e, 0xa3, 0x98, 0xbd, 0x76, 0x27, 0xd8, 0xd4, 0x39, 0x9d, 0x3b, 0xf8, 0xfc, 0xf9,
 	0xa9, 0xcc, 0x4b, 0xe7, 0xa7, 0x32, 0xbf, 0x3b, 0x3f, 0x95, 0xf9, 0xe2, 0x6b, 0x53, 0x23, 0x2f,
 	0xbd, 0x36, 0x35, 0xf2, 0xeb, 0xd7, 0xa6, 0x46, 0x3e, 0xca, 0xf4, 0x5a, 0xad, 0x1c, 0xb9, 0x37,
-	0x7d, 0xeb, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0xa9, 0xe5, 0x4e, 0x9e, 0x73, 0x40, 0x00, 0x00,
+	0x7d, 0xeb, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0x81, 0xde, 0x40, 0x11, 0x73, 0x40, 0x00, 0x00,
 }
 
 func (m *Rpc) Marshal() (dAtA []byte, err error) {
@@ -21599,7 +21599,7 @@ func (m *RpcBlockSplitRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.CursorPosition |= int64(b&0x7F) << shift
+				m.CursorPosition |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -28077,7 +28077,7 @@ func (m *RpcBlockSetImageWidthRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Width |= int64(b&0x7F) << shift
+				m.Width |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -28907,7 +28907,7 @@ func (m *RpcBlockSetVideoWidthRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Width |= int64(b&0x7F) << shift
+				m.Width |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -36639,7 +36639,7 @@ func (m *RpcPingRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Index |= int64(b&0x7F) << shift
+				m.Index |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -36658,7 +36658,7 @@ func (m *RpcPingRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NumberOfEventsToSend |= int64(b&0x7F) << shift
+				m.NumberOfEventsToSend |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -36766,7 +36766,7 @@ func (m *RpcPingResponse) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Index |= int64(b&0x7F) << shift
+				m.Index |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

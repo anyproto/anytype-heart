@@ -1539,7 +1539,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| width | [int64](#int64) |  |  |
+| width | [int32](#int32) |  |  |
 
 
 
@@ -1966,7 +1966,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| width | [int64](#int64) |  |  |
+| width | [int32](#int32) |  |  |
 
 
 
@@ -2024,7 +2024,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| cursorPosition | [int64](#int64) |  |  |
+| cursorPosition | [int32](#int32) |  |  |
 
 
 
@@ -2816,8 +2816,8 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| index | [int64](#int64) |  |  |
-| numberOfEventsToSend | [int64](#int64) |  |  |
+| index | [int32](#int32) |  |  |
+| numberOfEventsToSend | [int32](#int32) |  |  |
 
 
 
@@ -2833,7 +2833,7 @@ Usage: send request with topic (Level) and description (message) from client to 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Ping.Response.Error](#anytype.Rpc.Ping.Response.Error) |  |  |
-| index | [int64](#int64) |  |  |
+| index | [int32](#int32) |  |  |
 
 
 
@@ -3674,7 +3674,7 @@ Message, that will be sent to the front on each account found after an AccountRe
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| index | [int64](#int64) |  | Number of an account in an all found accounts list |
+| index | [int32](#int32) |  | Number of an account in an all found accounts list |
 | account | [model.Account](#anytype.model.Account) |  | An Account, that has been found for the mnemonic |
 
 
@@ -3909,7 +3909,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| value | [int64](#int64) |  |  |
+| value | [int32](#int32) |  |  |
 
 
 
@@ -4115,7 +4115,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| index | [int64](#int64) |  |  |
+| index | [int32](#int32) |  |  |
 
 
 

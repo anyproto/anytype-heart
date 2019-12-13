@@ -46,7 +46,7 @@ message Event {
         * Message, that will be sent to the front on each account found after an AccountRecoverRequest
         */
         message Show {
-            int64 index  = 1; // Number of an account in an all found accounts list
+            int32 index  = 1; // Number of an account in an all found accounts list
             anytype.model.Account account = 2; // An Account, that has been found for the mnemonic
         }
     }
@@ -157,7 +157,7 @@ message Event {
                 }
 
                 message Width {
-                    int64 value = 1;
+                    int32 value = 1;
                 }
 
                 message State {
@@ -237,6 +237,6 @@ message Event {
     }
 
     message Ping {
-        int64 index = 1;
+        int32 index = 1;
     }
 }
