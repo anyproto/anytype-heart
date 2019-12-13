@@ -128,7 +128,6 @@
     - [Rpc.Block.Split.Response.Error](#anytype.Rpc.Block.Split.Response.Error)
     - [Rpc.Block.Unlink](#anytype.Rpc.Block.Unlink)
     - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
-    - [Rpc.Block.Unlink.Request.Target](#anytype.Rpc.Block.Unlink.Request.Target)
     - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
     - [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error)
     - [Rpc.Block.Upload](#anytype.Rpc.Block.Upload)
@@ -2082,22 +2081,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
-| targets | [Rpc.Block.Unlink.Request.Target](#anytype.Rpc.Block.Unlink.Request.Target) | repeated | targets to remove |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Unlink.Request.Target"></a>
-
-### Rpc.Block.Unlink.Request.Target
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  | id of the block to remove |
+| blockIds | [string](#string) | repeated | targets to remove |
 
 
 

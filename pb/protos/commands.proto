@@ -760,11 +760,8 @@ message Rpc {
         message Unlink {
             message Request {
                 string contextId = 1; // id of the context block
-                repeated Target targets = 2; // targets to remove
+                repeated string blockIds = 2; // targets to remove
 
-                message Target {
-                    string blockId = 1; // id of the block to remove
-                }
             }
 
             message Response {
