@@ -324,7 +324,7 @@ func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 	if blockId, err = p.create(s, pb.RpcBlockCreateRequest{
 		TargetId: id,
 		Block:    newBlock.Model(),
-		Position: model.Block_After,
+		Position: model.Block_Bottom,
 	}); err != nil {
 		return "", err
 	}

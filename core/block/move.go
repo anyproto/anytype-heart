@@ -46,10 +46,10 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 	}
 
 	switch req.Position {
-	case model.Block_After:
+	case model.Block_Bottom:
 		pos = targetPos + 1
 		insertPos()
-	case model.Block_Before:
+	case model.Block_Top:
 		pos = targetPos
 		insertPos()
 	case model.Block_Left, model.Block_Right:
