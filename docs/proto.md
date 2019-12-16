@@ -284,7 +284,9 @@
     - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
     - [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
+    - [Event.Block.Set.Text.BackgroundColor](#anytype.Event.Block.Set.Text.BackgroundColor)
     - [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked)
+    - [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color)
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
@@ -4226,9 +4228,39 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.Text.BackgroundColor"></a>
+
+### Event.Block.Set.Text.BackgroundColor
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.Text.Checked"></a>
 
 ### Event.Block.Set.Text.Checked
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.Color"></a>
+
+### Event.Block.Set.Text.Color
 
 
 
