@@ -17,6 +17,9 @@ service ClientCommands {
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
     rpc ConfigGet (anytype.Rpc.Config.Get.Request) returns (anytype.Rpc.Config.Get.Response);
 
+    rpc ExternalDropFiles (anytype.Rpc.ExternalDrop.Files.Request) returns (anytype.Rpc.ExternalDrop.Files.Response);
+    rpc ExternalDropContent (anytype.Rpc.ExternalDrop.Content.Request) returns (anytype.Rpc.ExternalDrop.Content.Response);
+
     rpc BlockUpload (anytype.Rpc.Block.Upload.Request) returns (anytype.Rpc.Block.Upload.Response);
     rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);
     rpc BlockCreate (anytype.Rpc.Block.Create.Request) returns (anytype.Rpc.Block.Create.Response);
@@ -35,6 +38,8 @@ service ClientCommands {
     rpc BlockListSetTextStyle (anytype.Rpc.BlockList.Set.Text.Style.Request) returns (anytype.Rpc.BlockList.Set.Text.Style.Response);
 
     rpc BlockSetTextText (anytype.Rpc.Block.Set.Text.Text.Request) returns (anytype.Rpc.Block.Set.Text.Text.Response);
+    rpc BlockSetTextColor (anytype.Rpc.Block.Set.Text.Color.Request) returns (anytype.Rpc.Block.Set.Text.Color.Response);
+    rpc BlockSetTextBackgroundColor (anytype.Rpc.Block.Set.Text.BackgroundColor.Request) returns (anytype.Rpc.Block.Set.Text.BackgroundColor.Response);
     rpc BlockSetTextStyle (anytype.Rpc.Block.Set.Text.Style.Request) returns (anytype.Rpc.Block.Set.Text.Style.Response);
     rpc BlockSetTextChecked (anytype.Rpc.Block.Set.Text.Checked.Request) returns (anytype.Rpc.Block.Set.Text.Checked.Response);
 
