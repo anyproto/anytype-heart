@@ -99,6 +99,7 @@ github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
+github.com/gin-contrib/location v0.0.0-20190301062650-0462caccbb9c h1:wIH31ULjzSWT6AAb1yxeEbpQYrhgO2U8OOHdUMqeDHY=
 github.com/gin-contrib/location v0.0.0-20190301062650-0462caccbb9c/go.mod h1:Y9jJgyrzeIqCnTAIlB0Hi36xeXH1BukBJLPf0JsTDjo=
 github.com/gin-contrib/size v0.0.0-20190301062339-6fb8220baadb h1:ROkufq1012rYK1p6fL2ZMRt5DX5OzeY9eCRnUrctNT4=
 github.com/gin-contrib/size v0.0.0-20190301062339-6fb8220baadb/go.mod h1:Xw6FRYvszF60JGEcR6kknEn4ODesbUh7Yl7Nh9utPWo=

@@ -43,10 +43,6 @@ message Block {
         Inner = 5;
     }
 
-    message MediaData {
-
-    }
-
     message Content {
         /*
         * Layout have no visual representation, but affects on blocks, that it contains.
@@ -115,6 +111,8 @@ message Block {
             Style style = 2;
             Marks marks = 3; // list of marks to apply to the text
             bool checked = 4;
+            string color = 5;
+            string backgroundColor = 6;
 
             message Marks {
                 repeated Mark marks = 1;
@@ -159,8 +157,8 @@ message Block {
             State state = 3;
             Type type = 4;
 
-            int32 size = 5;
-            int32 addedAt = 6;
+            int64 size = 5;
+            int64 addedAt = 6;
 
             enum Type {
                 File = 0;
