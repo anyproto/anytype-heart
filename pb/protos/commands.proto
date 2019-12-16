@@ -124,6 +124,31 @@ message Rpc {
      * Namespace, that agregates subtopics and actions, that relates to blocks.
     */
     message Block {
+        message Replace {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                anytype.model.Block block = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message Split {
             message Request {
                 string contextId = 1;
