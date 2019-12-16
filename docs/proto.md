@@ -680,9 +680,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| focusedBlockId | [string](#string) |  |  |
-| selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
-| selectedBlocks | [string](#string) | repeated |  |
+| blockIds | [string](#string) | repeated |  |
 
 
 
@@ -699,8 +697,7 @@ Precondition: block should be opened.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error) |  |  |
 | clipboardText | [string](#string) |  |  |
-| clipboardHtml | [string](#string) |  |  |
-| clipboardAny | [string](#string) |  | TODO: type – is string ok? |
+| clipboardHtml | [string](#string) |  | string clipboardAny = 4; Client already knows blockIds |
 
 
 
@@ -1206,9 +1203,9 @@ Image/Video/File blocks then:
 | focusedBlockId | [string](#string) |  |  |
 | selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 | selectedBlocks | [string](#string) | repeated |  |
-| clipboardText | [string](#string) |  |  |
-| clipboardHtml | [string](#string) |  |  |
-| clipboardAny | [string](#string) |  |  |
+| textSlot | [string](#string) |  |  |
+| htmlSlot | [string](#string) |  |  |
+| anySlot | [string](#string) |  |  |
 
 
 

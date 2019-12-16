@@ -205,16 +205,14 @@ message Rpc {
         message Copy {
             message Request {
                 string contextId = 1;
-                string focusedBlockId = 2;
-                anytype.model.Range selectedTextRange = 3;
-                repeated string selectedBlocks = 4;
+                repeated string blockIds = 2;
             }
 
             message Response {
                 Error error = 1;
                 string clipboardText = 2;
                 string clipboardHtml = 3;
-                string clipboardAny = 4; // TODO: type – is string ok?
+                // string clipboardAny = 4; Client already knows blockIds
 
                 message Error {
                     Code code = 1;
@@ -237,9 +235,9 @@ message Rpc {
                 anytype.model.Range selectedTextRange = 3;
                 repeated string selectedBlocks = 4;
 
-                string clipboardText = 5;
-                string clipboardHtml = 6;
-                string clipboardAny = 7;
+                string textSlot = 5;
+                string htmlSlot = 6;
+                string anySlot = 7;
             }
 
             message Response {
