@@ -4236,7 +4236,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| value | [bool](#bool) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -4266,7 +4266,7 @@ Precondition: user A opened a block
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| value | [bool](#bool) |  |  |
+| value | [string](#string) |  |  |
 
 
 
