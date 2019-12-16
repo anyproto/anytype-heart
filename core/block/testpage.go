@@ -175,8 +175,8 @@ var testBlocks = []*model.Block{
 	},
 	{
 		Id: "14",
-		Content: &model.BlockContentOfImage{
-			Image: &model.BlockContentImage{
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
 				LocalFilePath: "/Users/andrewsimachev/Pictures/P03STgPliLQ.jpg",
 			},
 		},
@@ -217,8 +217,8 @@ var testBlocks = []*model.Block{
 	},
 	{
 		Id: "15",
-		Content: &model.BlockContentOfImage{
-			Image: &model.BlockContentImage{
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
 				LocalFilePath: "/Users/andrewsimachev/Pictures/32.jpg",
 			},
 		},
@@ -239,8 +239,8 @@ var testBlocks = []*model.Block{
 				"width": testFloatValue(0.5),
 			},
 		},
-		Content: &model.BlockContentOfImage{
-			Image: &model.BlockContentImage{
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
 				LocalFilePath: "/Users/andrewsimachev/Pictures/anigI4urVRs.jpg",
 			},
 		},
@@ -252,8 +252,8 @@ var testBlocks = []*model.Block{
 				"width": testFloatValue(0.5),
 			},
 		},
-		Content: &model.BlockContentOfImage{
-			Image: &model.BlockContentImage{
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
 				LocalFilePath: "/Users/andrewsimachev/Pictures/Photo11.jpg",
 			},
 		},
@@ -394,8 +394,8 @@ var testBlocks = []*model.Block{
 	},
 	{
 		Id: "30",
-		Content: &model.BlockContentOfVideo{
-			Video: &model.BlockContentVideo{},
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{},
 		},
 	},
 	{

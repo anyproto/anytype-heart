@@ -146,9 +146,8 @@ func TestAccountRecoverRemoteNotExisting(t *testing.T) {
 }
 
 func TestRecoverRemoteExisting(t *testing.T) {
-	mw := recoverWallet(t, "salt rug lawsuit three agent battle impact human monster mechanic width shoulder")
+	mw := recoverWallet(t, "cabbage relief raise city use lounge feature aspect issue install vibrant point")
 	require.Equal(t, len(mw.localAccounts), 0, "localAccounts should be empty, instead got length = %d", len(mw.localAccounts))
-
 	var accountCh = make(chan *model.Account, 10)
 	mw.SendEvent = func(event *pb.Event) {
 		if aa, ok := event.Messages[0].Value.(*pb.EventMessageValueOfAccountShow); ok {
@@ -161,7 +160,7 @@ func TestRecoverRemoteExisting(t *testing.T) {
 	}
 
 	accountRecoverResp := mw.AccountRecover(&pb.RpcAccountRecoverRequest{})
-	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v", accountRecoverResp.Error)
+	require.Equal(t, pb.RpcAccountRecoverResponseError_NULL, accountRecoverResp.Error.Code, "AccountRecoverResponse contains error: %+v %s", accountRecoverResp.Error, accountRecoverResp.Error.Description)
 
 	var account *model.Account
 	select {
@@ -173,6 +172,12 @@ func TestRecoverRemoteExisting(t *testing.T) {
 
 	require.NotNil(t, account, "account should be found")
 	require.Equal(t, "name_to_test_recover", account.Name)
+	require.NotNil(t, account.Avatar, "account.Avatar is nil")
+
+	imageGetBlobResp := mw.ImageGetBlob(&pb.RpcIpfsImageGetBlobRequest{Id: account.Avatar.GetImage().Id, Size_: model.Image_Small})
+	require.Equal(t, pb.RpcIpfsImageGetBlobResponseError_NULL, imageGetBlobResp.Error.Code, "ImageGetBlobResponse contains error: %+v", imageGetBlobResp.Error)
+	require.True(t, len(imageGetBlobResp.Blob) > 0, "ava size should be greater than 0")
+
 	err := mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
 }
