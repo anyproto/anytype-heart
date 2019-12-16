@@ -101,10 +101,18 @@
     - [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response)
     - [Rpc.Block.Set.Restrictions.Response.Error](#anytype.Rpc.Block.Set.Restrictions.Response.Error)
     - [Rpc.Block.Set.Text](#anytype.Rpc.Block.Set.Text)
+    - [Rpc.Block.Set.Text.BackgroundColor](#anytype.Rpc.Block.Set.Text.BackgroundColor)
+    - [Rpc.Block.Set.Text.BackgroundColor.Request](#anytype.Rpc.Block.Set.Text.BackgroundColor.Request)
+    - [Rpc.Block.Set.Text.BackgroundColor.Response](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response)
+    - [Rpc.Block.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error)
     - [Rpc.Block.Set.Text.Checked](#anytype.Rpc.Block.Set.Text.Checked)
     - [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request)
     - [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response)
     - [Rpc.Block.Set.Text.Checked.Response.Error](#anytype.Rpc.Block.Set.Text.Checked.Response.Error)
+    - [Rpc.Block.Set.Text.Color](#anytype.Rpc.Block.Set.Text.Color)
+    - [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request)
+    - [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response)
+    - [Rpc.Block.Set.Text.Color.Response.Error](#anytype.Rpc.Block.Set.Text.Color.Response.Error)
     - [Rpc.Block.Set.Text.Style](#anytype.Rpc.Block.Set.Text.Style)
     - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
     - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
@@ -219,7 +227,9 @@
     - [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code)
     - [Rpc.Block.Set.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.IsArchived.Response.Error.Code)
     - [Rpc.Block.Set.Restrictions.Response.Error.Code](#anytype.Rpc.Block.Set.Restrictions.Response.Error.Code)
+    - [Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code)
     - [Rpc.Block.Set.Text.Checked.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Color.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Color.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
     - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
@@ -375,6 +385,8 @@
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
+| BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
+| BlockSetTextBackgroundColor | [Rpc.Block.Set.Text.BackgroundColor.Request](#anytype.Rpc.Block.Set.Text.BackgroundColor.Request) | [Rpc.Block.Set.Text.BackgroundColor.Response](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
@@ -1699,6 +1711,64 @@ Image/Video/File blocks then:
 
 
 
+<a name="anytype.Rpc.Block.Set.Text.BackgroundColor"></a>
+
+### Rpc.Block.Set.Text.BackgroundColor
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Request"></a>
+
+### Rpc.Block.Set.Text.BackgroundColor.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| color | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Response"></a>
+
+### Rpc.Block.Set.Text.BackgroundColor.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error"></a>
+
+### Rpc.Block.Set.Text.BackgroundColor.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Set.Text.Checked"></a>
 
 ### Rpc.Block.Set.Text.Checked
@@ -1750,6 +1820,64 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.Text.Checked.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Color"></a>
+
+### Rpc.Block.Set.Text.Color
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Color.Request"></a>
+
+### Rpc.Block.Set.Text.Color.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| color | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Color.Response"></a>
+
+### Rpc.Block.Set.Text.Color.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Color.Response.Error](#anytype.Rpc.Block.Set.Text.Color.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Color.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Color.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Color.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Color.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -3317,9 +3445,35 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Text.Checked.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Color.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Color.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -4445,6 +4599,8 @@ Link: block to link some content from an external sources.
 | style | [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 | marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
 | checked | [bool](#bool) |  |  |
+| color | [string](#string) |  |  |
+| backgroundColor | [string](#string) |  |  |
 
 
 

@@ -403,6 +403,54 @@ message Rpc {
                     }
                 }
 
+                message Color {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        string color = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+
+                message BackgroundColor {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        string color = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+
                 message Style {
                     message Request {
                         string contextId = 1;

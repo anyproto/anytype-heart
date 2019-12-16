@@ -3,7 +3,7 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.12
 
 require (
-	github.com/anytypeio/go-anytype-library v0.0.0-20191213171331-49e4853e86c7
+	github.com/anytypeio/go-anytype-library v0.0.0-20191216104655-a1843af46465
 
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.3.1

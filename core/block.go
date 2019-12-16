@@ -166,6 +166,32 @@ func (mw *Middleware) BlockSetIsArchived(req *pb.RpcBlockSetIsArchivedRequest) *
 	return response(pb.RpcBlockSetIsArchivedResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb.RpcBlockSetTextColorResponse {
+	response := func(code pb.RpcBlockSetTextColorResponseErrorCode, err error) *pb.RpcBlockSetTextColorResponse {
+		m := &pb.RpcBlockSetTextColorResponse{Error: &pb.RpcBlockSetTextColorResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextColorResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockSetTextBackgroundColor(req *pb.RpcBlockSetTextBackgroundColorRequest) *pb.RpcBlockSetTextBackgroundColorResponse {
+	response := func(code pb.RpcBlockSetTextBackgroundColorResponseErrorCode, err error) *pb.RpcBlockSetTextBackgroundColorResponse {
+		m := &pb.RpcBlockSetTextBackgroundColorResponse{Error: &pb.RpcBlockSetTextBackgroundColorResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+	return response(pb.RpcBlockSetTextBackgroundColorResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse {
 	response := func(code pb.RpcExternalDropFilesResponseErrorCode, err error) *pb.RpcExternalDropFilesResponse {
 		m := &pb.RpcExternalDropFilesResponse{Error: &pb.RpcExternalDropFilesResponseError{Code: code}}
