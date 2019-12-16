@@ -145,11 +145,11 @@ message Event {
                 }
                 
                 message Color {
-                    bool value = 1;
+                    string value = 1;
                 }
                 
                 message BackgroundColor {
-                    bool value = 1;
+                    string value = 1;
                 }
             }
 
