@@ -107,11 +107,7 @@ func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) error {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		ids := make([]string, len(req.BlockIds))
-		//for i, t := range req.BlockIds {
-		//	ids[i] = t.BlockId
-		//}
-		return sb.Unlink(ids...)
+		return sb.Unlink(req.BlockIds...)
 	}
 	return ErrBlockNotFound
 }
