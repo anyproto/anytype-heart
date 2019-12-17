@@ -38,6 +38,10 @@ func (file *File) Meta() *FileMeta {
 	}
 }
 
+func (file *File) Hash() string {
+	return file.index.Hash
+}
+
 func (file *File) URL() string {
 	return fmt.Sprintf("http://%s/ipfs/%s?key=%s&type=%s", file.node.Textile.Node().Config().Addresses.Gateway, file.index.Hash, url.QueryEscape(file.index.Key), url.QueryEscape(file.index.Media))
 }
@@ -74,9 +78,8 @@ func (a *Anytype) FileAddWithBytes(content []byte, media string, name string) (*
 	}, nil
 }
 
-func (a *Anytype) FileAddWithReader(content io.ReadCloser, media string, name string) (*File, error) {
+func (a *Anytype) FileAddWithReader(content io.Reader, media string, name string) (*File, error) {
 	// todo: PR textile to be able to use reader instead of bytes
-	defer content.Close()
 	contentBytes, err := ioutil.ReadAll(content)
 	if err != nil {
 		return nil, err
