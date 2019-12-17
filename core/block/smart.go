@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
@@ -401,8 +402,19 @@ func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
 	if err != nil {
 		return
 	}
-	f.Upload(localPath, url)
-	return nil
+	return f.Upload(p.s.anytype, p, localPath, url)
+}
+
+func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	f, err := s.getFile(id)
+	if err != nil {
+		return err
+	}
+	apply(f)
+	return p.applyAndSendEvent(s)
 }
 
 func (p *commonSmart) setFields(s *state, id string, fields *types.Struct) (err error) {

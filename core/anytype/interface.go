@@ -9,7 +9,7 @@ import (
 type Anytype interface {
 	GetBlock(id string) (Block, error)
 	PredefinedBlockIds() core.PredefinedBlockIds
-	FileAddWithReader(content io.ReadCloser, media string, name string) (*core.File, error)
+	FileAddWithReader(content io.Reader, media string, name string) (*core.File, error)
 	FileByHash(hash string) (*core.File, error)
 }
 

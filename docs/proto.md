@@ -4843,6 +4843,7 @@ General purpose structure, uses in Mark.
 | PreviewDownloaded | 2 | File exists, preview downloaded, but file is not. |
 | Downloading | 3 | File exists, preview downloaded, but file downloading |
 | Done | 4 | File and preview downloaded |
+| Error | 5 | Error while uploading |
 
 
 
@@ -4944,8 +4945,8 @@ General purpose structure, uses in Mark.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | None | 0 |  |
-| Bottom | 1 |  |
-| Top | 2 |  |
+| Top | 1 |  |
+| Bottom | 2 |  |
 | Left | 3 |  |
 | Right | 4 |  |
 | Inner | 5 |  |

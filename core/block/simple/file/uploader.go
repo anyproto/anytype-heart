@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -12,7 +13,7 @@ import (
 )
 
 type uploader struct {
-	updateFile func(f func(file *File))
+	updateFile func(f func(file Block))
 	storage    anytype.Anytype
 }
 
@@ -24,8 +25,9 @@ func (u *uploader) Do(localPath, url string) {
 		err = u.doLocal(localPath)
 	}
 	if err != nil {
-		u.updateFile(func(file *File) {
-			file.content.State = model.BlockContentFile_Error
+		fmt.Println("upload file error:", err)
+		u.updateFile(func(file Block) {
+			file.SetState(model.BlockContentFile_Error)
 		})
 	}
 }
@@ -52,11 +54,12 @@ func (u *uploader) upload(rd io.ReadCloser, name string) (err error) {
 	buf := bufio.NewReader(rd)
 	data, _ := buf.Peek(512)
 	ct := http.DetectContentType(data)
-	cf, err := u.storage.FileAddWithReader(rd, ct, name)
+	cf, err := u.storage.FileAddWithReader(buf, ct, name)
 	if err != nil {
 		return
 	}
-	u.updateFile(func(file *File) {
-		file.setFile(cf)
+	u.updateFile(func(file Block) {
+		file.SetFile(cf)
 	})
+	return
 }
