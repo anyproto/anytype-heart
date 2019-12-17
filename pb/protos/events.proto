@@ -143,6 +143,14 @@ message Event {
                 message Checked {
                     bool value = 1;
                 }
+                
+                message Color {
+                    string value = 1;
+                }
+                
+                message BackgroundColor {
+                    string value = 1;
+                }
             }
 
             message File {
