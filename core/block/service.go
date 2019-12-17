@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -34,6 +35,8 @@ type Service interface {
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
+
+	UploadFile(req pb.RpcBlockUploadRequest) error
 
 	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
@@ -190,6 +193,16 @@ func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {
 	return sb.UpdateIconBlock(req.BlockId, func(t base.IconBlock) error {
 		return t.SetIconName(req.Name)
 	})
+}
+
+func (s *service) UploadFile(req pb.RpcBlockUploadRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[req.ContextId]
+	if !ok {
+		return ErrBlockNotFound
+	}
+	return sb.Upload(req.BlockId, req.LocalPath, req.Url)
 }
 
 func (s *service) Close() error {

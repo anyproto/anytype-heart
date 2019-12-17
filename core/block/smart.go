@@ -34,6 +34,7 @@ type smartBlock interface {
 	Move(req pb.RpcBlockListMoveRequest) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
+	Upload(id string, localPath, url string) error
 	SetFields(id string, fields *types.Struct) (err error)
 	Close() error
 }
@@ -390,6 +391,18 @@ func (p *commonSmart) SetFields(id string, fields *types.Struct) (err error) {
 		return
 	}
 	return p.applyAndSendEvent(s)
+}
+
+func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	f, err := s.getFile(id)
+	if err != nil {
+		return
+	}
+	f.Upload(localPath, url)
+	return nil
 }
 
 func (p *commonSmart) setFields(s *state, id string, fields *types.Struct) (err error) {

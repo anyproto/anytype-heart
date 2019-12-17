@@ -22,6 +22,7 @@ type anytype struct {
 }
 
 func (a *anytype) GetBlock(id string) (Block, error) {
+	a.Anytype.FileAddWithReader()
 	b, err := a.Anytype.GetBlock(id)
 	if err != nil {
 		return nil, err
