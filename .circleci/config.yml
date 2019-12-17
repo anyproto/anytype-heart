@@ -317,14 +317,16 @@ jobs:
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod download
       - restore_cache:
-          key: homebrew-v3-{{ arch }}
+          keys:
+            - homebrew-v4-{{ arch }}
+            - homebrew-v3-{{ arch }}
       - run:
           name: install protobuf
           # also mingw-w64 because we have the shared cache with build-lib-darwin-windows
           command: |
-            brew install mingw-w64 protobuf jq
+            brew install mingw-w64 protobuf jq swift-protobuf
       - save_cache:
-          key: homebrew-v3-{{ arch }}
+          key: homebrew-v4-{{ arch }}
           paths:
             - /usr/local/Homebrew
             - ~/Library/Caches/Homebrew
@@ -350,13 +352,13 @@ jobs:
             - ~/go/pkg
             - ~/Library/Caches/go-build
       - run:
-          name: build obj c protobuf bindings
+          name: build swift c protobuf bindings
           command: |
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
             cp ./pb/protos/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
-            protoc -I ./ --objc_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
+            protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
       - run:
           name: collect artifacts
           command: |
