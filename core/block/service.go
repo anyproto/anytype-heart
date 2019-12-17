@@ -24,6 +24,7 @@ type Service interface {
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 	DuplicateBlock(req pb.RpcBlockDuplicateRequest) (string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
+	ReplaceBlock(req pb.RpcBlockReplaceRequest) error
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
 
@@ -135,6 +136,15 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) error {
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Move(req)
+	}
+	return ErrBlockNotFound
+}
+
+func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Replace(req.BlockId, req.Block)
 	}
 	return ErrBlockNotFound
 }

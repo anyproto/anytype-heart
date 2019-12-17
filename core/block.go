@@ -175,7 +175,9 @@ func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockR
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.ReplaceBlock(*req); err != nil {
+		return response(pb.RpcBlockReplaceResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockReplaceResponseError_NULL, nil)
 }
 
