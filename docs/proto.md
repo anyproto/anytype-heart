@@ -4222,6 +4222,8 @@ Precondition: user A opened a block
 | style | [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style) |  |  |
 | marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
 | checked | [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked) |  |  |
+| color | [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color) |  |  |
+| backgroundColor | [Event.Block.Set.Text.BackgroundColor](#anytype.Event.Block.Set.Text.BackgroundColor) |  |  |
 
 
 
@@ -4944,8 +4946,8 @@ General purpose structure, uses in Mark.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | None | 0 |  |
-| Bottom | 1 |  |
-| Top | 2 |  |
+| Top | 1 |  |
+| Bottom | 2 |  |
 | Left | 3 |  |
 | Right | 4 |  |
 | Inner | 5 |  |

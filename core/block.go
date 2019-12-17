@@ -190,7 +190,9 @@ func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextColor(*req); err != nil {
+		return response(pb.RpcBlockSetTextColorResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextColorResponseError_NULL, nil)
 }
 
@@ -203,7 +205,9 @@ func (mw *Middleware) BlockSetTextBackgroundColor(req *pb.RpcBlockSetTextBackgro
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextBackgroundColor(*req); err != nil {
+		return response(pb.RpcBlockSetTextBackgroundColorResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetTextBackgroundColorResponseError_NULL, nil)
 }
 
