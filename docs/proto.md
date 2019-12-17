@@ -2331,7 +2331,7 @@ Remove blocks from the childrenIds of its parents
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| localPath | [string](#string) |  |  |
+| filePath | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 
 
@@ -4050,6 +4050,7 @@ Precondition: user A opened a block
 | state | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
 | localFilePath | [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath) |  |  |
 | previewLocalFilePath | [Event.Block.Set.File.PreviewLocalFilePath](#anytype.Event.Block.Set.File.PreviewLocalFilePath) |  |  |
+| name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
 
 
 
@@ -4629,6 +4630,8 @@ Divider: block, that contains only one horizontal thin line
 | type | [Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
+| name | [string](#string) |  |  |
+| hash | [string](#string) |  |  |
 
 
 

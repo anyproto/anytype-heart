@@ -35,7 +35,7 @@ func NewFile(m *model.Block) simple.Block {
 }
 
 type Block interface {
-	simple.Block
+	simple.BlockInit
 	Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error)
 	SetFile(cf *core.File)
 	SetState(state model.BlockContentFileState)
@@ -48,6 +48,20 @@ type Updater interface {
 type File struct {
 	*base.Base
 	content *model.BlockContentFile
+	url     string
+	stor    anytype.Anytype
+}
+
+func (f *File) Init(a anytype.Anytype) {
+	f.stor = a
+	if f.content.Hash != "" {
+		file, err := f.stor.FileByHash(f.content.Hash)
+		if err != nil {
+			fmt.Println("load file error:", f.content.Hash, err)
+			return
+		}
+		f.content.LocalFilePath = file.URL()
+	}
 }
 
 func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error) {
@@ -69,7 +83,13 @@ func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url stri
 }
 
 func (f *File) Copy() simple.Block {
-	return NewFile(deepcopy.Copy(f.Model()).(*model.Block))
+	copy := deepcopy.Copy(f.Model()).(*model.Block)
+	return &File{
+		Base:    base.NewBase(copy).(*base.Base),
+		content: copy.GetFile(),
+		url:     f.url,
+		stor:    f.stor,
+	}
 }
 
 func (f *File) SetState(state model.BlockContentFileState) {
@@ -85,7 +105,9 @@ func (f *File) SetFile(cf *core.File) {
 		f.content.Type = model.BlockContentFile_Video
 	}
 	f.content.State = model.BlockContentFile_Done
-	// TODO: set name
+	f.content.Name = meta.Name
+	f.content.Hash = cf.Hash()
+	f.content.LocalFilePath = cf.URL()
 }
 
 func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
@@ -117,7 +139,11 @@ func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.PreviewLocalFilePath = &pb.EventBlockSetFilePreviewLocalFilePath{Value: file.content.PreviewFilePath}
 	}
-	
+	if f.content.Name != file.content.Name {
+		hasChanges = true
+		changes.Name = &pb.EventBlockSetFileName{Value: file.content.Name}
+	}
+
 	if hasChanges {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}})
 	}

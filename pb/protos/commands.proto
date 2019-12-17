@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 package anytype;
 option go_package = "pb";
 
@@ -286,7 +286,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                string localPath = 3;
+                string filePath = 3;
                 string url = 4;
             }
 

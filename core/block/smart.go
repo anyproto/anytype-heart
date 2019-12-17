@@ -142,8 +142,13 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 }
 
 func (p *commonSmart) Init() {
-	p.m.RLock()
-	defer p.m.RUnlock()
+	p.m.Lock()
+	defer p.m.Unlock()
+	for _, v := range p.versions {
+		if i, ok := v.(simple.BlockInit); ok {
+			i.Init(p.s.anytype)
+		}
+	}
 	p.show()
 }
 

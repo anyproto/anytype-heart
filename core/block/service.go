@@ -228,7 +228,7 @@ func (s *service) UploadFile(req pb.RpcBlockUploadRequest) error {
 	if !ok {
 		return ErrBlockNotFound
 	}
-	return sb.Upload(req.BlockId, req.LocalPath, req.Url)
+	return sb.Upload(req.BlockId, req.FilePath, req.Url)
 }
 
 func (s *service) Close() error {
