@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 package anytype;
 option go_package = "pb";
 
@@ -15,7 +15,7 @@ message Event {
 
     message Message {
         oneof value {
-            Account.Show accountShow  = 1;
+            Account.Show accountShow = 1;
 
             Block.Add blockAdd = 2;
             Block.Delete blockDelete = 3;
@@ -37,7 +37,7 @@ message Event {
             User.Block.SelectRange userBlockSelectRange = 16;
             User.Block.TextRange userBlockTextRange = 17;
 
-            Ping ping  = 100;
+            Ping ping = 100;
         }
     }
 
@@ -46,7 +46,7 @@ message Event {
         * Message, that will be sent to the front on each account found after an AccountRecoverRequest
         */
         message Show {
-            int32 index  = 1; // Number of an account in an all found accounts list
+            int32 index = 1; // Number of an account in an all found accounts list
             anytype.model.Account account = 2; // An Account, that has been found for the mnemonic
         }
     }
@@ -127,6 +127,8 @@ message Event {
                 Style style = 3;
                 Marks marks = 4;
                 Checked checked = 5;
+                Color color = 6;
+                BackgroundColor backgroundColor = 7;
 
                 message Text {
                     string value = 1;
@@ -143,11 +145,11 @@ message Event {
                 message Checked {
                     bool value = 1;
                 }
-                
+
                 message Color {
                     string value = 1;
                 }
-                
+
                 message BackgroundColor {
                     string value = 1;
                 }
