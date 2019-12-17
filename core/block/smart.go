@@ -33,6 +33,7 @@ type smartBlock interface {
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
+	Replace(id string, block *model.Block) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
@@ -266,6 +267,27 @@ func (p *commonSmart) Unlink(ids ...string) (err error) {
 	if err = p.unlink(s, ids...); err != nil {
 		return
 	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *commonSmart) Replace(id string, block *model.Block) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+
+	if _, err := p.create(s, pb.RpcBlockCreateRequest{
+		TargetId: id,
+		Block:    block,
+		Position: model.Block_Bottom,
+	}); err != nil {
+		return err
+	}
+
+	if old := s.get(id); old == nil {
+		return ErrBlockNotFound
+	}
+	s.removeFromChilds(id)
+	s.remove(id)
 	return p.applyAndSendEvent(s)
 }
 

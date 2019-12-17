@@ -56,13 +56,13 @@ build-js:
 build-ios:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
 	env go111module=off gomobile bind -ldflags "$(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/lib
-	mkdir -p dist/ios/ && cp -r Mobile.framework mobile/dist/ios/
+	mkdir -p dist/ios/ && cp -r Mobile.framework dist/ios/
 	rm -rf Mobile.framework
 
 build-android:
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
 	env go111module=off gomobile bind -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
-	mkdir -p dist/android/ && mv mobile.aar mobile/dist/android/
+	mkdir -p dist/android/ && mv mobile.aar dist/android/
 
 setup-protoc:
 	rm -rf $(GOPATH)/src/github.com/gogo
@@ -89,6 +89,15 @@ protos: protos_deps
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib/
 	protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
+
+protos-swift:
+	protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./build/swift pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
+
+protos-java:
+	protoc -I ./ --java_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
+
+protos-ts:
+	npm run build:ts
 
 build-dev-js:
 	go mod download

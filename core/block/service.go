@@ -25,6 +25,7 @@ type Service interface {
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 	DuplicateBlock(req pb.RpcBlockDuplicateRequest) (string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
+	ReplaceBlock(req pb.RpcBlockReplaceRequest) error
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
 
@@ -35,6 +36,8 @@ type Service interface {
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
+	SetTextColor(req pb.RpcBlockSetTextColorRequest) error
+	SetTextBackgroundColor(req pb.RpcBlockSetTextBackgroundColorRequest) error
 
 	UploadFile(req pb.RpcBlockUploadRequest) error
 
@@ -142,6 +145,15 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) error {
 	return ErrBlockNotFound
 }
 
+func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.Replace(req.BlockId, req.Block)
+	}
+	return ErrBlockNotFound
+}
+
 func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
@@ -167,6 +179,20 @@ func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
 	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
 		b.SetChecked(req.Checked)
+		return nil
+	})
+}
+
+func (s *service) SetTextColor(req pb.RpcBlockSetTextColorRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
+		b.SetTextColor(req.Color)
+		return nil
+	})
+}
+
+func (s *service) SetTextBackgroundColor(req pb.RpcBlockSetTextBackgroundColorRequest) error {
+	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
+		b.SetTextBackgroundColor(req.Color)
 		return nil
 	})
 }

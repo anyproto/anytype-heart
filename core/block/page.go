@@ -165,6 +165,8 @@ func (b *pageTitleBlock) Merge(_ simple.Block) error {
 
 func (b *pageTitleBlock) SetStyle(style model.BlockContentTextStyle) {}
 func (b *pageTitleBlock) SetChecked(v bool)                          {}
+func (b *pageTitleBlock) SetTextBackgroundColor(_ string)            {}
+func (b *pageTitleBlock) SetTextColor(_ string)                      {}
 
 type pageIconBlock struct {
 	base.IconBlock

@@ -36,6 +36,8 @@ type Block interface {
 	SetText(text string, marks *model.BlockContentTextMarks) (err error)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
+	SetTextColor(color string)
+	SetTextBackgroundColor(color string)
 	Split(pos int32) (simple.Block, error)
 	Merge(b simple.Block) error
 }
@@ -96,6 +98,14 @@ func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.Marks = &pb.EventBlockSetTextMarks{Value: text.content.Marks}
 	}
+	if t.content.Color != text.content.Color {
+		hasChanges = true
+		changes.Color = &pb.EventBlockSetTextColor{Value: text.content.Color}
+	}
+	if t.content.Color != text.content.BackgroundColor {
+		hasChanges = true
+		changes.BackgroundColor = &pb.EventBlockSetTextBackgroundColor{Value: text.content.BackgroundColor}
+	}
 	if hasChanges {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}})
 	}
@@ -108,6 +118,14 @@ func (t *Text) SetStyle(style model.BlockContentTextStyle) {
 
 func (t *Text) SetChecked(v bool) {
 	t.content.Checked = v
+}
+
+func (t *Text) SetTextColor(color string) {
+	t.content.Color = color
+}
+
+func (t *Text) SetTextBackgroundColor(color string) {
+	t.content.BackgroundColor = color
 }
 
 func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
