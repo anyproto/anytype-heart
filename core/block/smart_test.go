@@ -12,6 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCommonSmart_PasteAnySlot(t *testing.T) {
+	t.Run("should split block on paste", func(t *testing.T) {
+		fx := newFixture(t, "")
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+
+	})
+}
+
 func TestCommonSmart_Open(t *testing.T) {
 	t.Run("should send fullscreen event on open", func(t *testing.T) {
 		fx := newFixture(t, "")

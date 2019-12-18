@@ -32,6 +32,7 @@ type smartBlock interface {
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
+	PasteAnySlot(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
@@ -99,6 +100,60 @@ type commonSmart struct {
 
 func (p *commonSmart) GetId() string {
 	return p.block.GetId()
+}
+
+func (sb *commonSmart) PasteAnySlot(req pb.RpcBlockPasteRequest) error {
+	var (
+		targetId string
+	)
+
+	s := sb.newState()
+	blockIds := req.AnySlot
+
+	// selected blocks -> remove it
+	if len(req.SelectedBlocks) > 0 {
+		if err := sb.unlink(s, req.SelectedBlocks...); err != nil {
+			return err
+		}
+
+		// selected text -> remove it and split the block
+	} else if len(req.FocusedBlockId) > 0 && req.SelectedTextRange.From > 0 {
+		// TODO: remove text in range
+
+		// split block
+		if _, err := sb.Split(req.FocusedBlockId, req.SelectedTextRange.From); err != nil {
+			return err
+		}
+
+		targetId = req.FocusedBlockId
+
+	} else if len(req.FocusedBlockId) > 0 &&
+		// TODO: or (req.SelectedTextRange.From == len(blockText) && req.SelectedTextRange.To == len(blockText))
+		(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) {
+
+	} else {
+		cIds := sb.versions[sb.GetId()].Model().ChildrenIds
+		targetId = cIds[len(cIds)-1]
+	}
+
+	targetId = req.FocusedBlockId
+
+	for i := 0; i < len(blockIds); i++ {
+		id, err := sb.Duplicate(pb.RpcBlockDuplicateRequest{
+			ContextId: req.ContextId,
+			TargetId:  targetId,
+			BlockId:   blockIds[i],
+			Position:  model.Block_Bottom,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		targetId = id
+	}
+
+	return sb.applyAndSendEvent(s)
 }
 
 func (p *commonSmart) Open(block anytype.Block) (err error) {
@@ -329,6 +384,27 @@ func (p *commonSmart) find(id string, sources ...map[string]simple.Block) simple
 		}
 	}
 	return nil
+}
+
+func (p *commonSmart) split(s *state, id string, pos int32) (blockId string, err error) {
+	t, err := s.getText(id)
+	if err != nil {
+		return
+	}
+
+	newBlock, err := t.Split(pos)
+	if err != nil {
+		return
+	}
+
+	if blockId, err = p.create(s, pb.RpcBlockCreateRequest{
+		TargetId: id,
+		Block:    newBlock.Model(),
+		Position: model.Block_Bottom,
+	}); err != nil {
+		return "", err
+	}
+	return
 }
 
 func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {

@@ -699,6 +699,10 @@ func (t *testPage) UpdateTextBlock(id string, apply func(t text.Block) error) er
 	return fmt.Errorf("can't update block in the test page")
 }
 
+func (t *testPage) PasteAnySlot(req pb.RpcBlockPasteRequest) error {
+	return fmt.Errorf("can't update block in the test page")
+}
+
 func (t *testPage) Open(b anytype.Block) error {
 	return nil
 }

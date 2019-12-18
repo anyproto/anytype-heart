@@ -262,7 +262,7 @@ message Rpc {
 
                 string textSlot = 5;
                 string htmlSlot = 6;
-                string anySlot = 7;
+                repeated string anySlot = 7;
             }
 
             message Response {

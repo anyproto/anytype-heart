@@ -1225,7 +1225,7 @@ Image/Video/File blocks then:
 | selectedBlocks | [string](#string) | repeated |  |
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
-| anySlot | [string](#string) |  |  |
+| anySlot | [string](#string) | repeated |  |
 
 
 
