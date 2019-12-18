@@ -1222,7 +1222,7 @@ Image/Video/File blocks then:
 | contextId | [string](#string) |  |  |
 | focusedBlockId | [string](#string) |  |  |
 | selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
-| selectedBlocks | [string](#string) | repeated |  |
+| selectedBlockIds | [string](#string) | repeated |  |
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [string](#string) | repeated |  |

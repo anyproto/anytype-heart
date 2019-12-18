@@ -35,8 +35,8 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 	blockIds := req.AnySlot
 
 	// selected blocks -> remove it
-	if len(req.SelectedBlocks) > 0 {
-		if err := p.unlink(s, req.SelectedBlocks...); err != nil {
+	if len(req.SelectedBlockIds) > 0 {
+		if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
 			return err
 		}
 
