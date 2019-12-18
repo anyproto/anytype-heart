@@ -32,7 +32,7 @@ type smartBlock interface {
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
-	PasteAnySlot(req pb.RpcBlockPasteRequest) error
+	Paste(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
@@ -102,17 +102,38 @@ func (p *commonSmart) GetId() string {
 	return p.block.GetId()
 }
 
-func (sb *commonSmart) PasteAnySlot(req pb.RpcBlockPasteRequest) error {
+func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
+
+	if len(req.AnySlot) > 0 {
+		return p.pasteAny(req)
+	} else if len(req.HtmlSlot) > 0 {
+		return p.pasteHtml(req)
+	} else if len(req.TextSlot) > 0 {
+		return p.pasteText(req)
+	} else {
+		return nil
+	}
+}
+
+func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
+	return nil
+}
+
+func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) error {
+	return nil
+}
+
+func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 	var (
 		targetId string
 	)
 
-	s := sb.newState()
+	s := p.newState()
 	blockIds := req.AnySlot
 
 	// selected blocks -> remove it
 	if len(req.SelectedBlocks) > 0 {
-		if err := sb.unlink(s, req.SelectedBlocks...); err != nil {
+		if err := p.unlink(s, req.SelectedBlocks...); err != nil {
 			return err
 		}
 
@@ -121,7 +142,7 @@ func (sb *commonSmart) PasteAnySlot(req pb.RpcBlockPasteRequest) error {
 		// TODO: remove text in range
 
 		// split block
-		if _, err := sb.Split(req.FocusedBlockId, req.SelectedTextRange.From); err != nil {
+		if _, err := p.Split(req.FocusedBlockId, req.SelectedTextRange.From); err != nil {
 			return err
 		}
 
@@ -132,14 +153,14 @@ func (sb *commonSmart) PasteAnySlot(req pb.RpcBlockPasteRequest) error {
 		(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) {
 
 	} else {
-		cIds := sb.versions[sb.GetId()].Model().ChildrenIds
+		cIds := p.versions[p.GetId()].Model().ChildrenIds
 		targetId = cIds[len(cIds)-1]
 	}
 
 	targetId = req.FocusedBlockId
 
 	for i := 0; i < len(blockIds); i++ {
-		id, err := sb.Duplicate(pb.RpcBlockDuplicateRequest{
+		id, err := p.Duplicate(pb.RpcBlockDuplicateRequest{
 			ContextId: req.ContextId,
 			TargetId:  targetId,
 			BlockId:   blockIds[i],
@@ -153,7 +174,7 @@ func (sb *commonSmart) PasteAnySlot(req pb.RpcBlockPasteRequest) error {
 		targetId = id
 	}
 
-	return sb.applyAndSendEvent(s)
+	return p.applyAndSendEvent(s)
 }
 
 func (p *commonSmart) Open(block anytype.Block) (err error) {

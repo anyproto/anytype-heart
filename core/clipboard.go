@@ -28,28 +28,9 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return m
 	}
 
-	mw.blockService.PasteAnySlot(*req)
-	// 	mw.blockService.PasteAnySlot(req.ContextId, req.FocusedBlockId, req.SelectedTextRange, req.SelectedBlocks, req.AnySlot)
-
-	/*
-		ContextId         string
-		FocusedBlockId    string
-		SelectedTextRange *model.Range
-		SelectedBlocks    []string
-		TextSlot          string
-		HtmlSlot          string
-		AnySlot           []string
-	*/
-
-	// IGNORE HtmlSlot
-	// IGNORE TextSlot
-
-	// if len(AnySlot) == 0 {
-	// 	// NOTHING TO DO
-	// 	return;
-	// }
-
-	// if len(FocusedBlockId) > 0 &&
+	if err := mw.blockService.Paste(*req); err != nil {
+		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, err)
+	}
 
 	return response(pb.RpcBlockPasteResponseError_NULL, nil)
 }
