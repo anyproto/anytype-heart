@@ -57,6 +57,37 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
+	response := func(code pb.RpcBlockCopyResponseErrorCode, err error) *pb.RpcBlockCopyResponse {
+		m := &pb.RpcBlockCopyResponse{Error: &pb.RpcBlockCopyResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	// TODO
+
+	return response(pb.RpcBlockCopyResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
+	response := func(code pb.RpcBlockPasteResponseErrorCode, err error) *pb.RpcBlockPasteResponse {
+		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	if err := mw.blockService.Paste(*req); err != nil {
+		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockPasteResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
 	response := func(code pb.RpcBlockUploadResponseErrorCode, err error) *pb.RpcBlockUploadResponse {
 		m := &pb.RpcBlockUploadResponse{Error: &pb.RpcBlockUploadResponseError{Code: code}}

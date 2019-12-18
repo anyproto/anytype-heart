@@ -12,15 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCommonSmart_PasteAnySlot(t *testing.T) {
-	t.Run("should split block on paste", func(t *testing.T) {
-		fx := newFixture(t, "")
-		defer fx.ctrl.Finish()
-		defer fx.tearDown()
-
-	})
-}
-
 func TestCommonSmart_Open(t *testing.T) {
 	t.Run("should send fullscreen event on open", func(t *testing.T) {
 		fx := newFixture(t, "")
@@ -142,4 +133,9 @@ func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, ch chan<- []core.
 		bw.cancelBlockVersionsCalled = true
 		close(bw.blockVersionsChan)
 	}, nil
+}
+
+// TODO: is it ok? @enkogu
+func (bw *blockWrapper) Close() error {
+	return nil
 }
