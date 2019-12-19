@@ -6,6 +6,8 @@ import (
 )
 
 func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
+	p.m.Lock()
+	defer p.m.Unlock()
 
 	if len(req.AnySlot) > 0 {
 		return p.pasteAny(req)
