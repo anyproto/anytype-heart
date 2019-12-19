@@ -6,15 +6,13 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCommonSmart_Open(t *testing.T) {
 	t.Run("should send fullscreen event on open", func(t *testing.T) {
-		fx := newFixture(t, "")
+		fx := newServiceFixture(t, "")
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
@@ -55,7 +53,7 @@ func TestCommonSmart_Open(t *testing.T) {
 
 func TestCommonSmart_Create(t *testing.T) {
 	t.Run("should create block", func(t *testing.T) {
-		fx := newFixture(t, "")
+		fx := newServiceFixture(t, "")
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
@@ -111,26 +109,40 @@ func TestCommonSmart_Create(t *testing.T) {
 	})
 }
 
-type blockWrapper struct {
-	*testMock.MockBlock
-	clientEventsChan          chan<- proto.Message
-	blockVersionsChan         chan<- []core.BlockVersion
-	cancelClientEventsCalled  bool
-	cancelBlockVersionsCalled bool
-}
+func TestCommonSmart_Duplicate(t *testing.T) {
+	t.Run("should duplicate block with child", func(t *testing.T) {
+		// initial blocks on page
+		pageBlocks := []*model.Block{
+			{Id: "b1"},
+			{Id: "b2", ChildrenIds: []string{"c1"}},
+			{Id: "c1"},
+		}
+		fx := newPageFixture(t, pageBlocks...)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
 
-func (bw *blockWrapper) SubscribeClientEvents(ch chan<- proto.Message) (func(), error) {
-	bw.clientEventsChan = ch
-	return func() {
-		bw.cancelClientEventsCalled = true
-		close(bw.clientEventsChan)
-	}, nil
-}
+		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 2)
 
-func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, ch chan<- []core.BlockVersion) (func(), error) {
-	bw.blockVersionsChan = ch
-	return func() {
-		bw.cancelBlockVersionsCalled = true
-		close(bw.blockVersionsChan)
-	}, nil
+		newId, err := fx.Duplicate(pb.RpcBlockDuplicateRequest{
+			TargetId: "b1",
+			BlockId:  "b2",
+			Position: model.Block_Top,
+		})
+		require.NoError(t, err)
+
+		// plus one block in page
+		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 3)
+		// have new copied block as first page child
+		assert.Equal(t, newId, fx.versions[fx.GetId()].Model().ChildrenIds[0])
+		// copied block have children
+		require.Len(t, fx.versions[newId].Model().ChildrenIds, 1)
+		// copied child have new id
+		assert.NotEqual(t, "c1", fx.versions[newId].Model().ChildrenIds[0])
+
+		// have 2 events: 1 - show, 2 - update for duplicate
+		require.Len(t, fx.serviceFx.events, 2)
+		// check we have 3 messages: 2 add + 1 change children
+		assert.Len(t, fx.serviceFx.events[1].Messages, 3)
+	})
+
 }

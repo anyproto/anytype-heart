@@ -3,12 +3,9 @@ package block
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -130,53 +127,4 @@ func TestState_Normalize(t *testing.T) {
 		assert.Len(t, msgs, 2) // 2 change
 		assert.Len(t, fx.saved, 2)
 	})
-}
-
-func newStateFixture(t *testing.T) *stateFixture {
-	ctrl := gomock.NewController(t)
-	block := &testBlock{
-		MockBlock: testMock.NewMockBlock(ctrl),
-	}
-	block.EXPECT().GetId().AnyTimes().Return("root")
-	sb := &commonSmart{
-		block:    block,
-		versions: make(map[string]simple.Block),
-	}
-	sb.versions[block.GetId()] = simple.New(&model.Block{
-		Id:          "root",
-		ChildrenIds: []string{},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{},
-		},
-	})
-	fx := &stateFixture{
-		block: block,
-		state: sb.newState(),
-		sb:    sb,
-		ctrl:  ctrl,
-	}
-	fx.block.fx = fx
-	return fx
-}
-
-type stateFixture struct {
-	*state
-	block *testBlock
-	sb    *commonSmart
-	ctrl  *gomock.Controller
-	saved []*model.Block
-}
-
-func (fx *stateFixture) Finish() {
-	fx.ctrl.Finish()
-}
-
-type testBlock struct {
-	fx *stateFixture
-	*testMock.MockBlock
-}
-
-func (tb *testBlock) AddVersions(vers []*model.Block) ([]core.BlockVersion, error) {
-	tb.fx.saved = vers
-	return nil, nil
 }
