@@ -14,9 +14,3 @@ func TestCommonSmart_Paste(t *testing.T) {
 
 	t.Run("should replace selected blocks", func(t *testing.T) {}*/
 }
-
-// TODO: запустить тесты
-// TODO: расписать текстовую вставку извне и заимплементить
-// TODO: подключить goldmark
-// TODO: запустить html paste
-// TODO: text/html copy

@@ -182,6 +182,24 @@ func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err
 	return
 }
 
+func (p *commonSmart) duplicate(s *state, req pb.RpcBlockDuplicateRequest) (id string, err error) {
+	block, ok := p.versions[req.BlockId]
+	if !ok {
+		return "", fmt.Errorf("block %s not found", req.BlockId)
+	}
+
+	if id, err = p.create(s, pb.RpcBlockCreateRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.TargetId,
+		Block:     block.Copy().Model(),
+		Position:  req.Position,
+	}); err != nil {
+		return
+	}
+	return
+}
+
+
 func (p *commonSmart) normalize() {
 	st := time.Now()
 	var usedIds = make(map[string]struct{})

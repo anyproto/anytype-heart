@@ -47,7 +47,7 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 		// TODO: remove text in range
 
 		// split block
-		if _, err := p.Split(req.FocusedBlockId, req.SelectedTextRange.From); err != nil {
+		if _, err := p.split(s, req.FocusedBlockId, req.SelectedTextRange.From); err != nil {
 			return err
 		}
 
@@ -65,7 +65,7 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 	targetId = req.FocusedBlockId
 
 	for i := 0; i < len(blockIds); i++ {
-		id, err := p.Duplicate(pb.RpcBlockDuplicateRequest{
+		id, err := p.duplicate(s, pb.RpcBlockDuplicateRequest{
 			ContextId: req.ContextId,
 			TargetId:  targetId,
 			BlockId:   blockIds[i],
