@@ -172,7 +172,7 @@ func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err
 	if err = p.applyAndSendEvent(s); err != nil {
 		return
 	}
-	return
+	return copyId, nil
 }
 
 func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
