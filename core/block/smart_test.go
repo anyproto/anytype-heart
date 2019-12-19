@@ -134,8 +134,3 @@ func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, ch chan<- []core.
 		close(bw.blockVersionsChan)
 	}, nil
 }
-
-// TODO: is it ok? @enkogu
-func (bw *blockWrapper) Close() error {
-	return nil
-}

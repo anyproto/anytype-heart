@@ -354,6 +354,9 @@ func (p *commonSmart) split(s *state, id string, pos int32) (blockId string, err
 }
 
 func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	s := p.newState()
 	t, err := s.getText(id)
 	if err != nil {
@@ -379,6 +382,9 @@ func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 }
 
 func (p *commonSmart) Merge(firstId, secondId string) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	s := p.newState()
 	first, err := s.getText(firstId)
 	if err != nil {
