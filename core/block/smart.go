@@ -366,6 +366,27 @@ func (p *commonSmart) find(id string, sources ...map[string]simple.Block) simple
 	return nil
 }
 
+func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blockId string, err error) {
+	t, err := s.getText(id)
+	if err != nil {
+		return
+	}
+
+	newBlock, err := t.RangeSplit(from, to)
+	if err != nil {
+		return
+	}
+
+	if blockId, err = p.create(s, pb.RpcBlockCreateRequest{
+		TargetId: id,
+		Block:    newBlock.Model(),
+		Position: model.Block_Bottom,
+	}); err != nil {
+		return "", err
+	}
+	return
+}
+
 func (p *commonSmart) split(s *state, id string, pos int32) (blockId string, err error) {
 	t, err := s.getText(id)
 	if err != nil {
