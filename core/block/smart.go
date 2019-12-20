@@ -195,20 +195,15 @@ func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
 }
 
 func (p *commonSmart) duplicate(s *state, req pb.RpcBlockDuplicateRequest) (id string, err error) {
-	block, ok := p.versions[req.BlockId]
-	if !ok {
-		return "", fmt.Errorf("block %s not found", req.BlockId)
-	}
-
-	if id, err = p.create(s, pb.RpcBlockCreateRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.TargetId,
-		Block:     block.Copy().Model(),
-		Position:  req.Position,
-	}); err != nil {
+	copyId, err := p.copy(s, req.BlockId)
+	if err != nil {
 		return
 	}
-	return
+	if err = p.insertTo(s, s.get(copyId), req.TargetId, req.Position); err != nil {
+		return
+	}
+
+	return copyId, nil
 }
 
 

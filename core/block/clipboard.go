@@ -59,7 +59,6 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 		return true
 	}
 
-
 	if len(req.SelectedBlockIds) > 0 {
 		targetId = req.SelectedBlockIds[ len(req.SelectedBlockIds) - 1 ]
 	// selected text -> remove it and split the block
@@ -80,7 +79,10 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 	// No focus -> check last
 	} else {
 		cIds := p.versions[p.GetId()].Model().ChildrenIds
-		targetId = cIds[len(cIds)-1]
+
+		if len(cIds) > 0 {
+			targetId = cIds[len(cIds)-1]
+		}
 	}
 
 	//targetId = req.FocusedBlockId
