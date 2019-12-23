@@ -45,7 +45,7 @@ func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion Blo
 	switch block.Content.(type) {
 	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
 		return &SmartBlockVersion{
-			model: &storage.BlockWithDependentBlocks{
+			model: &storage.BlockWithMeta{
 				Block: block,
 			},
 			versionId: versionId,

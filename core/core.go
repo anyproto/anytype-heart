@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/gateway"
 	ipfsCore "github.com/ipfs/go-ipfs/core"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	tcore "github.com/textileio/go-textile/core"
-	"github.com/textileio/go-textile/gateway"
 	tmobile "github.com/textileio/go-textile/mobile"
 )
 
@@ -110,12 +110,13 @@ func (a *Anytype) Run() error {
 		}
 	}()
 
-	// start IPFS gateway
+	// start the local http gateway
 	gateway.Host = &gateway.Gateway{
 		Node: a.Textile.Node(),
 	}
-	gateway.Host.Start(a.Textile.Node().Config().Addresses.Gateway)
-	fmt.Println("Gateway: " + a.Textile.Node().Config().Addresses.Gateway)
+
+	gateway.Host.Start(gateway.GatewayAddr())
+	fmt.Println("Gateway: " + gateway.GatewayAddr())
 
 	err = a.createPredefinedBlocks()
 	if err != nil {

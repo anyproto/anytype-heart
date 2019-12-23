@@ -1,14 +1,17 @@
 package core
 
 import (
+	"strings"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/types"
 	mh "github.com/multiformats/go-multihash"
 )
 
 type SmartBlockVersion struct {
-	model     *storage.BlockWithDependentBlocks
+	model     *storage.BlockWithMeta
 	versionId string
 	user      string
 	date      *types.Timestamp
@@ -91,4 +94,48 @@ func (version *SmartBlockVersion) ExternalFields() *types.Struct {
 		"name": version.Model().Fields.Fields["name"],
 		"icon": version.Model().Fields.Fields["icon"],
 	}}
+}
+
+type rowHash struct {
+	Hash string
+}
+
+// addMissingFiles ensure that all fileIndex exist in this version added to the files database
+func (version *SmartBlockVersion) addMissingFiles() error {
+	if len(version.model.FileByHash) == 0 {
+		return nil
+	}
+
+	hashes := make([]string, 0, len(version.model.FileByHash))
+	for hash, _ := range version.model.FileByHash {
+		hashes = append(hashes, hash)
+	}
+	hashesString := "\"" + strings.Join(hashes, "\",\"") + "\""
+
+	rows, err := version.node.Textile.Node().Datastore().Files().PrepareAndExecuteQuery("select hash from files where hash in(" + hashesString + ")")
+	if err != nil {
+		return err
+	}
+
+	filesExists := make(map[string]struct{})
+	var row rowHash
+	for rows.Next() {
+		err = rows.Scan(&row)
+		if err != nil {
+			return err
+		}
+		filesExists[row.Hash] = struct{}{}
+	}
+
+	for hash, file := range version.model.FileByHash {
+		if _, exists := filesExists[hash]; exists {
+			continue
+		}
+		err = version.node.Textile.Node().Datastore().Files().Add(util.CastFileIndexToTextile(file))
+		if err != nil {
+			log.Errorf("smartblock: add a missing file to db got error: %s", err.Error())
+		}
+	}
+
+	return nil
 }

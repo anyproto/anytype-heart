@@ -152,8 +152,8 @@ message Block {
         }
 
         message File {
-            string localFilePath = 1;
-            string previewFilePath = 2;
+            string hash = 1;
+           // string previewFilePath = 2;
             State state = 3;
             Type type = 4;
 

@@ -3,8 +3,10 @@ package anytype.storage;
 option go_package = "github.com/anytypeio/go-anytype-library/pb/storage";
 
 import "pb/model/protos/models.proto";
+import "pb/storage/protos/file.proto";
 
-message BlockWithDependentBlocks {
+message BlockWithMeta {
     anytype.model.Block block = 1;
     map<string, anytype.model.Block> blockById = 2;
+    map<string, FileIndex> fileByHash = 3;
 }

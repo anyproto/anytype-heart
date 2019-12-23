@@ -13,7 +13,6 @@ import (
 	"github.com/textileio/go-textile/wallet"
 )
 
-
 type threadDerivedIndex uint32
 
 const (

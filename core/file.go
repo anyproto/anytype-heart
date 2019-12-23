@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/url"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/gateway"
 	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-textile/core"
@@ -43,7 +43,7 @@ func (file *File) Hash() string {
 }
 
 func (file *File) URL() string {
-	return fmt.Sprintf("http://%s/ipfs/%s?key=%s&type=%s", file.node.Textile.Node().Config().Addresses.Gateway, file.index.Hash, url.QueryEscape(file.index.Key), url.QueryEscape(file.index.Media))
+	return fmt.Sprintf("http://%s/file/%s", gateway.GatewayAddr(), file.index.Hash)
 }
 
 func (file *File) Reader() (io.ReadSeeker, error) {

@@ -56,7 +56,7 @@ func (a *Anytype) GetSmartBlock(id string) (*SmartBlock, error) {
 func (a *Anytype) smartBlockVersionWithFullRestrictions(id string) *SmartBlockVersion {
 	return &SmartBlockVersion{
 		node: a,
-		model: &storage.BlockWithDependentBlocks{
+		model: &storage.BlockWithMeta{
 			Block: &model.Block{
 				Id: id,
 				Fields: &types.Struct{Fields: map[string]*types.Value{
