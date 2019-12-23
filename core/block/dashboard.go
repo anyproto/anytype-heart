@@ -1,6 +1,8 @@
 package block
 
 import (
+	"os"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -22,12 +24,15 @@ func (p *dashboard) Init() {
 	defer p.m.Unlock()
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
-		//p.addTestPage()
+		p.addTestPage()
 	}
 	p.show()
 }
 
 func (p *dashboard) addTestPage() {
+	if os.Getenv("NO_TESTPAGE") != "" && os.Getenv("NO_TESTPAGE") != "0" {
+		return
+	}
 	p.versions[testPageId] = base.NewVirtual(&model.Block{
 		Id: testPageId,
 		Fields: &types.Struct{
