@@ -293,6 +293,10 @@
     - [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon)
     - [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name)
     - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
+    - [Event.Block.Set.Link](#anytype.Event.Block.Set.Link)
+    - [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields)
+    - [Event.Block.Set.Link.IsArchived](#anytype.Event.Block.Set.Link.IsArchived)
+    - [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style)
     - [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.BackgroundColor](#anytype.Event.Block.Set.Text.BackgroundColor)
@@ -4353,6 +4357,69 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.Link"></a>
+
+### Event.Block.Set.Link
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| style | [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style) |  |  |
+| fields | [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields) |  |  |
+| isArchived | [Event.Block.Set.Link.IsArchived](#anytype.Event.Block.Set.Link.IsArchived) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Fields"></a>
+
+### Event.Block.Set.Link.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.IsArchived"></a>
+
+### Event.Block.Set.Link.IsArchived
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Style"></a>
+
+### Event.Block.Set.Link.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.Restrictions"></a>
 
 ### Event.Block.Set.Restrictions
@@ -4517,6 +4584,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
 | blockSetIcon | [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon) |  |  |
+| blockSetLink | [Event.Block.Set.Link](#anytype.Event.Block.Set.Link) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
