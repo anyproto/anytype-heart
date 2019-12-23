@@ -98,8 +98,9 @@ func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly boo
 	}
 
 	if len(versions) > 0 {
+		db := versions[0].DependentBlocks()
 		for _, child := range versions[0].Model().ChildrenIds {
-			if _, exists := versions[0].DependentBlocks()[child]; !exists {
+			if _, exists := db[child]; !exists {
 				log.Warningf("GetVersions: id=%d child %s is missing", versions[0].Model().Id, child)
 			}
 		}
