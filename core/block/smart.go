@@ -206,6 +206,36 @@ func (p *commonSmart) duplicate(s *state, req pb.RpcBlockDuplicateRequest) (id s
 	return copyId, nil
 }
 
+func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (err error) {
+	//copy, err := s.create(req.AnySlot[iter].Copy().Model())
+
+	for i := 0; i < len(req.AnySlot); i++ {
+		copyBlock, err := s.create(req.AnySlot[i])
+		if err != nil {
+			return err
+		}
+
+		copyBlockId := copyBlock.Model().Id
+
+		if err != nil {
+			return err
+		}
+		for i, childrenId := range copyBlock.Model().ChildrenIds {
+			if copyBlock.Model().ChildrenIds[i], err = p.copy(s, childrenId); err != nil {
+				return err
+			}
+		}
+
+
+		if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
+			return err
+		}
+
+		targetId = copyBlockId
+	}
+
+	return nil
+}
 
 func (p *commonSmart) normalize() {
 	st := time.Now()

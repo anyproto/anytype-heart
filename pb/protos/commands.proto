@@ -283,7 +283,7 @@ message Rpc {
 
                 string textSlot = 5;
                 string htmlSlot = 6;
-                repeated string anySlot = 7;
+                repeated anytype.model.Block anySlot = 7;
             }
 
             message Response {

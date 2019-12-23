@@ -1243,7 +1243,7 @@ Image/Video/File blocks then:
 | selectedBlockIds | [string](#string) | repeated |  |
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
-| anySlot | [string](#string) | repeated |  |
+| anySlot | [model.Block](#anytype.model.Block) | repeated |  |
 
 
 
