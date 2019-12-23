@@ -675,6 +675,7 @@ func (m *EventBlockFilesUpload) GetFilePath() []string {
 //
 //
 type EventBlockDelete struct {
+	// TODO: repeated string blockIds?
 	BlockId string `protobuf:"bytes,1,opt,name=blockId,proto3" json:"blockId,omitempty"`
 }
 

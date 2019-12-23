@@ -171,6 +171,10 @@
     - [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request)
     - [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response)
     - [Rpc.ExternalDrop.Files.Response.Error](#anytype.Rpc.ExternalDrop.Files.Response.Error)
+    - [Rpc.GetPageRecords](#anytype.Rpc.GetPageRecords)
+    - [Rpc.GetPageRecords.Request](#anytype.Rpc.GetPageRecords.Request)
+    - [Rpc.GetPageRecords.Response](#anytype.Rpc.GetPageRecords.Response)
+    - [Rpc.GetPageRecords.Response.Error](#anytype.Rpc.GetPageRecords.Response.Error)
     - [Rpc.Ipfs](#anytype.Rpc.Ipfs)
     - [Rpc.Ipfs.File](#anytype.Rpc.Ipfs.File)
     - [Rpc.Ipfs.File.Get](#anytype.Rpc.Ipfs.File.Get)
@@ -247,6 +251,7 @@
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
+    - [Rpc.GetPageRecords.Response.Error.Code](#anytype.Rpc.GetPageRecords.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
@@ -323,6 +328,7 @@
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [Image](#anytype.model.Image)
+    - [PageRecord](#anytype.model.PageRecord)
     - [Range](#anytype.model.Range)
     - [Video](#anytype.model.Video)
   
@@ -377,6 +383,7 @@
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
 | ExternalDropFiles | [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request) | [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response) |  |
 | ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
+| GetPageRecords | [Rpc.GetPageRecords.Request](#anytype.Rpc.GetPageRecords.Request) | [Rpc.GetPageRecords.Response](#anytype.Rpc.GetPageRecords.Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
@@ -2706,6 +2713,58 @@ Remove blocks from the childrenIds of its parents
 
 
 
+<a name="anytype.Rpc.GetPageRecords"></a>
+
+### Rpc.GetPageRecords
+
+
+
+
+
+
+
+<a name="anytype.Rpc.GetPageRecords.Request"></a>
+
+### Rpc.GetPageRecords.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.GetPageRecords.Response"></a>
+
+### Rpc.GetPageRecords.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.GetPageRecords.Response.Error](#anytype.Rpc.GetPageRecords.Response.Error) |  |  |
+| pageRecords | [model.PageRecord](#anytype.model.PageRecord) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.GetPageRecords.Response.Error"></a>
+
+### Rpc.GetPageRecords.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.GetPageRecords.Response.Error.Code](#anytype.Rpc.GetPageRecords.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ipfs"></a>
 
 ### Rpc.Ipfs
@@ -3720,6 +3779,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.GetPageRecords.Response.Error.Code"></a>
+
+### Rpc.GetPageRecords.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Ipfs.File.Get.Response.Error.Code"></a>
 
 ### Rpc.Ipfs.File.Get.Response.Error.Code
@@ -3954,7 +4026,7 @@ B. Partial block load
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
+| blockId | [string](#string) |  | TODO: repeated string blockIds? |
 
 
 
@@ -4781,6 +4853,23 @@ Link: block to link some content from an external sources.
 | id | [string](#string) |  |  |
 | sizes | [Image.Size](#anytype.model.Image.Size) | repeated |  |
 | style | [Image.Style](#anytype.model.Image.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageRecord"></a>
+
+### PageRecord
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| icon | [string](#string) |  |  |
 
 
 

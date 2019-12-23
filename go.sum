@@ -31,8 +31,8 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc h1:cAKDfWh5Vpd
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf h1:qet1QNfXsQxTZqLG4oE62mJzwPIB8+Tee4RNCL9ulrY=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
-github.com/anytypeio/go-anytype-library v0.0.0-20191217101754-9b84d50d856e h1:6Qt3jj2vIdHyOTE0cj5lOs8qcuD5Ryku3UG+PD9vFIY=
-github.com/anytypeio/go-anytype-library v0.0.0-20191217101754-9b84d50d856e/go.mod h1:PGWUuLJII1ajBLkUSo6McFu5LDueapm+HoZCfs9ZnYI=
+github.com/anytypeio/go-anytype-library v0.0.0-20191223144608-7275cf7a32c7 h1:gNjPXK+9bekVmYoPxEeIIlrIt7czhDnDU3jG4uWB8GE=
+github.com/anytypeio/go-anytype-library v0.0.0-20191223144608-7275cf7a32c7/go.mod h1:PGWUuLJII1ajBLkUSo6McFu5LDueapm+HoZCfs9ZnYI=
 github.com/anytypeio/go-textile v0.6.10-0.20191213152255-79bffa62134a h1:+4iGG6rPm3vcJtqWZKlCg4Qvr1qfX9hLPkH6ru2VrEY=
 github.com/anytypeio/go-textile v0.6.10-0.20191213152255-79bffa62134a/go.mod h1:upnwIsP8dsXfGQEjJ8BL9AY6yJHU6etVWozxVN4PyXc=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
