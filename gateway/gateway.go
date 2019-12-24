@@ -8,11 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-contrib/location"
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/render"
+	"github.com/golang/protobuf/ptypes"
 	logging "github.com/ipfs/go-log"
-	gincors "github.com/rs/cors/wrapper/gin"
 	tcore "github.com/textileio/go-textile/core"
 )
 
@@ -39,27 +36,17 @@ func GatewayAddr() string {
 
 // Start creates a gateway server
 func (g *Gateway) Start(addr string) {
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
-	router.Use(location.Default())
-
-	// Add the CORS middleware
-	// Merges the API HTTPHeaders (from config/init) into blank/default CORS configuration
-	router.Use(gincors.AllowAll())
-
-	router.GET("/health", func(c *gin.Context) {
-		c.Writer.WriteHeader(http.StatusNoContent)
-	})
-	router.GET("/file/:filehash", g.fileHandler)
-
+	handler := http.NewServeMux()
 	g.server = &http.Server{
 		Addr:    addr,
-		Handler: router,
+		Handler: handler,
 	}
+
+	handler.HandleFunc("/file/", g.fileHandler)
 
 	errc := make(chan error)
 	go func() {
-		errc <- g.server.ListenAndServe()
+		errc <- http.ListenAndServe(addr, handler)
 		close(errc)
 	}()
 	go func() {
@@ -76,6 +63,7 @@ func (g *Gateway) Start(addr string) {
 			}
 		}
 	}()
+
 	log.Infof("gateway listening at %s", g.server.Addr)
 }
 
@@ -95,26 +83,33 @@ func (g *Gateway) Addr() string {
 	return g.server.Addr
 }
 
-// fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
-func (g *Gateway) fileHandler(c *gin.Context) {
-	fileHash := c.Param("filehash")
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+}
 
+// fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
+func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
+	fileHash := r.URL.Path[len("/file/"):]
+	enableCors(&w)
 	reader, index, err := g.Node.FileContent(fileHash)
 	if err != nil {
 		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
-			c.String(404, "file not found")
+			http.NotFound(w, r)
 			return
 		}
-		c.String(500, err.Error())
+		http.Error(w, err.Error(), 500)
 		return
 	}
-	// todo: find a way to use readseeker for the Range request
-	c.Render(200, render.Reader{
-		Reader:        reader,
-		ContentType:   index.Media,
-		ContentLength: index.Size,
-		Headers: map[string]string{
-			"Content-Disposition": fmt.Sprintf("inline; filename=\"%s\"", index.Name),
-		},
-	})
+
+	w.Header().Set("Content-Type", index.Media)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", index.Name))
+	// ServeContent seek the ReadSeeker to determine the size
+	// 	btw this header should override this
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", index.Size))
+
+	added, _ := ptypes.Timestamp(index.Added)
+	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
+	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
+	http.ServeContent(w, r, index.Name, added, reader)
 }
