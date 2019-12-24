@@ -85,7 +85,7 @@ func (g *Gateway) Addr() string {
 
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	W.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 }
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
