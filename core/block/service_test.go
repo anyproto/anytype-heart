@@ -4,15 +4,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +20,7 @@ func TestService_OpenBlock(t *testing.T) {
 			blockId   = "456"
 			expErr    = errors.New("test err")
 		)
-		fx := newFixture(t, accountId)
+		fx := newServiceFixture(t, accountId)
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
@@ -38,7 +34,7 @@ func TestService_OpenBlock(t *testing.T) {
 			accountId = "123"
 			blockId   = "456"
 		)
-		fx := newFixture(t, accountId)
+		fx := newServiceFixture(t, accountId)
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
@@ -61,7 +57,7 @@ func TestService_OpenBlock(t *testing.T) {
 			accountId = "123"
 			blockId   = "456"
 		)
-		fx := newFixture(t, accountId)
+		fx := newServiceFixture(t, accountId)
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
@@ -102,68 +98,4 @@ func Test_BlockTypes(t *testing.T) {
 			},
 		}))
 	})
-}
-
-func newFixture(t *testing.T, accountId string) *fixture {
-	ctrl := gomock.NewController(t)
-	anytype := testMock.NewMockAnytype(ctrl)
-	fx := &fixture{
-		t:       t,
-		ctrl:    ctrl,
-		anytype: anytype,
-	}
-	fx.Service = NewService(accountId, anytype, fx.sendEvent)
-	return fx
-}
-
-type fixture struct {
-	Service
-	t       *testing.T
-	ctrl    *gomock.Controller
-	anytype *testMock.MockAnytype
-	events  []*pb.Event
-}
-
-func (fx *fixture) sendEvent(e *pb.Event) {
-	fx.events = append(fx.events, e)
-}
-
-func (fx *fixture) newMockBlockWithContent(id string, content model.IsBlockContent, childrenIds []string, db map[string]core.BlockVersion) (b *blockWrapper, v *testMock.MockBlockVersion) {
-	if db == nil {
-		db = make(map[string]core.BlockVersion)
-	}
-	v = fx.newMockVersion(&model.Block{
-		Id:          id,
-		Content:     content,
-		ChildrenIds: childrenIds,
-	})
-	v.EXPECT().DependentBlocks().AnyTimes().Return(db)
-	b = &blockWrapper{MockBlock: testMock.NewMockBlock(fx.ctrl)}
-	b.EXPECT().GetId().AnyTimes().Return(id)
-	b.EXPECT().GetCurrentVersion().AnyTimes().Return(v, nil)
-	fx.anytype.EXPECT().PredefinedBlockIds().AnyTimes().Return(core.PredefinedBlockIds{Home: "realHomeId"})
-	return
-}
-
-func (fx *fixture) newMockVersion(m *model.Block) (v *testMock.MockBlockVersion) {
-	v = testMock.NewMockBlockVersion(fx.ctrl)
-	v.EXPECT().Model().AnyTimes().Return(m)
-	return
-}
-
-func (fx *fixture) tearDown() {
-	require.NoError(fx.t, fx.Close())
-}
-
-type matcher struct {
-	name string
-	f    func(x interface{}) bool
-}
-
-func (m *matcher) Matches(x interface{}) bool {
-	return m.f(x)
-}
-
-func (m *matcher) String() string {
-	return m.name
 }

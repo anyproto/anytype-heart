@@ -169,23 +169,35 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
-	block, ok := p.versions[req.BlockId]
-	if !ok {
-		return "", fmt.Errorf("block %s not found", req.BlockId)
-	}
 	s := p.newState()
-	if id, err = p.create(s, pb.RpcBlockCreateRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.TargetId,
-		Block:     block.Copy().Model(),
-		Position:  req.Position,
-	}); err != nil {
+	copyId, err := p.copy(s, req.BlockId)
+	if err != nil {
+		return
+	}
+	if err = p.insertTo(s, s.get(copyId), req.TargetId, req.Position); err != nil {
 		return
 	}
 	if err = p.applyAndSendEvent(s); err != nil {
 		return
 	}
-	return
+	return copyId, nil
+}
+
+func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
+	b := s.get(sourceId)
+	if b == nil {
+		return "", ErrBlockNotFound
+	}
+	copy, err := s.create(b.Copy().Model())
+	if err != nil {
+		return
+	}
+	for i, childrenId := range copy.Model().ChildrenIds {
+		if copy.Model().ChildrenIds[i], err = p.copy(s, childrenId); err != nil {
+			return
+		}
+	}
+	return copy.Model().Id, nil
 }
 
 func (p *commonSmart) normalize() {
@@ -224,15 +236,26 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 	if req.Block == nil {
 		return "", fmt.Errorf("block can't be empty")
 	}
+	newBlock, err := s.create(req.Block)
+	if err != nil {
+		return
+	}
+	id = newBlock.Model().Id
+	if err = p.insertTo(s, newBlock, req.TargetId, req.Position); err != nil {
+		return
+	}
+	return
+}
 
+func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos model.BlockPosition) (err error) {
 	parent := s.get(p.GetId()).Model()
 	var target simple.Block
-	if req.TargetId != "" {
-		target = s.get(req.TargetId)
+	if targetId != "" {
+		target = s.get(targetId)
 		if target == nil {
-			return "", fmt.Errorf("target block[%s] not found", req.TargetId)
+			return fmt.Errorf("target block[%s] not found", targetId)
 		}
-		if pv := s.findParentOf(req.TargetId); pv != nil {
+		if pv := s.findParentOf(targetId); pv != nil {
 			parent = pv.Model()
 		}
 	}
@@ -241,9 +264,9 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 	if target != nil {
 		targetPos := findPosInSlice(parent.ChildrenIds, target.Model().Id)
 		if targetPos == -1 {
-			return "", fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
+			return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
 		}
-		switch req.Position {
+		switch reqPos {
 		case model.Block_Bottom:
 			pos = targetPos + 1
 		case model.Block_Top:
@@ -251,17 +274,10 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 		case model.Block_Inner:
 			parent = target.Model()
 		default:
-			return "", fmt.Errorf("unexpected position for create operation: %v", req.Position)
+			return fmt.Errorf("unexpected position for create operation: %v", reqPos)
 		}
 	}
-
-	newBlock, err := s.create(req.Block)
-	if err != nil {
-		return
-	}
-	id = newBlock.Model().Id
-	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, id, pos)
-	fmt.Println("parent add id", parent, id)
+	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, b.Model().Id, pos)
 	return
 }
 
