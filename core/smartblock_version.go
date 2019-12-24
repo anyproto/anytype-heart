@@ -116,6 +116,7 @@ func (version *SmartBlockVersion) addMissingFiles() error {
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
 	filesExists := make(map[string]struct{})
 	var row rowHash

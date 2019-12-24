@@ -83,15 +83,15 @@ func (g *Gateway) Addr() string {
 	return g.server.Addr
 }
 
-func enableCors(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+func enableCors(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	W.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 }
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	fileHash := r.URL.Path[len("/file/"):]
-	enableCors(&w)
+	enableCors(w)
 	reader, index, err := g.Node.FileContent(fileHash)
 	if err != nil {
 		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
@@ -104,9 +104,6 @@ func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", index.Media)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", index.Name))
-	// ServeContent seek the ReadSeeker to determine the size
-	// 	btw this header should override this
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", index.Size))
 
 	added, _ := ptypes.Timestamp(index.Added)
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
