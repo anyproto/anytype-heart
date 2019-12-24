@@ -159,8 +159,7 @@ message Event {
                 string id = 1;
                 Type type = 2;
                 State state = 3;
-                LocalFilePath localFilePath = 4;
-                PreviewLocalFilePath previewLocalFilePath = 5;
+                Hash hash = 5;
                 Name name = 6;
 
                 message Name {
@@ -179,11 +178,7 @@ message Event {
                     anytype.model.Block.Content.File.Type value = 1;
                 }
 
-                message LocalFilePath {
-                    string value = 1;
-                }
-
-                message PreviewLocalFilePath {
+                message Hash {
                     string value = 1;
                 }
             }

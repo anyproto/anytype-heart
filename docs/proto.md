@@ -273,9 +273,8 @@
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
     - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
     - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
-    - [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath)
+    - [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash)
     - [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name)
-    - [Event.Block.Set.File.PreviewLocalFilePath](#anytype.Event.Block.Set.File.PreviewLocalFilePath)
     - [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
     - [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type)
     - [Event.Block.Set.File.Width](#anytype.Event.Block.Set.File.Width)
@@ -4041,8 +4040,7 @@ Precondition: user A opened a block
 | id | [string](#string) |  |  |
 | type | [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type) |  |  |
 | state | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
-| localFilePath | [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath) |  |  |
-| previewLocalFilePath | [Event.Block.Set.File.PreviewLocalFilePath](#anytype.Event.Block.Set.File.PreviewLocalFilePath) |  |  |
+| hash | [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash) |  |  |
 | name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
 
 
@@ -4050,9 +4048,9 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.File.LocalFilePath"></a>
+<a name="anytype.Event.Block.Set.File.Hash"></a>
 
-### Event.Block.Set.File.LocalFilePath
+### Event.Block.Set.File.Hash
 
 
 
@@ -4068,21 +4066,6 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Set.File.Name"></a>
 
 ### Event.Block.Set.File.Name
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.File.PreviewLocalFilePath"></a>
-
-### Event.Block.Set.File.PreviewLocalFilePath
 
 
 

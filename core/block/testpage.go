@@ -177,7 +177,7 @@ var testBlocks = []*model.Block{
 		Id: "14",
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				LocalFilePath: "/Users/andrewsimachev/Pictures/P03STgPliLQ.jpg",
+				Hash: "/Users/andrewsimachev/Pictures/P03STgPliLQ.jpg",
 			},
 		},
 	},
@@ -219,7 +219,7 @@ var testBlocks = []*model.Block{
 		Id: "15",
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				LocalFilePath: "/Users/andrewsimachev/Pictures/32.jpg",
+				Hash: "/Users/andrewsimachev/Pictures/32.jpg",
 			},
 		},
 	},
@@ -241,7 +241,7 @@ var testBlocks = []*model.Block{
 		},
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				LocalFilePath: "/Users/andrewsimachev/Pictures/anigI4urVRs.jpg",
+				Hash: "/Users/andrewsimachev/Pictures/anigI4urVRs.jpg",
 			},
 		},
 	},
@@ -254,7 +254,7 @@ var testBlocks = []*model.Block{
 		},
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				LocalFilePath: "/Users/andrewsimachev/Pictures/Photo11.jpg",
+				Hash: "/Users/andrewsimachev/Pictures/Photo11.jpg",
 			},
 		},
 	},

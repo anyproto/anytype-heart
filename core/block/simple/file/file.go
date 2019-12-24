@@ -20,7 +20,7 @@ func init() {
 func NewFile(m *model.Block) simple.Block {
 	if file := m.GetFile(); file != nil {
 		if file.State == model.BlockContentFile_Uploading {
-			if file.LocalFilePath != "" {
+			if file.Hash != "" {
 				file.State = model.BlockContentFile_Done
 			} else {
 				file.State = model.BlockContentFile_Error
@@ -35,7 +35,7 @@ func NewFile(m *model.Block) simple.Block {
 }
 
 type Block interface {
-	simple.BlockInit
+	simple.Block
 	Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error)
 	SetFile(cf *core.File)
 	SetState(state model.BlockContentFileState)
@@ -50,18 +50,6 @@ type File struct {
 	content *model.BlockContentFile
 	url     string
 	stor    anytype.Anytype
-}
-
-func (f *File) Init(a anytype.Anytype) {
-	f.stor = a
-	if f.content.Hash != "" {
-		file, err := f.stor.FileByHash(f.content.Hash)
-		if err != nil {
-			fmt.Println("load file error:", f.content.Hash, err)
-			return
-		}
-		f.content.LocalFilePath = file.URL()
-	}
 }
 
 func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error) {
@@ -107,7 +95,6 @@ func (f *File) SetFile(cf *core.File) {
 	f.content.State = model.BlockContentFile_Done
 	f.content.Name = meta.Name
 	f.content.Hash = cf.Hash()
-	f.content.LocalFilePath = cf.URL()
 }
 
 func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
@@ -131,13 +118,9 @@ func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.Type = &pb.EventBlockSetFileType{Value: file.content.Type}
 	}
-	if f.content.LocalFilePath != file.content.LocalFilePath {
+	if f.content.Hash != file.content.Hash {
 		hasChanges = true
-		changes.LocalFilePath = &pb.EventBlockSetFileLocalFilePath{Value: file.content.LocalFilePath}
-	}
-	if f.content.PreviewFilePath != file.content.PreviewFilePath {
-		hasChanges = true
-		changes.PreviewLocalFilePath = &pb.EventBlockSetFilePreviewLocalFilePath{Value: file.content.PreviewFilePath}
+		changes.Hash = &pb.EventBlockSetFileHash{Value: file.content.Hash}
 	}
 	if f.content.Name != file.content.Name {
 		hasChanges = true
