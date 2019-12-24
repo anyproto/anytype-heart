@@ -3,11 +3,9 @@ package core
 import (
 	"fmt"
 	"io/ioutil"
-	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	core2 "github.com/textileio/go-textile/core"
-	"github.com/textileio/go-textile/ipfs"
 )
 
 func (mw *Middleware) IpfsGetFile(req *pb.RpcIpfsFileGetRequest) *pb.RpcIpfsFileGetResponse {
@@ -91,7 +89,7 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype.Textile.Node() is nil"))
 	}
 
-	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), req.Id+"/0/"+strings.ToLower(req.GetSize_().String())+"/content")
+	file, err := mw.Anytype.FileByHash(req.GetId())
 	if err != nil {
 		if err == core2.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
@@ -99,6 +97,21 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 
 		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
 	}
+	rd, err := file.Reader()
+	if err != nil {
+		if err == core2.ErrFileNotFound {
+			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
+		}
 
+		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
+	}
+	data, err := ioutil.ReadAll(rd)
+	if err != nil {
+		if err == core2.ErrFileNotFound {
+			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
+		}
+
+		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(data, pb.RpcIpfsImageGetBlobResponseError_NULL, nil)
 }
