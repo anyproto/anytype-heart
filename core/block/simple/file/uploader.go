@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 )
@@ -20,7 +21,7 @@ type uploader struct {
 func (u *uploader) Do(localPath, url string) {
 	var err error
 	if url != "" {
-		err = u.doLocal(url)
+		err = u.doUrl(url)
 	} else {
 		err = u.doLocal(localPath)
 	}
@@ -59,7 +60,11 @@ func (u *uploader) upload(rd io.ReadCloser, name string) (err error) {
 		return
 	}
 	u.updateFile(func(file Block) {
-		file.SetFile(cf)
+		var meta core.FileMeta
+		if m := cf.Meta(); m != nil {
+			meta = *m
+		}
+		file.SetFileData(cf.Hash(), meta)
 	})
 	return
 }

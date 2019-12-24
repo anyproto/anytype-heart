@@ -37,7 +37,7 @@ func NewFile(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error)
-	SetFile(cf *core.File)
+	SetFileData(hash string, meta core.FileMeta)
 	SetState(state model.BlockContentFileState)
 }
 
@@ -48,8 +48,6 @@ type Updater interface {
 type File struct {
 	*base.Base
 	content *model.BlockContentFile
-	url     string
-	stor    anytype.Anytype
 }
 
 func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error) {
@@ -75,8 +73,6 @@ func (f *File) Copy() simple.Block {
 	return &File{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetFile(),
-		url:     f.url,
-		stor:    f.stor,
 	}
 }
 
@@ -84,8 +80,7 @@ func (f *File) SetState(state model.BlockContentFileState) {
 	f.content.State = state
 }
 
-func (f *File) SetFile(cf *core.File) {
-	meta := cf.Meta()
+func (f *File) SetFileData(hash string, meta core.FileMeta) {
 	f.content.Size_ = meta.Size
 	if strings.HasPrefix(meta.Media, "image/") {
 		f.content.Type = model.BlockContentFile_Image
@@ -94,7 +89,7 @@ func (f *File) SetFile(cf *core.File) {
 	}
 	f.content.State = model.BlockContentFile_Done
 	f.content.Name = meta.Name
-	f.content.Hash = cf.Hash()
+	f.content.Hash = hash
 }
 
 func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
