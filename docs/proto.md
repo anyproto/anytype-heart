@@ -322,9 +322,7 @@
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
-    - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
-    - [Video](#anytype.model.Video)
   
     - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
@@ -335,9 +333,6 @@
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
-    - [Image.Size](#anytype.model.Image.Size)
-    - [Image.Style](#anytype.model.Image.Style)
-    - [Video.Size](#anytype.model.Video.Size)
   
   
   
@@ -2824,7 +2819,6 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
 
 
 
@@ -2882,7 +2876,6 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
 
 
 
@@ -4521,8 +4514,8 @@ Avatar of a user&#39;s account. It could be an image or color
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| image | [Image](#anytype.model.Image) |  | Image of the avatar. Contains hash and size |
-| color | [string](#string) |  | Color of the avatar, if no image |
+| image | [Block.Content.File](#anytype.model.Block.Content.File) |  | Image of the avatar. Contains the hash to retrieve the image. |
+| color | [string](#string) |  | Color of the avatar, used if image not set. |
 
 
 
@@ -4624,14 +4617,12 @@ Divider: block, that contains only one horizontal thin line
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  |  |
-| previewFilePath | [string](#string) |  |  |
-| state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| hash | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 | type | [Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
-| name | [string](#string) |  |  |
-| hash | [string](#string) |  |  |
+| state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
 
 
 
@@ -4773,23 +4764,6 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype.model.Image"></a>
-
-### Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| sizes | [Image.Size](#anytype.model.Image.Size) | repeated |  |
-| style | [Image.Style](#anytype.model.Image.Style) |  |  |
-
-
-
-
-
-
 <a name="anytype.model.Range"></a>
 
 ### Range
@@ -4800,22 +4774,6 @@ General purpose structure, uses in Mark.
 | ----- | ---- | ----- | ----------- |
 | from | [int32](#int32) |  |  |
 | to | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Video"></a>
-
-### Video
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| sizes | [Video.Size](#anytype.model.Video.Size) | repeated |  |
 
 
 
@@ -4845,10 +4803,8 @@ General purpose structure, uses in Mark.
 | ---- | ------ | ----------- |
 | Empty | 0 | There is no file and preview, it&#39;s an empty block, that waits files. |
 | Uploading | 1 | There is still no file/preview, but file already uploading |
-| PreviewDownloaded | 2 | File exists, preview downloaded, but file is not. |
-| Downloading | 3 | File exists, preview downloaded, but file downloading |
-| Done | 4 | File and preview downloaded |
-| Error | 5 | Error while uploading |
+| Done | 2 | File and preview downloaded |
+| Error | 3 | Error while uploading |
 
 
 
@@ -4955,47 +4911,6 @@ General purpose structure, uses in Mark.
 | Left | 3 |  |
 | Right | 4 |  |
 | Inner | 5 |  |
-
-
-
-<a name="anytype.model.Image.Size"></a>
-
-### Image.Size
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Large | 0 |  |
-| Small | 1 |  |
-| Thumb | 2 |  |
-
-
-
-<a name="anytype.model.Image.Style"></a>
-
-### Image.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Picture | 0 |  |
-| File | 1 |  |
-
-
-
-<a name="anytype.model.Video.Size"></a>
-
-### Video.Size
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| SD360p | 0 |  |
-| SD480p | 1 |  |
-| HD720p | 2 |  |
-| HD1080p | 3 |  |
-| UHD1440p | 4 |  |
-| UHD2160p | 5 |  |
 
 
  

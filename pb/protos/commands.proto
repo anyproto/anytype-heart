@@ -1165,7 +1165,6 @@ message Rpc {
                 message Blob {
                     message Request {
                         string id = 1;
-                        anytype.model.Image.Size size = 2;
                     }
 
                     message Response {
@@ -1193,7 +1192,6 @@ message Rpc {
                 message File {
                     message Request {
                         string id = 1;
-                        anytype.model.Image.Size size = 2;
                     }
 
                     message Response {
