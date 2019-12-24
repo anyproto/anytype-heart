@@ -161,6 +161,7 @@ message Event {
                 State state = 3;
                 Hash hash = 5;
                 Name name = 6;
+                Size size = 7;
 
                 message Name {
                     string value = 1;
@@ -180,6 +181,10 @@ message Event {
 
                 message Hash {
                     string value = 1;
+                }
+
+                message Size {
+                    int64 value = 1;
                 }
             }
 

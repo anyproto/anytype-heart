@@ -126,6 +126,10 @@ func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.Name = &pb.EventBlockSetFileName{Value: file.content.Name}
 	}
+	if f.content.Size_ != file.content.Size_ {
+		hasChanges = true
+		changes.Size_ = &pb.EventBlockSetFileSize{Value: file.content.Size_}
+	}
 
 	if hasChanges {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}})
