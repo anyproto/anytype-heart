@@ -3,183 +3,181 @@ package block
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"strconv"
 	"testing"
 )
 
-func TestCommonSmart_Paste(t *testing.T) {
-	t.Run("should split block on paste", func(t *testing.T) {
-		// initial blocks on page
-		pageBlocks := []*model.Block{
-			{Id: "b1", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "11111" }}},
-			{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-			{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
-			{Id: "b4", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "abcde" }}},
-			{Id: "b5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "55555" }}},
-		}
-		fx := newPageFixture(t, pageBlocks...)
-		defer fx.ctrl.Finish()
-		defer fx.tearDown()
-
-		err := fx.Paste(pb.RpcBlockPasteRequest{
-			FocusedBlockId: "b4",
-			SelectedTextRange: &model.Range{From:2, To:4},
-			AnySlot: []*model.Block{
-				{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-				{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
+func createBlocks(textArr []string) ([]*model.Block) {
+	blocks := []*model.Block{}
+	for i := 0; i < len(textArr); i++  {
+		blocks = append(blocks, &model.Block{Id: strconv.Itoa(i + 1),
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{ Text: textArr[i] },
 			},
 		})
-		require.NoError(t, err)
+	}
+	return blocks
+}
 
-		// plus 3 blocks in page (4 -> 4a, 4b; 2.1, 3.1)
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 8)
+func createPage(t *testing.T, textArr []string) *pageFixture {
+	blocks := createBlocks(textArr)
 
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[0]].Model().GetText().Text, "11111")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[1]].Model().GetText().Text, "22222")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[2]].Model().GetText().Text, "33333")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[3]].Model().GetText().Text, "ab")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[4]].Model().GetText().Text,  "22222")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[5]].Model().GetText().Text,  "33333")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[6]].Model().GetText().Text,  "e")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[7]].Model().GetText().Text, "55555")
+	fx := newPageFixture(t, blocks...)
+	defer fx.ctrl.Finish()
+	defer fx.tearDown()
 
-		// have 2 events: 1 - show, 2 - update for duplicate
-		require.Len(t, fx.serviceFx.events, 2)
-		// check we have 3 messages: 4 add + 1 remove children
-		assert.Len(t, fx.serviceFx.events[1].Messages, 5)
+	return fx
+}
+
+func checkBlockText(t *testing.T, fx *pageFixture, textArr []string)  {
+	require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, len(textArr))
+
+	for i := 0; i < len(textArr); i++  {
+		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[i]].Model().GetText().Text, textArr[i])
+	}
+}
+
+func pasteAny(t *testing.T, fx *pageFixture, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
+	req := pb.RpcBlockPasteRequest{}
+	if id != "" { req.FocusedBlockId = id }
+	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
+	req.SelectedTextRange = &textRange
+	req.AnySlot = blocks
+	err := fx.pasteAny(req)
+	require.NoError(t, err)
+}
+
+func pasteText(t *testing.T, fx *pageFixture, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
+	req := pb.RpcBlockPasteRequest{}
+	if id != "" { req.FocusedBlockId = id }
+	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
+	req.TextSlot = textSlot
+	req.SelectedTextRange = &textRange
+	err := fx.pasteText(req)
+	require.NoError(t, err)
+}
+
+func checkEvents(t *testing.T, fx *pageFixture, eventsLen int, messagesLen int) {
+	require.Len(t, fx.serviceFx.events, eventsLen)
+	require.Len(t, fx.serviceFx.events[1].Messages, messagesLen)
+}
+
+func TestCommonSmart_pasteAny(t *testing.T) {
+
+	t.Run("should split block on paste", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
+		pasteAny(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, createBlocks([]string{"22222", "33333"}));
+
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "ab", "22222", "33333", "e", "55555"});
+		checkEvents(t, fx, 2, 5)
 	})
 
 	t.Run("should paste to the end when no focus", func(t *testing.T) {
-		// initial blocks on page
-		pageBlocks := []*model.Block{
-			{Id: "b1", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "11111" }}},
-			{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-			{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
-			{Id: "b4", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "44444" }}},
-			{Id: "b5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "55555" }}},
-		}
-		fx := newPageFixture(t, pageBlocks...)
-		defer fx.ctrl.Finish()
-		defer fx.tearDown()
+		fx := createPage(t, []string{"11111", "22222", "33333", "44444", "55555"})
+		pasteAny(t, fx, "", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"22222", "33333"}));
 
-		err := fx.Paste(pb.RpcBlockPasteRequest{
-			AnySlot: []*model.Block{
-				{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-				{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
-			},
-		})
-		require.NoError(t, err)
-
-		// plus 3 blocks in page (4 -> 4a, 4b; 2.1, 3.1)
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 7)
-
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[0]].Model().GetText().Text, "11111")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[1]].Model().GetText().Text, "22222")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[2]].Model().GetText().Text, "33333")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[3]].Model().GetText().Text, "44444")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[4]].Model().GetText().Text, "55555")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[5]].Model().GetText().Text, "22222")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[6]].Model().GetText().Text, "33333")
-
-		// have 2 events: 1 - show, 2 - update for duplicate
-		require.Len(t, fx.serviceFx.events, 2)
-		// check we have 3 messages: 2 add and one change children
-		assert.Len(t, fx.serviceFx.events[1].Messages, 3)
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "44444", "55555", "22222", "33333"});
+		checkEvents(t, fx, 2, 3)
 	})
 
-	/* TODO: we can't just check blocks by id, we should check it by content, or use kind of modifier flag
-	t.Run("should paste after selected blocks if selected == pasted", func(t *testing.T) {
-		//initial blocks on page
-		pageBlocks := []*model.Block{
-			{Id: "b1", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "11111" }}},
-			{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-			{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
-			{Id: "b4", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "44444" }}},
-			{Id: "b5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "55555" }}},
-		}
-		fx := newPageFixture(t, pageBlocks...)
-		defer fx.ctrl.Finish()
-		defer fx.tearDown()
+	t.Run("should paste to the end when no focus", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "44444", "55555"})
+		pasteAny(t, fx, "", model.Range{From: 0, To: 0}, []string{"2", "3", "4"}, createBlocks([]string{"22222", "33333"}));
 
-		err := fx.Paste(pb.RpcBlockPasteRequest{
-			SelectedBlockIds: []string{"b2", "b3"},
-			AnySlot: []*model.Block{
-				{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-				{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
-			},
-		})
-		require.NoError(t, err)
-
-		// plus 3 blocks in page (4 -> 4a, 4b; 2.1, 3.1)
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 7)
-
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[0]].Model().GetText().Text, "11111")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[1]].Model().GetText().Text, "22222")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[2]].Model().GetText().Text, "33333")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[3]].Model().GetText().Text, "22222")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[4]].Model().GetText().Text, "33333")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[5]].Model().GetText().Text, "44444")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[6]].Model().GetText().Text, "55555")
-
-		// have 2 events: 1 - show, 2 - update for duplicate
-		require.Len(t, fx.serviceFx.events, 2)
-		// check we have 3 messages: 2 add + 1 set children
-		assert.Len(t, fx.serviceFx.events[1].Messages, 3)
-	})*/
-
-	t.Run("should replace selected blocks", func(t *testing.T) {
-		// initial blocks on page
-		pageBlocks := []*model.Block{
-			{Id: "b1", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "11111" }}},
-			{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-			{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
-			{Id: "b4", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "44444" }}},
-			{Id: "b5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "55555" }}},
-		}
-		fx := newPageFixture(t, pageBlocks...)
-		defer fx.ctrl.Finish()
-		defer fx.tearDown()
-
-		err := fx.Paste(pb.RpcBlockPasteRequest{
-			SelectedBlockIds: []string{"b2", "b3", "b4"},
-			AnySlot: []*model.Block{
-				{Id: "b2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "22222" }}},
-				{Id: "b3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{ Text: "33333" }}},
-			},
-		})
-		require.NoError(t, err)
-
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 4)
-
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[0]].Model().GetText().Text, "11111")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[1]].Model().GetText().Text, "22222")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[2]].Model().GetText().Text, "33333")
-		require.Equal(t, fx.versions[fx.versions[fx.GetId()].Model().ChildrenIds[3]].Model().GetText().Text, "55555")
-
-		// have 2 events: 1 - show, 2 - update for duplicate
-		require.Len(t, fx.serviceFx.events, 2)
-		// check we have 3 messages: 2 add + 3 remove children + childrenIds
-		assert.Len(t, fx.serviceFx.events[1].Messages, 6)
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "55555"});
+		checkEvents(t, fx, 2, 6)
 	})
 
+	t.Run("should paste to the empty page", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteAny(t, fx, "", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"22222", "33333"}));
+
+		checkBlockText(t, fx, []string{"22222", "33333"});
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+
+	t.Run("should paste when all blocks selected", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "44444", "55555"})
+		pasteAny(t, fx, "", model.Range{From: 0, To: 0}, []string{"1", "2", "3", "4", "5"}, createBlocks([]string{"aaaaa", "bbbbb"}));
+
+		checkBlockText(t, fx, []string{"aaaaa", "bbbbb"});
+		checkEvents(t, fx, 2, 6)
+	})
+}
+
+func TestCommonSmart_pasteText(t *testing.T) {
+	t.Run("should split block on paste", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
+		pasteAny(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, createBlocks([]string{"22222", "33333"}));
+
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "ab", "22222", "33333", "e", "55555"});
+		checkEvents(t, fx, 2, 5)
+	})
+}
+
+func TestCommonSmart_RangeSplit(t *testing.T) {
+	t.Run("1. Курсор в начале, range == 0. Ожидаемое поведение: вставка блоков сверху", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteAny(t, fx, "4", model.Range{From:0, To:0}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
+
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555" });
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+
+	t.Run("2. Курсор в середине, range == 0. Ожидаемое поведение: разбиение блока на верхний и нижний, вставка посередине", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteAny(t, fx, "4", model.Range{From:2, To:2}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
+
+		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "qw",  "aaaaa",  "bbbbb",  "erty", "55555" });
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+
+	t.Run("3. Курсор в конце, range == 0. Ожидаемое поведение: вставка после блока", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteAny(t, fx, "4", model.Range{From:6, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
+
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb", "55555" });
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+
+	t.Run("4. Курсор от 1/4 до 3/4, range == 1/2. Ожидаемое поведение: разбиение блока на верхний и нижний, удаление Range, вставка посередине", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteAny(t, fx, "4", model.Range{From:2, To:4}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
+
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "ty", "55555" });
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+
+	t.Run("5. Курсор от начала до середины, range == 1/2. Ожидаемое поведение: вставка сверху, удаление Range", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteAny(t, fx, "4", model.Range{From:0, To:3}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
+
+		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "aaaaa", "bbbbb", "rty", "55555" });
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+
+	t.Run("6. Курсор от середины до конца, range == 1/2. Ожидаемое поведение: вставка снизу, удаление Range", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteAny(t, fx, "4", model.Range{From:0, To:0}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
+
+		checkBlockText(t, fx, []string{ "11111", "22222", "qwe", "aaaaa", "bbbbb", "33333", "55555" });
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+
+	t.Run("7. Курсор от начала до конца, range == 1. Ожидаемое поведение: вставка снизу/сверху, удаление блока", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteAny(t, fx, "4", model.Range{From:0, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
+
+		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "aaaaa",  "bbbbb",  "55555" });
+		checkEvents(t, fx, 2, 6) // TODO
+	})
+}
 
 	/*
-	TODO: test all cases: (from:last to:last), (from:n to:m), (from:0 to:0), (from:0 to:last), (from:n to:last)
-	TODO: or (req.SelectedTextRange.From == len(blockText) && req.SelectedTextRange.To == len(blockText))
-	=== ANYSLOT COPY ===
-	Нечего тестировать, работает на клиенте
-
 	=== ANYSLOT PASTE ===
 	>>> Тесты на RangeSplit
 	БЛОК В ФОКУСЕ, selected text, есть markup
-	1. курсор в начале, range == 0
-	2. курсор в середине, range == 0
-	3. курсор в конце, range == 0
-	4. курсор от 1/4 до 3/4, range == 1/2
-	5. курсор от начала до середины, range == 1/2
-	6. курсор от середины до конца, range == 1/2
-	7. курсор от начала до конца, range == 1
 
 	ПУСТОЙ ДОКУМЕНТ
 	8. Возможен ли сценарий, что у нас нет блоков? Возможен, так как title, icon – это виртуальные блоки, их нет на миддле.
@@ -203,4 +201,4 @@ func TestCommonSmart_Paste(t *testing.T) {
 	29. Выделили группу блоков, среди которых есть нетекстовые, скопировали
 	30. Выделили группу блоков, среди которых нет текстовых, не скопировали
 	 */
-}
+
