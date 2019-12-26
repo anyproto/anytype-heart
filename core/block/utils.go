@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -54,4 +55,15 @@ func fieldsGetFloat(field *types.Struct, key string) (value float64, ok bool) {
 		}
 	}
 	return
+}
+
+func isSmartBlock(m *model.Block) bool {
+	if m == nil {
+		return false
+	}
+	switch m.Content.(type) {
+	case *model.BlockContentOfPage, *model.BlockContentOfDashboard, *model.BlockContentOfDataview:
+		return true
+	}
+	return false
 }

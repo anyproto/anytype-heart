@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,7 +82,7 @@ func TestCommonSmart_Create(t *testing.T) {
 
 		req := pb.RpcBlockCreateRequest{
 			Block: &model.Block{
-				Content: &model.BlockContentOfPage{Page: &model.BlockContentPage{}},
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 			},
 			TargetId:  "3",
 			Position:  model.Block_Top,
@@ -106,6 +107,30 @@ func TestCommonSmart_Create(t *testing.T) {
 		//assert.Equal(t, []string{"2", "23", "3"}, versToSave[0].ChildrenIds)
 		t.Log(versToSave)
 		assert.Len(t, fx.events, 2)
+	})
+	t.Run("create smart block", func(t *testing.T) {
+		fx := newPageFixture(t)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+		b := &model.Block{
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"key": testStringValue("value"),
+				},
+			},
+			Content: &model.BlockContentOfPage{
+				Page: &model.BlockContentPage{},
+			},
+		}
+		fx.block.EXPECT().AddVersion(b)
+		newId, err := fx.Create(pb.RpcBlockCreateRequest{
+			ContextId: fx.pageId,
+			Block:     b,
+		})
+		require.NoError(t, err)
+
+		require.Len(t, fx.savedBlocks, 2)
+		assert.Equal(t, b.Id, fx.savedBlocks[newId].GetLink().TargetBlockId)
 	})
 }
 

@@ -240,6 +240,18 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 	return
 }
 
+func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
+	nb, err := p.block.NewBlock(*m)
+	if err != nil {
+		return
+	}
+	m.Id = nb.GetId()
+	if _, err = p.block.AddVersion(m); err != nil {
+		return
+	}
+	return
+}
+
 func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos model.BlockPosition) (err error) {
 	parent := s.get(p.GetId()).Model()
 	var target simple.Block

@@ -187,21 +187,21 @@ func newPageFixture(t *testing.T, blocks ...*model.Block) *pageFixture {
 			childrenIds = removeFromSlice(childrenIds, cid)
 		}
 	}
-	bw, _ := serviceFx.newMockBlockWithContent(pageFx.pageId, &model.BlockContentOfPage{}, childrenIds, db)
-	bw.saveBlocksWriter = func(ms ...*model.Block) {
+	pageFx.block, _ = serviceFx.newMockBlockWithContent(pageFx.pageId, &model.BlockContentOfPage{}, childrenIds, db)
+	pageFx.block.saveBlocksWriter = func(ms ...*model.Block) {
 		for _, m := range ms {
 			pageFx.savedBlocks[m.Id] = m
 		}
 	}
-	bw.newBlockHandler = func(m model.Block) (block core.Block, err error) {
+	pageFx.block.newBlockHandler = func(m model.Block) (block core.Block, err error) {
 		newId := fmt.Sprint(rand.Int63())
 		mb := testMock.NewMockBlock(pageFx.ctrl)
 		mb.EXPECT().GetId().AnyTimes().Return(newId)
 		return mb, nil
 	}
-	bw.EXPECT().Close()
+	pageFx.block.EXPECT().Close()
 
-	serviceFx.anytype.EXPECT().GetBlock(pageFx.pageId).Return(bw, nil)
+	serviceFx.anytype.EXPECT().GetBlock(pageFx.pageId).Return(pageFx.block, nil)
 
 	require.NoError(t, serviceFx.OpenBlock(pageFx.pageId))
 	pageFx.page = serviceFx.Service.(*service).smartBlocks[pageFx.pageId].(*page)
@@ -213,6 +213,7 @@ type pageFixture struct {
 	pageId    string
 	ctrl      *gomock.Controller
 	serviceFx *serviceFixture
+	block     *blockWrapper
 	// all saved blocks will be here
 	savedBlocks map[string]*model.Block
 }

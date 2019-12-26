@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
+	"github.com/mohae/deepcopy"
 )
 
 func (s *commonSmart) newState() *state {
@@ -29,6 +30,12 @@ func (s *state) create(b *model.Block) (new simple.Block, err error) {
 	if b == nil {
 		return nil, fmt.Errorf("can't create nil block")
 	}
+	if isSmartBlock(b) {
+		if err = s.sb.createSmartBlock(b); err != nil {
+			return
+		}
+		b = s.createLink(b)
+	}
 	nb, err := s.sb.block.NewBlock(*b)
 	if err != nil {
 		return
@@ -37,6 +44,22 @@ func (s *state) create(b *model.Block) (new simple.Block, err error) {
 	new.Model().Id = nb.GetId()
 	s.blocks[new.Model().Id] = new
 	return
+}
+
+func (s *state) createLink(target *model.Block) (m *model.Block) {
+	style := model.BlockContentLink_Page
+	if target.GetDataview() != nil {
+		style = model.BlockContentLink_Dataview
+	}
+	return &model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: target.Id,
+				Style:         style,
+				Fields:        deepcopy.Copy(target.Fields).(*types.Struct),
+			},
+		},
+	}
 }
 
 func (s *state) get(id string) simple.Block {

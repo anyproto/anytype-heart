@@ -3,6 +3,7 @@ package block
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,4 +29,8 @@ func Test_insertToSlice(t *testing.T) {
 func Test_removeFromSlice(t *testing.T) {
 	var ids = []string{"1", "2", "3"}
 	assert.Equal(t, []string{"1", "3"}, removeFromSlice(ids, "2"))
+}
+
+func Test_isSmartBlock(t *testing.T) {
+	assert.True(t, isSmartBlock(&model.Block{Content: &model.BlockContentOfPage{}}))
 }
