@@ -61,18 +61,31 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
 
 		// selected text -> remove it and split the block
-	} else if len(req.FocusedBlockId) > 0 && req.SelectedTextRange.From > 0 && req.SelectedTextRange.To > req.SelectedTextRange.From {
+	} else if len(req.FocusedBlockId) > 0 { // && req.SelectedTextRange.From > 0 && req.SelectedTextRange.To > req.SelectedTextRange.From
 
 		// split block
-		if _, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To); err != nil {
+
+		newBlockId, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To)
+		if err != nil {
 			return err
 		}
-
+		newBlockId = newBlockId;
 		targetId = req.FocusedBlockId
 
-	} else if len(req.FocusedBlockId) > 0 &&
-		// TODO: or (req.SelectedTextRange.From == len(blockText) && req.SelectedTextRange.To == len(blockText))
-		(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) {
+
+		//t, err := s.getText(newBlockId);
+		//if err !=nil {
+		//	return err
+		//}
+		//if len(t.GetText()) == 0 {
+		//	if err := p.unlink(s, newBlockId); err != nil {
+		//		return err
+		//	}
+		//}
+
+	//} else if len(req.FocusedBlockId) > 0 &&
+	//	// TODO: or (req.SelectedTextRange.From == len(blockText) && req.SelectedTextRange.To == len(blockText))
+	//	(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) {
 
 		// No focus -> check last
 	} else {
@@ -85,18 +98,35 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 
 	err := p.pasteBlocks(s, req, targetId)
 
+	t, err := s.getText(targetId);
+	if err !=nil {
+		return err
+	}
+	if len(t.GetText()) == 0 {
+		if err := p.unlink(s, targetId); err != nil {
+			return err
+		}
+	}
+
 	if err != nil {
 		return err
 	}
 
 	// selected blocks -> remove it
 	if len(req.SelectedBlockIds) > 0 {
-		// but if selected == anySlot => don't
-		//TODO: if !strArrEq(req.SelectedBlockIds, req.AnySlot) {
 			if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
 				return err
 			}
-		//}
+	}
+
+	cIds := p.versions[p.GetId()].Model().ChildrenIds
+	for i := 0; i < len(cIds); i++ {
+		//fmt.Println(">>> Text", p.versions[cIds[i]].Model().GetText().Text)
+		if len(p.versions[cIds[i]].Model().GetText().Text) == 0 {
+			if err := p.unlink(s, cIds[i]); err != nil {
+				return err
+			}
+		}
 	}
 
 	return p.applyAndSendEvent(s)

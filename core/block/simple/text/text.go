@@ -34,12 +34,13 @@ func NewText(block *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	SetText(text string, marks *model.BlockContentTextMarks) (err error)
+	GetText() (text string)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
 	SetTextColor(color string)
 	SetTextBackgroundColor(color string)
 	Split(pos int32) (simple.Block, error)
-	RangeSplit(from int32, to int32) (simple.Block, error)
+	RangeSplit(from int32, to int32) ([]simple.Block, error)
 	Merge(b simple.Block) error
 }
 
@@ -139,6 +140,10 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 	return
 }
 
+func (t *Text) GetText() (text string) {
+	return t.content.Text
+}
+
 func (t *Text) Split(pos int32) (simple.Block, error) {
 	if pos < 0 || int(pos) >= utf8.RuneCountInString(t.content.Text) {
 		return nil, ErrOutOfRange
@@ -184,11 +189,11 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 }
 
 // TODO: should be 100% tested @enkogu
-func (t *Text) RangeSplit(from int32, to int32) (simple.Block, error) {
-	if from < 0 || int(from) >= utf8.RuneCountInString(t.content.Text) {
+func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, error) {
+	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
 		return nil, ErrOutOfRange
 	}
-	if to < 0 || int(to) >= utf8.RuneCountInString(t.content.Text) {
+	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
 		return nil, ErrOutOfRange
 	}
 	if from > to {
@@ -253,7 +258,19 @@ func (t *Text) RangeSplit(from int32, to int32) (simple.Block, error) {
 			Checked: t.content.Checked,
 		}},
 	})
-	return newBlock, nil
+
+	var newBlocks []simple.Block
+
+	// if oldBlock is empty and newBlock is non empty -> replace content
+	if len(t.content.Text) == 0 {
+		t.content = newBlock.Model().GetText()
+
+	// if newBlock is empty -> don't push it
+	} else if len(string(runes[to:])) > 0 {
+		newBlocks = append(newBlocks, newBlock)
+	}
+
+	return newBlocks, nil
 }
 
 func (t *Text) Merge(b simple.Block) error {
