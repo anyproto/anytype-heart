@@ -2552,7 +2552,8 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error) |  |  |
-| homeBlockId | [string](#string) |  |  |
+| homeBlockId | [string](#string) |  | home dashboard block id |
+| gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
 
