@@ -107,7 +107,7 @@ func TestCommonSmart_Create(t *testing.T) {
 		t.Log(versToSave)
 		assert.Len(t, fx.events, 2)
 	})
-	t.Run("create smart block", func(t *testing.T) {
+	t.Run("create block with target=pageId and position=inner", func(t *testing.T) {
 		fx := newPageFixture(t)
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
