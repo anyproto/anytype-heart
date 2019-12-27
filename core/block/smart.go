@@ -255,9 +255,12 @@ func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos
 
 	var pos = len(parent.ChildrenIds) + 1
 	if target != nil {
-		targetPos := findPosInSlice(parent.ChildrenIds, target.Model().Id)
-		if targetPos == -1 {
-			return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
+		var targetPos int
+		if reqPos != model.Block_Inner {
+			targetPos = findPosInSlice(parent.ChildrenIds, target.Model().Id)
+			if targetPos == -1 {
+				return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
+			}
 		}
 		switch reqPos {
 		case model.Block_Bottom:
