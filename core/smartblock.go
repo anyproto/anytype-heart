@@ -132,11 +132,11 @@ func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion
 		newVersion.model.BlockById[id] = dependentBlock.Model()
 	}
 
-	if newVersion.model.FileByHash == nil {
-		newVersion.model.FileByHash = lastVersion.(*SmartBlockVersion).model.FileByHash
+	if newVersion.model.KeysByHash == nil {
+		newVersion.model.KeysByHash = lastVersion.(*SmartBlockVersion).model.KeysByHash
 	} else {
-		for id, file := range lastVersion.(*SmartBlockVersion).model.FileByHash {
-			newVersion.model.FileByHash[id] = file
+		for id, file := range lastVersion.(*SmartBlockVersion).model.KeysByHash {
+			newVersion.model.KeysByHash[id] = file
 		}
 	}
 
@@ -221,7 +221,7 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 
 	blockVersion := &SmartBlockVersion{model: &storage.BlockWithMeta{}}
 	lastVersion, _ := smartBlock.GetCurrentVersion()
-	filesInLastVersion := make(map[string]*storage.FileIndex)
+	fileKeysInLastVersion := make(map[string]*storage.FileKeys)
 	if lastVersion != nil {
 		var dependentBlocks = lastVersion.DependentBlocks()
 		blockVersion.model.BlockById = make(map[string]*model.Block, len(dependentBlocks))
@@ -229,7 +229,7 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 			blockVersion.model.BlockById[id] = dependentBlock.Model()
 		}
 		blockVersion.model.Block = lastVersion.Model()
-		filesInLastVersion = lastVersion.(*SmartBlockVersion).model.FileByHash
+		fileKeysInLastVersion = lastVersion.(*SmartBlockVersion).model.KeysByHash
 	} else {
 		blockVersion.model.Block = &model.Block{Id: smartBlock.GetId()}
 	}
@@ -238,8 +238,8 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 		blockVersion.model.BlockById = make(map[string]*model.Block, len(blocks))
 	}
 
-	if blockVersion.model.FileByHash == nil {
-		blockVersion.model.FileByHash = make(map[string]*storage.FileIndex)
+	if blockVersion.model.KeysByHash == nil {
+		blockVersion.model.KeysByHash = make(map[string]*storage.FileKeys)
 	}
 
 	blockVersions := make([]BlockVersion, 0, len(blocks))
@@ -307,12 +307,17 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 			}
 
 			if file, ok := block.Content.(*model.BlockContentOfFile); ok {
-				if _, exists := filesInLastVersion[file.File.Hash]; exists {
-					blockVersion.model.FileByHash[file.File.Hash] = filesInLastVersion[file.File.Hash]
+				if _, exists := fileKeysInLastVersion[file.File.Hash]; exists {
+					blockVersion.model.KeysByHash[file.File.Hash] = fileKeysInLastVersion[file.File.Hash]
 				} else {
-					if efile := smartBlock.thread.Datastore().Files().Get(file.File.Hash); efile != nil {
-						blockVersion.model.FileByHash[file.File.Hash] = util.CastFileIndexToStorage(efile)
-					}
+					filesKeysCacheMutex.RLock()
+					defer filesKeysCacheMutex.RUnlock()
+					if keys, exists := filesKeysCache[file.File.Hash]; exists {
+						blockVersion.model.KeysByHash[file.File.Hash] = &storage.FileKeys{keys}
+					} //else if efile := smartBlock.thread.Datastore().Files().Get(file.File.Hash); efile != nil {
+						// todo: extract keys from 'files' table in sqlite
+						//  to provide a shutdown protection
+					//}
 				}
 			}
 
@@ -385,32 +390,33 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithMeta) (ver
 }
 
 // NewBlock should be used as constructor for the new block
-func (smartBlock *SmartBlock) newBlock(block model.Block, smartBlockWrapper Block) (Block, error) {
+func (smartBlock *SmartBlock) NewBlock(block model.Block) (Block, error) {
 	if block.Content == nil {
 		return nil, fmt.Errorf("content not set")
 	}
 
+	var smartBlockSchemaBlob string
 	switch block.Content.(type) {
 	case *model.BlockContentOfPage:
+		smartBlockSchemaBlob = schema.Page
+
+	case *model.BlockContentOfDashboard:
+		smartBlockSchemaBlob = schema.Dashboard
+
+	}
+	if smartBlockSchemaBlob != "" {
 		thrd, err := smartBlock.node.newBlockThread(schema.Page)
 		if err != nil {
 			return nil, err
 		}
-		return &Page{&SmartBlock{thread: thrd, node: smartBlock.node}}, nil
-	case *model.BlockContentOfDashboard:
-		thrd, err := smartBlock.node.newBlockThread(schema.Dashboard)
-		if err != nil {
-			return nil, err
-		}
-
-		return &Dashboard{&SmartBlock{thread: thrd, node: smartBlock.node}}, nil
-	default:
-		return &SimpleBlock{
-			parentSmartBlock: smartBlockWrapper,
-			id:               uuid.NewV4().String(),
-			node:             smartBlock.node,
-		}, nil
+		return &SmartBlock{thread: thrd, node: smartBlock.node}, nil
 	}
+
+	return &SimpleBlock{
+		parentSmartBlock: smartBlock,
+		id:               uuid.NewV4().String(),
+		node:             smartBlock.node,
+	}, nil
 }
 
 func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {

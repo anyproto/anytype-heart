@@ -3,19 +3,27 @@ package core
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/gateway"
 	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-textile/core"
-	"github.com/textileio/go-textile/mill"
-	"github.com/textileio/go-textile/pb"
+	tpb "github.com/textileio/go-textile/pb"
 )
 
-type File struct {
-	index *pb.FileIndex
+var filesKeysCache = make(map[string]map[string]string)
+var filesKeysCacheMutex = sync.RWMutex{}
+
+type File interface {
+	Meta() *FileMeta
+	Hash() string
+	Reader() (io.ReadSeeker, error)
+}
+
+type file struct {
+	hash  string
+	index *tpb.FileIndex
 	node  *Anytype
 }
 
@@ -26,64 +34,26 @@ type FileMeta struct {
 	Added time.Time
 }
 
-func (file *File) Meta() *FileMeta {
+func (file *file) Meta() *FileMeta {
 	added, _ := types.TimestampFromProto(util.CastTimestampToGogo(file.index.Added))
 	// ignore error
 
 	return &FileMeta{
 		Media: file.index.Media,
-		Name:  file.index.Checksum,
+		Name:  file.index.Name,
 		Size:  file.index.Size,
 		Added: added,
 	}
 }
 
-func (file *File) Hash() string {
-	return file.index.Hash
+func (file *file) Hash() string {
+	return file.hash
 }
 
-func (file *File) URL() string {
+func (file *file) URL() string {
 	return fmt.Sprintf("http://%s/file/%s", gateway.GatewayAddr(), file.index.Hash)
 }
 
-func (file *File) Reader() (io.ReadSeeker, error) {
+func (file *file) Reader() (io.ReadSeeker, error) {
 	return file.node.Textile.Node().FileIndexContent(file.index)
-}
-
-func (a *Anytype) FileByHash(hash string) (*File, error) {
-	fileIndex, err := a.Textile.Node().FileMeta(hash)
-	if err != nil {
-		return nil, err
-	}
-
-	return &File{
-		index: fileIndex,
-		node:  a,
-	}, nil
-}
-
-func (a *Anytype) FileAddWithBytes(content []byte, media string, name string) (*File, error) {
-	fileIndex, err := a.Textile.Node().AddFileIndex(&mill.Blob{}, core.AddFileConfig{
-		Input: content,
-		Media: media,
-		Name:  name,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &File{
-		index: fileIndex,
-		node:  a,
-	}, nil
-}
-
-func (a *Anytype) FileAddWithReader(content io.Reader, media string, name string) (*File, error) {
-	// todo: PR textile to be able to use reader instead of bytes
-	contentBytes, err := ioutil.ReadAll(content)
-	if err != nil {
-		return nil, err
-	}
-
-	return a.FileAddWithBytes(contentBytes, media, name)
 }

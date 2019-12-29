@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
@@ -18,14 +17,7 @@ func (a *Anytype) GetBlock(id string) (Block, error) {
 			return nil, err
 		}
 
-		switch strings.ToLower(smartBlock.thread.Schema.Name) {
-		case "dashboard":
-			return &Dashboard{smartBlock}, nil
-		case "page":
-			return &Page{smartBlock}, nil
-		default:
-			return nil, fmt.Errorf("for now only smartblocks are queriable")
-		}
+		return smartBlock, nil
 	}
 
 	// todo: allow to query simple blocks via smart blocks

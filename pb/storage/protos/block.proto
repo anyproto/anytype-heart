@@ -8,5 +8,5 @@ import "pb/storage/protos/file.proto";
 message BlockWithMeta {
     anytype.model.Block block = 1;
     map<string, anytype.model.Block> blockById = 2;
-    map<string, FileIndex> fileByHash = 3;
+    map<string, FileKeys> keysByHash = 3;
 }

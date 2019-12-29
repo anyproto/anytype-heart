@@ -1,11 +1,11 @@
 package core
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/types"
 	mh "github.com/multiformats/go-multihash"
 )
@@ -102,14 +102,18 @@ type rowHash struct {
 
 // addMissingFiles ensure that all fileIndex exist in this version added to the files database
 func (version *SmartBlockVersion) addMissingFiles() error {
-	if len(version.model.FileByHash) == 0 {
+	if len(version.model.KeysByHash) == 0 {
 		return nil
 	}
 
-	hashes := make([]string, 0, len(version.model.FileByHash))
-	for hash, _ := range version.model.FileByHash {
-		hashes = append(hashes, hash)
+	hashes := make([]string, 0, len(version.model.KeysByHash))
+	for _, keyByHash := range version.model.KeysByHash {
+		for hash, _ := range keyByHash.KeysByPath {
+			fmt.Printf("addMissingFiles KeysByPath '%s'\n", hash)
+			hashes = append(hashes, hash)
+		}
 	}
+	return nil
 	hashesString := "\"" + strings.Join(hashes, "\",\"") + "\""
 
 	rows, err := version.node.Textile.Node().Datastore().Files().PrepareAndExecuteQuery("select hash from files where hash in(" + hashesString + ")")
@@ -128,14 +132,14 @@ func (version *SmartBlockVersion) addMissingFiles() error {
 		filesExists[row.Hash] = struct{}{}
 	}
 
-	for hash, file := range version.model.FileByHash {
+	for hash, _ := range version.model.KeysByHash {
 		if _, exists := filesExists[hash]; exists {
 			continue
 		}
-		err = version.node.Textile.Node().Datastore().Files().Add(util.CastFileIndexToTextile(file))
-		if err != nil {
-			log.Errorf("smartblock: add a missing file to db got error: %s", err.Error())
-		}
+		//	err = version.node.Textile.Node().Datastore().Files().Add(util.CastFileIndexToTextile(file))
+		//	if err != nil {
+		//		log.Errorf("smartblock: add a missing file to db got error: %s", err.Error())
+		//	}
 	}
 
 	return nil

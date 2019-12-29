@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	tpb "github.com/textileio/go-textile/pb"
 )
 
 func DiffStringSlice(old, new []string) (removed []string, added []string) {
@@ -85,38 +83,4 @@ func CastTimestampToGogo(tsP *timestamp.Timestamp) *types.Timestamp {
 
 	ts := types.Timestamp(*tsP)
 	return &ts
-}
-
-func CastFileIndexToStorage(file *tpb.FileIndex) *storage.FileIndex {
-	return &storage.FileIndex{
-		Mill:     file.Mill,
-		Checksum: file.Checksum,
-		Source:   file.Source,
-		Opts:     file.Opts,
-		Hash:     file.Hash,
-		Key:      file.Key,
-		Media:    file.Media,
-		Name:     file.Name,
-		Size_:    file.Size,
-		Added:    CastTimestampToGogo(file.Added),
-		//Meta:     &types.Struct{types.field(file.Meta.Fields},
-		Targets: file.Targets,
-	}
-}
-
-func CastFileIndexToTextile(file *storage.FileIndex) *tpb.FileIndex {
-	return &tpb.FileIndex{
-		Mill:     file.Mill,
-		Checksum: file.Checksum,
-		Source:   file.Source,
-		Opts:     file.Opts,
-		Hash:     file.Hash,
-		Key:      file.Key,
-		Media:    file.Media,
-		Name:     file.Name,
-		Size:     file.Size_,
-		Added:    CastTimestampFromGogo(file.Added),
-		//Meta:     &types.Struct{types.field(file.Meta.Fields},
-		Targets: file.Targets,
-	}
 }

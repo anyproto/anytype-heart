@@ -16,7 +16,7 @@ import (
 
 func (a *Anytype) newBlockThread(schema string) (*tcore.Thread, error) {
 	config := tpb.AddThreadConfig{
-		Name: defaultDocName,
+		Name: schema,
 		Key:  ksuid.New().String(),
 		Schema: &tpb.AddThreadConfig_Schema{
 			Json: schema,
