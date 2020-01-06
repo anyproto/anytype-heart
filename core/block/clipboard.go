@@ -1,6 +1,7 @@
 package block
 
 import (
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -44,6 +45,12 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 
 	s := p.newState()
 
+	cIds := p.versions[p.GetId()].Model().ChildrenIds
+
+	if len(cIds) == 0 {
+
+	}
+
 	/*strArrEq := func(a, b []string) bool {
 		if len(a) != len(b) {
 			return false
@@ -56,6 +63,14 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 		}
 		return true
 	}*/
+	//cIds := p.versions[p.GetId()].Model().ChildrenIds
+	//var alreadyEmptyBlocks []string;
+	//for i := 0; i < len(cIds); i++ {
+	//	//fmt.Println(">>> Text", p.versions[cIds[i]].Model().GetText().Text)
+	//	if len(p.versions[cIds[i]].Model().GetText().Text) == 0 {
+	//		alreadyEmptyBlocks = append(alreadyEmptyBlocks, cIds[i])
+	//	}
+	//}
 
 	if len(req.SelectedBlockIds) > 0 {
 		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
@@ -67,10 +82,31 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 
 		newBlockId, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
+			fmt.Println("2ERR>>>", err)
 			return err
 		}
 		newBlockId = newBlockId;
 		targetId = req.FocusedBlockId
+
+
+		var getPrevBlockId = func(id string) string {
+			var out string
+			var prev string
+			cIds = p.versions[p.GetId()].Model().ChildrenIds
+			for _, i := range cIds {
+				out = prev
+				if i == id {
+					return out
+				}
+				prev = i
+			}
+			return out
+		}
+
+		// if cursor at (0,0) – paste top
+		if req.SelectedTextRange.From == 0 {
+			targetId = getPrevBlockId(req.FocusedBlockId)
+		}
 
 
 		//t, err := s.getText(newBlockId);
@@ -89,40 +125,51 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 
 		// No focus -> check last
 	} else {
-		cIds := p.versions[p.GetId()].Model().ChildrenIds
-
 		if len(cIds) > 0 {
 			targetId = cIds[len(cIds)-1]
 		}
 	}
 
 	err := p.pasteBlocks(s, req, targetId)
+	fmt.Println("1ERR>>>", err)
+	if err != nil {
 
-	t, err := s.getText(targetId);
+		return err
+	}
+
+/*	t, err := s.getText(targetId);
 	if err !=nil {
+		fmt.Println("3ERR>>>", err)
 		return err
 	}
 	if len(t.GetText()) == 0 {
 		if err := p.unlink(s, targetId); err != nil {
+			fmt.Println("4ERR>>>", err)
 			return err
 		}
-	}
+	}*/
 
-	if err != nil {
-		return err
-	}
 
 	// selected blocks -> remove it
 	if len(req.SelectedBlockIds) > 0 {
 			if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
+				fmt.Println("5ERR>>>", err)
 				return err
 			}
 	}
 
-	cIds := p.versions[p.GetId()].Model().ChildrenIds
+/*	var stringInSlice = func(a string, list []string) bool {
+		for _, b := range list {
+			if b == a {
+				return true
+			}
+		}
+		return false
+	}*/
+
+	cIds = p.versions[p.GetId()].Model().ChildrenIds
 	for i := 0; i < len(cIds); i++ {
-		//fmt.Println(">>> Text", p.versions[cIds[i]].Model().GetText().Text)
-		if len(p.versions[cIds[i]].Model().GetText().Text) == 0 {
+		if len(p.versions[cIds[i]].Model().GetText().Text) == 0  {
 			if err := p.unlink(s, cIds[i]); err != nil {
 				return err
 			}

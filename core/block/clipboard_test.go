@@ -1,6 +1,7 @@
 package block
 
 import (
+	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/require"
@@ -33,18 +34,24 @@ func createPage(t *testing.T, textArr []string) *pageFixture {
 
 func checkBlockText(t *testing.T, fx *pageFixture, textArr []string)  {
 	//require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, len(textArr))
-	//fmt.Println("Should be:", textArr)
-	//for i := 0; i < len(fx.versions[fx.GetId()].Model().ChildrenIds); i++  {
-	//	id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
-	//	fmt.Println("ID::", id, "TEXT:", fx.versions[id].Model().GetText().Text, "Should be:", textArr[i])
-	//}
+	fmt.Println("HOW IT IS:")
+	for i := 0; i < len(fx.versions[fx.GetId()].Model().ChildrenIds); i++  {
+		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
+		fmt.Print(fx.versions[id].Model().GetText().Text, " ")
+	}
+	fmt.Println("\nHOW IT SHOULD BE:")
+	for i := 0; i < len(textArr); i++  {
+		fmt.Print(textArr[i], " ")
+	}
+
 	for i := 0; i < len(textArr); i++  {
 		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
 		//fmt.Println("IDs >>> ", fx.versions[fx.GetId()].Model().ChildrenIds)
-		require.Equal(t, fx.versions[id].Model().GetText().Text, textArr[i])
+		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
 
 		//fmt.Println(fx.versions[id].Model().GetText().Text, "Should be: ", textArr[i])
 	}
+	fmt.Print("\n")
 }
 
 func pasteAny(t *testing.T, fx *pageFixture, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {

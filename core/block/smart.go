@@ -209,6 +209,14 @@ func (p *commonSmart) duplicate(s *state, req pb.RpcBlockDuplicateRequest) (id s
 func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (err error) {
 	//copy, err := s.create(req.AnySlot[iter].Copy().Model())
 
+	//s.ChildrenIds = insertToSlice(s.ChildrenIds, b.Model().Id, pos)
+	parent := s.get(p.GetId()).Model()
+	emptyPage := false
+
+	if len(parent.ChildrenIds) == 0 {
+		emptyPage = true
+	}
+
 	for i := 0; i < len(req.AnySlot); i++ {
 		copyBlock, err := s.create(req.AnySlot[i])
 		if err != nil {
@@ -226,12 +234,17 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 			}
 		}
 
+		if emptyPage {
+			parent.ChildrenIds = append(parent.ChildrenIds, copyBlockId)
+		} else {
+			if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
+				return err
+			}
 
-		if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
-			return err
+			targetId = copyBlockId
 		}
 
-		targetId = copyBlockId
+
 	}
 
 	return nil
@@ -407,12 +420,15 @@ func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blo
 	//
 	//}
 
-	newBlocks, err := t.RangeSplit(from, to)
+	newBlocks, text, err := t.RangeSplit(from, to)
 	if err != nil {
 		//fmt.Println(">>> ERR2")
 		return "", err
 	}
 
+	if len(text) == 0 {
+		p.unlink(s, id)
+	}
 	//if len(newBlock.Model().GetText().Text) == 0 {
 	//	return
 	//}

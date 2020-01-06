@@ -40,7 +40,7 @@ type Block interface {
 	SetTextColor(color string)
 	SetTextBackgroundColor(color string)
 	Split(pos int32) (simple.Block, error)
-	RangeSplit(from int32, to int32) ([]simple.Block, error)
+	RangeSplit(from int32, to int32) ([]simple.Block, string, error)
 	Merge(b simple.Block) error
 }
 
@@ -189,16 +189,25 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 }
 
 // TODO: should be 100% tested @enkogu
-func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, error) {
+func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
-		return nil, ErrOutOfRange
+		return nil, "", ErrOutOfRange
 	}
 	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
-		return nil, ErrOutOfRange
+		return nil, "", ErrOutOfRange
 	}
 	if from > to {
-		return nil, ErrOutOfRange // Maybe different error? @enkogu
+		return nil, "", ErrOutOfRange // Maybe different error? @enkogu
 	}
+	var newBlocks []simple.Block
+	// special cases
+	if from == 0 && to == 0 {
+		return newBlocks, t.content.Text, nil
+	}
+
+/*	if from == 0 && to > 0 {
+
+	}*/
 
 	runes := []rune(t.content.Text)
 	t.content.Text = string(runes[:from])
@@ -259,18 +268,16 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, error) {
 		}},
 	})
 
-	var newBlocks []simple.Block
-
 	// if oldBlock is empty and newBlock is non empty -> replace content
-	if len(t.content.Text) == 0 {
-		t.content = newBlock.Model().GetText()
+	if len(string(runes[:from])) == 0 {
+		t.content.Text = string(runes[to:])
 
 	// if newBlock is empty -> don't push it
 	} else if len(string(runes[to:])) > 0 {
 		newBlocks = append(newBlocks, newBlock)
 	}
-
-	return newBlocks, nil
+	//fmt.Println("   >>>>>> NEW BLOCK TEXT:", string(runes[to:]), "OLD BLOCK TEXT:", )
+	return newBlocks, t.content.Text, nil
 }
 
 func (t *Text) Merge(b simple.Block) error {
