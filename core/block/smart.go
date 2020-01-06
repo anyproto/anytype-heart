@@ -406,32 +406,18 @@ func (p *commonSmart) find(id string, sources ...map[string]simple.Block) simple
 
 func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blockId string, err error) {
 	t, err := s.getText(id)
-	//text := t.GetText()
 	if err != nil {
-		//fmt.Println(">>> ERR1")
-		return
+		return "", err
 	}
-
-	//if (len(t.content.Text) == 0) ||  // вставить на место пустого блока, пустой блок удалить
-	//	(from == 0 && to == int32(len(t.content.Text))) { // текст в блоке выделен полностью, аналогично
-	//
-	//
-	//} else if int32(len(t.content.Text)) == from && from == to { // курсор в конце блока, вставить блоки снизу, не сплитить
-	//
-	//}
 
 	newBlocks, text, err := t.RangeSplit(from, to)
 	if err != nil {
-		//fmt.Println(">>> ERR2")
 		return "", err
 	}
 
 	if len(text) == 0 {
 		p.unlink(s, id)
 	}
-	//if len(newBlock.Model().GetText().Text) == 0 {
-	//	return
-	//}
 
 	if len(newBlocks) == 0 {
 		return "", nil

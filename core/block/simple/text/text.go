@@ -276,7 +276,6 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	} else if len(string(runes[to:])) > 0 {
 		newBlocks = append(newBlocks, newBlock)
 	}
-	//fmt.Println("   >>>>>> NEW BLOCK TEXT:", string(runes[to:]), "OLD BLOCK TEXT:", )
 	return newBlocks, t.content.Text, nil
 }
 

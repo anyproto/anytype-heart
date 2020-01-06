@@ -33,23 +33,11 @@ func createPage(t *testing.T, textArr []string) *pageFixture {
 }
 
 func checkBlockText(t *testing.T, fx *pageFixture, textArr []string)  {
-	//require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, len(textArr))
-	fmt.Println("HOW IT IS:")
-	for i := 0; i < len(fx.versions[fx.GetId()].Model().ChildrenIds); i++  {
-		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
-		fmt.Print(fx.versions[id].Model().GetText().Text, " ")
-	}
-	fmt.Println("\nHOW IT SHOULD BE:")
-	for i := 0; i < len(textArr); i++  {
-		fmt.Print(textArr[i], " ")
-	}
+	require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, len(textArr))
 
 	for i := 0; i < len(textArr); i++  {
 		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
-		//fmt.Println("IDs >>> ", fx.versions[fx.GetId()].Model().ChildrenIds)
 		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
-
-		//fmt.Println(fx.versions[id].Model().GetText().Text, "Should be: ", textArr[i])
 	}
 	fmt.Print("\n")
 }
@@ -110,7 +98,7 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 		pasteAny(t, fx, "", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"22222", "33333"}));
 
 		checkBlockText(t, fx, []string{"22222", "33333"});
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 
 	t.Run("should paste when all blocks selected", func(t *testing.T) {
@@ -128,7 +116,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		pasteAny(t, fx, "4", model.Range{From:0, To:0}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555" });
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 
 	t.Run("2. Курсор в середине, range == 0. Ожидаемое поведение: разбиение блока на верхний и нижний, вставка посередине", func(t *testing.T) {
@@ -136,7 +124,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		pasteAny(t, fx, "4", model.Range{From:2, To:2}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
 		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "qw",  "aaaaa",  "bbbbb",  "erty", "55555" });
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 
 	t.Run("3. Курсор в конце, range == 0. Ожидаемое поведение: вставка после блока", func(t *testing.T) {
@@ -144,7 +132,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		pasteAny(t, fx, "4", model.Range{From:6, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb", "55555" });
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 
 	t.Run("4. Курсор от 1/4 до 3/4, range == 1/2. Ожидаемое поведение: разбиение блока на верхний и нижний, удаление Range, вставка посередине", func(t *testing.T) {
@@ -152,7 +140,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		pasteAny(t, fx, "4", model.Range{From:2, To:4}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "ty", "55555" });
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 
 	t.Run("5. Курсор от начала до середины, range == 1/2. Ожидаемое поведение: вставка сверху, удаление Range", func(t *testing.T) {
@@ -160,7 +148,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		pasteAny(t, fx, "4", model.Range{From:0, To:3}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
 		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "aaaaa", "bbbbb", "rty", "55555" });
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 
 	t.Run("6. Курсор от середины до конца, range == 1/2. Ожидаемое поведение: вставка снизу, удаление Range", func(t *testing.T) {
@@ -168,7 +156,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		pasteAny(t, fx, "4", model.Range{From:3, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwe", "aaaaa", "bbbbb",  "55555" });
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 
 	t.Run("7. Курсор от начала до конца, range == 1. Ожидаемое поведение: вставка снизу/сверху, удаление блока", func(t *testing.T) {
@@ -176,44 +164,95 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		pasteAny(t, fx, "4", model.Range{From:0, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
 		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "aaaaa",  "bbbbb",  "55555" });
-		checkEvents(t, fx, 2, 6) // TODO
+		checkEvents(t, fx, 2, 6)
 	})
 }
 
-	/*
-	=== ANYSLOT PASTE ===
-	>>> Тесты на RangeSplit
-	БЛОК В ФОКУСЕ, selected text, есть markup
+func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
+	t.Run("1. Курсор в начале, range == 0. Ожидаемое поведение: вставка блоков сверху", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteText(t, fx, "4", model.Range{From:0, To:0}, []string{}, "aaaaa\nbbbbb");
 
-	ПУСТОЙ ДОКУМЕНТ
-	8. Возможен ли сценарий, что у нас нет блоков? Возможен, так как title, icon – это виртуальные блоки, их нет на миддле.
-	   Нужен тест: отсутствие блоков, нажали CMD+V, ничего не выделено, нет фокуса, нет блоков.
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555" });
+	})
 
-	ВСЕ БЛОКИ ВЫДЕЛЕНЫ
-	9. Выделили все блоки, нажали CMD+V
+	t.Run("2. Курсор в середине, range == 0. Ожидаемое поведение: разбиение блока на верхний и нижний, вставка посередине", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteText(t, fx, "4", model.Range{From:2, To:2}, []string{}, "aaaaa\nbbbbb");
 
-	=== TEXTSLOT PASTE===
-	Абзац – текст, не содержащий переносов (\n) строки. Вставляется как фрагмент блока
-	Группа абзацев – текст, содержащий как минимум один перенос строки. Вставляется как группа блоков
-	10-16. Вставка абзаца для каждого кейса RangeSplit
-	17-23. Вставка группы абзацев для каждого кейса RangeSplit
-	24. Вставка абзаца, выделена группа блоков
-	25. Вставка группы абзацев, выделена группа блоков
+		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "qw",  "aaaaa",  "bbbbb",  "erty", "55555" });
+	})
 
-	=== TEXTSLOT COPY ===
-	26. Выделили фрагмент текстового блока, скорпировали
-	27. Выделили целый текстовый блок, скорпировали
-	28. Выделили группу текстовых блоков, скопировали
-	29. Выделили группу блоков, среди которых есть нетекстовые, скопировали
-	30. Выделили группу блоков, среди которых нет текстовых, не скопировали
-	 */
+	t.Run("3. Курсор в конце, range == 0. Ожидаемое поведение: вставка после блока", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteText(t, fx, "4", model.Range{From:6, To:6}, []string{}, "aaaaa\nbbbbb");
 
-func TestCommonSmart_pasteText(t *testing.T) {
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb", "55555" });
+	})
+
+	t.Run("4. Курсор от 1/4 до 3/4, range == 1/2. Ожидаемое поведение: разбиение блока на верхний и нижний, удаление Range, вставка посередине", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteText(t, fx, "4", model.Range{From:2, To:4}, []string{}, "aaaaa\nbbbbb");
+
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "ty", "55555" });
+	})
+
+	t.Run("5. Курсор от начала до середины, range == 1/2. Ожидаемое поведение: вставка сверху, удаление Range", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteText(t, fx, "4", model.Range{From:0, To:3}, []string{}, "aaaaa\nbbbbb");
+
+		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "aaaaa", "bbbbb", "rty", "55555" });
+	})
+
+	t.Run("6. Курсор от середины до конца, range == 1/2. Ожидаемое поведение: вставка снизу, удаление Range", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteText(t, fx, "4", model.Range{From:3, To:6}, []string{}, "aaaaa\nbbbbb");
+
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwe", "aaaaa", "bbbbb",  "55555" });
+	})
+
+	t.Run("7. Курсор от начала до конца, range == 1. Ожидаемое поведение: вставка снизу/сверху, удаление блока", func(t *testing.T) {
+		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
+		pasteText(t, fx, "4", model.Range{From:0, To:6}, []string{}, "aaaaa\nbbbbb");
+
+		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "aaaaa",  "bbbbb",  "55555" });
+	})
+}
+
+func TestCommonSmart_TextSlot_CommonCases(t *testing.T) {
+
 	t.Run("should split block on paste", func(t *testing.T) {
-		/*fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
-		pasteAny(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, createBlocks([]string{"22222", "33333"}));
+		fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
+		pasteText(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, "22222\n33333");
 
 		checkBlockText(t, fx, []string{"11111", "22222", "33333", "ab", "22222", "33333", "e", "55555"});
-		checkEvents(t, fx, 2, 5)*/
+	})
+
+	t.Run("should paste to the end when no focus", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "44444", "55555"})
+		pasteText(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "22222\n33333");
+
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "44444", "55555", "22222", "33333"});
+	})
+
+	t.Run("should paste to the end when no focus", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "44444", "55555"})
+		pasteText(t, fx, "", model.Range{From: 0, To: 0}, []string{"2", "3", "4"}, "22222\n33333");
+
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "55555"});
+	})
+
+	t.Run("should paste to the empty page", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteText(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "22222\n33333");
+
+		checkBlockText(t, fx, []string{"22222", "33333"});
+	})
+
+	t.Run("should paste when all blocks selected", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "44444", "55555"})
+		pasteText(t, fx, "", model.Range{From: 0, To: 0}, []string{"1", "2", "3", "4", "5"}, "aaaaa\nbbbbb");
+
+		checkBlockText(t, fx, []string{"aaaaa", "bbbbb"});
 	})
 }
