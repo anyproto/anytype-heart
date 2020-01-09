@@ -17,7 +17,15 @@ import (
 )
 
 func TestUploader_Do(t *testing.T) {
-	return // TODO: wait interface for core.File
+	var (
+		fileHash = "12345"
+		fileMeta = &core.FileMeta{
+			Media: "text/plain; charset=utf-8",
+			Name:  "test.txt",
+			Size:  10,
+			Added: time.Now(),
+		}
+	)
 
 	testFilepath, _ := filepath.Abs("./testdata/test.txt")
 	t.Run("success local file", func(t *testing.T) {
@@ -27,7 +35,12 @@ func TestUploader_Do(t *testing.T) {
 		}).(*File)
 		fx := newFixture(t, f)
 		defer fx.ctrl.Finish()
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "text/plain; charset=utf-8", "test.txt").Return(new(core.File), nil)
+
+		file := testMock.NewMockFile(fx.ctrl)
+		file.EXPECT().Hash().Return(fileHash).AnyTimes()
+		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
+
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "text/plain; charset=utf-8", "test.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")
@@ -45,7 +58,6 @@ func TestUploader_Do(t *testing.T) {
 	t.Run("success url", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("12345"))
-			w.WriteHeader(http.StatusOK)
 		}))
 		defer ts.Close()
 
@@ -55,7 +67,12 @@ func TestUploader_Do(t *testing.T) {
 		}).(*File)
 		fx := newFixture(t, f)
 		defer fx.ctrl.Finish()
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "text/plain; charset=utf-8", "http.txt").Return(new(core.File), nil)
+
+		file := testMock.NewMockFile(fx.ctrl)
+		file.EXPECT().Hash().Return(fileHash).AnyTimes()
+		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
+
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "text/plain; charset=utf-8", "http.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, "", ts.URL+"/http.txt")

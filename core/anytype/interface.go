@@ -9,8 +9,8 @@ import (
 type Anytype interface {
 	GetBlock(id string) (Block, error)
 	PredefinedBlockIds() core.PredefinedBlockIds
-	FileAddWithReader(content io.Reader, media string, name string) (*core.File, error)
-	FileByHash(hash string) (*core.File, error)
+	FileAddWithReader(content io.Reader, media string, name string) (core.File, error)
+	FileByHash(hash string) (core.File, error)
 }
 
 type Block interface {
@@ -20,4 +20,8 @@ type Block interface {
 
 type BlockVersion interface {
 	core.BlockVersion
+}
+
+type File interface {
+	core.File
 }
