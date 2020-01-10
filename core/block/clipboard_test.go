@@ -111,7 +111,7 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 }
 
 func TestCommonSmart_RangeSplit(t *testing.T) {
-	t.Run("1. Курсор в начале, range == 0. Ожидаемое поведение: вставка блоков сверху", func(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:0, To:0}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
@@ -119,7 +119,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		checkEvents(t, fx, 2, 6)
 	})
 
-	t.Run("2. Курсор в середине, range == 0. Ожидаемое поведение: разбиение блока на верхний и нижний, вставка посередине", func(t *testing.T) {
+	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:2, To:2}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
@@ -127,7 +127,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		checkEvents(t, fx, 2, 6)
 	})
 
-	t.Run("3. Курсор в конце, range == 0. Ожидаемое поведение: вставка после блока", func(t *testing.T) {
+	t.Run("3. Cursor: end, range == 0. Expected behaviour: insert after block", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:6, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
@@ -135,7 +135,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		checkEvents(t, fx, 2, 6)
 	})
 
-	t.Run("4. Курсор от 1/4 до 3/4, range == 1/2. Ожидаемое поведение: разбиение блока на верхний и нижний, удаление Range, вставка посередине", func(t *testing.T) {
+	t.Run("4. Cursor: from 1/4 to 3/4, range == 1/2. Expected behaviour: split block top + bottom, remove Range, insert in a middle", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:2, To:4}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
@@ -143,7 +143,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		checkEvents(t, fx, 2, 6)
 	})
 
-	t.Run("5. Курсор от начала до середины, range == 1/2. Ожидаемое поведение: вставка сверху, удаление Range", func(t *testing.T) {
+	t.Run("5. Cursor: from start to middle, range == 1/2. Expected Behavior: top insert, range removal", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:0, To:3}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
@@ -151,7 +151,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		checkEvents(t, fx, 2, 6)
 	})
 
-	t.Run("6. Курсор от середины до конца, range == 1/2. Ожидаемое поведение: вставка снизу, удаление Range", func(t *testing.T) {
+	t.Run("6. Cursor: middle to end, range == 1/2. Expected Behavior: bottom insert, range removal", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:3, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
@@ -159,7 +159,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		checkEvents(t, fx, 2, 6)
 	})
 
-	t.Run("7. Курсор от начала до конца, range == 1. Ожидаемое поведение: вставка снизу/сверху, удаление блока", func(t *testing.T) {
+	t.Run("7. Cursor from start to end, range == 1. Expected behavior: bottom / top insert, block deletion", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:0, To:6}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
@@ -169,49 +169,49 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 }
 
 func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
-	t.Run("1. Курсор в начале, range == 0. Ожидаемое поведение: вставка блоков сверху", func(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:0, To:0}, []string{}, "aaaaa\nbbbbb");
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555" });
 	})
 
-	t.Run("2. Курсор в середине, range == 0. Ожидаемое поведение: разбиение блока на верхний и нижний, вставка посередине", func(t *testing.T) {
+	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:2, To:2}, []string{}, "aaaaa\nbbbbb");
 
 		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "qw",  "aaaaa",  "bbbbb",  "erty", "55555" });
 	})
 
-	t.Run("3. Курсор в конце, range == 0. Ожидаемое поведение: вставка после блока", func(t *testing.T) {
+	t.Run("3. Cursor: end, range == 0. Expected behaviour: insert after block", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:6, To:6}, []string{}, "aaaaa\nbbbbb");
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb", "55555" });
 	})
 
-	t.Run("4. Курсор от 1/4 до 3/4, range == 1/2. Ожидаемое поведение: разбиение блока на верхний и нижний, удаление Range, вставка посередине", func(t *testing.T) {
+	t.Run("4. Cursor from 1/4 to 3/4, range == 1/2. Expected behaviour: split block: top + bottom, remove Range, insert in a middle", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:2, To:4}, []string{}, "aaaaa\nbbbbb");
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "ty", "55555" });
 	})
 
-	t.Run("5. Курсор от начала до середины, range == 1/2. Ожидаемое поведение: вставка сверху, удаление Range", func(t *testing.T) {
+	t.Run("5. Cursor from stast to middle, range == 1/2. Expected behaviour: insert top, remove Range", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:0, To:3}, []string{}, "aaaaa\nbbbbb");
 
 		checkBlockText(t, fx, []string{ "11111",  "22222",  "33333", "aaaaa", "bbbbb", "rty", "55555" });
 	})
 
-	t.Run("6. Курсор от середины до конца, range == 1/2. Ожидаемое поведение: вставка снизу, удаление Range", func(t *testing.T) {
+	t.Run("6. Cursor: middle to end, range == 1/2. Expected Behavior: bottom insert, range removal", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:3, To:6}, []string{}, "aaaaa\nbbbbb");
 
 		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwe", "aaaaa", "bbbbb",  "55555" });
 	})
 
-	t.Run("7. Курсор от начала до конца, range == 1. Ожидаемое поведение: вставка снизу/сверху, удаление блока", func(t *testing.T) {
+	t.Run("7. Cursor from start to end, range == 1. Expected behavior: bottom / top insert, block deletion", func(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:0, To:6}, []string{}, "aaaaa\nbbbbb");
 
