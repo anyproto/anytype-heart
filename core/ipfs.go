@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	core2 "github.com/textileio/go-textile/core"
 )
 
 func (mw *Middleware) IpfsGetFile(req *pb.RpcIpfsFileGetRequest) *pb.RpcIpfsFileGetResponse {
@@ -20,7 +20,7 @@ func (mw *Middleware) IpfsGetFile(req *pb.RpcIpfsFileGetRequest) *pb.RpcIpfsFile
 
 	reader, info, err := mw.Anytype.Textile.Node().FileContent(req.Id)
 	if err != nil {
-		if err == core2.ErrFileNotFound {
+		if err == core.ErrFileNotFound {
 			return response(nil, "", "", pb.RpcIpfsFileGetResponseError_NOT_FOUND, err)
 		}
 
@@ -55,7 +55,7 @@ func IpfsGetData(b []byte) []byte {
 
 	data, err := ipfs.DataAtPath(mw.Anytype.Textile.Node().Ipfs(), q.Id)
 	if err != nil {
-		if err == core2.ErrFileNotFound {
+		if err == core.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsGetDataResponseError_NOT_FOUND, err)
 		}
 
@@ -89,17 +89,26 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype.Textile.Node() is nil"))
 	}
 
-	file, err := mw.Anytype.FileByHash(req.GetId())
+	image, err := mw.Anytype.ImageByHash(req.GetHash())
 	if err != nil {
-		if err == core2.ErrFileNotFound {
+		if err == core.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
 		}
 
 		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
 	}
+	file, err := image.GetFileForWidth(int(req.WantWidth))
+	if err != nil {
+		if err == core.ErrFileNotFound {
+			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
+		}
+
+		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
+	}
+
 	rd, err := file.Reader()
 	if err != nil {
-		if err == core2.ErrFileNotFound {
+		if err == core.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
 		}
 
@@ -107,7 +116,7 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 	}
 	data, err := ioutil.ReadAll(rd)
 	if err != nil {
-		if err == core2.ErrFileNotFound {
+		if err == core.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
 		}
 

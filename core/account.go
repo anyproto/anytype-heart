@@ -45,7 +45,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	mw.Anytype = anytype
 	newAcc := &model.Account{Id: account.Address()}
 
-	err = mw.Run()
+	err = mw.Start()
 	if err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
@@ -145,7 +145,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
 	}
 
-	err = mw.Anytype.Run()
+	err = mw.Start()
 	if err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -247,7 +247,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	} else if mw.Anytype != nil {
 		// user chose account other than the first one
 		// we need to stop the first node that what used to search other accounts and then start the right one
-		err := mw.Stop()
+		err := mw.Start()
 		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
 		}
@@ -285,7 +285,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 
 	mw.Anytype = anytype
 
-	err = mw.Run()
+	err = mw.Start()
 	if err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)

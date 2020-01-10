@@ -2819,7 +2819,8 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
+| hash | [string](#string) |  |  |
+| wantWidth | [int32](#int32) |  |  |
 
 
 
@@ -2876,7 +2877,8 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
+| hash | [string](#string) |  |  |
+| wantWidth | [int32](#int32) |  |  |
 
 
 
