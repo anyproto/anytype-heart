@@ -19,6 +19,7 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/segmentio/ksuid v1.0.2
 	github.com/textileio/go-textile v0.7.2-0.20190907000013-95a885123536
+	github.com/whyrusleeping/go-logging v0.0.0-20170515211332-0457bb6b88fc
 )
 
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.6.10-0.20191224183538-ba056fbef614

@@ -1,12 +1,10 @@
 package core
 
 import (
-	"fmt"
 	"io"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/gateway"
 	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/types"
 	tpb "github.com/textileio/go-textile/pb"
@@ -48,10 +46,6 @@ func (file *file) Meta() *FileMeta {
 
 func (file *file) Hash() string {
 	return file.hash
-}
-
-func (file *file) URL() string {
-	return fmt.Sprintf("http://%s/file/%s", gateway.GatewayAddr(), file.index.Hash)
 }
 
 func (file *file) Reader() (io.ReadSeeker, error) {

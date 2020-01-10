@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/anytypeio/go-anytype-library/core"
 	logging "github.com/ipfs/go-log"
 	tcore "github.com/textileio/go-textile/core"
 )
@@ -22,7 +23,7 @@ var Host *Gateway
 
 // Gateway is a HTTP API for getting files and links from IPFS
 type Gateway struct {
-	Node   *tcore.Textile
+	Node   *core.Anytype
 	server *http.Server
 }
 
@@ -43,6 +44,7 @@ func (g *Gateway) Start(addr string) {
 	}
 
 	handler.HandleFunc("/file/", g.fileHandler)
+	handler.HandleFunc("/image/", g.imageHandler)
 
 	errc := make(chan error)
 	go func() {
@@ -92,7 +94,7 @@ func enableCors(w http.ResponseWriter) {
 func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	fileHash := r.URL.Path[len("/file/"):]
 	enableCors(w)
-	reader, index, err := g.Node.FileContent(fileHash)
+	file, err := g.Node.FileByHash(fileHash)
 	if err != nil {
 		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
 			http.NotFound(w, r)
@@ -102,11 +104,71 @@ func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", index.Media)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", index.Name))
+	reader, err := file.Reader()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
-	added, _ := ptypes.Timestamp(index.Added)
+	meta := file.Meta()
+	w.Header().Set("Content-Type", meta.Media)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
 	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
-	http.ServeContent(w, r, index.Name, added, reader)
+	http.ServeContent(w, r, meta.Name, meta.Added, reader)
+}
+
+// fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
+func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+	urlParts := strings.Split(r.URL.Path, "/")
+	imageHash := urlParts[2]
+	query := r.URL.Query()
+
+	enableCors(w)
+	image, err := g.Node.ImageByHash(imageHash)
+	if err != nil {
+		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var file core.File
+	wantWidthStr := query.Get("width")
+	if wantWidthStr == "" {
+		file, err = image.GetFileForLargestWidth()
+	} else {
+		wantWidth, err := strconv.Atoi(wantWidthStr)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+
+		file, err = image.GetFileForWidth(wantWidth)
+	}
+
+	if err != nil {
+		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	reader, err := file.Reader()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	meta := file.Meta()
+	w.Header().Set("Content-Type", meta.Media)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+
+	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
+	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
+	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
