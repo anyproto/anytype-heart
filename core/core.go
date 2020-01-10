@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	tcore "github.com/textileio/go-textile/core"
-	tgateway "github.com/textileio/go-textile/gateway"
 	tmobile "github.com/textileio/go-textile/mobile"
 	logging2 "github.com/whyrusleeping/go-logging"
 )
@@ -144,11 +142,11 @@ func (a *Anytype) Run() error {
 		}
 	}()
 
-	tgateway.Host = &tgateway.Gateway{
+	/*tgateway.Host = &tgateway.Gateway{
 		Node: a.Textile.Node(),
 	}
 	tgateway.Host.Start(a.Textile.Node().Config().Addresses.Gateway)
-	fmt.Println("Textile Gateway: " + a.Textile.Node().Config().Addresses.Gateway)
+	fmt.Println("Textile Gateway: " + a.Textile.Node().Config().Addresses.Gateway)*/
 
 	err = a.createPredefinedBlocks()
 	if err != nil {

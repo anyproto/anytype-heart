@@ -12,25 +12,34 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
+	"github.com/mr-tron/base58"
 	"github.com/textileio/go-textile/core"
+	"github.com/textileio/go-textile/crypto"
 	"github.com/textileio/go-textile/ipfs"
 	ipfsutil "github.com/textileio/go-textile/ipfs"
 	"github.com/textileio/go-textile/mill"
 	tpb "github.com/textileio/go-textile/pb"
+	"github.com/textileio/go-textile/repo/db"
 	tschema "github.com/textileio/go-textile/schema"
 	tutil "github.com/textileio/go-textile/util"
 )
 
+var ErrFileNotFound = fmt.Errorf("file not found")
+
 func (a *Anytype) FileByHash(hash string) (File, error) {
-	indexes, err := a.getFileIndexByTarget(hash)
+	files, err := a.getFileIndexByTarget(hash)
 	if err != nil {
 		return nil, err
 	}
-	if len(indexes) == 0 {
-		return nil, fmt.Errorf("file not found")
+	if len(files) == 0 {
+		files, err = a.getFileIndexes(hash)
+		if err != nil {
+			log.Errorf("fImageByHash: failed to retrieve from IPFS: %s", err.Error())
+			return nil, ErrFileNotFound
+		}
 	}
 
-	fileIndex := indexes[0]
+	fileIndex := files[0]
 	return &file{
 		hash:  hash,
 		index: &fileIndex,
@@ -316,6 +325,46 @@ func (a *Anytype) indexFileLink(inode ipld.Node, data string) error {
 	}
 
 	return a.Textile.Node().Datastore().Files().AddTarget(dlink.Cid.Hash().B58String(), data)
+}
+
+func (a *Anytype) addFileIndexFromPath(target string, path string, key string) (*tpb.FileIndex, error) {
+	fd, err := ipfs.DataAtPath(a.ipfs(), path+"/"+core.MetaLinkName)
+	if err != nil {
+		return nil, err
+	}
+
+	var plaintext []byte
+	if key != "" {
+		keyb, err := base58.Decode(key)
+		if err != nil {
+			return nil, err
+		}
+		plaintext, err = crypto.DecryptAES(fd, keyb)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		plaintext = fd
+	}
+
+	var file tpb.FileIndex
+	err = jsonpb.Unmarshal(bytes.NewReader(plaintext), &file)
+	if err != nil {
+		// todo: get a fixed error if trying to unmarshal an encrypted file
+		return nil, err
+	}
+
+	log.Debugf("addFileIndexFromPath got file: %s", file.Hash)
+
+	file.Targets = []string{target}
+	err = a.textile().Datastore().Files().Add(&file)
+	if err != nil {
+		if !db.ConflictError(err) {
+			return nil, err
+		}
+		log.Debugf("file exists: %s", file.Hash)
+	}
+	return &file, nil
 }
 
 // looksLikeFileNode returns whether or not a node appears to
