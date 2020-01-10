@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -36,7 +37,11 @@ func GatewayAddr() string {
 }
 
 // Start creates a gateway server
-func (g *Gateway) Start(addr string) {
+func (g *Gateway) Start(addr string) error {
+	if g.server != nil {
+		return fmt.Errorf("gateway already started")
+	}
+
 	handler := http.NewServeMux()
 	g.server = &http.Server{
 		Addr:    addr,
@@ -46,9 +51,21 @@ func (g *Gateway) Start(addr string) {
 	handler.HandleFunc("/file/", g.fileHandler)
 	handler.HandleFunc("/image/", g.imageHandler)
 
+	// check port first
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		// todo: choose next available port
+		return err
+	}
+
+	err = listener.Close()
+	if err != nil {
+		return err
+	}
+
 	errc := make(chan error)
 	go func() {
-		errc <- http.ListenAndServe(addr, handler)
+		errc <- g.server.ListenAndServe()
 		close(errc)
 	}()
 	go func() {
@@ -58,6 +75,7 @@ func (g *Gateway) Start(addr string) {
 				if err != nil && err != http.ErrServerClosed {
 					log.Errorf("gateway error: %s", err)
 				}
+
 				if !ok {
 					log.Info("gateway was shutdown")
 					return
@@ -66,18 +84,16 @@ func (g *Gateway) Start(addr string) {
 		}
 	}()
 
+
 	log.Infof("gateway listening at %s", g.server.Addr)
+	return nil
 }
 
 // Stop stops the gateway
 func (g *Gateway) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	if err := g.server.Shutdown(ctx); err != nil {
-		log.Errorf("error shutting down gateway: %s", err)
-		return err
-	}
-	return nil
+	return g.server.Shutdown(ctx)
 }
 
 // Addr returns the gateway's address
