@@ -5,7 +5,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,14 +21,6 @@ func TestState_Normalize(t *testing.T) {
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Column,
 			},
-		}
-
-		fieldsWidth = func(w float64) *types.Struct {
-			return &types.Struct{
-				Fields: map[string]*types.Value{
-					"width": testFloatValue(w),
-				},
-			}
 		}
 	)
 
@@ -92,39 +83,5 @@ func TestState_Normalize(t *testing.T) {
 		assert.Equal(t, []string{"t2", "t1"}, fx.sb.versions["root"].Model().ChildrenIds)
 		assert.Nil(t, fx.sb.versions["r1"])
 		assert.Nil(t, fx.sb.versions["c1"])
-	})
-
-	t.Run("do not recalculate width", func(t *testing.T) {
-		fx := newStateFixture(t)
-		defer fx.Finish()
-
-		fx.sb.versions["root"].Model().ChildrenIds = []string{"r1"}
-		fx.sb.versions["r1"] = simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow})
-		fx.sb.versions["c1"] = simple.New(&model.Block{Id: "c1", ChildrenIds: []string{"t1"}, Content: contColumn, Fields: fieldsWidth(0.5)})
-		fx.sb.versions["c2"] = simple.New(&model.Block{Id: "c2", ChildrenIds: []string{"t2"}, Content: contColumn, Fields: fieldsWidth(0.5)})
-		fx.sb.versions["t1"] = simple.New(&model.Block{Id: "t1"})
-		fx.sb.versions["t2"] = simple.New(&model.Block{Id: "t2"})
-		fx.get("r1")
-		msgs, err := fx.apply()
-		require.NoError(t, err)
-		assert.Len(t, msgs, 0)
-		assert.Len(t, fx.saved, 0)
-	})
-
-	t.Run("recalculate width", func(t *testing.T) {
-		fx := newStateFixture(t)
-		defer fx.Finish()
-
-		fx.sb.versions["root"].Model().ChildrenIds = []string{"r1"}
-		fx.sb.versions["r1"] = simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow})
-		fx.sb.versions["c1"] = simple.New(&model.Block{Id: "c1", ChildrenIds: []string{"t1"}, Content: contColumn, Fields: fieldsWidth(0.2)})
-		fx.sb.versions["c2"] = simple.New(&model.Block{Id: "c2", ChildrenIds: []string{"t2"}, Content: contColumn, Fields: fieldsWidth(0.3)})
-		fx.sb.versions["t1"] = simple.New(&model.Block{Id: "t1"})
-		fx.sb.versions["t2"] = simple.New(&model.Block{Id: "t2"})
-		fx.get("r1")
-		msgs, err := fx.apply()
-		require.NoError(t, err)
-		assert.Len(t, msgs, 2) // 2 change
-		assert.Len(t, fx.saved, 2)
 	})
 }
