@@ -68,13 +68,13 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Anytype) ImageAddWithBytes(content []byte, name string) (Image, error) {
+func (a *Anytype) ImageAddWithBytes(content []byte, filename string) (Image, error) {
 	reader := bytes.NewReader(content)
-	return a.ImageAddWithReader(reader, name)
+	return a.ImageAddWithReader(reader, filename)
 }
 
-func (a *Anytype) ImageAddWithReader(content io.ReadSeeker, name string) (Image, error) {
-	dir, err := a.buildDirectory(content, name, schema.ImageNode())
+func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image, error) {
+	dir, err := a.buildDirectory(content, filename, schema.ImageNode())
 	if err != nil {
 		return nil, err
 	}

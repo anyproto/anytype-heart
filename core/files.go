@@ -1,10 +1,12 @@
 package core
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/schema"
@@ -47,12 +49,21 @@ func (a *Anytype) FileByHash(hash string) (File, error) {
 	}, nil
 }
 
-func (a *Anytype) FileAddWithBytes(content []byte, media string, name string) (File, error) {
-	fileIndex, err := a.Textile.Node().AddFileIndex(&mill.Blob{}, core.AddFileConfig{
-		Input: content,
-		Media: media,
-		Name:  name,
-	})
+func (a *Anytype) FileAddWithBytes(content []byte, filename string) (File, error) {
+	return a.FileAddWithReader(bytes.NewReader(content), filename)
+}
+
+func (a *Anytype) FileAddWithReader(content io.Reader, filename string) (File, error) {
+	fileConfig, err := a.getFileConfig(content, filename, "", false)
+	if err != nil {
+		return nil, err
+	}
+
+	// todo: PR textile to be able to use reader instead of bytes
+	fileIndex, err := a.Textile.Node().AddFileIndex(&mill.Blob{}, *fileConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	node, keys, err := a.Textile.Node().AddNodeFromFiles([]*tpb.FileIndex{fileIndex})
 	if err != nil {
@@ -77,16 +88,6 @@ func (a *Anytype) FileAddWithBytes(content []byte, media string, name string) (F
 	}, nil
 }
 
-func (a *Anytype) FileAddWithReader(content io.Reader, media string, name string) (File, error) {
-	// todo: PR textile to be able to use reader instead of bytes
-	contentBytes, err := ioutil.ReadAll(content)
-	if err != nil {
-		return nil, err
-	}
-
-	return a.FileAddWithBytes(contentBytes, media, name)
-}
-
 func (a *Anytype) getFileIndexByTarget(target string) ([]tpb.FileIndex, error) {
 	var list []tpb.FileIndex
 	rows, err := a.Textile.Node().Datastore().Files().PrepareAndExecuteQuery("SELECT * FROM files WHERE targets=?", target)
@@ -95,13 +96,13 @@ func (a *Anytype) getFileIndexByTarget(target string) ([]tpb.FileIndex, error) {
 	}
 
 	for rows.Next() {
-		var mill, checksum, source, opts, hash, key, media, name string
+		var mill_, checksum, source, opts, hash, key, media, name string
 		var size int64
 		var addedInt int64
 		var metab []byte
 		var targets *string
 
-		if err := rows.Scan(&mill, &checksum, &source, &opts, &hash, &key, &media, &name, &size, &addedInt, &metab, &targets); err != nil {
+		if err := rows.Scan(&mill_, &checksum, &source, &opts, &hash, &key, &media, &name, &size, &addedInt, &metab, &targets); err != nil {
 			log.Errorf("error in db scan: %s", err)
 			continue
 		}
@@ -120,7 +121,7 @@ func (a *Anytype) getFileIndexByTarget(target string) ([]tpb.FileIndex, error) {
 		}
 
 		list = append(list, tpb.FileIndex{
-			Mill:     mill,
+			Mill:     mill_,
 			Checksum: checksum,
 			Source:   source,
 			Opts:     opts,
@@ -138,7 +139,7 @@ func (a *Anytype) getFileIndexByTarget(target string) ([]tpb.FileIndex, error) {
 	return list, nil
 }
 
-func (a *Anytype) getFileConfig(reader io.ReadSeeker, filename string, mill mill.Mill, use string, plaintext bool) (*core.AddFileConfig, error) {
+func (a *Anytype) getFileConfig(reader io.Reader, filename string, use string, plaintext bool) (*core.AddFileConfig, error) {
 	conf := &core.AddFileConfig{}
 
 	if use == "" {
@@ -169,14 +170,14 @@ func (a *Anytype) getFileConfig(reader io.ReadSeeker, filename string, mill mill
 		}
 	}
 
-	media, err := a.textile().GetMillMedia(reader, mill)
-	if err != nil {
-		return nil, err
+	buf := bufio.NewReader(reader)
+	data, err := buf.Peek(512)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to get first 512 bytes to detect content-type: %s", err)
 	}
-	conf.Media = media
-	_, _ = reader.Seek(0, 0)
+	conf.Media = http.DetectContentType(data)
 
-	data, err := ioutil.ReadAll(reader)
+	data, err = ioutil.ReadAll(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +187,7 @@ func (a *Anytype) getFileConfig(reader io.ReadSeeker, filename string, mill mill
 	return conf, nil
 }
 
-func (a *Anytype) buildDirectory(reader io.ReadSeeker, filename string, sch *tpb.Node) (*tpb.Directory, error) {
+func (a *Anytype) buildDirectory(reader io.Reader, filename string, sch *tpb.Node) (*tpb.Directory, error) {
 	dir := &tpb.Directory{
 		Files: make(map[string]*tpb.FileIndex),
 	}
@@ -196,7 +197,7 @@ func (a *Anytype) buildDirectory(reader io.ReadSeeker, filename string, sch *tpb
 		return nil, err
 	}
 	if mil != nil {
-		conf, err := a.getFileConfig(reader, filename, mil, "", sch.Plaintext)
+		conf, err := a.getFileConfig(reader, filename, "", sch.Plaintext)
 		if err != nil {
 			return nil, err
 		}
@@ -221,12 +222,10 @@ func (a *Anytype) buildDirectory(reader io.ReadSeeker, filename string, sch *tpb
 				return nil, err
 			}
 			var conf *core.AddFileConfig
-			_, _ = reader.Seek(0, 0)
 			if step.Link.Use == tschema.FileTag {
 				conf, err = a.getFileConfig(
 					reader,
 					filename,
-					stepMill,
 					"",
 					step.Link.Plaintext,
 				)
@@ -241,7 +240,6 @@ func (a *Anytype) buildDirectory(reader io.ReadSeeker, filename string, sch *tpb
 
 				conf, err = a.getFileConfig(nil,
 					filename,
-					stepMill,
 					dir.Files[step.Link.Use].Hash,
 					step.Link.Plaintext,
 				)
