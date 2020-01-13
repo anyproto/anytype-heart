@@ -176,9 +176,12 @@ func TestCommonSmart_SetFields(t *testing.T) {
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
-		err := fx.SetFields("b1", &types.Struct{
-			Fields: map[string]*types.Value{
-				"key": testStringValue("value"),
+		err := fx.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+			BlockId: "b1",
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"key": testStringValue("value"),
+				},
 			},
 		})
 		require.NoError(t, err)

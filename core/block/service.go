@@ -29,6 +29,7 @@ type Service interface {
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
+	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -155,7 +156,19 @@ func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.SetFields(req.BlockId, req.Fields)
+		return sb.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+			BlockId: req.BlockId,
+			Fields:  req.Fields,
+		})
+	}
+	return ErrBlockNotFound
+}
+
+func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.SetFields(req.BlockFields...)
 	}
 	return ErrBlockNotFound
 }

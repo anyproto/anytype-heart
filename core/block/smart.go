@@ -35,7 +35,7 @@ type smartBlock interface {
 	Replace(id string, block *model.Block) error
 	UpdateTextBlock(id string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
-	SetFields(id string, fields *types.Struct) (err error)
+	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Close() error
 }
 
@@ -423,12 +423,16 @@ func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error)
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) SetFields(id string, fields *types.Struct) (err error) {
+func (p *commonSmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	if err = p.setFields(s, id, fields); err != nil {
-		return
+	for _, fr := range fields {
+		if fr != nil {
+			if err = p.setFields(s, fr.BlockId, fr.Fields); err != nil {
+				return
+			}
+		}
 	}
 	return p.applyAndSendEvent(s)
 }
