@@ -240,6 +240,17 @@ func (s *state) normalizeLayoutRow(b simple.Block) {
 		}
 		return
 	}
+
+	// reset columns width when count of row children was changed
+	orig := s.sb.versions[b.Model().Id]
+	if orig != nil && len(orig.Model().ChildrenIds) != len(b.Model().ChildrenIds) {
+		for _, chId := range b.Model().ChildrenIds {
+			fields := s.get(chId).Model().Fields
+			if fields != nil && fields.Fields != nil && fields.Fields["width"] != nil {
+				fields.Fields["width"] = testFloatValue(0)
+			}
+		}
+	}
 }
 
 func (s *state) removeFromChilds(id string) (ok bool) {
