@@ -59,8 +59,8 @@ func TestFile_Diff(t *testing.T) {
 
 		b2.SetState(model.BlockContentFile_Done)
 		b2.SetFileData("hash", core.FileMeta{
-			Media: "image/png",
-			Name:  "image.png",
+			Media: "video/mpeg",
+			Name:  "image.mpg",
 			Size:  3,
 			Added: time.Now(),
 		})

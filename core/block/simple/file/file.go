@@ -38,6 +38,7 @@ type Block interface {
 	simple.Block
 	Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error)
 	SetFileData(hash string, meta core.FileMeta)
+	SetImage(hash, name string)
 	SetState(state model.BlockContentFileState)
 }
 
@@ -64,7 +65,11 @@ func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url stri
 		},
 		storage: stor,
 	}
-	go up.Do(localPath, url)
+	if f.content.Type == model.BlockContentFile_Image {
+		go up.DoImage(localPath, url)
+	} else {
+		go up.Do(localPath, url)
+	}
 	return
 }
 
@@ -82,13 +87,20 @@ func (f *File) SetState(state model.BlockContentFileState) {
 
 func (f *File) SetFileData(hash string, meta core.FileMeta) {
 	f.content.Size_ = meta.Size
-	if strings.HasPrefix(meta.Media, "image/") {
-		f.content.Type = model.BlockContentFile_Image
-	} else if strings.HasPrefix(meta.Media, "video/") {
+	if strings.HasPrefix(meta.Media, "video/") {
 		f.content.Type = model.BlockContentFile_Video
+	} else {
+		f.content.Type = model.BlockContentFile_File
 	}
 	f.content.State = model.BlockContentFile_Done
 	f.content.Name = meta.Name
+	f.content.Hash = hash
+}
+
+func (f *File) SetImage(hash, name string) {
+	f.content.Type = model.BlockContentFile_Image
+	f.content.State = model.BlockContentFile_Done
+	f.content.Name = name
 	f.content.Hash = hash
 }
 

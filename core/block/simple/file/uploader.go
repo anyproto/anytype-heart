@@ -1,14 +1,13 @@
 package file
 
 import (
-	"bufio"
 	"fmt"
+	"image"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 )
@@ -16,20 +15,39 @@ import (
 type uploader struct {
 	updateFile func(f func(file Block))
 	storage    anytype.Anytype
+	isImage    bool
 }
 
-func (u *uploader) Do(localPath, url string) {
-	var err error
-	if url != "" {
-		err = u.doUrl(url)
-	} else {
-		err = u.doLocal(localPath)
+func (u *uploader) DoImage(localPath, url string) {
+	u.isImage = true
+	err := u.do(localPath, url)
+	if err == image.ErrFormat {
+		fmt.Println("can't decode image upload as file:", err)
+		u.isImage = false
+		err = u.do(localPath, url)
 	}
 	if err != nil {
 		fmt.Println("upload file error:", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})
+	}
+}
+
+func (u *uploader) Do(localPath, url string) {
+	if err := u.do(localPath, url); err != nil {
+		fmt.Println("upload file error:", err)
+		u.updateFile(func(file Block) {
+			file.SetState(model.BlockContentFile_Error)
+		})
+	}
+}
+
+func (u *uploader) do(localPath, url string) (err error) {
+	if url != "" {
+		return u.doUrl(url)
+	} else {
+		return u.doLocal(localPath)
 	}
 }
 
@@ -52,19 +70,31 @@ func (u *uploader) doUrl(url string) (err error) {
 }
 
 func (u *uploader) upload(rd io.ReadCloser, name string) (err error) {
-	buf := bufio.NewReader(rd)
-	data, _ := buf.Peek(512)
-	ct := http.DetectContentType(data)
-	cf, err := u.storage.FileAddWithReader(buf, ct, name)
+	defer rd.Close()
+	if u.isImage {
+		return u.uploadImage(rd, name)
+	}
+	return u.uploadFile(rd, name)
+}
+
+func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
+	image, err := u.storage.ImageAddWithReader(rd, name)
 	if err != nil {
 		return
 	}
 	u.updateFile(func(file Block) {
-		var meta core.FileMeta
-		if m := cf.Meta(); m != nil {
-			meta = *m
-		}
-		file.SetFileData(cf.Hash(), meta)
+		file.SetImage(image.Hash(), name)
+	})
+	return
+}
+
+func (u *uploader) uploadFile(rd io.Reader, name string) (err error) {
+	cf, err := u.storage.FileAddWithReader(rd, name)
+	if err != nil {
+		return
+	}
+	u.updateFile(func(file Block) {
+		file.SetFileData(cf.Hash(), *cf.Meta())
 	})
 	return
 }

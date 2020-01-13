@@ -1,6 +1,7 @@
 package file
 
 import (
+	"image"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -40,7 +41,7 @@ func TestUploader_Do(t *testing.T) {
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "text/plain; charset=utf-8", "test.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")
@@ -72,7 +73,7 @@ func TestUploader_Do(t *testing.T) {
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "text/plain; charset=utf-8", "http.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "http.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, "", ts.URL+"/http.txt")
@@ -86,6 +87,61 @@ func TestUploader_Do(t *testing.T) {
 		case <-fx.done:
 		}
 	})
+
+	t.Run("image file fallback", func(t *testing.T) {
+		f := NewFile(&model.Block{
+			Id:      "test",
+			Content: &model.BlockContentOfFile{File: &model.BlockContentFile{Type: model.BlockContentFile_Image}},
+		}).(*File)
+		fx := newFixture(t, f)
+		defer fx.ctrl.Finish()
+
+		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), "test.txt").Return(nil, image.ErrFormat)
+
+		file := testMock.NewMockFile(fx.ctrl)
+		file.EXPECT().Hash().Return(fileHash).AnyTimes()
+		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
+
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+
+		fx.mu.Lock()
+		err := f.Upload(fx.anytype, fx, testFilepath, "")
+		fx.mu.Unlock()
+		require.NoError(t, err)
+
+		select {
+		case <-time.After(time.Second * 2):
+			t.Error("upload timeout")
+			return
+		case <-fx.done:
+		}
+	})
+	t.Run("image success", func(t *testing.T) {
+		f := NewFile(&model.Block{
+			Id:      "test",
+			Content: &model.BlockContentOfFile{File: &model.BlockContentFile{Type: model.BlockContentFile_Image}},
+		}).(*File)
+		fx := newFixture(t, f)
+		defer fx.ctrl.Finish()
+
+		file := testMock.NewMockImage(fx.ctrl)
+		file.EXPECT().Hash().Return(fileHash).AnyTimes()
+
+		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+
+		fx.mu.Lock()
+		err := f.Upload(fx.anytype, fx, testFilepath, "")
+		fx.mu.Unlock()
+		require.NoError(t, err)
+
+		select {
+		case <-time.After(time.Second * 2):
+			t.Error("upload timeout")
+			return
+		case <-fx.done:
+		}
+	})
+
 }
 
 func newFixture(t *testing.T, file *File) *fixture {
