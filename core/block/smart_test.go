@@ -107,6 +107,25 @@ func TestCommonSmart_Create(t *testing.T) {
 		t.Log(versToSave)
 		assert.Len(t, fx.events, 2)
 	})
+	t.Run("create block with target=pageId and position=inner", func(t *testing.T) {
+		fx := newPageFixture(t)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+		b := &model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{},
+			},
+		}
+		_, err := fx.Create(pb.RpcBlockCreateRequest{
+			ContextId: fx.pageId,
+			TargetId:  fx.pageId,
+			Position:  model.Block_Inner,
+			Block:     b,
+		})
+		require.NoError(t, err)
+
+		require.Len(t, fx.savedBlocks, 2)
+	})
 }
 
 func TestCommonSmart_Duplicate(t *testing.T) {
