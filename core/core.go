@@ -50,8 +50,8 @@ func (mw *Middleware) Start() error {
 		return err
 	}
 
-	mw.gatewayAddr = gateway.GatewayAddr()
-	log.Debug("Gateway started: " + gateway.GatewayAddr())
+	mw.gatewayAddr = "http://" + gateway.GatewayAddr()
+	log.Debug("Gateway started: " + mw.gatewayAddr)
 
 	return nil
 }
