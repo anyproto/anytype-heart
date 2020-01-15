@@ -155,10 +155,11 @@ message Block {
             string hash = 1;
             string name = 2;
             Type type = 3;
-            int64 size = 4;
-            int64 addedAt = 5;
+            string mime = 4;
+            int64 size = 5;
+            int64 addedAt = 6;
 
-            State state = 6;
+            State state = 7;
 
             enum Type {
                 None = 0;
