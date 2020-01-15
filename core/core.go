@@ -23,7 +23,6 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 
 var BootstrapNodes = []string{
 	"/ip4/68.183.2.167/tcp/4001/ipfs/12D3KooWB2Ya2GkLLRSR322Z13ZDZ9LP4fDJxauscYwUMKLFCqaD",
-	"/ip4/157.230.124.182/tcp/4001/ipfs/12D3KooWKLLf9Qc6SHaLWNPvx7Tk4AMc9i71CLdnbZuRiFMFMnEf",
 }
 
 type PredefinedBlockIds struct {
