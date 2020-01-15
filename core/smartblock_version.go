@@ -95,10 +95,6 @@ func (version *SmartBlockVersion) ExternalFields() *types.Struct {
 	}}
 }
 
-type rowHash struct {
-	Hash string
-}
-
 // addMissingFiles ensure that all fileIndex exist in this version added to the files database
 func (version *SmartBlockVersion) addMissingFiles() error {
 	if len(version.model.KeysByHash) == 0 {
@@ -118,13 +114,13 @@ func (version *SmartBlockVersion) addMissingFiles() error {
 	defer rows.Close()
 
 	filesExists := make(map[string]struct{})
-	var row rowHash
+	var rowHash string
 	for rows.Next() {
-		err = rows.Scan(&row)
+		err = rows.Scan(&rowHash)
 		if err != nil {
 			return err
 		}
-		filesExists[row.Hash] = struct{}{}
+		filesExists[rowHash] = struct{}{}
 	}
 
 	for hash, keysByPath := range version.model.KeysByHash {
