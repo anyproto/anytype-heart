@@ -159,6 +159,7 @@ message Event {
                 string id = 1;
                 Type type = 2;
                 State state = 3;
+                Mime mime = 4;
                 Hash hash = 5;
                 Name name = 6;
                 Size size = 7;
@@ -180,6 +181,10 @@ message Event {
                 }
 
                 message Hash {
+                    string value = 1;
+                }
+
+                message Mime {
                     string value = 1;
                 }
 

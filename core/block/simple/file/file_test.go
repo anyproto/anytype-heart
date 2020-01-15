@@ -74,5 +74,6 @@ func TestFile_Diff(t *testing.T) {
 		assert.NotNil(t, change.State)
 		assert.NotNil(t, change.Name)
 		assert.NotNil(t, change.Type)
+		assert.NotNil(t, change.Mime)
 	})
 }

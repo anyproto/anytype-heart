@@ -95,6 +95,7 @@ func (f *File) SetFileData(hash string, meta core.FileMeta) {
 	f.content.State = model.BlockContentFile_Done
 	f.content.Name = meta.Name
 	f.content.Hash = hash
+	f.content.Mime = meta.Media
 }
 
 func (f *File) SetImage(hash, name string) {
@@ -136,6 +137,10 @@ func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	if f.content.Size_ != file.content.Size_ {
 		hasChanges = true
 		changes.Size_ = &pb.EventBlockSetFileSize{Value: file.content.Size_}
+	}
+	if f.content.Mime != file.content.Mime {
+		hasChanges = true
+		changes.Mime = &pb.EventBlockSetFileMime{Value: file.content.Mime}
 	}
 
 	if hasChanges {

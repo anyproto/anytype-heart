@@ -274,6 +274,7 @@
     - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
     - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
     - [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash)
+    - [Event.Block.Set.File.Mime](#anytype.Event.Block.Set.File.Mime)
     - [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name)
     - [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size)
     - [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
@@ -4044,6 +4045,7 @@ Precondition: user A opened a block
 | id | [string](#string) |  |  |
 | type | [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type) |  |  |
 | state | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
+| mime | [Event.Block.Set.File.Mime](#anytype.Event.Block.Set.File.Mime) |  |  |
 | hash | [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash) |  |  |
 | name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
 | size | [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size) |  |  |
@@ -4056,6 +4058,21 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Set.File.Hash"></a>
 
 ### Event.Block.Set.File.Hash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.Mime"></a>
+
+### Event.Block.Set.File.Mime
 
 
 
