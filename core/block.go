@@ -260,7 +260,9 @@ func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequ
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetTextStyleResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
 }
 
@@ -288,7 +290,7 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 
 		return m
 	}
-	if err := mw.blockService.SetTextStyle(*req); err != nil {
+	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)

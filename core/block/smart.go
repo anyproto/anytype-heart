@@ -33,7 +33,7 @@ type smartBlock interface {
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
 	Replace(id string, block *model.Block) error
-	UpdateTextBlock(id string, apply func(t text.Block) error) error
+	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	SetFields(id string, fields *types.Struct) (err error)
 	Close() error
@@ -409,16 +409,18 @@ func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) er
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error) (err error) {
+func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	tb, err := s.getText(id)
-	if err != nil {
-		return
-	}
-	if err = apply(tb); err != nil {
-		return
+	var tb text.Block
+	for _, id := range ids {
+		if tb, err = s.getText(id); err != nil {
+			return
+		}
+		if err = apply(tb); err != nil {
+			return
+		}
 	}
 	return p.applyAndSendEvent(s)
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -33,7 +34,7 @@ type Service interface {
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
-	SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error
+	SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
 	SetTextColor(req pb.RpcBlockSetTextColorRequest) error
 	SetTextBackgroundColor(req pb.RpcBlockSetTextBackgroundColorRequest) error
@@ -161,40 +162,40 @@ func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
 		return b.SetText(req.Text, req.Marks)
 	})
 }
 
-func (s *service) SetTextStyle(req pb.RpcBlockSetTextStyleRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
-		b.SetStyle(req.Style)
+func (s *service) SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
+	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+		b.SetStyle(style)
 		return nil
 	})
 }
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
 		b.SetChecked(req.Checked)
 		return nil
 	})
 }
 
 func (s *service) SetTextColor(req pb.RpcBlockSetTextColorRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
 		b.SetTextColor(req.Color)
 		return nil
 	})
 }
 
 func (s *service) SetTextBackgroundColor(req pb.RpcBlockSetTextBackgroundColorRequest) error {
-	return s.updateTextBlock(req.ContextId, req.BlockId, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
 		b.SetTextBackgroundColor(req.Color)
 		return nil
 	})
 }
 
-func (s *service) updateTextBlock(contextId, blockId string, apply func(b text.Block) error) (err error) {
+func (s *service) updateTextBlock(contextId string, blockIds []string, apply func(b text.Block) error) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	sb, ok := s.smartBlocks[contextId]
@@ -202,7 +203,7 @@ func (s *service) updateTextBlock(contextId, blockId string, apply func(b text.B
 		err = ErrBlockNotFound
 		return
 	}
-	return sb.UpdateTextBlock(blockId, apply)
+	return sb.UpdateTextBlocks(blockIds, apply)
 }
 
 func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {
