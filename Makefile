@@ -104,5 +104,5 @@ build-dev-js:
 	make build-lib build-js
 	npm run build:ts
 	cp -r jsaddon/build ../js-anytype/
-	cp build/ts/commands.js ../js-anytype/electron/proto/commands.js
+	cp build/ts/commands.js ../js-anytype/src/proto/commands.js
 
