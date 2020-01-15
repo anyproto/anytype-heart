@@ -4623,6 +4623,7 @@ Divider: block, that contains only one horizontal thin line
 | hash | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | type | [Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+| mime | [string](#string) |  |  |
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
 | state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
