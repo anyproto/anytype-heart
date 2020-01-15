@@ -27,7 +27,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
-	Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error)
+	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
@@ -159,21 +159,28 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	return
 }
 
-func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
+func (p *commonSmart) Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	copyId, err := p.copy(s, req.BlockId)
-	if err != nil {
-		return
-	}
-	if err = p.insertTo(s, s.get(copyId), req.TargetId, req.Position); err != nil {
-		return
+	pos := req.Position
+	targetId := req.TargetId
+	for _, id := range req.BlockIds {
+		copyId, e := p.copy(s, id)
+		if e != nil {
+			return nil, e
+		}
+		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+			return
+		}
+		pos = model.Block_Bottom
+		targetId = copyId
+		newIds = append(newIds, copyId)
 	}
 	if err = p.applyAndSendEvent(s); err != nil {
 		return
 	}
-	return copyId, nil
+	return
 }
 
 func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
