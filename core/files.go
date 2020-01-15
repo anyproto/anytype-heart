@@ -187,11 +187,12 @@ func (a *Anytype) getFileConfig(reader io.Reader, filename string, use string, p
 	return conf, nil
 }
 
-func (a *Anytype) buildDirectory(reader io.Reader, filename string, sch *tpb.Node) (*tpb.Directory, error) {
+func (a *Anytype) buildDirectory(content []byte, filename string, sch *tpb.Node) (*tpb.Directory, error) {
 	dir := &tpb.Directory{
 		Files: make(map[string]*tpb.FileIndex),
 	}
 
+	reader := bytes.NewReader(content)
 	mil, err := schema.GetMill(sch.Mill, sch.Opts)
 	if err != nil {
 		return nil, err
@@ -253,6 +254,7 @@ func (a *Anytype) buildDirectory(reader io.Reader, filename string, sch *tpb.Nod
 				return nil, err
 			}
 			dir.Files[step.Name] = added
+			reader.Seek(0, 0)
 		}
 	} else {
 		return nil, tschema.ErrEmptySchema

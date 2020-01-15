@@ -1,9 +1,9 @@
 package core
 
 import (
-	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 
 	"github.com/anytypeio/go-anytype-library/schema"
@@ -69,11 +69,6 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 }
 
 func (a *Anytype) ImageAddWithBytes(content []byte, filename string) (Image, error) {
-	reader := bytes.NewReader(content)
-	return a.ImageAddWithReader(reader, filename)
-}
-
-func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image, error) {
 	dir, err := a.buildDirectory(content, filename, schema.ImageNode())
 	if err != nil {
 		return nil, err
@@ -107,6 +102,17 @@ func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image,
 		variantsByWidth: variantsByWidth,
 		node:            a,
 	}, nil
+}
+
+func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image, error) {
+	b, err := ioutil.ReadAll(content)
+	if err != nil {
+		return nil, err
+	}
+
+	// use ImageAddWithBytes because we need seeker underlying
+	// todo: rewrite when all stack including mill and aes will use reader
+	return a.ImageAddWithBytes(b, filename)
 }
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
