@@ -190,7 +190,7 @@ func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb
 
 		return m
 	}
-	if err := mw.blockService.SetTextColor(*req); err != nil {
+	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextColorResponseError_NULL, nil)
@@ -205,7 +205,7 @@ func (mw *Middleware) BlockSetTextBackgroundColor(req *pb.RpcBlockSetTextBackgro
 
 		return m
 	}
-	if err := mw.blockService.SetTextBackgroundColor(*req); err != nil {
+	if err := mw.blockService.SetTextBackgroundColor(req.ContextId, req.Color, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextBackgroundColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextBackgroundColorResponseError_NULL, nil)
@@ -264,6 +264,36 @@ func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequ
 		return response(pb.RpcBlockListSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse {
+	response := func(code pb.RpcBlockListSetTextColorResponseErrorCode, err error) *pb.RpcBlockListSetTextColorResponse {
+		m := &pb.RpcBlockListSetTextColorResponse{Error: &pb.RpcBlockListSetTextColorResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetTextColorResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetTextColorResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetTextBackgroundColor(req *pb.RpcBlockListSetTextBackgroundColorRequest) *pb.RpcBlockListSetTextBackgroundColorResponse {
+	response := func(code pb.RpcBlockListSetTextBackgroundColorResponseErrorCode, err error) *pb.RpcBlockListSetTextBackgroundColorResponse {
+		m := &pb.RpcBlockListSetTextBackgroundColorResponse{Error: &pb.RpcBlockListSetTextBackgroundColorResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.SetTextBackgroundColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetTextBackgroundColorResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetTextBackgroundColorResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {

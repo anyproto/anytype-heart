@@ -36,8 +36,8 @@ type Service interface {
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
-	SetTextColor(req pb.RpcBlockSetTextColorRequest) error
-	SetTextBackgroundColor(req pb.RpcBlockSetTextBackgroundColorRequest) error
+	SetTextColor(contextId string, color string, blockIds ...string) error
+	SetTextBackgroundColor(contextId string, color string, blockIds ...string) error
 
 	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
@@ -181,16 +181,16 @@ func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
 	})
 }
 
-func (s *service) SetTextColor(req pb.RpcBlockSetTextColorRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
-		b.SetTextColor(req.Color)
+func (s *service) SetTextColor(contextId, color string, blockIds ...string) error {
+	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+		b.SetTextColor(color)
 		return nil
 	})
 }
 
-func (s *service) SetTextBackgroundColor(req pb.RpcBlockSetTextBackgroundColorRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
-		b.SetTextBackgroundColor(req.Color)
+func (s *service) SetTextBackgroundColor(contextId, color string, blockIds ...string) error {
+	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+		b.SetTextBackgroundColor(color)
 		return nil
 	})
 }

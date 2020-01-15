@@ -153,6 +153,14 @@
     - [Rpc.BlockList.Move.Response.Error](#anytype.Rpc.BlockList.Move.Response.Error)
     - [Rpc.BlockList.Set](#anytype.Rpc.BlockList.Set)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
+    - [Rpc.BlockList.Set.Text.BackgroundColor](#anytype.Rpc.BlockList.Set.Text.BackgroundColor)
+    - [Rpc.BlockList.Set.Text.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request)
+    - [Rpc.BlockList.Set.Text.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response)
+    - [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error)
+    - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
+    - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
+    - [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response)
+    - [Rpc.BlockList.Set.Text.Color.Response.Error](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error)
     - [Rpc.BlockList.Set.Text.Style](#anytype.Rpc.BlockList.Set.Text.Style)
     - [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request)
     - [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response)
@@ -243,6 +251,8 @@
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
+    - [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code)
+    - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
@@ -391,11 +401,13 @@
 | BlockSetRestrictions | [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request) | [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response) |  |
 | BlockSetIsArchived | [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request) | [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
-| BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
+| BlockListSetTextColor | [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request) | [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response) |  |
 | BlockSetTextBackgroundColor | [Rpc.Block.Set.Text.BackgroundColor.Request](#anytype.Rpc.Block.Set.Text.BackgroundColor.Request) | [Rpc.Block.Set.Text.BackgroundColor.Response](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response) |  |
+| BlockListSetTextBackgroundColor | [Rpc.BlockList.Set.Text.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request) | [Rpc.BlockList.Set.Text.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
+| BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
@@ -2460,6 +2472,122 @@ Remove blocks from the childrenIds of its parents
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor"></a>
+
+### Rpc.BlockList.Set.Text.BackgroundColor
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request"></a>
+
+### Rpc.BlockList.Set.Text.BackgroundColor.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| color | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response"></a>
+
+### Rpc.BlockList.Set.Text.BackgroundColor.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error"></a>
+
+### Rpc.BlockList.Set.Text.BackgroundColor.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Color"></a>
+
+### Rpc.BlockList.Set.Text.Color
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Color.Request"></a>
+
+### Rpc.BlockList.Set.Text.Color.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| color | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Color.Response"></a>
+
+### Rpc.BlockList.Set.Text.Color.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Text.Color.Response.Error](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Color.Response.Error"></a>
+
+### Rpc.BlockList.Set.Text.Color.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text.Style"></a>
 
 ### Rpc.BlockList.Set.Text.Style
@@ -3658,6 +3786,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.BlockList.Move.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Move.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Text.Color.Response.Error.Code
 
 
 | Name | Number | Description |
