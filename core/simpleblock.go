@@ -9,7 +9,7 @@ import (
 
 type SimpleBlock struct {
 	id               string
-	parentSmartBlock Block
+	parentSmartBlock *SmartBlock
 	node             *Anytype
 }
 
@@ -75,7 +75,7 @@ func (simpleBlock *SimpleBlock) AddVersion(block *model.Block) (BlockVersion, er
 
 	switch block.Content.(type) {
 	case *model.BlockContentOfPage, *model.BlockContentOfDashboard, *model.BlockContentOfDataview:
-		return nil, fmt.Errorf("unxpected smartsimpleBlock type")
+		return nil, fmt.Errorf("got smartBlock model instead of simpleBlock")
 	}
 
 	lastVersion, _ := simpleBlock.GetCurrentVersion()

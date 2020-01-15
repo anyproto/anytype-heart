@@ -23,23 +23,24 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type BlockWithDependentBlocks struct {
-	Block     *model.Block            `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
-	BlockById map[string]*model.Block `protobuf:"bytes,2,rep,name=blockById,proto3" json:"blockById,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+type BlockWithMeta struct {
+	Block      *model.Block            `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
+	BlockById  map[string]*model.Block `protobuf:"bytes,2,rep,name=blockById,proto3" json:"blockById,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	KeysByHash map[string]*FileKeys    `protobuf:"bytes,3,rep,name=keysByHash,proto3" json:"keysByHash,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *BlockWithDependentBlocks) Reset()         { *m = BlockWithDependentBlocks{} }
-func (m *BlockWithDependentBlocks) String() string { return proto.CompactTextString(m) }
-func (*BlockWithDependentBlocks) ProtoMessage()    {}
-func (*BlockWithDependentBlocks) Descriptor() ([]byte, []int) {
+func (m *BlockWithMeta) Reset()         { *m = BlockWithMeta{} }
+func (m *BlockWithMeta) String() string { return proto.CompactTextString(m) }
+func (*BlockWithMeta) ProtoMessage()    {}
+func (*BlockWithMeta) Descriptor() ([]byte, []int) {
 	return fileDescriptor_922fa7b2983033eb, []int{0}
 }
-func (m *BlockWithDependentBlocks) XXX_Unmarshal(b []byte) error {
+func (m *BlockWithMeta) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockWithDependentBlocks) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockWithMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockWithDependentBlocks.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockWithMeta.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -49,61 +50,73 @@ func (m *BlockWithDependentBlocks) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *BlockWithDependentBlocks) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockWithDependentBlocks.Merge(m, src)
+func (m *BlockWithMeta) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockWithMeta.Merge(m, src)
 }
-func (m *BlockWithDependentBlocks) XXX_Size() int {
+func (m *BlockWithMeta) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockWithDependentBlocks) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockWithDependentBlocks.DiscardUnknown(m)
+func (m *BlockWithMeta) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockWithMeta.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockWithDependentBlocks proto.InternalMessageInfo
+var xxx_messageInfo_BlockWithMeta proto.InternalMessageInfo
 
-func (m *BlockWithDependentBlocks) GetBlock() *model.Block {
+func (m *BlockWithMeta) GetBlock() *model.Block {
 	if m != nil {
 		return m.Block
 	}
 	return nil
 }
 
-func (m *BlockWithDependentBlocks) GetBlockById() map[string]*model.Block {
+func (m *BlockWithMeta) GetBlockById() map[string]*model.Block {
 	if m != nil {
 		return m.BlockById
 	}
 	return nil
 }
 
+func (m *BlockWithMeta) GetKeysByHash() map[string]*FileKeys {
+	if m != nil {
+		return m.KeysByHash
+	}
+	return nil
+}
+
 func init() {
-	proto.RegisterType((*BlockWithDependentBlocks)(nil), "anytype.storage.BlockWithDependentBlocks")
-	proto.RegisterMapType((map[string]*model.Block)(nil), "anytype.storage.BlockWithDependentBlocks.BlockByIdEntry")
+	proto.RegisterType((*BlockWithMeta)(nil), "anytype.storage.BlockWithMeta")
+	proto.RegisterMapType((map[string]*model.Block)(nil), "anytype.storage.BlockWithMeta.BlockByIdEntry")
+	proto.RegisterMapType((map[string]*FileKeys)(nil), "anytype.storage.BlockWithMeta.KeysByHashEntry")
 }
 
 func init() { proto.RegisterFile("pb/storage/protos/block.proto", fileDescriptor_922fa7b2983033eb) }
 
 var fileDescriptor_922fa7b2983033eb = []byte{
-	// 270 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2d, 0x48, 0xd2, 0x2f,
-	0x2e, 0xc9, 0x2f, 0x4a, 0x4c, 0x4f, 0xd5, 0x2f, 0x28, 0xca, 0x2f, 0xc9, 0x2f, 0xd6, 0x4f, 0xca,
-	0xc9, 0x4f, 0xce, 0xd6, 0x03, 0x73, 0x84, 0xf8, 0x13, 0xf3, 0x2a, 0x4b, 0x2a, 0x0b, 0x52, 0xf5,
-	0xa0, 0x6a, 0xa4, 0x64, 0x0a, 0x92, 0xf4, 0x73, 0xf3, 0x53, 0x52, 0x73, 0x60, 0xaa, 0xc1, 0x9c,
-	0x62, 0x88, 0x72, 0xa5, 0x4f, 0x8c, 0x5c, 0x12, 0x4e, 0x20, 0xed, 0xe1, 0x99, 0x25, 0x19, 0x2e,
-	0xa9, 0x05, 0xa9, 0x79, 0x29, 0xa9, 0x79, 0x25, 0x60, 0x91, 0x62, 0x21, 0x2d, 0x2e, 0x56, 0xb0,
-	0xd1, 0x12, 0x8c, 0x0a, 0x8c, 0x1a, 0xdc, 0x46, 0x22, 0x7a, 0x30, 0xb3, 0xc1, 0x46, 0xe8, 0x81,
-	0x55, 0x05, 0x41, 0x94, 0x08, 0x85, 0x71, 0x71, 0x82, 0x19, 0x4e, 0x95, 0x9e, 0x29, 0x12, 0x4c,
-	0x0a, 0xcc, 0x1a, 0xdc, 0x46, 0x16, 0x7a, 0x68, 0x6e, 0xd1, 0xc3, 0x65, 0x13, 0x44, 0x02, 0xa4,
-	0xd5, 0x35, 0xaf, 0xa4, 0xa8, 0x32, 0x08, 0x61, 0x94, 0x54, 0x10, 0x17, 0x1f, 0xaa, 0xa4, 0x90,
-	0x00, 0x17, 0x73, 0x76, 0x6a, 0x25, 0xd8, 0x4d, 0x9c, 0x41, 0x20, 0x26, 0xc8, 0x9d, 0x65, 0x89,
-	0x39, 0xa5, 0xa9, 0x12, 0x4c, 0xf8, 0xdc, 0x09, 0x56, 0x62, 0xc5, 0x64, 0xc1, 0xe8, 0xe4, 0x73,
-	0xe2, 0x91, 0x1c, 0xe3, 0x85, 0x47, 0x72, 0x8c, 0x0f, 0x1e, 0xc9, 0x31, 0x4e, 0x78, 0x2c, 0xc7,
-	0x70, 0xe1, 0xb1, 0x1c, 0xc3, 0x8d, 0xc7, 0x72, 0x0c, 0x51, 0x46, 0xe9, 0x99, 0x25, 0x19, 0xa5,
-	0x49, 0x7a, 0xc9, 0xf9, 0xb9, 0xfa, 0x50, 0x43, 0x32, 0xf3, 0xf5, 0xd3, 0xf3, 0x75, 0xa1, 0x1c,
-	0xdd, 0x9c, 0xcc, 0xa4, 0xa2, 0xc4, 0xa2, 0x4a, 0x7d, 0x44, 0x24, 0x24, 0xb1, 0x81, 0x43, 0xd2,
-	0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x1c, 0x96, 0xfe, 0x7e, 0x99, 0x01, 0x00, 0x00,
+	// 325 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x91, 0x41, 0x4b, 0xfb, 0x30,
+	0x18, 0xc6, 0x97, 0x95, 0xff, 0x1f, 0x96, 0xa1, 0x93, 0xe2, 0xa1, 0x0e, 0x0d, 0xc3, 0xd3, 0x10,
+	0x96, 0xc0, 0xbc, 0x88, 0xc7, 0x82, 0xa2, 0x4c, 0x3d, 0xf4, 0xa2, 0x78, 0x4b, 0xb6, 0xb8, 0x85,
+	0x66, 0x4b, 0x69, 0x33, 0x21, 0x5f, 0xc0, 0xb3, 0x1f, 0xcb, 0xe3, 0x8e, 0x1e, 0xa5, 0xfd, 0x22,
+	0xd2, 0xb4, 0x73, 0x6b, 0x15, 0xbd, 0xe5, 0xe1, 0x7d, 0xde, 0xdf, 0x93, 0x87, 0x17, 0x1e, 0x45,
+	0x8c, 0x24, 0x5a, 0xc5, 0x74, 0xca, 0x49, 0x14, 0x2b, 0xad, 0x12, 0xc2, 0xa4, 0x1a, 0x87, 0xd8,
+	0x0a, 0xb7, 0x43, 0x17, 0x46, 0x9b, 0x88, 0xe3, 0xd2, 0xd3, 0x3d, 0x8c, 0x18, 0x99, 0xab, 0x09,
+	0x97, 0x6b, 0xb7, 0x15, 0x49, 0x61, 0xb7, 0xd3, 0x1a, 0xed, 0x49, 0x48, 0x5e, 0x4c, 0x8f, 0x5f,
+	0x1c, 0xb8, 0xe3, 0xe7, 0xf0, 0x7b, 0xa1, 0x67, 0xb7, 0x5c, 0x53, 0xf7, 0x04, 0xfe, 0xb3, 0x69,
+	0x1e, 0xe8, 0x81, 0x7e, 0x7b, 0xb8, 0x8f, 0xd7, 0x71, 0x96, 0x8a, 0xad, 0x39, 0x28, 0x2c, 0xee,
+	0x08, 0xb6, 0xec, 0xc3, 0x37, 0xd7, 0x13, 0xaf, 0xd9, 0x73, 0xfa, 0xed, 0xe1, 0x00, 0xd7, 0xbe,
+	0x87, 0x2b, 0xf8, 0x42, 0xe5, 0xfe, 0x8b, 0x85, 0x8e, 0x4d, 0xb0, 0xd9, 0x77, 0xef, 0x20, 0x0c,
+	0xb9, 0x49, 0x7c, 0x73, 0x45, 0x93, 0x99, 0xe7, 0x58, 0x1a, 0xfe, 0x83, 0x36, 0xfa, 0x5a, 0x28,
+	0x70, 0x5b, 0x84, 0x6e, 0x00, 0x77, 0xab, 0x61, 0xee, 0x1e, 0x74, 0x42, 0x6e, 0x6c, 0xb1, 0x56,
+	0x90, 0x3f, 0xf3, 0xb2, 0xcf, 0x54, 0x2e, 0xb9, 0xd7, 0xfc, 0xad, 0xac, 0xb5, 0x9c, 0x37, 0xcf,
+	0x40, 0xf7, 0x01, 0x76, 0x6a, 0x91, 0x3f, 0x40, 0x49, 0x15, 0x7a, 0xf0, 0xad, 0xc3, 0xa5, 0x90,
+	0x3c, 0xc7, 0x6c, 0x91, 0xfd, 0x9b, 0xb7, 0x14, 0x81, 0x55, 0x8a, 0xc0, 0x47, 0x8a, 0xc0, 0x6b,
+	0x86, 0x1a, 0xab, 0x0c, 0x35, 0xde, 0x33, 0xd4, 0x78, 0x1c, 0x4e, 0x85, 0x9e, 0x2d, 0x19, 0x1e,
+	0xab, 0x39, 0x29, 0x49, 0x42, 0x91, 0xa9, 0x1a, 0x94, 0x62, 0x20, 0x05, 0x8b, 0x69, 0x6c, 0xc8,
+	0xe6, 0xd0, 0xec, 0xbf, 0xbd, 0xee, 0xe9, 0x67, 0x00, 0x00, 0x00, 0xff, 0xff, 0xfc, 0x85, 0xc4,
+	0xec, 0x4b, 0x02, 0x00, 0x00,
 }
 
-func (m *BlockWithDependentBlocks) Marshal() (dAtA []byte, err error) {
+func (m *BlockWithMeta) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -113,16 +126,42 @@ func (m *BlockWithDependentBlocks) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockWithDependentBlocks) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockWithMeta) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockWithDependentBlocks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockWithMeta) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if len(m.KeysByHash) > 0 {
+		for k := range m.KeysByHash {
+			v := m.KeysByHash[k]
+			baseI := i
+			if v != nil {
+				{
+					size, err := v.MarshalToSizedBuffer(dAtA[:i])
+					if err != nil {
+						return 0, err
+					}
+					i -= size
+					i = encodeVarintBlock(dAtA, i, uint64(size))
+				}
+				i--
+				dAtA[i] = 0x12
+			}
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintBlock(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintBlock(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
 	if len(m.BlockById) > 0 {
 		for k := range m.BlockById {
 			v := m.BlockById[k]
@@ -175,7 +214,7 @@ func encodeVarintBlock(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *BlockWithDependentBlocks) Size() (n int) {
+func (m *BlockWithMeta) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -198,6 +237,19 @@ func (m *BlockWithDependentBlocks) Size() (n int) {
 			n += mapEntrySize + 1 + sovBlock(uint64(mapEntrySize))
 		}
 	}
+	if len(m.KeysByHash) > 0 {
+		for k, v := range m.KeysByHash {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovBlock(uint64(l))
+			}
+			mapEntrySize := 1 + len(k) + sovBlock(uint64(len(k))) + l
+			n += mapEntrySize + 1 + sovBlock(uint64(mapEntrySize))
+		}
+	}
 	return n
 }
 
@@ -207,7 +259,7 @@ func sovBlock(x uint64) (n int) {
 func sozBlock(x uint64) (n int) {
 	return sovBlock(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *BlockWithDependentBlocks) Unmarshal(dAtA []byte) error {
+func (m *BlockWithMeta) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -230,10 +282,10 @@ func (m *BlockWithDependentBlocks) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: BlockWithDependentBlocks: wiretype end group for non-group")
+			return fmt.Errorf("proto: BlockWithMeta: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BlockWithDependentBlocks: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: BlockWithMeta: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -400,6 +452,135 @@ func (m *BlockWithDependentBlocks) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.BlockById[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field KeysByHash", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.KeysByHash == nil {
+				m.KeysByHash = make(map[string]*FileKeys)
+			}
+			var mapkey string
+			var mapvalue *FileKeys
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowBlock
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowBlock
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthBlock
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey < 0 {
+						return ErrInvalidLengthBlock
+					}
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowBlock
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= int(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthBlock
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if postmsgIndex < 0 {
+						return ErrInvalidLengthBlock
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &FileKeys{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipBlock(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthBlock
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.KeysByHash[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

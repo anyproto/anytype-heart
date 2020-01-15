@@ -67,12 +67,12 @@ func GzipUncompress(b []byte) ([]byte, error) {
 	return resB.Bytes(), nil
 }
 
-func CastTimestampFromGogo(tsP *types.Timestamp) *types.Timestamp {
+func CastTimestampFromGogo(tsP *types.Timestamp) *timestamp.Timestamp {
 	if tsP == nil {
 		return nil
 	}
 
-	ts := types.Timestamp(*tsP)
+	ts := timestamp.Timestamp(*tsP)
 	return &ts
 }
 

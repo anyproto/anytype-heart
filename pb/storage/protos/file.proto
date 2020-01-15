@@ -1,0 +1,7 @@
+syntax = "proto3";
+package anytype.storage;
+option go_package = "github.com/anytypeio/go-anytype-library/pb/storage";
+
+message FileKeys {
+    map<string,string> keysByPath = 1;
+}
