@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/types"
 )
 
 func (s *commonSmart) newState() *state {
@@ -242,28 +241,14 @@ func (s *state) normalizeLayoutRow(b simple.Block) {
 		return
 	}
 
-	// recalculate columns width
-	var sumWidth float64
-	for _, id := range b.Model().ChildrenIds {
-		width, _ := fieldsGetFloat(s.get(id).Model().Fields, "width")
-		if width == 0 {
-			// column without width - recalculate
-			width = 2
-		}
-		sumWidth += width
-	}
-	if sumWidth > 1.01 || sumWidth < 0.99 {
-		width := 1 / float64(len(b.Model().ChildrenIds))
-		fmt.Println("normalize: set new column width", b.Model().Id, width)
-		for _, id := range b.Model().ChildrenIds {
-			cm := s.get(id).Model()
-			if cm.Fields == nil {
-				cm.Fields = &types.Struct{}
+	// reset columns width when count of row children was changed
+	orig := s.sb.versions[b.Model().Id]
+	if orig != nil && len(orig.Model().ChildrenIds) != len(b.Model().ChildrenIds) {
+		for _, chId := range b.Model().ChildrenIds {
+			fields := s.get(chId).Model().Fields
+			if fields != nil && fields.Fields != nil && fields.Fields["width"] != nil {
+				fields.Fields["width"] = testFloatValue(0)
 			}
-			if cm.Fields.Fields == nil {
-				cm.Fields.Fields = make(map[string]*types.Value)
-			}
-			cm.Fields.Fields["width"] = testFloatValue(width)
 		}
 	}
 }
