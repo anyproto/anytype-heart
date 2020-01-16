@@ -63,10 +63,11 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-	// TODO
+	if err := mw.blockService.UploadFile(*req); err != nil {
+		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockUploadResponseError_NULL, nil)
 }
 

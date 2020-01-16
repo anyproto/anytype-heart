@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -77,6 +78,17 @@ func (s *state) getText(id string) (text.Block, error) {
 func (s *state) getIcon(id string) (base.IconBlock, error) {
 	if b := s.get(id); b != nil {
 		tb, ok := b.(base.IconBlock)
+		if ! ok {
+			return nil, ErrUnexpectedBlockType
+		}
+		return tb, nil
+	}
+	return nil, ErrBlockNotFound
+}
+
+func (s *state) getFile(id string) (file.Block, error) {
+	if b := s.get(id); b != nil {
+		tb, ok := b.(file.Block)
 		if ! ok {
 			return nil, ErrUnexpectedBlockType
 		}

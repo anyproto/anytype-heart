@@ -7,7 +7,7 @@ checkout-linux: &checkout-linux
 jobs:
   persist-checkout:
     docker:
-      - image: circleci/golang:1.12.9
+      - image: circleci/golang:1.13.6
     steps:
       - checkout
       - run:
@@ -25,7 +25,7 @@ jobs:
 
   unit-test:
     docker:
-      - image: circleci/golang:1.12.9
+      - image: circleci/golang:1.13.6
     steps:
       - *checkout-linux
       - add_ssh_keys:
@@ -64,7 +64,7 @@ jobs:
 
   build-lib-linux:
     docker:
-      - image: circleci/golang:1.12.9
+      - image: circleci/golang:1.13.6
     steps:
       - *checkout-linux
       - add_ssh_keys:
@@ -172,8 +172,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
+            curl -L -o go1.13.6.darwin-amd64.tar.gz https://dl.google.com/go/go1.13.6.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.13.6.darwin-amd64.tar.gz
       - restore_cache:
           keys:
             - go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
@@ -296,8 +296,8 @@ jobs:
           name: install golang
           command: |
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
-            curl -L -o go1.12.9.darwin-amd64.tar.gz https://dl.google.com/go/go1.12.9.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.9.darwin-amd64.tar.gz
+            curl -L -o go1.13.6.darwin-amd64.tar.gz https://dl.google.com/go/go1.13.6.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.13.6.darwin-amd64.tar.gz
           # see the https://github.com/golang/go/issues/31628
           # uncomment if go not fixes this issue and we will need to publish to the appstore
           # cd ~ && mkdir gosrc && cd gosrc
@@ -396,8 +396,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            wget https://dl.google.com/go/go1.12.9.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.12.9.linux-amd64.tar.gz
+            wget https://dl.google.com/go/go1.13.6.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.13.6.linux-amd64.tar.gz
             mkdir -p $GOPATH/bin
       - run:
           name: install protobuf
