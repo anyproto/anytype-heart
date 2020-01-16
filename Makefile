@@ -19,6 +19,9 @@ lint:
 test:
 	go test github.com/anytypeio/go-anytype-middleware/...
 
+test-race:
+	go test -race github.com/anytypeio/go-anytype-middleware/...
+
 fast-test:
 	go test github.com/anytypeio/go-anytype-middleware/core/block/... -cover
 

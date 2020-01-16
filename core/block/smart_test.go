@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -107,6 +108,25 @@ func TestCommonSmart_Create(t *testing.T) {
 		t.Log(versToSave)
 		assert.Len(t, fx.events, 2)
 	})
+	t.Run("create block with target=pageId and position=inner", func(t *testing.T) {
+		fx := newPageFixture(t)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+		b := &model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{},
+			},
+		}
+		_, err := fx.Create(pb.RpcBlockCreateRequest{
+			ContextId: fx.pageId,
+			TargetId:  fx.pageId,
+			Position:  model.Block_Inner,
+			Block:     b,
+		})
+		require.NoError(t, err)
+
+		require.Len(t, fx.savedBlocks, 2)
+	})
 }
 
 func TestCommonSmart_Duplicate(t *testing.T) {
@@ -115,34 +135,63 @@ func TestCommonSmart_Duplicate(t *testing.T) {
 		pageBlocks := []*model.Block{
 			{Id: "b1"},
 			{Id: "b2", ChildrenIds: []string{"c1"}},
+			{Id: "b3"},
 			{Id: "c1"},
 		}
 		fx := newPageFixture(t, pageBlocks...)
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 2)
+		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 3)
 
-		newId, err := fx.Duplicate(pb.RpcBlockDuplicateRequest{
+		newIds, err := fx.Duplicate(pb.RpcBlockListDuplicateRequest{
 			TargetId: "b1",
-			BlockId:  "b2",
+			BlockIds: []string{"b2", "b3"},
 			Position: model.Block_Top,
 		})
 		require.NoError(t, err)
+		require.Len(t, newIds, 2)
 
 		// plus one block in page
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 3)
+		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 5)
 		// have new copied block as first page child
-		assert.Equal(t, newId, fx.versions[fx.GetId()].Model().ChildrenIds[0])
+		assert.Equal(t, newIds[0], fx.versions[fx.GetId()].Model().ChildrenIds[0])
 		// copied block have children
-		require.Len(t, fx.versions[newId].Model().ChildrenIds, 1)
+		require.Len(t, fx.versions[newIds[0]].Model().ChildrenIds, 1)
 		// copied child have new id
-		assert.NotEqual(t, "c1", fx.versions[newId].Model().ChildrenIds[0])
+		assert.NotEqual(t, "c1", fx.versions[newIds[0]].Model().ChildrenIds[0])
 
 		// have 2 events: 1 - show, 2 - update for duplicate
 		require.Len(t, fx.serviceFx.events, 2)
-		// check we have 3 messages: 2 add + 1 change children
-		assert.Len(t, fx.serviceFx.events[1].Messages, 3)
+		// check we have 4 messages: 3 add + 1 change children
+		assert.Len(t, fx.serviceFx.events[1].Messages, 4)
 	})
 
+}
+
+func TestCommonSmart_SetFields(t *testing.T) {
+	t.Run("should set fields", func(t *testing.T) {
+		pageBlocks := []*model.Block{
+			{Id: "b1"},
+		}
+		fx := newPageFixture(t, pageBlocks...)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+
+		err := fx.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+			BlockId: "b1",
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"key": testStringValue("value"),
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "value", fx.commonSmart.versions["b1"].Model().Fields.Fields["key"].GetStringValue())
+
+		require.Len(t, fx.serviceFx.events, 2)
+		assert.Len(t, fx.serviceFx.events[1].Messages, 1)
+		assert.Equal(t, "value", fx.savedBlocks["b1"].Fields.Fields["key"].GetStringValue())
+	})
 }

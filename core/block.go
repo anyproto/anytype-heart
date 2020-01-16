@@ -94,10 +94,11 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-	// TODO
+	if err := mw.blockService.UploadFile(*req); err != nil {
+		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockUploadResponseError_NULL, nil)
 }
 
@@ -115,19 +116,19 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDuplicate(req *pb.RpcBlockDuplicateRequest) *pb.RpcBlockDuplicateResponse {
-	response := func(id string, code pb.RpcBlockDuplicateResponseErrorCode, err error) *pb.RpcBlockDuplicateResponse {
-		m := &pb.RpcBlockDuplicateResponse{BlockId: id, Error: &pb.RpcBlockDuplicateResponseError{Code: code}}
+func (mw *Middleware) BlockListDuplicate(req *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse {
+	response := func(ids []string, code pb.RpcBlockListDuplicateResponseErrorCode, err error) *pb.RpcBlockListDuplicateResponse {
+		m := &pb.RpcBlockListDuplicateResponse{BlockIds: ids, Error: &pb.RpcBlockListDuplicateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
-	id, err := mw.blockService.DuplicateBlock(*req)
+	ids, err := mw.blockService.DuplicateBlocks(*req)
 	if err != nil {
-		return response("", pb.RpcBlockDuplicateResponseError_UNKNOWN_ERROR, err)
+		return response(nil, pb.RpcBlockListDuplicateResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(id, pb.RpcBlockDuplicateResponseError_NULL, nil)
+	return response(ids, pb.RpcBlockListDuplicateResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockDownload(req *pb.RpcBlockDownloadRequest) *pb.RpcBlockDownloadResponse {
@@ -169,6 +170,20 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 		return response(pb.RpcBlockSetFieldsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
+	response := func(code pb.RpcBlockListSetFieldsResponseErrorCode, err error) *pb.RpcBlockListSetFieldsResponse {
+		m := &pb.RpcBlockListSetFieldsResponse{Error: &pb.RpcBlockListSetFieldsResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	if err := mw.blockService.SetFieldsList(*req); err != nil {
+		return response(pb.RpcBlockListSetFieldsResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetFieldsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsRequest) *pb.RpcBlockSetRestrictionsResponse {
@@ -221,7 +236,7 @@ func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb
 
 		return m
 	}
-	if err := mw.blockService.SetTextColor(*req); err != nil {
+	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextColorResponseError_NULL, nil)
@@ -236,7 +251,7 @@ func (mw *Middleware) BlockSetTextBackgroundColor(req *pb.RpcBlockSetTextBackgro
 
 		return m
 	}
-	if err := mw.blockService.SetTextBackgroundColor(*req); err != nil {
+	if err := mw.blockService.SetTextBackgroundColor(req.ContextId, req.Color, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextBackgroundColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextBackgroundColorResponseError_NULL, nil)
@@ -291,8 +306,40 @@ func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequ
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetTextStyleResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse {
+	response := func(code pb.RpcBlockListSetTextColorResponseErrorCode, err error) *pb.RpcBlockListSetTextColorResponse {
+		m := &pb.RpcBlockListSetTextColorResponse{Error: &pb.RpcBlockListSetTextColorResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetTextColorResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetTextColorResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetTextBackgroundColor(req *pb.RpcBlockListSetTextBackgroundColorRequest) *pb.RpcBlockListSetTextBackgroundColorResponse {
+	response := func(code pb.RpcBlockListSetTextBackgroundColorResponseErrorCode, err error) *pb.RpcBlockListSetTextBackgroundColorResponse {
+		m := &pb.RpcBlockListSetTextBackgroundColorResponse{Error: &pb.RpcBlockListSetTextBackgroundColorResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.SetTextBackgroundColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetTextBackgroundColorResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetTextBackgroundColorResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
@@ -319,7 +366,7 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 
 		return m
 	}
-	if err := mw.blockService.SetTextStyle(*req); err != nil {
+	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)

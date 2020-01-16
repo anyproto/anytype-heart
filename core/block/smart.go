@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
@@ -27,16 +28,17 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
-	Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error)
+	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
 	Paste(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) error
-	UpdateTextBlock(id string, apply func(t text.Block) error) error
+	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
-	SetFields(id string, fields *types.Struct) (err error)
+	Upload(id string, localPath, url string) error
+	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Close() error
 }
 
@@ -141,8 +143,13 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 }
 
 func (p *commonSmart) Init() {
-	p.m.RLock()
-	defer p.m.RUnlock()
+	p.m.Lock()
+	defer p.m.Unlock()
+	for _, v := range p.versions {
+		if i, ok := v.(simple.BlockInit); ok {
+			i.Init(p.s.anytype)
+		}
+	}
 	p.show()
 }
 
@@ -160,21 +167,28 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	return
 }
 
-func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
+func (p *commonSmart) Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	copyId, err := p.copy(s, req.BlockId)
-	if err != nil {
-		return
-	}
-	if err = p.insertTo(s, s.get(copyId), req.TargetId, req.Position); err != nil {
-		return
+	pos := req.Position
+	targetId := req.TargetId
+	for _, id := range req.BlockIds {
+		copyId, e := p.copy(s, id)
+		if e != nil {
+			return nil, e
+		}
+		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+			return
+		}
+		pos = model.Block_Bottom
+		targetId = copyId
+		newIds = append(newIds, copyId)
 	}
 	if err = p.applyAndSendEvent(s); err != nil {
 		return
 	}
-	return copyId, nil
+	return
 }
 
 func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
@@ -312,9 +326,12 @@ func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos
 
 	var pos = len(parent.ChildrenIds) + 1
 	if target != nil {
-		targetPos := findPosInSlice(parent.ChildrenIds, target.Model().Id)
-		if targetPos == -1 {
-			return fmt.Errorf("target[%s] is not a child of parent[%s]; children: [%s]", target.Model().Id, parent.Id, parent.ChildrenIds)
+		var targetPos int
+		if reqPos != model.Block_Inner {
+			targetPos = findPosInSlice(parent.ChildrenIds, target.Model().Id)
+			if targetPos == -1 {
+				return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
+			}
 		}
 		switch reqPos {
 		case model.Block_Bottom:
@@ -521,27 +538,59 @@ func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) er
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error) (err error) {
+func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	tb, err := s.getText(id)
+	var tb text.Block
+	for _, id := range ids {
+		if tb, err = s.getText(id); err != nil {
+			return
+		}
+		if err = apply(tb); err != nil {
+			return
+		}
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *commonSmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	for _, fr := range fields {
+		if fr != nil {
+			if err = p.setFields(s, fr.BlockId, fr.Fields); err != nil {
+				return
+			}
+		}
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	f, err := s.getFile(id)
 	if err != nil {
 		return
 	}
-	if err = apply(tb); err != nil {
+	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
 		return
 	}
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) SetFields(id string, fields *types.Struct) (err error) {
+func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	if err = p.setFields(s, id, fields); err != nil {
-		return
+	f, err := s.getFile(id)
+	if err != nil {
+		return err
 	}
+	apply(f)
 	return p.applyAndSendEvent(s)
 }
 
