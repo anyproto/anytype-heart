@@ -19,6 +19,9 @@ lint:
 test:
 	go test github.com/anytypeio/go-anytype-middleware/...
 
+test-race:
+	go test -race github.com/anytypeio/go-anytype-middleware/...
+
 fast-test:
 	go test github.com/anytypeio/go-anytype-middleware/core/block/... -cover
 
@@ -101,5 +104,5 @@ build-dev-js:
 	make build-lib build-js
 	npm run build:ts
 	cp -r jsaddon/build ../js-anytype/
-	cp build/ts/commands.js ../js-anytype/electron/proto/commands.js
+	cp build/ts/commands.js ../js-anytype/src/proto/commands.js
 

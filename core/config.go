@@ -1,11 +1,14 @@
 package core
 
-import "github.com/anytypeio/go-anytype-middleware/pb"
+import (
+	"github.com/anytypeio/go-anytype-middleware/pb"
+)
 
 func (mw *Middleware) ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetResponse {
-	var homeBlockId string
+	var homeBlockId, gatewayUrl string
 	if mw.Anytype != nil {
 		homeBlockId = mw.Anytype.PredefinedBlockIds().Home
+		gatewayUrl = mw.gatewayAddr
 	}
-	return &pb.RpcConfigGetResponse{HomeBlockId: homeBlockId}
+	return &pb.RpcConfigGetResponse{HomeBlockId: homeBlockId, GatewayUrl: gatewayUrl}
 }

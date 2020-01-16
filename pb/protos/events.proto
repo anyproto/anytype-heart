@@ -159,8 +159,10 @@ message Event {
                 string id = 1;
                 Type type = 2;
                 State state = 3;
-                LocalFilePath localFilePath = 4;
-                PreviewLocalFilePath previewLocalFilePath = 5;
+                Mime mime = 4;
+                Hash hash = 5;
+                Name name = 6;
+                Size size = 7;
 
                 message Name {
                     string value = 1;
@@ -178,12 +180,16 @@ message Event {
                     anytype.model.Block.Content.File.Type value = 1;
                 }
 
-                message LocalFilePath {
+                message Hash {
                     string value = 1;
                 }
 
-                message PreviewLocalFilePath {
+                message Mime {
                     string value = 1;
+                }
+
+                message Size {
+                    int64 value = 1;
                 }
             }
 

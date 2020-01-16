@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -166,4 +167,31 @@ func TestCommonSmart_Duplicate(t *testing.T) {
 		assert.Len(t, fx.serviceFx.events[1].Messages, 4)
 	})
 
+}
+
+func TestCommonSmart_SetFields(t *testing.T) {
+	t.Run("should set fields", func(t *testing.T) {
+		pageBlocks := []*model.Block{
+			{Id: "b1"},
+		}
+		fx := newPageFixture(t, pageBlocks...)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+
+		err := fx.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+			BlockId: "b1",
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"key": testStringValue("value"),
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "value", fx.commonSmart.versions["b1"].Model().Fields.Fields["key"].GetStringValue())
+
+		require.Len(t, fx.serviceFx.events, 2)
+		assert.Len(t, fx.serviceFx.events[1].Messages, 1)
+		assert.Equal(t, "value", fx.savedBlocks["b1"].Fields.Fields["key"].GetStringValue())
+	})
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -99,24 +98,26 @@ func (p *page) Type() smartBlockType {
 	return smartBlockTypePage
 }
 
-func (p *page) SetFields(id string, fields *types.Struct) (err error) {
+func (p *page) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	if err = p.setFields(s, id, fields); err != nil {
-		return
-	}
-	if id == p.GetId() {
-		// apply changes to virtual blocks
-		name, _ := fieldsGetString(p.versions[id].Model().Fields, "name")
-		nameId := p.block.GetId() + pageTitleSuffix
-		nameBlock := s.get(nameId).(*pageTitleBlock)
-		nameBlock.Block.SetText(name, nil)
+	for _, bf := range fields {
+		if err = p.setFields(s, bf.BlockId, bf.Fields); err != nil {
+			return
+		}
+		if bf.BlockId == p.GetId() {
+			// apply changes to virtual blocks
+			name, _ := fieldsGetString(p.versions[bf.BlockId].Model().Fields, "name")
+			nameId := p.block.GetId() + pageTitleSuffix
+			nameBlock := s.get(nameId).(*pageTitleBlock)
+			nameBlock.Block.SetText(name, nil)
 
-		icon, _ := fieldsGetString(p.versions[id].Model().Fields, "icon")
-		iconId := p.block.GetId() + pageIconSuffix
-		iconBlock := s.get(iconId).(*pageIconBlock)
-		iconBlock.IconBlock.SetIconName(icon)
+			icon, _ := fieldsGetString(p.versions[bf.BlockId].Model().Fields, "icon")
+			iconId := p.block.GetId() + pageIconSuffix
+			iconBlock := s.get(iconId).(*pageIconBlock)
+			iconBlock.IconBlock.SetIconName(icon)
+		}
 	}
 	return p.applyAndSendEvent(s)
 }

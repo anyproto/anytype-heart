@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -30,6 +31,7 @@ type Service interface {
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
+	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -38,6 +40,8 @@ type Service interface {
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
 	SetTextColor(contextId string, color string, blockIds ...string) error
 	SetTextBackgroundColor(contextId string, color string, blockIds ...string) error
+
+	UploadFile(req pb.RpcBlockUploadRequest) error
 
 	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
@@ -156,7 +160,19 @@ func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.SetFields(req.BlockId, req.Fields)
+		return sb.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+			BlockId: req.BlockId,
+			Fields:  req.Fields,
+		})
+	}
+	return ErrBlockNotFound
+}
+
+func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.SetFields(req.BlockFields...)
 	}
 	return ErrBlockNotFound
 }
@@ -217,6 +233,16 @@ func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {
 	return sb.UpdateIconBlock(req.BlockId, func(t base.IconBlock) error {
 		return t.SetIconName(req.Name)
 	})
+}
+
+func (s *service) UploadFile(req pb.RpcBlockUploadRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[req.ContextId]
+	if !ok {
+		return ErrBlockNotFound
+	}
+	return sb.Upload(req.BlockId, req.FilePath, req.Url)
 }
 
 func (s *service) Close() error {

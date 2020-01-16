@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
@@ -35,7 +36,8 @@ type smartBlock interface {
 	Replace(id string, block *model.Block) error
 	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
-	SetFields(id string, fields *types.Struct) (err error)
+	Upload(id string, localPath, url string) error
+	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Close() error
 }
 
@@ -140,8 +142,13 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 }
 
 func (p *commonSmart) Init() {
-	p.m.RLock()
-	defer p.m.RUnlock()
+	p.m.Lock()
+	defer p.m.Unlock()
+	for _, v := range p.versions {
+		if i, ok := v.(simple.BlockInit); ok {
+			i.Init(p.s.anytype)
+		}
+	}
 	p.show()
 }
 
@@ -432,13 +439,43 @@ func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) er
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) SetFields(id string, fields *types.Struct) (err error) {
+func (p *commonSmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	if err = p.setFields(s, id, fields); err != nil {
+	for _, fr := range fields {
+		if fr != nil {
+			if err = p.setFields(s, fr.BlockId, fr.Fields); err != nil {
+				return
+			}
+		}
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	f, err := s.getFile(id)
+	if err != nil {
 		return
 	}
+	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
+		return
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	f, err := s.getFile(id)
+	if err != nil {
+		return err
+	}
+	apply(f)
 	return p.applyAndSendEvent(s)
 }
 

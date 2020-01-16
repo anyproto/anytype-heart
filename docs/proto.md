@@ -152,6 +152,11 @@
     - [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response)
     - [Rpc.BlockList.Move.Response.Error](#anytype.Rpc.BlockList.Move.Response.Error)
     - [Rpc.BlockList.Set](#anytype.Rpc.BlockList.Set)
+    - [Rpc.BlockList.Set.Fields](#anytype.Rpc.BlockList.Set.Fields)
+    - [Rpc.BlockList.Set.Fields.Request](#anytype.Rpc.BlockList.Set.Fields.Request)
+    - [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField)
+    - [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response)
+    - [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
     - [Rpc.BlockList.Set.Text.BackgroundColor](#anytype.Rpc.BlockList.Set.Text.BackgroundColor)
     - [Rpc.BlockList.Set.Text.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request)
@@ -251,6 +256,7 @@
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.Duplicate.Response.Error.Code](#anytype.Rpc.BlockList.Duplicate.Response.Error.Code)
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
+    - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
@@ -283,9 +289,10 @@
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
     - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
     - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
-    - [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath)
+    - [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash)
+    - [Event.Block.Set.File.Mime](#anytype.Event.Block.Set.File.Mime)
     - [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name)
-    - [Event.Block.Set.File.PreviewLocalFilePath](#anytype.Event.Block.Set.File.PreviewLocalFilePath)
+    - [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size)
     - [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
     - [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type)
     - [Event.Block.Set.File.Width](#anytype.Event.Block.Set.File.Width)
@@ -332,9 +339,7 @@
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
-    - [Image](#anytype.model.Image)
     - [Range](#anytype.model.Range)
-    - [Video](#anytype.model.Video)
   
     - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
@@ -345,9 +350,6 @@
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
-    - [Image.Size](#anytype.model.Image.Size)
-    - [Image.Style](#anytype.model.Image.Style)
-    - [Video.Size](#anytype.model.Video.Size)
   
   
   
@@ -400,6 +402,8 @@
 | BlockSetRestrictions | [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request) | [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response) |  |
 | BlockSetIsArchived | [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request) | [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
+| BlockListSetFields | [Rpc.BlockList.Set.Fields.Request](#anytype.Rpc.BlockList.Set.Fields.Request) | [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response) |  |
+| BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockListDuplicate | [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request) | [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
@@ -407,7 +411,6 @@
 | BlockSetTextBackgroundColor | [Rpc.Block.Set.Text.BackgroundColor.Request](#anytype.Rpc.Block.Set.Text.BackgroundColor.Request) | [Rpc.Block.Set.Text.BackgroundColor.Response](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response) |  |
 | BlockListSetTextBackgroundColor | [Rpc.BlockList.Set.Text.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request) | [Rpc.BlockList.Set.Text.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
-| BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
@@ -2283,7 +2286,7 @@ Remove blocks from the childrenIds of its parents
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| localPath | [string](#string) |  |  |
+| filePath | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 
 
@@ -2456,6 +2459,79 @@ Makes blocks copy by given ids and paste it to shown place
 
 ### Rpc.BlockList.Set
 
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Fields"></a>
+
+### Rpc.BlockList.Set.Fields
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Fields.Request"></a>
+
+### Rpc.BlockList.Set.Fields.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockFields | [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Fields.Request.BlockField"></a>
+
+### Rpc.BlockList.Set.Fields.Request.BlockField
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Fields.Response"></a>
+
+### Rpc.BlockList.Set.Fields.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Fields.Response.Error"></a>
+
+### Rpc.BlockList.Set.Fields.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -2685,7 +2761,8 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error) |  |  |
-| homeBlockId | [string](#string) |  |  |
+| homeBlockId | [string](#string) |  | home dashboard block id |
+| gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
 
@@ -2951,8 +3028,8 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
+| hash | [string](#string) |  |  |
+| wantWidth | [int32](#int32) |  |  |
 
 
 
@@ -3009,8 +3086,8 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| size | [model.Image.Size](#anytype.model.Image.Size) |  |  |
+| hash | [string](#string) |  |  |
+| wantWidth | [int32](#int32) |  |  |
 
 
 
@@ -3796,6 +3873,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Fields.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Fields.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code
@@ -4202,17 +4292,34 @@ Precondition: user A opened a block
 | id | [string](#string) |  |  |
 | type | [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type) |  |  |
 | state | [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State) |  |  |
-| localFilePath | [Event.Block.Set.File.LocalFilePath](#anytype.Event.Block.Set.File.LocalFilePath) |  |  |
-| previewLocalFilePath | [Event.Block.Set.File.PreviewLocalFilePath](#anytype.Event.Block.Set.File.PreviewLocalFilePath) |  |  |
+| mime | [Event.Block.Set.File.Mime](#anytype.Event.Block.Set.File.Mime) |  |  |
+| hash | [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash) |  |  |
+| name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
+| size | [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size) |  |  |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Set.File.LocalFilePath"></a>
+<a name="anytype.Event.Block.Set.File.Hash"></a>
 
-### Event.Block.Set.File.LocalFilePath
+### Event.Block.Set.File.Hash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.Mime"></a>
+
+### Event.Block.Set.File.Mime
 
 
 
@@ -4240,15 +4347,15 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.File.PreviewLocalFilePath"></a>
+<a name="anytype.Event.Block.Set.File.Size"></a>
 
-### Event.Block.Set.File.PreviewLocalFilePath
+### Event.Block.Set.File.Size
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
+| value | [int64](#int64) |  |  |
 
 
 
@@ -4674,8 +4781,8 @@ Avatar of a user&#39;s account. It could be an image or color
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| image | [Image](#anytype.model.Image) |  | Image of the avatar. Contains hash and size |
-| color | [string](#string) |  | Color of the avatar, if no image |
+| image | [Block.Content.File](#anytype.model.Block.Content.File) |  | Image of the avatar. Contains the hash to retrieve the image. |
+| color | [string](#string) |  | Color of the avatar, used if image not set. |
 
 
 
@@ -4777,12 +4884,13 @@ Divider: block, that contains only one horizontal thin line
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| localFilePath | [string](#string) |  |  |
-| previewFilePath | [string](#string) |  |  |
-| state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| hash | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 | type | [Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+| mime | [string](#string) |  |  |
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
+| state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
 
 
 
@@ -4924,23 +5032,6 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype.model.Image"></a>
-
-### Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| sizes | [Image.Size](#anytype.model.Image.Size) | repeated |  |
-| style | [Image.Style](#anytype.model.Image.Style) |  |  |
-
-
-
-
-
-
 <a name="anytype.model.Range"></a>
 
 ### Range
@@ -4951,22 +5042,6 @@ General purpose structure, uses in Mark.
 | ----- | ---- | ----- | ----------- |
 | from | [int32](#int32) |  |  |
 | to | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Video"></a>
-
-### Video
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| sizes | [Video.Size](#anytype.model.Video.Size) | repeated |  |
 
 
 
@@ -4996,9 +5071,8 @@ General purpose structure, uses in Mark.
 | ---- | ------ | ----------- |
 | Empty | 0 | There is no file and preview, it&#39;s an empty block, that waits files. |
 | Uploading | 1 | There is still no file/preview, but file already uploading |
-| PreviewDownloaded | 2 | File exists, preview downloaded, but file is not. |
-| Downloading | 3 | File exists, preview downloaded, but file downloading |
-| Done | 4 | File and preview downloaded |
+| Done | 2 | File and preview downloaded |
+| Error | 3 | Error while uploading |
 
 
 
@@ -5009,9 +5083,10 @@ General purpose structure, uses in Mark.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| File | 0 |  |
-| Image | 1 |  |
-| Video | 2 |  |
+| None | 0 |  |
+| File | 1 |  |
+| Image | 2 |  |
+| Video | 3 |  |
 
 
 
@@ -5105,47 +5180,6 @@ General purpose structure, uses in Mark.
 | Left | 3 |  |
 | Right | 4 |  |
 | Inner | 5 |  |
-
-
-
-<a name="anytype.model.Image.Size"></a>
-
-### Image.Size
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Large | 0 |  |
-| Small | 1 |  |
-| Thumb | 2 |  |
-
-
-
-<a name="anytype.model.Image.Style"></a>
-
-### Image.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Picture | 0 |  |
-| File | 1 |  |
-
-
-
-<a name="anytype.model.Video.Size"></a>
-
-### Video.Size
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| SD360p | 0 |  |
-| SD480p | 1 |  |
-| HD720p | 2 |  |
-| HD1080p | 3 |  |
-| UHD1440p | 4 |  |
-| UHD2160p | 5 |  |
 
 
  

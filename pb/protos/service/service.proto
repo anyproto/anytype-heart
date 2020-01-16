@@ -34,6 +34,8 @@ service ClientCommands {
     rpc BlockSetIsArchived (anytype.Rpc.Block.Set.IsArchived.Request) returns (anytype.Rpc.Block.Set.IsArchived.Response);
 
     rpc BlockListMove (anytype.Rpc.BlockList.Move.Request) returns (anytype.Rpc.BlockList.Move.Response);
+    rpc BlockListSetFields (anytype.Rpc.BlockList.Set.Fields.Request) returns (anytype.Rpc.BlockList.Set.Fields.Response);
+    rpc BlockListSetTextStyle (anytype.Rpc.BlockList.Set.Text.Style.Request) returns (anytype.Rpc.BlockList.Set.Text.Style.Response);
     rpc BlockListDuplicate (anytype.Rpc.BlockList.Duplicate.Request) returns (anytype.Rpc.BlockList.Duplicate.Response);
 
     rpc BlockSetTextText (anytype.Rpc.Block.Set.Text.Text.Request) returns (anytype.Rpc.Block.Set.Text.Text.Response);
@@ -42,7 +44,6 @@ service ClientCommands {
     rpc BlockSetTextBackgroundColor (anytype.Rpc.Block.Set.Text.BackgroundColor.Request) returns (anytype.Rpc.Block.Set.Text.BackgroundColor.Response);
     rpc BlockListSetTextBackgroundColor (anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request) returns (anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response);
     rpc BlockSetTextStyle (anytype.Rpc.Block.Set.Text.Style.Request) returns (anytype.Rpc.Block.Set.Text.Style.Response);
-    rpc BlockListSetTextStyle (anytype.Rpc.BlockList.Set.Text.Style.Request) returns (anytype.Rpc.BlockList.Set.Text.Style.Response);
     rpc BlockSetTextChecked (anytype.Rpc.Block.Set.Text.Checked.Request) returns (anytype.Rpc.Block.Set.Text.Checked.Response);
 
     rpc BlockSplit (anytype.Rpc.Block.Split.Request) returns (anytype.Rpc.Block.Split.Response);

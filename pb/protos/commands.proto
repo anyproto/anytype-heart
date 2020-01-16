@@ -193,6 +193,32 @@ message Rpc {
                     }
                 }
             }
+            message Fields {
+                message Request {
+                    string contextId = 1;
+                    repeated BlockField blockFields = 2;
+
+                    message BlockField {
+                        string blockId = 1;
+                        google.protobuf.Struct fields = 2;
+                    }
+                }
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -334,7 +360,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                string localPath = 3;
+                string filePath = 3;
                 string url = 4;
             }
 
@@ -1212,8 +1238,8 @@ message Rpc {
             message Get {
                 message Blob {
                     message Request {
-                        string id = 1;
-                        anytype.model.Image.Size size = 2;
+                        string hash = 1;
+                        int32 wantWidth = 2;
                     }
 
                     message Response {
@@ -1240,8 +1266,8 @@ message Rpc {
 
                 message File {
                     message Request {
-                        string id = 1;
-                        anytype.model.Image.Size size = 2;
+                        string hash = 1;
+                        int32 wantWidth = 2;
                     }
 
                     message Response {
@@ -1275,7 +1301,8 @@ message Rpc {
             }
             message Response {
                 Error error = 1;
-                string homeBlockId = 2;
+                string homeBlockId = 2; // home dashboard block id
+                string gatewayUrl = 3; // gateway url for fetching static files
                 message Error {
                     Code code = 1;
                     string description = 2;
