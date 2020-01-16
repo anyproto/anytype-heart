@@ -1,9 +1,11 @@
 package block
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"strings"
 )
 
 func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
@@ -32,19 +34,22 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) error {
 
 	textArr := strings.Split(req.TextSlot, "\n")
 	req.AnySlot = []*model.Block{}
-	for i:= 0; i < len(textArr); i++  {
+	for i := 0; i < len(textArr); i++ {
 		req.AnySlot = append(req.AnySlot, &model.Block{
 			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{ Text: textArr[i] },
+				Text: &model.BlockContentText{Text: textArr[i]},
 			},
 		})
 	}
 
-	return p.pasteAny(req)
+	err := p.pasteAny(req)
+	fmt.Println("ERROR pasteAny:", err)
+	return err
+
 }
 
-
 func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
+
 	var (
 		targetId string
 	)
@@ -65,7 +70,6 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 			return err
 		}
 		targetId = req.FocusedBlockId
-
 
 		var getPrevBlockId = func(id string) string {
 			var out string
@@ -99,19 +103,19 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 
 	// selected blocks -> remove it
 	if len(req.SelectedBlockIds) > 0 {
-			if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
-				return err
-			}
+		if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
+			return err
+		}
 	}
 
-	cIds = p.versions[p.GetId()].Model().ChildrenIds
+	/*cIds = p.versions[p.GetId()].Model().ChildrenIds
 	for i := 0; i < len(cIds); i++ {
-		if len(p.versions[cIds[i]].Model().GetText().Text) == 0  {
+		if len(p.versions[cIds[i]].Model().GetText().Text) == 0 {
 			if err := p.unlink(s, cIds[i]); err != nil {
 				return err
 			}
 		}
-	}
+	}*/
 
 	return p.applyAndSendEvent(s)
 }
