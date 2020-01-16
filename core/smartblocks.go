@@ -8,7 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
-	libp2pc "github.com/libp2p/go-libp2p-crypto"
+	libp2pc "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/segmentio/ksuid"
 	tcore "github.com/textileio/go-textile/core"
 	tpb "github.com/textileio/go-textile/pb"
