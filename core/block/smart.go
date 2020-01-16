@@ -28,13 +28,13 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
-	Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error)
+	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
 	Replace(id string, block *model.Block) error
-	UpdateTextBlock(id string, apply func(t text.Block) error) error
+	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
@@ -166,21 +166,28 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	return
 }
 
-func (p *commonSmart) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
+func (p *commonSmart) Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	copyId, err := p.copy(s, req.BlockId)
-	if err != nil {
-		return
-	}
-	if err = p.insertTo(s, s.get(copyId), req.TargetId, req.Position); err != nil {
-		return
+	pos := req.Position
+	targetId := req.TargetId
+	for _, id := range req.BlockIds {
+		copyId, e := p.copy(s, id)
+		if e != nil {
+			return nil, e
+		}
+		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+			return
+		}
+		pos = model.Block_Bottom
+		targetId = copyId
+		newIds = append(newIds, copyId)
 	}
 	if err = p.applyAndSendEvent(s); err != nil {
 		return
 	}
-	return copyId, nil
+	return
 }
 
 func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
@@ -416,16 +423,18 @@ func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) er
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) UpdateTextBlock(id string, apply func(t text.Block) error) (err error) {
+func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	tb, err := s.getText(id)
-	if err != nil {
-		return
-	}
-	if err = apply(tb); err != nil {
-		return
+	var tb text.Block
+	for _, id := range ids {
+		if tb, err = s.getText(id); err != nil {
+			return
+		}
+		if err = apply(tb); err != nil {
+			return
+		}
 	}
 	return p.applyAndSendEvent(s)
 }

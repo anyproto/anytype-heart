@@ -675,8 +675,8 @@ func (t *testPage) Move(req pb.RpcBlockListMoveRequest) error {
 	return fmt.Errorf("can't update block in the test page")
 }
 
-func (t *testPage) Duplicate(req pb.RpcBlockDuplicateRequest) (id string, err error) {
-	return "", fmt.Errorf("can't update block in the test page")
+func (t *testPage) Duplicate(req pb.RpcBlockListDuplicateRequest) ([]string, error) {
+	return nil, fmt.Errorf("can't update block in the test page")
 }
 
 func (t *testPage) Merge(firstId, secondId string) error {
@@ -699,7 +699,7 @@ func (t *testPage) SetFields(_ ...*pb.RpcBlockListSetFieldsRequestBlockField) (e
 	return fmt.Errorf("can't update block in the test page")
 }
 
-func (t *testPage) UpdateTextBlock(id string, apply func(t text.Block) error) error {
+func (t *testPage) UpdateTextBlocks(ids []string, apply func(t text.Block) error) error {
 	return fmt.Errorf("can't update block in the test page")
 }
 

@@ -135,34 +135,36 @@ func TestCommonSmart_Duplicate(t *testing.T) {
 		pageBlocks := []*model.Block{
 			{Id: "b1"},
 			{Id: "b2", ChildrenIds: []string{"c1"}},
+			{Id: "b3"},
 			{Id: "c1"},
 		}
 		fx := newPageFixture(t, pageBlocks...)
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 2)
+		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 3)
 
-		newId, err := fx.Duplicate(pb.RpcBlockDuplicateRequest{
+		newIds, err := fx.Duplicate(pb.RpcBlockListDuplicateRequest{
 			TargetId: "b1",
-			BlockId:  "b2",
+			BlockIds: []string{"b2", "b3"},
 			Position: model.Block_Top,
 		})
 		require.NoError(t, err)
+		require.Len(t, newIds, 2)
 
 		// plus one block in page
-		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 3)
+		require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, 5)
 		// have new copied block as first page child
-		assert.Equal(t, newId, fx.versions[fx.GetId()].Model().ChildrenIds[0])
+		assert.Equal(t, newIds[0], fx.versions[fx.GetId()].Model().ChildrenIds[0])
 		// copied block have children
-		require.Len(t, fx.versions[newId].Model().ChildrenIds, 1)
+		require.Len(t, fx.versions[newIds[0]].Model().ChildrenIds, 1)
 		// copied child have new id
-		assert.NotEqual(t, "c1", fx.versions[newId].Model().ChildrenIds[0])
+		assert.NotEqual(t, "c1", fx.versions[newIds[0]].Model().ChildrenIds[0])
 
 		// have 2 events: 1 - show, 2 - update for duplicate
 		require.Len(t, fx.serviceFx.events, 2)
-		// check we have 3 messages: 2 add + 1 change children
-		assert.Len(t, fx.serviceFx.events[1].Messages, 3)
+		// check we have 4 messages: 3 add + 1 change children
+		assert.Len(t, fx.serviceFx.events[1].Messages, 4)
 	})
 
 }
