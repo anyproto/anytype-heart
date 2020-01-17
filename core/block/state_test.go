@@ -93,38 +93,28 @@ func TestState_Normalize(t *testing.T) {
 		assert.Nil(t, fx.sb.versions["r1"])
 		assert.Nil(t, fx.sb.versions["c1"])
 	})
-
-	t.Run("do not recalculate width", func(t *testing.T) {
+	t.Run("cleanup width", func(t *testing.T) {
 		fx := newStateFixture(t)
 		defer fx.Finish()
 
 		fx.sb.versions["root"].Model().ChildrenIds = []string{"r1"}
-		fx.sb.versions["r1"] = simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow})
-		fx.sb.versions["c1"] = simple.New(&model.Block{Id: "c1", ChildrenIds: []string{"t1"}, Content: contColumn, Fields: fieldsWidth(0.5)})
-		fx.sb.versions["c2"] = simple.New(&model.Block{Id: "c2", ChildrenIds: []string{"t2"}, Content: contColumn, Fields: fieldsWidth(0.5)})
+		fx.sb.versions["r1"] = simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2", "c3"}, Content: contRow})
+		fx.sb.versions["c1"] = simple.New(&model.Block{Id: "c1", Content: contColumn, ChildrenIds: []string{"t1"}, Fields: fieldsWidth(0.3)})
+		fx.sb.versions["c2"] = simple.New(&model.Block{Id: "c2", Content: contColumn, ChildrenIds: []string{"t2"}, Fields: fieldsWidth(0.3)})
+		fx.sb.versions["c3"] = simple.New(&model.Block{Id: "c3", Content: contColumn, ChildrenIds: []string{"t3"}, Fields: fieldsWidth(0.3)})
 		fx.sb.versions["t1"] = simple.New(&model.Block{Id: "t1"})
 		fx.sb.versions["t2"] = simple.New(&model.Block{Id: "t2"})
-		fx.get("r1")
+		fx.sb.versions["t3"] = simple.New(&model.Block{Id: "t3"})
+		fx.removeFromChilds("c2")
+		fx.remove("c2")
+
 		msgs, err := fx.apply()
 		require.NoError(t, err)
-		assert.Len(t, msgs, 0)
-		assert.Len(t, fx.saved, 0)
-	})
-
-	t.Run("recalculate width", func(t *testing.T) {
-		fx := newStateFixture(t)
-		defer fx.Finish()
-
-		fx.sb.versions["root"].Model().ChildrenIds = []string{"r1"}
-		fx.sb.versions["r1"] = simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow})
-		fx.sb.versions["c1"] = simple.New(&model.Block{Id: "c1", ChildrenIds: []string{"t1"}, Content: contColumn, Fields: fieldsWidth(0.2)})
-		fx.sb.versions["c2"] = simple.New(&model.Block{Id: "c2", ChildrenIds: []string{"t2"}, Content: contColumn, Fields: fieldsWidth(0.3)})
-		fx.sb.versions["t1"] = simple.New(&model.Block{Id: "t1"})
-		fx.sb.versions["t2"] = simple.New(&model.Block{Id: "t2"})
-		fx.get("r1")
-		msgs, err := fx.apply()
-		require.NoError(t, err)
-		assert.Len(t, msgs, 2) // 2 change
-		assert.Len(t, fx.saved, 2)
+		assert.Len(t, msgs, 4) // 1 row change + 1 remove + 2 width reset
+		assert.Len(t, fx.saved, 3)
+		assert.Equal(t, []string{"r1"}, fx.sb.versions["root"].Model().ChildrenIds)
+		assert.Nil(t, fx.sb.versions["c2"])
+		assert.Equal(t, float64(0), fx.sb.versions["c1"].Model().Fields.Fields["width"].GetNumberValue())
+		assert.Equal(t, float64(0), fx.sb.versions["c3"].Model().Fields.Fields["width"].GetNumberValue())
 	})
 }
