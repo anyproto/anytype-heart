@@ -141,7 +141,6 @@ message Rpc {
             }
         }
 
-
         message Set {
             message Text {
                 message Style {

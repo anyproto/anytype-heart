@@ -208,16 +208,23 @@ func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
 	return copy.Model().Id, nil
 }
 
-func (p *commonSmart) duplicate(s *state, req pb.RpcBlockDuplicateRequest) (id string, err error) {
-	copyId, err := p.copy(s, req.BlockId)
-	if err != nil {
-		return
-	}
-	if err = p.insertTo(s, s.get(copyId), req.TargetId, req.Position); err != nil {
-		return
+func (p *commonSmart) duplicate(s *state, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+	pos := req.Position
+	targetId := req.TargetId
+	for _, id := range req.BlockIds {
+		copyId, e := p.copy(s, id)
+		if e != nil {
+			return nil, e
+		}
+		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+			return
+		}
+		pos = model.Block_Bottom
+		targetId = copyId
+		newIds = append(newIds, copyId)
 	}
 
-	return copyId, nil
+	return newIds, nil
 }
 
 func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (err error) {
@@ -257,7 +264,6 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 
 			targetId = copyBlockId
 		}
-
 
 	}
 

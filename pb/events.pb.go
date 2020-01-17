@@ -1641,7 +1641,7 @@ func (m *EventBlockSetFileType) GetValue() model.BlockContentFileType {
 	if m != nil {
 		return m.Value
 	}
-	return model.BlockContentFile_File
+	return model.BlockContentFile_None
 }
 
 type EventBlockSetFileHash struct {
