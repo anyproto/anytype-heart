@@ -122,14 +122,14 @@ func TestCommonSmart_Create(t *testing.T) {
 				Page: &model.BlockContentPage{},
 			},
 		}
-		fx.block.EXPECT().AddVersion(b)
+		//	fx.block.EXPECT().AddVersions([]*model.Block{b})
 		newId, err := fx.Create(pb.RpcBlockCreateRequest{
 			ContextId: fx.pageId,
 			Block:     b,
 		})
 		require.NoError(t, err)
 
-		require.Len(t, fx.savedBlocks, 2)
+		require.Len(t, fx.savedBlocks, 3)
 		assert.Equal(t, b.Id, fx.savedBlocks[newId].GetLink().TargetBlockId)
 	})
 	t.Run("create block with target=pageId and position=inner", func(t *testing.T) {

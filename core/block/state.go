@@ -33,7 +33,7 @@ func (s *state) create(b *model.Block) (new simple.Block, err error) {
 	}
 	if isSmartBlock(b) {
 		if err = s.sb.createSmartBlock(b); err != nil {
-			return
+			return nil, fmt.Errorf("can't create smartblock: %v", err)
 		}
 		b = s.createLink(b)
 	}

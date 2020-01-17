@@ -260,7 +260,7 @@ func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
 		return
 	}
 	m.Id = nb.GetId()
-	if _, err = p.block.AddVersion(m); err != nil {
+	if _, err = p.block.AddVersions([]*model.Block{m}); err != nil {
 		return
 	}
 	return
