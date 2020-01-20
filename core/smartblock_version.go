@@ -17,6 +17,14 @@ type SmartBlockVersion struct {
 	node      *Anytype
 }
 
+type SmartBlockVersionMeta struct {
+	model     *storage.BlockMetaOnly
+	versionId string
+	user      string
+	date      *types.Timestamp
+	node      *Anytype
+}
+
 func (version *SmartBlockVersion) Model() *model.Block {
 	return version.model.Block
 }
@@ -132,9 +140,33 @@ func (version *SmartBlockVersion) addMissingFiles() error {
 			_, err = version.node.addFileIndexFromPath(hash, hash+path, key)
 			if err != nil {
 				log.Errorf("addFileIndexFromPath error: %s", err.Error())
-			}}
+			}
+		}
 
 	}
 
 	return nil
+}
+
+func (version *SmartBlockVersionMeta) Model() *model.BlockMetaOnly {
+	return version.model.BlockMeta
+}
+
+func (version *SmartBlockVersionMeta) VersionId() string {
+	return version.versionId
+}
+
+func (version *SmartBlockVersionMeta) User() string {
+	return version.user
+}
+
+func (version *SmartBlockVersionMeta) Date() *types.Timestamp {
+	return version.date
+}
+
+func (version *SmartBlockVersionMeta) ExternalFields() *types.Struct {
+	return &types.Struct{Fields: map[string]*types.Value{
+		"name": version.Model().Fields.Fields["name"],
+		"icon": version.Model().Fields.Fields["icon"],
+	}}
 }

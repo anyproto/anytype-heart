@@ -12,6 +12,7 @@ import (
 type Block interface {
 	GetId() string
 	GetVersion(id string) (BlockVersion, error)
+	GetVersionMeta(id string) (BlockVersionMeta, error)
 	// GetVersions returns the list of last entries
 	GetVersions(offset string, limit int, metaOnly bool) ([]BlockVersion, error)
 	// GetCurrentVersionId returns the current(HEAD) version id of the block
@@ -28,7 +29,9 @@ type Block interface {
 	// EmptyVersion returns dumb BlockVersion, you can use it as a placeholder when no version yet created
 	EmptyVersion() BlockVersion
 	// GetNewVersionsOfBlocks sends the target block itself and dependent blocks' new versions to the chan
-	SubscribeNewVersionsOfBlocks(sinceVersionId string, blocks chan<- []BlockVersion) (cancelFunc func(), err error)
+	SubscribeNewVersionsOfBlocks(sinceVersionId string, includeSinceVersion bool, blocks chan<- []BlockVersion) (cancelFunc func(), err error)
+	// SubscribeMetaOfNewVersionsOfBlock subscribe for meta updates for the the block itself. You won't receive dependent(simple) block updates
+	SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, block chan<- BlockVersionMeta) (cancelFunc func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
 	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error)
 	// PublishClientEvent gives a way to push the new client-side event e.g. carriage position change
@@ -46,6 +49,15 @@ type BlockVersion interface {
 	// DependentBlocks gives the initial version of dependent blocks
 	// it can contain blocks in the not fully loaded state, e.g. images in the state of DOWNLOADING
 	DependentBlocks() map[string]BlockVersion
+}
+
+type BlockVersionMeta interface {
+	VersionId() string
+	Model() *model.BlockMetaOnly
+	User() string
+	Date() *types.Timestamp
+	// ExternalFields returns fields supposed to be viewable when block not opened
+	ExternalFields() *types.Struct
 }
 
 var ErrorNotSmartBlock = fmt.Errorf("can't retrieve thread for not smart block")

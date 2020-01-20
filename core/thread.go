@@ -113,6 +113,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex) (*tcore.Thread, 
 }
 
 func readFile(t *tcore.Textile, file *tpb.FileIndex) ([]byte, error) {
+	// todo: rewrite to use Readers instead
 	if file == nil {
 		return nil, errors.New("fileIndex is nil")
 	}

@@ -10,3 +10,7 @@ message BlockWithMeta {
     map<string, anytype.model.Block> blockById = 2;
     map<string, FileKeys> keysByHash = 3;
 }
+
+message BlockMetaOnly {
+    anytype.model.BlockMetaOnly blockMeta = 1;
+}

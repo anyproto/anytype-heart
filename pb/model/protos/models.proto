@@ -190,6 +190,15 @@ message Block {
 }
 
 /*
+* Used to decode block meta only, without the content itself
+*/
+message BlockMetaOnly {
+    string id = 1;
+    google.protobuf.Struct fields = 2;
+    bool isArchived = 5;
+}
+
+/*
 * General purpose structure, uses in Mark.
 */
 message Range {
