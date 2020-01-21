@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/anytypeio/go-anytype-library v0.0.0-20200117103925-adf94ce20a5d
+	github.com/anytypeio/goldmark v1.1.13-0.20200121121035-aeec51a11bf5
 
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.3.1
