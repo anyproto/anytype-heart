@@ -299,6 +299,10 @@
     - [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon)
     - [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name)
     - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
+    - [Event.Block.Set.Link](#anytype.Event.Block.Set.Link)
+    - [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields)
+    - [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style)
+    - [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId)
     - [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.BackgroundColor](#anytype.Event.Block.Set.Text.BackgroundColor)
@@ -339,6 +343,7 @@
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
+    - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [Range](#anytype.model.Range)
   
     - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
@@ -4454,6 +4459,69 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.Link"></a>
+
+### Event.Block.Set.Link
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| targetBlockId | [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId) |  |  |
+| style | [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style) |  |  |
+| fields | [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Fields"></a>
+
+### Event.Block.Set.Link.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Style"></a>
+
+### Event.Block.Set.Link.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.TargetBlockId"></a>
+
+### Event.Block.Set.Link.TargetBlockId
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.Restrictions"></a>
 
 ### Event.Block.Set.Restrictions
@@ -4618,6 +4686,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
 | blockSetIcon | [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon) |  |  |
+| blockSetLink | [Event.Block.Set.Link](#anytype.Event.Block.Set.Link) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
@@ -5026,6 +5095,23 @@ Link: block to link some content from an external sources.
 | remove | [bool](#bool) |  |  |
 | drag | [bool](#bool) |  |  |
 | dropOn | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.BlockMetaOnly"></a>
+
+### BlockMetaOnly
+Used to decode block meta only, without the content itself
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| isArchived | [bool](#bool) |  |  |
 
 
 

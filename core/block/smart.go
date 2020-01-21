@@ -54,7 +54,6 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		sb.Open(nil)
 		sb.Init()
 		return
-		return
 	}
 
 	b, err := s.anytype.GetBlock(id)
@@ -129,7 +128,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	}
 	if p.versionsChange != nil {
 		blockChanges := make(chan []core.BlockVersion)
-		p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, blockChanges)
+		p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, false, blockChanges)
 		if err != nil {
 			return
 		}
@@ -145,11 +144,27 @@ func (p *commonSmart) Init() {
 	p.m.Lock()
 	defer p.m.Unlock()
 	for _, v := range p.versions {
-		if i, ok := v.(simple.BlockInit); ok {
-			i.Init(p.s.anytype)
-		}
+		p.initBlock(v)
 	}
 	p.show()
+}
+
+func (p *commonSmart) Anytype() anytype.Anytype {
+	return p.s.anytype
+}
+
+func (p *commonSmart) UpdateBlock(id string, apply func(b simple.Block) error) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	var b simple.Block
+	if b = s.get(id); b == nil {
+		return ErrBlockNotFound
+	}
+	if err = apply(b); err != nil {
+		return
+	}
+	return p.applyAndSendEvent(s)
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -561,11 +576,18 @@ func (p *commonSmart) root() *model.Block {
 }
 
 func (p *commonSmart) Close() error {
+	p.m.Lock()
+	defer p.m.Unlock()
 	if p.clientEventsCancel != nil {
 		p.clientEventsCancel()
 	}
 	if p.blockChangesCancel != nil {
 		p.blockChangesCancel()
+	}
+	for _, b := range p.versions {
+		if cl, ok := b.(simple.BlockClose); ok {
+			cl.Close()
+		}
 	}
 	p.closeWg.Wait()
 	if p.block != nil {
@@ -597,4 +619,28 @@ func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
 		})
 	}
 	return
+}
+
+func (p *commonSmart) setBlock(b simple.Block) {
+	id := b.Model().Id
+	_, exists := p.versions[id]
+	p.versions[id] = b
+	if !exists {
+		p.initBlock(b)
+	}
+}
+
+func (p *commonSmart) deleteBlock(id string) {
+	if b, ok := p.versions[id]; ok {
+		if cl, ok := b.(simple.BlockClose); ok {
+			cl.Close()
+		}
+		delete(p.versions, id)
+	}
+}
+
+func (p *commonSmart) initBlock(b simple.Block) {
+	if i, ok := b.(simple.BlockInit); ok {
+		i.Init(p)
+	}
 }

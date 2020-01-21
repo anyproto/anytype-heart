@@ -28,9 +28,19 @@ type Block interface {
 	Copy() Block
 }
 
+type Ctrl interface {
+	Anytype() anytype.Anytype
+	UpdateBlock(id string, apply func(b Block) error) error
+}
+
 type BlockInit interface {
 	Block
-	Init(a anytype.Anytype)
+	Init(ctrl Ctrl)
+}
+
+type BlockClose interface {
+	Block
+	Close()
 }
 
 func New(block *model.Block) (b Block) {

@@ -84,7 +84,7 @@ func (bw *blockWrapper) SubscribeClientEvents(ch chan<- proto.Message) (func(), 
 	}, nil
 }
 
-func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, ch chan<- []core.BlockVersion) (func(), error) {
+func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, f bool, ch chan<- []core.BlockVersion) (func(), error) {
 	bw.blockVersionsChan = ch
 	return func() {
 		bw.cancelBlockVersionsCalled = true

@@ -23,6 +23,10 @@ type BlockVersion interface {
 	core.BlockVersion
 }
 
+type BlockVersionMeta interface {
+	core.BlockVersionMeta
+}
+
 type File interface {
 	core.File
 }

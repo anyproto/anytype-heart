@@ -142,19 +142,14 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 	st := time.Now()
 	s.normalize()
 	var toSave []*model.Block
+	var newBlocks []*model.Block
 	for id, b := range s.blocks {
 		if findPosInSlice(s.toRemove, id) != -1 {
 			continue
 		}
 		orig, ok := s.sb.versions[id]
 		if ! ok {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockAdd{
-					BlockAdd: &pb.EventBlockAdd{
-						Blocks: []*model.Block{b.Model()},
-					},
-				},
-			})
+			newBlocks = append(newBlocks, b.Model())
 			if !b.Virtual() {
 				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
@@ -182,6 +177,15 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 			},
 		})
 	}
+	if len(newBlocks) > 0 {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockAdd{
+				BlockAdd: &pb.EventBlockAdd{
+					Blocks: newBlocks,
+				},
+			},
+		})
+	}
 	if len(toSave) > 0 {
 		if _, err = s.sb.block.AddVersions(toSave); err != nil {
 			return
@@ -191,7 +195,7 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 		s.sb.versions[id] = b
 	}
 	for _, id := range s.toRemove {
-		delete(s.sb.versions, id)
+		s.sb.deleteBlock(id)
 	}
 	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return

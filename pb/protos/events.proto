@@ -30,6 +30,7 @@ message Event {
             Block.Set.Text blockSetText = 10;
             Block.Set.File blockSetFile = 11;
             Block.Set.Icon blockSetIcon = 12;
+            Block.Set.Link blockSetLink = 18;
 
             Block.Show blockShow = 13;
             User.Block.Join userBlockJoin = 14;
@@ -199,6 +200,25 @@ message Event {
 
                 message Name {
                     string value = 1;
+                }
+            }
+
+            message Link {
+                string id = 1;
+                TargetBlockId targetBlockId = 2;
+                Style style = 3;
+                Fields fields = 4;
+
+                message TargetBlockId {
+                    string value = 1;
+                }
+
+                message Style {
+                    anytype.model.Block.Content.Link.Style value = 1;
+                }
+
+                message Fields {
+                    google.protobuf.Struct value = 1;
                 }
             }
         }
