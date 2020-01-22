@@ -15,8 +15,10 @@ type Block interface {
 	GetVersionMeta(id string) (BlockVersionMeta, error)
 	// GetVersions returns the list of last entries
 	GetVersions(offset string, limit int, metaOnly bool) ([]BlockVersion, error)
-	// GetCurrentVersionId returns the current(HEAD) version id of the block
+	// GetCurrentVersion returns the current(HEAD) version
 	GetCurrentVersion() (BlockVersion, error)
+	// GetCurrentVersionId returns the current(HEAD) version id of the block
+	GetCurrentVersionId() (string, error)
 	// NewBlock creates the new block but doesn't add it to the parent
 	// make sure you add it later in AddVersions
 	NewBlock(block model.Block) (Block, error)

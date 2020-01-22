@@ -36,6 +36,15 @@ func (simpleBlock *SimpleBlock) GetVersionMeta(id string) (BlockVersionMeta, err
 	return nil, ErrorNotSupportedForSimpleBlocks
 }
 
+func (simpleBlock *SimpleBlock) GetCurrentVersionId() (string, error) {
+	parentBlockVersion, err := simpleBlock.parentSmartBlock.GetCurrentVersionId()
+	if err != nil {
+		return "", err
+	}
+
+	return parentBlockVersion, nil
+}
+
 func (simpleBlock *SimpleBlock) GetCurrentVersion() (BlockVersion, error) {
 	parentBlockVersion, err := simpleBlock.parentSmartBlock.GetCurrentVersion()
 	if err != nil {

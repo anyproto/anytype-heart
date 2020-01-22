@@ -41,6 +41,18 @@ func (smartBlock *SmartBlock) GetCurrentVersion() (BlockVersion, error) {
 	return versions[0], nil
 }
 
+func (smartBlock *SmartBlock) GetCurrentVersionId() (string, error) {
+	versions, err := smartBlock.GetVersions("", 1, true)
+	if err != nil {
+		return "", err
+	}
+	if len(versions) == 0 {
+		return "", fmt.Errorf("no block versions found")
+	}
+
+	return versions[0].VersionId(), nil
+}
+
 func (smartBlock *SmartBlock) GetVersion(id string) (BlockVersion, error) {
 	fileMeta, err := smartBlock.node.textile().File(id)
 	if err != nil {
