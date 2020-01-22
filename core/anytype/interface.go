@@ -16,6 +16,7 @@ type Anytype interface {
 
 type Block interface {
 	core.Block
+	Flush()
 	Close() error
 }
 

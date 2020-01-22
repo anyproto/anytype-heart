@@ -51,20 +51,14 @@ type smartBlock struct {
 }
 
 func (sb *smartBlock) AddVersions(vers []*model.Block) ([]core.BlockVersion, error) {
-	var needFlush bool
-	for _, ver := range vers {
-		if ver.GetPage() != nil {
-			needFlush = true
-			break
-		}
-	}
 	sb.blocks <- vers
-	if needFlush {
-		done := make(chan struct{})
-		sb.flushAndDo <- func() { close(done) }
-		<-done
-	}
 	return make([]core.BlockVersion, len(vers)), nil
+}
+
+func (sb *smartBlock) Flush() {
+	done := make(chan struct{})
+	sb.flushAndDo <- func() { close(done) }
+	<-done
 }
 
 func (sb *smartBlock) saveLoop() {

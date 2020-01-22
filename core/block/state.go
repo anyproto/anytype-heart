@@ -22,9 +22,10 @@ func (s *commonSmart) newState() *state {
 }
 
 type state struct {
-	sb       *commonSmart
-	blocks   map[string]simple.Block
-	toRemove []string
+	sb             *commonSmart
+	blocks         map[string]simple.Block
+	toRemove       []string
+	newSmartBlocks bool
 }
 
 func (s *state) create(b *model.Block) (new simple.Block, err error) {
@@ -36,6 +37,7 @@ func (s *state) create(b *model.Block) (new simple.Block, err error) {
 			return nil, fmt.Errorf("can't create smartblock: %v", err)
 		}
 		b = s.createLink(b)
+		s.newSmartBlocks = true
 	}
 	nb, err := s.sb.block.NewBlock(*b)
 	if err != nil {
@@ -189,6 +191,9 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 	if len(toSave) > 0 {
 		if _, err = s.sb.block.AddVersions(toSave); err != nil {
 			return
+		}
+		if s.newSmartBlocks {
+			s.sb.block.Flush()
 		}
 	}
 	for _, b := range s.blocks {
