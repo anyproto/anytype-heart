@@ -170,6 +170,7 @@ func (ls *linkSubscriptions) stopListener(targetId string) {
 }
 
 func (ls *linkSubscriptions) setMeta(info metaInfo) {
+	fmt.Println("middle: update link meta for", info.targetId)
 	linkIds := ls.links[info.targetId]
 	if len(linkIds) == 0 {
 		return
@@ -190,9 +191,9 @@ func (ls *linkSubscriptions) close() {
 	case <-ls.closeCh:
 		return
 	default:
+		ls.closeCh <- struct{}{}
+		<-ls.closeCh
 	}
-	ls.closeCh <- struct{}{}
-	<-ls.closeCh
 }
 
 func newLinkListener(targetId string, ls *linkSubscriptions) (ll *linkListener, err error) {

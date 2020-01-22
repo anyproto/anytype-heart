@@ -70,8 +70,11 @@ type blockWrapper struct {
 	*testMock.MockBlock
 	clientEventsChan          chan<- proto.Message
 	blockVersionsChan         chan<- []core.BlockVersion
+	blockMetaChan             chan<- core.BlockVersionMeta
+	blockMetaChanSubscribed   chan struct{}
 	cancelClientEventsCalled  bool
 	cancelBlockVersionsCalled bool
+	cancelBlockMetaCalled     bool
 	saveBlocksWriter          func(m ...*model.Block)
 	newBlockHandler           func(m model.Block) (core.Block, error)
 }
@@ -89,6 +92,17 @@ func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, f bool, ch chan<-
 	return func() {
 		bw.cancelBlockVersionsCalled = true
 		close(bw.blockVersionsChan)
+	}, nil
+}
+
+func (bw *blockWrapper) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, ch chan<- core.BlockVersionMeta) (cancelFunc func(), err error) {
+	bw.blockMetaChan = ch
+	if bw.blockMetaChanSubscribed != nil {
+		close(bw.blockMetaChanSubscribed)
+	}
+	return func() {
+		bw.cancelBlockMetaCalled = true
+		close(bw.blockMetaChan)
 	}, nil
 }
 
