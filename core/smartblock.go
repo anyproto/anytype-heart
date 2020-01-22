@@ -133,7 +133,7 @@ func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly boo
 		versions = append(versions, version)
 	}
 
-	if len(versions) > 0 {
+	if len(versions) > 0 && !metaOnly {
 		db := versions[0].DependentBlocks()
 		for _, child := range versions[0].Model().ChildrenIds {
 			if _, exists := db[child]; !exists {
