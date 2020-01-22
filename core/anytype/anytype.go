@@ -60,7 +60,9 @@ func (sb *smartBlock) AddVersions(vers []*model.Block) ([]core.BlockVersion, err
 	}
 	sb.blocks <- vers
 	if needFlush {
-		sb.flushAndDo <- func() {}
+		done := make(chan struct{})
+		sb.flushAndDo <- func() { close(done) }
+		<-done
 	}
 	return make([]core.BlockVersion, len(vers)), nil
 }
