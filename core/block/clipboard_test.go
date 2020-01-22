@@ -62,10 +62,31 @@ func pasteText(t *testing.T, fx *pageFixture, id string, textRange model.Range, 
 	require.NoError(t, err)
 }
 
+func pasteHTML(t *testing.T, fx *pageFixture, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
+	req := pb.RpcBlockPasteRequest{}
+	if id != "" { req.FocusedBlockId = id }
+	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
+	req.HtmlSlot = htmlSlot
+	req.SelectedTextRange = &textRange
+	err := fx.pasteText(req)
+	require.NoError(t, err)
+}
+
 func checkEvents(t *testing.T, fx *pageFixture, eventsLen int, messagesLen int) {
 	//require.Len(t, fx.serviceFx.events, eventsLen)
 	//require.Len(t, fx.serviceFx.events[1].Messages, messagesLen)
 }
+
+func TestCommonSmart_pasteHTML(t *testing.T) {
+
+	t.Run("Simple: 2 <p> blocks", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
+		pasteHTML(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, "<p>abcdef</p><p>hello</p>");
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "ab", "abcdef", "hello", "e", "55555"});
+		checkEvents(t, fx, 2, 5)
+	})
+}
+
 
 func TestCommonSmart_pasteAny(t *testing.T) {
 
