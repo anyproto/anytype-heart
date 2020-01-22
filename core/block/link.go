@@ -2,6 +2,7 @@ package block
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -47,6 +48,7 @@ type linkSubscriptions struct {
 	actionCh  chan linkBlockAction
 	metaCh    chan metaInfo
 	closeCh   chan struct{}
+	closeOnce sync.Once
 }
 
 func (ls *linkSubscriptions) onCreate(b simple.Block) {
@@ -187,13 +189,15 @@ func (ls *linkSubscriptions) setMeta(info metaInfo) {
 }
 
 func (ls *linkSubscriptions) close() {
-	select {
-	case <-ls.closeCh:
-		return
-	default:
-		ls.closeCh <- struct{}{}
-		<-ls.closeCh
-	}
+	ls.closeOnce.Do(func() {
+		select {
+		case <-ls.closeCh:
+			return
+		default:
+			ls.closeCh <- struct{}{}
+			<-ls.closeCh
+		}
+	})
 }
 
 func newLinkListener(targetId string, ls *linkSubscriptions) (ll *linkListener, err error) {
