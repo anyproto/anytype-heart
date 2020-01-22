@@ -86,13 +86,13 @@ func (smartBlock *SmartBlock) GetVersionMeta(id string) (BlockVersionMeta, error
 		return nil, fmt.Errorf("readFile error: %s", err.Error())
 	}
 
-	var block *storage.BlockMetaOnly
-	err = proto.Unmarshal(plaintext, block)
+	var block storage.BlockMetaOnly
+	err = proto.Unmarshal(plaintext, &block)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal error: %s", err.Error())
 	}
 
-	version := &SmartBlockVersionMeta{model: block, versionId: fileMeta.Block, date: util.CastTimestampToGogo(fileMeta.Date), user: fileMeta.User.Address}
+	version := &SmartBlockVersionMeta{model: &block, versionId: fileMeta.Block, date: util.CastTimestampToGogo(fileMeta.Date), user: fileMeta.User.Address}
 
 	return version, nil
 }
@@ -475,22 +475,34 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 }
 
 func (smartBlock *SmartBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string, includeSinceVersion bool, blocks chan<- []BlockVersion) (cancelFunc func(), err error) {
+	chCloseFn := func() { close(blocks) }
+
+	if sinceVersionId == "" {
+		// it must be set to ensure no versions were skipped in between
+		return chCloseFn, fmt.Errorf("sinceVersionId must be set")
+	}
 	// todo: to be implemented
-	return func() { close(blocks) }, nil
+	return chCloseFn, nil
 }
 
 func (smartBlock *SmartBlock) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, blockMeta chan<- BlockVersionMeta) (cancelFunc func(), err error) {
 	// temporary just sent the last version
+	chCloseFn := func() { close(blockMeta) }
+	if sinceVersionId == "" {
+		// it must be set to ensure no versions were skipped in between
+		return chCloseFn, fmt.Errorf("sinceVersionId must be set")
+	}
+
 	// todo: implement with chan from textile events feed
 	if includeSinceVersion {
 		versionMeta, err := smartBlock.GetVersionMeta(sinceVersionId)
 		if err != nil {
-			return func() { close(blockMeta) }, err
+			return chCloseFn, err
 		}
 		blockMeta <- versionMeta
 	}
 
-	return func() { close(blockMeta) }, nil
+	return chCloseFn, nil
 }
 
 func (smartBlock *SmartBlock) SubscribeClientEvents(events chan<- proto.Message) (cancelFunc func(), err error) {
