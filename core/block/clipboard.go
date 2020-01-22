@@ -47,6 +47,8 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) error {
 		})
 	}
 
+	fmt.Println("BLOCKS text:", req.AnySlot)
+
 	err := p.pasteAny(req)
 	fmt.Println("ERROR pasteAny:", err)
 	return err

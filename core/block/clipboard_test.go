@@ -42,6 +42,22 @@ func checkBlockText(t *testing.T, fx *pageFixture, textArr []string)  {
 	fmt.Print("\n")
 }
 
+func checkBlockTextAndStyle(t *testing.T, fx *pageFixture, textArr []string)  {
+	require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, len(textArr))
+
+/*	cIds := fx.versions[fx.GetId()].Model().ChildrenIds
+	for i := 0; i < len(cIds); i++  {
+		fmt.Println( i, ": ", fx.versions[cIds[i]].Model() )
+	}*/
+
+	for i := 0; i < len(textArr); i++  {
+		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
+		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
+		//fmt.Println( i, ": ",fx.versions[id].Model().String() )
+	}
+	fmt.Print("\n")
+}
+
 func pasteAny(t *testing.T, fx *pageFixture, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
 	req := pb.RpcBlockPasteRequest{}
 	if id != "" { req.FocusedBlockId = id }
@@ -68,7 +84,7 @@ func pasteHTML(t *testing.T, fx *pageFixture, id string, textRange model.Range, 
 	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
 	req.HtmlSlot = htmlSlot
 	req.SelectedTextRange = &textRange
-	err := fx.pasteText(req)
+	err := fx.pasteHtml(req)
 	require.NoError(t, err)
 }
 
@@ -79,14 +95,87 @@ func checkEvents(t *testing.T, fx *pageFixture, eventsLen int, messagesLen int) 
 
 func TestCommonSmart_pasteHTML(t *testing.T) {
 
-	t.Run("Simple: 2 <p> blocks", func(t *testing.T) {
+	t.Run("Simple: 2 p blocks", func(t *testing.T) {
 		fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
 		pasteHTML(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, "<p>abcdef</p><p>hello</p>");
 		checkBlockText(t, fx, []string{"11111", "22222", "33333", "ab", "abcdef", "hello", "e", "55555"});
 		checkEvents(t, fx, 2, 5)
 	})
-}
 
+	t.Run("Simple: 1 p 1 h2", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<h2>lorem</h2><p>ipsum</p>");
+		checkBlockTextAndStyle(t, fx, []string{"lorem", "ipsum"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Simple: 1 p with markup", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<p>i<b>p</b>s <i>um</i> ololo</p>");
+		checkBlockTextAndStyle(t, fx, []string{"ips um ololo"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Markup in header", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<h1>foo <em>bar</em> baz</h1>\n");
+		checkBlockTextAndStyle(t, fx, []string{"foo bar baz"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Different headers", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<h3>foo</h3>\n<h2>foo</h2>\n<h1>foo</h1>\n");
+		checkBlockTextAndStyle(t, fx, []string{"foo", "foo", "foo"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Code block", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<pre><code># foo\n</code></pre>\n",);
+		checkBlockTextAndStyle(t, fx, []string{"# foo\n"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Link markup, auto paragraph", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<div><a href=\"bar\">foo</a></div>\n");
+		checkBlockTextAndStyle(t, fx, []string{"foo"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<table><tr><td>\nfoo\n</td></tr></table>\n");
+		checkBlockTextAndStyle(t, fx, []string{"foo"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Link in paragraph", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<p><a href=\"url\">foo</a></p>\n");
+		checkBlockTextAndStyle(t, fx, []string{"foo"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Nested tags: p inside quote && header with markup", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<h1><a href=\"/url\">Foo</a></h1>\n<blockquote>\n<p>bar</p>\n</blockquote>\n");
+		checkBlockTextAndStyle(t, fx, []string{"Foo", "bar"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("Nested tags: h1 && p inside quote", func(t *testing.T) {
+		fx := createPage(t, []string{})
+		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n");
+		checkBlockTextAndStyle(t, fx, []string{"Foo", "bar\nbaz"});
+		checkEvents(t, fx, 2, 5)
+	})
+
+
+
+
+}
 
 func TestCommonSmart_pasteAny(t *testing.T) {
 
