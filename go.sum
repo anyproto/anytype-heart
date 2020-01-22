@@ -28,6 +28,14 @@ github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/anytypeio/go-anytype-library v0.0.0-20200120111242-61c212994bad h1:+Da3DgHcIG/FWAQ2nxF0b9etr7KCUtwGcMwBHJGmcy0=
 github.com/anytypeio/go-anytype-library v0.0.0-20200120111242-61c212994bad/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122101026-84ab9f67832c h1:d4F/v9+zjy3x7Gu9lAbVpzBLlQ8MM+4GcHwRYTc68iE=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122101026-84ab9f67832c/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122113007-ce0b273e32c2 h1:eQHQsDmAUzbffVeKUSP0W6hQq75b+GIo0n2HD3nXIz0=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122113007-ce0b273e32c2/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122114158-f59d654b87e5 h1:F8J8s8Pfbi3O+RYGTHMcjg9bPI0DlQbiPgbSU4/9VKE=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122114158-f59d654b87e5/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122115742-4cbe472b187a h1:7orFbJgcve4ulsHCS3mUjEUAqm0nAdYSISe1hmCaqcY=
+github.com/anytypeio/go-anytype-library v0.0.0-20200122115742-4cbe472b187a/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
 github.com/anytypeio/go-textile v0.6.10-0.20200113110756-d18f10d572cb h1:omo46Cpu/JsSRusTRX9q3kVZtY6A39ancpylu4Ay/9w=
 github.com/anytypeio/go-textile v0.6.10-0.20200113110756-d18f10d572cb/go.mod h1:GpthA3sPUte8bRAATVaBj0rzWtxhv+8k6Js2jiMYIlw=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=

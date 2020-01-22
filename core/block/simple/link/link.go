@@ -26,12 +26,13 @@ func NewLink(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.BlockInit
+	link()
 }
 
 type Link struct {
 	*base.Base
 	content  *model.BlockContentLink
-	listener *listener
+	listener *metaListener
 }
 
 func (l *Link) Init(ctrl simple.Ctrl) {
@@ -78,6 +79,8 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	}
 	return
 }
+
+func (l *Link) link() {}
 
 func (l *Link) Close() {
 	if l.listener != nil {

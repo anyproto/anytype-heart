@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,6 +96,13 @@ func Test_BlockTypes(t *testing.T) {
 		assert.Implements(t, (*file.Block)(nil), simple.New(&model.Block{
 			Content: &model.BlockContentOfFile{
 				File: &model.BlockContentFile{},
+			},
+		}))
+	})
+	t.Run("link block", func(t *testing.T) {
+		assert.Implements(t, (*link.Block)(nil), simple.New(&model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{},
 			},
 		}))
 	})

@@ -7,8 +7,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 )
 
-func newListener(ctrl simple.Ctrl, linkId, targetId string) *listener {
-	return &listener{
+func newListener(ctrl simple.Ctrl, linkId, targetId string) *metaListener {
+	return &metaListener{
 		linkId:   linkId,
 		targetId: targetId,
 		ctrl:     ctrl,
@@ -16,7 +16,7 @@ func newListener(ctrl simple.Ctrl, linkId, targetId string) *listener {
 	}
 }
 
-type listener struct {
+type metaListener struct {
 	linkId   string
 	targetId string
 	ctrl     simple.Ctrl
@@ -24,39 +24,42 @@ type listener struct {
 	done     chan struct{}
 }
 
-func (l *listener) listen() {
-	defer close(l.done)
+func (l *metaListener) listen() {
+	defer func() {
+		close(l.done)
+		fmt.Println("middle: link: unsubscribe for:", l.targetId)
+	}()
 	ch, err := l.subscribe()
 	if err != nil {
 		fmt.Println("middle: link: can't subscribe to smart block:", err)
+		return
 	}
 	for meta := range ch {
 		l.updateMeta(meta)
 	}
 }
 
-func (l *listener) subscribe() (ch chan core.BlockVersionMeta, err error) {
+func (l *metaListener) subscribe() (ch chan core.BlockVersionMeta, err error) {
 	ch = make(chan core.BlockVersionMeta)
 	block, err := l.ctrl.Anytype().GetBlock(l.targetId)
 	if err != nil {
+		err = fmt.Errorf("GetBlock error: %v", err)
 		return
 	}
-	vers, err := block.GetVersions("", 1, true)
+	verId, err := block.GetCurrentVersionId()
 	if err != nil {
+		err = fmt.Errorf("GetCurrentVersionId error: %v", err)
 		return
 	}
-	if len(vers) == 0 {
-		err = fmt.Errorf("GetVersions returns empty version list")
-		return
-	}
-	l.cancel, err = block.SubscribeMetaOfNewVersionsOfBlock(vers[0].Model().Id, true, ch)
+	l.cancel, err = block.SubscribeMetaOfNewVersionsOfBlock(verId, true, ch)
 	return
 }
 
-func (l *listener) updateMeta(meta core.BlockVersionMeta) {
+func (l *metaListener) updateMeta(meta core.BlockVersionMeta) {
 	err := l.ctrl.UpdateBlock(l.linkId, func(b simple.Block) error {
 		if link, ok := b.(*Link); ok {
 			link.content.Fields = meta.ExternalFields()
+			return nil
 		}
 		return fmt.Errorf("unexpected block type; want Link; have: %T", b)
 	})
@@ -65,7 +68,7 @@ func (l *listener) updateMeta(meta core.BlockVersionMeta) {
 	}
 }
 
-func (l *listener) close() {
+func (l *metaListener) close() {
 	select {
 	case <-l.done:
 		return

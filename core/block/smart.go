@@ -143,6 +143,10 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 func (p *commonSmart) Init() {
 	p.m.Lock()
 	defer p.m.Unlock()
+	p.init()
+}
+
+func (p *commonSmart) init() {
 	for _, v := range p.versions {
 		p.initBlock(v)
 	}
@@ -586,6 +590,7 @@ func (p *commonSmart) Close() error {
 	}
 	for _, b := range p.versions {
 		if cl, ok := b.(simple.BlockClose); ok {
+			fmt.Println("close block:", b.Model().Id)
 			cl.Close()
 		}
 	}
@@ -633,6 +638,7 @@ func (p *commonSmart) setBlock(b simple.Block) {
 func (p *commonSmart) deleteBlock(id string) {
 	if b, ok := p.versions[id]; ok {
 		if cl, ok := b.(simple.BlockClose); ok {
+			fmt.Println("close block:", id)
 			cl.Close()
 		}
 		delete(p.versions, id)

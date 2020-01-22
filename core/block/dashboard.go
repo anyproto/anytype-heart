@@ -26,7 +26,7 @@ func (p *dashboard) Init() {
 		// virtually add testpage to home screen
 		p.addTestPage()
 	}
-	p.show()
+	p.init()
 }
 
 func (p *dashboard) addTestPage() {
