@@ -332,11 +332,17 @@ func (p *commonSmart) Unlink(ids ...string) (err error) {
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) Replace(id string, block *model.Block) error {
+func (p *commonSmart) Replace(id string, block *model.Block) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
+	if err = p.replace(s, id, block); err != nil {
+		return
+	}
+	return p.applyAndSendEvent(s)
+}
 
+func (p *commonSmart) replace(s *state, id string, block *model.Block) error {
 	if _, err := p.create(s, pb.RpcBlockCreateRequest{
 		TargetId: id,
 		Block:    block,
@@ -350,7 +356,7 @@ func (p *commonSmart) Replace(id string, block *model.Block) error {
 	}
 	s.removeFromChilds(id)
 	s.remove(id)
-	return p.applyAndSendEvent(s)
+	return nil
 }
 
 func (p *commonSmart) unlink(s *state, ids ...string) (err error) {
