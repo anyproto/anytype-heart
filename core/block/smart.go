@@ -34,11 +34,13 @@ type smartBlock interface {
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
 	Replace(id string, block *model.Block) error
+	UpdateBlock(ids []string, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Close() error
+	Anytype() anytype.Anytype
 }
 
 type smartBlockType int
@@ -88,6 +90,8 @@ type commonSmart struct {
 	s        *service
 	block    anytype.Block
 	versions map[string]simple.Block
+
+	linkSubscriptions *linkSubscriptions
 
 	m sync.RWMutex
 
@@ -148,7 +152,7 @@ func (p *commonSmart) Init() {
 
 func (p *commonSmart) init() {
 	for _, v := range p.versions {
-		p.initBlock(v)
+		p.onCreate(v)
 	}
 	p.show()
 }
@@ -157,16 +161,18 @@ func (p *commonSmart) Anytype() anytype.Anytype {
 	return p.s.anytype
 }
 
-func (p *commonSmart) UpdateBlock(id string, apply func(b simple.Block) error) (err error) {
+func (p *commonSmart) UpdateBlock(ids []string, apply func(b simple.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	var b simple.Block
-	if b = s.get(id); b == nil {
-		return ErrBlockNotFound
-	}
-	if err = apply(b); err != nil {
-		return
+	for _, id := range ids {
+		var b simple.Block
+		if b = s.get(id); b == nil {
+			return ErrBlockNotFound
+		}
+		if err = apply(b); err != nil {
+			return
+		}
 	}
 	return p.applyAndSendEvent(s)
 }
@@ -588,17 +594,14 @@ func (p *commonSmart) root() *model.Block {
 func (p *commonSmart) Close() error {
 	p.m.Lock()
 	defer p.m.Unlock()
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.close()
+	}
 	if p.clientEventsCancel != nil {
 		p.clientEventsCancel()
 	}
 	if p.blockChangesCancel != nil {
 		p.blockChangesCancel()
-	}
-	for _, b := range p.versions {
-		if cl, ok := b.(simple.BlockClose); ok {
-			fmt.Println("close block:", b.Model().Id)
-			cl.Close()
-		}
 	}
 	p.closeWg.Wait()
 	if p.block != nil {
@@ -636,23 +639,34 @@ func (p *commonSmart) setBlock(b simple.Block) {
 	id := b.Model().Id
 	_, exists := p.versions[id]
 	p.versions[id] = b
-	if !exists {
-		p.initBlock(b)
+	if exists {
+		p.onChange(b)
+	} else {
+		p.onCreate(b)
 	}
 }
 
 func (p *commonSmart) deleteBlock(id string) {
 	if b, ok := p.versions[id]; ok {
-		if cl, ok := b.(simple.BlockClose); ok {
-			fmt.Println("close block:", id)
-			cl.Close()
-		}
 		delete(p.versions, id)
+		p.onDelete(b)
 	}
 }
 
-func (p *commonSmart) initBlock(b simple.Block) {
-	if i, ok := b.(simple.BlockInit); ok {
-		i.Init(p)
+func (p *commonSmart) onChange(b simple.Block) {
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.onChange(b)
+	}
+}
+
+func (p *commonSmart) onCreate(b simple.Block) {
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.onCreate(b)
+	}
+}
+
+func (p *commonSmart) onDelete(b simple.Block) {
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.onDelete(b)
 	}
 }

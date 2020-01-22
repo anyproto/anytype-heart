@@ -191,8 +191,8 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 			return
 		}
 	}
-	for id, b := range s.blocks {
-		s.sb.versions[id] = b
+	for _, b := range s.blocks {
+		s.sb.setBlock(b)
 	}
 	for _, id := range s.toRemove {
 		s.sb.deleteBlock(id)

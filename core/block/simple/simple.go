@@ -2,7 +2,6 @@ package simple
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -26,21 +25,6 @@ type Block interface {
 	Model() *model.Block
 	Diff(block Block) (msgs []*pb.EventMessage, err error)
 	Copy() Block
-}
-
-type Ctrl interface {
-	Anytype() anytype.Anytype
-	UpdateBlock(id string, apply func(b Block) error) error
-}
-
-type BlockInit interface {
-	Block
-	Init(ctrl Ctrl)
-}
-
-type BlockClose interface {
-	Block
-	Close()
 }
 
 func New(block *model.Block) (b Block) {

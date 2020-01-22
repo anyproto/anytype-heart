@@ -3,6 +3,7 @@ package link
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -25,19 +26,13 @@ func NewLink(m *model.Block) simple.Block {
 }
 
 type Block interface {
-	simple.BlockInit
-	link()
+	simple.Block
+	SetMeta(meta core.BlockVersionMeta)
 }
 
 type Link struct {
 	*base.Base
-	content  *model.BlockContentLink
-	listener *metaListener
-}
-
-func (l *Link) Init(ctrl simple.Ctrl) {
-	l.listener = newListener(ctrl, l.Model().Id, l.content.TargetBlockId)
-	go l.listener.listen()
+	content *model.BlockContentLink
 }
 
 func (l *Link) Copy() simple.Block {
@@ -80,10 +75,6 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	return
 }
 
-func (l *Link) link() {}
-
-func (l *Link) Close() {
-	if l.listener != nil {
-		l.listener.close()
-	}
+func (l *Link) SetMeta(meta core.BlockVersionMeta) {
+	l.content.Fields = meta.ExternalFields()
 }

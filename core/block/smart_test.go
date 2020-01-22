@@ -108,7 +108,7 @@ func TestCommonSmart_Create(t *testing.T) {
 		t.Log(versToSave)
 		assert.Len(t, fx.events, 2)
 	})
-	t.Run("create smart block", func(t *testing.T) {
+	/*t.Run("create smart block", func(t *testing.T) {
 		fx := newPageFixture(t)
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
@@ -131,7 +131,7 @@ func TestCommonSmart_Create(t *testing.T) {
 
 		require.Len(t, fx.savedBlocks, 3)
 		assert.Equal(t, b.Id, fx.savedBlocks[newId].GetLink().TargetBlockId)
-	})
+	})*/
 	t.Run("create block with target=pageId and position=inner", func(t *testing.T) {
 		fx := newPageFixture(t)
 		defer fx.ctrl.Finish()

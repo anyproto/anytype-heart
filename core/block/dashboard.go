@@ -28,6 +28,7 @@ func (p *dashboard) Init() {
 		p.addTestPage()
 	}
 	p.migratePageToLinks()
+	p.linkSubscriptions = newLinkSubscriptions(p)
 	p.init()
 }
 
