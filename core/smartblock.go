@@ -511,7 +511,9 @@ func (smartBlock *SmartBlock) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId s
 		if err != nil {
 			return chCloseFn, err
 		}
-		blockMeta <- versionMeta
+		go func() {
+			blockMeta <- versionMeta
+		}()
 	}
 
 	return chCloseFn, nil
