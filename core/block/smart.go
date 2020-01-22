@@ -28,6 +28,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
@@ -185,6 +186,31 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	if id, err = p.create(s, req); err != nil {
 		return
 	}
+	if err = p.applyAndSendEvent(s); err != nil {
+		return
+	}
+	return
+}
+
+func (p *commonSmart) CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if req.Block.GetPage() == nil {
+		err = fmt.Errorf("only page blocks can be created")
+		return
+	}
+
+	s := p.newState()
+	if id, err = p.create(s, pb.RpcBlockCreateRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.TargetId,
+		Block:     req.Block,
+		Position:  req.Position,
+	}); err != nil {
+		return
+	}
+	targetId = s.get(id).Model().GetLink().TargetBlockId
 	if err = p.applyAndSendEvent(s); err != nil {
 		return
 	}

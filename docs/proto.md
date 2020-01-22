@@ -38,6 +38,10 @@
     - [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request)
     - [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response)
     - [Rpc.Block.Create.Response.Error](#anytype.Rpc.Block.Create.Response.Error)
+    - [Rpc.Block.CreatePage](#anytype.Rpc.Block.CreatePage)
+    - [Rpc.Block.CreatePage.Request](#anytype.Rpc.Block.CreatePage.Request)
+    - [Rpc.Block.CreatePage.Response](#anytype.Rpc.Block.CreatePage.Response)
+    - [Rpc.Block.CreatePage.Response.Error](#anytype.Rpc.Block.CreatePage.Response.Error)
     - [Rpc.Block.Download](#anytype.Rpc.Block.Download)
     - [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request)
     - [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response)
@@ -230,6 +234,7 @@
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
+    - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
@@ -398,6 +403,7 @@
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
+| BlockCreatePage | [Rpc.Block.CreatePage.Request](#anytype.Rpc.Block.CreatePage.Request) | [Rpc.Block.CreatePage.Response](#anytype.Rpc.Block.CreatePage.Response) |  |
 | BlockUnlink | [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request) | [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response) |  |
 | BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) |  |
 | BlockDownload | [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request) | [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response) |  |
@@ -825,6 +831,67 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreatePage"></a>
+
+### Rpc.Block.CreatePage
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreatePage.Request"></a>
+
+### Rpc.Block.CreatePage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
+| targetId | [string](#string) |  | id of the closest block |
+| block | [model.Block](#anytype.model.Block) |  | page block |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreatePage.Response"></a>
+
+### Rpc.Block.CreatePage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.CreatePage.Response.Error](#anytype.Rpc.Block.CreatePage.Response.Error) |  |  |
+| blockId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreatePage.Response.Error"></a>
+
+### Rpc.Block.CreatePage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -3529,6 +3596,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Create.Response.Error.Code"></a>
 
 ### Rpc.Block.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.CreatePage.Response.Error.Code"></a>
+
+### Rpc.Block.CreatePage.Response.Error.Code
 
 
 | Name | Number | Description |

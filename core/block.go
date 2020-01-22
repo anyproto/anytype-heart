@@ -22,6 +22,22 @@ func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCre
 	return response(pb.RpcBlockCreateResponseError_NULL, id, nil)
 }
 
+func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.RpcBlockCreatePageResponse {
+	response := func(code pb.RpcBlockCreatePageResponseErrorCode, id, targetId string, err error) *pb.RpcBlockCreatePageResponse {
+		m := &pb.RpcBlockCreatePageResponse{Error: &pb.RpcBlockCreatePageResponseError{Code: code}, BlockId: id, TargetId: targetId}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	id, targetId, err := mw.blockService.CreatePage(*req)
+	if err != nil {
+		return response(pb.RpcBlockCreatePageResponseError_UNKNOWN_ERROR, "", "", err)
+	}
+	return response(pb.RpcBlockCreatePageResponseError_NULL, id, targetId, nil)
+}
+
 func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
 	response := func(code pb.RpcBlockOpenResponseErrorCode, err error) *pb.RpcBlockOpenResponse {
 		m := &pb.RpcBlockOpenResponse{Error: &pb.RpcBlockOpenResponseError{Code: code}}

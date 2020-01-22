@@ -24,6 +24,7 @@ service ClientCommands {
     rpc BlockReplace (anytype.Rpc.Block.Replace.Request) returns (anytype.Rpc.Block.Replace.Response);
     rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);
     rpc BlockCreate (anytype.Rpc.Block.Create.Request) returns (anytype.Rpc.Block.Create.Response);
+    rpc BlockCreatePage (anytype.Rpc.Block.CreatePage.Request) returns (anytype.Rpc.Block.CreatePage.Response);
     rpc BlockUnlink (anytype.Rpc.Block.Unlink.Request) returns (anytype.Rpc.Block.Unlink.Response);
     rpc BlockClose (anytype.Rpc.Block.Close.Request) returns (anytype.Rpc.Block.Close.Response);
     rpc BlockDownload (anytype.Rpc.Block.Download.Request) returns (anytype.Rpc.Block.Download.Response);

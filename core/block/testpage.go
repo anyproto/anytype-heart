@@ -716,6 +716,10 @@ func (t *testPage) UpdateBlock(ids []string, apply func(b simple.Block) error) (
 	return fmt.Errorf("can't update block in the test page")
 }
 
+func (t *testPage) CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error) {
+	return "", "", fmt.Errorf("can't update block in the test page")
+}
+
 func (t *testPage) Init() {
 	event := &pb.Event{
 		Messages: []*pb.EventMessage{{&pb.EventMessageValueOfBlockShow{
