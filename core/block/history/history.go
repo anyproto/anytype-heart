@@ -20,6 +20,10 @@ type Action struct {
 	Remove []model.Block
 }
 
+func (a Action) IsEmpty() bool {
+	return len(a.Add)+len(a.Change)+len(a.Remove) == 0
+}
+
 type History interface {
 	Add(a Action)
 	Len() int

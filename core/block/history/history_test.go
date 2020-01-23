@@ -99,3 +99,8 @@ func TestHistory_Reset(t *testing.T) {
 	_, err = h.Previous()
 	assert.Equal(t, ErrNoHistory, err)
 }
+
+func TestAction_IsEmpty(t *testing.T) {
+	assert.True(t, Action{}.IsEmpty())
+	assert.False(t, Action{Add: []model.Block{{}}}.IsEmpty())
+}

@@ -50,7 +50,7 @@ func (p *dashboard) migratePageToLinks() {
 			}
 		}
 	}
-	if _, err := s.apply(); err != nil {
+	if _, err := s.apply(nil); err != nil {
 		fmt.Println("can't apply state for migrating page to link", err)
 	}
 }

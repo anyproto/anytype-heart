@@ -759,19 +759,9 @@ func (p *commonSmart) Close() error {
 	return nil
 }
 
-func (p *commonSmart) getNonVirtualBlock(id string) (simple.Block, error) {
-	b, ok := p.versions[id]
-	if !ok {
-		return nil, ErrBlockNotFound
-	}
-	if b.Virtual() {
-		return nil, ErrUnexpectedBlockType
-	}
-	return b, nil
-}
-
 func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
-	msgs, err := s.apply()
+	var action history.Action
+	msgs, err := s.apply(&action)
 	if err != nil {
 		return
 	}
@@ -780,6 +770,9 @@ func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
 			Messages:  msgs,
 			ContextId: p.GetId(),
 		})
+	}
+	if p.history != nil {
+		p.history.Add(action)
 	}
 	return
 }
@@ -795,11 +788,13 @@ func (p *commonSmart) setBlock(b simple.Block) {
 	}
 }
 
-func (p *commonSmart) deleteBlock(id string) {
+func (p *commonSmart) deleteBlock(id string) (deleted simple.Block) {
 	if b, ok := p.versions[id]; ok {
 		delete(p.versions, id)
 		p.onDelete(b)
+		return b
 	}
+	return nil
 }
 
 func (p *commonSmart) onChange(b simple.Block) {

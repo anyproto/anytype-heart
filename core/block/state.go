@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -140,7 +141,7 @@ func (s *state) findParentOf(id string) simple.Block {
 	return s.get(b.Model().Id)
 }
 
-func (s *state) apply() (msgs []*pb.EventMessage, err error) {
+func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err error) {
 	st := time.Now()
 	s.normalize()
 	var toSave []*model.Block
@@ -155,6 +156,9 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 			if !b.Virtual() {
 				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
+			if action != nil {
+				action.Add = append(action.Add, *b.Model())
+			}
 			continue
 		}
 
@@ -167,6 +171,9 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
 			msgs = append(msgs, diff...)
+			if action != nil {
+				action.Change = append(action.Change, *b.Model())
+			}
 		}
 		if err := s.validateBlock(b); err != nil {
 			return nil, err
@@ -200,7 +207,9 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 		s.sb.setBlock(b)
 	}
 	for _, id := range s.toRemove {
-		s.sb.deleteBlock(id)
+		if old := s.sb.deleteBlock(id); old != nil && action != nil {
+			action.Remove = append(action.Remove, *old.Model())
+		}
 	}
 	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return
