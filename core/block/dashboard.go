@@ -57,7 +57,7 @@ func (p *dashboard) addTestPage() {
 	if os.Getenv("NO_TESTPAGE") != "" && os.Getenv("NO_TESTPAGE") != "0" {
 		return
 	}
-	p.versions[testPageId] = base.NewVirtual(&model.Block{
+	p.versions[testPageId+"-link"] = base.NewVirtual(&model.Block{
 		Id: testPageId + "-link",
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{

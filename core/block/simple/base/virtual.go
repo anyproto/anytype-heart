@@ -16,3 +16,7 @@ type Virtual struct {
 func (v *Virtual) Virtual() bool {
 	return true
 }
+
+func (v *Virtual) Copy() simple.Block {
+	return &Virtual{Block: v.Block.Copy()}
+}
