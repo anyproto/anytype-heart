@@ -82,7 +82,7 @@ func TestCommonSmart_Create(t *testing.T) {
 
 		req := pb.RpcBlockCreateRequest{
 			Block: &model.Block{
-				Content: &model.BlockContentOfPage{Page: &model.BlockContentPage{}},
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 			},
 			TargetId:  "3",
 			Position:  model.Block_Top,
@@ -163,8 +163,9 @@ func TestCommonSmart_Duplicate(t *testing.T) {
 
 		// have 2 events: 1 - show, 2 - update for duplicate
 		require.Len(t, fx.serviceFx.events, 2)
-		// check we have 4 messages: 3 add + 1 change children
-		assert.Len(t, fx.serviceFx.events[1].Messages, 4)
+		// check we have 2 messages: 1 change + 1 add children
+		require.Len(t, fx.serviceFx.events[1].Messages, 2)
+		assert.Len(t, fx.serviceFx.events[1].Messages[1].GetBlockAdd().Blocks, 3)
 	})
 
 }

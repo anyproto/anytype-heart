@@ -70,8 +70,11 @@ type blockWrapper struct {
 	*testMock.MockBlock
 	clientEventsChan          chan<- proto.Message
 	blockVersionsChan         chan<- []core.BlockVersion
+	blockMetaChan             chan<- core.BlockVersionMeta
+	blockMetaChanSubscribed   chan struct{}
 	cancelClientEventsCalled  bool
 	cancelBlockVersionsCalled bool
+	cancelBlockMetaCalled     bool
 	saveBlocksWriter          func(m ...*model.Block)
 	newBlockHandler           func(m model.Block) (core.Block, error)
 }
@@ -84,11 +87,22 @@ func (bw *blockWrapper) SubscribeClientEvents(ch chan<- proto.Message) (func(), 
 	}, nil
 }
 
-func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, ch chan<- []core.BlockVersion) (func(), error) {
+func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, f bool, ch chan<- []core.BlockVersion) (func(), error) {
 	bw.blockVersionsChan = ch
 	return func() {
 		bw.cancelBlockVersionsCalled = true
 		close(bw.blockVersionsChan)
+	}, nil
+}
+
+func (bw *blockWrapper) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, ch chan<- core.BlockVersionMeta) (cancelFunc func(), err error) {
+	bw.blockMetaChan = ch
+	if bw.blockMetaChanSubscribed != nil {
+		close(bw.blockMetaChanSubscribed)
+	}
+	return func() {
+		bw.cancelBlockMetaCalled = true
+		close(bw.blockMetaChan)
 	}, nil
 }
 
@@ -187,21 +201,21 @@ func newPageFixture(t *testing.T, blocks ...*model.Block) *pageFixture {
 			childrenIds = removeFromSlice(childrenIds, cid)
 		}
 	}
-	bw, _ := serviceFx.newMockBlockWithContent(pageFx.pageId, &model.BlockContentOfPage{}, childrenIds, db)
-	bw.saveBlocksWriter = func(ms ...*model.Block) {
+	pageFx.block, _ = serviceFx.newMockBlockWithContent(pageFx.pageId, &model.BlockContentOfPage{}, childrenIds, db)
+	pageFx.block.saveBlocksWriter = func(ms ...*model.Block) {
 		for _, m := range ms {
 			pageFx.savedBlocks[m.Id] = m
 		}
 	}
-	bw.newBlockHandler = func(m model.Block) (block core.Block, err error) {
+	pageFx.block.newBlockHandler = func(m model.Block) (block core.Block, err error) {
 		newId := fmt.Sprint(rand.Int63())
 		mb := testMock.NewMockBlock(pageFx.ctrl)
 		mb.EXPECT().GetId().AnyTimes().Return(newId)
 		return mb, nil
 	}
-	bw.EXPECT().Close()
+	pageFx.block.EXPECT().Close()
 
-	serviceFx.anytype.EXPECT().GetBlock(pageFx.pageId).Return(bw, nil)
+	serviceFx.anytype.EXPECT().GetBlock(pageFx.pageId).Return(pageFx.block, nil)
 
 	require.NoError(t, serviceFx.OpenBlock(pageFx.pageId))
 	pageFx.page = serviceFx.Service.(*service).smartBlocks[pageFx.pageId].(*page)
@@ -213,6 +227,7 @@ type pageFixture struct {
 	pageId    string
 	ctrl      *gomock.Controller
 	serviceFx *serviceFixture
+	block     *blockWrapper
 	// all saved blocks will be here
 	savedBlocks map[string]*model.Block
 }

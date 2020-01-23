@@ -55,6 +55,12 @@ func (sb *smartBlock) AddVersions(vers []*model.Block) ([]core.BlockVersion, err
 	return make([]core.BlockVersion, len(vers)), nil
 }
 
+func (sb *smartBlock) Flush() {
+	done := make(chan struct{})
+	sb.flushAndDo <- func() { close(done) }
+	<-done
+}
+
 func (sb *smartBlock) saveLoop() {
 	ticker := time.NewTicker(saveTimeout)
 	defer ticker.Stop()

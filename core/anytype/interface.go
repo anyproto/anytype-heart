@@ -16,11 +16,16 @@ type Anytype interface {
 
 type Block interface {
 	core.Block
+	Flush()
 	Close() error
 }
 
 type BlockVersion interface {
 	core.BlockVersion
+}
+
+type BlockVersionMeta interface {
+	core.BlockVersionMeta
 }
 
 type File interface {

@@ -13,27 +13,6 @@ import "google/protobuf/struct.proto";
 */
 message Rpc {
 
-    message GetPageRecords {
-        message Request {}
-
-        message Response {
-            Error error = 1;
-            repeated model.PageRecord pageRecords = 2;
-
-            message Error {
-                Code code = 1;
-                string description = 2;
-
-                enum Code {
-                    NULL = 0;
-                    UNKNOWN_ERROR = 1;
-                    BAD_INPUT = 2;
-                    // ...
-                }
-            }
-        }
-    }
-
     message ExternalDrop {
         message Files {
             message Request {
@@ -945,6 +924,32 @@ message Rpc {
             }
         }
 
+        message CreatePage {
+            message Request {
+                string contextId = 1; // id of the context block
+                string targetId = 2; // id of the closest block
+                anytype.model.Block block = 3; // page block
+                anytype.model.Block.Position position = 4;
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;
+                string targetId = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
         /*
          * Remove blocks from the childrenIds of its parents
         */

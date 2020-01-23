@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -24,6 +25,7 @@ type Service interface {
 	OpenBlock(id string) error
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
+	CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error)
 	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) error
@@ -102,6 +104,15 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
 		return sb.Create(req)
 	}
 	return "", ErrBlockNotFound
+}
+
+func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if sb, ok := s.smartBlocks[req.ContextId]; ok {
+		return sb.CreatePage(req)
+	}
+	return "", "", ErrBlockNotFound
 }
 
 func (s *service) DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error) {

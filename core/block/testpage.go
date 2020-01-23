@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -709,6 +710,18 @@ func (t *testPage) Paste(req pb.RpcBlockPasteRequest) error {
 
 func (t *testPage) Open(b anytype.Block) error {
 	return nil
+}
+
+func (t *testPage) Anytype() anytype.Anytype {
+	return nil
+}
+
+func (t *testPage) UpdateBlock(ids []string, apply func(b simple.Block) error) (err error) {
+	return fmt.Errorf("can't update block in the test page")
+}
+
+func (t *testPage) CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error) {
+	return "", "", fmt.Errorf("can't update block in the test page")
 }
 
 func (t *testPage) Init() {

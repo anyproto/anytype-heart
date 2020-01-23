@@ -10,6 +10,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
+	"github.com/mohae/deepcopy"
 )
 
 func (s *commonSmart) newState() *state {
@@ -20,14 +22,22 @@ func (s *commonSmart) newState() *state {
 }
 
 type state struct {
-	sb       *commonSmart
-	blocks   map[string]simple.Block
-	toRemove []string
+	sb             *commonSmart
+	blocks         map[string]simple.Block
+	toRemove       []string
+	newSmartBlocks bool
 }
 
 func (s *state) create(b *model.Block) (new simple.Block, err error) {
 	if b == nil {
 		return nil, fmt.Errorf("can't create nil block")
+	}
+	if isSmartBlock(b) {
+		if err = s.sb.createSmartBlock(b); err != nil {
+			return nil, fmt.Errorf("can't create smartblock: %v", err)
+		}
+		b = s.createLink(b)
+		s.newSmartBlocks = true
 	}
 	nb, err := s.sb.block.NewBlock(*b)
 	if err != nil {
@@ -37,6 +47,22 @@ func (s *state) create(b *model.Block) (new simple.Block, err error) {
 	new.Model().Id = nb.GetId()
 	s.blocks[new.Model().Id] = new
 	return
+}
+
+func (s *state) createLink(target *model.Block) (m *model.Block) {
+	style := model.BlockContentLink_Page
+	if target.GetDataview() != nil {
+		style = model.BlockContentLink_Dataview
+	}
+	return &model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: target.Id,
+				Style:         style,
+				Fields:        deepcopy.Copy(target.Fields).(*types.Struct),
+			},
+		},
+	}
 }
 
 func (s *state) get(id string) simple.Block {
@@ -118,19 +144,14 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 	st := time.Now()
 	s.normalize()
 	var toSave []*model.Block
+	var newBlocks []*model.Block
 	for id, b := range s.blocks {
 		if findPosInSlice(s.toRemove, id) != -1 {
 			continue
 		}
 		orig, ok := s.sb.versions[id]
 		if ! ok {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockAdd{
-					BlockAdd: &pb.EventBlockAdd{
-						Blocks: []*model.Block{b.Model()},
-					},
-				},
-			})
+			newBlocks = append(newBlocks, b.Model())
 			if !b.Virtual() {
 				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
@@ -158,16 +179,28 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 			},
 		})
 	}
+	if len(newBlocks) > 0 {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockAdd{
+				BlockAdd: &pb.EventBlockAdd{
+					Blocks: newBlocks,
+				},
+			},
+		})
+	}
 	if len(toSave) > 0 {
 		if _, err = s.sb.block.AddVersions(toSave); err != nil {
 			return
 		}
+		if s.newSmartBlocks {
+			s.sb.block.Flush()
+		}
 	}
-	for id, b := range s.blocks {
-		s.sb.versions[id] = b
+	for _, b := range s.blocks {
+		s.sb.setBlock(b)
 	}
 	for _, id := range s.toRemove {
-		delete(s.sb.versions, id)
+		s.sb.deleteBlock(id)
 	}
 	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return

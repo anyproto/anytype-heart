@@ -40,7 +40,8 @@ func (p *page) Init() {
 	if icon, ok := fieldsGetString(root.Fields, "icon"); ok {
 		p.addIcon(icon)
 	}
-	p.show()
+	p.linkSubscriptions = newLinkSubscriptions(p)
+	p.init()
 }
 
 func (p *page) addName(title string) {

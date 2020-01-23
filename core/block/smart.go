@@ -28,6 +28,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
 	Split(id string, pos int32) (blockId string, err error)
@@ -35,11 +36,13 @@ type smartBlock interface {
 	Move(req pb.RpcBlockListMoveRequest) error
 	Paste(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) error
+	UpdateBlock(ids []string, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Close() error
+	Anytype() anytype.Anytype
 }
 
 type smartBlockType int
@@ -54,7 +57,6 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		sb = &testPage{s: s}
 		sb.Open(nil)
 		sb.Init()
-		return
 		return
 	}
 
@@ -90,6 +92,8 @@ type commonSmart struct {
 	s        *service
 	block    anytype.Block
 	versions map[string]simple.Block
+
+	linkSubscriptions *linkSubscriptions
 
 	m sync.RWMutex
 
@@ -130,7 +134,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	}
 	if p.versionsChange != nil {
 		blockChanges := make(chan []core.BlockVersion)
-		p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, blockChanges)
+		p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, false, blockChanges)
 		if err != nil {
 			return
 		}
@@ -145,12 +149,34 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 func (p *commonSmart) Init() {
 	p.m.Lock()
 	defer p.m.Unlock()
+	p.init()
+}
+
+func (p *commonSmart) init() {
 	for _, v := range p.versions {
-		if i, ok := v.(simple.BlockInit); ok {
-			i.Init(p.s.anytype)
-		}
+		p.onCreate(v)
 	}
 	p.show()
+}
+
+func (p *commonSmart) Anytype() anytype.Anytype {
+	return p.s.anytype
+}
+
+func (p *commonSmart) UpdateBlock(ids []string, apply func(b simple.Block) error) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	for _, id := range ids {
+		var b simple.Block
+		if b = s.get(id); b == nil {
+			return ErrBlockNotFound
+		}
+		if err = apply(b); err != nil {
+			return
+		}
+	}
+	return p.applyAndSendEvent(s)
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -161,6 +187,31 @@ func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error
 	if id, err = p.create(s, req); err != nil {
 		return
 	}
+	if err = p.applyAndSendEvent(s); err != nil {
+		return
+	}
+	return
+}
+
+func (p *commonSmart) CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if req.Block.GetPage() == nil {
+		err = fmt.Errorf("only page blocks can be created")
+		return
+	}
+
+	s := p.newState()
+	if id, err = p.create(s, pb.RpcBlockCreateRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.TargetId,
+		Block:     req.Block,
+		Position:  req.Position,
+	}); err != nil {
+		return
+	}
+	targetId = s.get(id).Model().GetLink().TargetBlockId
 	if err = p.applyAndSendEvent(s); err != nil {
 		return
 	}
@@ -317,6 +368,18 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 	return
 }
 
+func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
+	nb, err := p.block.NewBlock(*m)
+	if err != nil {
+		return
+	}
+	m.Id = nb.GetId()
+	if _, err = p.block.AddVersions([]*model.Block{m}); err != nil {
+		return
+	}
+	return
+}
+
 func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos model.BlockPosition) (err error) {
 	parent := s.get(p.GetId()).Model()
 	var target simple.Block
@@ -364,11 +427,17 @@ func (p *commonSmart) Unlink(ids ...string) (err error) {
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) Replace(id string, block *model.Block) error {
+func (p *commonSmart) Replace(id string, block *model.Block) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
+	if err = p.replace(s, id, block); err != nil {
+		return
+	}
+	return p.applyAndSendEvent(s)
+}
 
+func (p *commonSmart) replace(s *state, id string, block *model.Block) error {
 	if _, err := p.create(s, pb.RpcBlockCreateRequest{
 		TargetId: id,
 		Block:    block,
@@ -382,7 +451,7 @@ func (p *commonSmart) Replace(id string, block *model.Block) error {
 	}
 	s.removeFromChilds(id)
 	s.remove(id)
-	return p.applyAndSendEvent(s)
+	return nil
 }
 
 func (p *commonSmart) unlink(s *state, ids ...string) (err error) {
@@ -670,6 +739,11 @@ func (p *commonSmart) root() *model.Block {
 }
 
 func (p *commonSmart) Close() error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.close()
+	}
 	if p.clientEventsCancel != nil {
 		p.clientEventsCancel()
 	}
@@ -706,4 +780,40 @@ func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
 		})
 	}
 	return
+}
+
+func (p *commonSmart) setBlock(b simple.Block) {
+	id := b.Model().Id
+	_, exists := p.versions[id]
+	p.versions[id] = b
+	if exists {
+		p.onChange(b)
+	} else {
+		p.onCreate(b)
+	}
+}
+
+func (p *commonSmart) deleteBlock(id string) {
+	if b, ok := p.versions[id]; ok {
+		delete(p.versions, id)
+		p.onDelete(b)
+	}
+}
+
+func (p *commonSmart) onChange(b simple.Block) {
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.onChange(b)
+	}
+}
+
+func (p *commonSmart) onCreate(b simple.Block) {
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.onCreate(b)
+	}
+}
+
+func (p *commonSmart) onDelete(b simple.Block) {
+	if p.linkSubscriptions != nil {
+		p.linkSubscriptions.onDelete(b)
+	}
 }

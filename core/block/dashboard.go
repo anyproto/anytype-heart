@@ -1,6 +1,7 @@
 package block
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -26,27 +27,52 @@ func (p *dashboard) Init() {
 		// virtually add testpage to home screen
 		p.addTestPage()
 	}
-	p.show()
+	p.migratePageToLinks()
+	p.linkSubscriptions = newLinkSubscriptions(p)
+	p.init()
+}
+
+func (p *dashboard) migratePageToLinks() {
+	s := p.newState()
+	for id, v := range p.versions {
+		if v.Model().GetPage() != nil {
+			link := s.createLink(v.Model())
+			if err := p.replace(s, id, link); err != nil {
+				fmt.Println("middle: can't wrap page to link:", err)
+			}
+		}
+		if link := v.Model().GetLink(); link != nil && link.TargetBlockId == testPageId {
+			if !v.Virtual() {
+				s.removeFromChilds(id)
+				s.remove(id)
+			}
+		}
+	}
+	if _, err := s.apply(); err != nil {
+		fmt.Println("can't apply state for migrating page to link", err)
+	}
 }
 
 func (p *dashboard) addTestPage() {
 	if os.Getenv("NO_TESTPAGE") != "" && os.Getenv("NO_TESTPAGE") != "0" {
 		return
 	}
-	p.versions[testPageId] = base.NewVirtual(&model.Block{
-		Id: testPageId,
-		Fields: &types.Struct{
-			Fields: map[string]*types.Value{
-				"name": testStringValue("Test page"),
-				"icon": testStringValue(":deciduous_tree:"),
+	p.versions[testPageId+"-link"] = base.NewVirtual(&model.Block{
+		Id: testPageId + "-link",
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				Style: model.BlockContentLink_Page,
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": testStringValue("Test page"),
+						"icon": testStringValue(":deciduous_tree:"),
+					},
+				},
+				TargetBlockId: testPageId,
 			},
 		},
-		ChildrenIds: []string{},
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{Style: model.BlockContentPage_Empty},
-		},
 	})
-	p.versions[p.block.GetId()].Model().ChildrenIds = append(p.versions[p.block.GetId()].Model().ChildrenIds, testPageId)
+	p.versions[p.block.GetId()].Model().ChildrenIds = append(p.versions[p.block.GetId()].Model().ChildrenIds, testPageId+"-link")
 }
 
 func (p *dashboard) Create(req pb.RpcBlockCreateRequest) (id string, err error) {

@@ -206,9 +206,13 @@ message Event {
 
             message Link {
                 string id = 1;
-                Style style = 2;
-                Fields fields = 3;
-                IsArchived isArchived = 4;
+                TargetBlockId targetBlockId = 2;
+                Style style = 3;
+                Fields fields = 4;
+
+                message TargetBlockId {
+                    string value = 1;
+                }
 
                 message Style {
                     anytype.model.Block.Content.Link.Style value = 1;
@@ -216,10 +220,6 @@ message Event {
 
                 message Fields {
                     google.protobuf.Struct value = 1;
-                }
-
-                message IsArchived {
-                    bool value = 1;
                 }
             }
         }
