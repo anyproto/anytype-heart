@@ -13,6 +13,27 @@ import "google/protobuf/struct.proto";
 */
 message Rpc {
 
+    message GetPageRecords {
+        message Request {}
+
+        message Response {
+            Error error = 1;
+            repeated model.PageRecord pageRecords = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                    // ...
+                }
+            }
+        }
+    }
+
     message ExternalDrop {
         message Files {
             message Request {
@@ -119,7 +140,6 @@ message Rpc {
                 }
             }
         }
-
 
         message Set {
             message Text {
@@ -332,11 +352,11 @@ message Rpc {
                 string contextId = 1;
                 string focusedBlockId = 2;
                 anytype.model.Range selectedTextRange = 3;
-                repeated string selectedBlocks = 4;
+                repeated string selectedBlockIds = 4;
 
                 string textSlot = 5;
                 string htmlSlot = 6;
-                string anySlot = 7;
+                repeated anytype.model.Block anySlot = 7;
             }
 
             message Response {
@@ -731,6 +751,32 @@ message Rpc {
                         string contextId = 1;
                         string blockId = 2;
                         string name = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+            }
+
+            message Link {
+                message TargetBlockId {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        string targetBlockId = 3;
                     }
 
                     message Response {
