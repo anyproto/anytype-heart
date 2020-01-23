@@ -28,7 +28,7 @@ type Service interface {
 	CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error)
 	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
-	ReplaceBlock(req pb.RpcBlockReplaceRequest) error
+	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
 
@@ -160,13 +160,13 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) error {
 	return ErrBlockNotFound
 }
 
-func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) error {
+func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Replace(req.BlockId, req.Block)
 	}
-	return ErrBlockNotFound
+	return "", ErrBlockNotFound
 }
 
 func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
