@@ -37,7 +37,7 @@ func (p *dashboard) migratePageToLinks() {
 	for id, v := range p.versions {
 		if v.Model().GetPage() != nil {
 			link := s.createLink(v.Model())
-			if err := p.replace(s, id, link); err != nil {
+			if _, err := p.replace(s, id, link); err != nil {
 				fmt.Println("middle: can't wrap page to link:", err)
 			}
 		}

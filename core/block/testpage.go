@@ -668,8 +668,8 @@ func (t *testPage) Upload(id string, localPath, url string) error {
 	return fmt.Errorf("can't update block in the test page")
 }
 
-func (t *testPage) Replace(id string, block *model.Block) error {
-	return fmt.Errorf("can't update block in the test page")
+func (t *testPage) Replace(id string, block *model.Block) (string, error) {
+	return "", fmt.Errorf("can't update block in the test page")
 }
 
 func (t *testPage) Move(req pb.RpcBlockListMoveRequest) error {
