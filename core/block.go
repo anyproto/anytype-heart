@@ -522,19 +522,6 @@ func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMerge
 	return response(pb.RpcBlockMergeResponseError_NULL, nil)
 }
 
-func (mw *Middleware) GetPageRecords(req *pb.RpcGetPageRecordsRequest) *pb.RpcGetPageRecordsResponse {
-	response := func(code pb.RpcGetPageRecordsResponseErrorCode, err error) *pb.RpcGetPageRecordsResponse {
-		m := &pb.RpcGetPageRecordsResponse{Error: &pb.RpcGetPageRecordsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	// TODO
-	return response(pb.RpcGetPageRecordsResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse {
 	response := func(code pb.RpcBlockSetLinkTargetBlockIdResponseErrorCode, err error) *pb.RpcBlockSetLinkTargetBlockIdResponse {
 		m := &pb.RpcBlockSetLinkTargetBlockIdResponse{Error: &pb.RpcBlockSetLinkTargetBlockIdResponseError{Code: code}}
