@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -94,6 +95,7 @@ type commonSmart struct {
 	versions map[string]simple.Block
 
 	linkSubscriptions *linkSubscriptions
+	history           history.History
 
 	m sync.RWMutex
 

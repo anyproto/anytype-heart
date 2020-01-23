@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
@@ -29,6 +30,7 @@ func (p *dashboard) Init() {
 	}
 	p.migratePageToLinks()
 	p.linkSubscriptions = newLinkSubscriptions(p)
+	p.history = history.NewHistory(0)
 	p.init()
 }
 

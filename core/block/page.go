@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -41,6 +42,7 @@ func (p *page) Init() {
 		p.addIcon(icon)
 	}
 	p.linkSubscriptions = newLinkSubscriptions(p)
+	p.history = history.NewHistory(0)
 	p.init()
 }
 
