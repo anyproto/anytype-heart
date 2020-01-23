@@ -7,6 +7,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+var ErrorNotSupportedForSimpleBlocks = fmt.Errorf("not supported for simple blocks")
+
 type SimpleBlock struct {
 	id               string
 	parentSmartBlock *SmartBlock
@@ -28,6 +30,19 @@ func (simpleBlock *SimpleBlock) GetVersion(id string) (BlockVersion, error) {
 	} else {
 		return simpleBlockVersion, nil
 	}
+}
+
+func (simpleBlock *SimpleBlock) GetVersionMeta(id string) (BlockVersionMeta, error) {
+	return nil, ErrorNotSupportedForSimpleBlocks
+}
+
+func (simpleBlock *SimpleBlock) GetCurrentVersionId() (string, error) {
+	parentBlockVersion, err := simpleBlock.parentSmartBlock.GetCurrentVersionId()
+	if err != nil {
+		return "", err
+	}
+
+	return parentBlockVersion, nil
 }
 
 func (simpleBlock *SimpleBlock) GetCurrentVersion() (BlockVersion, error) {
@@ -69,10 +84,6 @@ func (simpleBlock *SimpleBlock) NewBlock(block model.Block) (Block, error) {
 }
 
 func (simpleBlock *SimpleBlock) AddVersion(block *model.Block) (BlockVersion, error) {
-	if block.Fields != nil {
-		return nil, fmt.Errorf("simpleBlock simpleBlocks can't store fields")
-	}
-
 	switch block.Content.(type) {
 	case *model.BlockContentOfPage, *model.BlockContentOfDashboard, *model.BlockContentOfDataview:
 		return nil, fmt.Errorf("got smartBlock model instead of simpleBlock")
@@ -101,7 +112,7 @@ func (simpleBlock *SimpleBlock) AddVersion(block *model.Block) (BlockVersion, er
 }
 
 func (simpleBlock *SimpleBlock) AddVersions(blocks []*model.Block) ([]BlockVersion, error) {
-	return nil, fmt.Errorf("not supported for simple blocks")
+	return nil, ErrorNotSupportedForSimpleBlocks
 }
 
 func (simpleBlock *SimpleBlock) EmptyVersion() BlockVersion {
@@ -118,20 +129,27 @@ func (simpleBlock *SimpleBlock) EmptyVersion() BlockVersion {
 	}
 }
 
-func (simpleBlock *SimpleBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string, blocks chan<- []BlockVersion) (cancelFunc func(), err error) {
+func (simpleBlock *SimpleBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string, includeSinceVersion bool, blocks chan<- []BlockVersion) (cancelFunc func(), err error) {
 	// not supported yet, need to use parent smartblock instead
 	close(blocks)
 
-	return nil, fmt.Errorf("not supported for simple blocks")
+	return nil, ErrorNotSupportedForSimpleBlocks
+}
+
+func (simpleBlock *SimpleBlock) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, block chan<- BlockVersionMeta) (cancelFunc func(), err error) {
+	// not supported
+	close(block)
+
+	return nil, ErrorNotSupportedForSimpleBlocks
 }
 
 func (simpleBlock *SimpleBlock) SubscribeClientEvents(events chan<- proto.Message) (cancelFunc func(), err error) {
 	// not supported
 	close(events)
-	return nil, fmt.Errorf("not supported for simple blocks")
+	return nil, ErrorNotSupportedForSimpleBlocks
 }
 
 func (simpleBlock *SimpleBlock) PublishClientEvent(event proto.Message) error {
 	// not supported
-	return fmt.Errorf("not supported for simple blocks")
+	return ErrorNotSupportedForSimpleBlocks
 }

@@ -41,6 +41,18 @@ func (smartBlock *SmartBlock) GetCurrentVersion() (BlockVersion, error) {
 	return versions[0], nil
 }
 
+func (smartBlock *SmartBlock) GetCurrentVersionId() (string, error) {
+	versions, err := smartBlock.GetVersions("", 1, true)
+	if err != nil {
+		return "", err
+	}
+	if len(versions) == 0 {
+		return "", fmt.Errorf("no block versions found")
+	}
+
+	return versions[0].VersionId(), nil
+}
+
 func (smartBlock *SmartBlock) GetVersion(id string) (BlockVersion, error) {
 	fileMeta, err := smartBlock.node.textile().File(id)
 	if err != nil {
@@ -67,6 +79,32 @@ func (smartBlock *SmartBlock) GetVersion(id string) (BlockVersion, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return version, nil
+}
+
+func (smartBlock *SmartBlock) GetVersionMeta(id string) (BlockVersionMeta, error) {
+	fileMeta, err := smartBlock.node.textile().File(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(fileMeta.Files) == 0 {
+		return nil, fmt.Errorf("version block not found")
+	}
+
+	plaintext, err := readFile(smartBlock.node.textile(), fileMeta.Files[0].File)
+	if err != nil {
+		return nil, fmt.Errorf("readFile error: %s", err.Error())
+	}
+
+	var block storage.BlockMetaOnly
+	err = proto.Unmarshal(plaintext, &block)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal error: %s", err.Error())
+	}
+
+	version := &SmartBlockVersionMeta{model: &block, versionId: fileMeta.Block, date: util.CastTimestampToGogo(fileMeta.Date), user: fileMeta.User.Address}
 
 	return version, nil
 }
@@ -107,7 +145,7 @@ func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly boo
 		versions = append(versions, version)
 	}
 
-	if len(versions) > 0 {
+	if len(versions) > 0 && !metaOnly {
 		db := versions[0].DependentBlocks()
 		for _, child := range versions[0].Model().ChildrenIds {
 			if _, exists := db[child]; !exists {
@@ -315,8 +353,8 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 					if keys, exists := filesKeysCache[file.File.Hash]; exists {
 						blockVersion.model.KeysByHash[file.File.Hash] = &storage.FileKeys{keys}
 					} //else if efile := smartBlock.thread.Datastore().Files().Get(file.File.Hash); efile != nil {
-						// todo: extract keys from 'files' table in sqlite
-						//  to provide a shutdown protection
+					// todo: extract keys from 'files' table in sqlite
+					//  to provide a shutdown protection
 					//}
 				}
 			}
@@ -448,9 +486,37 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 	}
 }
 
-func (smartBlock *SmartBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string, blocks chan<- []BlockVersion) (cancelFunc func(), err error) {
+func (smartBlock *SmartBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string, includeSinceVersion bool, blocks chan<- []BlockVersion) (cancelFunc func(), err error) {
+	chCloseFn := func() { close(blocks) }
+
+	if sinceVersionId == "" {
+		// it must be set to ensure no versions were skipped in between
+		return chCloseFn, fmt.Errorf("sinceVersionId must be set")
+	}
 	// todo: to be implemented
-	return func() { close(blocks) }, nil
+	return chCloseFn, nil
+}
+
+func (smartBlock *SmartBlock) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, blockMeta chan<- BlockVersionMeta) (cancelFunc func(), err error) {
+	// temporary just sent the last version
+	chCloseFn := func() { close(blockMeta) }
+	if sinceVersionId == "" {
+		// it must be set to ensure no versions were skipped in between
+		return chCloseFn, fmt.Errorf("sinceVersionId must be set")
+	}
+
+	// todo: implement with chan from textile events feed
+	if includeSinceVersion {
+		versionMeta, err := smartBlock.GetVersionMeta(sinceVersionId)
+		if err != nil {
+			return chCloseFn, err
+		}
+		go func() {
+			blockMeta <- versionMeta
+		}()
+	}
+
+	return chCloseFn, nil
 }
 
 func (smartBlock *SmartBlock) SubscribeClientEvents(events chan<- proto.Message) (cancelFunc func(), err error) {
