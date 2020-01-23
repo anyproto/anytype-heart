@@ -51,11 +51,6 @@
     - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
     - [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response)
     - [Rpc.Block.Get.Marks.Response.Error](#anytype.Rpc.Block.Get.Marks.Response.Error)
-    - [Rpc.Block.History](#anytype.Rpc.Block.History)
-    - [Rpc.Block.History.Move](#anytype.Rpc.Block.History.Move)
-    - [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request)
-    - [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response)
-    - [Rpc.Block.History.Move.Response.Error](#anytype.Rpc.Block.History.Move.Response.Error)
     - [Rpc.Block.Merge](#anytype.Rpc.Block.Merge)
     - [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request)
     - [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response)
@@ -68,6 +63,10 @@
     - [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request)
     - [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response)
     - [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error)
+    - [Rpc.Block.Redo](#anytype.Rpc.Block.Redo)
+    - [Rpc.Block.Redo.Request](#anytype.Rpc.Block.Redo.Request)
+    - [Rpc.Block.Redo.Response](#anytype.Rpc.Block.Redo.Response)
+    - [Rpc.Block.Redo.Response.Error](#anytype.Rpc.Block.Redo.Response.Error)
     - [Rpc.Block.Replace](#anytype.Rpc.Block.Replace)
     - [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request)
     - [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response)
@@ -143,6 +142,10 @@
     - [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request)
     - [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response)
     - [Rpc.Block.Split.Response.Error](#anytype.Rpc.Block.Split.Response.Error)
+    - [Rpc.Block.Undo](#anytype.Rpc.Block.Undo)
+    - [Rpc.Block.Undo.Request](#anytype.Rpc.Block.Undo.Request)
+    - [Rpc.Block.Undo.Response](#anytype.Rpc.Block.Undo.Response)
+    - [Rpc.Block.Undo.Response.Error](#anytype.Rpc.Block.Undo.Response.Error)
     - [Rpc.Block.Unlink](#anytype.Rpc.Block.Unlink)
     - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
     - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
@@ -242,10 +245,10 @@
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
-    - [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype.Rpc.Block.Merge.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype.Rpc.Block.Paste.Response.Error.Code)
+    - [Rpc.Block.Redo.Response.Error.Code](#anytype.Rpc.Block.Redo.Response.Error.Code)
     - [Rpc.Block.Replace.Response.Error.Code](#anytype.Rpc.Block.Replace.Response.Error.Code)
     - [Rpc.Block.Set.Fields.Response.Error.Code](#anytype.Rpc.Block.Set.Fields.Response.Error.Code)
     - [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code)
@@ -263,6 +266,7 @@
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
+    - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.Duplicate.Response.Error.Code](#anytype.Rpc.BlockList.Duplicate.Response.Error.Code)
@@ -414,7 +418,8 @@
 | BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) |  |
 | BlockDownload | [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request) | [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response) |  |
 | BlockGetMarks | [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request) | [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response) |  |
-| BlockHistoryMove | [Rpc.Block.History.Move.Request](#anytype.Rpc.Block.History.Move.Request) | [Rpc.Block.History.Move.Response](#anytype.Rpc.Block.History.Move.Response) |  |
+| BlockUndo | [Rpc.Block.Undo.Request](#anytype.Rpc.Block.Undo.Request) | [Rpc.Block.Undo.Response](#anytype.Rpc.Block.Undo.Response) |  |
+| BlockRedo | [Rpc.Block.Redo.Request](#anytype.Rpc.Block.Redo.Request) | [Rpc.Block.Redo.Response](#anytype.Rpc.Block.Redo.Response) |  |
 | BlockSetFields | [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request) | [Rpc.Block.Set.Fields.Response](#anytype.Rpc.Block.Set.Fields.Response) |  |
 | BlockSetRestrictions | [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request) | [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response) |  |
 | BlockSetIsArchived | [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request) | [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response) |  |
@@ -1031,81 +1036,6 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype.Rpc.Block.History"></a>
-
-### Rpc.Block.History
-Block history: switch between versions (lib context: switch block head), move forward or backward
-**Example scenario**
-1. User -&gt; MacOS Front: CMD&#43;Z
-2. Front -&gt; MW: Rpc.Block.History.Move.Request(blockId, false)
-3. MW -&gt; Lib: ?? TODO
-4. Lib: switches current block header to a previous one
-5. Lib -&gt; MW: prev version of block
-6. MW -&gt; Front: BlockShow(block.prevVersion)
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.History.Move"></a>
-
-### Rpc.Block.History.Move
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.History.Move.Request"></a>
-
-### Rpc.Block.History.Move.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
-| blockId | [string](#string) |  |  |
-| moveForward | [bool](#bool) |  | Move direction. If true, move forward |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.History.Move.Response"></a>
-
-### Rpc.Block.History.Move.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.History.Move.Response.Error](#anytype.Rpc.Block.History.Move.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.History.Move.Response.Error"></a>
-
-### Rpc.Block.History.Move.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.History.Move.Response.Error.Code](#anytype.Rpc.Block.History.Move.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Block.Merge"></a>
 
 ### Rpc.Block.Merge
@@ -1290,6 +1220,62 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Paste.Response.Error.Code](#anytype.Rpc.Block.Paste.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Redo"></a>
+
+### Rpc.Block.Redo
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Redo.Request"></a>
+
+### Rpc.Block.Redo.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Redo.Response"></a>
+
+### Rpc.Block.Redo.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Redo.Response.Error](#anytype.Rpc.Block.Redo.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Redo.Response.Error"></a>
+
+### Rpc.Block.Redo.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Redo.Response.Error.Code](#anytype.Rpc.Block.Redo.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2349,6 +2335,62 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Undo"></a>
+
+### Rpc.Block.Undo
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Undo.Request"></a>
+
+### Rpc.Block.Undo.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Undo.Response"></a>
+
+### Rpc.Block.Undo.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Undo.Response.Error](#anytype.Rpc.Block.Undo.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Undo.Response.Error"></a>
+
+### Rpc.Block.Undo.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -3720,20 +3762,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.History.Move.Response.Error.Code"></a>
-
-### Rpc.Block.History.Move.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| CAN_NOT_MOVE | 3 | ... |
-
-
-
 <a name="anytype.Rpc.Block.Merge.Response.Error.Code"></a>
 
 ### Rpc.Block.Merge.Response.Error.Code
@@ -3770,6 +3798,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Redo.Response.Error.Code"></a>
+
+### Rpc.Block.Redo.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| CAN_NOT_MOVE | 3 | ... |
 
 
 
@@ -3991,6 +4033,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Undo.Response.Error.Code"></a>
+
+### Rpc.Block.Undo.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| CAN_NOT_MOVE | 3 | ... |
 
 
 

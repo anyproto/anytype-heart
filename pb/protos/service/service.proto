@@ -29,7 +29,8 @@ service ClientCommands {
     rpc BlockClose (anytype.Rpc.Block.Close.Request) returns (anytype.Rpc.Block.Close.Response);
     rpc BlockDownload (anytype.Rpc.Block.Download.Request) returns (anytype.Rpc.Block.Download.Response);
     rpc BlockGetMarks (anytype.Rpc.Block.Get.Marks.Request) returns (anytype.Rpc.Block.Get.Marks.Response);
-    rpc BlockHistoryMove (anytype.Rpc.Block.History.Move.Request) returns (anytype.Rpc.Block.History.Move.Response);
+    rpc BlockUndo (anytype.Rpc.Block.Undo.Request) returns (anytype.Rpc.Block.Undo.Response);
+    rpc BlockRedo (anytype.Rpc.Block.Redo.Request) returns (anytype.Rpc.Block.Redo.Response);
     rpc BlockSetFields (anytype.Rpc.Block.Set.Fields.Request) returns (anytype.Rpc.Block.Set.Fields.Response);
     rpc BlockSetRestrictions (anytype.Rpc.Block.Set.Restrictions.Request) returns (anytype.Rpc.Block.Set.Restrictions.Response);
     rpc BlockSetIsArchived (anytype.Rpc.Block.Set.IsArchived.Request) returns (anytype.Rpc.Block.Set.IsArchived.Response);
