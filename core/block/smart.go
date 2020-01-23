@@ -34,6 +34,7 @@ type smartBlock interface {
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
+	Paste(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) error
 	UpdateBlock(ids []string, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
@@ -258,6 +259,68 @@ func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
 	return copy.Model().Id, nil
 }
 
+func (p *commonSmart) duplicate(s *state, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+	pos := req.Position
+	targetId := req.TargetId
+	for _, id := range req.BlockIds {
+		copyId, e := p.copy(s, id)
+		if e != nil {
+			return nil, e
+		}
+		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+			return
+		}
+		pos = model.Block_Bottom
+		targetId = copyId
+		newIds = append(newIds, copyId)
+	}
+
+	return newIds, nil
+}
+
+func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (err error) {
+	//copy, err := s.create(req.AnySlot[iter].Copy().Model())
+
+	//s.ChildrenIds = insertToSlice(s.ChildrenIds, b.Model().Id, pos)
+	parent := s.get(p.GetId()).Model()
+	emptyPage := false
+
+	if len(parent.ChildrenIds) == 0 {
+		emptyPage = true
+	}
+
+	for i := 0; i < len(req.AnySlot); i++ {
+		copyBlock, err := s.create(req.AnySlot[i])
+		if err != nil {
+			return err
+		}
+
+		copyBlockId := copyBlock.Model().Id
+
+		if err != nil {
+			return err
+		}
+		for i, childrenId := range copyBlock.Model().ChildrenIds {
+			if copyBlock.Model().ChildrenIds[i], err = p.copy(s, childrenId); err != nil {
+				return err
+			}
+		}
+
+		if emptyPage {
+			parent.ChildrenIds = append(parent.ChildrenIds, copyBlockId)
+		} else {
+			if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
+				return err
+			}
+
+			targetId = copyBlockId
+		}
+
+	}
+
+	return nil
+}
+
 func (p *commonSmart) normalize() {
 	st := time.Now()
 	var usedIds = make(map[string]struct{})
@@ -433,7 +496,62 @@ func (p *commonSmart) find(id string, sources ...map[string]simple.Block) simple
 	return nil
 }
 
+func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blockId string, err error) {
+	t, err := s.getText(id)
+	if err != nil {
+		return "", err
+	}
+
+	newBlocks, text, err := t.RangeSplit(from, to)
+	if err != nil {
+		return "", err
+	}
+
+	if len(text) == 0 {
+		p.unlink(s, id)
+	}
+
+	if len(newBlocks) == 0 {
+		return "", nil
+	}
+
+	if blockId, err = p.create(s, pb.RpcBlockCreateRequest{
+		TargetId: id,
+		Block:    newBlocks[0].Model(),
+		Position: model.Block_Bottom,
+	}); err != nil {
+		fmt.Println(">>> ERR3")
+		return "", err
+	}
+
+	return
+}
+
+func (p *commonSmart) split(s *state, id string, pos int32) (blockId string, err error) {
+	t, err := s.getText(id)
+	if err != nil {
+		return
+	}
+
+	newBlock, err := t.Split(pos)
+	if err != nil {
+		return
+	}
+
+	if blockId, err = p.create(s, pb.RpcBlockCreateRequest{
+		TargetId: id,
+		Block:    newBlock.Model(),
+		Position: model.Block_Bottom,
+	}); err != nil {
+		return "", err
+	}
+	return
+}
+
 func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	s := p.newState()
 	t, err := s.getText(id)
 	if err != nil {
@@ -459,6 +577,9 @@ func (p *commonSmart) Split(id string, pos int32) (blockId string, err error) {
 }
 
 func (p *commonSmart) Merge(firstId, secondId string) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	s := p.newState()
 	first, err := s.getText(firstId)
 	if err != nil {

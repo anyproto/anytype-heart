@@ -60,5 +60,7 @@ service ClientCommands {
     rpc BlockSetVideoWidth (anytype.Rpc.Block.Set.Video.Width.Request) returns (anytype.Rpc.Block.Set.Video.Width.Response);
     rpc BlockSetIconName (anytype.Rpc.Block.Set.Icon.Name.Request) returns (anytype.Rpc.Block.Set.Icon.Name.Response);
 
+    rpc BlockSetLinkTargetBlockId (anytype.Rpc.Block.Set.Link.TargetBlockId.Request) returns (anytype.Rpc.Block.Set.Link.TargetBlockId.Response);
+
     rpc Ping (anytype.Rpc.Ping.Request) returns (anytype.Rpc.Ping.Response);
 }

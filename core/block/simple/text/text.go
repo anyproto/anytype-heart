@@ -34,11 +34,13 @@ func NewText(block *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	SetText(text string, marks *model.BlockContentTextMarks) (err error)
+	GetText() (text string)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
 	SetTextColor(color string)
 	SetTextBackgroundColor(color string)
 	Split(pos int32) (simple.Block, error)
+	RangeSplit(from int32, to int32) ([]simple.Block, string, error)
 	Merge(b simple.Block) error
 }
 
@@ -138,6 +140,10 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 	return
 }
 
+func (t *Text) GetText() (text string) {
+	return t.content.Text
+}
+
 func (t *Text) Split(pos int32) (simple.Block, error) {
 	if pos < 0 || int(pos) >= utf8.RuneCountInString(t.content.Text) {
 		return nil, ErrOutOfRange
@@ -159,7 +165,7 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 		} else {
 			newMark := &model.BlockContentTextMark{
 				Range: &model.Range{
-					From: 0,
+					From: 0, // Sure? @enkogu
 					To:   mark.Range.To - pos,
 				},
 				Type:  mark.Type,
@@ -180,6 +186,97 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 		}},
 	})
 	return newBlock, nil
+}
+
+// TODO: should be 100% tested @enkogu
+func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) {
+	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
+		return nil, "", ErrOutOfRange
+	}
+	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
+		return nil, "", ErrOutOfRange
+	}
+	if from > to {
+		return nil, "", ErrOutOfRange // Maybe different error? @enkogu
+	}
+	var newBlocks []simple.Block
+	// special cases
+	if from == 0 && to == 0 {
+		return newBlocks, t.content.Text, nil
+	}
+
+/*	if from == 0 && to > 0 {
+
+	}*/
+
+	runes := []rune(t.content.Text)
+	t.content.Text = string(runes[:from])
+	if t.content.Marks == nil {
+		t.content.Marks = &model.BlockContentTextMarks{}
+	}
+	newMarks := &model.BlockContentTextMarks{}
+	oldMarks := &model.BlockContentTextMarks{}
+
+	for _, mark := range t.content.Marks.Marks {
+		// mark 100% in new block
+		if mark.Range.From >= to {
+			mark.Range.From -= to
+			mark.Range.To -= to
+			newMarks.Marks = append(newMarks.Marks, mark)
+
+		// mark 100% in old block
+		} else if mark.Range.To <= from {
+			oldMarks.Marks = append(oldMarks.Marks, mark)
+
+		// mark 100% in range
+		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
+			// Do nothing, ignore this mark
+
+		// mark partly in old block and partly in range
+		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
+			mark.Range.To = from
+			oldMarks.Marks = append(oldMarks.Marks, mark)
+
+			// mark partly in range and partly in new block
+		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
+			mark.Range.From = to
+			newMarks.Marks = append(newMarks.Marks, mark)
+
+		// mark partly in old block and partly in new block
+		} else {
+			newMark := &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: mark.Range.From, // Trivial
+					To:   from,
+				},
+				Type:  mark.Type,
+				Param: mark.Param,
+			}
+			newMarks.Marks = append(newMarks.Marks, newMark)
+			mark.Range.From = to
+			// Trivial: mark.Range.To = mark.Range.To
+			oldMarks.Marks = append(oldMarks.Marks, mark)
+		}
+	}
+	t.content.Marks = oldMarks
+	newBlock := NewText(&model.Block{
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text:    string(runes[to:]),
+			Style:   t.content.Style,
+			Marks:   newMarks,
+			Checked: t.content.Checked,
+		}},
+	})
+
+	// if oldBlock is empty and newBlock is non empty -> replace content
+	if len(string(runes[:from])) == 0 {
+		t.content.Text = string(runes[to:])
+
+	// if newBlock is empty -> don't push it
+	} else if len(string(runes[to:])) > 0 {
+		newBlocks = append(newBlocks, newBlock)
+	}
+	return newBlocks, t.content.Text, nil
 }
 
 func (t *Text) Merge(b simple.Block) error {
