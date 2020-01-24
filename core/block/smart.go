@@ -36,7 +36,7 @@ type smartBlock interface {
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
 	Paste(req pb.RpcBlockPasteRequest) error
-	Replace(id string, block *model.Block) error
+	Replace(id string, block *model.Block) (newId string, err error)
 	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
@@ -431,31 +431,34 @@ func (p *commonSmart) Unlink(ids ...string) (err error) {
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) Replace(id string, block *model.Block) (err error) {
+func (p *commonSmart) Replace(id string, block *model.Block) (newId string, err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
-	if err = p.replace(s, id, block); err != nil {
+	if newId, err = p.replace(s, id, block); err != nil {
 		return
 	}
-	return p.applyAndSendEvent(s)
+	if err = p.applyAndSendEvent(s); err != nil {
+		return
+	}
+	return
 }
 
-func (p *commonSmart) replace(s *state, id string, block *model.Block) error {
-	if _, err := p.create(s, pb.RpcBlockCreateRequest{
+func (p *commonSmart) replace(s *state, id string, block *model.Block) (newId string, err error) {
+	if newId, err = p.create(s, pb.RpcBlockCreateRequest{
 		TargetId: id,
 		Block:    block,
 		Position: model.Block_Bottom,
 	}); err != nil {
-		return err
+		return
 	}
 
 	if old := s.get(id); old == nil {
-		return ErrBlockNotFound
+		return "", ErrBlockNotFound
 	}
 	s.removeFromChilds(id)
 	s.remove(id)
-	return nil
+	return
 }
 
 func (p *commonSmart) unlink(s *state, ids ...string) (err error) {
