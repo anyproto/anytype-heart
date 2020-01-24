@@ -658,7 +658,7 @@ func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
 	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
 		return
 	}
-	return p.applyAndSendEvent(s)
+	return p.applyAndSendEventHist(s, false)
 }
 
 func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
