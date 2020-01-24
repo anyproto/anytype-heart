@@ -176,6 +176,11 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 			}
 			msgs = append(msgs, diff...)
 			if action != nil {
+				if file := orig.Model().GetFile(); file != nil {
+					if file.State == model.BlockContentFile_Uploading {
+						file.State = model.BlockContentFile_Empty
+					}
+				}
 				action.Change = append(action.Change, history.Change{
 					Before: orig,
 					After:  b,
