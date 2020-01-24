@@ -37,7 +37,7 @@ type smartBlock interface {
 	Move(req pb.RpcBlockListMoveRequest) error
 	Paste(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) error
-	UpdateBlock(ids []string, apply func(b simple.Block) error) (err error)
+	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
@@ -167,7 +167,7 @@ func (p *commonSmart) Anytype() anytype.Anytype {
 	return p.s.anytype
 }
 
-func (p *commonSmart) UpdateBlock(ids []string, apply func(b simple.Block) error) (err error) {
+func (p *commonSmart) UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
@@ -180,7 +180,7 @@ func (p *commonSmart) UpdateBlock(ids []string, apply func(b simple.Block) error
 			return
 		}
 	}
-	return p.applyAndSendEvent(s)
+	return p.applyAndSendEventHist(s, hist)
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -762,8 +762,15 @@ func (p *commonSmart) Close() error {
 }
 
 func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
-	var action history.Action
-	msgs, err := s.apply(&action)
+	return p.applyAndSendEventHist(s, true)
+}
+
+func (p *commonSmart) applyAndSendEventHist(s *state, hist bool) (err error) {
+	var action *history.Action
+	if hist {
+		action = &history.Action{}
+	}
+	msgs, err := s.apply(action)
 	if err != nil {
 		return
 	}
@@ -773,8 +780,8 @@ func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
 			ContextId: p.GetId(),
 		})
 	}
-	if p.history != nil && !action.IsEmpty() {
-		p.history.Add(action)
+	if hist && p.history != nil && !action.IsEmpty() {
+		p.history.Add(*action)
 	}
 	return
 }

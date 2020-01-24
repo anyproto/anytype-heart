@@ -724,7 +724,7 @@ func (t *testPage) Anytype() anytype.Anytype {
 	return nil
 }
 
-func (t *testPage) UpdateBlock(ids []string, apply func(b simple.Block) error) (err error) {
+func (t *testPage) UpdateBlock(ids []string, h bool, apply func(b simple.Block) error) (err error) {
 	return fmt.Errorf("can't update block in the test page")
 }
 

@@ -1,7 +1,5 @@
 package block
 
-import "github.com/anytypeio/go-anytype-middleware/pb"
-
 func (p *commonSmart) Undo() (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -24,17 +22,7 @@ func (p *commonSmart) Undo() (err error) {
 		s.set(b.Before)
 	}
 
-	msgs, err := s.apply(nil)
-	if err != nil {
-		return
-	}
-	if len(msgs) > 0 {
-		p.s.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: p.GetId(),
-		})
-	}
-	return
+	return p.applyAndSendEventHist(s, false)
 }
 
 func (p *commonSmart) Redo() (err error) {
@@ -59,15 +47,5 @@ func (p *commonSmart) Redo() (err error) {
 		s.set(b.After)
 	}
 
-	msgs, err := s.apply(nil)
-	if err != nil {
-		return
-	}
-	if len(msgs) > 0 {
-		p.s.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: p.GetId(),
-		})
-	}
-	return
+	return p.applyAndSendEventHist(s, false)
 }
