@@ -49,6 +49,9 @@ type Service interface {
 
 	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
+	Undo(req pb.RpcBlockUndoRequest) error
+	Redo(req pb.RpcBlockRedoRequest) error
+
 	Close() error
 }
 
@@ -265,6 +268,26 @@ func (s *service) UploadFile(req pb.RpcBlockUploadRequest) error {
 		return ErrBlockNotFound
 	}
 	return sb.Upload(req.BlockId, req.FilePath, req.Url)
+}
+
+func (s *service) Undo(req pb.RpcBlockUndoRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[req.ContextId]
+	if !ok {
+		return ErrBlockNotFound
+	}
+	return sb.Undo()
+}
+
+func (s *service) Redo(req pb.RpcBlockRedoRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[req.ContextId]
+	if !ok {
+		return ErrBlockNotFound
+	}
+	return sb.Redo()
 }
 
 func (s *service) Close() error {

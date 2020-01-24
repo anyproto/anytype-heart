@@ -29,6 +29,10 @@ type state struct {
 	newSmartBlocks bool
 }
 
+func (s *state) set(b simple.Block) {
+	s.blocks[b.Model().Id] = b
+}
+
 func (s *state) create(b *model.Block) (new simple.Block, err error) {
 	if b == nil {
 		return nil, fmt.Errorf("can't create nil block")
@@ -157,7 +161,7 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
 			if action != nil {
-				action.Add = append(action.Add, *b.Model())
+				action.Add = append(action.Add, b)
 			}
 			continue
 		}
@@ -172,7 +176,10 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 			}
 			msgs = append(msgs, diff...)
 			if action != nil {
-				action.Change = append(action.Change, *b.Model())
+				action.Change = append(action.Change, history.Change{
+					Before: orig,
+					After:  b,
+				})
 			}
 		}
 		if err := s.validateBlock(b); err != nil {
@@ -208,7 +215,7 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 	}
 	for _, id := range s.toRemove {
 		if old := s.sb.deleteBlock(id); old != nil && action != nil {
-			action.Remove = append(action.Remove, *old.Model())
+			action.Remove = append(action.Remove, old)
 		}
 	}
 	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))

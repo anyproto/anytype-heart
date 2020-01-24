@@ -708,6 +708,14 @@ func (t *testPage) Paste(req pb.RpcBlockPasteRequest) error {
 	return fmt.Errorf("can't update block in the test page")
 }
 
+func (t *testPage) Undo() error {
+	return fmt.Errorf("can't update block in the test page")
+}
+
+func (t *testPage) Redo() error {
+	return fmt.Errorf("can't update block in the test page")
+}
+
 func (t *testPage) Open(b anytype.Block) error {
 	return nil
 }

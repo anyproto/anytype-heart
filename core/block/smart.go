@@ -42,6 +42,8 @@ type smartBlock interface {
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
+	Undo() error
+	Redo() error
 	Close() error
 	Anytype() anytype.Anytype
 }
@@ -771,7 +773,7 @@ func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
 			ContextId: p.GetId(),
 		})
 	}
-	if p.history != nil {
+	if p.history != nil && !action.IsEmpty() {
 		p.history.Add(action)
 	}
 	return

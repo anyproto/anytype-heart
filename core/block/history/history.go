@@ -3,7 +3,7 @@ package history
 import (
 	"errors"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 )
 
 const (
@@ -14,10 +14,14 @@ var (
 	ErrNoHistory = errors.New("no history")
 )
 
+type Change struct {
+	Before, After simple.Block
+}
+
 type Action struct {
-	Add    []model.Block
-	Change []model.Block
-	Remove []model.Block
+	Add    []simple.Block
+	Change []Change
+	Remove []simple.Block
 }
 
 func (a Action) IsEmpty() bool {
