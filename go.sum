@@ -45,6 +45,7 @@ github.com/anytypeio/goldmark v1.1.13-0.20200123142618-0ce161faf707 h1:oJGgJtwkk
 github.com/anytypeio/goldmark v1.1.13-0.20200123142618-0ce161faf707/go.mod h1:ahXtDJimny+ZwL5kPjFNVprj+PnSxmjjXFvAVmEl12w=
 github.com/anytypeio/goldmark v1.1.13-0.20200127120654-f758fadb7543 h1:ZuZT+Vh6eBZp1kJVjWjOeIM3XsFbFjIAkvczh2PbYDQ=
 github.com/anytypeio/goldmark v1.1.13-0.20200127120654-f758fadb7543/go.mod h1:ahXtDJimny+ZwL5kPjFNVprj+PnSxmjjXFvAVmEl12w=
+github.com/anytypeio/goldmark v1.1.13-0.20200127132037-e15d75ae4988/go.mod h1:ahXtDJimny+ZwL5kPjFNVprj+PnSxmjjXFvAVmEl12w=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13 h1:XMUxybyqCaEAGZZK/Qv2cRB0klc04dNTgtSqpacg15Y=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13/go.mod h1:r6Y5BY7LcHVQIKk00MK2lBIkkKk0z1LWO2bJcXox6bI=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
