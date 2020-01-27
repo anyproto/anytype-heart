@@ -229,18 +229,19 @@ func (mw *Middleware) BlockSetIsArchived(req *pb.RpcBlockSetIsArchivedRequest) *
 }
 
 func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
-	response := func(code pb.RpcBlockReplaceResponseErrorCode, err error) *pb.RpcBlockReplaceResponse {
-		m := &pb.RpcBlockReplaceResponse{Error: &pb.RpcBlockReplaceResponseError{Code: code}}
+	response := func(code pb.RpcBlockReplaceResponseErrorCode, blockId string, err error) *pb.RpcBlockReplaceResponse {
+		m := &pb.RpcBlockReplaceResponse{Error: &pb.RpcBlockReplaceResponseError{Code: code}, BlockId: blockId}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	if err := mw.blockService.ReplaceBlock(*req); err != nil {
-		return response(pb.RpcBlockReplaceResponseError_UNKNOWN_ERROR, err)
+	blockId, err := mw.blockService.ReplaceBlock(*req)
+	if err != nil {
+		return response(pb.RpcBlockReplaceResponseError_UNKNOWN_ERROR, "", err)
 	}
-	return response(pb.RpcBlockReplaceResponseError_NULL, nil)
+	return response(pb.RpcBlockReplaceResponseError_NULL, blockId, nil)
 }
 
 func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb.RpcBlockSetTextColorResponse {
