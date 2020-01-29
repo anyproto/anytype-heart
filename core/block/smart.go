@@ -3,7 +3,6 @@ package block
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -298,30 +297,11 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 		}
 
 		copyBlockId := copyBlock.Model().Id
+			if f, ok := copyBlock.(file.Block); ok{
+				file := copyBlock.Model().GetFile()
+				url := file.Name
 
-		fmt.Println("@@@ TYPE OF CONTENT: ", reflect.TypeOf(copyBlock.Model().GetContent()))
-		fmt.Println("@@@ TYPE OF ContentOfFile: ", reflect.TypeOf(&model.BlockContentOfFile{}))
-
-		if reflect.TypeOf(copyBlock.Model().GetContent()) == reflect.TypeOf(&model.BlockContentOfFile{}) {
-			file := copyBlock.Model().GetFile()
-			url := file.Name
-			fmt.Println("@@@ url", url)
-
-			f, _ := s.getFile(copyBlockId)
-			f.Upload(p.s.anytype, p, "", url)
-
-/*			p.m.Lock()
-			defer p.m.Unlock()
-			s := p.newState()
-			f, err := s.getFile(id)
-			if err != nil {
-				return
-			}
-			if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
-				return
-			}
-			return p.applyAndSendEvent(s)*/
-
+				f.Upload(p.s.anytype, p, "", url)
 		}
 
 

@@ -115,14 +115,5 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 		}
 	}
 
-	/*cIds = p.versions[p.GetId()].Model().ChildrenIds
-	for i := 0; i < len(cIds); i++ {
-		if len(p.versions[cIds[i]].Model().GetText().Text) == 0 {
-			if err := p.unlink(s, cIds[i]); err != nil {
-				return err
-			}
-		}
-	}*/
-
 	return p.applyAndSendEvent(s)
 }
