@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/anymark"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-library/anymark"
 )
 
 func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
