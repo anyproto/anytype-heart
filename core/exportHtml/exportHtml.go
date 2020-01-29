@@ -2,9 +2,9 @@ package exportHtml
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/yosssi/gohtml"
 	"reflect"
 	"strings"
-	"github.com/yosssi/gohtml"
 )
 
 /*oneof content {

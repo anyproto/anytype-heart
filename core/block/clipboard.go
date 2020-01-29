@@ -6,7 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/goldmark"
+	"github.com/anytypeio/go-anytype-library/anymark"
 )
 
 func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
@@ -25,7 +25,7 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
-	mdToBlocksConverter := goldmark.New()
+	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
 
 	req.AnySlot = blocks
