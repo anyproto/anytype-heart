@@ -57,23 +57,31 @@ import (
 func BlocksToHtml (blocks []*model.Block) string {
 	var htmlArr []string
 	for _, b := range blocks {
-		switch reflect.TypeOf(b.GetContent()) {
-			case reflect.TypeOf(&model.BlockContentOfText{}): htmlArr = append(htmlArr, textBlockToHtml(b))
-			case reflect.TypeOf(&model.BlockContentOfFile{}): htmlArr = append(htmlArr, fileToHtml(b))
-			case reflect.TypeOf(&model.BlockContentOfBookmark{}): htmlArr = append(htmlArr, bookmarkToHtml(b))
-			case reflect.TypeOf(&model.BlockContentOfDiv{}): htmlArr = append(htmlArr, divToHtml(b))
-			case reflect.TypeOf(&model.BlockContentOfIcon{}): htmlArr = append(htmlArr, iconToHtml(b))
-
-			case reflect.TypeOf(&model.BlockContentOfDashboard{}): break
-			case reflect.TypeOf(&model.BlockContentOfPage{}): break
-			case reflect.TypeOf(&model.BlockContentOfDataview{}): break
-			case reflect.TypeOf(&model.BlockContentOfLayout{}): break
-			case reflect.TypeOf(&model.BlockContentOfLink{}): break
-		}
+		htmlArr = append(htmlArr, blockToHtml(b))
 	}
 
 	output := strings.Join(htmlArr, "\n")
 	return gohtml.Format(wrapHtml(output))
+}
+
+func blockToHtml (b *model.Block) string {
+	output := ""
+	switch reflect.TypeOf(b.GetContent()) {
+		case reflect.TypeOf(&model.BlockContentOfText{}): output = textBlockToHtml(b)
+		case reflect.TypeOf(&model.BlockContentOfFile{}): output = fileToHtml(b)
+		case reflect.TypeOf(&model.BlockContentOfBookmark{}): output = bookmarkToHtml(b)
+		case reflect.TypeOf(&model.BlockContentOfDiv{}): output = divToHtml(b)
+		case reflect.TypeOf(&model.BlockContentOfIcon{}): output = iconToHtml(b)
+		case reflect.TypeOf(&model.BlockContentOfLayout{}): output = layoutToHtml(b)
+
+		case reflect.TypeOf(&model.BlockContentOfDashboard{}): break // Impossible
+		case reflect.TypeOf(&model.BlockContentOfPage{}): break // Impossible
+		case reflect.TypeOf(&model.BlockContentOfDataview{}): break // Not implemented yet
+		case reflect.TypeOf(&model.BlockContentOfLink{}): break // TODO: export linked page too?
+		default: break
+	}
+
+	return output
 }
 
 func wrapHtml (innerHtml string) string {
@@ -131,3 +139,6 @@ func iconToHtml (block *model.Block) string {
 	return `<div class="smile">` + icon + `</div>`
 }
 
+func layoutToHtml (block *model.Block) string {
+	return `` // TODO
+}
