@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/anytypeio/go-anytype-library v0.0.0-20200123103712-e18be5ef2d32
-	github.com/anytypeio/goldmark v1.1.13-0.20200122143814-254a7cea3e55
+	github.com/anytypeio/goldmark v1.1.13-0.20200127162332-8c7dd4fd0fe3
 
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.3.1
@@ -12,6 +12,7 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/stretchr/testify v1.4.0
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
+	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf // indirect
 	gotest.tools v2.1.0+incompatible
 )
 
