@@ -1,4 +1,4 @@
-// +build debug,!_test
+// +build !nogrpcserver,!_test
 
 package main
 
@@ -16,7 +16,6 @@ import (
 
 const defaultAddr = "127.0.0.1:9999"
 
-// make sure to build with `-tags debug`
 func main(){
 	var addr string
 	if len(os.Args) > 1 {
