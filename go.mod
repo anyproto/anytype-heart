@@ -12,6 +12,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
+	google.golang.org/grpc v1.24.0
 	gotest.tools v2.1.0+incompatible
 )
 

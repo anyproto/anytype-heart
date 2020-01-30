@@ -1138,6 +1138,8 @@ message Rpc {
                         LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104;
                         FAILED_TO_RUN_NODE = 105;
                         WALLET_RECOVER_NOT_PERFORMED = 106;
+                        FAILED_TO_STOP_RUNNING_NODE = 107;
+
                     }
                 }
             }
@@ -1175,6 +1177,7 @@ message Rpc {
                         FAILED_TO_FIND_ACCOUNT_INFO = 104;
                         LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET = 105;
                         FAILED_TO_STOP_SEARCHER_NODE = 106;
+                        FAILED_TO_RECOVER_PREDEFINED_BLOCKS = 107;
                     }
                 }
             }
@@ -1390,5 +1393,9 @@ message Rpc {
             }
         }
     }
+
+}
+
+message Empty {
 
 }
