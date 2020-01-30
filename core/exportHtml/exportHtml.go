@@ -2,9 +2,8 @@ package exportHtml
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"reflect"
-	"strings"
 	"github.com/yosssi/gohtml"
+	"strings"
 )
 
 /*oneof content {
@@ -57,27 +56,27 @@ import (
 func BlocksToHtml (blocks []*model.Block) string {
 	var htmlArr []string
 	for _, b := range blocks {
-		htmlArr = append(htmlArr, blockToHtml(b))
+		htmlArr = append(htmlArr, blockToHtml(b.GetContent(), b))
 	}
 
 	output := strings.Join(htmlArr, "\n")
 	return gohtml.Format(wrapHtml(output))
 }
 
-func blockToHtml (b *model.Block) string {
+func blockToHtml (content interface{}, b *model.Block) string {
 	output := ""
-	switch reflect.TypeOf(b.GetContent()) {
-		case reflect.TypeOf(&model.BlockContentOfText{}): output = textBlockToHtml(b)
-		case reflect.TypeOf(&model.BlockContentOfFile{}): output = fileToHtml(b)
-		case reflect.TypeOf(&model.BlockContentOfBookmark{}): output = bookmarkToHtml(b)
-		case reflect.TypeOf(&model.BlockContentOfDiv{}): output = divToHtml(b)
-		case reflect.TypeOf(&model.BlockContentOfIcon{}): output = iconToHtml(b)
-		case reflect.TypeOf(&model.BlockContentOfLayout{}): output = layoutToHtml(b)
 
-		case reflect.TypeOf(&model.BlockContentOfDashboard{}): break // Impossible
-		case reflect.TypeOf(&model.BlockContentOfPage{}): break // Impossible
-		case reflect.TypeOf(&model.BlockContentOfDataview{}): break // Not implemented yet
-		case reflect.TypeOf(&model.BlockContentOfLink{}): break // TODO: export linked page too?
+	switch content.(type) {
+		case model.BlockContentOfText: output = textBlockToHtml(b)
+		case model.BlockContentOfFile: output = fileToHtml(b)
+		case model.BlockContentOfBookmark: output = bookmarkToHtml(b)
+		case model.BlockContentOfDiv: output = divToHtml(b)
+		case model.BlockContentOfIcon: output = iconToHtml(b)
+		case model.BlockContentOfLayout: output = layoutToHtml(b)
+		case model.BlockContentOfDashboard: break // Impossible
+		case model.BlockContentOfPage: break // Impossible
+		case model.BlockContentOfDataview: break // Not implemented yet
+		case model.BlockContentOfLink: break // TODO: export linked page too?
 		default: break
 	}
 

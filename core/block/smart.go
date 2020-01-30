@@ -3,7 +3,6 @@ package block
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -284,10 +283,6 @@ func (p *commonSmart) duplicate(s *state, req pb.RpcBlockListDuplicateRequest) (
 }
 
 func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (err error) {
-	//copy, err := s.create(req.AnySlot[iter].Copy().Model())
-	fmt.Println("@@@ req.AnySlot pasteBlocks:", req.AnySlot)
-
-	//s.ChildrenIds = insertToSlice(s.ChildrenIds, b.Model().Id, pos)
 	parent := s.get(p.GetId()).Model()
 	emptyPage := false
 
@@ -303,31 +298,11 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 
 		copyBlockId := copyBlock.Model().Id
 
-		fmt.Println("@@@ TYPE OF CONTENT: ", reflect.TypeOf(copyBlock.Model().GetContent()))
-		fmt.Println("@@@ TYPE OF ContentOfFile: ", reflect.TypeOf(&model.BlockContentOfFile{}))
-
-		if reflect.TypeOf(copyBlock.Model().GetContent()) == reflect.TypeOf(&model.BlockContentOfFile{}) {
+		if f, ok := copyBlock.(file.Block); ok{
 			file := copyBlock.Model().GetFile()
 			url := file.Name
-			fmt.Println("@@@ url", url)
-
-			f, _ := s.getFile(copyBlockId)
 			f.Upload(p.s.anytype, p, "", url)
-
-/*			p.m.Lock()
-			defer p.m.Unlock()
-			s := p.newState()
-			f, err := s.getFile(id)
-			if err != nil {
-				return
-			}
-			if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
-				return
-			}
-			return p.applyAndSendEvent(s)*/
-
 		}
-
 
 		if err != nil {
 			return err
@@ -344,10 +319,8 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 			if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
 				return err
 			}
-
 			targetId = copyBlockId
 		}
-
 	}
 
 	return nil
@@ -555,7 +528,6 @@ func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blo
 		Block:    newBlocks[0].Model(),
 		Position: model.Block_Bottom,
 	}); err != nil {
-		fmt.Println(">>> ERR3")
 		return "", err
 	}
 
