@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"sync"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/gateway"
@@ -31,6 +32,9 @@ type Middleware struct {
 	SendEvent           func(event *pb.Event)
 	blockService        block.Service
 	*libCore.Anytype
+
+	debugGrpcEventSender chan struct{}
+	debugGrpcEventSenderMutex sync.Mutex
 }
 
 // Start starts the anytype node and HTTP gateway
