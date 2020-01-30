@@ -25,6 +25,8 @@ github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/andybalholm/cascadia v1.0.0 h1:hOCXnnZ5A+3eVDX8pvgl4kofXv2ELss0bKcqRySc45o=
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
+github.com/anytypeio/go-anytype-library v0.0.0-20200123103712-e18be5ef2d32 h1:faSEJQSNhQ6VAn+5KtsPkXaynu261WkLAl/2ZO0LTLk=
+github.com/anytypeio/go-anytype-library v0.0.0-20200123103712-e18be5ef2d32/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
 github.com/anytypeio/go-anytype-library v0.0.0-20200129175421-fac2e3a29d6a h1:3wBVjy3/FDFP3U7JMWi7rgMnKM946E3ejIwIbcQuLr0=
 github.com/anytypeio/go-anytype-library v0.0.0-20200129175421-fac2e3a29d6a/go.mod h1:WsJY4jPukqop2imPzUXW/WlqA6uPI4iOblTvZcDDZpA=
 github.com/anytypeio/go-anytype-library v0.0.0-20200130204241-7a84d119ffd4 h1:/8mb2EZ5HuHesW8/2C8RDc4z7VCFBn3Rpuh9uKzmsYo=
