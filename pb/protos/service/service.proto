@@ -3,6 +3,7 @@ package anytype;
 option go_package = "lib";
 
 import "pb/protos/commands.proto";
+import "pb/protos/events.proto";
 
 service ClientCommands {
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
@@ -64,4 +65,7 @@ service ClientCommands {
     rpc BlockSetLinkTargetBlockId (anytype.Rpc.Block.Set.Link.TargetBlockId.Request) returns (anytype.Rpc.Block.Set.Link.TargetBlockId.Response);
 
     rpc Ping (anytype.Rpc.Ping.Request) returns (anytype.Rpc.Ping.Response);
+
+    // used only for lib-debug via grpc
+    rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);
 }

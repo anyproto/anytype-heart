@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/anymark"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/goldmark"
 )
 
 func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
@@ -25,7 +25,7 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
-	mdToBlocksConverter := goldmark.New()
+	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
 
 	req.AnySlot = blocks
@@ -114,15 +114,6 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 			return err
 		}
 	}
-
-	/*cIds = p.versions[p.GetId()].Model().ChildrenIds
-	for i := 0; i < len(cIds); i++ {
-		if len(p.versions[cIds[i]].Model().GetText().Text) == 0 {
-			if err := p.unlink(s, cIds[i]); err != nil {
-				return err
-			}
-		}
-	}*/
 
 	return p.applyAndSendEvent(s)
 }

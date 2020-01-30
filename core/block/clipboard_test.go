@@ -168,13 +168,9 @@ func TestCommonSmart_pasteHTML(t *testing.T) {
 	t.Run("Nested tags: h1 && p inside quote", func(t *testing.T) {
 		fx := createPage(t, []string{})
 		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n");
-		checkBlockTextAndStyle(t, fx, []string{"Foo", "bar\nbaz"});
+		checkBlockTextAndStyle(t, fx, []string{"Foo", "bar baz"});
 		checkEvents(t, fx, 2, 5)
 	})
-
-
-
-
 }
 
 func TestCommonSmart_pasteAny(t *testing.T) {
