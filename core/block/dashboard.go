@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
@@ -29,6 +30,7 @@ func (p *dashboard) Init() {
 	}
 	p.migratePageToLinks()
 	p.linkSubscriptions = newLinkSubscriptions(p)
+	p.history = history.NewHistory(0)
 	p.init()
 }
 
@@ -48,7 +50,7 @@ func (p *dashboard) migratePageToLinks() {
 			}
 		}
 	}
-	if _, err := s.apply(); err != nil {
+	if _, err := s.apply(nil); err != nil {
 		fmt.Println("can't apply state for migrating page to link", err)
 	}
 }

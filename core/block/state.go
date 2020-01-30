@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -26,6 +27,10 @@ type state struct {
 	blocks         map[string]simple.Block
 	toRemove       []string
 	newSmartBlocks bool
+}
+
+func (s *state) set(b simple.Block) {
+	s.blocks[b.Model().Id] = b
 }
 
 func (s *state) create(b *model.Block) (new simple.Block, err error) {
@@ -140,7 +145,7 @@ func (s *state) findParentOf(id string) simple.Block {
 	return s.get(b.Model().Id)
 }
 
-func (s *state) apply() (msgs []*pb.EventMessage, err error) {
+func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err error) {
 	st := time.Now()
 	s.normalize()
 	var toSave []*model.Block
@@ -155,6 +160,9 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 			if !b.Virtual() {
 				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
+			if action != nil {
+				action.Add = append(action.Add, b)
+			}
 			continue
 		}
 
@@ -167,6 +175,17 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
 			}
 			msgs = append(msgs, diff...)
+			if action != nil {
+				if file := orig.Model().GetFile(); file != nil {
+					if file.State == model.BlockContentFile_Uploading {
+						file.State = model.BlockContentFile_Empty
+					}
+				}
+				action.Change = append(action.Change, history.Change{
+					Before: orig,
+					After:  b,
+				})
+			}
 		}
 		if err := s.validateBlock(b); err != nil {
 			return nil, err
@@ -200,7 +219,9 @@ func (s *state) apply() (msgs []*pb.EventMessage, err error) {
 		s.sb.setBlock(b)
 	}
 	for _, id := range s.toRemove {
-		s.sb.deleteBlock(id)
+		if old := s.sb.deleteBlock(id); old != nil && action != nil {
+			action.Remove = append(action.Remove, old)
+		}
 	}
 	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return

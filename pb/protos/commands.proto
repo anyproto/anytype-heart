@@ -806,38 +806,47 @@ message Rpc {
             }
         }
 
-        /*
-         * Block history: switch between versions (lib context: switch block head), move forward or backward
-         * **Example scenario**
-         * 1. User -> MacOS Front: CMD+Z
-         * 2. Front -> MW: Rpc.Block.History.Move.Request(blockId, false)
-         * 3. MW -> Lib: ?? TODO
-         * 4. Lib: switches current block header to a previous one
-         * 5. Lib -> MW: prev version of block
-         * 6. MW -> Front: BlockShow(block.prevVersion)
-        */
-        message History {
-            message Move {
-                message Request {
-                    string contextId = 1; // id of the context block
-                    string blockId = 2;
-                    bool moveForward = 3; // Move direction. If true, move forward
+        message Undo {
+            message Request {
+                string contextId = 1; // id of the context block
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        CAN_NOT_MOVE = 3;
+                        // ...
+                    }
                 }
+            }
+        }
 
-                message Response {
-                    Error error = 1;
+        message Redo {
+            message Request {
+                string contextId = 1; // id of the context block
+            }
 
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
+            message Response {
+                Error error = 1;
 
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            CAN_NOT_MOVE = 3;
-                            // ...
-                        }
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        CAN_NOT_MOVE = 3;
+                        // ...
                     }
                 }
             }
