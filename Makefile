@@ -32,7 +32,7 @@ test-deps:
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
 	export GO111MODULE=on
-	go build -v -tags nogrpcserver -o dist/lib.a -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
+	go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
 
 build-js:
 	cp dist/lib.a jsaddon/lib.a
