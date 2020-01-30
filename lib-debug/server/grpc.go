@@ -1,13 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
 
+	"google.golang.org/grpc"
+
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/lib-debug"
-	"google.golang.org/grpc"
 )
 
 const defaultAddr = "127.0.0.1:9999"
@@ -32,5 +34,6 @@ func main(){
 	grpcServer := grpc.NewServer()
 	lib.RegisterClientCommandsServer(grpcServer, mw)
 
+	fmt.Println("gRPC server started at: " + addr)
 	grpcServer.Serve(lis)
 }

@@ -108,7 +108,7 @@ protos-java:
 protos-ts:
 	npm run build:ts
 
-build-debug:
+build-debug: protos-debug
 	go build -i -v -tags debug -o dist/debug ./lib-debug/server/grpc.go
 
 run-debug: build-debug
