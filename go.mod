@@ -12,6 +12,7 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/stretchr/testify v1.4.0
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
+	google.golang.org/grpc v1.24.0
 	gotest.tools v2.1.0+incompatible
 )
 
