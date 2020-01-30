@@ -35,7 +35,7 @@ func TestState_Normalize(t *testing.T) {
 
 	t.Run("nothing to change", func(t *testing.T) {
 		fx := newStateFixture(t)
-		msgs, err := fx.apply()
+		msgs, err := fx.apply(nil)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
 		defer fx.Finish()
@@ -47,7 +47,7 @@ func TestState_Normalize(t *testing.T) {
 		fx.sb.versions["root"].Model().ChildrenIds = []string{"one"}
 		fx.sb.versions["one"] = simple.New(&model.Block{Id: "one", ChildrenIds: []string{"missingId"}})
 		fx.get("one")
-		msgs, err := fx.apply()
+		msgs, err := fx.apply(nil)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 1)
 		assert.Len(t, fx.saved, 1)
@@ -65,7 +65,7 @@ func TestState_Normalize(t *testing.T) {
 		fx.sb.versions["t1"] = simple.New(&model.Block{Id: "t1"})
 		fx.get("c1")
 		fx.get("c2")
-		msgs, err := fx.apply()
+		msgs, err := fx.apply(nil)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 4) // 3 remove + 1 change
 		assert.Len(t, fx.saved, 1)
@@ -85,7 +85,7 @@ func TestState_Normalize(t *testing.T) {
 		fx.sb.versions["t1"] = simple.New(&model.Block{Id: "t1"})
 		fx.sb.versions["t2"] = simple.New(&model.Block{Id: "t2"})
 		fx.get("c1")
-		msgs, err := fx.apply()
+		msgs, err := fx.apply(nil)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 3) // 2 remove + 1 change
 		assert.Len(t, fx.saved, 1)
@@ -108,7 +108,7 @@ func TestState_Normalize(t *testing.T) {
 		fx.removeFromChilds("c2")
 		fx.remove("c2")
 
-		msgs, err := fx.apply()
+		msgs, err := fx.apply(nil)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 4) // 1 row change + 1 remove + 2 width reset
 		assert.Len(t, fx.saved, 3)

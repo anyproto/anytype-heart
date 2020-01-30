@@ -177,7 +177,7 @@ func (ls *linkSubscriptions) setMeta(info metaInfo) {
 	if len(linkIds) == 0 {
 		return
 	}
-	err := ls.sb.UpdateBlock(linkIds, func(b simple.Block) error {
+	err := ls.sb.UpdateBlock(linkIds, false, func(b simple.Block) error {
 		if l, ok := b.(link.Block); ok {
 			l.SetMeta(info.meta)
 		}

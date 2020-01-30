@@ -16,6 +16,7 @@ require (
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
 	github.com/yuin/goldmark v1.1.22
 	golang.org/x/text v0.3.2
+	google.golang.org/grpc v1.24.0
 	gotest.tools v2.1.0+incompatible
 )
 

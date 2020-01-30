@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -36,11 +37,13 @@ type smartBlock interface {
 	Move(req pb.RpcBlockListMoveRequest) error
 	Paste(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) (newId string, err error)
-	UpdateBlock(ids []string, apply func(b simple.Block) error) (err error)
+	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
+	Undo() error
+	Redo() error
 	Close() error
 	Anytype() anytype.Anytype
 }
@@ -94,6 +97,7 @@ type commonSmart struct {
 	versions map[string]simple.Block
 
 	linkSubscriptions *linkSubscriptions
+	history           history.History
 
 	m sync.RWMutex
 
@@ -163,7 +167,7 @@ func (p *commonSmart) Anytype() anytype.Anytype {
 	return p.s.anytype
 }
 
-func (p *commonSmart) UpdateBlock(ids []string, apply func(b simple.Block) error) (err error) {
+func (p *commonSmart) UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
@@ -176,7 +180,7 @@ func (p *commonSmart) UpdateBlock(ids []string, apply func(b simple.Block) error
 			return
 		}
 	}
-	return p.applyAndSendEvent(s)
+	return p.applyAndSendEventHist(s, hist)
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -657,7 +661,7 @@ func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
 	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
 		return
 	}
-	return p.applyAndSendEvent(s)
+	return p.applyAndSendEventHist(s, false)
 }
 
 func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
@@ -760,19 +764,16 @@ func (p *commonSmart) Close() error {
 	return nil
 }
 
-func (p *commonSmart) getNonVirtualBlock(id string) (simple.Block, error) {
-	b, ok := p.versions[id]
-	if !ok {
-		return nil, ErrBlockNotFound
-	}
-	if b.Virtual() {
-		return nil, ErrUnexpectedBlockType
-	}
-	return b, nil
+func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
+	return p.applyAndSendEventHist(s, true)
 }
 
-func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
-	msgs, err := s.apply()
+func (p *commonSmart) applyAndSendEventHist(s *state, hist bool) (err error) {
+	var action *history.Action
+	if hist {
+		action = &history.Action{}
+	}
+	msgs, err := s.apply(action)
 	if err != nil {
 		return
 	}
@@ -781,6 +782,9 @@ func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
 			Messages:  msgs,
 			ContextId: p.GetId(),
 		})
+	}
+	if hist && p.history != nil && !action.IsEmpty() {
+		p.history.Add(*action)
 	}
 	return
 }
@@ -796,11 +800,13 @@ func (p *commonSmart) setBlock(b simple.Block) {
 	}
 }
 
-func (p *commonSmart) deleteBlock(id string) {
+func (p *commonSmart) deleteBlock(id string) (deleted simple.Block) {
 	if b, ok := p.versions[id]; ok {
 		delete(p.versions, id)
 		p.onDelete(b)
+		return b
 	}
+	return nil
 }
 
 func (p *commonSmart) onChange(b simple.Block) {

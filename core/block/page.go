@@ -5,10 +5,12 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -41,6 +43,7 @@ func (p *page) Init() {
 		p.addIcon(icon)
 	}
 	p.linkSubscriptions = newLinkSubscriptions(p)
+	p.history = history.NewHistory(0)
 	p.init()
 }
 
@@ -123,6 +126,61 @@ func (p *page) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (
 	return p.applyAndSendEvent(s)
 }
 
+func (p *page) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	var (
+		tb      text.Block
+		titleId = p.block.GetId() + pageTitleSuffix
+	)
+	for _, id := range ids {
+		if tb, err = s.getText(id); err != nil {
+			return
+		}
+		if err = apply(tb); err != nil {
+			return
+		}
+		if id == titleId {
+			p.updateTitle(s, tb.GetText())
+		}
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *page) UpdateIconBlock(id string, apply func(t base.IconBlock) error) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	icon, err := s.getIcon(id)
+	if err != nil {
+		return
+	}
+	if err = apply(icon); err != nil {
+		return
+	}
+	if id == p.block.GetId()+pageIconSuffix {
+		p.updateIcon(s, icon.Model().GetIcon().Name)
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *page) updateTitle(s *state, title string) {
+	fields := s.get(p.GetId()).Model().Fields
+	if fields.Fields == nil {
+		fields.Fields = make(map[string]*types.Value)
+	}
+	fields.Fields["name"] = testStringValue(title)
+}
+
+func (p *page) updateIcon(s *state, icon string) {
+	fields := s.get(p.GetId()).Model().Fields
+	if fields.Fields == nil {
+		fields.Fields = make(map[string]*types.Value)
+	}
+	fields.Fields["icon"] = testStringValue(icon)
+}
+
 type pageTitleBlock struct {
 	text.Block
 	page *page
@@ -133,17 +191,7 @@ func (b *pageTitleBlock) Virtual() bool {
 }
 
 func (b *pageTitleBlock) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
-	if err = b.Block.SetText(text, nil); err != nil {
-		return
-	}
-	s := b.page.newState()
-	fields := s.get(b.page.GetId()).Model().Fields
-	fields.Fields["name"] = testStringValue(text)
-
-	if err = b.page.setFields(s, b.page.GetId(), fields); err != nil {
-		return
-	}
-	return b.page.applyAndSendEvent(s)
+	return b.Block.SetText(text, nil)
 }
 
 func (b *pageTitleBlock) Copy() simple.Block {
@@ -187,16 +235,7 @@ func (b *pageIconBlock) Copy() simple.Block {
 }
 
 func (b *pageIconBlock) SetIconName(name string) (err error) {
-	if err := b.IconBlock.SetIconName(name); err != nil {
-		return err
-	}
-	fields := b.page.versions[b.page.GetId()].Copy().Model().Fields
-	fields.Fields["icon"] = testStringValue(name)
-	s := b.page.newState()
-	if err = b.page.setFields(s, b.page.GetId(), fields); err != nil {
-		return
-	}
-	return b.page.applyAndSendEvent(s)
+	return b.IconBlock.SetIconName(name)
 }
 
 func (b *pageIconBlock) Diff(block simple.Block) ([]*pb.EventMessage, error) {
