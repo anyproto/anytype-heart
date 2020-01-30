@@ -1,4 +1,4 @@
-// +build debug,!_test
+// +build !nogrpcserver,!_test
 
 package core
 
