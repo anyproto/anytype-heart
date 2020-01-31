@@ -66,7 +66,7 @@ func (a *Anytype) predefinedThread(index threadDerivedIndex) (*tcore.Thread, err
 	return nil, fmt.Errorf("thread not found")
 }
 
-func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex) (*tcore.Thread, error) {
+func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshotIfNotExist bool) (*tcore.Thread, error) {
 	key, err := a.deriveKey(index)
 	if err != nil {
 		return nil, err
@@ -74,6 +74,20 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex) (*tcore.Thread, 
 
 	if thread := a.Textile.Node().ThreadByKey(key.Address()); thread != nil {
 		return thread, nil
+	}
+
+	if mustSyncSnapshotIfNotExist {
+		err := a.syncAccount(true)
+		if err != nil {
+			return nil, err
+		}
+
+		if thread := a.Textile.Node().ThreadByKey(key.Address()); thread == nil {
+			// todo: this shouldn be a critical error if we will be able to apply snapshot later
+			return nil, fmt.Errorf("predefinedThreadAdd failed to restore thread from snapshot")
+		} else {
+			return thread, nil
+		}
 	}
 
 	sf, err := a.Textile.Node().AddSchema(threadDerivedIndexToSchema[index], "dashboard")

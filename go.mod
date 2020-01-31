@@ -21,7 +21,7 @@ require (
 	github.com/whyrusleeping/go-logging v0.0.1
 )
 
-replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.6.10-0.20200113110756-d18f10d572cb
+replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.7.8-0.20200131144857-7cb5f9cc495b
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
 
