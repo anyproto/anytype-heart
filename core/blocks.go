@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
 	mh "github.com/multiformats/go-multihash"
+	uuid "github.com/satori/go.uuid"
 )
 
 func (a *Anytype) GetBlock(id string) (Block, error) {
@@ -54,9 +55,9 @@ func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion Blo
 	}
 }
 
-func (a *Anytype) createPredefinedBlocks() error {
+func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) error {
 	// archive
-	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchiveDashboard)
+	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchiveDashboard, syncSnapshotIfNotExist)
 	if err != nil {
 		return err
 	}
@@ -90,7 +91,7 @@ func (a *Anytype) createPredefinedBlocks() error {
 	}
 
 	// home
-	thread, err = a.predefinedThreadAdd(threadDerivedIndexHomeDashboard)
+	thread, err = a.predefinedThreadAdd(threadDerivedIndexHomeDashboard, syncSnapshotIfNotExist)
 	if err != nil {
 		return err
 	}
@@ -104,20 +105,29 @@ func (a *Anytype) createPredefinedBlocks() error {
 	if version, _ := block.GetCurrentVersion(); version == nil || version.Model() == nil || version.Model().Content == nil {
 		// version not yet created
 		log.Debugf("create predefined home block")
-
-		_, err = block.AddVersion(&model.Block{
-			Id:          block.GetId(),
-			ChildrenIds: []string{a.predefinedBlockIds.Archive},
-			Fields: &types.Struct{
-				Fields: map[string]*types.Value{
-					"name": {Kind: &types.Value_StringValue{StringValue: "Home"}},
-					"icon": {Kind: &types.Value_StringValue{StringValue: ":house:"}},
+		archiveLinkId := block.GetId() + "/" + uuid.NewV4().String()
+		_, err = block.AddVersions([]*model.Block{
+			{
+				Id:          block.GetId(),
+				ChildrenIds: []string{archiveLinkId},
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": {Kind: &types.Value_StringValue{StringValue: "Home"}},
+						"icon": {Kind: &types.Value_StringValue{StringValue: ":house:"}},
+					},
+				},
+				Content: &model.BlockContentOfDashboard{
+					Dashboard: &model.BlockContentDashboard{
+						Style: model.BlockContentDashboard_MainScreen,
+					},
 				},
 			},
-			Content: &model.BlockContentOfDashboard{
-				Dashboard: &model.BlockContentDashboard{
-					Style: model.BlockContentDashboard_MainScreen,
-				},
+			{
+				Id: archiveLinkId,
+				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+					TargetBlockId: a.predefinedBlockIds.Archive,
+					Style:         model.BlockContentLink_Dataview,
+				}},
 			},
 		})
 		if err != nil {
@@ -125,5 +135,9 @@ func (a *Anytype) createPredefinedBlocks() error {
 		}
 	}
 
+	err = a.textile().SnapshotThreads()
+	if err != nil {
+		log.Errorf("SnapshotThreads error: %s")
+	}
 	return nil
 }
