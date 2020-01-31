@@ -5512,7 +5512,8 @@ General purpose structure, uses in Mark.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Page | 0 |  |
-| Dataview | 1 | ... |
+| Dataview | 1 |  |
+| Dashboard | 2 | ... |
 
 
 
@@ -5526,6 +5527,7 @@ General purpose structure, uses in Mark.
 | Empty | 0 | Ordinary page, without additional fields |
 | Task | 1 | Page with a task fields |
 | Set | 2 | Page, that organize a set of blocks by a specific criterio |
+| Breadcrumbs | 3 | ... |
 
 
 

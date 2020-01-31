@@ -27,6 +27,8 @@ github.com/andybalholm/cascadia v1.0.0 h1:hOCXnnZ5A+3eVDX8pvgl4kofXv2ELss0bKcqRy
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/anytypeio/go-anytype-library v0.0.0-20200123103712-e18be5ef2d32 h1:faSEJQSNhQ6VAn+5KtsPkXaynu261WkLAl/2ZO0LTLk=
 github.com/anytypeio/go-anytype-library v0.0.0-20200123103712-e18be5ef2d32/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
+github.com/anytypeio/go-anytype-library v0.0.0-20200131124634-59e7ff4fc1f7 h1:VF5QWbT6+vloe+DV/AKwVEgq5vvaTG1CboryFzfpTak=
+github.com/anytypeio/go-anytype-library v0.0.0-20200131124634-59e7ff4fc1f7/go.mod h1:6G1FBGQuCJlQW2peE+2WDoRxuS1PAKdH0UM1qHTFPuY=
 github.com/anytypeio/go-textile v0.6.10-0.20200113110756-d18f10d572cb h1:omo46Cpu/JsSRusTRX9q3kVZtY6A39ancpylu4Ay/9w=
 github.com/anytypeio/go-textile v0.6.10-0.20200113110756-d18f10d572cb/go.mod h1:GpthA3sPUte8bRAATVaBj0rzWtxhv+8k6Js2jiMYIlw=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13 h1:XMUxybyqCaEAGZZK/Qv2cRB0klc04dNTgtSqpacg15Y=
