@@ -47,7 +47,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return m
 	}
 
-	if err := mw.blockService.OpenBlock(req.BlockId); err != nil {
+	if err := mw.blockService.OpenBlock(req.BlockId, req.BreadcrumbsIds...); err != nil {
 		switch err {
 		case block.ErrBlockNotFound:
 			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
@@ -56,6 +56,27 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	}
 
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse {
+	response := func(code pb.RpcBlockOpenBreadcrumbsResponseErrorCode, id string, err error) *pb.RpcBlockOpenBreadcrumbsResponse {
+		m := &pb.RpcBlockOpenBreadcrumbsResponse{Error: &pb.RpcBlockOpenBreadcrumbsResponseError{Code: code}, BlockId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	id, err := mw.blockService.OpenBreadcrumbsBlock()
+	if err != nil {
+		switch err {
+		case block.ErrBlockNotFound:
+			return response(pb.RpcBlockOpenBreadcrumbsResponseError_BAD_INPUT, "", err)
+		}
+		return response(pb.RpcBlockOpenBreadcrumbsResponseError_UNKNOWN_ERROR, "", err)
+	}
+
+	return response(pb.RpcBlockOpenBreadcrumbsResponseError_NULL, id, nil)
 }
 
 func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockCloseResponse {
@@ -67,7 +88,7 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 
 		return m
 	}
-	if err := mw.blockService.CloseBlock(req.BlockId); err != nil {
+	if err := mw.blockService.CloseBlock(req.BlockId, req.BreadcrumbsIds...); err != nil {
 		return response(pb.RpcBlockCloseResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)

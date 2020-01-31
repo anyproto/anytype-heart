@@ -3,10 +3,11 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.13
 
 require (
-	github.com/anytypeio/go-anytype-library v0.0.0-20200129175421-fac2e3a29d6a
+	github.com/anytypeio/go-anytype-library v0.0.0-20200130110900-fd2f4e545ec1
 
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.3.1
+	github.com/google/uuid v1.1.1
 	github.com/ipfs/go-log v0.0.1
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/stretchr/testify v1.4.0

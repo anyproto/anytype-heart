@@ -22,8 +22,9 @@ var (
 )
 
 type Service interface {
-	OpenBlock(id string) error
-	CloseBlock(id string) error
+	OpenBlock(id string, breadcrumbsIds ...string) error
+	OpenBreadcrumbsBlock() (blockId string, err error)
+	CloseBlock(id string, breadcrumbsIds ...string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error)
 	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
@@ -74,9 +75,9 @@ type service struct {
 	m           sync.RWMutex
 }
 
-func (s *service) OpenBlock(id string) (err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
+func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
 	if _, ok := s.smartBlocks[id]; ok {
 		return ErrBlockAlreadyOpen
 	}
@@ -86,16 +87,43 @@ func (s *service) OpenBlock(id string) (err error) {
 		return
 	}
 	s.smartBlocks[id] = sb
+	for _, bid := range breadcrumbsIds {
+		if b, ok := s.smartBlocks[bid]; ok {
+			if bs, ok := b.(*breadcrumbs); ok {
+				bs.OnSmartOpen(id)
+			}
+		}
+	}
 	return nil
 }
 
-func (s *service) CloseBlock(id string) (err error) {
+func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	bs := newBreadcrumbs(s)
+	if err = bs.Open(nil); err != nil {
+		return
+	}
+	bs.Init()
+	s.smartBlocks[bs.GetId()] = bs
+	return bs.GetId(), nil
+}
+
+func (s *service) CloseBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if sb, ok := s.smartBlocks[id]; ok {
 		delete(s.smartBlocks, id)
 		fmt.Println("middle: close smart block:", id, err)
 		return sb.Close()
+	}
+	for _, bid := range breadcrumbsIds {
+		if b, ok := s.smartBlocks[bid]; ok {
+			if bs, ok := b.(*breadcrumbs); ok {
+				bs.OnSmartClose(id)
+			}
+		}
 	}
 	return ErrBlockNotFound
 }

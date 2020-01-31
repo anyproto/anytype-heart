@@ -23,6 +23,7 @@ service ClientCommands {
     rpc BlockUpload (anytype.Rpc.Block.Upload.Request) returns (anytype.Rpc.Block.Upload.Response);
     rpc BlockReplace (anytype.Rpc.Block.Replace.Request) returns (anytype.Rpc.Block.Replace.Response);
     rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);
+    rpc BlockOpenBreadcrumbs (anytype.Rpc.Block.OpenBreadcrumbs.Request) returns (anytype.Rpc.Block.OpenBreadcrumbs.Response);
     rpc BlockCreate (anytype.Rpc.Block.Create.Request) returns (anytype.Rpc.Block.Create.Response);
     rpc BlockCreatePage (anytype.Rpc.Block.CreatePage.Request) returns (anytype.Rpc.Block.CreatePage.Response);
     rpc BlockUnlink (anytype.Rpc.Block.Unlink.Request) returns (anytype.Rpc.Block.Unlink.Response);
