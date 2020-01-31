@@ -50,6 +50,11 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
+	err = mw.Anytype.InitPredefinedBlocks(false)
+	if err != nil {
+		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
+	}
+
 	err = mw.AccountSetName(req.Name)
 	if err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
@@ -140,6 +145,11 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
+	err = mw.Stop()
+	if err != nil {
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
+	}
+
 	mw.Anytype, err = core.New(mw.rootPath, account.Address())
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
@@ -228,73 +238,65 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return m
 	}
 
-	if mw.Anytype != nil && req.Id == mw.Anytype.Textile.Address() {
-		acc := &model.Account{Id: req.Id}
-
-		var err error
-		acc.Name, err = mw.Anytype.Textile.Name()
-		if err != nil {
-			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
+	if mw.Anytype == nil || req.Id != mw.Anytype.Textile.Address() {
+		// in case user selected account other than the first one(used to perform search)
+		// or this is the first time in this session we run the Anytype node
+		if mw.Anytype != nil {
+			// user chose account other than the first one
+			// we need to stop the first node that what used to search other accounts and then start the right one
+			err := mw.Stop()
+			if err != nil {
+				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
+			}
 		}
 
-		avatarHashOrColor, err := mw.Anytype.Textile.Avatar()
-		if err != nil {
-			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
+		if req.RootPath != "" {
+			mw.rootPath = req.RootPath
 		}
 
-		acc.Avatar = getAvatarFromString(avatarHashOrColor)
-		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
-	} else if mw.Anytype != nil {
-		// user chose account other than the first one
-		// we need to stop the first node that what used to search other accounts and then start the right one
-		err := mw.Start()
-		if err != nil {
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
-		}
-	}
-
-	if req.RootPath != "" {
-		mw.rootPath = req.RootPath
-	}
-
-	if mw.accountSearchCancel != nil {
-		// this func will wait until search process will stop in order to be sure node was properly stopped
-		mw.accountSearchCancel()
-	}
-
-	if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
-		if mw.mnemonic == "" {
-			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
+		if mw.accountSearchCancel != nil {
+			// this func will wait until search process will stop in order to be sure node was properly stopped
+			mw.accountSearchCancel()
 		}
 
-		account, err := core.WalletAccountAt(mw.mnemonic, len(mw.localAccounts), "")
+		if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
+			if mw.mnemonic == "" {
+				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
+			}
+
+			account, err := core.WalletAccountAt(mw.mnemonic, len(mw.localAccounts), "")
+			if err != nil {
+				return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+			}
+
+			err = core.WalletInitRepo(mw.rootPath, account.Seed())
+			if err != nil {
+				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			}
+		}
+
+		anytype, err := core.New(mw.rootPath, req.Id)
 		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}
 
-		err = core.WalletInitRepo(mw.rootPath, account.Seed())
+		mw.Anytype = anytype
+
+		err = mw.Start()
 		if err != nil {
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			if err == core.ErrRepoCorrupted {
+				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+			}
+
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 		}
-	}
-
-	anytype, err := core.New(mw.rootPath, req.Id)
-	if err != nil {
-		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
-	}
-
-	mw.Anytype = anytype
-
-	err = mw.Start()
-	if err != nil {
-		if err == core.ErrRepoCorrupted {
-			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
-		}
-
-		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
 	acc := &model.Account{Id: req.Id}
+	err := mw.Anytype.InitPredefinedBlocks(true)
+	if err != nil {
+		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
+	}
 
 	acc.Name, err = mw.Anytype.Textile.Name()
 	if err != nil {
@@ -310,14 +312,14 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		for {
 			// wait for cafe registration
 			// in order to use cafeAPI instead of pubsub
-			if cs := anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
+			if cs := mw.Anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
 				break
 			}
 
 			time.Sleep(time.Second)
 		}
 
-		contact, err := anytype.AccountRequestStoredContact(context.Background(), req.Id)
+		contact, err := mw.Anytype.AccountRequestStoredContact(context.Background(), req.Id)
 		if err != nil {
 			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
 		}
@@ -328,6 +330,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	if avatarHashOrColor != "" {
 		acc.Avatar = getAvatarFromString(avatarHashOrColor)
 	}
+
 	mw.switchAccount(acc.Id)
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
