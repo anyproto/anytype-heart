@@ -127,6 +127,10 @@ func (a *Anytype) runPeriodicJobsInBackground() {
 // if waitInitialSync = true it will try to find predefined blocks snapshot in the p2p network and cafes (will consume a time)
 // if waitInitialSync = false it will do a sync in background after
 func (a *Anytype) Run() error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	a.done = make(chan struct{})
 	swarmKeyFilePath := filepath.Join(a.textile().RepoPath(), "swarm.key")
 	err := ioutil.WriteFile(swarmKeyFilePath, []byte(privateKey), 0644)
 	if err != nil {
@@ -166,7 +170,12 @@ func (a *Anytype) Run() error {
 	}()
 
 	// preload even in case we don't need them
-	a.syncAccount(false)
+	go func(){
+		err = a.syncAccount(false)
+		if err != nil {
+			log.Errorf("account sync: %s", err.Error())
+		}
+	}()
 
 	/*tgateway.Host = &tgateway.Gateway{
 		Node: a.Textile.Node(),
@@ -188,7 +197,17 @@ func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
 }
 
 func (a *Anytype) Stop() error {
-	close(a.done)
-	a.cancelSync.Close()
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	
+	if a.done != nil {
+		close(a.done)
+		a.done = nil
+	}
+
+	if a.cancelSync != nil {
+		a.cancelSync.Close()
+	}
+
 	return a.textile().Stop()
 }
