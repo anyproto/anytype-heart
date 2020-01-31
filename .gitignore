@@ -7,4 +7,4 @@ package-lock.json
 .vscode
 /vendor/
 *_mock.go
-/lib-debug/*.pb.go
+lib-debug/service.pb.go

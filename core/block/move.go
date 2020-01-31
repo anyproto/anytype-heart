@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/prometheus/common/log"
 )
 
 func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
@@ -88,7 +89,7 @@ func (p *commonSmart) moveFromSide(s *state, target simple.Block, pos model.Bloc
 			return
 		}
 		target = s.get(row.Model().ChildrenIds[0])
-		fmt.Println("middle: creating row:", row.Model().Id)
+		log.Debug("middle: creating row:", row.Model().Id)
 	}
 	column, err := s.create(&model.Block{
 		ChildrenIds: ids,
