@@ -11,6 +11,7 @@
   
 
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
+    - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
     - [Rpc.Account](#anytype.Rpc.Account)
     - [Rpc.Account.Create](#anytype.Rpc.Account.Create)
@@ -452,6 +453,7 @@
 | BlockSetIconName | [Rpc.Block.Set.Icon.Name.Request](#anytype.Rpc.Block.Set.Icon.Name.Request) | [Rpc.Block.Set.Icon.Name.Response](#anytype.Rpc.Block.Set.Icon.Name.Response) |  |
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
+| ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
 
  
 
@@ -461,6 +463,16 @@
 <p align="right"><a href="#top">Top</a></p>
 
 ## pb/protos/commands.proto
+
+
+
+<a name="anytype.Empty"></a>
+
+### Empty
+
+
+
+
 
 
 
@@ -3727,6 +3739,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | LOCAL_REPO_EXISTS_BUT_CORRUPTED | 104 |  |
 | FAILED_TO_RUN_NODE | 105 |  |
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
+| FAILED_TO_STOP_RUNNING_NODE | 107 |  |
 
 
 
@@ -3746,6 +3759,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_FIND_ACCOUNT_INFO | 104 |  |
 | LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET | 105 |  |
 | FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
+| FAILED_TO_RECOVER_PREDEFINED_BLOCKS | 107 |  |
 
 
 
@@ -5498,8 +5512,7 @@ General purpose structure, uses in Mark.
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Page | 0 |  |
-| Dataview | 1 |  |
-| Dashboard | 2 | ... |
+| Dataview | 1 | ... |
 
 
 
@@ -5513,7 +5526,6 @@ General purpose structure, uses in Mark.
 | Empty | 0 | Ordinary page, without additional fields |
 | Task | 1 | Page with a task fields |
 | Set | 2 | Page, that organize a set of blocks by a specific criterio |
-| Breadcrumbs | 3 | ... |
 
 
 

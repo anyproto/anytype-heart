@@ -21,6 +21,26 @@ Then you can easily regenerate proto files:
 make protos
 ```
 
+
+#### Run local gRPC server to debug
+⚠️ Make sure to update/install protobuf compiler from [this repo](https://github.com/anytypeio/protobuf) using `make setup-protoc`
+
+Commands:
+`make run-debug` - builds proto files for grpc server, builds the binary and runs it
+`make build-debug` - builds proto files for grpc server and builds the binary into `dist/debug`
+
+If you want to change the default port(9999):
+`ANYTYPE_GRPC_ADDR=127.0.0.1:8888 make run-debug`
+
+
+Useful tools for debug: 
+**GUI**
+https://github.com/uw-labs/bloomrpc 
+`HowTo: Set the import path to the middleware root, then select commands.proto file`
+
+**CLI** 
+https://github.com/njpatel/grpcc
+
 #### Run tests
 GO test:
 ```
