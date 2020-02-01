@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -170,7 +171,7 @@ func (a *Anytype) Run() error {
 	}()
 
 	// preload even in case we don't need them
-	go func(){
+	go func() {
 		err = a.syncAccount(false)
 		if err != nil {
 			log.Errorf("account sync: %s", err.Error())
@@ -199,7 +200,7 @@ func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
 func (a *Anytype) Stop() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
-	
+
 	if a.done != nil {
 		close(a.done)
 		a.done = nil
