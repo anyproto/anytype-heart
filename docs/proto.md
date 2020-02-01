@@ -3025,6 +3025,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error) |  |  |
 | homeBlockId | [string](#string) |  | home dashboard block id |
+| archiveBlockId | [string](#string) |  | home dashboard block id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
@@ -3717,6 +3718,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE | 101 |  |
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME | 102 |  |
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
+| FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 
 
 
@@ -4256,6 +4258,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 101 |  |
 
 
 
