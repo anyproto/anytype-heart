@@ -208,6 +208,7 @@ func (a *Anytype) Stop() error {
 	if a.cancelSync != nil {
 		a.cancelSync.Close()
 	}
+	fmt.Println("textile().Stop() wait...")
 
 	return a.textile().Stop()
 }
