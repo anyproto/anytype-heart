@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -248,15 +249,14 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			if err != nil {
 				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
 			}
+			if mw.accountSearchCancel != nil {
+				// this func will wait until search process will stop in order to be sure node was properly stopped
+				mw.accountSearchCancel()
+			}
 		}
 
 		if req.RootPath != "" {
 			mw.rootPath = req.RootPath
-		}
-
-		if mw.accountSearchCancel != nil {
-			// this func will wait until search process will stop in order to be sure node was properly stopped
-			mw.accountSearchCancel()
 		}
 
 		if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
@@ -333,6 +333,36 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 
 	mw.switchAccount(acc.Id)
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+	response := func(code pb.RpcAccountStopResponseErrorCode, err error) *pb.RpcAccountStopResponse {
+		m := &pb.RpcAccountStopResponse{Error: &pb.RpcAccountStopResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	if mw.Anytype == nil {
+		return response(pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
+	}
+
+	address := mw.Anytype.Textile.Address()
+	err := mw.Stop()
+	if err != nil {
+		return response(pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE, err)
+	}
+
+	if req.RemoveData {
+		err := os.RemoveAll(filepath.Join(mw.rootPath, address))
+		if err != nil {
+			return response(pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	return response(pb.RpcAccountStopResponseError_NULL, nil)
 }
 
 func getAvatarFromString(avatarHashOrColor string) *model.AccountAvatar {

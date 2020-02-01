@@ -26,6 +26,10 @@
     - [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request)
     - [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response)
     - [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error)
+    - [Rpc.Account.Stop](#anytype.Rpc.Account.Stop)
+    - [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request)
+    - [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response)
+    - [Rpc.Account.Stop.Response.Error](#anytype.Rpc.Account.Stop.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
     - [Rpc.Block.Close](#anytype.Rpc.Block.Close)
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
@@ -240,6 +244,7 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
+    - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
@@ -404,6 +409,7 @@
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
+| AccountStop | [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request) | [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response) |  |
 | ImageGetBlob | [Rpc.Ipfs.Image.Get.Blob.Request](#anytype.Rpc.Ipfs.Image.Get.Blob.Request) | [Rpc.Ipfs.Image.Get.Blob.Response](#anytype.Rpc.Ipfs.Image.Get.Blob.Response) |  |
 | VersionGet | [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request) | [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
@@ -656,6 +662,62 @@ Middleware-to-front-end response for an account select request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Stop"></a>
+
+### Rpc.Account.Stop
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Stop.Request"></a>
+
+### Rpc.Account.Stop.Request
+Front end to middleware request to stop currently running account node and optionally remove the locally stored data
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| removeData | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Stop.Response"></a>
+
+### Rpc.Account.Stop.Response
+Middleware-to-front-end response for an account stop request
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Stop.Response.Error](#anytype.Rpc.Account.Stop.Response.Error) |  | Error while trying to launch/select an account |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Stop.Response.Error"></a>
+
+### Rpc.Account.Stop.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -3695,6 +3757,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET | 105 |  |
 | FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
 | FAILED_TO_RECOVER_PREDEFINED_BLOCKS | 107 |  |
+
+
+
+<a name="anytype.Rpc.Account.Stop.Response.Error.Code"></a>
+
+### Rpc.Account.Stop.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Id or root path is wrong |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| FAILED_TO_STOP_NODE | 102 |  |
+| FAILED_TO_REMOVE_ACCOUNT_DATA | 103 |  |
 
 
 

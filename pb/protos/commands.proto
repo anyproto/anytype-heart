@@ -1191,6 +1191,36 @@ message Rpc {
                 }
             }
         }
+
+        message Stop {
+            /**
+            * Front end to middleware request to stop currently running account node and optionally remove the locally stored data
+            */
+            message Request {
+                bool removeData = 1;
+            }
+
+            /**
+            * Middleware-to-front-end response for an account stop request
+            */
+            message Response {
+                Error error = 1; // Error while trying to launch/select an account
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2; // Id or root path is wrong
+
+                        ACCOUNT_IS_NOT_RUNNING = 101;
+                        FAILED_TO_STOP_NODE = 102;
+                        FAILED_TO_REMOVE_ACCOUNT_DATA = 103;
+                    }
+                }
+            }
+        }
     }
 
     /*
