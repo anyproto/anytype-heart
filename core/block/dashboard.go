@@ -27,7 +27,10 @@ func (p *dashboard) Init() {
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
 		p.addTestPage()
+	} else if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Archive {
+		p.removeArchive()
 	}
+
 	p.migratePageToLinks()
 	p.linkSubscriptions = newLinkSubscriptions(p)
 	p.history = history.NewHistory(0)
@@ -53,6 +56,22 @@ func (p *dashboard) migratePageToLinks() {
 	if _, err := s.apply(nil); err != nil {
 		fmt.Println("can't apply state for migrating page to link", err)
 	}
+}
+
+func (p *dashboard) removeArchive() {
+	if os.Getenv("ANYTYPE_SHOW_ARCHIVE") == "1" {
+		return
+	}
+
+	archiveIndex := -1
+	childrenIds := p.versions[p.block.GetId()].Model().ChildrenIds
+	for i, child := range childrenIds {
+		if child != p.Anytype().PredefinedBlockIds().Archive {
+			archiveIndex = i
+			break
+		}
+	}
+	p.versions[p.block.GetId()].Model().ChildrenIds = append(childrenIds[:archiveIndex], childrenIds[archiveIndex+1:]...)
 }
 
 func (p *dashboard) addTestPage() {
