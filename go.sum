@@ -27,12 +27,9 @@ github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d h1:UQZhZ2O0vMHr2c
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/andybalholm/cascadia v1.0.0 h1:hOCXnnZ5A+3eVDX8pvgl4kofXv2ELss0bKcqRySc45o=
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/anytypeio/go-anytype-library v0.0.0-20200131160945-6d6732fc990a h1:rYzLn6dr59BF8RiKRhbR75d/8tv7MndVdYZxeoSefqY=
-github.com/anytypeio/go-anytype-library v0.0.0-20200131160945-6d6732fc990a/go.mod h1:7UDrO9CeSCTZTv8ilN9Vbof2mZhDucXpOP3MiJQPNyE=
-github.com/anytypeio/go-anytype-library v0.0.0-20200201174538-02f6d468dbde/go.mod h1:JXjxnISlpOorSh01IuA/dXsTtwOaqNZZQfktnG+HShI=
-github.com/anytypeio/go-anytype-library v0.0.0-20200201174948-35434005946d/go.mod h1:JXjxnISlpOorSh01IuA/dXsTtwOaqNZZQfktnG+HShI=
-github.com/anytypeio/go-textile v0.7.8-0.20200131144857-7cb5f9cc495b h1:EL6TMhLSIA7ABh4Wk42366FS+fu8tP1JWC5tQu4no1Y=
-github.com/anytypeio/go-textile v0.7.8-0.20200131144857-7cb5f9cc495b/go.mod h1:GpthA3sPUte8bRAATVaBj0rzWtxhv+8k6Js2jiMYIlw=
+github.com/anytypeio/go-anytype-library v0.0.0-20200201180706-3457141b9cb3 h1:wLflCf9SMKC+3zFdndCvub92zOY1HZ/+U4n5b7Tp4T4=
+github.com/anytypeio/go-anytype-library v0.0.0-20200201180706-3457141b9cb3/go.mod h1:JXjxnISlpOorSh01IuA/dXsTtwOaqNZZQfktnG+HShI=
+github.com/anytypeio/go-textile v0.7.8-0.20200201173451-51ee7d56e491 h1:p9pUUqmwHrmmCuKUhxO9ZFhKxuoNUV1uktWT/yJmmKQ=
 github.com/anytypeio/go-textile v0.7.8-0.20200201173451-51ee7d56e491/go.mod h1:GpthA3sPUte8bRAATVaBj0rzWtxhv+8k6Js2jiMYIlw=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13 h1:XMUxybyqCaEAGZZK/Qv2cRB0klc04dNTgtSqpacg15Y=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13/go.mod h1:r6Y5BY7LcHVQIKk00MK2lBIkkKk0z1LWO2bJcXox6bI=
