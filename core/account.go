@@ -51,7 +51,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		}
 		path := filepath.Join(mw.rootPath, account.Address())
 		// additional check if we found the repo already exists on local disk
-		if _, err := os.Stat(path); os.IsExist(err) {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
 			break
 		}
 
