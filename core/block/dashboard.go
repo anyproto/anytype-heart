@@ -27,7 +27,6 @@ func (p *dashboard) Init() {
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
 		p.addTestPage()
-	} else if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Archive {
 		p.removeArchive()
 	}
 
@@ -75,9 +74,10 @@ func (p *dashboard) removeArchive() {
 }
 
 func (p *dashboard) addTestPage() {
-	if os.Getenv("NO_TESTPAGE") != "" && os.Getenv("NO_TESTPAGE") != "0" {
+	if os.Getenv("ANYTYPE_TESTPAGE") != "1" {
 		return
 	}
+	
 	p.versions[testPageId+"-link"] = base.NewVirtual(&model.Block{
 		Id: testPageId + "-link",
 		Content: &model.BlockContentOfLink{
