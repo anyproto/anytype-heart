@@ -268,11 +268,10 @@ func (r *Renderer) renderBlockquote(w blocksUtil.RWriter, source []byte, n ast.N
 
 func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		// TODO: start code markup
+		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
-		// TODO: end code markup
+		w.CloseTextBlock(model.BlockContentText_Code)
 	}
-
 	return ast.WalkContinue, nil
 }
 
@@ -402,30 +401,30 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 var CodeAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	// TODO
-	/*	if entering {
-			if n.Attributes() != nil {
-				_, _ = w.WriteString("<code")
-				RenderAttributes(w, n, CodeAttributeFilter)
-				_ = w.WriteByte('>')
-			} else {
-				_, _ = w.WriteString("<code>")
-			}
-			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-				segment := c.(*ast.Text).Segment
-				value := segment.Value(source)
-				if bytes.HasSuffix(value, []byte("\n")) {
-					r.Writer.RawWrite(w, value[:len(value)-1])
-					if c != n.LastChild() {
-						r.Writer.RawWrite(w, []byte(" "))
-					}
-				} else {
-					r.Writer.RawWrite(w, value)
+	if entering {
+		w.SetMarkStart()
+
+		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+			segment := c.(*ast.Text).Segment
+			value := segment.Value(source)
+			if bytes.HasSuffix(value, []byte("\n")) {
+				w.AddTextToBuffer(string(value[:len(value)-1]))
+				if c != n.LastChild() {
+					w.AddTextToBuffer(" ")
 				}
+			} else {
+				w.AddTextToBuffer(string(value))
 			}
-			return ast.WalkSkipChildren, nil
 		}
-		_, _ = w.WriteString("</code>")*/
+		return ast.WalkSkipChildren, nil
+	} else {
+		to := int32(len(w.GetText()))
+
+		w.AddMark(model.BlockContentTextMark{
+			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
+			Type:  model.BlockContentTextMark_Keyboard,
+		})
+	}
 	return ast.WalkContinue, nil
 }
 
