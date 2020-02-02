@@ -23,6 +23,13 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
 	}
 }
 
+func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	return nil // exportHtml.BlocksToHtml(req.Blocks)
+}
+
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
 	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))

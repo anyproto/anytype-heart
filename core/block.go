@@ -82,7 +82,10 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.Copy(*req); err != nil {
+		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, err)
+	}
+
 
 	return response(pb.RpcBlockCopyResponseError_NULL, nil)
 }
