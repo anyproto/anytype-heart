@@ -62,22 +62,14 @@ func (p *dashboard) removeArchive() {
 		return
 	}
 
-	archiveIndex := -1
-	childrenIds := p.versions[p.block.GetId()].Model().ChildrenIds
-	for i, child := range childrenIds {
-		if child != p.Anytype().PredefinedBlockIds().Archive {
-			archiveIndex = i
-			break
-		}
-	}
-	p.versions[p.block.GetId()].Model().ChildrenIds = append(childrenIds[:archiveIndex], childrenIds[archiveIndex+1:]...)
+	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, p.Anytype().PredefinedBlockIds().Archive)
 }
 
 func (p *dashboard) addTestPage() {
 	if os.Getenv("ANYTYPE_TESTPAGE") != "1" {
 		return
 	}
-	
+
 	p.versions[testPageId+"-link"] = base.NewVirtual(&model.Block{
 		Id: testPageId + "-link",
 		Content: &model.BlockContentOfLink{
