@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/prometheus/common/log"
 )
 
 func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
