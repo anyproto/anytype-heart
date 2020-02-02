@@ -812,7 +812,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
+| blocks | [model.Block](#anytype.model.Block) | repeated |  |
 
 
 
@@ -828,8 +828,7 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error) |  |  |
-| clipboardText | [string](#string) |  |  |
-| clipboardHtml | [string](#string) |  | string clipboardAny = 4; Client already knows blockIds |
+| html | [string](#string) |  |  |
 
 
 

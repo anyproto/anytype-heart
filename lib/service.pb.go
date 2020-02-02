@@ -157,7 +157,7 @@ type ClientCommandsHandler interface {
 	BlockSetLinkTargetBlockId(*pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse
 	Ping(*pb.RpcPingRequest) *pb.RpcPingResponse
 	// used only for lib-debug via grpc
-	// Streams not supported ### ListenEvents(*pb.Empty)
+	ListenEvents(*pb.Empty)
 }
 
 func registerClientCommandsHandler(srv ClientCommandsHandler) {
@@ -756,6 +756,8 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = BlockSetLinkTargetBlockId(data)
 		case "Ping":
 			cd = Ping(data)
+		case "ListenEvents":
+			cd = ListenEvents(data)
 		default:
 			log.Errorf("unknown command type: %s\n", cmd)
 		}
