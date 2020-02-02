@@ -2,11 +2,10 @@ package block
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"strings"
 )
 
 func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
@@ -38,6 +37,15 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) error {
 	}
 
 	textArr := strings.Split(req.TextSlot, "\n")
+
+	block := p.versions[req.FocusedBlockId].Model()
+	switch block.Content.(type) {
+	case *model.BlockContentOfText:
+		if block.GetText().Style == model.BlockContentText_Code {
+			textArr = []string{req.TextSlot}
+		}
+	}
+
 	req.AnySlot = []*model.Block{}
 	for i := 0; i < len(textArr); i++ {
 		req.AnySlot = append(req.AnySlot, &model.Block{
