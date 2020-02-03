@@ -725,6 +725,7 @@ func (p *commonSmart) show() {
 	}
 
 	event := &pb.Event{
+		ContextId: p.GetId(),
 		Messages: []*pb.EventMessage{
 			{
 				&pb.EventMessageValueOfBlockShow{
