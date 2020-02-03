@@ -4,7 +4,7 @@ package anymark
 import (
 	"bufio"
 	"bytes"
-
+	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
@@ -151,6 +151,10 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	// special wiki spaces
 	preprocessedSource = strings.ReplaceAll(preprocessedSource, "<span> </span>", " ")
 
+	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
+	reWikiCode := regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
+	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
+
 	md := html2md.Convert(preprocessedSource)
 	md = spaceReplace.WhitespaceNormalizeString(md)
 
@@ -160,6 +164,23 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	// Pattern: <a href> <div style=background-image:...>  </div> <a>
 	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
+
+	// Pattern: <a href> <div style=background-image:...>  </div> <a>
+	//md = strings.ReplaceAll(md, "`", "^^^")
+
+	//md = reCode.ReplaceAllString(md, "```\n$1\n```")
+	md = strings.ReplaceAll(md, "`", "~~~")
+	reCode := regexp.MustCompile(` ~~~([\s\S]*?)~~~ `)
+	md = reCode.ReplaceAllString(md, " `($1)` ")
+
+	//md = reCode.ReplaceAllString(md, "~~~")
+	md = strings.ReplaceAll(md, "~~~", "\n```\n")
+	md = strings.ReplaceAll(md, "\n\n```", "\n```")
+	md = strings.ReplaceAll(md, "```\n\n", "```\n")
+
+	fmt.Println("MD:", md)
+
+	//md = "\n```code```\n ## 123123"
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)

@@ -2,7 +2,7 @@ package html
 
 import (
 	"bytes"
-
+	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
@@ -190,7 +190,7 @@ func (r *Renderer) writeLines(w blocksUtil.RWriter, source []byte, n ast.Node) {
 	l := n.Lines().Len()
 	for i := 0; i < l; i++ {
 		line := n.Lines().At(i)
-		r.Writer.RawWrite(w, line.Value(source))
+		w.AddTextToBuffer(string(line.Value(source)))
 	}
 }
 
@@ -267,6 +267,7 @@ func (r *Renderer) renderBlockquote(w blocksUtil.RWriter, source []byte, n ast.N
 }
 
 func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+	fmt.Println("renderCodeBlock")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
@@ -276,10 +277,29 @@ func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.No
 }
 
 func (r *Renderer) renderFencedCodeBlock(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	n := node.(*ast.FencedCodeBlock)
+	if entering {
+		w.OpenNewTextBlock(model.BlockContentText_Code)
+		// TODO: language?
+		/*language := n.Language(source)
+		if language != nil {
+			_, _ = w.WriteString(" class=\"language-")
+			r.Writer.Write(w, language)
+			_, _ = w.WriteString("\"")
+		}*/
+		r.writeLines(w, source, n)
+	} else {
+		w.CloseTextBlock(model.BlockContentText_Code)
+	}
+	return ast.WalkContinue, nil
+
+
+
+	fmt.Println("renderFencedCodeBlock")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
-		w.CloseTextBlock(model.BlockContentText_Code)
+		w.ForceCloseTextBlock()
 	}
 	return ast.WalkContinue, nil
 }
@@ -401,6 +421,8 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 var CodeAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+	fmt.Println("renderCodeSpan")
+
 	if entering {
 		w.SetMarkStart()
 
