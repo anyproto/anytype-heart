@@ -44,15 +44,7 @@ func (b *breadcrumbs) Open(_ anytype.Block) error {
 func (b *breadcrumbs) Init() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-
-	predefinedIds := b.s.anytype.PredefinedBlockIds()
-	homeId := predefinedIds.Home
-	homeLink := b.createLink(homeId)
-	homeLink.Model().GetLink().Style = model.BlockContentLink_Dashboard
-	b.blocks[homeLink.Model().Id] = homeLink
-	pageModel := b.blocks[b.id].Model()
-	pageModel.ChildrenIds = append(pageModel.ChildrenIds, homeLink.Model().Id)
-	b.ls.onCreate(homeLink)
+	
 	b.show()
 }
 
