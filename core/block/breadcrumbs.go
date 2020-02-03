@@ -207,3 +207,7 @@ func (b *breadcrumbs) Close() error {
 	b.ls.close()
 	return nil
 }
+
+func (b *breadcrumbs) Anytype() anytype.Anytype {
+	return b.s.anytype
+}
