@@ -119,15 +119,16 @@ func (s *service) CloseBlock(id string, breadcrumbsIds ...string) (err error) {
 	if sb, ok := s.smartBlocks[id]; ok {
 		delete(s.smartBlocks, id)
 		fmt.Println("middle: close smart block:", id, err)
-		return sb.Close()
-	}
-	for _, bid := range breadcrumbsIds {
-		if b, ok := s.smartBlocks[bid]; ok {
-			if bs, ok := b.(*breadcrumbs); ok {
-				bs.OnSmartClose(id)
+		for _, bid := range breadcrumbsIds {
+			if b, ok := s.smartBlocks[bid]; ok {
+				if bs, ok := b.(*breadcrumbs); ok {
+					bs.OnSmartClose(id)
+				}
 			}
 		}
+		return sb.Close()
 	}
+
 	return ErrBlockNotFound
 }
 

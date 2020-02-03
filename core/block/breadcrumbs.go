@@ -44,7 +44,7 @@ func (b *breadcrumbs) Open(_ anytype.Block) error {
 func (b *breadcrumbs) Init() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	b.show()
 }
 
