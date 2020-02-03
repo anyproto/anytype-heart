@@ -3,11 +3,15 @@ package block
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -15,8 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -112,6 +114,28 @@ func (p *commonSmart) GetId() string {
 	return p.block.GetId()
 }
 
+func (p *commonSmart) hideArchiveBlock() {
+	if os.Getenv("ANYTYPE_ARCHIVE") == "1" {
+		return
+	}
+	archiveBlockId := p.Anytype().PredefinedBlockIds().Archive
+	if p.block.GetId() != p.Anytype().PredefinedBlockIds().Home {
+		return
+	}
+	var archiveBlockLinkId string
+	for id, v := range p.versions {
+		if link, isLink := v.Model().Content.(*model.BlockContentOfLink); isLink && link.Link.TargetBlockId == archiveBlockId {
+			archiveBlockLinkId = id
+			break
+		}
+	}
+	if archiveBlockLinkId == "" {
+		return
+	}
+
+	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, archiveBlockLinkId)
+}
+
 func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -128,6 +152,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 		p.versions[id] = simple.New(v.Model())
 	}
 	p.versions[p.GetId()] = simple.New(ver.Model())
+	p.hideArchiveBlock()
 
 	p.normalize()
 
@@ -298,7 +323,7 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 
 		copyBlockId := copyBlock.Model().Id
 
-		if f, ok := copyBlock.(file.Block); ok{
+		if f, ok := copyBlock.(file.Block); ok {
 			file := copyBlock.Model().GetFile()
 			url := file.Name
 			f.Upload(p.s.anytype, p, "", url)

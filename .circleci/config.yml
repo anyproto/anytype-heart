@@ -281,7 +281,6 @@ jobs:
             cp ~/project/windows-amd64.a ./dist/lib.a
             cp ~/project/windows-amd64.h ./dist/lib.h
             make build-js
-            cp vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto ./protobuf/protos
             rm -rf addon
             mv jsaddon/build addon
             tar -czvf js_${VERSION}_windows-amd64.tar.gz protobuf addon

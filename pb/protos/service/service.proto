@@ -11,6 +11,7 @@ service ClientCommands {
     rpc AccountRecover (anytype.Rpc.Account.Recover.Request) returns (anytype.Rpc.Account.Recover.Response);
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);
     rpc AccountSelect (anytype.Rpc.Account.Select.Request) returns (anytype.Rpc.Account.Select.Response);
+    rpc AccountStop (anytype.Rpc.Account.Stop.Request) returns (anytype.Rpc.Account.Stop.Response);
 
     rpc ImageGetBlob (anytype.Rpc.Ipfs.Image.Get.Blob.Request) returns (anytype.Rpc.Ipfs.Image.Get.Blob.Response);
 

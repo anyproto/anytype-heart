@@ -3,8 +3,9 @@ package block
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
+
+	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -20,6 +21,8 @@ var (
 	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 )
+
+var log = logging.Logger("anytype-mw")
 
 type Service interface {
 	OpenBlock(id string, breadcrumbsIds ...string) error
@@ -323,7 +326,7 @@ func (s *service) Close() error {
 	defer s.m.Unlock()
 	for _, sb := range s.smartBlocks {
 		if err := sb.Close(); err != nil {
-			log.Printf("block[%s] close error: %v", sb.GetId(), err)
+			log.Errorf("block[%s] close error: %v", sb.GetId(), err)
 		}
 	}
 	return nil

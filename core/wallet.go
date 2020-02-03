@@ -2,6 +2,7 @@ package core
 
 import (
 	"os"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -34,6 +35,9 @@ func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWallet
 
 	mw.mnemonic = mnemonic
 
+	// because this is a fresh generated account we can be sure that there is no accounts in it yet
+	n := time.Now()
+	mw.localAccountCachedAt = &n
 	return response(mnemonic, pb.RpcWalletCreateResponseError_NULL, nil)
 }
 

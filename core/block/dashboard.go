@@ -27,7 +27,10 @@ func (p *dashboard) Init() {
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
 		p.addTestPage()
+		// todo: deprecated, remove after migration to the right link style
+		p.removeArchive()
 	}
+
 	p.migratePageToLinks()
 	p.linkSubscriptions = newLinkSubscriptions(p)
 	p.history = history.NewHistory(0)
@@ -55,10 +58,20 @@ func (p *dashboard) migratePageToLinks() {
 	}
 }
 
-func (p *dashboard) addTestPage() {
-	if os.Getenv("NO_TESTPAGE") != "" && os.Getenv("NO_TESTPAGE") != "0" {
+// todo: deprecated, remove after migration to the right link style
+func (p *dashboard) removeArchive() {
+	if os.Getenv("ANYTYPE_SHOW_ARCHIVE") == "1" {
 		return
 	}
+
+	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, p.Anytype().PredefinedBlockIds().Archive)
+}
+
+func (p *dashboard) addTestPage() {
+	if os.Getenv("ANYTYPE_TESTPAGE") != "1" {
+		return
+	}
+
 	p.versions[testPageId+"-link"] = base.NewVirtual(&model.Block{
 		Id: testPageId + "-link",
 		Content: &model.BlockContentOfLink{

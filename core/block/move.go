@@ -88,7 +88,7 @@ func (p *commonSmart) moveFromSide(s *state, target simple.Block, pos model.Bloc
 			return
 		}
 		target = s.get(row.Model().ChildrenIds[0])
-		fmt.Println("middle: creating row:", row.Model().Id)
+		log.Debug("middle: creating row:", row.Model().Id)
 	}
 	column, err := s.create(&model.Block{
 		ChildrenIds: ids,

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"sync"
+	"time"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/gateway"
@@ -22,18 +23,19 @@ type MiddlewareState struct {
 }
 
 type Middleware struct {
-	state               MiddlewareState
-	rootPath            string
-	pin                 string
-	mnemonic            string
-	gatewayAddr         string
-	accountSearchCancel context.CancelFunc
-	localAccounts       []*model.Account
-	SendEvent           func(event *pb.Event)
-	blockService        block.Service
+	state                MiddlewareState
+	rootPath             string
+	pin                  string
+	mnemonic             string
+	gatewayAddr          string
+	accountSearchCancel  context.CancelFunc
+	localAccounts        []*model.Account
+	localAccountCachedAt *time.Time
+	SendEvent            func(event *pb.Event)
+	blockService         block.Service
 	*libCore.Anytype
 
-	debugGrpcEventSender chan struct{}
+	debugGrpcEventSender      chan struct{}
 	debugGrpcEventSenderMutex sync.Mutex
 }
 
@@ -62,18 +64,24 @@ func (mw *Middleware) Start() error {
 
 // Stop stops the anytype node and HTTP gateway
 func (mw *Middleware) Stop() error {
-	err := gateway.Host.Stop()
-	if err != nil {
-		return err
+	if gateway.Host != nil {
+		err := gateway.Host.Stop()
+		if err != nil {
+			return err
+		}
 	}
 
 	if mw != nil && mw.Anytype != nil {
-		err = mw.Anytype.Stop()
+		err := mw.Anytype.Stop()
 		if err != nil {
 			return err
 		}
 
 		mw.Anytype = nil
+		if mw.accountSearchCancel != nil {
+			mw.accountSearchCancel()
+		}
+
 		mw.accountSearchCancel = nil
 	}
 
