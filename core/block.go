@@ -74,20 +74,25 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 }
 
 func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
-	response := func(code pb.RpcBlockCopyResponseErrorCode, err error) *pb.RpcBlockCopyResponse {
-		m := &pb.RpcBlockCopyResponse{Error: &pb.RpcBlockCopyResponseError{Code: code}}
+	response := func(code pb.RpcBlockCopyResponseErrorCode, html string, err error) *pb.RpcBlockCopyResponse {
+		m := &pb.RpcBlockCopyResponse{
+			Error: &pb.RpcBlockCopyResponseError{Code: code},
+			Html: html,
+		}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	if err := mw.blockService.Copy(*req); err != nil {
-		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, err)
+
+	html, err := mw.blockService.Copy(*req)
+
+	if err != nil {
+		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)
 	}
 
-
-	return response(pb.RpcBlockCopyResponseError_NULL, nil)
+	return response(pb.RpcBlockCopyResponseError_NULL,  html,nil)
 }
 
 func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {

@@ -24,13 +24,8 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
 	}
 }
 
-func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) error {
-	p.m.Lock()
-	defer p.m.Unlock()
-
-	exportHtml.BlocksToHtml(req.Blocks) // TODO
-
-	return nil
+func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
+	return exportHtml.BlocksToHtml(req.Blocks), nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {

@@ -36,7 +36,7 @@ type Service interface {
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	Paste(req pb.RpcBlockPasteRequest) error
-	Copy(req pb.RpcBlockCopyRequest) error
+	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -203,13 +203,13 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) error {
 	return ErrBlockNotFound
 }
 
-func (s *service) Copy(req pb.RpcBlockCopyRequest) error {
+func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Copy(req)
 	}
-	return ErrBlockNotFound
+	return "", ErrBlockNotFound
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
