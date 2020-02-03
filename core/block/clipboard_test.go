@@ -130,10 +130,10 @@ func TestCommonSmart_pasteHTML(t *testing.T) {
 		checkEvents(t, fx, 2, 5)
 	})
 
-	t.Run("Code block", func(t *testing.T) {
+	t.Run("Code block -> header", func(t *testing.T) {
 		fx := createPage(t, []string{})
 		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<pre><code># foo\n</code></pre>\n",);
-		checkBlockTextAndStyle(t, fx, []string{"# foo\n"});
+		checkBlockTextAndStyle(t, fx, []string{"# foo"});
 		checkEvents(t, fx, 2, 5)
 	})
 

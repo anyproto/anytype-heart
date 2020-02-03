@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/exportHtml"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"strings"
 )
@@ -27,7 +28,9 @@ func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) error {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	return nil // exportHtml.BlocksToHtml(req.Blocks)
+	exportHtml.BlocksToHtml(req.Blocks) // TODO
+
+	return nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
