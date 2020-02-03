@@ -499,10 +499,13 @@ func (smartBlock *SmartBlock) SubscribeNewVersionsOfBlocks(sinceVersionId string
 
 func (smartBlock *SmartBlock) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, blockMeta chan<- BlockVersionMeta) (cancelFunc func(), err error) {
 	// temporary just sent the last version
-	chCloseFn := func() { close(blockMeta) }
 	if sinceVersionId == "" {
 		// it must be set to ensure no versions were skipped in between
-		return chCloseFn, fmt.Errorf("sinceVersionId must be set")
+		return nil, fmt.Errorf("sinceVersionId must be set")
+	}
+	var closeChan = make(chan struct{})
+	chCloseFn := func() {
+		close(closeChan)
 	}
 
 	// todo: implement with chan from textile events feed
@@ -512,7 +515,11 @@ func (smartBlock *SmartBlock) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId s
 			return chCloseFn, err
 		}
 		go func() {
-			blockMeta <- versionMeta
+			select {
+			case blockMeta <- versionMeta:
+			case <-closeChan:
+			}
+			close(blockMeta)
 		}()
 	}
 
