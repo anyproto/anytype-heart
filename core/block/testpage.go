@@ -670,6 +670,7 @@ func (t *testPage) Init() {
 
 func (t *testPage) Show() error {
 	event := &pb.Event{
+		ContextId: t.GetId(),
 		Messages: []*pb.EventMessage{{&pb.EventMessageValueOfBlockShow{
 			BlockShow: &pb.EventBlockShow{
 				RootId: t.GetId(),
