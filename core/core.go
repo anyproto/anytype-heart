@@ -1,10 +1,12 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	ipfsCore "github.com/ipfs/go-ipfs/core"
@@ -34,6 +36,9 @@ type Anytype struct {
 	Textile            *tmobile.Mobile
 	predefinedBlockIds PredefinedBlockIds
 	logLevels          map[string]string
+	cancelSync         Closer
+	lock               sync.Mutex
+	done               chan struct{}
 }
 
 func (a *Anytype) ipfs() *ipfsCore.IpfsNode {
@@ -102,7 +107,31 @@ func (a *Anytype) applyLogLevel() {
 	}
 }
 
+func (a *Anytype) runPeriodicJobsInBackground() {
+	tick := time.NewTicker(time.Hour)
+	defer tick.Stop()
+
+	go func() {
+		for {
+			select {
+			case <-tick.C:
+				a.syncAccount(false)
+
+			case <-a.done:
+				return
+			}
+		}
+	}()
+}
+
+// Run start account
+// if waitInitialSync = true it will try to find predefined blocks snapshot in the p2p network and cafes (will consume a time)
+// if waitInitialSync = false it will do a sync in background after
 func (a *Anytype) Run() error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	a.done = make(chan struct{})
 	swarmKeyFilePath := filepath.Join(a.textile().RepoPath(), "swarm.key")
 	err := ioutil.WriteFile(swarmKeyFilePath, []byte(privateKey), 0644)
 	if err != nil {
@@ -141,20 +170,46 @@ func (a *Anytype) Run() error {
 		}
 	}()
 
+	// preload even in case we don't need them
+	go func() {
+		err = a.syncAccount(false)
+		if err != nil {
+			log.Errorf("account sync: %s", err.Error())
+		}
+	}()
+
 	/*tgateway.Host = &tgateway.Gateway{
 		Node: a.Textile.Node(),
 	}
 	tgateway.Host.Start(a.Textile.Node().Config().Addresses.Gateway)
 	fmt.Println("Textile Gateway: " + a.Textile.Node().Config().Addresses.Gateway)*/
 
-	err = a.createPredefinedBlocks()
+	return nil
+}
+
+func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
+	err := a.createPredefinedBlocksIfNotExist(mustSyncFromRemote)
 	if err != nil {
 		return err
 	}
 
+	//a.runPeriodicJobsInBackground()
 	return nil
 }
 
 func (a *Anytype) Stop() error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if a.done != nil {
+		close(a.done)
+		a.done = nil
+	}
+
+	if a.cancelSync != nil {
+		a.cancelSync.Close()
+	}
+	fmt.Println("textile().Stop() wait...")
+
 	return a.textile().Stop()
 }
