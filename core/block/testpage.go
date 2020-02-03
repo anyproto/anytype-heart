@@ -665,6 +665,10 @@ func (t *testPage) Open(b anytype.Block) error {
 }
 
 func (t *testPage) Init() {
+	t.Show()
+}
+
+func (t *testPage) Show() error {
 	event := &pb.Event{
 		Messages: []*pb.EventMessage{{&pb.EventMessageValueOfBlockShow{
 			BlockShow: &pb.EventBlockShow{
@@ -674,6 +678,7 @@ func (t *testPage) Init() {
 		}}},
 	}
 	t.s.sendEvent(event)
+	return nil
 }
 
 func (t *testPage) GetId() string {

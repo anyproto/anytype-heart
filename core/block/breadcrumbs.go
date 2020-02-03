@@ -53,6 +53,17 @@ func (b *breadcrumbs) Init() {
 	pageModel := b.blocks[b.id].Model()
 	pageModel.ChildrenIds = append(pageModel.ChildrenIds, homeLink.Model().Id)
 	b.ls.onCreate(homeLink)
+	b.show()
+}
+
+func (b *breadcrumbs) Show() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.show()
+	return nil
+}
+
+func (b *breadcrumbs) show() {
 	blocks := make([]*model.Block, 0, len(b.blocks))
 	for _, b := range b.blocks {
 		blocks = append(blocks, b.Model())

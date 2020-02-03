@@ -79,10 +79,10 @@ type service struct {
 }
 
 func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if _, ok := s.smartBlocks[id]; ok {
-		return ErrBlockAlreadyOpen
+	s.m.Lock()
+	defer s.m.Unlock()
+	if sb, ok := s.smartBlocks[id]; ok {
+		return sb.Show()
 	}
 	sb, err := openSmartBlock(s, id)
 	fmt.Println("middle: open smart block:", id, err)

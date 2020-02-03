@@ -30,6 +30,7 @@ type smartBlock interface {
 	Init()
 	GetId() string
 	Type() smartBlockType
+	Show() error
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
@@ -186,6 +187,13 @@ func (p *commonSmart) init() {
 		p.onCreate(v)
 	}
 	p.show()
+}
+
+func (p *commonSmart) Show() error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.show()
+	return nil
 }
 
 func (p *commonSmart) Anytype() anytype.Anytype {

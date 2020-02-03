@@ -18,6 +18,11 @@ var (
 type emptySmart struct {
 }
 
+func (e emptySmart) Show() (err error) {
+	err = errEmptyBlock
+	return
+}
+
 func (e emptySmart) Open(b anytype.Block) (err error) {
 	err = errEmptyBlock
 	return
