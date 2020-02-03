@@ -27,6 +27,7 @@ func (p *dashboard) Init() {
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
 		p.addTestPage()
+		// todo: deprecated, remove after migration to the right link style
 		p.removeArchive()
 	}
 
@@ -57,6 +58,7 @@ func (p *dashboard) migratePageToLinks() {
 	}
 }
 
+// todo: deprecated, remove after migration to the right link style
 func (p *dashboard) removeArchive() {
 	if os.Getenv("ANYTYPE_SHOW_ARCHIVE") == "1" {
 		return
