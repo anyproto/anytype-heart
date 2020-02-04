@@ -1,6 +1,7 @@
 package block
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -123,16 +124,6 @@ func (b *breadcrumbs) OnSmartOpen(id string) {
 	defer b.mu.Unlock()
 
 	linkIds := b.blocks[b.id].Model().ChildrenIds
-	targetIds := make([]string, len(linkIds))
-	for i, linkId := range linkIds {
-		targetIds[i] = b.blocks[linkId].Model().GetLink().TargetBlockId
-	}
-
-	if pos := findPosInSlice(targetIds, id); pos != -1 {
-		// target exists
-		return
-	}
-
 	newLink := b.createLink(id)
 	b.blocks[newLink.Model().Id] = newLink
 	b.blocks[b.id].Model().ChildrenIds = append(linkIds, newLink.Model().Id)
@@ -161,36 +152,32 @@ func (b *breadcrumbs) OnSmartOpen(id string) {
 	return
 }
 
-func (b *breadcrumbs) OnSmartClose(id string) {
+func (b *breadcrumbs) Cut(index int) (err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-
 	linkIds := b.blocks[b.id].Model().ChildrenIds
-	targetIds := make([]string, len(linkIds))
-	for i, linkId := range linkIds {
-		targetIds[i] = b.blocks[linkId].Model().GetLink().TargetBlockId
+	if len(linkIds) < index {
+		return fmt.Errorf("index out of range: %d vs %d", index, len(linkIds))
 	}
-
-	if pos := findPosInSlice(targetIds, id); pos == -1 || pos != len(targetIds)-1 {
-		// target not exists or not last
+	if len(linkIds) == index {
 		return
 	}
 
-	linkId := linkIds[len(linkIds)-1]
-	b.blocks[b.id].Model().ChildrenIds = linkIds[:len(linkIds)-1]
-	b.s.ls.onDelete(b, b.blocks[linkId])
-	delete(b.blocks, linkId)
+	toRemove := linkIds[index:]
+	b.blocks[b.id].Model().ChildrenIds = linkIds[:index]
 
 	event := &pb.Event{
 		ContextId: b.id,
 	}
-	event.Messages = append(event.Messages, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfBlockDelete{
-			BlockDelete: &pb.EventBlockDelete{
-				BlockId: linkId,
+	for _, removeId := range toRemove {
+		event.Messages = append(event.Messages, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockDelete{
+				BlockDelete: &pb.EventBlockDelete{
+					BlockId: removeId,
+				},
 			},
-		},
-	})
+		})
+	}
 	event.Messages = append(event.Messages, &pb.EventMessage{
 		Value: &pb.EventMessageValueOfBlockSetChildrenIds{
 			BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{

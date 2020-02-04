@@ -27,7 +27,8 @@ var log = logging.Logger("anytype-mw")
 type Service interface {
 	OpenBlock(id string, breadcrumbsIds ...string) error
 	OpenBreadcrumbsBlock() (blockId string, err error)
-	CloseBlock(id string, breadcrumbsIds ...string) error
+	CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error)
+	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error)
 	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
@@ -115,22 +116,26 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	return bs.GetId(), nil
 }
 
-func (s *service) CloseBlock(id string, breadcrumbsIds ...string) (err error) {
+func (s *service) CloseBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if sb, ok := s.smartBlocks[id]; ok {
 		delete(s.smartBlocks, id)
 		fmt.Println("middle: close smart block:", id, err)
-		for _, bid := range breadcrumbsIds {
-			if b, ok := s.smartBlocks[bid]; ok {
-				if bs, ok := b.(*breadcrumbs); ok {
-					bs.OnSmartClose(id)
-				}
-			}
-		}
 		return sb.Close()
 	}
 
+	return ErrBlockNotFound
+}
+
+func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	if sb, ok := s.smartBlocks[req.BreadcrumbsId]; ok {
+		if bc, ok := sb.(*breadcrumbs); ok {
+			return bc.Cut(int(req.Index))
+		}
+	}
 	return ErrBlockNotFound
 }
 
