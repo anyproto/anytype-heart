@@ -41,7 +41,7 @@ func newLinkSubscriptions(a anytype.Anytype) *linkSubscriptions {
 		listeners: make(map[string]*linkListener),
 		metaCache: make(map[string]*linkData),
 		actionCh:  make(chan linkBlockAction, 100),
-		metaCh:    make(chan metaInfo),
+		metaCh:    make(chan metaInfo, 10),
 		closeCh:   make(chan struct{}),
 	}
 	go ls.loop()
