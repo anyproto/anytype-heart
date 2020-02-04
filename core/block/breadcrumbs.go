@@ -177,6 +177,7 @@ func (b *breadcrumbs) Cut(index int) (err error) {
 				},
 			},
 		})
+		delete(b.blocks, removeId)
 	}
 	event.Messages = append(event.Messages, &pb.EventMessage{
 		Value: &pb.EventMessageValueOfBlockSetChildrenIds{
