@@ -125,7 +125,7 @@ func (p *page) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (
 	return p.applyAndSendEvent(s)
 }
 
-func (p *page) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
+func (p *page) UpdateTextBlocks(ids []string, event bool, apply func(t text.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
@@ -144,7 +144,7 @@ func (p *page) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (e
 			p.updateTitle(s, tb.GetText())
 		}
 	}
-	return p.applyAndSendEvent(s)
+	return p.applyAndSendEventHist(s, true, event)
 }
 
 func (p *page) UpdateIconBlock(id string, apply func(t base.IconBlock) error) (err error) {

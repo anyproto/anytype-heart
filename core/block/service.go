@@ -237,40 +237,40 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) error {
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, false, func(b text.Block) error {
 		return b.SetText(req.Text, req.Marks)
 	})
 }
 
 func (s *service) SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
 		b.SetStyle(style)
 		return nil
 	})
 }
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, true, func(b text.Block) error {
 		b.SetChecked(req.Checked)
 		return nil
 	})
 }
 
 func (s *service) SetTextColor(contextId, color string, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
 		b.SetTextColor(color)
 		return nil
 	})
 }
 
 func (s *service) SetTextBackgroundColor(contextId, color string, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
 		b.SetTextBackgroundColor(color)
 		return nil
 	})
 }
 
-func (s *service) updateTextBlock(contextId string, blockIds []string, apply func(b text.Block) error) (err error) {
+func (s *service) updateTextBlock(contextId string, blockIds []string, event bool, apply func(b text.Block) error) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	sb, ok := s.smartBlocks[contextId]
@@ -278,7 +278,7 @@ func (s *service) updateTextBlock(contextId string, blockIds []string, apply fun
 		err = ErrBlockNotFound
 		return
 	}
-	return sb.UpdateTextBlocks(blockIds, apply)
+	return sb.UpdateTextBlocks(blockIds, event, apply)
 }
 
 func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {

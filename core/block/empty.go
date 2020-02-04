@@ -90,7 +90,7 @@ func (e emptySmart) UpdateBlock(ids []string, hist bool, apply func(b simple.Blo
 	return
 }
 
-func (e emptySmart) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
+func (e emptySmart) UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) (err error) {
 	err = errEmptyBlock
 	return
 }

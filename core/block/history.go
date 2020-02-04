@@ -22,7 +22,7 @@ func (p *commonSmart) Undo() (err error) {
 		s.set(b.Before)
 	}
 
-	return p.applyAndSendEventHist(s, false)
+	return p.applyAndSendEventHist(s, false, true)
 }
 
 func (p *commonSmart) Redo() (err error) {
@@ -47,5 +47,5 @@ func (p *commonSmart) Redo() (err error) {
 		s.set(b.After)
 	}
 
-	return p.applyAndSendEventHist(s, false)
+	return p.applyAndSendEventHist(s, false, true)
 }

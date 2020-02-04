@@ -41,7 +41,7 @@ type smartBlock interface {
 	Paste(req pb.RpcBlockPasteRequest) error
 	Replace(id string, block *model.Block) (newId string, err error)
 	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
-	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
+	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
@@ -212,7 +212,7 @@ func (p *commonSmart) UpdateBlock(ids []string, hist bool, apply func(b simple.B
 			return
 		}
 	}
-	return p.applyAndSendEventHist(s, hist)
+	return p.applyAndSendEventHist(s, hist, true)
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -652,7 +652,7 @@ func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) er
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
+func (p *commonSmart) UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
@@ -665,7 +665,7 @@ func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) er
 			return
 		}
 	}
-	return p.applyAndSendEvent(s)
+	return p.applyAndSendEventHist(s, true, showEvent)
 }
 
 func (p *commonSmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
@@ -693,7 +693,7 @@ func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
 	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
 		return
 	}
-	return p.applyAndSendEventHist(s, false)
+	return p.applyAndSendEventHist(s, false, true)
 }
 
 func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
@@ -800,10 +800,10 @@ func (p *commonSmart) Close() error {
 }
 
 func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
-	return p.applyAndSendEventHist(s, true)
+	return p.applyAndSendEventHist(s, true, true)
 }
 
-func (p *commonSmart) applyAndSendEventHist(s *state, hist bool) (err error) {
+func (p *commonSmart) applyAndSendEventHist(s *state, hist, event bool) (err error) {
 	var action *history.Action
 	if hist {
 		action = &history.Action{}
@@ -812,7 +812,7 @@ func (p *commonSmart) applyAndSendEventHist(s *state, hist bool) (err error) {
 	if err != nil {
 		return
 	}
-	if len(msgs) > 0 {
+	if event && len(msgs) > 0 {
 		p.s.sendEvent(&pb.Event{
 			Messages:  msgs,
 			ContextId: p.GetId(),
