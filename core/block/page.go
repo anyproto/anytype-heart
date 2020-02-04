@@ -42,7 +42,6 @@ func (p *page) Init() {
 	if icon, ok := fieldsGetString(root.Fields, "icon"); ok {
 		p.addIcon(icon)
 	}
-	p.linkSubscriptions = newLinkSubscriptions(p)
 	p.history = history.NewHistory(0)
 	p.init()
 }

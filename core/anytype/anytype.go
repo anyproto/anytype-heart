@@ -21,7 +21,7 @@ type anytype struct {
 	*core.Anytype
 }
 
-func (a *anytype) GetBlock(id string) (Block, error) {
+func (a *anytype) GetBlockWithBatcher(id string) (Block, error) {
 	b, err := a.Anytype.GetBlock(id)
 	if err != nil {
 		return nil, err

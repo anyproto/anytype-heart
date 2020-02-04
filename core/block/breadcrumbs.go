@@ -21,7 +21,6 @@ type breadcrumbs struct {
 	emptySmart
 	id     string
 	s      *service
-	ls     *linkSubscriptions
 	blocks map[string]simple.Block
 	mu     sync.Mutex
 }
@@ -37,7 +36,6 @@ func (b *breadcrumbs) Open(_ anytype.Block) error {
 			},
 		}),
 	}
-	b.ls = newLinkSubscriptions(b)
 	return nil
 }
 
@@ -138,7 +136,7 @@ func (b *breadcrumbs) OnSmartOpen(id string) {
 	newLink := b.createLink(id)
 	b.blocks[newLink.Model().Id] = newLink
 	b.blocks[b.id].Model().ChildrenIds = append(linkIds, newLink.Model().Id)
-	b.ls.onCreate(newLink)
+	b.s.ls.onCreate(b, newLink)
 
 	event := &pb.Event{
 		ContextId: b.id,
@@ -180,7 +178,7 @@ func (b *breadcrumbs) OnSmartClose(id string) {
 
 	linkId := linkIds[len(linkIds)-1]
 	b.blocks[b.id].Model().ChildrenIds = linkIds[:len(linkIds)-1]
-	b.ls.onDelete(b.blocks[linkId])
+	b.s.ls.onDelete(b, b.blocks[linkId])
 	delete(b.blocks, linkId)
 
 	event := &pb.Event{
@@ -207,7 +205,9 @@ func (b *breadcrumbs) OnSmartClose(id string) {
 }
 
 func (b *breadcrumbs) Close() error {
-	b.ls.close()
+	for _, l := range b.blocks {
+		b.s.ls.onDelete(b, l)
+	}
 	return nil
 }
 

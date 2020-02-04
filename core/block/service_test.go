@@ -25,7 +25,7 @@ func TestService_OpenBlock(t *testing.T) {
 		defer fx.ctrl.Finish()
 		defer fx.tearDown()
 
-		fx.anytype.EXPECT().GetBlock(blockId).Return(nil, expErr)
+		fx.anytype.EXPECT().GetBlockWithBatcher(blockId).Return(nil, expErr)
 
 		err := fx.OpenBlock(blockId)
 		require.Equal(t, expErr, err)
@@ -43,7 +43,7 @@ func TestService_OpenBlock(t *testing.T) {
 			Dashboard: &model.BlockContentDashboard{},
 		}, nil, nil)
 		mb.EXPECT().Close()
-		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
+		fx.anytype.EXPECT().GetBlockWithBatcher(blockId).Return(mb, nil)
 
 		err := fx.OpenBlock(blockId)
 		require.NoError(t, err)
@@ -66,7 +66,7 @@ func TestService_OpenBlock(t *testing.T) {
 			Page: &model.BlockContentPage{},
 		}, nil, nil)
 		mb.EXPECT().Close()
-		fx.anytype.EXPECT().GetBlock(blockId).Return(mb, nil)
+		fx.anytype.EXPECT().GetBlockWithBatcher(blockId).Return(mb, nil)
 
 		err := fx.OpenBlock(blockId)
 		require.NoError(t, err)

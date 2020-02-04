@@ -5,13 +5,19 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	"github.com/gogo/protobuf/types"
 )
 
 type metaInfo struct {
 	targetId string
 	meta     core.BlockVersionMeta
+}
+
+type linkBlockUpdater interface {
+	UpdateBlock(linkIds []string, hist bool, apply func(b simple.Block) error) error
 }
 
 type linkSubscriptionsOp int
@@ -23,15 +29,17 @@ const (
 )
 
 type linkBlockAction struct {
-	op   linkSubscriptionsOp
-	link link.Block
+	op      linkSubscriptionsOp
+	link    link.Block
+	updater linkBlockUpdater
 }
 
-func newLinkSubscriptions(sb smartBlock) *linkSubscriptions {
+func newLinkSubscriptions(a anytype.Anytype) *linkSubscriptions {
 	ls := &linkSubscriptions{
-		sb:        sb,
-		links:     make(map[string][]string),
+		anytype:   a,
+		links:     make(map[string]map[linkBlockUpdater][]string),
 		listeners: make(map[string]*linkListener),
+		metaCache: make(map[string]*linkData),
 		actionCh:  make(chan linkBlockAction, 100),
 		metaCh:    make(chan metaInfo),
 		closeCh:   make(chan struct{}),
@@ -40,40 +48,54 @@ func newLinkSubscriptions(sb smartBlock) *linkSubscriptions {
 	return ls
 }
 
+type linkData struct {
+	fields *types.Struct
+}
+
 type linkSubscriptions struct {
-	sb smartBlock
-	// targetId -> []linkId
-	links     map[string][]string
+	anytype anytype.Anytype
+	// targetId -> smartBlock -> []linkId
+	links     map[string]map[linkBlockUpdater][]string
 	listeners map[string]*linkListener
 	actionCh  chan linkBlockAction
 	metaCh    chan metaInfo
 	closeCh   chan struct{}
 	closeOnce sync.Once
+
+	metaCache map[string]*linkData
+	m         sync.Mutex
 }
 
-func (ls *linkSubscriptions) onCreate(b simple.Block) {
+func (ls *linkSubscriptions) onCreate(u linkBlockUpdater, b simple.Block) {
 	if link, ok := b.(link.Block); ok {
+		linkContent := link.Model().GetLink()
+		if data := ls.getMetaCache(linkContent.TargetBlockId); data != nil {
+			linkContent.Fields = data.fields
+		}
 		ls.actionCh <- linkBlockAction{
-			op:   linkSubscriptionsOpCreate,
-			link: link,
+			op:      linkSubscriptionsOpCreate,
+			link:    link,
+			updater: u,
 		}
 	}
 }
 
-func (ls *linkSubscriptions) onChange(b simple.Block) {
+func (ls *linkSubscriptions) onChange(u linkBlockUpdater, b simple.Block) {
 	if link, ok := b.(link.Block); ok {
 		ls.actionCh <- linkBlockAction{
-			op:   linkSubscriptionsOpChange,
-			link: link,
+			op:      linkSubscriptionsOpChange,
+			link:    link,
+			updater: u,
 		}
 	}
 }
 
-func (ls *linkSubscriptions) onDelete(b simple.Block) {
+func (ls *linkSubscriptions) onDelete(u linkBlockUpdater, b simple.Block) {
 	if link, ok := b.(link.Block); ok {
 		ls.actionCh <- linkBlockAction{
-			op:   linkSubscriptionsOpDelete,
-			link: link,
+			op:      linkSubscriptionsOpDelete,
+			link:    link,
+			updater: u,
 		}
 	}
 }
@@ -89,11 +111,11 @@ func (ls *linkSubscriptions) loop() {
 		case action := <-ls.actionCh:
 			switch action.op {
 			case linkSubscriptionsOpCreate:
-				ls.create(action.link)
+				ls.create(action.updater, action.link)
 			case linkSubscriptionsOpChange:
-				ls.change(action.link)
+				ls.change(action.updater, action.link)
 			case linkSubscriptionsOpDelete:
-				ls.delete(action.link)
+				ls.delete(action.updater, action.link)
 			}
 		case info := <-ls.metaCh:
 			ls.setMeta(info)
@@ -106,46 +128,67 @@ func (ls *linkSubscriptions) loop() {
 	}
 }
 
-func (ls *linkSubscriptions) create(l link.Block) {
+func (ls *linkSubscriptions) create(u linkBlockUpdater, l link.Block) {
 	linkId := l.Model().Id
 	targetId := l.Model().GetLink().TargetBlockId
 	fmt.Println("add link to subscriber", linkId)
 	ls.startListener(targetId)
-	linkIds := ls.links[targetId]
+	updaters := ls.links[targetId]
+	if updaters == nil {
+		updaters = make(map[linkBlockUpdater][]string)
+		ls.links[targetId] = updaters
+	}
+	linkIds := ls.links[targetId][u]
 	linkIds = append(linkIds, linkId)
-	ls.links[targetId] = linkIds
+	ls.links[targetId][u] = linkIds
 }
 
-func (ls *linkSubscriptions) change(l link.Block) {
+func (ls *linkSubscriptions) change(u linkBlockUpdater, l link.Block) {
 	linkId := l.Model().Id
 	targetId := l.Model().GetLink().TargetBlockId
-	linkIds := ls.links[targetId]
+	updaters := ls.links[targetId]
+	if updaters == nil {
+		updaters = make(map[linkBlockUpdater][]string)
+		ls.links[targetId] = updaters
+	}
+	linkIds := ls.links[targetId][u]
 	if pos := findPosInSlice(linkIds, linkId); pos != -1 {
 		// target id not changed - do nothing
 		return
 	}
 	// find and remove old link
-	for targetId, lIds := range ls.links {
-		if pos := findPosInSlice(linkIds, linkId); pos != -1 {
-			lIds = removeFromSlice(lIds, linkId)
-			ls.links[targetId] = lIds
+	for targetId, upds := range ls.links {
+		if lIds, ok := upds[u]; ok {
+			if pos := findPosInSlice(lIds, linkId); pos != -1 {
+				lIds = removeFromSlice(lIds, linkId)
+				ls.links[targetId][u] = lIds
+			}
 		}
 	}
-	ls.create(l)
+	ls.create(u, l)
 	ls.closeUnused()
 }
 
-func (ls *linkSubscriptions) delete(l link.Block) {
+func (ls *linkSubscriptions) delete(u linkBlockUpdater, l link.Block) {
 	linkId := l.Model().Id
 	targetId := l.Model().GetLink().TargetBlockId
-	linkIds := ls.links[targetId]
-	ls.links[targetId] = removeFromSlice(linkIds, linkId)
+	updaters := ls.links[targetId]
+	if updaters == nil {
+		updaters = make(map[linkBlockUpdater][]string)
+		ls.links[targetId] = updaters
+	}
+	linkIds := ls.links[targetId][u]
+	ls.links[targetId][u] = removeFromSlice(linkIds, linkId)
 	ls.closeUnused()
 }
 
 func (ls *linkSubscriptions) closeUnused() {
-	for targetId, lIds := range ls.links {
-		if len(lIds) == 0 {
+	for targetId, upds := range ls.links {
+		var count int
+		for _, lIds := range upds {
+			count += len(lIds)
+		}
+		if count == 0 {
 			ls.stopListener(targetId)
 			delete(ls.links, targetId)
 		}
@@ -173,18 +216,21 @@ func (ls *linkSubscriptions) stopListener(targetId string) {
 
 func (ls *linkSubscriptions) setMeta(info metaInfo) {
 	fmt.Println("middle: update link meta for", info.targetId)
-	linkIds := ls.links[info.targetId]
-	if len(linkIds) == 0 {
+	ls.setMetaCache(info.targetId, &linkData{fields: info.meta.ExternalFields()})
+	updaters := ls.links[info.targetId]
+	if updaters == nil {
 		return
 	}
-	err := ls.sb.UpdateBlock(linkIds, false, func(b simple.Block) error {
-		if l, ok := b.(link.Block); ok {
-			l.SetMeta(info.meta)
+	for u, linkIds := range updaters {
+		err := u.UpdateBlock(linkIds, false, func(b simple.Block) error {
+			if l, ok := b.(link.Block); ok {
+				l.SetMeta(info.meta)
+			}
+			return nil
+		})
+		if err != nil {
+			fmt.Println("middle: can't set updated meta to block:", err)
 		}
-		return nil
-	})
-	if err != nil {
-		fmt.Println("middle: can't set updated meta to block:", err)
 	}
 }
 
@@ -198,6 +244,18 @@ func (ls *linkSubscriptions) close() {
 			<-ls.closeCh
 		}
 	})
+}
+
+func (ls *linkSubscriptions) getMetaCache(id string) *linkData {
+	ls.m.Lock()
+	defer ls.m.Unlock()
+	return ls.metaCache[id]
+}
+
+func (ls *linkSubscriptions) setMetaCache(id string, data *linkData) {
+	ls.m.Lock()
+	defer ls.m.Unlock()
+	ls.metaCache[id] = data
 }
 
 func newLinkListener(targetId string, ls *linkSubscriptions) (ll *linkListener, err error) {
@@ -233,7 +291,7 @@ func (ll *linkListener) listen() {
 }
 
 func (ll *linkListener) subscribe() (err error) {
-	block, err := ll.ls.sb.Anytype().GetBlock(ll.targetId)
+	block, err := ll.ls.anytype.GetBlock(ll.targetId)
 	if err != nil {
 		err = fmt.Errorf("linkListener anytype.GetBlock(%s) error: %v", ll.targetId, err)
 		return

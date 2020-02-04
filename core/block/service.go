@@ -59,14 +59,15 @@ type Service interface {
 	Close() error
 }
 
-func NewService(accountId string, lib anytype.Anytype, sendEvent func(event *pb.Event)) Service {
+func NewService(accountId string, a anytype.Anytype, sendEvent func(event *pb.Event)) Service {
 	return &service{
 		accountId: accountId,
-		anytype:   lib,
+		anytype:   a,
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
 		smartBlocks: make(map[string]smartBlock),
+		ls:          newLinkSubscriptions(a),
 	}
 }
 
@@ -75,6 +76,7 @@ type service struct {
 	accountId   string
 	sendEvent   func(event *pb.Event)
 	smartBlocks map[string]smartBlock
+	ls          *linkSubscriptions
 	m           sync.RWMutex
 }
 
