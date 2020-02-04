@@ -165,18 +165,12 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
-	// Pattern: <a href> <div style=background-image:...>  </div> <a>
-	//md = strings.ReplaceAll(md, "`", "^^^")
-
-	//md = reCode.ReplaceAllString(md, "```\n$1\n```")
-	md = strings.ReplaceAll(md, "`", "~~~")
-	reCode := regexp.MustCompile(` ~~~([\s\S]*?)~~~ `)
-	md = reCode.ReplaceAllString(md, " `($1)` ")
-
-	//md = reCode.ReplaceAllString(md, "~~~")
-	md = strings.ReplaceAll(md, "~~~", "\n```\n")
-	md = strings.ReplaceAll(md, "\n\n```", "\n```")
-	md = strings.ReplaceAll(md, "```\n\n", "```\n")
+	md = strings.ReplaceAll(md, "`", "@@@")
+	reCode := regexp.MustCompile(`\n(@@@([\s\S]*?)@@@)\n`)
+	md = reCode.ReplaceAllString(md, `@@@@@@@@@$2@@@@@@@@@`)
+	reCodeStart := regexp.MustCompile(`@@@@@@@@@([\S]*?)`)
+	md = reCodeStart.ReplaceAllString(md, "\n@@@@@@@@@\n$1")
+	md = strings.ReplaceAll(md, "@@@", "`")
 
 	fmt.Println("MD:", md)
 
