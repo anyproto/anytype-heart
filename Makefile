@@ -1,7 +1,7 @@
 .PHONY : protos_deps
 setup:
-	GOPRIVATE=github.com/anytypeio/go-anytype-library go mod download
-	go get github.com/ahmetb/govvv
+	GOPRIVATE=github.com/anytypeio go mod download
+	GO111MODULE=off go get github.com/ahmetb/govvv
 	npm install
 
 fmt:
@@ -31,8 +31,7 @@ test-deps:
 
 build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
-	export GO111MODULE=on
-	go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
+	GO111MODULE=on go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
 
 build-js:
 	cp dist/lib.a jsaddon/lib.a
@@ -114,10 +113,10 @@ build-debug: protos-debug
 run-debug: build-debug
 	./dist/debug
 
-build-dev-js:
-	go mod download
-	make build-lib build-js
-	npm run build:ts
+build-dev-js: setup build-lib build-js protos-ts
 	cp -r jsaddon/build ../js-anytype/
 	cp build/ts/commands.js ../js-anytype/src/proto/commands.js
 
+install-dev-js:
+	cp -r jsaddon/build ../js-anytype/
+	cp build/ts/commands.js ../js-anytype/src/proto/commands.js
