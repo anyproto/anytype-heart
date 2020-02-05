@@ -209,9 +209,11 @@ func (ls *linkSubscriptions) startListener(targetId string) {
 }
 
 func (ls *linkSubscriptions) stopListener(targetId string) {
-	fmt.Println("stop listener for:", targetId)
-	ls.listeners[targetId].close()
-	delete(ls.listeners, targetId)
+	if _, ok := ls.listeners[targetId]; ok {
+		fmt.Println("stop listener for:", targetId)
+		ls.listeners[targetId].close()
+		delete(ls.listeners, targetId)
+	}
 }
 
 func (ls *linkSubscriptions) setMeta(info metaInfo) {
