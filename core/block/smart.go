@@ -433,7 +433,7 @@ func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos
 			}
 		}
 		switch reqPos {
-		case model.Block_Bottom:
+		case model.Block_Bottom, model.Block_Replace:
 			pos = targetPos + 1
 		case model.Block_Top:
 			pos = targetPos
@@ -444,6 +444,10 @@ func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos
 		}
 	}
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, b.Model().Id, pos)
+	if reqPos == model.Block_Replace {
+		s.remove(targetId)
+		parent.ChildrenIds = removeFromSlice(parent.ChildrenIds, targetId)
+	}
 	return
 }
 
