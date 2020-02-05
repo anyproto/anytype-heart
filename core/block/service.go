@@ -25,7 +25,9 @@ var (
 var log = logging.Logger("anytype-mw")
 
 type Service interface {
-	OpenBlock(id string) error
+	OpenBlock(id string, breadcrumbsIds ...string) error
+	OpenBreadcrumbsBlock() (blockId string, err error)
+	CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error)
@@ -58,14 +60,15 @@ type Service interface {
 	Close() error
 }
 
-func NewService(accountId string, lib anytype.Anytype, sendEvent func(event *pb.Event)) Service {
+func NewService(accountId string, a anytype.Anytype, sendEvent func(event *pb.Event)) Service {
 	return &service{
 		accountId: accountId,
-		anytype:   lib,
+		anytype:   a,
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
 		smartBlocks: make(map[string]smartBlock),
+		ls:          newLinkSubscriptions(a),
 	}
 }
 
@@ -74,14 +77,15 @@ type service struct {
 	accountId   string
 	sendEvent   func(event *pb.Event)
 	smartBlocks map[string]smartBlock
+	ls          *linkSubscriptions
 	m           sync.RWMutex
 }
 
-func (s *service) OpenBlock(id string) (err error) {
+func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if _, ok := s.smartBlocks[id]; ok {
-		return ErrBlockAlreadyOpen
+	if sb, ok := s.smartBlocks[id]; ok {
+		return sb.Show()
 	}
 	sb, err := openSmartBlock(s, id)
 	fmt.Println("middle: open smart block:", id, err)
@@ -89,7 +93,27 @@ func (s *service) OpenBlock(id string) (err error) {
 		return
 	}
 	s.smartBlocks[id] = sb
+	for _, bid := range breadcrumbsIds {
+		if b, ok := s.smartBlocks[bid]; ok {
+			if bs, ok := b.(*breadcrumbs); ok {
+				bs.OnSmartOpen(id)
+			}
+		}
+	}
 	return nil
+}
+
+func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	bs := newBreadcrumbs(s)
+	if err = bs.Open(nil); err != nil {
+		return
+	}
+	bs.Init()
+	s.smartBlocks[bs.GetId()] = bs
+	return bs.GetId(), nil
 }
 
 func (s *service) CloseBlock(id string) (err error) {
@@ -99,6 +123,18 @@ func (s *service) CloseBlock(id string) (err error) {
 		delete(s.smartBlocks, id)
 		fmt.Println("middle: close smart block:", id, err)
 		return sb.Close()
+	}
+
+	return ErrBlockNotFound
+}
+
+func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	if sb, ok := s.smartBlocks[req.BreadcrumbsId]; ok {
+		if bc, ok := sb.(*breadcrumbs); ok {
+			return bc.Cut(int(req.Index))
+		}
 	}
 	return ErrBlockNotFound
 }
@@ -206,40 +242,40 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) error {
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, false, func(b text.Block) error {
 		return b.SetText(req.Text, req.Marks)
 	})
 }
 
 func (s *service) SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
 		b.SetStyle(style)
 		return nil
 	})
 }
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, func(b text.Block) error {
+	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, true, func(b text.Block) error {
 		b.SetChecked(req.Checked)
 		return nil
 	})
 }
 
 func (s *service) SetTextColor(contextId, color string, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
 		b.SetTextColor(color)
 		return nil
 	})
 }
 
 func (s *service) SetTextBackgroundColor(contextId, color string, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, func(b text.Block) error {
+	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
 		b.SetTextBackgroundColor(color)
 		return nil
 	})
 }
 
-func (s *service) updateTextBlock(contextId string, blockIds []string, apply func(b text.Block) error) (err error) {
+func (s *service) updateTextBlock(contextId string, blockIds []string, event bool, apply func(b text.Block) error) (err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	sb, ok := s.smartBlocks[contextId]
@@ -247,7 +283,7 @@ func (s *service) updateTextBlock(contextId string, blockIds []string, apply fun
 		err = ErrBlockNotFound
 		return
 	}
-	return sb.UpdateTextBlocks(blockIds, apply)
+	return sb.UpdateTextBlocks(blockIds, event, apply)
 }
 
 func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {

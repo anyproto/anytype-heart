@@ -143,6 +143,7 @@ func newStateFixture(t *testing.T) *stateFixture {
 	sb := &commonSmart{
 		block:    block,
 		versions: make(map[string]simple.Block),
+		s:        &service{},
 	}
 	sb.versions[block.GetId()] = simple.New(&model.Block{
 		Id:          "root",
@@ -215,7 +216,7 @@ func newPageFixture(t *testing.T, blocks ...*model.Block) *pageFixture {
 	}
 	pageFx.block.EXPECT().Close()
 
-	serviceFx.anytype.EXPECT().GetBlock(pageFx.pageId).Return(pageFx.block, nil)
+	serviceFx.anytype.EXPECT().GetBlockWithBatcher(pageFx.pageId).Return(pageFx.block, nil)
 
 	require.NoError(t, serviceFx.OpenBlock(pageFx.pageId))
 	pageFx.page = serviceFx.Service.(*service).smartBlocks[pageFx.pageId].(*page)

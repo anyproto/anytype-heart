@@ -26,7 +26,6 @@ type state struct {
 	sb             *commonSmart
 	blocks         map[string]simple.Block
 	toRemove       []string
-	newSmartBlocks bool
 }
 
 func (s *state) set(b simple.Block) {
@@ -42,7 +41,6 @@ func (s *state) create(b *model.Block) (new simple.Block, err error) {
 			return nil, fmt.Errorf("can't create smartblock: %v", err)
 		}
 		b = s.createLink(b)
-		s.newSmartBlocks = true
 	}
 	nb, err := s.sb.block.NewBlock(*b)
 	if err != nil {
@@ -211,9 +209,6 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 		if _, err = s.sb.block.AddVersions(toSave); err != nil {
 			return
 		}
-		if s.newSmartBlocks {
-			s.sb.block.Flush()
-		}
 	}
 	for _, b := range s.blocks {
 		s.sb.setBlock(b)
@@ -223,8 +218,22 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 			action.Remove = append(action.Remove, old)
 		}
 	}
+	s.checkChangeSmartFields(msgs)
 	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return
+}
+
+func (s *state) checkChangeSmartFields(msgs []*pb.EventMessage) {
+	for _, msg := range msgs {
+		if fieldsChange := msg.GetBlockSetFields(); fieldsChange != nil {
+			if fieldsChange.Id == s.sb.GetId() && s.sb.s != nil && s.sb.s.ls != nil {
+				s.sb.s.ls.onMeta(metaInfo{
+					targetId: s.sb.GetId(),
+					meta:     fakeCoreMeta{fields: fieldsChange.Fields},
+				})
+			}
+		}
+	}
 }
 
 func (s *state) normalize() {
@@ -350,4 +359,28 @@ func (s *state) validateBlock(b simple.Block) (err error) {
 		parentIds = append(parentIds, id)
 	}
 	return fmt.Errorf("block '%s' has not the page in parents", id)
+}
+
+type fakeCoreMeta struct {
+	fields *types.Struct
+}
+
+func (f fakeCoreMeta) VersionId() string {
+	return ""
+}
+
+func (f fakeCoreMeta) Model() *model.BlockMetaOnly {
+	return nil
+}
+
+func (f fakeCoreMeta) User() string {
+	return ""
+}
+
+func (f fakeCoreMeta) Date() *types.Timestamp {
+	return nil
+}
+
+func (f fakeCoreMeta) ExternalFields() *types.Struct {
+	return f.fields
 }

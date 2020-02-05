@@ -1,13 +1,8 @@
 package block
 
 import (
-	"fmt"
-
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 )
@@ -662,78 +657,20 @@ var testBlocks = []*model.Block{
 
 type testPage struct {
 	s *service
-}
-
-func (t *testPage) Upload(id string, localPath, url string) error {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Replace(id string, block *model.Block) (string, error) {
-	return "", fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Move(req pb.RpcBlockListMoveRequest) error {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Duplicate(req pb.RpcBlockListDuplicateRequest) ([]string, error) {
-	return nil, fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Merge(firstId, secondId string) error {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Split(id string, pos int32) (string, error) {
-	return "", fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Unlink(id ...string) (err error) {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) UpdateIconBlock(id string, apply func(t base.IconBlock) error) error {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) SetFields(_ ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) UpdateTextBlocks(ids []string, apply func(t text.Block) error) error {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Paste(req pb.RpcBlockPasteRequest) error {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Undo() error {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) Redo() error {
-	return fmt.Errorf("can't update block in the test page")
+	emptySmart
 }
 
 func (t *testPage) Open(b anytype.Block) error {
 	return nil
 }
 
-func (t *testPage) Anytype() anytype.Anytype {
-	return nil
-}
-
-func (t *testPage) UpdateBlock(ids []string, h bool, apply func(b simple.Block) error) (err error) {
-	return fmt.Errorf("can't update block in the test page")
-}
-
-func (t *testPage) CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error) {
-	return "", "", fmt.Errorf("can't update block in the test page")
-}
-
 func (t *testPage) Init() {
+	t.Show()
+}
+
+func (t *testPage) Show() error {
 	event := &pb.Event{
+		ContextId: t.GetId(),
 		Messages: []*pb.EventMessage{{&pb.EventMessageValueOfBlockShow{
 			BlockShow: &pb.EventBlockShow{
 				RootId: t.GetId(),
@@ -742,6 +679,7 @@ func (t *testPage) Init() {
 		}}},
 	}
 	t.s.sendEvent(event)
+	return nil
 }
 
 func (t *testPage) GetId() string {
@@ -750,10 +688,6 @@ func (t *testPage) GetId() string {
 
 func (t *testPage) Type() smartBlockType {
 	return smartBlockTypePage
-}
-
-func (t *testPage) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
-	return "", fmt.Errorf("can't create block in the test page")
 }
 
 func (t *testPage) Close() error {

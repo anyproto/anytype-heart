@@ -32,7 +32,6 @@ func (p *dashboard) Init() {
 	}
 
 	p.migratePageToLinks()
-	p.linkSubscriptions = newLinkSubscriptions(p)
 	p.history = history.NewHistory(0)
 	p.init()
 }

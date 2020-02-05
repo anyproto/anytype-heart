@@ -7,7 +7,8 @@ import (
 )
 
 type Anytype interface {
-	GetBlock(id string) (Block, error)
+	GetBlock(id string) (core.Block, error)
+	GetBlockWithBatcher(id string) (Block, error)
 	PredefinedBlockIds() core.PredefinedBlockIds
 	FileAddWithReader(content io.Reader, name string) (core.File, error)
 	ImageAddWithReader(content io.Reader, name string) (core.Image, error)
