@@ -414,6 +414,7 @@ func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
 	if _, err = p.block.AddVersions([]*model.Block{m}); err != nil {
 		return
 	}
+	p.block.Flush()
 	return
 }
 
