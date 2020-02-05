@@ -77,6 +77,12 @@ message Block {
         * Divider: block, that contains only one horizontal thin line
         */
         message Div {
+            Style style = 1;
+
+            enum Style {
+                Line = 0;
+                Dots = 1;
+            }
         }
 
         /*
