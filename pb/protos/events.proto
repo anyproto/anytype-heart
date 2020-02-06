@@ -93,8 +93,7 @@ message Event {
          *
         */
         message Delete {
-            // TODO: repeated string blockIds?
-            string blockId = 1;
+            repeated string blockIds = 1;
         }
 
         message MarksInfo {
