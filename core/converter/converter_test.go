@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-func TestExportHtml(t *testing.T) {
-	t.Run("Trivia", func(t *testing.T) {
+func TestConverter_ProcessTree(t *testing.T) {
+	t.Run("Tree: trivia", func(t *testing.T) {
 		blocks := []*model.Block{
 			{Id:"1", ChildrenIds:[]string{"2"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
 			{Id:"2", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
@@ -25,7 +25,7 @@ func TestExportHtml(t *testing.T) {
 	})
 
 
-	t.Run("Trivia", func(t *testing.T) {
+	t.Run("Tree: trivia 2", func(t *testing.T) {
 		blocks := []*model.Block{
 			{Id:"1", ChildrenIds:[]string{"2", "3"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
 			{Id:"2",  ChildrenIds:[]string{"4", "5"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
@@ -39,11 +39,11 @@ func TestExportHtml(t *testing.T) {
 		newTree := W.CreateTree(blocks)
 
 		fmt.Println("TREE:", newTree)
-		fmt.Println("TREE:", W.PrintNode(&newTree))
+		fmt.Println("TREE:", W.ProcessTree(&newTree))
 		//fmt.Println("HTML:", W.ProcessTree(&newTree))
 	})
 
-	t.Run("Medium", func(t *testing.T) {
+	t.Run("Tree: medium", func(t *testing.T) {
 		blocks := []*model.Block{
 			{Id:"1", ChildrenIds:[]string{"2", "3"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
 			{Id:"2", ChildrenIds:[]string{"4", "5"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
@@ -61,5 +61,20 @@ func TestExportHtml(t *testing.T) {
 
 		fmt.Println("TREE:", newTree)
 		fmt.Println("HTML:", W.ProcessTree(&newTree))
+	})
+}
+
+func TestConverter_Convert(t *testing.T) {
+	t.Run("Trivia", func(t *testing.T) {
+		blocks := []*model.Block{
+			{Id:"1", ChildrenIds:[]string{"2", "3"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
+			{Id:"2",  ChildrenIds:[]string{"4", "5"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
+			{Id:"3", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"333"}}},
+			{Id:"4", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"444"}}},
+			{Id:"5", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"555"}}},
+		}
+
+		W := converter.New()
+		fmt.Println("TREE:", W.Convert(blocks))
 	})
 }
