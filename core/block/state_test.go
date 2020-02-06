@@ -67,7 +67,7 @@ func TestState_Normalize(t *testing.T) {
 		fx.get("c2")
 		msgs, err := fx.apply(nil)
 		require.NoError(t, err)
-		assert.Len(t, msgs, 4) // 3 remove + 1 change
+		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, fx.saved, 1)
 		assert.Equal(t, []string{"t1"}, fx.sb.versions["root"].Model().ChildrenIds)
 		assert.Nil(t, fx.sb.versions["r1"])
@@ -87,7 +87,7 @@ func TestState_Normalize(t *testing.T) {
 		fx.get("c1")
 		msgs, err := fx.apply(nil)
 		require.NoError(t, err)
-		assert.Len(t, msgs, 3) // 2 remove + 1 change
+		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, fx.saved, 1)
 		assert.Equal(t, []string{"t2", "t1"}, fx.sb.versions["root"].Model().ChildrenIds)
 		assert.Nil(t, fx.sb.versions["r1"])
