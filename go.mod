@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/common v0.6.0
 	github.com/stretchr/testify v1.4.0
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
-	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
+	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf // indirect
 	github.com/yuin/goldmark v1.1.22
 	golang.org/x/text v0.3.2
 	google.golang.org/grpc v1.24.0

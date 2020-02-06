@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/anytypeio/go-anytype-middleware/core/exportHtml"
+	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"strings"
 )
