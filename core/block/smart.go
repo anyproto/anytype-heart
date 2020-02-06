@@ -3,11 +3,15 @@ package block
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -15,8 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -28,6 +30,7 @@ type smartBlock interface {
 	Init()
 	GetId() string
 	Type() smartBlockType
+	Show() error
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
@@ -39,7 +42,7 @@ type smartBlock interface {
 	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
 	Replace(id string, block *model.Block) (newId string, err error)
 	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
-	UpdateTextBlocks(ids []string, apply func(t text.Block) error) error
+	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
@@ -64,7 +67,7 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 		return
 	}
 
-	b, err := s.anytype.GetBlock(id)
+	b, err := s.anytype.GetBlockWithBatcher(id)
 	if err != nil {
 		return
 	}
@@ -97,8 +100,7 @@ type commonSmart struct {
 	block    anytype.Block
 	versions map[string]simple.Block
 
-	linkSubscriptions *linkSubscriptions
-	history           history.History
+	history history.History
 
 	m sync.RWMutex
 
@@ -111,6 +113,28 @@ type commonSmart struct {
 
 func (p *commonSmart) GetId() string {
 	return p.block.GetId()
+}
+
+func (p *commonSmart) hideArchiveBlock() {
+	if os.Getenv("ANYTYPE_ARCHIVE") == "1" {
+		return
+	}
+	archiveBlockId := p.Anytype().PredefinedBlockIds().Archive
+	if p.block.GetId() != p.Anytype().PredefinedBlockIds().Home {
+		return
+	}
+	var archiveBlockLinkId string
+	for id, v := range p.versions {
+		if link, isLink := v.Model().Content.(*model.BlockContentOfLink); isLink && link.Link.TargetBlockId == archiveBlockId {
+			archiveBlockLinkId = id
+			break
+		}
+	}
+	if archiveBlockLinkId == "" {
+		return
+	}
+
+	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, archiveBlockLinkId)
 }
 
 func (p *commonSmart) Open(block anytype.Block) (err error) {
@@ -129,6 +153,7 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 		p.versions[id] = simple.New(v.Model())
 	}
 	p.versions[p.GetId()] = simple.New(ver.Model())
+	p.hideArchiveBlock()
 
 	p.normalize()
 
@@ -164,6 +189,13 @@ func (p *commonSmart) init() {
 	p.show()
 }
 
+func (p *commonSmart) Show() error {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.show()
+	return nil
+}
+
 func (p *commonSmart) Anytype() anytype.Anytype {
 	return p.s.anytype
 }
@@ -181,7 +213,7 @@ func (p *commonSmart) UpdateBlock(ids []string, hist bool, apply func(b simple.B
 			return
 		}
 	}
-	return p.applyAndSendEventHist(s, hist)
+	return p.applyAndSendEventHist(s, hist, true)
 }
 
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -299,7 +331,7 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 
 		copyBlockId := copyBlock.Model().Id
 
-		if f, ok := copyBlock.(file.Block); ok{
+		if f, ok := copyBlock.(file.Block); ok {
 			file := copyBlock.Model().GetFile()
 			url := file.Name
 			f.Upload(p.s.anytype, p, "", url)
@@ -383,6 +415,7 @@ func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
 	if _, err = p.block.AddVersions([]*model.Block{m}); err != nil {
 		return
 	}
+	p.block.Flush()
 	return
 }
 
@@ -409,7 +442,7 @@ func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos
 			}
 		}
 		switch reqPos {
-		case model.Block_Bottom:
+		case model.Block_Bottom, model.Block_Replace:
 			pos = targetPos + 1
 		case model.Block_Top:
 			pos = targetPos
@@ -420,6 +453,10 @@ func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos
 		}
 	}
 	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, b.Model().Id, pos)
+	if reqPos == model.Block_Replace {
+		s.remove(targetId)
+		parent.ChildrenIds = removeFromSlice(parent.ChildrenIds, targetId)
+	}
 	return
 }
 
@@ -621,7 +658,7 @@ func (p *commonSmart) UpdateIconBlock(id string, apply func(t base.IconBlock) er
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) error) (err error) {
+func (p *commonSmart) UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	s := p.newState()
@@ -634,7 +671,7 @@ func (p *commonSmart) UpdateTextBlocks(ids []string, apply func(t text.Block) er
 			return
 		}
 	}
-	return p.applyAndSendEvent(s)
+	return p.applyAndSendEventHist(s, true, showEvent)
 }
 
 func (p *commonSmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
@@ -662,7 +699,7 @@ func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
 	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
 		return
 	}
-	return p.applyAndSendEventHist(s, false)
+	return p.applyAndSendEventHist(s, false, true)
 }
 
 func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
@@ -693,6 +730,7 @@ func (p *commonSmart) show() {
 	}
 
 	event := &pb.Event{
+		ContextId: p.GetId(),
 		Messages: []*pb.EventMessage{
 			{
 				&pb.EventMessageValueOfBlockShow{
@@ -749,14 +787,16 @@ func (p *commonSmart) root() *model.Block {
 func (p *commonSmart) Close() error {
 	p.m.Lock()
 	defer p.m.Unlock()
-	if p.linkSubscriptions != nil {
-		p.linkSubscriptions.close()
-	}
 	if p.clientEventsCancel != nil {
 		p.clientEventsCancel()
 	}
 	if p.blockChangesCancel != nil {
 		p.blockChangesCancel()
+	}
+	for _, b := range p.versions {
+		if p.s.ls != nil {
+			p.s.ls.onDelete(p, b)
+		}
 	}
 	p.closeWg.Wait()
 	if p.block != nil {
@@ -766,10 +806,10 @@ func (p *commonSmart) Close() error {
 }
 
 func (p *commonSmart) applyAndSendEvent(s *state) (err error) {
-	return p.applyAndSendEventHist(s, true)
+	return p.applyAndSendEventHist(s, true, true)
 }
 
-func (p *commonSmart) applyAndSendEventHist(s *state, hist bool) (err error) {
+func (p *commonSmart) applyAndSendEventHist(s *state, hist, event bool) (err error) {
 	var action *history.Action
 	if hist {
 		action = &history.Action{}
@@ -778,7 +818,7 @@ func (p *commonSmart) applyAndSendEventHist(s *state, hist bool) (err error) {
 	if err != nil {
 		return
 	}
-	if len(msgs) > 0 {
+	if event && len(msgs) > 0 {
 		p.s.sendEvent(&pb.Event{
 			Messages:  msgs,
 			ContextId: p.GetId(),
@@ -811,19 +851,19 @@ func (p *commonSmart) deleteBlock(id string) (deleted simple.Block) {
 }
 
 func (p *commonSmart) onChange(b simple.Block) {
-	if p.linkSubscriptions != nil {
-		p.linkSubscriptions.onChange(b)
+	if p.s.ls != nil {
+		p.s.ls.onChange(p, b)
 	}
 }
 
 func (p *commonSmart) onCreate(b simple.Block) {
-	if p.linkSubscriptions != nil {
-		p.linkSubscriptions.onCreate(b)
+	if p.s.ls != nil {
+		p.s.ls.onCreate(p, b)
 	}
 }
 
 func (p *commonSmart) onDelete(b simple.Block) {
-	if p.linkSubscriptions != nil {
-		p.linkSubscriptions.onDelete(b)
+	if p.s.ls != nil {
+		p.s.ls.onDelete(p, b)
 	}
 }

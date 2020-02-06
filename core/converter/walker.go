@@ -103,7 +103,7 @@ func contains(s []*Node, e *Node) bool {
 	return false
 }
 
-func (w *walker) nextTreeLayer (node *Node) ( *Node) {
+func (w *walker) nextTreeLayer (node *Node) *Node {
 	w.remainBlocks = w.filterById(w.remainBlocks, node.id)
 
 	if len(w.remainBlocks) > 0 && len(node.model.ChildrenIds) > 0 {
@@ -143,35 +143,92 @@ func (w *walker) ProcessTree (node *Node) (out string) {
 	for _, child := range node.children {
 
 		switch  cont := child.model.Content.(type) {
-			case *model.BlockContentOfText: out += "<TEXT> " + cont.Text.Text +  " "
-			case *model.BlockContentOfFile: break
-			case *model.BlockContentOfBookmark: break
-			case *model.BlockContentOfDiv: out += "<DIV> "
-			case *model.BlockContentOfIcon: break
-			case *model.BlockContentOfLayout: break
-			case *model.BlockContentOfDashboard: break
-			case *model.BlockContentOfPage: break
-			case *model.BlockContentOfDataview: break
-			case *model.BlockContentOfLink: break
+			case *model.BlockContentOfText: out += renderText(true, cont)
+			case *model.BlockContentOfFile: out += renderFile(true, cont)
+			case *model.BlockContentOfBookmark: out += renderBookmark(true, cont)
+			case *model.BlockContentOfDiv: out += renderDiv(true, cont)
+			case *model.BlockContentOfIcon: out += renderIcon(true, cont)
+			case *model.BlockContentOfLayout: out += renderLayout(true, cont)
+			case *model.BlockContentOfDashboard: break;
+			case *model.BlockContentOfPage: break;
+			case *model.BlockContentOfDataview: break;
+			case *model.BlockContentOfLink: break;
 		}
 
 		if len(child.children) > 0 {
 			out += w.ProcessTree(child)
 		}
 
-		switch child.model.Content.(type) {
-		case *model.BlockContentOfText: out += "</TEXT>\n"
-		case *model.BlockContentOfFile: break
-		case *model.BlockContentOfBookmark: break
-		case *model.BlockContentOfDiv: out += "</DIV>\n"
-		case *model.BlockContentOfIcon: break
-		case *model.BlockContentOfLayout: break
-		case *model.BlockContentOfDashboard: break
-		case *model.BlockContentOfPage: break
-		case *model.BlockContentOfDataview: break
-		case *model.BlockContentOfLink: break
+		switch cont := child.model.Content.(type) {
+			case *model.BlockContentOfText: out += renderText(false, cont)
+			case *model.BlockContentOfFile: out += renderFile(false, cont)
+			case *model.BlockContentOfBookmark: out += renderBookmark(false, cont)
+			case *model.BlockContentOfDiv: out += renderDiv(false, cont)
+			case *model.BlockContentOfIcon: out += renderIcon(false, cont)
+			case *model.BlockContentOfLayout: out += renderLayout(false, cont)
+			case *model.BlockContentOfDashboard: break;
+			case *model.BlockContentOfPage: break;
+			case *model.BlockContentOfDataview: break;
+			case *model.BlockContentOfLink: break;
 		}
 	}
 
 	return gohtml.Format(out)
+}
+
+func renderText(isOpened bool, child *model.BlockContentOfText) string {
+	if (isOpened) {
+		return "<p>" + child.Text.Text
+	} else {
+		return "</p>"
+	}
+}
+
+func renderFile(isOpened bool, child *model.BlockContentOfFile) string {
+/*	if (isOpened) {
+		switch child.File.Type {
+			case model.BlockContentFile_File:
+			case model.BlockContentFile_Image:
+			case model.BlockContentFile_Video:
+		}
+	} else {
+		switch child.File.Type {
+			case model.BlockContentFile_File:
+			case model.BlockContentFile_Image:
+			case model.BlockContentFile_Video:
+		}
+	}*/
+	return ""
+}
+
+func renderBookmark(isOpened bool, child *model.BlockContentOfBookmark) string {
+	if (isOpened) {
+		return "<div>"
+	} else {
+		return "</div>"
+	}
+}
+
+func renderDiv(isOpened bool, child *model.BlockContentOfDiv) string {
+	if (isOpened) {
+		return "<div>"
+	} else {
+		return "</div>"
+	}
+}
+
+func renderIcon(isOpened bool, child *model.BlockContentOfIcon) string {
+	if (isOpened) {
+		return "<div>"
+	} else {
+		return "</div>"
+	}
+}
+
+func renderLayout(isOpened bool, child *model.BlockContentOfLayout) string {
+	if (isOpened) {
+		return "<div>"
+	} else {
+		return "</div>"
+	}
 }
