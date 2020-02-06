@@ -18,7 +18,7 @@ func TestExportHtml(t *testing.T) {
 			{Id:"6"},
 			{Id:"7"},
 		}
-		W := exportHtml.wal
+		W := convertner.New()
 		W.CreateTree(blocks)
 	})
 }
