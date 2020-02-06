@@ -25,7 +25,8 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
 }
 
 func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
-	return converter.BlocksToHtml(req.Blocks), nil
+	C := converter.New()
+	return C.Convert(req.Blocks), nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
