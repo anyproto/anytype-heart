@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/yosssi/gohtml"
 )
 
 type Node struct {
@@ -14,19 +14,24 @@ type Node struct {
 type walker struct {
 	nodeTable map[string]*Node
 	rootNode *Node
+	remainBlocks []*model.Block
 }
 
 type Walker interface {
 	CreateTree (blocks []*model.Block) Node
+	ProcessTree (node *Node) (out string)
+	PrintNode (node *Node) (out string)
 
-	nextTreeLayer (node *Node, remainBlocks []*model.Block) (processedNode *Node, newRemain []*model.Block)
+	nextTreeLayer (node *Node) (processedNode *Node)
 	filterById (blocks []*model.Block, id string) (out []*model.Block)
 }
 
 
-func New(node *Node) Walker {
+func New() Walker {
 	w := &walker{
-		rootNode: node,
+		rootNode: &Node{id: "root"},
+		nodeTable: map[string]*Node{},
+		remainBlocks: []*model.Block{},
 	}
 
 	return w
@@ -63,45 +68,110 @@ func (w *walker) CreateTree (blocks []*model.Block) Node {
 		for _, child := range b.ChildrenIds {
 
 			blocksRootLvl = w.filterById(blocksRootLvl, child)
-			fmt.Println("child", child, blocksRootLvl)
+
 		}
 	}
 
 	// 4. Create root
-	rootNode := Node{id:"root"}
-	rootNode.model = &model.Block{ChildrenIds:[]string{}}
-	remainBLocks := blocks
+	//rootNode := Node{id:"root"}
+	w.rootNode.model = &model.Block{ChildrenIds:[]string{}}
+
+	w.remainBlocks = blocks
 
 	// 5. Set top level blocks to root model
 	for _, br := range blocksRootLvl {
-		rootNode.model.ChildrenIds = append(rootNode.model.ChildrenIds, br.Id)
-		remainBLocks = w.filterById(remainBLocks, br.Id)
+
+		w.rootNode.model.ChildrenIds = append(w.rootNode.model.ChildrenIds, br.Id)
+		w.remainBlocks = w.filterById(w.remainBlocks, br.Id)
+		//fmt.Println("rootNode.model.ChildrenIds", w.rootNode.model.ChildrenIds)
+
 	}
 
-	w.nextTreeLayer(&rootNode, remainBLocks)
+	//fmt.Println("BEFORE:", w.PrintNode(w.rootNode))
+	w.rootNode = w.nextTreeLayer(w.rootNode)
 
-	fmt.Println("TREE:", rootNode, remainBLocks) //rootNode, "BLOCKS:", blocks, "ROOTLVL:", blocksRootLvl,
-	return rootNode
+	return *w.rootNode
 }
 
-func (w *walker) nextTreeLayer (node *Node, remainBlocks []*model.Block) (processedNode *Node, newRemain []*model.Block) {
-	processedNode = node
-	newRemain = remainBlocks
-	fmt.Println("processedNode.model", processedNode.model)
-	fmt.Println("remain", remainBlocks)
-	if len(newRemain) > 0 && len(processedNode.model.ChildrenIds) > 0 {
-
-		for _, childId := range processedNode.model.ChildrenIds {
-			if len(w.nodeTable[childId].model.ChildrenIds) > 0 {
-				w.nodeTable[childId], newRemain = w.nextTreeLayer(w.nodeTable[childId], newRemain)
-			}
-
-			processedNode.children = append(processedNode.children, w.nodeTable[childId])
-			newRemain = w.filterById(newRemain, childId)
+func contains(s []*Node, e *Node) bool {
+	for _, a := range s {
+		if a.id == e.id {
+			return true
 		}
 	}
 
-	fmt.Println("return processedNode", processedNode)
-	return processedNode, newRemain
+	return false
 }
 
+func (w *walker) nextTreeLayer (node *Node) ( *Node) {
+	w.remainBlocks = w.filterById(w.remainBlocks, node.id)
+
+	if len(w.remainBlocks) > 0 && len(node.model.ChildrenIds) > 0 {
+
+		for _, childId := range node.model.ChildrenIds {
+			w.remainBlocks = w.filterById(w.remainBlocks, childId)
+
+			if len(w.nodeTable[childId].model.ChildrenIds) > 0 {
+				w.nodeTable[childId] = w.nextTreeLayer(w.nodeTable[childId])
+			}
+
+			if !contains(node.children, w.nodeTable[childId]) {
+				node.children = append(node.children, w.nodeTable[childId])
+			}
+			//fmt.Println("APPEND:", childId, "TO:", node.id, "CHILDREN:", node.children)
+		}
+	}
+
+	//fmt.Println("NODE:", w.PrintNode(node))
+	return node
+}
+
+func (w *walker) PrintNode (node *Node) (out string) {
+	for _, child := range node.children {
+		out += "<node>" + child.id
+		if len(child.children) > 0 {
+			out += w.PrintNode(child)
+		}
+
+		out += "</node>"
+	}
+
+	return "\n" + gohtml.Format(out)
+}
+
+func (w *walker) ProcessTree (node *Node) (out string) {
+	for _, child := range node.children {
+
+		switch  cont := child.model.Content.(type) {
+			case *model.BlockContentOfText: out += "<TEXT> " + cont.Text.Text +  " "
+			case *model.BlockContentOfFile: break
+			case *model.BlockContentOfBookmark: break
+			case *model.BlockContentOfDiv: out += "<DIV> "
+			case *model.BlockContentOfIcon: break
+			case *model.BlockContentOfLayout: break
+			case *model.BlockContentOfDashboard: break
+			case *model.BlockContentOfPage: break
+			case *model.BlockContentOfDataview: break
+			case *model.BlockContentOfLink: break
+		}
+
+		if len(child.children) > 0 {
+			out += w.ProcessTree(child)
+		}
+
+		switch child.model.Content.(type) {
+		case *model.BlockContentOfText: out += "</TEXT>\n"
+		case *model.BlockContentOfFile: break
+		case *model.BlockContentOfBookmark: break
+		case *model.BlockContentOfDiv: out += "</DIV>\n"
+		case *model.BlockContentOfIcon: break
+		case *model.BlockContentOfLayout: break
+		case *model.BlockContentOfDashboard: break
+		case *model.BlockContentOfPage: break
+		case *model.BlockContentOfDataview: break
+		case *model.BlockContentOfLink: break
+		}
+	}
+
+	return gohtml.Format(out)
+}
