@@ -176,59 +176,109 @@ func (w *walker) ProcessTree (node *Node) (out string) {
 	return gohtml.Format(out)
 }
 
-func renderText(isOpened bool, child *model.BlockContentOfText) string {
-	if (isOpened) {
-		return "<p>" + child.Text.Text
-	} else {
-		return "</p>"
-	}
+func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
+	out = text
+	// TODO
+	return out
 }
 
-func renderFile(isOpened bool, child *model.BlockContentOfFile) string {
-/*	if (isOpened) {
+func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
+	if isOpened {
+		switch child.Text.Style {
+			// TODO: renderText -> w.renderText; ul li, ul li -> ul li li
+			case model.BlockContentText_Paragraph: out += "<p>" + applyMarks(child.Text.Text, child.Text.Marks)
+			case model.BlockContentText_Header1: out += "<h1>" + child.Text.Text
+			case model.BlockContentText_Header2: out += "<h2>" + child.Text.Text
+			case model.BlockContentText_Header3: out += "<h3>" + child.Text.Text
+			case model.BlockContentText_Header4: out += "<h4>" + child.Text.Text
+			case model.BlockContentText_Quote: out += "<quote>" + applyMarks(child.Text.Text, child.Text.Marks)
+			case model.BlockContentText_Code: out += "<code>" + applyMarks(child.Text.Text, child.Text.Marks)
+			case model.BlockContentText_Title: out += "<h1>" + applyMarks(child.Text.Text, child.Text.Marks)
+			case model.BlockContentText_Checkbox: out += `<div class="check"><input type="checkbox"/>` + applyMarks(child.Text.Text, child.Text.Marks)
+			case model.BlockContentText_Marked: out += "<ul><li>" + applyMarks(child.Text.Text, child.Text.Marks)
+			case model.BlockContentText_Numbered: out += "<ol><li>" + applyMarks(child.Text.Text, child.Text.Marks)
+			case model.BlockContentText_Toggle: out += `<div class="toggle">` + applyMarks(child.Text.Text, child.Text.Marks)
+		}
+
+	} else {
+		switch child.Text.Style {
+			case model.BlockContentText_Paragraph: out += "</p>"
+			case model.BlockContentText_Header1: out += "</h1>"
+			case model.BlockContentText_Header2: out += "</h2>"
+			case model.BlockContentText_Header3: out += "</h3>"
+			case model.BlockContentText_Header4: out += "</h4>"
+			case model.BlockContentText_Quote: out += "</quote>"
+			case model.BlockContentText_Code: out += "</code>"
+			case model.BlockContentText_Title: out += "</h1>"
+			case model.BlockContentText_Checkbox: out += `</div>`
+			case model.BlockContentText_Marked: out += "</li></ul>"
+			case model.BlockContentText_Numbered: out += "<li></ol>"
+			case model.BlockContentText_Toggle: out += `</div>`
+		}
+	}
+
+	return out
+}
+
+func renderFile(isOpened bool, child *model.BlockContentOfFile) (out string) {
+	if isOpened {
 		switch child.File.Type {
-			case model.BlockContentFile_File:
-			case model.BlockContentFile_Image:
-			case model.BlockContentFile_Video:
+			case model.BlockContentFile_File: break // TODO
+			case model.BlockContentFile_Image: break // TODO
+			case model.BlockContentFile_Video: break // TODO
 		}
 	} else {
 		switch child.File.Type {
-			case model.BlockContentFile_File:
-			case model.BlockContentFile_Image:
-			case model.BlockContentFile_Video:
+			case model.BlockContentFile_File: break
+			case model.BlockContentFile_Image: break
+			case model.BlockContentFile_Video: break
 		}
-	}*/
-	return ""
+	}
+	return out
 }
 
-func renderBookmark(isOpened bool, child *model.BlockContentOfBookmark) string {
-	if (isOpened) {
-		return "<div>"
+func renderBookmark(isOpened bool, child *model.BlockContentOfBookmark) (out string) {
+	if isOpened {
+		href := "" // TODO
+		title := "" // TODO
+		out = `<div class="bookmark"><a href="` + href + `">` + title
 	} else {
-		return "</div>"
+		out = "</a></div>"
 	}
+
+	return out
 }
 
-func renderDiv(isOpened bool, child *model.BlockContentOfDiv) string {
-	if (isOpened) {
-		return "<div>"
-	} else {
-		return "</div>"
+func renderDiv(isOpened bool, child *model.BlockContentOfDiv) (out string) {
+	if isOpened {
+		switch child.Div.Style {
+			case model.BlockContentDiv_Dots: out = `<hr class="dots">`
+			case model.BlockContentDiv_Line: out = `<hr class="line">`
+		}
 	}
+
+	return out
 }
 
-func renderIcon(isOpened bool, child *model.BlockContentOfIcon) string {
-	if (isOpened) {
-		return "<div>"
+func renderIcon(isOpened bool, child *model.BlockContentOfIcon) (out string) {
+	if isOpened {
+		out = `<div class="icon ` + child.Icon.Name + `">`
 	} else {
-		return "</div>"
+		out = "</div>"
 	}
+
+	return out
 }
 
-func renderLayout(isOpened bool, child *model.BlockContentOfLayout) string {
-	if (isOpened) {
-		return "<div>"
+func renderLayout(isOpened bool, child *model.BlockContentOfLayout) (out string) {
+	if isOpened {
+		switch child.Layout.Style {
+			case model.BlockContentLayout_Column: out = `<div class="column">`
+			case model.BlockContentLayout_Row: out = `<hr class="row">`
+		}
 	} else {
-		return "</div>"
+		out = "</div>"
 	}
+
+	return out
 }
