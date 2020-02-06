@@ -1,9 +1,7 @@
-package exportHtml
+package converter
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/yosssi/gohtml"
-	"strings"
 )
 
 /*oneof content {
@@ -52,15 +50,14 @@ import (
 	}
 }*/
 
-
 func BlocksToHtml (blocks []*model.Block) string {
-	var htmlArr []string
-	for _, b := range blocks {
-		htmlArr = append(htmlArr, blockToHtml(b.GetContent(), b))
-	}
+	//var htmlArr []string
 
-	output := strings.Join(htmlArr, "\n")
-	return gohtml.Format(wrapHtml(output))
+	//htmlArr = append(htmlArr, blockToHtml(b.GetContent(), b))
+	//output := strings.Join(htmlArr, "\n")
+	//return gohtml.Format(wrapHtml(output))
+
+	return ""
 }
 
 func blockToHtml (content interface{}, b *model.Block) string {
