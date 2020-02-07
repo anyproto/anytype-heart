@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-library/schema"
 	"github.com/golang/protobuf/jsonpb"
 	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/h2non/filetype"
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
 	"github.com/mr-tron/base58"
@@ -24,6 +24,8 @@ import (
 	"github.com/textileio/go-textile/repo/db"
 	tschema "github.com/textileio/go-textile/schema"
 	tutil "github.com/textileio/go-textile/util"
+
+	"github.com/anytypeio/go-anytype-library/schema"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
@@ -175,7 +177,13 @@ func (a *Anytype) getFileConfig(reader io.Reader, filename string, use string, p
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to get first 512 bytes to detect content-type: %s", err)
 	}
-	conf.Media = http.DetectContentType(data)
+	t, err := filetype.Match(data)
+	if err != nil {
+		log.Warningf("filetype failed to match for %s: %s", filename, err.Error())
+		conf.Media = http.DetectContentType(data)
+	} else {
+		conf.Media = t.MIME.Value
+	}
 
 	data, err = ioutil.ReadAll(buf)
 	if err != nil {
