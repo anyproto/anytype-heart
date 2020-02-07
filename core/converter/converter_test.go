@@ -14,14 +14,12 @@ func TestConverter_ProcessTree(t *testing.T) {
 			{Id:"2", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
 		}
 
-		//tree := converter.Node{}
 		W := converter.New()
 
 		newTree := W.CreateTree(blocks)
 
 		fmt.Println("TREE:", newTree)
 		fmt.Println("TREE:", W.PrintNode(&newTree))
-		//fmt.Println("HTML:", W.ProcessTree(&newTree))
 	})
 
 
@@ -40,7 +38,6 @@ func TestConverter_ProcessTree(t *testing.T) {
 
 		fmt.Println("TREE:", newTree)
 		fmt.Println("TREE:", W.ProcessTree(&newTree))
-		//fmt.Println("HTML:", W.ProcessTree(&newTree))
 	})
 
 	t.Run("Tree: medium", func(t *testing.T) {
@@ -73,6 +70,20 @@ func TestConverter_Convert(t *testing.T) {
 			{Id:"4", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"444"}}},
 			{Id:"5", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"555"}}},
 		}
+
+		fmt.Println("blocks:", blocks)
+
+		W := converter.New()
+		fmt.Println("TREE:", W.Convert(blocks))
+	})
+
+	t.Run("No structure", func(t *testing.T) {
+		blocks := []*model.Block{
+			{Id:"1", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
+			{Id:"2", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
+		}
+
+		fmt.Println("blocks:", blocks)
 
 		W := converter.New()
 		fmt.Println("TREE:", W.Convert(blocks))

@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/yosssi/gohtml"
 )
@@ -66,10 +67,13 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 	// 3. get root level blocks
 	blocksRootLvl := blocks
 	for _, b := range blocks {
+
 		for _, child := range b.ChildrenIds {
 			blocksRootLvl = c.filterById(blocksRootLvl, child)
 		}
 	}
+
+	fmt.Println("ROOT LEVEL:", blocksRootLvl)
 
 	// 4. Create root
 	c.rootNode.model = &model.Block{ChildrenIds:[]string{}}
@@ -78,12 +82,14 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 
 	// 5. Set top level blocks to root model
 	for _, br := range blocksRootLvl {
-
 		c.rootNode.model.ChildrenIds = append(c.rootNode.model.ChildrenIds, br.Id)
 		c.remainBlocks = c.filterById(c.remainBlocks, br.Id)
 	}
 
+	fmt.Println("ROOT NODE BEFORE:", c.rootNode)
 	c.rootNode = c.nextTreeLayer(c.rootNode)
+
+	fmt.Println("ROOT NODE AFTER:", c.rootNode)
 
 	return *c.rootNode
 }
@@ -101,18 +107,15 @@ func contains(s []*Node, e *Node) bool {
 func (c *converter) nextTreeLayer (node *Node) *Node {
 	c.remainBlocks = c.filterById(c.remainBlocks, node.id)
 
-	if len(c.remainBlocks) > 0 && len(node.model.ChildrenIds) > 0 {
+	for _, childId := range node.model.ChildrenIds {
+		c.remainBlocks = c.filterById(c.remainBlocks, childId)
 
-		for _, childId := range node.model.ChildrenIds {
-			c.remainBlocks = c.filterById(c.remainBlocks, childId)
+		if len(c.nodeTable[childId].model.ChildrenIds) > 0 {
+			c.nodeTable[childId] = c.nextTreeLayer(c.nodeTable[childId])
+		}
 
-			if len(c.nodeTable[childId].model.ChildrenIds) > 0 {
-				c.nodeTable[childId] = c.nextTreeLayer(c.nodeTable[childId])
-			}
-
-			if !contains(node.children, c.nodeTable[childId]) {
-				node.children = append(node.children, c.nodeTable[childId])
-			}
+		if !contains(node.children, c.nodeTable[childId]) {
+			node.children = append(node.children, c.nodeTable[childId])
 		}
 	}
 
@@ -315,6 +318,8 @@ func (c *converter) Convert (blocks []*model.Block) (out string) {
 	tree := c.CreateTree(blocks)
 	html := wrapHtml(c.ProcessTree(&tree))
 
+	fmt.Println("req.Blocks:", blocks)
+	fmt.Println("tree:", c.ProcessTree(&tree))
 	return gohtml.Format(html)
 
 }
