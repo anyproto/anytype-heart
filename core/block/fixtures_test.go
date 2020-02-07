@@ -90,7 +90,7 @@ func (bw *blockWrapper) SubscribeClientEvents(ch chan<- proto.Message) (func(), 
 		bw.m.Lock()
 		defer bw.m.Unlock()
 		bw.cancelClientEventsCalled = true
-		close(bw.clientEventsChan)
+		close(ch)
 	}, nil
 }
 
@@ -102,7 +102,7 @@ func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, f bool, ch chan<-
 		bw.m.Lock()
 		defer bw.m.Unlock()
 		bw.cancelBlockVersionsCalled = true
-		close(bw.blockVersionsChan)
+		close(ch)
 	}, nil
 }
 
@@ -117,7 +117,7 @@ func (bw *blockWrapper) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string,
 		bw.m.Lock()
 		defer bw.m.Unlock()
 		bw.cancelBlockMetaCalled = true
-		close(bw.blockMetaChan)
+		close(ch)
 	}, nil
 }
 
