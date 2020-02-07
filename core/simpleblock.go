@@ -52,7 +52,7 @@ func (simpleBlock *SimpleBlock) GetCurrentVersion() (BlockVersion, error) {
 	}
 
 	if simpleBlockVersion, exists := parentBlockVersion.DependentBlocks()[simpleBlock.id]; !exists {
-		return nil, fmt.Errorf("no block versions found")
+		return nil, ErrorNoBlockVersionsFound
 	} else {
 		return simpleBlockVersion, nil
 	}
