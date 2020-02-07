@@ -47,7 +47,7 @@ func (smartBlock *SmartBlock) GetCurrentVersionId() (string, error) {
 		return "", err
 	}
 	if len(versions) == 0 {
-		return "", fmt.Errorf("no block versions found")
+		return "", ErrorNoBlockVersionsFound
 	}
 
 	return versions[0].VersionId(), nil
@@ -254,7 +254,7 @@ func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, erro
 
 func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion, error) {
 	if len(blocks) == 0 {
-		return nil, fmt.Errorf("no blocks specified")
+		return nil, ErrorNoBlockVersionsFound
 	}
 
 	blockVersion := &SmartBlockVersion{model: &storage.BlockWithMeta{}}
@@ -458,7 +458,6 @@ func (smartBlock *SmartBlock) NewBlock(block model.Block) (Block, error) {
 }
 
 func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
-
 	var content model.IsBlockContent
 	switch strings.ToLower(smartBlock.thread.Schema.Name) {
 	case "dashboard":
@@ -477,8 +476,8 @@ func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 			Block: &model.Block{
 				Id: smartBlock.GetId(),
 				Fields: &types.Struct{Fields: map[string]*types.Value{
-					"name": {Kind: &types.Value_StringValue{StringValue: "Untitled"}},
-					"icon": {Kind: &types.Value_StringValue{StringValue: ":page_facing_up:"}},
+					"name": {Kind: &types.Value_StringValue{StringValue: ""}},
+					"icon": {Kind: &types.Value_StringValue{StringValue: ""}},
 				}},
 				Restrictions: &restr,
 				Content:      content,

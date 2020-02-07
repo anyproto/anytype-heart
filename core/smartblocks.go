@@ -14,6 +14,8 @@ import (
 	tpb "github.com/textileio/go-textile/pb"
 )
 
+var ErrorNoBlockVersionsFound = fmt.Errorf("no block versions found")
+
 func (a *Anytype) newBlockThread(schema string) (*tcore.Thread, error) {
 	config := tpb.AddThreadConfig{
 		Name: schema,
