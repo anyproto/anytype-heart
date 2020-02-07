@@ -3,6 +3,7 @@ package block
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/core"
@@ -77,30 +78,44 @@ type blockWrapper struct {
 	cancelBlockMetaCalled     bool
 	saveBlocksWriter          func(m ...*model.Block)
 	newBlockHandler           func(m model.Block) (core.Block, error)
+
+	m sync.Mutex
 }
 
 func (bw *blockWrapper) SubscribeClientEvents(ch chan<- proto.Message) (func(), error) {
+	bw.m.Lock()
+	defer bw.m.Unlock()
 	bw.clientEventsChan = ch
 	return func() {
+		bw.m.Lock()
+		defer bw.m.Unlock()
 		bw.cancelClientEventsCalled = true
 		close(bw.clientEventsChan)
 	}, nil
 }
 
 func (bw *blockWrapper) SubscribeNewVersionsOfBlocks(v string, f bool, ch chan<- []core.BlockVersion) (func(), error) {
+	bw.m.Lock()
+	defer bw.m.Unlock()
 	bw.blockVersionsChan = ch
 	return func() {
+		bw.m.Lock()
+		defer bw.m.Unlock()
 		bw.cancelBlockVersionsCalled = true
 		close(bw.blockVersionsChan)
 	}, nil
 }
 
 func (bw *blockWrapper) SubscribeMetaOfNewVersionsOfBlock(sinceVersionId string, includeSinceVersion bool, ch chan<- core.BlockVersionMeta) (cancelFunc func(), err error) {
+	bw.m.Lock()
+	defer bw.m.Unlock()
 	bw.blockMetaChan = ch
 	if bw.blockMetaChanSubscribed != nil {
 		close(bw.blockMetaChanSubscribed)
 	}
 	return func() {
+		bw.m.Lock()
+		defer bw.m.Unlock()
 		bw.cancelBlockMetaCalled = true
 		close(bw.blockMetaChan)
 	}, nil
