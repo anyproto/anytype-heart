@@ -4676,7 +4676,7 @@ B. Partial block load
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  | TODO: repeated string blockIds? |
+| blockIds | [string](#string) | repeated |  |
 
 
 
