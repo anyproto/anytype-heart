@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os/exec"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
@@ -19,19 +18,6 @@ var (
 	pasteCmdArgs = "pbpaste"
 	copyCmdArgs  = "pbcopy"
 )
-
-func getPasteCommand() *exec.Cmd {
-	return exec.Command(pasteCmdArgs)
-}
-
-func readAll() (string, error) {
-	pasteCmd := getPasteCommand()
-	out, err := pasteCmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
-}
 
 type TestCase struct {
 	HTML string `json:"html"`

@@ -293,6 +293,7 @@ func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
 			return
 		}
 	}
+
 	return copy.Model().Id, nil
 }
 

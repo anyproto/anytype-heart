@@ -39,10 +39,6 @@ type RWriter interface {
 	GetIsNumberedList() (isNumbered bool)
 }
 
-type contentBuff struct {
-
-}
-
 type rWriter struct {
 	*bufio.Writer
 
@@ -67,7 +63,6 @@ func (rw *rWriter) GetMarkStart () int {
 	return rw.marksStartQueue[len(rw.marksStartQueue) - 1]
 }
 
-
 func (rw *rWriter) AddMark (mark model.BlockContentTextMark) {
 	s := rw.marksStartQueue
 	rw.marksStartQueue = s[:len(s)-1]
@@ -83,7 +78,6 @@ func (rw *rWriter) AddMark (mark model.BlockContentTextMark) {
 }
 
 func (rw *rWriter) OpenNewTextBlock (style model.BlockContentTextStyle) {
-	//fmt.Println("OPEN:", style)
 	rw.textStylesQueue = append(rw.textStylesQueue, style)
 }
 
@@ -125,7 +119,6 @@ func (rw *rWriter) AddImageBlock (url string) {
 }
 
 func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
-	//fmt.Println("CLOSE:", content, rw.textBuffer)
 	var style = content;
 
 	if len(rw.textStylesQueue) > 0 {
@@ -133,7 +126,6 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 		rw.textStylesQueue = rw.textStylesQueue[:len(rw.textStylesQueue)-1]
 	}
 
-	//style = model.BlockContentText_Paragraph
 	newBlock := model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
@@ -164,8 +156,4 @@ func (rw *rWriter) ForceCloseTextBlock() {
 	}
 
 	rw.CloseTextBlock(style)
-}
-
-
-func (rw *rWriter) OpenNewBlock(content model.IsBlockContent) {
 }

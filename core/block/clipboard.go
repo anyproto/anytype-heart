@@ -44,11 +44,13 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) error {
 
 	textArr := strings.Split(req.TextSlot, "\n")
 
-	block := p.versions[req.FocusedBlockId].Model()
-	switch block.Content.(type) {
-	case *model.BlockContentOfText:
-		if block.GetText().Style == model.BlockContentText_Code {
-			textArr = []string{req.TextSlot}
+	if len(req.FocusedBlockId) > 0 {
+		block := p.versions[req.FocusedBlockId].Model()
+		switch block.Content.(type) {
+		case *model.BlockContentOfText:
+			if block.GetText().Style == model.BlockContentText_Code {
+				textArr = []string{req.TextSlot}
+			}
 		}
 	}
 

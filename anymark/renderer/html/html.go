@@ -553,26 +553,6 @@ func (r *Renderer) renderString(w blocksUtil.RWriter, source []byte, node ast.No
 
 var dataPrefix = []byte("data-")
 
-// RenderAttributes renders given node's attributes.
-// You can specify attribute names to render by the filter.
-// If filter is nil, RenderAttributes renders all attributes.
-func RenderAttributes(w blocksUtil.RWriter, node ast.Node, filter util.BytesFilter) {
-	// TODO: Do we need attributes?
-	/*	for _, attr := range node.Attributes() {
-		if filter != nil && !filter.Contains(attr.Name) {
-			if !bytes.HasPrefix(attr.Name, dataPrefix) {
-				continue
-			}
-		}
-		_, _ = w.WriteString(" ")
-		_, _ = w.Write(attr.Name)
-		_, _ = w.WriteString(`="`)
-		// TODO: convert numeric values to strings
-		_, _ = w.Write(util.EscapeHTML(attr.Value.([]byte)))
-		_ = w.WriteByte('"')
-	}*/
-}
-
 // A Writer interface wirtes textual contents to a writer.
 type Writer interface {
 	// Write writes the given source to writer with resolving references and unescaping
@@ -587,35 +567,7 @@ type Writer interface {
 type defaultWriter struct {
 }
 
-func escapeRune(writer blocksUtil.RWriter, r rune) {
-	if r < 256 {
-		v := util.EscapeHTMLByte(byte(r))
-		if v != nil {
-			_, _ = writer.Write(v)
-			return
-		}
-	}
-	_, _ = writer.WriteRune(util.ToValidRune(r))
-}
-
 func (d *defaultWriter) RawWrite(writer blocksUtil.RWriter, source []byte) {
-	/*	n := 0
-		l := len(source)
-		for i := 0; i < l; i++ {
-			v := util.EscapeHTMLByte(source[i])
-
-			//fmt.Println("char:", v[0])
-			if v != nil {
-				writer.AddTextByte(source[i-n : i])
-				n = 0
-				writer.AddTextByte(v)
-				continue
-			}
-			n++
-		}
-		if n != 0 {
-			writer.AddTextByte(source[l-n:])
-		}*/
 	writer.AddTextToBuffer(string(source))
 }
 
@@ -635,18 +587,3 @@ var bJs = []byte("javascript:")
 var bVb = []byte("vbscript:")
 var bFile = []byte("file:")
 var bData = []byte("data:")
-
-// IsDangerousURL returns true if the given url seems a potentially dangerous url,
-// otherwise false.
-func IsDangerousURL(url []byte) bool {
-	if bytes.HasPrefix(url, bDataImage) && len(url) >= 11 {
-		v := url[11:]
-		if bytes.HasPrefix(v, bPng) || bytes.HasPrefix(v, bGif) ||
-			bytes.HasPrefix(v, bJpeg) || bytes.HasPrefix(v, bWebp) {
-			return false
-		}
-		return true
-	}
-	return bytes.HasPrefix(url, bJs) || bytes.HasPrefix(url, bVb) ||
-		bytes.HasPrefix(url, bFile) || bytes.HasPrefix(url, bData)
-}
