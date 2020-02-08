@@ -283,7 +283,7 @@ func renderLayout(isOpened bool, child *model.BlockContentOfLayout) (out string)
 	if isOpened {
 		switch child.Layout.Style {
 		case model.BlockContentLayout_Column: out = `<div class="column">`
-		case model.BlockContentLayout_Row: out = `<hr class="row">`
+		case model.BlockContentLayout_Row: out = `<div class="row">`
 		}
 	} else {
 		out = "</div>"
