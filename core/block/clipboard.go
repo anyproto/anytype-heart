@@ -1,6 +1,7 @@
 package block
 
 import (
+	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
@@ -8,8 +9,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"strings"
 )
+var (
+	ErrAllSlotsEmpty = errors.New("All slots are empty")
+)
 
-func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
+func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
@@ -20,7 +24,7 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) error {
 	} else if len(req.TextSlot) > 0 {
 		return p.pasteText(req)
 	} else {
-		return nil
+		return nil, ErrAllSlotsEmpty
 	}
 }
 
@@ -29,7 +33,7 @@ func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) 
 	return C.Convert(req.Blocks), nil
 }
 
-func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
+func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
 
@@ -37,9 +41,9 @@ func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) error {
 	return p.pasteAny(req)
 }
 
-func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) error {
+func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	if len(req.TextSlot) == 0 {
-		return nil
+		return blockIds, nil
 	}
 
 	textArr := strings.Split(req.TextSlot, "\n")
@@ -65,13 +69,13 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) error {
 
 	fmt.Println("BLOCKS text:", req.AnySlot)
 
-	err := p.pasteAny(req)
+	blockIds, err = p.pasteAny(req)
 	fmt.Println("ERROR pasteAny:", err)
-	return err
+	return blockIds, err
 
 }
 
-func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
+func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 
 	var (
 		targetId string
@@ -90,7 +94,7 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 		// split block
 		_, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
-			return err
+			return blockIds, err
 		}
 		targetId = req.FocusedBlockId
 
@@ -119,17 +123,17 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) error {
 		}
 	}
 
-	err := p.pasteBlocks(s, req, targetId)
+	blockIds, err = p.pasteBlocks(s, req, targetId)
 	if err != nil {
-		return err
+		return blockIds, err
 	}
 
 	// selected blocks -> remove it
 	if len(req.SelectedBlockIds) > 0 {
 		if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
-			return err
+			return blockIds, err
 		}
 	}
 
-	return p.applyAndSendEvent(s)
+	return blockIds, p.applyAndSendEvent(s)
 }

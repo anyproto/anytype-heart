@@ -316,9 +316,11 @@ func (p *commonSmart) duplicate(s *state, req pb.RpcBlockListDuplicateRequest) (
 	return newIds, nil
 }
 
-func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (err error) {
+func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (blockIds []string, err error) {
 	parent := s.get(p.GetId()).Model()
 	emptyPage := false
+
+	blockIds = []string{}
 
 	if len(parent.ChildrenIds) == 0 {
 		emptyPage = true
@@ -327,10 +329,12 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 	for i := 0; i < len(req.AnySlot); i++ {
 		copyBlock, err := s.create(req.AnySlot[i])
 		if err != nil {
-			return err
+			return blockIds, err
 		}
 
 		copyBlockId := copyBlock.Model().Id
+
+		blockIds = append(blockIds, copyBlockId)
 
 		if f, ok := copyBlock.(file.Block); ok {
 			file := copyBlock.Model().GetFile()
@@ -339,11 +343,11 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 		}
 
 		if err != nil {
-			return err
+			return blockIds, err
 		}
 		for i, childrenId := range copyBlock.Model().ChildrenIds {
 			if copyBlock.Model().ChildrenIds[i], err = p.copy(s, childrenId); err != nil {
-				return err
+				return blockIds, err
 			}
 		}
 
@@ -351,13 +355,13 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 			parent.ChildrenIds = append(parent.ChildrenIds, copyBlockId)
 		} else {
 			if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
-				return err
+				return blockIds, err
 			}
 			targetId = copyBlockId
 		}
 	}
 
-	return nil
+	return blockIds, nil
 }
 
 func (p *commonSmart) normalize() {

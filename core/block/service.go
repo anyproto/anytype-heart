@@ -40,7 +40,7 @@ type Service interface {
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
-	Paste(req pb.RpcBlockPasteRequest) error
+	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
