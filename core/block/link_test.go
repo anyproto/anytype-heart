@@ -58,8 +58,9 @@ func Test_LinkWithPage(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 50)
-
+	mockBlock.m.Lock()
 	assert.True(t, mockBlock.cancelBlockMetaCalled)
+	mockBlock.m.Unlock()
 
 	require.NoError(t, fx.Close())
 	fx.savedBlocks[newBlockId].GetLink().Fields.Equal(newFields)

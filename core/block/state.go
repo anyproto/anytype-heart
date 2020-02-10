@@ -23,9 +23,9 @@ func (s *commonSmart) newState() *state {
 }
 
 type state struct {
-	sb             *commonSmart
-	blocks         map[string]simple.Block
-	toRemove       []string
+	sb       *commonSmart
+	blocks   map[string]simple.Block
+	toRemove []string
 }
 
 func (s *state) set(b simple.Block) {
@@ -189,10 +189,10 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 			return nil, err
 		}
 	}
-	for _, removeId := range s.toRemove {
+	if len(s.toRemove) > 0 {
 		msgs = append(msgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockDelete{
-				BlockDelete: &pb.EventBlockDelete{BlockId: removeId},
+				BlockDelete: &pb.EventBlockDelete{BlockIds: s.toRemove},
 			},
 		})
 	}
