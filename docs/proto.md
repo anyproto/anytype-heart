@@ -5343,7 +5343,6 @@ Avatar of a user&#39;s account. It could be an image or color
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | restrictions | [Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
-| isArchived | [bool](#bool) |  |  |
 | dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
 | page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
@@ -5502,6 +5501,7 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | style | [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style) |  |  |
+| isArchived | [bool](#bool) |  |  |
 
 
 
