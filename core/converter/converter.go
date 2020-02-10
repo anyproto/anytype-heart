@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/gogo/protobuf/types"
 	"github.com/yosssi/gohtml"
 )
 
@@ -145,7 +146,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 		case *model.BlockContentOfBookmark: out += renderBookmark(true, cont)
 		case *model.BlockContentOfDiv:      out += renderDiv(true, cont)
 		case *model.BlockContentOfIcon:     out += renderIcon(true, cont)
-		case *model.BlockContentOfLayout:   out += renderLayout(true, cont)
+		case *model.BlockContentOfLayout:   out += renderLayout(true, cont, child.model)
 		case *model.BlockContentOfDashboard: break;
 		case *model.BlockContentOfPage: break;
 		case *model.BlockContentOfDataview: break;
@@ -293,10 +294,29 @@ func renderIcon(isOpened bool, child *model.BlockContentOfIcon) (out string) {
 	return out
 }
 
-func renderLayout(isOpened bool, child *model.BlockContentOfLayout) (out string) {
+func fieldsGetFloat(field *types.Struct, key string) (value float64, ok bool) {
+	if field != nil && field.Fields != nil {
+		if value, ok := field.Fields[key]; ok {
+			if s, ok := value.Kind.(*types.Value_NumberValue); ok {
+				return s.NumberValue, true
+			}
+		}
+	}
+	return
+}
+
+func renderLayout(isOpened bool, child *model.BlockContentOfLayout, block *model.Block) (out string) {
 	if isOpened {
 		switch child.Layout.Style {
-		case model.BlockContentLayout_Column: out = `<div class="column">`
+		case model.BlockContentLayout_Column:
+			fields := block.Fields
+			if fields != nil && fields.Fields != nil && fields.Fields["width"] != nil {
+				width, _ := fieldsGetFloat(fields, "width")
+				out = `<div class="column" style="width: ` + string(int64(width * 100)) + `%">`
+			}else {
+				out = `<div class="column">`
+			}
+
 		case model.BlockContentLayout_Row: out = `<div class="row">`
 		}
 	} else {
