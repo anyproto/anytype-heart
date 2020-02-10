@@ -169,15 +169,17 @@ func (b *breadcrumbs) Cut(index int) (err error) {
 	event := &pb.Event{
 		ContextId: b.id,
 	}
-	for _, removeId := range toRemove {
+	if len(toRemove) > 0 {
 		event.Messages = append(event.Messages, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockDelete{
 				BlockDelete: &pb.EventBlockDelete{
-					BlockId: removeId,
+					BlockIds: toRemove,
 				},
 			},
 		})
-		delete(b.blocks, removeId)
+	}
+	for _, id := range toRemove {
+		delete(b.blocks, id)
 	}
 	event.Messages = append(event.Messages, &pb.EventMessage{
 		Value: &pb.EventMessageValueOfBlockSetChildrenIds{

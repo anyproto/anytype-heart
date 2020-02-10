@@ -20,7 +20,14 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 	if len(req.AnySlot) > 0 {
 		return p.pasteAny(req)
 	} else if len(req.HtmlSlot) > 0 {
-		return p.pasteHtml(req)
+		blockIds, err = p.pasteHtml(req)
+
+		if err != nil {
+			return p.pasteText(req)
+		} else {
+			return blockIds, err
+		}
+
 	} else if len(req.TextSlot) > 0 {
 		return p.pasteText(req)
 	} else {

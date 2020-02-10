@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.0 // indirect
-	github.com/anytypeio/go-anytype-library v0.0.0-20200205201433-fe56b3305e3b
+	github.com/anytypeio/go-anytype-library v0.0.0-20200207123657-05526fc73774
 	github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13
 
 	github.com/gogo/protobuf v1.3.1
@@ -19,7 +19,6 @@ require (
 	github.com/yuin/goldmark v1.1.22
 	golang.org/x/text v0.3.2
 	google.golang.org/grpc v1.24.0
-	gotest.tools v2.1.0+incompatible
 )
 
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.7.8-0.20200205164649-a38fa26a4621
