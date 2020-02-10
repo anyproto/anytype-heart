@@ -75,7 +75,7 @@ func (e emptySmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 	return
 }
 
-func (e emptySmart) Paste(req pb.RpcBlockPasteRequest) (err error) {
+func (e emptySmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	err = errEmptyBlock
 	return
 }

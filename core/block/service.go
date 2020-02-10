@@ -233,13 +233,13 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 	return ErrBlockNotFound
 }
 
-func (s *service) Paste(req pb.RpcBlockPasteRequest) error {
+func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	if sb, ok := s.smartBlocks[req.ContextId]; ok {
 		return sb.Paste(req)
 	}
-	return ErrBlockNotFound
+	return blockIds, ErrBlockNotFound
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
