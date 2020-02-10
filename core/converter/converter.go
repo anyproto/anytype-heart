@@ -309,13 +309,15 @@ func renderLayout(isOpened bool, child *model.BlockContentOfLayout, block *model
 	if isOpened {
 		switch child.Layout.Style {
 		case model.BlockContentLayout_Column:
+			style := ""
 			fields := block.Fields
 			if fields != nil && fields.Fields != nil && fields.Fields["width"] != nil {
 				width, _ := fieldsGetFloat(fields, "width")
-				out = `<div class="column" style="width: ` + string(int64(width * 100)) + `%">`
-			}else {
-				out = `<div class="column">`
+				if width > 0 {
+					style = `style="width: ` + string(int64(width * 100)) + `%">`
+				}
 			}
+			out = `<div class="column" ` + style + `>`
 
 		case model.BlockContentLayout_Row: out = `<div class="row">`
 		}
