@@ -9,7 +9,7 @@ message Block {
     google.protobuf.Struct fields = 2;
     Restrictions restrictions = 3;
     repeated string childrenIds = 4;
-    bool isArchived = 5;
+
 
     oneof content {
         Content.Dashboard dashboard = 11;
@@ -194,6 +194,7 @@ message Block {
             }
 
             Style style = 1;
+            bool isArchived = 2;
         }
     }
 }
