@@ -60,19 +60,30 @@ func (rw *rWriter) AddTextByte (b []byte) {
 }
 
 func (rw *rWriter) GetMarkStart () int {
-	return rw.marksStartQueue[len(rw.marksStartQueue) - 1]
+	if len(rw.marksStartQueue) > 0 {
+		return rw.marksStartQueue[len(rw.marksStartQueue) - 1]
+	} else {
+		return 0
+	}
 }
 
 func (rw *rWriter) AddMark (mark model.BlockContentTextMark) {
 	s := rw.marksStartQueue
-	rw.marksStartQueue = s[:len(s)-1]
 
-	// IMPORTANT: ignore if current block is not support markup.
-	if  rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header1 &&
-	    rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header2 &&
-		rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header3 &&
-		rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header4 {
+	if len(s) > 0 {
+		rw.marksStartQueue = s[:len(s)-1]
+	}
 
+	if len(rw.textStylesQueue) > 0 {
+		// IMPORTANT: ignore if current block is not support markup.
+		if  rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header1 &&
+			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header2 &&
+			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header3 &&
+			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header4 {
+
+			rw.marksBuffer = append(rw.marksBuffer, &mark)
+		}
+	} else {
 		rw.marksBuffer = append(rw.marksBuffer, &mark)
 	}
 }
