@@ -196,7 +196,7 @@ func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
 	if isOpened {
 		switch child.Text.Style {
 		// TODO: renderText -> c.renderText; ul li, ul li -> ul li li
-		case model.BlockContentText_Paragraph: out += "<p>" + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Paragraph: out += `<div class="paragraph">` + applyMarks(child.Text.Text, child.Text.Marks)
 		case model.BlockContentText_Header1:   out += "<h1>" + child.Text.Text
 		case model.BlockContentText_Header2:   out += "<h2>" + child.Text.Text
 		case model.BlockContentText_Header3:   out += "<h3>" + child.Text.Text
@@ -211,7 +211,7 @@ func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
 		}
 	} else {
 		switch child.Text.Style {
-		case model.BlockContentText_Paragraph: out += "</p>"
+		case model.BlockContentText_Paragraph: out += "</div>"
 		case model.BlockContentText_Header1:   out += "</h1>"
 		case model.BlockContentText_Header2:   out += "</h2>"
 		case model.BlockContentText_Header3:   out += "</h3>"
