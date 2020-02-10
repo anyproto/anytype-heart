@@ -193,21 +193,35 @@ func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
 }
 
 func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
+
+	styleParagraph := ""
+	styleHeader1 := ""
+	styleHeader2 := ""
+	styleHeader3 := ""
+	styleHeader4 := ""
+	styleQuote := ""
+	styleCode := ""
+	styleTitle := ""
+	styleCheckbox := ""
+	styleMarked := ""
+	styleNumbered := ""
+	styleToggle := ""
+
 	if isOpened {
 		switch child.Text.Style {
 		// TODO: renderText -> c.renderText; ul li, ul li -> ul li li
-		case model.BlockContentText_Paragraph: out += `<div class="paragraph">` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Header1:   out += "<h1>" + child.Text.Text
-		case model.BlockContentText_Header2:   out += "<h2>" + child.Text.Text
-		case model.BlockContentText_Header3:   out += "<h3>" + child.Text.Text
-		case model.BlockContentText_Header4:   out += "<h4>" + child.Text.Text
-		case model.BlockContentText_Quote:     out += "<quote>" + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Code:      out += "<code>" + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Title:     out += "<h1>" + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Checkbox:  out += `<div class="check"><input type="checkbox"/>` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Marked:    out += "<ul><li>" + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Numbered:  out += "<ol><li>" + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Toggle:    out += `<div class="toggle">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Paragraph: out += `<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Header1:   out += `<h1 style="` + styleHeader1 + `">` + child.Text.Text
+		case model.BlockContentText_Header2:   out += `<h2 style="` + styleHeader2 + `">` + child.Text.Text
+		case model.BlockContentText_Header3:   out += `<h3 style="` + styleHeader3 + `">` + child.Text.Text
+		case model.BlockContentText_Header4:   out += `<h4 style="` + styleHeader4 + `">` + child.Text.Text
+		case model.BlockContentText_Quote:     out += `<quote style="` + styleQuote + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Code:      out += `<code style="` + styleCode + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Title:     out += `<h1 style="` + styleTitle + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Checkbox:  out += `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Marked:    out += `<ul style="` + styleMarked + `"><li>` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Numbered:  out += `<ol style="` + styleNumbered + `"><li>` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Toggle:    out += `<div style="` + styleToggle + `" class="toggle">` + applyMarks(child.Text.Text, child.Text.Marks)
 		}
 	} else {
 		switch child.Text.Style {
