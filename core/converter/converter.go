@@ -194,18 +194,18 @@ func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
 
 func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
 
-	styleParagraph := ""
+	styleParagraph := "font-size:15px;"
 	styleHeader1 := ""
 	styleHeader2 := ""
 	styleHeader3 := ""
 	styleHeader4 := ""
-	styleQuote := ""
-	styleCode := ""
+	styleQuote := "font-size:15px; font-style: italic;"
+	styleCode := "font-size:15px; font-family: monospace;"
 	styleTitle := ""
-	styleCheckbox := ""
-	styleMarked := ""
-	styleNumbered := ""
-	styleToggle := ""
+	styleCheckbox := "font-size:15px;"
+	styleMarked := "font-size:15px;"
+	styleNumbered := "font-size:15px;"
+	styleToggle := "font-size:15px;"
 
 	if isOpened {
 		switch child.Text.Style {
