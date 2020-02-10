@@ -26,8 +26,6 @@ func (p *dashboard) Init() {
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
 		p.addTestPage()
-		// todo: deprecated, remove after migration to the right link style
-		p.removeArchive()
 	}
 
 	p.migratePageToLinks()
@@ -38,7 +36,7 @@ func (p *dashboard) Init() {
 func (p *dashboard) migratePageToLinks() {
 	s := p.newState()
 	for id, v := range p.versions {
-		if v.Model().GetPage() != nil {
+		if id != p.GetId() && (v.Model().GetPage() != nil || v.Model().GetDashboard() != nil) {
 			link := s.createLink(v.Model())
 			if _, err := p.replace(s, id, link); err != nil {
 				fmt.Println("middle: can't wrap page to link:", err)

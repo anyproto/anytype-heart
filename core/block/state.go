@@ -56,6 +56,8 @@ func (s *state) createLink(target *model.Block) (m *model.Block) {
 	style := model.BlockContentLink_Page
 	if target.GetDataview() != nil {
 		style = model.BlockContentLink_Dataview
+	} else if target.GetDashboard() != nil {
+		style = model.BlockContentLink_Dashboard
 	}
 	isArchived := false
 	if page := target.GetPage(); page != nil {
