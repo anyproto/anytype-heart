@@ -87,7 +87,7 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	if sb, ok := s.smartBlocks[id]; ok {
 		return sb.Show()
 	}
-	sb, err := openSmartBlock(s, id)
+	sb, err := openSmartBlock(s, id, true)
 	fmt.Println("middle: open smart block:", id, err)
 	if err != nil {
 		return
@@ -108,7 +108,7 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	defer s.m.Unlock()
 
 	bs := newBreadcrumbs(s)
-	if err = bs.Open(nil); err != nil {
+	if err = bs.Open(nil, false); err != nil {
 		return
 	}
 	bs.Init()
@@ -338,4 +338,13 @@ func (s *service) Close() error {
 		}
 	}
 	return nil
+}
+
+// pickBlock returns opened smartBlock or opens smartBlock in silent mode
+// must be called under RLock
+func (s *service) pickBlock(id string) (sb smartBlock, err error) {
+	if b, ok := s.smartBlocks[id]; ok {
+		return b, nil
+	}
+	return openSmartBlock(s, id, false)
 }
