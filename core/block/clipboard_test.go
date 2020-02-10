@@ -64,7 +64,7 @@ func pasteAny(t *testing.T, fx *pageFixture, id string, textRange model.Range, s
 	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
 	req.SelectedTextRange = &textRange
 	req.AnySlot = blocks
-	err := fx.pasteAny(req)
+	_, err := fx.pasteAny(req)
 	require.NoError(t, err)
 }
 
@@ -74,7 +74,7 @@ func pasteText(t *testing.T, fx *pageFixture, id string, textRange model.Range, 
 	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
 	req.TextSlot = textSlot
 	req.SelectedTextRange = &textRange
-	err := fx.pasteText(req)
+	_, err := fx.pasteText(req)
 	require.NoError(t, err)
 }
 
@@ -84,7 +84,7 @@ func pasteHTML(t *testing.T, fx *pageFixture, id string, textRange model.Range, 
 	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
 	req.HtmlSlot = htmlSlot
 	req.SelectedTextRange = &textRange
-	err := fx.pasteHtml(req)
+	_, err := fx.pasteHtml(req)
 	require.NoError(t, err)
 }
 
