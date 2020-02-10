@@ -57,12 +57,17 @@ func (s *state) createLink(target *model.Block) (m *model.Block) {
 	if target.GetDataview() != nil {
 		style = model.BlockContentLink_Dataview
 	}
+	isArchived := false
+	if page := target.GetPage(); page != nil {
+		isArchived = page.IsArchived
+	}
 	return &model.Block{
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
 				TargetBlockId: target.Id,
 				Style:         style,
 				Fields:        deepcopy.Copy(target.Fields).(*types.Struct),
+				IsArchived:    isArchived,
 			},
 		},
 	}
@@ -224,15 +229,26 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 }
 
 func (s *state) checkChangeSmartFields(msgs []*pb.EventMessage) {
+	var changed bool
 	for _, msg := range msgs {
 		if fieldsChange := msg.GetBlockSetFields(); fieldsChange != nil {
 			if fieldsChange.Id == s.sb.GetId() && s.sb.s != nil && s.sb.s.ls != nil {
-				s.sb.s.ls.onMeta(metaInfo{
-					targetId: s.sb.GetId(),
-					meta:     fakeCoreMeta{fields: fieldsChange.Fields},
-				})
+				changed = true
+				break
 			}
 		}
+		if pageChange := msg.GetBlockSetPage(); pageChange != nil {
+			if pageChange.Id == s.sb.GetId() && s.sb.s != nil && s.sb.s.ls != nil {
+				changed = true
+				break
+			}
+		}
+	}
+	if changed {
+		s.sb.s.ls.onMeta(metaInfo{
+			targetId: s.sb.GetId(),
+			meta:     fakeCoreMeta{b: s.sb.versions[s.sb.GetId()].Copy().Model()},
+		})
 	}
 }
 
@@ -362,7 +378,7 @@ func (s *state) validateBlock(b simple.Block) (err error) {
 }
 
 type fakeCoreMeta struct {
-	fields *types.Struct
+	b *model.Block
 }
 
 func (f fakeCoreMeta) VersionId() string {
@@ -370,7 +386,15 @@ func (f fakeCoreMeta) VersionId() string {
 }
 
 func (f fakeCoreMeta) Model() *model.BlockMetaOnly {
-	return nil
+	isArchived := false
+	if page := f.b.GetPage(); page != nil {
+		isArchived = page.IsArchived
+	}
+	return &model.BlockMetaOnly{
+		Id:         f.b.Id,
+		Fields:     f.b.Fields,
+		IsArchived: isArchived,
+	}
 }
 
 func (f fakeCoreMeta) User() string {
@@ -382,5 +406,5 @@ func (f fakeCoreMeta) Date() *types.Timestamp {
 }
 
 func (f fakeCoreMeta) ExternalFields() *types.Struct {
-	return f.fields
+	return f.b.Fields
 }

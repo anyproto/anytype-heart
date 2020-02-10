@@ -332,6 +332,7 @@
     - [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name)
     - [Event.Block.Set.Link](#anytype.Event.Block.Set.Link)
     - [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields)
+    - [Event.Block.Set.Link.IsArchived](#anytype.Event.Block.Set.Link.IsArchived)
     - [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style)
     - [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId)
     - [Event.Block.Set.Page](#anytype.Event.Block.Set.Page)
@@ -4940,6 +4941,7 @@ Precondition: user A opened a block
 | targetBlockId | [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId) |  |  |
 | style | [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style) |  |  |
 | fields | [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields) |  |  |
+| isArchived | [Event.Block.Set.Link.IsArchived](#anytype.Event.Block.Set.Link.IsArchived) |  |  |
 
 
 
@@ -4955,6 +4957,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.IsArchived"></a>
+
+### Event.Block.Set.Link.IsArchived
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
 
 
 

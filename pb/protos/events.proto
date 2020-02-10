@@ -212,6 +212,7 @@ message Event {
                 TargetBlockId targetBlockId = 2;
                 Style style = 3;
                 Fields fields = 4;
+                IsArchived isArchived = 5;
 
                 message TargetBlockId {
                     string value = 1;
@@ -223,6 +224,10 @@ message Event {
 
                 message Fields {
                     google.protobuf.Struct value = 1;
+                }
+
+                message IsArchived {
+                    bool value = 1;
                 }
             }
         }

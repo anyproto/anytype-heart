@@ -68,6 +68,10 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.TargetBlockId = &pb.EventBlockSetLinkTargetBlockId{Value: link.content.TargetBlockId}
 	}
+	if l.content.IsArchived != link.content.IsArchived {
+		hasChanges = true
+		changes.IsArchived = &pb.EventBlockSetLinkIsArchived{Value: link.content.IsArchived}
+	}
 
 	if hasChanges {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes}})
@@ -77,4 +81,7 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 
 func (l *Link) SetMeta(meta core.BlockVersionMeta) {
 	l.content.Fields = meta.ExternalFields()
+	if data := meta.Model(); data != nil {
+		l.content.IsArchived = data.IsArchived
+	}
 }

@@ -100,6 +100,23 @@ func (p *page) Type() smartBlockType {
 	return smartBlockTypePage
 }
 
+func (p *page) SetArchived(isArchived bool) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	b := s.get(p.GetId())
+	if page, ok := b.(base.PageBlock); ok {
+		page.SetPageIsArchived(isArchived)
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *page) Fields() *types.Struct {
+	p.m.Lock()
+	defer p.m.Unlock()
+	return p.versions[p.GetId()].Copy().Model().Fields
+}
+
 func (p *page) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()

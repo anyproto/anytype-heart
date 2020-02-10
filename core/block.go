@@ -260,7 +260,9 @@ func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRe
 
 		return m
 	}
-	// TODO
+	if err := mw.blockService.SetPageIsArchived(*req); err != nil {
+		return response(pb.RpcBlockSetPageIsArchivedResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcBlockSetPageIsArchivedResponseError_NULL, nil)
 }
 
