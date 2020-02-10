@@ -25,8 +25,8 @@ message Event {
             Block.Set.Fields blockSetFields = 6;
             Block.Set.ChildrenIds blockSetChildrenIds = 7;
             Block.Set.Restrictions blockSetRestrictions = 8;
-            Block.Set.IsArchived blockSetIsArchived = 9;
 
+            Block.Set.Page blockSetPage = 9;
             Block.Set.Text blockSetText = 10;
             Block.Set.File blockSetFile = 11;
             Block.Set.Icon blockSetIcon = 12;
@@ -117,9 +117,13 @@ message Event {
                 anytype.model.Block.Restrictions restrictions = 2;
             }
 
-            message IsArchived {
+            message Page {
                 string id = 1;
-                bool IsArchived = 2;
+                IsArchived isArchived = 2;
+
+                message IsArchived {
+                    bool value = 1;
+                }
             }
 
             message Text {

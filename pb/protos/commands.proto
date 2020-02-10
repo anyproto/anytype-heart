@@ -451,25 +451,27 @@ message Rpc {
                 }
             }
 
-            message IsArchived {
-                message Request {
-                    string contextId = 1;
-                    string blockId = 2;
-                    bool IsArchived = 3;
-                }
+            message Page {
+                message IsArchived {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        bool IsArchived = 3;
+                    }
 
-                message Response {
-                    Error error = 1;
+                    message Response {
+                        Error error = 1;
 
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
 
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            // ...
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
                         }
                     }
                 }
@@ -938,7 +940,6 @@ message Rpc {
                 }
             }
         }
-
 
         /*
          * Create a Smart/Internal block. Request can contain a block with a content, or it can be an empty block with a specific block.content.

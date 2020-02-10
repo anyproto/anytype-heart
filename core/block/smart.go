@@ -774,7 +774,6 @@ func (p *commonSmart) toSave(b *model.Block, sources ...map[string]simple.Block)
 		Fields:       b.Fields,
 		Restrictions: b.Restrictions,
 		ChildrenIds:  p.excludeVirtualIds(b.ChildrenIds, sources...),
-		IsArchived:   b.IsArchived,
 		Content:      b.Content,
 	}
 }

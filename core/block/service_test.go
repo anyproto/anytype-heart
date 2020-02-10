@@ -106,4 +106,11 @@ func Test_BlockTypes(t *testing.T) {
 			},
 		}))
 	})
+	t.Run("page block", func(t *testing.T) {
+		assert.Implements(t, (*base.PageBlock)(nil), simple.New(&model.Block{
+			Content: &model.BlockContentOfPage{
+				Page: &model.BlockContentPage{},
+			},
+		}))
+	})
 }
