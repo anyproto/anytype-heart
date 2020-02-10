@@ -29,6 +29,9 @@ func (p *dashboard) Init() {
 	}
 
 	p.migratePageToLinks()
+	if err := p.checkArchive(); err != nil {
+		fmt.Println("middle: can't check archive:", err)
+	}
 	p.history = history.NewHistory(0)
 	p.init()
 }
@@ -54,13 +57,33 @@ func (p *dashboard) migratePageToLinks() {
 	}
 }
 
-// todo: deprecated, remove after migration to the right link style
-func (p *dashboard) removeArchive() {
-	if os.Getenv("ANYTYPE_SHOW_ARCHIVE") == "1" {
+func (p *dashboard) checkArchive() (err error) {
+	archiveId := p.s.anytype.PredefinedBlockIds().Archive
+	if archiveId == "" {
 		return
 	}
-
-	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, p.Anytype().PredefinedBlockIds().Archive)
+	for _, b := range p.versions {
+		if link := b.Model().GetLink(); link != nil && link.TargetBlockId == archiveId {
+			// found
+			return
+		}
+	}
+	s := p.newState()
+	link := s.createLink(&model.Block{
+		Id: archiveId,
+		Content: &model.BlockContentOfDashboard{
+			Dashboard: &model.BlockContentDashboard{
+				Style: model.BlockContentDashboard_Archive,
+			},
+		},
+	})
+	l, err := s.create(link)
+	if err != nil {
+		return
+	}
+	root := s.get(p.GetId()).Model()
+	root.ChildrenIds = append(root.ChildrenIds, l.Model().Id)
+	return p.applyAndSendEventHist(s, false, false)
 }
 
 func (p *dashboard) addTestPage() {

@@ -81,8 +81,12 @@ func (p *archive) archivePage(id string) (err error) {
 			},
 		},
 	})
+	l, err := s.create(link)
+	if err != nil {
+		return
+	}
 	root := s.get(p.GetId()).Model()
-	root.ChildrenIds = append([]string{link.Id}, root.ChildrenIds...)
+	root.ChildrenIds = append([]string{l.Model().Id}, root.ChildrenIds...)
 	p.pageIds[id] = link.Id
 	return p.applyAndSendEvent(s)
 }
