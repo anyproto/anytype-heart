@@ -80,9 +80,13 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 
 	switch ver.Model().Content.(type) {
 	case *model.BlockContentOfDashboard:
-		sb, err = newDashboard(s, b)
+		if ver.Model().GetDashboard().Style == model.BlockContentDashboard_Archive {
+			sb, err = newArchive(s)
+		} else {
+			sb, err = newDashboard(s)
+		}
 	case *model.BlockContentOfPage:
-		sb, err = newPage(s, b)
+		sb, err = newPage(s)
 	default:
 		return nil, fmt.Errorf("%v %T", ErrUnexpectedSmartBlockType, ver.Model().Content)
 	}

@@ -5,14 +5,13 @@ import (
 	"os"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 )
 
-func newDashboard(s *service, block anytype.Block) (smartBlock, error) {
+func newDashboard(s *service) (smartBlock, error) {
 	p := &dashboard{&commonSmart{s: s}}
 	return p, nil
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -23,7 +22,7 @@ var (
 	_ base.IconBlock = (*pageIconBlock)(nil)
 )
 
-func newPage(s *service, block anytype.Block) (smartBlock, error) {
+func newPage(s *service) (smartBlock, error) {
 	p := &page{&commonSmart{s: s}}
 	return p, nil
 }
