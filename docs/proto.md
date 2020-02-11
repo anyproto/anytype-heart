@@ -5731,7 +5731,8 @@ General purpose structure, uses in Mark.
 | ---- | ------ | ----------- |
 | Page | 0 |  |
 | Dataview | 1 |  |
-| Dashboard | 2 | ... |
+| Dashboard | 2 |  |
+| Archive | 3 | ... |
 
 
 
