@@ -38,12 +38,25 @@ func (p *archive) Init() {
 	defer p.m.Unlock()
 	p.pageIds = make(map[string]string)
 	p.init()
+	var toRemove []string
 	for _, id := range p.versions[p.GetId()].Model().ChildrenIds {
 		if b, ok := p.versions[id]; ok {
 			if link := b.Model().GetLink(); link != nil {
-				p.pageIds[b.Model().Id] = link.TargetBlockId
+				if _, ok := p.pageIds[link.TargetBlockId]; ok {
+					toRemove = append(toRemove, b.Model().Id)
+				} else {
+					p.pageIds[link.TargetBlockId] = b.Model().Id
+				}
 			}
 		}
+	}
+	if len(toRemove) > 0 {
+		s := p.newState()
+		for _, rid := range toRemove {
+			s.remove(rid)
+			s.removeFromChilds(rid)
+		}
+		p.applyAndSendEventHist(s, false, false)
 	}
 }
 
