@@ -50,7 +50,6 @@ func (p *archive) Init() {
 func (p *archive) archivePage(id string) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
-
 	page, releaseSb, err := p.s.pickBlock(id)
 	if err != nil {
 		return

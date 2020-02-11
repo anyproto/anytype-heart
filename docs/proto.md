@@ -1975,7 +1975,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| IsArchived | [bool](#bool) |  |  |
+| isArchived | [bool](#bool) |  |  |
 
 
 

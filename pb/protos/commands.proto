@@ -456,7 +456,7 @@ message Rpc {
                     message Request {
                         string contextId = 1;
                         string blockId = 2;
-                        bool IsArchived = 3;
+                        bool isArchived = 3;
                     }
 
                     message Response {
