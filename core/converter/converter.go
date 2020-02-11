@@ -163,7 +163,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 		case *model.BlockContentOfBookmark: out += renderBookmark(false, cont)
 		case *model.BlockContentOfDiv:      out += renderDiv(false, cont)
 		case *model.BlockContentOfIcon:     out += renderIcon(false, cont)
-		case *model.BlockContentOfLayout:   out += renderLayout(false, cont)
+		case *model.BlockContentOfLayout:   out += renderLayout(false, cont, child.model)
 		case *model.BlockContentOfDashboard: break;
 		case *model.BlockContentOfPage: break;
 		case *model.BlockContentOfDataview: break;
