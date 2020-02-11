@@ -62,13 +62,22 @@ func (p *dashboard) checkArchive() (err error) {
 	if archiveId == "" {
 		return
 	}
+	var removeId string
 	for _, b := range p.versions {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId == archiveId {
-			// found
-			return
+			if link.Style != model.BlockContentLink_Archive {
+				removeId = b.Model().Id
+				break
+			} else {
+				return
+			}
 		}
 	}
 	s := p.newState()
+	if removeId != "" {
+		s.removeFromChilds(removeId)
+		s.remove(removeId)
+	}
 	link := s.createLink(&model.Block{
 		Id: archiveId,
 		Content: &model.BlockContentOfDashboard{
