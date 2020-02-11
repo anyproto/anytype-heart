@@ -65,7 +65,6 @@ message Block {
             string targetBlockId = 1; // id of the target block
             Style style = 2;
             google.protobuf.Struct fields = 3;
-            bool isArchived = 4;
 
             enum Style {
                 Page = 0;
@@ -195,7 +194,6 @@ message Block {
             }
 
             Style style = 1;
-            bool isArchived = 2;
         }
     }
 }
@@ -206,7 +204,6 @@ message Block {
 message BlockMetaOnly {
     string id = 1;
     google.protobuf.Struct fields = 2;
-    bool isArchived = 5;
 }
 
 /*
