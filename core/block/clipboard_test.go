@@ -22,8 +22,36 @@ func createBlocks(textArr []string) ([]*model.Block) {
 	return blocks
 }
 
+func createBlocksWithMarks(textArr []string, marksArr [][]*model.BlockContentTextMark) ([]*model.Block) {
+	blocks := []*model.Block{}
+	for i := 0; i < len(textArr); i++  {
+		blocks = append(blocks, &model.Block{Id: strconv.Itoa(i + 1),
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: textArr[i],
+					Marks: &model.BlockContentTextMarks{
+						Marks: marksArr[i],
+					},
+				},
+
+			},
+		})
+	}
+	return blocks
+}
+
 func createPage(t *testing.T, textArr []string) *pageFixture {
 	blocks := createBlocks(textArr)
+
+	fx := newPageFixture(t, blocks...)
+	defer fx.ctrl.Finish()
+	defer fx.tearDown()
+
+	return fx
+}
+
+func createPageWithMarks(t *testing.T, textArr []string, marksArr [][]*model.BlockContentTextMark) *pageFixture {
+	blocks := createBlocksWithMarks(textArr, marksArr)
 
 	fx := newPageFixture(t, blocks...)
 	defer fx.ctrl.Finish()
@@ -38,6 +66,32 @@ func checkBlockText(t *testing.T, fx *pageFixture, textArr []string)  {
 	for i := 0; i < len(textArr); i++  {
 		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
 		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
+	}
+	fmt.Print("\n")
+}
+
+func checkBlockMarks(t *testing.T, fx *pageFixture, marksArr [][]*model.BlockContentTextMark)  {
+	require.Len(t, fx.versions[fx.GetId()].Model().ChildrenIds, len(marksArr))
+
+	for i := 0; i < len(marksArr); i++  {
+		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
+
+		/*if marksArr[i] != nil {
+			fmt.Println( i, ">>",  marksArr[i], fx.versions[id].Model().GetText().Marks.Marks)
+			require.True(t, fx.versions[id].Model().GetText().Marks != nil)
+			require.True(t, len(fx.versions[id].Model().GetText().Marks.Marks) > 0)
+		}*/
+
+		if fx.versions[id].Model().GetText().Marks != nil &&
+			len(fx.versions[id].Model().GetText().Marks.Marks) > 0 &&
+			marksArr[i] != nil {
+
+			require.Equal(t, len(marksArr[i]), len(fx.versions[id].Model().GetText().Marks.Marks))
+
+			for j := 0; j < len(marksArr[i]); j++ {
+				require.Equal(t, marksArr[i][j], fx.versions[id].Model().GetText().Marks.Marks[j])
+			}
+		}
 	}
 	fmt.Print("\n")
 }
@@ -169,6 +223,67 @@ func TestCommonSmart_pasteHTML(t *testing.T) {
 		fx := createPage(t, []string{})
 		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n");
 		checkBlockTextAndStyle(t, fx, []string{"Foo", "bar baz"});
+		checkEvents(t, fx, 2, 5)
+	})
+}
+
+func TestCommonSmart_pasteAny_marks(t *testing.T) {
+
+	t.Run("should paste single mark; paste to the end, no focus", func(t *testing.T) {
+		textArr := []string{"11111"}
+		marksArr := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:2},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		fx := createPage(t, textArr)
+
+		pasteAny(t, fx, "", model.Range{From: 0, To: 0}, []string{}, createBlocksWithMarks([]string{"99999"}, marksArr));
+		checkBlockMarks(t, fx, [][]*model.BlockContentTextMark{
+			{{}},
+			{{
+				Range: &model.Range{From:1, To:2},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		});
+		checkEvents(t, fx, 2, 5)
+	})
+
+	t.Run("should paste multiple marks; paste to the end, no focus", func(t *testing.T) {
+		textArr := []string{"11111"}
+		marksArr := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:2},
+				Type: model.BlockContentTextMark_Bold,
+			}, {
+				Range: &model.Range{From:4, To:5},
+				Type: model.BlockContentTextMark_Strikethrough,
+			}},
+			{{
+				Range: &model.Range{From:0, To:4},
+				Type: model.BlockContentTextMark_Italic,
+			}},
+		}
+
+		fx := createPage(t, textArr)
+
+		pasteAny(t, fx, "", model.Range{From: 0, To: 0}, []string{}, createBlocksWithMarks([]string{"99999", "00000"}, marksArr));
+		checkBlockMarks(t, fx, [][]*model.BlockContentTextMark{
+			{{}},
+			{{
+				Range: &model.Range{From:1, To:2},
+				Type: model.BlockContentTextMark_Bold,
+			}, {
+				Range: &model.Range{From:4, To:5},
+				Type: model.BlockContentTextMark_Strikethrough,
+			}},
+			{{
+				Range: &model.Range{From:0, To:4},
+				Type: model.BlockContentTextMark_Italic,
+			}},
+		});
 		checkEvents(t, fx, 2, 5)
 	})
 }

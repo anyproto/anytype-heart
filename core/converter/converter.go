@@ -111,7 +111,10 @@ func (c *converter) nextTreeLayer (node *Node) *Node {
 	for _, childId := range node.model.ChildrenIds {
 		c.remainBlocks = c.filterById(c.remainBlocks, childId)
 
-		if len(c.nodeTable[childId].model.ChildrenIds) > 0 {
+		if  c.nodeTable[childId] != nil &&
+			c.nodeTable[childId].model !=nil &&
+			c.nodeTable[childId].model.ChildrenIds != nil &&
+			len(c.nodeTable[childId].model.ChildrenIds) > 0 {
 			c.nodeTable[childId] = c.nextTreeLayer(c.nodeTable[childId])
 		}
 
