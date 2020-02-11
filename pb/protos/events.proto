@@ -26,7 +26,6 @@ message Event {
             Block.Set.ChildrenIds blockSetChildrenIds = 7;
             Block.Set.Restrictions blockSetRestrictions = 8;
 
-            Block.Set.Page blockSetPage = 9;
             Block.Set.Text blockSetText = 10;
             Block.Set.File blockSetFile = 11;
             Block.Set.Icon blockSetIcon = 12;
@@ -117,14 +116,6 @@ message Event {
                 anytype.model.Block.Restrictions restrictions = 2;
             }
 
-            message Page {
-                string id = 1;
-                IsArchived isArchived = 2;
-
-                message IsArchived {
-                    bool value = 1;
-                }
-            }
 
             message Text {
                 string id = 1;
@@ -212,7 +203,6 @@ message Event {
                 TargetBlockId targetBlockId = 2;
                 Style style = 3;
                 Fields fields = 4;
-                IsArchived isArchived = 5;
 
                 message TargetBlockId {
                     string value = 1;
@@ -226,9 +216,6 @@ message Event {
                     google.protobuf.Struct value = 1;
                 }
 
-                message IsArchived {
-                    bool value = 1;
-                }
             }
         }
     }

@@ -49,8 +49,7 @@ func newLinkSubscriptions(a anytype.Anytype) *linkSubscriptions {
 }
 
 type linkData struct {
-	fields     *types.Struct
-	isArchived bool
+	fields *types.Struct
 }
 
 type linkSubscriptions struct {
@@ -72,7 +71,6 @@ func (ls *linkSubscriptions) onCreate(u linkBlockUpdater, b simple.Block) {
 		linkContent := link.Model().GetLink()
 		if data := ls.getMetaCache(linkContent.TargetBlockId); data != nil {
 			linkContent.Fields = data.fields
-			linkContent.IsArchived = data.isArchived
 		}
 		ls.actionCh <- linkBlockAction{
 			op:      linkSubscriptionsOpCreate,
@@ -220,11 +218,7 @@ func (ls *linkSubscriptions) stopListener(targetId string) {
 
 func (ls *linkSubscriptions) setMeta(info metaInfo) {
 	fmt.Println("middle: update link meta for", info.targetId)
-	isArchived := false
-	if data := info.meta.Model(); data != nil {
-		isArchived = data.IsArchived
-	}
-	ls.setMetaCache(info.targetId, &linkData{fields: info.meta.ExternalFields(), isArchived: isArchived})
+	ls.setMetaCache(info.targetId, &linkData{fields: info.meta.ExternalFields()})
 	updaters := ls.links[info.targetId]
 	if updaters == nil {
 		return

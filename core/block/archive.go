@@ -88,9 +88,7 @@ func (p *archive) archivePage(id string) (err error) {
 		Id:     id,
 		Fields: a.Fields(),
 		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{
-				IsArchived: true,
-			},
+			Page: &model.BlockContentPage{},
 		},
 	})
 	l, err := s.create(link)
