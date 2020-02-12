@@ -178,21 +178,47 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 }
 
 func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
-	/*message Mark {
-		enum Type {
-			Strikethrough = 0;
-			Keyboard = 1;
-			Italic = 2;
-			Bold = 3;
-			Underscored = 4;
-			Link = 5;
-			TextColor = 6;
-			BackgroundColor = 7;
-		}
-	}*/
 
-	out = text
-	// TODO
+	var symbols []string
+	for i := 0; i < len(text); i++ {
+		symbols[i] = string([]rune(text)[i])
+	}
+
+	for i := 0; i < len(marks.Marks); i++ {
+		if len(symbols) < int(marks.Marks[i].Range.From) || len(symbols) < int(marks.Marks[i].Range.To) {
+			// Out of range -> ignore this mark
+			continue
+		}
+
+		switch marks.Marks[i].Type {
+		case model.BlockContentTextMark_Strikethrough:
+			symbols[marks.Marks[i].Range.From] = "<s>" + symbols[marks.Marks[i].Range.From]
+			symbols[marks.Marks[i].Range.To] =  "</s>" + symbols[marks.Marks[i].Range.To]
+		case model.BlockContentTextMark_Keyboard:
+			symbols[marks.Marks[i].Range.From] = "<kbd>" + symbols[marks.Marks[i].Range.From]
+			symbols[marks.Marks[i].Range.To] =  "</kbd>" + symbols[marks.Marks[i].Range.To]
+		case model.BlockContentTextMark_Italic:
+			symbols[marks.Marks[i].Range.From] = "<i>" + symbols[marks.Marks[i].Range.From]
+			symbols[marks.Marks[i].Range.To] =  "</i>" + symbols[marks.Marks[i].Range.To]
+		case model.BlockContentTextMark_Bold:
+			symbols[marks.Marks[i].Range.From] = "<b>" + symbols[marks.Marks[i].Range.From]
+			symbols[marks.Marks[i].Range.To] =  "</b>" + symbols[marks.Marks[i].Range.To]
+		case model.BlockContentTextMark_Link:
+			symbols[marks.Marks[i].Range.From] = `<a href="` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
+			symbols[marks.Marks[i].Range.To] =  "</a>" + symbols[marks.Marks[i].Range.To]
+		case model.BlockContentTextMark_TextColor:
+			symbols[marks.Marks[i].Range.From] = `<div style="color:` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
+			symbols[marks.Marks[i].Range.To] =  "</div>" + symbols[marks.Marks[i].Range.To]
+		case model.BlockContentTextMark_BackgroundColor:
+			symbols[marks.Marks[i].Range.From] = `<div style="background-color:` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
+			symbols[marks.Marks[i].Range.To] =  "</div>" + symbols[marks.Marks[i].Range.To]
+		}
+	}
+
+	for i := 0; i < len(symbols); i++ {
+		out = out + symbols[i]
+	}
+
 	return out
 }
 
