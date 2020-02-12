@@ -2,8 +2,8 @@
 setup:
 	GOPRIVATE=github.com/anytypeio go mod download
 	GO111MODULE=off go get github.com/ahmetb/govvv
+	go111module=off go get golang.org/x/mobile/cmd/...
 	npm install
-
 fmt:
 	echo 'Formatting with prettier...'
 	npx prettier --write "./**" 2> /dev/null || true
@@ -51,17 +51,14 @@ build-js:
 	export npm_config_build_from_source=true
 	npm install -C ./jsaddon
 	rm jsaddon/lib.a jsaddon/lib.h jsaddon/bridge.h
-
 build-ios:
-	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
-	env go111module=off gomobile bind -ldflags "$(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/lib
-	mkdir -p dist/ios/ && cp -r Mobile.framework dist/ios/
-	rm -rf Mobile.framework
-
+	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
+	GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/lib
+	mkdir -p dist/ios/ && mv Lib.framework dist/ios/
 build-android:
-	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/lib/g'))
-	env go111module=off gomobile bind -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
-	mkdir -p dist/android/ && mv mobile.aar dist/android/
+	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
+	GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
+	mkdir -p dist/android/ && mv lib.aar dist/android/
 
 setup-protoc:
 	rm -rf $(GOPATH)/src/github.com/gogo
