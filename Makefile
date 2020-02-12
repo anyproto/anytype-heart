@@ -30,7 +30,7 @@ test-deps:
 	go generate ./...
 
 build-lib:
-	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/lib))
+	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
 	GO111MODULE=on go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
 
 build-js:
@@ -108,7 +108,8 @@ protos-ts:
 	npm run build:ts
 
 build-debug: protos-debug
-	go build -i -v -o dist/debug ./lib-debug/server/grpc.go
+	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
+	go build -i -v -o dist/debug -ldflags "$(FLAGS)" ./lib-debug/server/grpc.go
 
 run-debug: build-debug
 	./dist/debug
