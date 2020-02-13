@@ -213,8 +213,8 @@ func colorMapping (color string, isText bool) (out string) {
 }
 
 func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
-	if len(text) == 0 {
-		return ""
+	if len(text) == 0 || len(marks.Marks) == 0 {
+		return text
 	}
 
 	var symbols []string
