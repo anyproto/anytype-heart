@@ -32,7 +32,7 @@ func TestCommonSmart_Open(t *testing.T) {
 			},
 		)
 		block.EXPECT().Close()
-		err := sb.Open(block)
+		err := sb.Open(block, true)
 		require.NoError(t, err)
 		sb.Init()
 
@@ -72,7 +72,7 @@ func TestCommonSmart_Create(t *testing.T) {
 			},
 		)
 		block.EXPECT().Close()
-		err := sb.Open(block)
+		err := sb.Open(block, true)
 		require.NoError(t, err)
 		sb.Init()
 		defer func() {

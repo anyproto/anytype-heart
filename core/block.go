@@ -251,17 +251,19 @@ func (mw *Middleware) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsReques
 	return response(pb.RpcBlockSetRestrictionsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetIsArchived(req *pb.RpcBlockSetIsArchivedRequest) *pb.RpcBlockSetIsArchivedResponse {
-	response := func(code pb.RpcBlockSetIsArchivedResponseErrorCode, err error) *pb.RpcBlockSetIsArchivedResponse {
-		m := &pb.RpcBlockSetIsArchivedResponse{Error: &pb.RpcBlockSetIsArchivedResponseError{Code: code}}
+func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse {
+	response := func(code pb.RpcBlockSetPageIsArchivedResponseErrorCode, err error) *pb.RpcBlockSetPageIsArchivedResponse {
+		m := &pb.RpcBlockSetPageIsArchivedResponse{Error: &pb.RpcBlockSetPageIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	// TODO
-	return response(pb.RpcBlockSetIsArchivedResponseError_NULL, nil)
+	if err := mw.blockService.SetPageIsArchived(*req); err != nil {
+		return response(pb.RpcBlockSetPageIsArchivedResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockSetPageIsArchivedResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {

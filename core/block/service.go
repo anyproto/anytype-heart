@@ -57,6 +57,8 @@ type Service interface {
 	Undo(req pb.RpcBlockUndoRequest) error
 	Redo(req pb.RpcBlockRedoRequest) error
 
+	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
+
 	Close() error
 }
 
@@ -87,7 +89,7 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	if sb, ok := s.smartBlocks[id]; ok {
 		return sb.Show()
 	}
-	sb, err := openSmartBlock(s, id)
+	sb, err := openSmartBlock(s, id, true)
 	fmt.Println("middle: open smart block:", id, err)
 	if err != nil {
 		return
@@ -108,7 +110,7 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	defer s.m.Unlock()
 
 	bs := newBreadcrumbs(s)
-	if err = bs.Open(nil); err != nil {
+	if err = bs.Open(nil, false); err != nil {
 		return
 	}
 	bs.Init()
@@ -126,6 +128,26 @@ func (s *service) CloseBlock(id string) (err error) {
 	}
 
 	return ErrBlockNotFound
+}
+
+func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	archiveId := s.anytype.PredefinedBlockIds().Archive
+	sb, release, err := s.pickBlock(archiveId)
+	if err != nil {
+		return
+	}
+	defer release()
+	if archiveBlock, ok := sb.(*archive); ok {
+		if req.IsArchived {
+			err = archiveBlock.archivePage(req.BlockId)
+		} else {
+			err = archiveBlock.unArchivePage(req.BlockId)
+		}
+		return
+	}
+	return fmt.Errorf("unexpected archive block type: %T", sb)
 }
 
 func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
@@ -338,4 +360,18 @@ func (s *service) Close() error {
 		}
 	}
 	return nil
+}
+
+// pickBlock returns opened smartBlock or opens smartBlock in silent mode
+// must be called and released under RLock
+func (s *service) pickBlock(id string) (sb smartBlock, release func(), err error) {
+	if b, ok := s.smartBlocks[id]; ok {
+		return b, func() {}, nil
+	}
+	if sb, err = openSmartBlock(s, id, false); err != nil {
+		return
+	}
+	return sb, func() {
+		sb.Close()
+	}, nil
 }

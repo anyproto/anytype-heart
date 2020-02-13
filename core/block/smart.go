@@ -26,7 +26,7 @@ var (
 )
 
 type smartBlock interface {
-	Open(b anytype.Block) error
+	Open(b anytype.Block, active bool) error
 	Init()
 	GetId() string
 	Type() smartBlockType
@@ -58,10 +58,10 @@ const (
 	smartBlockTypePage
 )
 
-func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
+func openSmartBlock(s *service, id string, active bool) (sb smartBlock, err error) {
 	if id == testPageId {
 		sb = &testPage{s: s}
-		sb.Open(nil)
+		sb.Open(nil, active)
 		sb.Init()
 		return
 	}
@@ -80,13 +80,17 @@ func openSmartBlock(s *service, id string) (sb smartBlock, err error) {
 
 	switch ver.Model().Content.(type) {
 	case *model.BlockContentOfDashboard:
-		sb, err = newDashboard(s, b)
+		if ver.Model().GetDashboard().Style == model.BlockContentDashboard_Archive {
+			sb, err = newArchive(s)
+		} else {
+			sb, err = newDashboard(s)
+		}
 	case *model.BlockContentOfPage:
-		sb, err = newPage(s, b)
+		sb, err = newPage(s)
 	default:
 		return nil, fmt.Errorf("%v %T", ErrUnexpectedSmartBlockType, ver.Model().Content)
 	}
-	if err = sb.Open(b); err != nil {
+	if err = sb.Open(b, active); err != nil {
 		sb.Close()
 		return
 	}
@@ -98,6 +102,7 @@ type commonSmart struct {
 	s        *service
 	block    anytype.Block
 	versions map[string]simple.Block
+	active   bool
 
 	history history.History
 
@@ -136,12 +141,12 @@ func (p *commonSmart) hideArchiveBlock() {
 	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, archiveBlockLinkId)
 }
 
-func (p *commonSmart) Open(block anytype.Block) (err error) {
+func (p *commonSmart) Open(block anytype.Block, active bool) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.closeWg = new(sync.WaitGroup)
 	p.versions = make(map[string]simple.Block)
-
+	p.active = active
 	p.block = block
 	ver, err := p.block.GetCurrentVersion()
 	if err != nil {
@@ -155,23 +160,24 @@ func (p *commonSmart) Open(block anytype.Block) (err error) {
 	p.hideArchiveBlock()
 
 	p.normalize()
-
-	events := make(chan proto.Message)
-	p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
-	if err != nil {
-		return
-	}
-	if p.versionsChange != nil {
-		blockChanges := make(chan []core.BlockVersion)
-		p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, false, blockChanges)
+	if p.active {
+		events := make(chan proto.Message)
+		p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
 		if err != nil {
 			return
 		}
+		if p.versionsChange != nil {
+			blockChanges := make(chan []core.BlockVersion)
+			p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, false, blockChanges)
+			if err != nil {
+				return
+			}
+			p.closeWg.Add(1)
+			go p.versionChangesLoop(blockChanges)
+		}
 		p.closeWg.Add(1)
-		go p.versionChangesLoop(blockChanges)
+		go p.clientEventsLoop(events)
 	}
-	p.closeWg.Add(1)
-	go p.clientEventsLoop(events)
 	return
 }
 
@@ -723,6 +729,9 @@ func (p *commonSmart) setFields(s *state, id string, fields *types.Struct) (err 
 }
 
 func (p *commonSmart) show() {
+	if !p.active {
+		return
+	}
 	blocks := make([]*model.Block, 0, len(p.versions))
 	for _, b := range p.versions {
 		blocks = append(blocks, b.Model())
@@ -774,7 +783,6 @@ func (p *commonSmart) toSave(b *model.Block, sources ...map[string]simple.Block)
 		Fields:       b.Fields,
 		Restrictions: b.Restrictions,
 		ChildrenIds:  p.excludeVirtualIds(b.ChildrenIds, sources...),
-		IsArchived:   b.IsArchived,
 		Content:      b.Content,
 	}
 }
@@ -817,7 +825,7 @@ func (p *commonSmart) applyAndSendEventHist(s *state, hist, event bool) (err err
 	if err != nil {
 		return
 	}
-	if event && len(msgs) > 0 {
+	if p.active && event && len(msgs) > 0 {
 		p.s.sendEvent(&pb.Event{
 			Messages:  msgs,
 			ContextId: p.GetId(),
