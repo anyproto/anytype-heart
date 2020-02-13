@@ -18,7 +18,7 @@ require (
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
 	github.com/yuin/goldmark v1.1.22
 	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.24.0
+	google.golang.org/grpc v1.27.1
 )
 
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.7.8-0.20200205164649-a38fa26a4621
