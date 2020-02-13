@@ -177,41 +177,83 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 	return out
 }
 
+func colorMapping (color string, isText bool) (out string) {
+	if isText {
+		switch color {
+		case "grey":  out = "#aca996"
+		case "yellow":  out = "#ecd91b"
+		case "orange":  out = "#ffb522"
+		case "red":  out = "#f55522"
+		case "pink":  out = "#e51ca0"
+		case "purple":  out = "#ab50cc"
+		case "blue":  out = "#3e58"
+		case "ice":  out = "#2aa7ee"
+		case "teal":  out = "#0fc8ba"
+		case "lime":  out = "#5dd400"
+		case "black": out = "#2c2b27"
+		default: out = color
+		}
+	} else {
+		switch color {
+		case "grey":  out = "#f3f2ec"
+		case "yellow":  out = "#fef9cc"
+		case "orange":  out = "#fef3c5"
+		case "red":  out = "#ffebe5"
+		case "pink":  out = "#fee3f5"
+		case "purple":  out = "#f4e3fa"
+		case "blue":  out = "#f4e3fa"
+		case "ice":  out = "#d6effd"
+		case "teal":  out = "#d6f5f3"
+		case "lime":  out = "#e3f7d0"
+		default: out = color
+		}
+	}
+
+	return out
+}
+
 func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
+	if len(text) == 0 {
+		return ""
+	}
 
 	var symbols []string
+
+	r := []rune(text)
+	if len(r) != len(text) {
+		return text
+	}
+
 	for i := 0; i < len(text); i++ {
-		symbols[i] = string([]rune(text)[i])
+		symbols = append(symbols, string(r[i]))
 	}
 
 	for i := 0; i < len(marks.Marks); i++ {
-		if len(symbols) < int(marks.Marks[i].Range.From) || len(symbols) < int(marks.Marks[i].Range.To) {
-			// Out of range -> ignore this mark
-			continue
-		}
+		if len(symbols) > int(marks.Marks[i].Range.From) && len(symbols) > int(marks.Marks[i].Range.To - 1) {
 
-		switch marks.Marks[i].Type {
-		case model.BlockContentTextMark_Strikethrough:
-			symbols[marks.Marks[i].Range.From] = "<s>" + symbols[marks.Marks[i].Range.From]
-			symbols[marks.Marks[i].Range.To] =  "</s>" + symbols[marks.Marks[i].Range.To]
-		case model.BlockContentTextMark_Keyboard:
-			symbols[marks.Marks[i].Range.From] = "<kbd>" + symbols[marks.Marks[i].Range.From]
-			symbols[marks.Marks[i].Range.To] =  "</kbd>" + symbols[marks.Marks[i].Range.To]
-		case model.BlockContentTextMark_Italic:
-			symbols[marks.Marks[i].Range.From] = "<i>" + symbols[marks.Marks[i].Range.From]
-			symbols[marks.Marks[i].Range.To] =  "</i>" + symbols[marks.Marks[i].Range.To]
-		case model.BlockContentTextMark_Bold:
-			symbols[marks.Marks[i].Range.From] = "<b>" + symbols[marks.Marks[i].Range.From]
-			symbols[marks.Marks[i].Range.To] =  "</b>" + symbols[marks.Marks[i].Range.To]
-		case model.BlockContentTextMark_Link:
-			symbols[marks.Marks[i].Range.From] = `<a href="` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
-			symbols[marks.Marks[i].Range.To] =  "</a>" + symbols[marks.Marks[i].Range.To]
-		case model.BlockContentTextMark_TextColor:
-			symbols[marks.Marks[i].Range.From] = `<div style="color:` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
-			symbols[marks.Marks[i].Range.To] =  "</div>" + symbols[marks.Marks[i].Range.To]
-		case model.BlockContentTextMark_BackgroundColor:
-			symbols[marks.Marks[i].Range.From] = `<div style="background-color:` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
-			symbols[marks.Marks[i].Range.To] =  "</div>" + symbols[marks.Marks[i].Range.To]
+			switch marks.Marks[i].Type {
+			case model.BlockContentTextMark_Strikethrough:
+				symbols[marks.Marks[i].Range.From] = "<s>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</s>"
+			case model.BlockContentTextMark_Keyboard:
+				symbols[marks.Marks[i].Range.From] = "<kbd>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</kbd>"
+			case model.BlockContentTextMark_Italic:
+				symbols[marks.Marks[i].Range.From] = "<i>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</i>"
+			case model.BlockContentTextMark_Bold:
+				symbols[marks.Marks[i].Range.From] = "<b>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</b>"
+			case model.BlockContentTextMark_Link:
+				symbols[marks.Marks[i].Range.From] = `<a href="` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</a>"
+			case model.BlockContentTextMark_TextColor:
+				symbols[marks.Marks[i].Range.From] = `<span style="color:` + colorMapping(marks.Marks[i].Param, true) + `">` + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</span>"
+			case model.BlockContentTextMark_BackgroundColor:
+				symbols[marks.Marks[i].Range.From] = `<span style="background-color:` + colorMapping(marks.Marks[i].Param, false) + `">` + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</span>"
+			}
 		}
 	}
 
