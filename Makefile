@@ -23,7 +23,7 @@ test-race:
 	go test -race github.com/anytypeio/go-anytype-middleware/...
 
 fast-test:
-	go test github.com/anytypeio/go-anytype-middleware/core/block/... -cover
+	go test github.com/anytypeio/go-anytype-middleware/core/block/... github.com/anytypeio/go-anytype-middleware/util/... -cover
 
 test-deps:
 	go install github.com/golang/mock/mockgen
