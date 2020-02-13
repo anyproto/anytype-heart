@@ -9,7 +9,7 @@ message Block {
     google.protobuf.Struct fields = 2;
     Restrictions restrictions = 3;
     repeated string childrenIds = 4;
-    bool isArchived = 5;
+
 
     oneof content {
         Content.Dashboard dashboard = 11;
@@ -65,12 +65,12 @@ message Block {
             string targetBlockId = 1; // id of the target block
             Style style = 2;
             google.protobuf.Struct fields = 3;
-            bool isArchived = 4;
 
             enum Style {
                 Page = 0;
                 Dataview = 1;
                 Dashboard = 2;
+                Archive = 3;
                 // ...
             }
         }
@@ -204,7 +204,6 @@ message Block {
 message BlockMetaOnly {
     string id = 1;
     google.protobuf.Struct fields = 2;
-    bool isArchived = 5;
 }
 
 /*
