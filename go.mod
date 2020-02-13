@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
-	github.com/h2non/filetype v1.0.10
+	github.com/h2non/filetype v1.0.12
 	github.com/ipfs/go-ipfs v0.4.22-0.20191002225611-b15edf287df6
 	github.com/ipfs/go-ipfs-config v0.2.0
 	github.com/ipfs/go-ipfs-files v0.0.4
