@@ -8,7 +8,7 @@ require (
 	github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13
 
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/mock v1.3.1
+	github.com/golang/mock v1.4.0
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-log v0.0.1
@@ -22,7 +22,7 @@ require (
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
 	github.com/yuin/goldmark v1.1.22
 	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.24.0
+	google.golang.org/grpc v1.27.1
 )
 
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.7.8-0.20200205164649-a38fa26a4621

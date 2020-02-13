@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -23,7 +22,7 @@ var (
 	_ base.IconBlock = (*pageIconBlock)(nil)
 )
 
-func newPage(s *service, block anytype.Block) (smartBlock, error) {
+func newPage(s *service) (smartBlock, error) {
 	p := &page{&commonSmart{s: s}}
 	return p, nil
 }
@@ -99,6 +98,23 @@ func (p *page) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 
 func (p *page) Type() smartBlockType {
 	return smartBlockTypePage
+}
+
+func (p *page) SetArchived(isArchived bool) (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	s := p.newState()
+	b := s.get(p.GetId())
+	if page, ok := b.(base.PageBlock); ok {
+		page.SetPageIsArchived(isArchived)
+	}
+	return p.applyAndSendEvent(s)
+}
+
+func (p *page) Fields() *types.Struct {
+	p.m.Lock()
+	defer p.m.Unlock()
+	return p.versions[p.GetId()].Copy().Model().Fields
 }
 
 func (p *page) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {

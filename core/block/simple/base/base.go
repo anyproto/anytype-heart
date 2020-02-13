@@ -15,6 +15,12 @@ func init() {
 		}
 		return nil
 	})
+	simple.RegisterCreator(func(m *model.Block) simple.Block {
+		if m.GetPage() != nil {
+			return NewPage(m)
+		}
+		return nil
+	})
 	simple.RegisterFallback(func(m *model.Block) simple.Block {
 		return NewBase(m)
 	})
@@ -38,14 +44,6 @@ func (s *Base) Model() *model.Block {
 
 func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 	m := block.Model()
-	if m.IsArchived != s.IsArchived {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetIsArchived{BlockSetIsArchived: &pb.EventBlockSetIsArchived{
-			Id:         s.Id,
-			IsArchived: m.IsArchived,
-		}}}
-		msgs = append(msgs, m)
-	}
-
 	if !stringSlicesEq(m.ChildrenIds, s.ChildrenIds) {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetChildrenIds{BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
 			Id:          s.Id,

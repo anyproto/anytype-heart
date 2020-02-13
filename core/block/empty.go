@@ -23,7 +23,7 @@ func (e emptySmart) Show() (err error) {
 	return
 }
 
-func (e emptySmart) Open(b anytype.Block) (err error) {
+func (e emptySmart) Open(b anytype.Block, active bool) (err error) {
 	err = errEmptyBlock
 	return
 }
