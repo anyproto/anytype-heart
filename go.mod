@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.0 // indirect
-	github.com/anytypeio/go-anytype-library v0.0.0-20200207123657-05526fc73774
+	github.com/anytypeio/go-anytype-library v0.0.0-20200213113659-8cc266f8bcea
 	github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13
 
 	github.com/gogo/protobuf v1.3.1
@@ -12,7 +12,10 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/ipfs/go-log v0.0.1
 	github.com/lunny/html2md v0.0.0-20181018071239-7d234de44546
+	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
+	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
+	github.com/otiai10/opengraph v1.1.0
 	github.com/stretchr/testify v1.4.0
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
