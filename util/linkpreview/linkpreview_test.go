@@ -59,10 +59,11 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
-			Url:      url,
-			Title:    "filename.jpg",
-			ImageUrl: url,
-			Type:     model.LinkPreview_Image,
+			Url:        url,
+			Title:      "filename.jpg",
+			FaviconUrl: ts.URL + "/favicon.ico",
+			ImageUrl:   url,
+			Type:       model.LinkPreview_Image,
 		}, info)
 	})
 
@@ -75,9 +76,10 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
-			Url:   url,
-			Title: "filename.jpg",
-			Type:  model.LinkPreview_Unknown,
+			Url:        url,
+			Title:      "filename.jpg",
+			FaviconUrl: ts.URL + "/favicon.ico",
+			Type:       model.LinkPreview_Unknown,
 		}, info)
 	})
 }

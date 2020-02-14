@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
@@ -32,13 +33,13 @@ type linkPreview struct {
 	bmPolicy *bluemonday.Policy
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, url string) (model.LinkPreview, error) {
+func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
-	og, err := opengraph.FetchWithContext(ctx, url, client)
+	og, err := opengraph.FetchWithContext(ctx, fetchUrl, client)
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
-			return l.makeNonHtml(url, resp)
+			return l.makeNonHtml(fetchUrl, resp)
 		}
 		return model.LinkPreview{}, err
 	}
@@ -57,6 +58,11 @@ func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i model.LinkPrev
 		Description: og.Description,
 		Type:        model.LinkPreview_Page,
 		FaviconUrl:  og.Favicon,
+	}
+	if len(i.FaviconUrl) == 0 {
+		og.URL.Path = "favicon.ico"
+		og.URL.RawQuery = ""
+		i.FaviconUrl = og.URL.String()
 	}
 	if len(og.Image) != 0 {
 		i.ImageUrl = og.Image[0].URL
@@ -83,17 +89,23 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 	return
 }
 
-func (l *linkPreview) makeNonHtml(url string, resp *http.Response) (i model.LinkPreview, err error) {
+func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model.LinkPreview, err error) {
 	ct := resp.Header.Get("Content-Type")
-	i.Url = url
-	i.Title = filepath.Base(url)
+	i.Url = fetchUrl
+	i.Title = filepath.Base(fetchUrl)
 	if strings.HasPrefix(ct, "image/") {
 		i.Type = model.LinkPreview_Image
-		i.ImageUrl = url
+		i.ImageUrl = fetchUrl
 	} else if strings.HasPrefix(ct, "text/") {
 		i.Type = model.LinkPreview_Text
 	} else {
 		i.Type = model.LinkPreview_Unknown
+	}
+	pUrl, e := url.Parse(fetchUrl)
+	if e == nil {
+		pUrl.Path = "favicon.ico"
+		pUrl.RawQuery = ""
+		i.FaviconUrl = pUrl.String()
 	}
 	return
 }

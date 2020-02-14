@@ -203,6 +203,10 @@ func loadImage(stor anytype.Anytype, url string) (hash string, err error) {
 		return
 	}
 	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
+	}
 
 	im, err := stor.ImageAddWithReader(resp.Body, filepath.Base(url))
 	if err != nil {
