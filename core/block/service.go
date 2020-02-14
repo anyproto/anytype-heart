@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -60,10 +63,12 @@ type Service interface {
 
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 
+	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
+
 	Close() error
 }
 
-func NewService(accountId string, a anytype.Anytype, sendEvent func(event *pb.Event)) Service {
+func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
 	return &service{
 		accountId: accountId,
 		anytype:   a,
@@ -72,6 +77,7 @@ func NewService(accountId string, a anytype.Anytype, sendEvent func(event *pb.Ev
 		},
 		smartBlocks: make(map[string]smartBlock),
 		ls:          newLinkSubscriptions(a),
+		linkPreview: lp,
 	}
 }
 
@@ -80,6 +86,7 @@ type service struct {
 	accountId   string
 	sendEvent   func(event *pb.Event)
 	smartBlocks map[string]smartBlock
+	linkPreview linkpreview.LinkPreview
 	ls          *linkSubscriptions
 	m           sync.RWMutex
 }
@@ -350,6 +357,26 @@ func (s *service) Redo(req pb.RpcBlockRedoRequest) error {
 		return ErrBlockNotFound
 	}
 	return sb.Redo()
+}
+
+func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	sb, ok := s.smartBlocks[req.ContextId]
+	if !ok {
+		return ErrBlockNotFound
+	}
+	return sb.UpdateBlock([]string{req.BlockId}, true, func(b simple.Block) error {
+		if bm, ok := b.(bookmark.Block); ok {
+			return bm.Fetch(bookmark.FetchParams{
+				Url:         req.Url,
+				Anytype:     s.anytype,
+				Updater:     sb,
+				LinkPreview: s.linkPreview,
+			})
+		}
+		return ErrUnexpectedBlockType
+	})
 }
 
 func (s *service) Close() error {
