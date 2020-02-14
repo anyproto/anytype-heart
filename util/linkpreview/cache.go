@@ -24,9 +24,9 @@ type cache struct {
 	cache *lru.Cache
 }
 
-func (c *cache) Fetch(ctx context.Context, url string) (lp model.ModelLinkPreview, err error) {
+func (c *cache) Fetch(ctx context.Context, url string) (lp model.LinkPreview, err error) {
 	if res, ok := c.cache.Get(url); ok {
-		return res.(model.ModelLinkPreview), nil
+		return res.(model.LinkPreview), nil
 	}
 	lp, err = c.lp.Fetch(ctx, url)
 	if err != nil {

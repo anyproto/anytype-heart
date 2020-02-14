@@ -25,14 +25,14 @@ const (
 )
 
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (model.ModelLinkPreview, error)
+	Fetch(ctx context.Context, url string) (model.LinkPreview, error)
 }
 
 type linkPreview struct {
 	bmPolicy *bluemonday.Policy
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, url string) (model.ModelLinkPreview, error) {
+func (l *linkPreview) Fetch(ctx context.Context, url string) (model.LinkPreview, error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
 	og, err := opengraph.FetchWithContext(ctx, url, client)
@@ -40,7 +40,7 @@ func (l *linkPreview) Fetch(ctx context.Context, url string) (model.ModelLinkPre
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
 			return l.makeNonHtml(url, resp)
 		}
-		return model.ModelLinkPreview{}, err
+		return model.LinkPreview{}, err
 	}
 	res := l.convertOGToInfo(og)
 	if len(res.Description) == 0 {
@@ -49,13 +49,13 @@ func (l *linkPreview) Fetch(ctx context.Context, url string) (model.ModelLinkPre
 	return res, nil
 }
 
-func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i model.ModelLinkPreview) {
+func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i model.LinkPreview) {
 	og.ToAbsURL()
-	i = model.ModelLinkPreview{
+	i = model.LinkPreview{
 		Url:         og.URL.String(),
 		Title:       og.Title,
 		Description: og.Description,
-		Type:        model.ModelLinkPreview_Page,
+		Type:        model.LinkPreview_Page,
 		FaviconUrl:  og.Favicon,
 	}
 	if len(og.Image) != 0 {
@@ -83,17 +83,17 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 	return
 }
 
-func (l *linkPreview) makeNonHtml(url string, resp *http.Response) (i model.ModelLinkPreview, err error) {
+func (l *linkPreview) makeNonHtml(url string, resp *http.Response) (i model.LinkPreview, err error) {
 	ct := resp.Header.Get("Content-Type")
 	i.Url = url
 	i.Title = filepath.Base(url)
 	if strings.HasPrefix(ct, "image/") {
-		i.Type = model.ModelLinkPreview_Image
+		i.Type = model.LinkPreview_Image
 		i.ImageUrl = url
 	} else if strings.HasPrefix(ct, "text/") {
-		i.Type = model.ModelLinkPreview_Text
+		i.Type = model.LinkPreview_Text
 	} else {
-		i.Type = model.ModelLinkPreview_Unknown
+		i.Type = model.LinkPreview_Unknown
 	}
 	return
 }

@@ -100,6 +100,7 @@ type EventMessage struct {
 	//	*EventMessageValueOfBlockSetFile
 	//	*EventMessageValueOfBlockSetIcon
 	//	*EventMessageValueOfBlockSetLink
+	//	*EventMessageValueOfBlockSetBookmark
 	//	*EventMessageValueOfBlockShow
 	//	*EventMessageValueOfUserBlockJoin
 	//	*EventMessageValueOfUserBlockLeft
@@ -184,6 +185,9 @@ type EventMessageValueOfBlockSetIcon struct {
 type EventMessageValueOfBlockSetLink struct {
 	BlockSetLink *EventBlockSetLink `protobuf:"bytes,13,opt,name=blockSetLink,proto3,oneof" json:"blockSetLink,omitempty"`
 }
+type EventMessageValueOfBlockSetBookmark struct {
+	BlockSetBookmark *EventBlockSetBookmark `protobuf:"bytes,14,opt,name=blockSetBookmark,proto3,oneof" json:"blockSetBookmark,omitempty"`
+}
 type EventMessageValueOfBlockShow struct {
 	BlockShow *EventBlockShow `protobuf:"bytes,20,opt,name=blockShow,proto3,oneof" json:"blockShow,omitempty"`
 }
@@ -215,6 +219,7 @@ func (*EventMessageValueOfBlockSetText) IsEventMessageValue()         {}
 func (*EventMessageValueOfBlockSetFile) IsEventMessageValue()         {}
 func (*EventMessageValueOfBlockSetIcon) IsEventMessageValue()         {}
 func (*EventMessageValueOfBlockSetLink) IsEventMessageValue()         {}
+func (*EventMessageValueOfBlockSetBookmark) IsEventMessageValue()     {}
 func (*EventMessageValueOfBlockShow) IsEventMessageValue()            {}
 func (*EventMessageValueOfUserBlockJoin) IsEventMessageValue()        {}
 func (*EventMessageValueOfUserBlockLeft) IsEventMessageValue()        {}
@@ -313,6 +318,13 @@ func (m *EventMessage) GetBlockSetLink() *EventBlockSetLink {
 	return nil
 }
 
+func (m *EventMessage) GetBlockSetBookmark() *EventBlockSetBookmark {
+	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetBookmark); ok {
+		return x.BlockSetBookmark
+	}
+	return nil
+}
+
 func (m *EventMessage) GetBlockShow() *EventBlockShow {
 	if x, ok := m.GetValue().(*EventMessageValueOfBlockShow); ok {
 		return x.BlockShow
@@ -370,6 +382,7 @@ func (*EventMessage) XXX_OneofWrappers() []interface{} {
 		(*EventMessageValueOfBlockSetFile)(nil),
 		(*EventMessageValueOfBlockSetIcon)(nil),
 		(*EventMessageValueOfBlockSetLink)(nil),
+		(*EventMessageValueOfBlockSetBookmark)(nil),
 		(*EventMessageValueOfBlockShow)(nil),
 		(*EventMessageValueOfUserBlockJoin)(nil),
 		(*EventMessageValueOfUserBlockLeft)(nil),
@@ -2006,6 +2019,362 @@ func (m *EventBlockSetLinkFields) GetValue() *types.Struct {
 	return nil
 }
 
+type EventBlockSetBookmark struct {
+	Id          string                            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Url         *EventBlockSetBookmarkUrl         `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	Title       *EventBlockSetBookmarkTitle       `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Description *EventBlockSetBookmarkDescription `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	ImageHash   *EventBlockSetBookmarkImageHash   `protobuf:"bytes,5,opt,name=imageHash,proto3" json:"imageHash,omitempty"`
+	FaviconHash *EventBlockSetBookmarkFaviconHash `protobuf:"bytes,6,opt,name=faviconHash,proto3" json:"faviconHash,omitempty"`
+	Type        *EventBlockSetBookmarkType        `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
+}
+
+func (m *EventBlockSetBookmark) Reset()         { *m = EventBlockSetBookmark{} }
+func (m *EventBlockSetBookmark) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBookmark) ProtoMessage()    {}
+func (*EventBlockSetBookmark) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7}
+}
+func (m *EventBlockSetBookmark) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBookmark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBookmark.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBookmark) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBookmark.Merge(m, src)
+}
+func (m *EventBlockSetBookmark) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBookmark) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBookmark.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBookmark proto.InternalMessageInfo
+
+func (m *EventBlockSetBookmark) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *EventBlockSetBookmark) GetUrl() *EventBlockSetBookmarkUrl {
+	if m != nil {
+		return m.Url
+	}
+	return nil
+}
+
+func (m *EventBlockSetBookmark) GetTitle() *EventBlockSetBookmarkTitle {
+	if m != nil {
+		return m.Title
+	}
+	return nil
+}
+
+func (m *EventBlockSetBookmark) GetDescription() *EventBlockSetBookmarkDescription {
+	if m != nil {
+		return m.Description
+	}
+	return nil
+}
+
+func (m *EventBlockSetBookmark) GetImageHash() *EventBlockSetBookmarkImageHash {
+	if m != nil {
+		return m.ImageHash
+	}
+	return nil
+}
+
+func (m *EventBlockSetBookmark) GetFaviconHash() *EventBlockSetBookmarkFaviconHash {
+	if m != nil {
+		return m.FaviconHash
+	}
+	return nil
+}
+
+func (m *EventBlockSetBookmark) GetType() *EventBlockSetBookmarkType {
+	if m != nil {
+		return m.Type
+	}
+	return nil
+}
+
+type EventBlockSetBookmarkUrl struct {
+	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *EventBlockSetBookmarkUrl) Reset()         { *m = EventBlockSetBookmarkUrl{} }
+func (m *EventBlockSetBookmarkUrl) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBookmarkUrl) ProtoMessage()    {}
+func (*EventBlockSetBookmarkUrl) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 0}
+}
+func (m *EventBlockSetBookmarkUrl) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBookmarkUrl) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBookmarkUrl.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBookmarkUrl) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBookmarkUrl.Merge(m, src)
+}
+func (m *EventBlockSetBookmarkUrl) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBookmarkUrl) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBookmarkUrl.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBookmarkUrl proto.InternalMessageInfo
+
+func (m *EventBlockSetBookmarkUrl) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
+
+type EventBlockSetBookmarkTitle struct {
+	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *EventBlockSetBookmarkTitle) Reset()         { *m = EventBlockSetBookmarkTitle{} }
+func (m *EventBlockSetBookmarkTitle) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBookmarkTitle) ProtoMessage()    {}
+func (*EventBlockSetBookmarkTitle) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 1}
+}
+func (m *EventBlockSetBookmarkTitle) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBookmarkTitle) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBookmarkTitle.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBookmarkTitle) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBookmarkTitle.Merge(m, src)
+}
+func (m *EventBlockSetBookmarkTitle) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBookmarkTitle) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBookmarkTitle.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBookmarkTitle proto.InternalMessageInfo
+
+func (m *EventBlockSetBookmarkTitle) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
+
+type EventBlockSetBookmarkDescription struct {
+	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *EventBlockSetBookmarkDescription) Reset()         { *m = EventBlockSetBookmarkDescription{} }
+func (m *EventBlockSetBookmarkDescription) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBookmarkDescription) ProtoMessage()    {}
+func (*EventBlockSetBookmarkDescription) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 2}
+}
+func (m *EventBlockSetBookmarkDescription) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBookmarkDescription) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBookmarkDescription.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBookmarkDescription) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBookmarkDescription.Merge(m, src)
+}
+func (m *EventBlockSetBookmarkDescription) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBookmarkDescription) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBookmarkDescription.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBookmarkDescription proto.InternalMessageInfo
+
+func (m *EventBlockSetBookmarkDescription) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
+
+type EventBlockSetBookmarkImageHash struct {
+	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *EventBlockSetBookmarkImageHash) Reset()         { *m = EventBlockSetBookmarkImageHash{} }
+func (m *EventBlockSetBookmarkImageHash) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBookmarkImageHash) ProtoMessage()    {}
+func (*EventBlockSetBookmarkImageHash) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 3}
+}
+func (m *EventBlockSetBookmarkImageHash) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBookmarkImageHash) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBookmarkImageHash.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBookmarkImageHash) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBookmarkImageHash.Merge(m, src)
+}
+func (m *EventBlockSetBookmarkImageHash) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBookmarkImageHash) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBookmarkImageHash.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBookmarkImageHash proto.InternalMessageInfo
+
+func (m *EventBlockSetBookmarkImageHash) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
+
+type EventBlockSetBookmarkFaviconHash struct {
+	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *EventBlockSetBookmarkFaviconHash) Reset()         { *m = EventBlockSetBookmarkFaviconHash{} }
+func (m *EventBlockSetBookmarkFaviconHash) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBookmarkFaviconHash) ProtoMessage()    {}
+func (*EventBlockSetBookmarkFaviconHash) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 4}
+}
+func (m *EventBlockSetBookmarkFaviconHash) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBookmarkFaviconHash) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBookmarkFaviconHash.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBookmarkFaviconHash) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBookmarkFaviconHash.Merge(m, src)
+}
+func (m *EventBlockSetBookmarkFaviconHash) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBookmarkFaviconHash) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBookmarkFaviconHash.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBookmarkFaviconHash proto.InternalMessageInfo
+
+func (m *EventBlockSetBookmarkFaviconHash) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
+
+type EventBlockSetBookmarkType struct {
+	Value model.LinkPreviewType `protobuf:"varint,1,opt,name=value,proto3,enum=anytype.model.LinkPreviewType" json:"value,omitempty"`
+}
+
+func (m *EventBlockSetBookmarkType) Reset()         { *m = EventBlockSetBookmarkType{} }
+func (m *EventBlockSetBookmarkType) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBookmarkType) ProtoMessage()    {}
+func (*EventBlockSetBookmarkType) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 5}
+}
+func (m *EventBlockSetBookmarkType) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBookmarkType) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBookmarkType.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBookmarkType) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBookmarkType.Merge(m, src)
+}
+func (m *EventBlockSetBookmarkType) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBookmarkType) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBookmarkType.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBookmarkType proto.InternalMessageInfo
+
+func (m *EventBlockSetBookmarkType) GetValue() model.LinkPreviewType {
+	if m != nil {
+		return m.Value
+	}
+	return model.LinkPreview_Unknown
+}
+
 type EventUser struct {
 }
 
@@ -2378,6 +2747,13 @@ func init() {
 	proto.RegisterType((*EventBlockSetLinkTargetBlockId)(nil), "anytype.Event.Block.Set.Link.TargetBlockId")
 	proto.RegisterType((*EventBlockSetLinkStyle)(nil), "anytype.Event.Block.Set.Link.Style")
 	proto.RegisterType((*EventBlockSetLinkFields)(nil), "anytype.Event.Block.Set.Link.Fields")
+	proto.RegisterType((*EventBlockSetBookmark)(nil), "anytype.Event.Block.Set.Bookmark")
+	proto.RegisterType((*EventBlockSetBookmarkUrl)(nil), "anytype.Event.Block.Set.Bookmark.Url")
+	proto.RegisterType((*EventBlockSetBookmarkTitle)(nil), "anytype.Event.Block.Set.Bookmark.Title")
+	proto.RegisterType((*EventBlockSetBookmarkDescription)(nil), "anytype.Event.Block.Set.Bookmark.Description")
+	proto.RegisterType((*EventBlockSetBookmarkImageHash)(nil), "anytype.Event.Block.Set.Bookmark.ImageHash")
+	proto.RegisterType((*EventBlockSetBookmarkFaviconHash)(nil), "anytype.Event.Block.Set.Bookmark.FaviconHash")
+	proto.RegisterType((*EventBlockSetBookmarkType)(nil), "anytype.Event.Block.Set.Bookmark.Type")
 	proto.RegisterType((*EventUser)(nil), "anytype.Event.User")
 	proto.RegisterType((*EventUserBlock)(nil), "anytype.Event.User.Block")
 	proto.RegisterType((*EventUserBlockJoin)(nil), "anytype.Event.User.Block.Join")
@@ -2390,98 +2766,109 @@ func init() {
 func init() { proto.RegisterFile("pb/protos/events.proto", fileDescriptor_a966342d378ae5f5) }
 
 var fileDescriptor_a966342d378ae5f5 = []byte{
-	// 1442 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x97, 0xcd, 0x6e, 0xdb, 0x46,
-	0x17, 0x86, 0x25, 0x99, 0xb4, 0xac, 0x23, 0xdb, 0xf9, 0x30, 0xf1, 0xe7, 0xb0, 0x8c, 0xa3, 0xb8,
-	0xf9, 0x69, 0xd2, 0xa6, 0xa6, 0x0a, 0xa7, 0x48, 0x13, 0x20, 0x6d, 0x60, 0x3b, 0x31, 0xe4, 0x36,
-	0x49, 0xd3, 0x51, 0x82, 0xf4, 0x6f, 0x43, 0x91, 0x63, 0x89, 0x30, 0x45, 0x0a, 0x24, 0x95, 0x46,
-	0xd9, 0x76, 0x57, 0xa0, 0x45, 0xd1, 0x3b, 0xe8, 0x1d, 0x74, 0xd7, 0x5b, 0xe8, 0x32, 0xcb, 0x2e,
-	0x8b, 0x64, 0xd3, 0x6d, 0xef, 0xa0, 0x98, 0x33, 0x43, 0x69, 0x48, 0x50, 0x66, 0x0c, 0x74, 0xe7,
-	0x99, 0x79, 0xdf, 0x67, 0x46, 0x33, 0x87, 0xe7, 0x1c, 0xc3, 0xfa, 0xa8, 0xd7, 0x1e, 0x45, 0x61,
-	0x12, 0xc6, 0x6d, 0xf6, 0x8c, 0x05, 0x49, 0x6c, 0xe1, 0x88, 0xd4, 0xed, 0x60, 0x92, 0x4c, 0x46,
-	0xcc, 0xfc, 0xec, 0x19, 0x0b, 0xdc, 0x30, 0x6a, 0xf7, 0xbd, 0x64, 0x30, 0xee, 0x59, 0x4e, 0x38,
-	0x6c, 0xcb, 0x25, 0x2f, 0x6c, 0xf7, 0xc3, 0x2d, 0x39, 0xd8, 0xf2, 0xbd, 0x5e, 0x64, 0x47, 0x93,
-	0xf6, 0xa8, 0xd7, 0x1e, 0x86, 0x2e, 0xf3, 0x53, 0x2a, 0x0e, 0x24, 0xd5, 0xdc, 0xe8, 0x87, 0x61,
-	0xdf, 0x67, 0x62, 0xad, 0x37, 0x3e, 0x6c, 0xc7, 0x49, 0x34, 0x76, 0x12, 0xb1, 0x7a, 0xe1, 0xd7,
-	0x0b, 0xa0, 0xdf, 0xe3, 0x87, 0x20, 0xdb, 0xb0, 0x34, 0x64, 0x71, 0x6c, 0xf7, 0x59, 0x6c, 0x54,
-	0x37, 0x17, 0xae, 0x36, 0xb7, 0xd7, 0x2d, 0xb9, 0x91, 0x85, 0x0a, 0xeb, 0x81, 0x58, 0xa6, 0x53,
-	0x1d, 0xd9, 0x80, 0x86, 0x13, 0x06, 0x09, 0x7b, 0x9e, 0x1c, 0xb8, 0x46, 0x6d, 0xb3, 0x7a, 0xb5,
-	0x41, 0x67, 0x13, 0xe4, 0x43, 0x68, 0x78, 0x81, 0x97, 0x78, 0x76, 0x12, 0x46, 0xc6, 0xc2, 0x66,
-	0x35, 0x83, 0xc4, 0x33, 0x5a, 0x3b, 0x8e, 0x13, 0x8e, 0x83, 0x84, 0xce, 0x84, 0xe6, 0x2f, 0x00,
-	0x75, 0xb9, 0x13, 0xb9, 0x03, 0x4d, 0x5b, 0x28, 0xba, 0x83, 0xf0, 0x3b, 0xa3, 0x8a, 0x8c, 0xb3,
-	0xb9, 0x63, 0x49, 0x86, 0xc5, 0x25, 0x9d, 0x0a, 0x55, 0x1d, 0xe4, 0x06, 0x2c, 0xf5, 0xfc, 0xd0,
-	0x39, 0xda, 0x71, 0xc5, 0xf9, 0x9a, 0xdb, 0x46, 0xce, 0xbd, 0xcb, 0x97, 0xad, 0x1d, 0xd7, 0xed,
-	0x54, 0xe8, 0x54, 0xcb, 0x37, 0xc6, 0xbf, 0xef, 0x32, 0x9f, 0x25, 0x4c, 0x1e, 0xfe, 0x6c, 0xa1,
-	0x55, 0x48, 0xf8, 0xc6, 0x8a, 0x83, 0xdc, 0x85, 0xe6, 0xa1, 0xe7, 0xb3, 0xf8, 0xc9, 0xc8, 0x0f,
-	0x6d, 0xd7, 0xd0, 0x10, 0xb0, 0x59, 0x08, 0xd8, 0x9f, 0xe9, 0x38, 0x45, 0xb1, 0x91, 0x4f, 0xa0,
-	0x31, 0xb4, 0xa3, 0xa3, 0xf8, 0x20, 0x38, 0x0c, 0x0d, 0x1d, 0x19, 0xad, 0x42, 0xc6, 0x83, 0x54,
-	0xd5, 0xa9, 0xd0, 0x99, 0x85, 0x1c, 0xc0, 0x2a, 0x1e, 0xaa, 0xcb, 0x92, 0x7d, 0x8f, 0xf9, 0x6e,
-	0x6c, 0x2c, 0x22, 0xe4, 0x7c, 0x21, 0xa4, 0xcb, 0x12, 0x4b, 0xc8, 0x3a, 0x15, 0x9a, 0x33, 0x92,
-	0x2f, 0xe1, 0x74, 0x3a, 0xb3, 0x37, 0xf0, 0x7c, 0x37, 0x62, 0xc1, 0x81, 0x1b, 0x1b, 0x75, 0xe4,
-	0x5d, 0x9a, 0xcb, 0x53, 0xb4, 0x9d, 0x0a, 0x2d, 0x42, 0x90, 0x6f, 0x60, 0x2d, 0x9d, 0xa6, 0x2c,
-	0x4e, 0x22, 0xcf, 0x49, 0xbc, 0x30, 0x88, 0x8d, 0x25, 0x44, 0x5f, 0x9e, 0x8b, 0x56, 0xc5, 0x9d,
-	0x0a, 0x2d, 0x84, 0x90, 0x3d, 0x58, 0x4e, 0xe7, 0x1f, 0xb3, 0xe7, 0x89, 0x01, 0x08, 0x3d, 0x37,
-	0x17, 0xca, 0x45, 0x9d, 0x0a, 0xcd, 0x98, 0x54, 0x08, 0x7f, 0x2c, 0xa3, 0x59, 0x02, 0xe1, 0x22,
-	0x15, 0xc2, 0xc7, 0x2a, 0xe4, 0xc0, 0x09, 0x03, 0x63, 0xb9, 0x04, 0xc2, 0x45, 0x2a, 0x84, 0x8f,
-	0x55, 0xc8, 0x7d, 0x2f, 0x38, 0x32, 0x56, 0x4a, 0x20, 0x5c, 0xa4, 0x42, 0xf8, 0x98, 0xdc, 0x82,
-	0x86, 0x18, 0xf3, 0x6f, 0x6a, 0x0d, 0x09, 0x6f, 0x15, 0x13, 0xc4, 0x17, 0x35, 0x53, 0x93, 0x7d,
-	0x58, 0x19, 0xc7, 0x2c, 0xc2, 0xe5, 0x4f, 0x43, 0x2f, 0x30, 0xfe, 0x5f, 0x18, 0x94, 0x4f, 0x62,
-	0x16, 0x49, 0x06, 0x57, 0x75, 0x2a, 0x34, 0x6b, 0xcb, 0x70, 0xee, 0xb3, 0xc3, 0xc4, 0x58, 0x2f,
-	0xe3, 0x70, 0x55, 0x86, 0xc3, 0x27, 0x78, 0xec, 0x4c, 0x27, 0xba, 0xcc, 0x67, 0x4e, 0x42, 0xed,
-	0xa0, 0xcf, 0x8c, 0x33, 0x85, 0xb1, 0xa3, 0xe0, 0x14, 0x31, 0x8f, 0x9d, 0x22, 0x08, 0x79, 0x02,
-	0x64, 0x3a, 0xcf, 0xe3, 0x40, 0xa0, 0x0d, 0x44, 0x5f, 0x9c, 0x8f, 0x9e, 0x4a, 0x3b, 0x15, 0x5a,
-	0x00, 0x20, 0xef, 0x82, 0x36, 0xf2, 0x82, 0xbe, 0xe1, 0x22, 0xe8, 0x74, 0x0e, 0xf4, 0xc8, 0x0b,
-	0xfa, 0x9d, 0x0a, 0x45, 0xc9, 0x6e, 0x1d, 0xf4, 0x67, 0xb6, 0x3f, 0x66, 0xe6, 0x57, 0x50, 0x97,
-	0x69, 0xce, 0x7c, 0x08, 0x1a, 0x3e, 0xc5, 0x1a, 0xe8, 0x5e, 0xe0, 0xb2, 0xe7, 0x98, 0x15, 0x75,
-	0x2a, 0x06, 0xe4, 0x03, 0xa8, 0xcb, 0xfc, 0x27, 0xf3, 0xdd, 0xbc, 0x8c, 0x9b, 0xca, 0xcc, 0x1f,
-	0x4f, 0x83, 0x8e, 0x27, 0x34, 0xaf, 0xc3, 0x02, 0xcf, 0x7d, 0xef, 0xc3, 0x22, 0x3e, 0x78, 0x5a,
-	0x06, 0xd6, 0x72, 0x04, 0x14, 0x53, 0xa9, 0x31, 0xef, 0xcb, 0xe3, 0xac, 0xc3, 0x62, 0x14, 0x86,
-	0xbc, 0x0e, 0x54, 0xb1, 0x0e, 0xc8, 0x91, 0x42, 0xab, 0xbd, 0x01, 0x6d, 0x0f, 0x9a, 0x4a, 0x3a,
-	0x24, 0x06, 0xd4, 0x71, 0x61, 0x4a, 0x4d, 0x87, 0xc4, 0x84, 0x25, 0x9e, 0x28, 0x1f, 0xd9, 0xc9,
-	0x00, 0xc1, 0x0d, 0x3a, 0x1d, 0x9b, 0x97, 0x60, 0x51, 0x66, 0x61, 0x53, 0xa6, 0x7f, 0x9e, 0xa9,
-	0xaa, 0x42, 0x95, 0x8e, 0xcd, 0x6f, 0xa1, 0x31, 0xcd, 0x9a, 0xe4, 0x73, 0x58, 0x96, 0x59, 0x53,
-	0x3c, 0x32, 0x17, 0xaf, 0x6e, 0x5f, 0x2b, 0x3a, 0xab, 0xb5, 0xc7, 0x0b, 0x5c, 0x20, 0x52, 0x05,
-	0x26, 0x5e, 0xeb, 0xf1, 0x64, 0xc4, 0x68, 0x06, 0x60, 0xfe, 0xfe, 0x3f, 0x58, 0xe8, 0xb2, 0xc4,
-	0x3c, 0x80, 0x45, 0x99, 0x40, 0x57, 0xa1, 0xe6, 0xa5, 0x3f, 0xa3, 0xe6, 0xb9, 0xa4, 0x0d, 0x8b,
-	0x87, 0x22, 0x27, 0x8b, 0x87, 0x3a, 0x63, 0x89, 0x42, 0x6d, 0xa5, 0x85, 0xda, 0xea, 0x62, 0xa1,
-	0xa6, 0x52, 0x66, 0xde, 0x81, 0xa6, 0x9a, 0x36, 0xf3, 0xbc, 0x4d, 0x68, 0x3a, 0x4a, 0x62, 0x16,
-	0x97, 0xa2, 0x4e, 0x99, 0x0c, 0x96, 0x33, 0xb9, 0x31, 0x4f, 0xb8, 0x07, 0xcb, 0x91, 0x9a, 0x80,
-	0xc5, 0xb9, 0xde, 0x2e, 0xbc, 0x04, 0x15, 0x44, 0x33, 0x36, 0xf3, 0x37, 0x1d, 0x34, 0x4c, 0x9b,
-	0x79, 0xfe, 0x0d, 0xd0, 0x78, 0x67, 0x20, 0xb9, 0x17, 0x8e, 0xcd, 0xc1, 0xe2, 0x2b, 0x42, 0x3d,
-	0xb9, 0x05, 0x7a, 0x9c, 0x4c, 0xfc, 0xb4, 0x0c, 0x5f, 0x3c, 0xde, 0xd8, 0xe5, 0x52, 0x2a, 0x1c,
-	0xdc, 0x8a, 0xcf, 0x22, 0x0b, 0x70, 0x89, 0x15, 0xe3, 0x81, 0x0a, 0x07, 0xb9, 0x03, 0x75, 0x67,
-	0xc0, 0x9c, 0x23, 0xe6, 0xca, 0xca, 0x7b, 0xf9, 0x78, 0xf3, 0x9e, 0x10, 0xd3, 0xd4, 0xc5, 0xf7,
-	0x76, 0x42, 0x3f, 0x8c, 0x64, 0xcd, 0x2d, 0xd9, 0x7b, 0x8f, 0x4b, 0xa9, 0x70, 0x90, 0xa7, 0x70,
-	0xaa, 0x67, 0x3b, 0x47, 0xfd, 0x28, 0x1c, 0x07, 0x2e, 0xae, 0xc8, 0x42, 0xbb, 0x75, 0x3c, 0x64,
-	0x37, 0x6b, 0xa2, 0x79, 0x8a, 0xb9, 0x21, 0x9f, 0x66, 0x4d, 0x26, 0x16, 0xf9, 0x3a, 0x32, 0xcb,
-	0xec, 0x83, 0x8e, 0xb7, 0x47, 0x3e, 0x56, 0x97, 0x57, 0xb7, 0xaf, 0x94, 0x7f, 0x07, 0xf2, 0xd6,
-	0xa7, 0x1c, 0xbc, 0xca, 0x2c, 0xa7, 0xf9, 0x26, 0x1c, 0xf9, 0x04, 0x82, 0x73, 0x1e, 0xea, 0xf2,
-	0x56, 0xb3, 0x07, 0x5e, 0x4a, 0x05, 0xe7, 0x40, 0xc7, 0xdf, 0x35, 0xe7, 0xf7, 0x5c, 0x81, 0x53,
-	0xb9, 0x1b, 0x99, 0x23, 0xfc, 0x49, 0x07, 0x0d, 0x8b, 0x74, 0x51, 0xc8, 0x4e, 0x46, 0xac, 0x34,
-	0x64, 0xb9, 0x59, 0xa4, 0x01, 0xd4, 0x8b, 0x90, 0xb5, 0x93, 0xf2, 0x90, 0x45, 0x63, 0x97, 0x4b,
-	0xa9, 0x70, 0xf0, 0x2d, 0x87, 0xde, 0x90, 0xc9, 0x88, 0x2d, 0xd9, 0xf2, 0x81, 0x37, 0x64, 0x14,
-	0xf5, 0xdc, 0x37, 0xb0, 0xe3, 0x81, 0x0c, 0xd6, 0x12, 0x5f, 0xc7, 0x8e, 0x07, 0x14, 0xf5, 0xdc,
-	0x17, 0xd8, 0x43, 0x26, 0xa3, 0xb4, 0xc4, 0xf7, 0xd0, 0xe6, 0xfb, 0x71, 0x3d, 0xf7, 0xc5, 0xde,
-	0x0b, 0x26, 0x03, 0xb3, 0xc4, 0xd7, 0xf5, 0x5e, 0x30, 0x8a, 0x7a, 0x1e, 0x82, 0x9c, 0x32, 0xe7,
-	0x25, 0xce, 0x81, 0xfe, 0xd4, 0x73, 0x93, 0x41, 0x76, 0x59, 0xcf, 0x44, 0x28, 0xbf, 0xa5, 0x13,
-	0x45, 0xa8, 0x7a, 0xc9, 0x82, 0x73, 0x17, 0x34, 0xfe, 0x5a, 0xe4, 0x76, 0x16, 0xf3, 0x4e, 0x39,
-	0x06, 0x1f, 0x59, 0x52, 0x36, 0x40, 0xe3, 0x17, 0x39, 0xe7, 0xa7, 0x6c, 0x80, 0xc6, 0x9f, 0x67,
-	0xfe, 0x2a, 0xbf, 0x94, 0xec, 0xea, 0x42, 0xba, 0xea, 0x83, 0x86, 0xfd, 0x5e, 0x41, 0x3c, 0xe2,
-	0x63, 0x95, 0xc5, 0x23, 0x37, 0x2b, 0x8f, 0x55, 0x72, 0xe9, 0x3f, 0x2c, 0x80, 0x86, 0x9d, 0x61,
-	0x7e, 0xbb, 0x2f, 0x60, 0x25, 0xb1, 0xa3, 0x3e, 0x4b, 0x76, 0x65, 0x15, 0x16, 0xfb, 0x5e, 0x3b,
-	0xb6, 0xdf, 0xb4, 0x1e, 0xab, 0x16, 0x9a, 0x25, 0xbc, 0x79, 0x32, 0x47, 0x54, 0x26, 0x99, 0xdf,
-	0x9e, 0x56, 0x4c, 0xad, 0xe4, 0xbf, 0x0e, 0xf4, 0x8a, 0xba, 0x3b, 0x2d, 0x9f, 0x97, 0x61, 0x25,
-	0x73, 0xb0, 0xff, 0x34, 0x07, 0xaa, 0x87, 0x15, 0x9c, 0x8f, 0xa6, 0x85, 0x7f, 0x2b, 0x9b, 0x04,
-	0xe7, 0xd6, 0x79, 0x69, 0xfc, 0xa7, 0x06, 0x1a, 0xef, 0x26, 0xcd, 0xbf, 0x6b, 0x69, 0x63, 0x76,
-	0x13, 0x34, 0xec, 0x9a, 0x95, 0xe6, 0xae, 0x9a, 0x6b, 0xee, 0x32, 0xff, 0x0a, 0xcf, 0x9a, 0xbb,
-	0x9b, 0xa0, 0x61, 0x9f, 0x7c, 0x72, 0xe7, 0xf7, 0x55, 0x68, 0xcc, 0x7a, 0xd6, 0x13, 0xfb, 0xd5,
-	0xd6, 0xad, 0x96, 0x6d, 0xdd, 0xde, 0x03, 0x3d, 0xc2, 0x26, 0x4b, 0x44, 0x40, 0xbe, 0x21, 0xc4,
-	0x0d, 0xa9, 0x90, 0x98, 0x0c, 0x9a, 0x6a, 0x47, 0x7e, 0xf2, 0x63, 0x5c, 0x82, 0x95, 0xb4, 0xe3,
-	0xdb, 0x89, 0x22, 0x7b, 0x22, 0xfb, 0xa2, 0xec, 0x24, 0xff, 0x3c, 0x78, 0xdf, 0x5d, 0xdc, 0x53,
-	0xef, 0x6e, 0xfc, 0xf1, 0xaa, 0x55, 0x7d, 0xf9, 0xaa, 0x55, 0xfd, 0xeb, 0x55, 0xab, 0xfa, 0xf3,
-	0xeb, 0x56, 0xe5, 0xe5, 0xeb, 0x56, 0xe5, 0xcf, 0xd7, 0xad, 0xca, 0xd7, 0xb5, 0x51, 0xaf, 0xb7,
-	0x88, 0xef, 0x78, 0xfd, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xb3, 0x06, 0x9a, 0x83, 0xd6, 0x11,
-	0x00, 0x00,
+	// 1629 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x98, 0xcb, 0x6f, 0xdb, 0x46,
+	0x1e, 0xc7, 0xf5, 0xa2, 0x64, 0xfd, 0x64, 0x3b, 0x8b, 0x89, 0xe3, 0x70, 0x19, 0xc7, 0x71, 0x1e,
+	0x4e, 0xb2, 0x9b, 0x35, 0xb5, 0x70, 0x76, 0xf3, 0x58, 0x24, 0x1b, 0xf8, 0x11, 0x43, 0x6a, 0xf3,
+	0xea, 0xc8, 0x46, 0xfa, 0xba, 0x50, 0xe4, 0x58, 0x22, 0x4c, 0x91, 0x02, 0x49, 0x39, 0x71, 0xae,
+	0xbd, 0xf5, 0x50, 0xf4, 0xd8, 0x7b, 0xff, 0x81, 0x02, 0xfd, 0x27, 0x7a, 0xcc, 0xb1, 0x97, 0x02,
+	0x45, 0x7c, 0xe9, 0xb5, 0xff, 0x41, 0x31, 0x0f, 0x52, 0x43, 0x96, 0x34, 0x6d, 0xa0, 0x37, 0x0f,
+	0xe7, 0xfb, 0xfd, 0xcc, 0x70, 0xe6, 0xa7, 0xef, 0x70, 0x0c, 0x8b, 0xe3, 0x7e, 0x7b, 0xec, 0x7b,
+	0xa1, 0x17, 0xb4, 0xc9, 0x21, 0x71, 0xc3, 0x40, 0x67, 0x2d, 0xd4, 0x30, 0xdc, 0xa3, 0xf0, 0x68,
+	0x4c, 0xb4, 0x8f, 0x0f, 0x89, 0x6b, 0x79, 0x7e, 0x7b, 0x60, 0x87, 0xc3, 0x49, 0x5f, 0x37, 0xbd,
+	0x51, 0x5b, 0x74, 0xd9, 0x5e, 0x7b, 0xe0, 0xad, 0x89, 0xc6, 0x9a, 0x63, 0xf7, 0x7d, 0xc3, 0x3f,
+	0x6a, 0x8f, 0xfb, 0xed, 0x91, 0x67, 0x11, 0x27, 0xa2, 0xb2, 0x86, 0xa0, 0x6a, 0x4b, 0x03, 0xcf,
+	0x1b, 0x38, 0x84, 0xf7, 0xf5, 0x27, 0xfb, 0xed, 0x20, 0xf4, 0x27, 0x66, 0xc8, 0x7b, 0xaf, 0x7d,
+	0x77, 0x1b, 0x94, 0xa7, 0x74, 0x12, 0x68, 0x1d, 0x66, 0x46, 0x24, 0x08, 0x8c, 0x01, 0x09, 0xd4,
+	0xf2, 0x4a, 0xf5, 0x76, 0x6b, 0x7d, 0x51, 0x17, 0x03, 0xe9, 0x4c, 0xa1, 0x3f, 0xe7, 0xdd, 0x38,
+	0xd6, 0xa1, 0x25, 0x68, 0x9a, 0x9e, 0x1b, 0x92, 0xb7, 0x61, 0xd7, 0x52, 0x2b, 0x2b, 0xe5, 0xdb,
+	0x4d, 0x3c, 0x7d, 0x80, 0xfe, 0x03, 0x4d, 0xdb, 0xb5, 0x43, 0xdb, 0x08, 0x3d, 0x5f, 0xad, 0xae,
+	0x94, 0x13, 0x48, 0x36, 0x47, 0x7d, 0xc3, 0x34, 0xbd, 0x89, 0x1b, 0xe2, 0xa9, 0x50, 0x3b, 0x06,
+	0x68, 0x88, 0x91, 0xd0, 0x13, 0x68, 0x19, 0x5c, 0xd1, 0x1b, 0x7a, 0x6f, 0xd4, 0x32, 0x63, 0x5c,
+	0x4a, 0x4d, 0x4b, 0x30, 0x74, 0x2a, 0xe9, 0x94, 0xb0, 0xec, 0x40, 0xf7, 0x60, 0xa6, 0xef, 0x78,
+	0xe6, 0xc1, 0x86, 0xc5, 0xe7, 0xd7, 0x5a, 0x57, 0x53, 0xee, 0x4d, 0xda, 0xad, 0x6f, 0x58, 0x56,
+	0xa7, 0x84, 0x63, 0x2d, 0x1d, 0x98, 0xfd, 0xbd, 0x4d, 0x1c, 0x12, 0x12, 0x31, 0xf9, 0x4b, 0x99,
+	0x56, 0x2e, 0xa1, 0x03, 0x4b, 0x0e, 0xb4, 0x0d, 0xad, 0x7d, 0xdb, 0x21, 0xc1, 0xde, 0xd8, 0xf1,
+	0x0c, 0x4b, 0xad, 0x31, 0xc0, 0x4a, 0x26, 0x60, 0x67, 0xaa, 0xa3, 0x14, 0xc9, 0x86, 0xfe, 0x0f,
+	0xcd, 0x91, 0xe1, 0x1f, 0x04, 0x5d, 0x77, 0xdf, 0x53, 0x15, 0xc6, 0x58, 0xce, 0x64, 0x3c, 0x8f,
+	0x54, 0x9d, 0x12, 0x9e, 0x5a, 0x50, 0x17, 0xe6, 0xd9, 0xa4, 0x7a, 0x24, 0xdc, 0xb1, 0x89, 0x63,
+	0x05, 0x6a, 0x9d, 0x41, 0xae, 0x64, 0x42, 0x7a, 0x24, 0xd4, 0xb9, 0xac, 0x53, 0xc2, 0x29, 0x23,
+	0xfa, 0x14, 0xce, 0x47, 0x4f, 0xb6, 0x86, 0xb6, 0x63, 0xf9, 0xc4, 0xed, 0x5a, 0x81, 0xda, 0x60,
+	0xbc, 0x1b, 0xb9, 0x3c, 0x49, 0xdb, 0x29, 0xe1, 0x2c, 0x04, 0xfa, 0x02, 0x16, 0xa2, 0xc7, 0x98,
+	0x04, 0xa1, 0x6f, 0x9b, 0xa1, 0xed, 0xb9, 0x81, 0x3a, 0xc3, 0xd0, 0xab, 0xb9, 0x68, 0x59, 0xdc,
+	0x29, 0xe1, 0x4c, 0x08, 0xda, 0x82, 0xd9, 0xe8, 0xf9, 0x2e, 0x79, 0x1b, 0xaa, 0xc0, 0xa0, 0x97,
+	0x73, 0xa1, 0x54, 0xd4, 0x29, 0xe1, 0x84, 0x49, 0x86, 0xd0, 0xcd, 0x52, 0x5b, 0x05, 0x10, 0x2a,
+	0x92, 0x21, 0xb4, 0x2d, 0x43, 0xba, 0xa6, 0xe7, 0xaa, 0xb3, 0x05, 0x10, 0x2a, 0x92, 0x21, 0xb4,
+	0x2d, 0x43, 0x9e, 0xd9, 0xee, 0x81, 0x3a, 0x57, 0x00, 0xa1, 0x22, 0x19, 0x42, 0xdb, 0xe8, 0x25,
+	0xfc, 0x2d, 0x6a, 0x6f, 0x7a, 0xde, 0x01, 0x2d, 0x17, 0x75, 0x9e, 0x81, 0xae, 0xe6, 0x82, 0x22,
+	0x61, 0xa7, 0x84, 0xff, 0x64, 0x46, 0x0f, 0xa1, 0xc9, 0x9f, 0xd1, 0x1f, 0xe9, 0x02, 0x23, 0xfd,
+	0x3d, 0x9b, 0xc4, 0x7f, 0xa2, 0x53, 0x35, 0xda, 0x81, 0xb9, 0x49, 0x40, 0x7c, 0xd6, 0xfd, 0x91,
+	0x67, 0xbb, 0xea, 0x85, 0xcc, 0x2a, 0xdf, 0x0b, 0x88, 0x2f, 0x18, 0x54, 0xd5, 0x29, 0xe1, 0xa4,
+	0x2d, 0xc1, 0x79, 0x46, 0xf6, 0x43, 0x75, 0xb1, 0x88, 0x43, 0x55, 0x09, 0x0e, 0x7d, 0x40, 0x8b,
+	0x31, 0x7e, 0xd0, 0x23, 0x0e, 0x31, 0x43, 0x6c, 0xb8, 0x03, 0xa2, 0x5e, 0xcc, 0x2c, 0x46, 0x09,
+	0x27, 0x89, 0x69, 0x31, 0x66, 0x41, 0xd0, 0x1e, 0xa0, 0xf8, 0x39, 0x2d, 0x2c, 0x8e, 0x56, 0x19,
+	0xfa, 0x7a, 0x3e, 0x3a, 0x96, 0x76, 0x4a, 0x38, 0x03, 0x80, 0xfe, 0x01, 0xb5, 0xb1, 0xed, 0x0e,
+	0x54, 0x8b, 0x81, 0xce, 0xa7, 0x40, 0xaf, 0x6c, 0x77, 0xd0, 0x29, 0x61, 0x26, 0xd9, 0x6c, 0x80,
+	0x72, 0x68, 0x38, 0x13, 0xa2, 0x7d, 0x06, 0x0d, 0x91, 0x9b, 0xda, 0x0b, 0xa8, 0xb1, 0xad, 0x58,
+	0x00, 0xc5, 0x76, 0x2d, 0xf2, 0x96, 0xc5, 0xac, 0x82, 0x79, 0x03, 0xfd, 0x1b, 0x1a, 0x22, 0x50,
+	0x45, 0x80, 0xe6, 0x45, 0x78, 0x24, 0xd3, 0x7e, 0x54, 0x41, 0x61, 0x33, 0xd4, 0xee, 0x42, 0x95,
+	0x86, 0xe9, 0xbf, 0xa0, 0xce, 0x36, 0x3c, 0x3a, 0x57, 0x16, 0x52, 0x04, 0x26, 0xc6, 0x42, 0xa3,
+	0x3d, 0x13, 0xd3, 0x59, 0x84, 0xba, 0xef, 0x79, 0xf4, 0x60, 0x29, 0xb3, 0x83, 0x45, 0xb4, 0x24,
+	0x5a, 0xe5, 0x14, 0xb4, 0x2d, 0x68, 0x49, 0xf9, 0x8a, 0x54, 0x68, 0xb0, 0x8e, 0x98, 0x1a, 0x35,
+	0x91, 0x06, 0x33, 0x34, 0x79, 0x5f, 0x19, 0xe1, 0x90, 0x81, 0x9b, 0x38, 0x6e, 0x6b, 0x37, 0xa0,
+	0x2e, 0x62, 0x5d, 0x13, 0xe7, 0x09, 0x8d, 0xbe, 0x32, 0x57, 0x45, 0x6d, 0xed, 0x4b, 0x68, 0xc6,
+	0x31, 0x8c, 0x5e, 0xc2, 0xac, 0x88, 0x61, 0xbe, 0xc9, 0x54, 0x3c, 0xbf, 0x7e, 0x27, 0x6b, 0xae,
+	0xfa, 0x16, 0x3d, 0x31, 0x5d, 0x9e, 0x3d, 0x2c, 0xc9, 0xf5, 0xdd, 0xa3, 0x31, 0xc1, 0x09, 0x80,
+	0xf6, 0xcb, 0x05, 0xa8, 0xf6, 0x48, 0xa8, 0x75, 0xa1, 0x2e, 0x12, 0x79, 0x1e, 0x2a, 0x76, 0xf4,
+	0x1a, 0x15, 0xdb, 0x42, 0x6d, 0xa8, 0xef, 0xf3, 0x90, 0xe7, 0x1b, 0x75, 0x51, 0xe7, 0x27, 0xbf,
+	0x1e, 0x9d, 0xfc, 0x7a, 0x8f, 0x9d, 0xfc, 0x58, 0xc8, 0xb4, 0x27, 0xd0, 0x92, 0x73, 0x38, 0xcd,
+	0x5b, 0x81, 0x96, 0x29, 0x25, 0x3d, 0x5f, 0x14, 0xf9, 0x91, 0x46, 0x60, 0x36, 0x11, 0xb6, 0x69,
+	0xc2, 0x53, 0x98, 0xf5, 0xe5, 0x44, 0xaf, 0xa4, 0x42, 0x46, 0x5e, 0x04, 0x19, 0x84, 0x13, 0x36,
+	0xed, 0x07, 0x05, 0x6a, 0x2c, 0x87, 0xd3, 0xfc, 0x7b, 0x50, 0xa3, 0x9f, 0x1a, 0x82, 0x7b, 0xed,
+	0xc4, 0x50, 0xe7, 0xbf, 0x22, 0xa6, 0x47, 0x0f, 0x41, 0x09, 0xc2, 0x23, 0x27, 0x3a, 0xd7, 0xaf,
+	0x9f, 0x6c, 0xec, 0x51, 0x29, 0xe6, 0x0e, 0x6a, 0x65, 0xdb, 0x22, 0x4e, 0xf4, 0x02, 0x2b, 0xab,
+	0x07, 0xcc, 0x1d, 0xe8, 0x09, 0x34, 0xcc, 0x21, 0x31, 0x0f, 0x88, 0x25, 0x8e, 0xf2, 0xd5, 0x93,
+	0xcd, 0x5b, 0x5c, 0x8c, 0x23, 0x17, 0x1d, 0xdb, 0xf4, 0x1c, 0xcf, 0x17, 0x87, 0x78, 0xc1, 0xd8,
+	0x5b, 0x54, 0x8a, 0xb9, 0x03, 0xbd, 0x86, 0x73, 0x7d, 0xc3, 0x3c, 0x18, 0xf8, 0xde, 0xc4, 0xb5,
+	0x58, 0x8f, 0x38, 0xb9, 0xd7, 0x4e, 0x86, 0x6c, 0x26, 0x4d, 0x38, 0x4d, 0xd1, 0x96, 0xc4, 0xd6,
+	0x2c, 0x88, 0x60, 0x11, 0xbb, 0x23, 0x52, 0x66, 0x07, 0x14, 0xb6, 0x7a, 0xe8, 0xb1, 0xdc, 0x3d,
+	0xbf, 0x7e, 0xab, 0xf8, 0x77, 0x20, 0x56, 0x3d, 0xe6, 0xb0, 0xa5, 0x4c, 0x72, 0x5a, 0xa7, 0xe1,
+	0x88, 0x2d, 0xe0, 0x9c, 0x2b, 0xd0, 0x10, 0xab, 0x9a, 0x9c, 0xf0, 0x4c, 0x24, 0xb8, 0x0c, 0x0a,
+	0x7b, 0xaf, 0x9c, 0xf7, 0xb9, 0x05, 0xe7, 0x52, 0x2b, 0x92, 0x23, 0xfc, 0x46, 0x81, 0x1a, 0x3b,
+	0xf5, 0xb3, 0x4a, 0xf6, 0x68, 0x4c, 0x0a, 0x4b, 0x96, 0x9a, 0x79, 0x0c, 0x30, 0x3d, 0x2f, 0x59,
+	0x23, 0x2c, 0x2e, 0x59, 0x66, 0xec, 0x51, 0x29, 0xe6, 0x0e, 0x3a, 0xe4, 0xc8, 0x1e, 0x11, 0x51,
+	0xb1, 0x05, 0x43, 0x3e, 0xb7, 0x47, 0x04, 0x33, 0x3d, 0xf5, 0x0d, 0x8d, 0x60, 0x28, 0x8a, 0xb5,
+	0xc0, 0xd7, 0x31, 0x82, 0x21, 0x66, 0x7a, 0xea, 0x73, 0x8d, 0x11, 0x11, 0x55, 0x5a, 0xe0, 0x7b,
+	0x61, 0xd0, 0xf1, 0xa8, 0x9e, 0xfa, 0x02, 0xfb, 0x1d, 0x11, 0x85, 0x59, 0xe0, 0xeb, 0xd9, 0xef,
+	0x08, 0x66, 0x7a, 0x5a, 0x82, 0x94, 0x92, 0xb3, 0x13, 0x97, 0x41, 0x79, 0x6d, 0x5b, 0xe1, 0x30,
+	0xd9, 0xad, 0x24, 0x2a, 0x94, 0xae, 0xd2, 0x99, 0x2a, 0x54, 0x5e, 0x64, 0xce, 0xd9, 0x86, 0x1a,
+	0xdd, 0x2d, 0xf4, 0x28, 0x89, 0xb9, 0x59, 0x8c, 0x61, 0x9b, 0x2c, 0x28, 0x4b, 0x50, 0xa3, 0x0b,
+	0x99, 0xf3, 0x2a, 0x4b, 0x50, 0xa3, 0xdb, 0x93, 0xdf, 0x4b, 0x17, 0x25, 0xd9, 0x5b, 0x8d, 0x7a,
+	0x1d, 0xa8, 0xb1, 0x0f, 0xc8, 0x8c, 0x7a, 0x64, 0x9b, 0x55, 0x54, 0x8f, 0xd4, 0x2c, 0x6d, 0x56,
+	0xc1, 0xa2, 0x7f, 0x5d, 0x85, 0x1a, 0xfb, 0xd4, 0x4c, 0x0f, 0xf7, 0x09, 0xcc, 0x85, 0x86, 0x3f,
+	0x20, 0xe1, 0xa6, 0x38, 0x85, 0xf9, 0xb8, 0x77, 0x4e, 0xfc, 0x80, 0xd5, 0x77, 0x65, 0x0b, 0x4e,
+	0x12, 0x4e, 0x1f, 0xe6, 0x0c, 0x95, 0x08, 0xf3, 0x47, 0xf1, 0x89, 0x59, 0x2b, 0xb8, 0xc6, 0x30,
+	0x2f, 0x3f, 0x77, 0xe3, 0xe3, 0x73, 0x15, 0xe6, 0x12, 0x13, 0xfb, 0x4b, 0x33, 0x50, 0x9e, 0x2c,
+	0xe7, 0xdc, 0x8f, 0x0f, 0xfe, 0xb5, 0x64, 0x08, 0xe6, 0x9e, 0xf3, 0xc2, 0xf8, 0xbd, 0x02, 0x33,
+	0xf1, 0xa7, 0x7a, 0x7a, 0x43, 0xee, 0x43, 0x75, 0xe2, 0x3b, 0x62, 0x1b, 0x56, 0x0b, 0x3f, 0xff,
+	0xf5, 0x3d, 0xdf, 0xc1, 0xd4, 0x41, 0xdf, 0x26, 0xb4, 0xc3, 0x78, 0xd9, 0x6f, 0x15, 0x5b, 0x77,
+	0xa9, 0x1c, 0x73, 0x17, 0x7a, 0x09, 0x2d, 0x8b, 0x04, 0xa6, 0x6f, 0x8f, 0xe9, 0x19, 0x2f, 0xd6,
+	0x7f, 0xad, 0x18, 0xb2, 0x3d, 0x35, 0x61, 0x99, 0x80, 0xba, 0xd0, 0xb4, 0x47, 0xc6, 0x80, 0x74,
+	0xa6, 0x91, 0x75, 0xa7, 0x18, 0xd7, 0x8d, 0x2c, 0x78, 0xea, 0xa6, 0x73, 0xdb, 0x37, 0x0e, 0x6d,
+	0x7a, 0xff, 0xa2, 0xb0, 0xfa, 0x69, 0xe7, 0xb6, 0x33, 0x35, 0x61, 0x99, 0x80, 0xfe, 0x27, 0x42,
+	0x9f, 0x27, 0xdb, 0xcd, 0x53, 0x2c, 0x55, 0x1c, 0xfc, 0xda, 0x25, 0xa8, 0xee, 0xf9, 0x4e, 0x7e,
+	0xb8, 0xb1, 0x55, 0xcd, 0xe9, 0xbe, 0x0e, 0x2d, 0x69, 0xbd, 0x72, 0x44, 0x57, 0xa1, 0x19, 0xaf,
+	0x42, 0x3e, 0x47, 0x7a, 0xb7, 0x1c, 0xd1, 0x63, 0x91, 0x80, 0xff, 0x4d, 0x96, 0xf9, 0x95, 0x54,
+	0x99, 0xd3, 0xc2, 0x7e, 0xe5, 0x93, 0x43, 0x9b, 0xbc, 0x49, 0x44, 0xdf, 0xef, 0x15, 0xa8, 0xd1,
+	0x3b, 0x8f, 0xf6, 0x5b, 0x25, 0xba, 0x3e, 0x3c, 0x80, 0x1a, 0xbb, 0xdb, 0x49, 0x57, 0x90, 0x72,
+	0xea, 0x0a, 0x92, 0xf8, 0x0f, 0xd0, 0xf4, 0x0a, 0xf2, 0x00, 0x6a, 0xec, 0x36, 0x77, 0x76, 0xe7,
+	0x57, 0x65, 0x68, 0x4e, 0x6f, 0x56, 0x67, 0xf6, 0xcb, 0x17, 0x8c, 0x4a, 0xf2, 0x82, 0xf1, 0x4f,
+	0x50, 0x7c, 0x76, 0x15, 0xe0, 0x3f, 0x98, 0xf4, 0xb5, 0x85, 0x0d, 0x88, 0xb9, 0x44, 0x23, 0xd0,
+	0x92, 0xef, 0x8d, 0x67, 0x9f, 0xc6, 0x0d, 0x98, 0x8b, 0xee, 0x25, 0x1b, 0xbe, 0x6f, 0x1c, 0x89,
+	0xaf, 0xf7, 0xe4, 0x43, 0x1a, 0xe2, 0xf4, 0x76, 0x98, 0x7d, 0xf3, 0xdb, 0x5c, 0xfa, 0xe9, 0xc3,
+	0x72, 0xf9, 0xfd, 0x87, 0xe5, 0xf2, 0xaf, 0x1f, 0x96, 0xcb, 0xdf, 0x1e, 0x2f, 0x97, 0xde, 0x1f,
+	0x2f, 0x97, 0x7e, 0x3e, 0x5e, 0x2e, 0x7d, 0x5e, 0x19, 0xf7, 0xfb, 0x75, 0x96, 0x36, 0x77, 0xff,
+	0x08, 0x00, 0x00, 0xff, 0xff, 0x6c, 0xd6, 0x7d, 0x91, 0xcd, 0x14, 0x00, 0x00,
 }
 
 func (m *Event) Marshal() (dAtA []byte, err error) {
@@ -2821,6 +3208,27 @@ func (m *EventMessageValueOfBlockSetLink) MarshalToSizedBuffer(dAtA []byte) (int
 		}
 		i--
 		dAtA[i] = 0x6a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *EventMessageValueOfBlockSetBookmark) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventMessageValueOfBlockSetBookmark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.BlockSetBookmark != nil {
+		{
+			size, err := m.BlockSetBookmark.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x72
 	}
 	return len(dAtA) - i, nil
 }
@@ -3221,20 +3629,20 @@ func (m *EventBlockMarksInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.MarksInRange) > 0 {
-		dAtA22 := make([]byte, len(m.MarksInRange)*10)
-		var j21 int
+		dAtA23 := make([]byte, len(m.MarksInRange)*10)
+		var j22 int
 		for _, num := range m.MarksInRange {
 			for num >= 1<<7 {
-				dAtA22[j21] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA23[j22] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j21++
+				j22++
 			}
-			dAtA22[j21] = uint8(num)
-			j21++
+			dAtA23[j22] = uint8(num)
+			j22++
 		}
-		i -= j21
-		copy(dAtA[i:], dAtA22[:j21])
-		i = encodeVarintEvents(dAtA, i, uint64(j21))
+		i -= j22
+		copy(dAtA[i:], dAtA23[:j22])
+		i = encodeVarintEvents(dAtA, i, uint64(j22))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -4210,6 +4618,286 @@ func (m *EventBlockSetLinkFields) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
+func (m *EventBlockSetBookmark) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBookmark) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBookmark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Type != nil {
+		{
+			size, err := m.Type.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x3a
+	}
+	if m.FaviconHash != nil {
+		{
+			size, err := m.FaviconHash.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
+	if m.ImageHash != nil {
+		{
+			size, err := m.ImageHash.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	if m.Description != nil {
+		{
+			size, err := m.Description.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Title != nil {
+		{
+			size, err := m.Title.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Url != nil {
+		{
+			size, err := m.Url.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockSetBookmarkUrl) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBookmarkUrl) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBookmarkUrl) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockSetBookmarkTitle) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBookmarkTitle) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBookmarkTitle) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockSetBookmarkDescription) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBookmarkDescription) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBookmarkDescription) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockSetBookmarkImageHash) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBookmarkImageHash) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBookmarkImageHash) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockSetBookmarkFaviconHash) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBookmarkFaviconHash) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBookmarkFaviconHash) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockSetBookmarkType) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBookmarkType) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBookmarkType) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Value != 0 {
+		i = encodeVarintEvents(dAtA, i, uint64(m.Value))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *EventUser) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -4638,6 +5326,18 @@ func (m *EventMessageValueOfBlockSetLink) Size() (n int) {
 	_ = l
 	if m.BlockSetLink != nil {
 		l = m.BlockSetLink.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+func (m *EventMessageValueOfBlockSetBookmark) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlockSetBookmark != nil {
+		l = m.BlockSetBookmark.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -5220,6 +5920,120 @@ func (m *EventBlockSetLinkFields) Size() (n int) {
 	if m.Value != nil {
 		l = m.Value.Size()
 		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetBookmark) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	if m.Url != nil {
+		l = m.Url.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	if m.Title != nil {
+		l = m.Title.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	if m.Description != nil {
+		l = m.Description.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	if m.ImageHash != nil {
+		l = m.ImageHash.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	if m.FaviconHash != nil {
+		l = m.FaviconHash.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	if m.Type != nil {
+		l = m.Type.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetBookmarkUrl) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetBookmarkTitle) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetBookmarkDescription) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetBookmarkImageHash) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetBookmarkFaviconHash) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetBookmarkType) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Value != 0 {
+		n += 1 + sovEvents(uint64(m.Value))
 	}
 	return n
 }
@@ -5929,6 +6743,41 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Value = &EventMessageValueOfBlockSetLink{v}
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetBookmark", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &EventBlockSetBookmark{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &EventMessageValueOfBlockSetBookmark{v}
 			iNdEx = postIndex
 		case 20:
 			if wireType != 2 {
@@ -9575,6 +10424,804 @@ func (m *EventBlockSetLinkFields) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetBookmark) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Bookmark: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Bookmark: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Url == nil {
+				m.Url = &EventBlockSetBookmarkUrl{}
+			}
+			if err := m.Url.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Title", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Title == nil {
+				m.Title = &EventBlockSetBookmarkTitle{}
+			}
+			if err := m.Title.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Description == nil {
+				m.Description = &EventBlockSetBookmarkDescription{}
+			}
+			if err := m.Description.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ImageHash", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.ImageHash == nil {
+				m.ImageHash = &EventBlockSetBookmarkImageHash{}
+			}
+			if err := m.ImageHash.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FaviconHash", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.FaviconHash == nil {
+				m.FaviconHash = &EventBlockSetBookmarkFaviconHash{}
+			}
+			if err := m.FaviconHash.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Type == nil {
+				m.Type = &EventBlockSetBookmarkType{}
+			}
+			if err := m.Type.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetBookmarkUrl) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Url: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Url: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetBookmarkTitle) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Title: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Title: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetBookmarkDescription) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Description: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Description: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetBookmarkImageHash) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ImageHash: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ImageHash: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetBookmarkFaviconHash) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FaviconHash: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FaviconHash: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetBookmarkType) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Type: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Type: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			m.Value = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Value |= model.LinkPreviewType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipEvents(dAtA[iNdEx:])

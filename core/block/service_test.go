@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -110,6 +111,13 @@ func Test_BlockTypes(t *testing.T) {
 		assert.Implements(t, (*base.PageBlock)(nil), simple.New(&model.Block{
 			Content: &model.BlockContentOfPage{
 				Page: &model.BlockContentPage{},
+			},
+		}))
+	})
+	t.Run("bookmark block", func(t *testing.T) {
+		assert.Implements(t, (*bookmark.Block)(nil), simple.New(&model.Block{
+			Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{},
 			},
 		}))
 	})
