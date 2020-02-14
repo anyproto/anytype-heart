@@ -27,10 +27,6 @@ github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d h1:UQZhZ2O0vMHr2c
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/andybalholm/cascadia v1.0.0 h1:hOCXnnZ5A+3eVDX8pvgl4kofXv2ELss0bKcqRySc45o=
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/anytypeio/go-anytype-library v0.0.0-20200210095318-d4208141976c h1:DjToda/ZjK8A+uSkiwKNsrGFQGJEP9srx5meKtjGubw=
-github.com/anytypeio/go-anytype-library v0.0.0-20200210095318-d4208141976c/go.mod h1:GlKZUsdpJePFbhZWJfMZhXpOW0C9CpPVMaPqo3L/09U=
-github.com/anytypeio/go-anytype-library v0.0.0-20200211103435-25b24be88ceb h1:h8YeO5A4xVeESJNhaZ2hON1cb2IDpAWT349Mtx9a7g0=
-github.com/anytypeio/go-anytype-library v0.0.0-20200211103435-25b24be88ceb/go.mod h1:GlKZUsdpJePFbhZWJfMZhXpOW0C9CpPVMaPqo3L/09U=
 github.com/anytypeio/go-anytype-library v0.0.0-20200211121715-16eeba1a2e4d h1:41EtWCwpWLbAWdd0AqoL+ZHsgTvti6Io1gtV6Aa7DdI=
 github.com/anytypeio/go-anytype-library v0.0.0-20200211121715-16eeba1a2e4d/go.mod h1:GlKZUsdpJePFbhZWJfMZhXpOW0C9CpPVMaPqo3L/09U=
 github.com/anytypeio/go-textile v0.7.8-0.20200205164649-a38fa26a4621 h1:WKIoqcvNon5cU8ZxwzIESR34+NG6Lt8horyQ6cJhREQ=
@@ -141,8 +137,6 @@ github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 h1:ZgQEtGgCBiWRM
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
 github.com/golang/mock v1.2.0/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
-github.com/golang/mock v1.3.1 h1:qGJ6qTW+x6xX/my+8YUVl4WNpX9B7+/l2tRsHGZ7f2s=
-github.com/golang/mock v1.3.1/go.mod h1:sBzyDLLjw3U8JLTeZvSv8jJB+tU5PVekmnlKIyFUx0Y=
 github.com/golang/mock v1.4.0 h1:Rd1kQnQu0Hq3qvJppYSG0HtP+f5LPPUiDswTLiEegLg=
 github.com/golang/mock v1.4.0/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt3cw=
 github.com/golang/protobuf v0.0.0-20170307001533-c9c7427a2a70/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=

@@ -2,7 +2,7 @@
 setup:
 	GOPRIVATE=github.com/anytypeio go mod download
 	GO111MODULE=off go get github.com/ahmetb/govvv
-	go111module=off go get golang.org/x/mobile/cmd/...
+	GO111MODULE=off go get golang.org/x/mobile/cmd/...
 	npm install
 fmt:
 	echo 'Formatting with prettier...'

@@ -1,7 +1,6 @@
 package block
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -30,7 +29,7 @@ func (p *dashboard) Init() {
 
 	p.migratePageToLinks()
 	if err := p.checkArchive(); err != nil {
-		fmt.Println("middle: can't check archive:", err)
+		log.Infof("can't check archive: %v", err)
 	}
 	p.history = history.NewHistory(0)
 	p.init()
@@ -42,7 +41,7 @@ func (p *dashboard) migratePageToLinks() {
 		if id != p.GetId() && (v.Model().GetPage() != nil || v.Model().GetDashboard() != nil) {
 			link := s.createLink(v.Model())
 			if _, err := p.replace(s, id, link); err != nil {
-				fmt.Println("middle: can't wrap page to link:", err)
+				log.Infof("can't wrap page to link: %v", err)
 			}
 		}
 		if link := v.Model().GetLink(); link != nil && link.TargetBlockId == testPageId {
@@ -53,7 +52,7 @@ func (p *dashboard) migratePageToLinks() {
 		}
 	}
 	if _, err := s.apply(nil); err != nil {
-		fmt.Println("can't apply state for migrating page to link", err)
+		log.Infof("can't apply state for migrating page to link: %v", err)
 	}
 }
 
