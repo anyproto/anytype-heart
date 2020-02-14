@@ -430,6 +430,6 @@ func (c *converter) Convert (blocks []*model.Block) (out string) {
 
 	fmt.Println("req.Blocks:", blocks)
 	fmt.Println("tree:", c.ProcessTree(&tree))
-	return gohtml.Format(html)
+	return html //  gohtml.Format
 
 }
