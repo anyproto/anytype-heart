@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.0 // indirect
-	github.com/anytypeio/go-anytype-library v0.0.0-20200213113659-8cc266f8bcea
+	github.com/anytypeio/go-anytype-library v0.0.0-20200214084058-b35f3ef8003a
 	github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13
 
 	github.com/gogo/protobuf v1.3.1
@@ -28,5 +28,3 @@ require (
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.7.8-0.20200205164649-a38fa26a4621
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
-
-replace github.com/anytypeio/go-anytype-library => ../go-anytype-library
