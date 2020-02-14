@@ -417,7 +417,7 @@ func wrapHtml (innerHtml string) string {
 				<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
 			</head>
 			<body>
-				<div class="container">` + innerHtml + `</div>
+				<div class="anytype-container">` + innerHtml + `</div>
 			</body>
 		</html>`
 
@@ -426,7 +426,7 @@ func wrapHtml (innerHtml string) string {
 
 func (c *converter) Convert (blocks []*model.Block) (out string) {
 	tree := c.CreateTree(blocks)
-	html := wrapHtml(c.ProcessTree(&tree))
+	html := c.ProcessTree(&tree)
 
 	fmt.Println("req.Blocks:", blocks)
 	fmt.Println("tree:", c.ProcessTree(&tree))
