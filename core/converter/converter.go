@@ -402,7 +402,7 @@ func renderLayout(isOpened bool, child *model.BlockContentOfLayout, block *model
 	return out
 }
 
-func wrapHtml (innerHtml string) string {
+func wrapExportHtml (innerHtml string) string {
 	title := "" // TODO: add title
 	styles := "" // TODO: add styles
 	output := `
@@ -424,12 +424,18 @@ func wrapHtml (innerHtml string) string {
 	return output
 }
 
+func wrapCopyHtml (innerHtml string) string {
+	output := `<meta charset='utf-8'>` + innerHtml + `</meta>`
+	return output
+}
+
+
 func (c *converter) Convert (blocks []*model.Block) (out string) {
 	tree := c.CreateTree(blocks)
 	html := c.ProcessTree(&tree)
 
 	fmt.Println("req.Blocks:", blocks)
 	fmt.Println("tree:", c.ProcessTree(&tree))
-	return html //  gohtml.Format
+	return wrapCopyHtml(html) //  gohtml.Format
 
 }
