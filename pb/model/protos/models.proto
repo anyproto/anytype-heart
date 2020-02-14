@@ -96,7 +96,7 @@ message Block {
             string description = 3;
             string imageHash = 4;
             string faviconHash = 5;
-            Model.LinkPreview.Type type = 6;
+            LinkPreview.Type type = 6;
         }
 
         message Icon {
@@ -238,20 +238,18 @@ message Account {
     }
 }
 
-message Model {
-    message LinkPreview {
-        string url = 1;
-        string title = 2;
-        string description = 3;
-        string imageUrl = 4;
-        string faviconUrl = 5;
-        Type type = 6;
+message LinkPreview {
+    string url = 1;
+    string title = 2;
+    string description = 3;
+    string imageUrl = 4;
+    string faviconUrl = 5;
+    Type type = 6;
 
-        enum Type {
-            Unknown = 0;
-            Page = 1;
-            Image = 2;
-            Text = 3;
-        }
+    enum Type {
+        Unknown = 0;
+        Page = 1;
+        Image = 2;
+        Text = 3;
     }
 }
