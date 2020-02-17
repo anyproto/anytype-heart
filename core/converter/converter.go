@@ -231,21 +231,26 @@ func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
 		symbols = append(symbols, string(r[i]))
 	}
 
+	style_s := ""
+	style_kbd := "display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px;"
+	style_i := ""
+	style_b := ""
+
 	for i := 0; i < len(marks.Marks); i++ {
 		if len(symbols) > int(marks.Marks[i].Range.From) && len(symbols) > int(marks.Marks[i].Range.To - 1) {
 
 			switch marks.Marks[i].Type {
 			case model.BlockContentTextMark_Strikethrough:
-				symbols[marks.Marks[i].Range.From] = "<s>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.From] = ` <s style="` + style_s + `">` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</s>"
 			case model.BlockContentTextMark_Keyboard:
-				symbols[marks.Marks[i].Range.From] = "<kbd>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.From] = `<kbd style="` + style_kbd + `">` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</kbd>"
 			case model.BlockContentTextMark_Italic:
-				symbols[marks.Marks[i].Range.From] = "<i>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.From] = `<i style="` + style_i + `">` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</i>"
 			case model.BlockContentTextMark_Bold:
-				symbols[marks.Marks[i].Range.From] = "<b>" + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.From] = `<b style="` + style_b + `">` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</b>"
 			case model.BlockContentTextMark_Link:
 				symbols[marks.Marks[i].Range.From] = `<a href="` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
@@ -269,12 +274,12 @@ func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
 
 func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
 
-	styleParagraph := "font-size:15px;"
-	styleHeader1 := ""
-	styleHeader2 := ""
-	styleHeader3 := ""
+	styleParagraph := "font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;"
+	styleHeader1 := "padding: 23px 0px 1px 0px; font-size: 28px; line-height: 32px; letter-spacing: -0.36px; font-weight: 600;"
+	styleHeader2 := "padding: 15px 0px 1px 0px; font-size: 22px; line-height: 28px; letter-spacing: -0.16px; font-weight: 600;"
+	styleHeader3 := "padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600;"
 	styleHeader4 := ""
-	styleQuote := "font-size:15px; font-style: italic;"
+	styleQuote := "padding: 7px 0px 7px 0px; font-size: 18px; line-height: 26px; font-style: italic;"
 	styleCode := "font-size:15px; font-family: monospace;"
 	styleTitle := ""
 	styleCheckbox := "font-size:15px;"
@@ -393,7 +398,7 @@ func renderLayout(isOpened bool, child *model.BlockContentOfLayout, block *model
 			}
 			out = `<div class="column" ` + style + `>`
 
-		case model.BlockContentLayout_Row: out = `<div class="row">`
+		case model.BlockContentLayout_Row: out = `<div class="row" style="display: flex">`
 		}
 	} else {
 		out = "</div>"
@@ -425,7 +430,28 @@ func wrapExportHtml (innerHtml string) string {
 }
 
 func wrapCopyHtml (innerHtml string) string {
-	output := `<meta charset='utf-8'>` + innerHtml + `</meta>`
+
+	output := `<html>
+		<head>
+			<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+			<meta http-equiv="Content-Style-Type" content="text/css">
+			<title></title>
+			<meta name="Generator" content="Cocoa HTML Writer">
+			<meta name="CocoaVersion" content="1894.1">
+			<style type="text/css">
+				.row > * { display: flex; }
+				.header1 { padding: 23px 0px 1px 0px; font-size: 28px; line-height: 32px; letter-spacing: -0.36px; font-weight: 600; }
+				.header2 { padding: 15px 0px 1px 0px; font-size: 22px; line-height: 28px; letter-spacing: -0.16px; font-weight: 600; }
+				.header3 { padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600; }
+				.quote { padding: 7px 0px 7px 0px; font-size: 18px; line-height: 26px; font-style: italic; }
+				.paragraph { font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word; }
+				a { cursor: pointer; }
+				kbd { display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px; }
+			</style>
+		</head>
+		<body>` + innerHtml + `</body>
+	</html>`
+
 	return output
 }
 
