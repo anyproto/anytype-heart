@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/util"
+	"unicode/utf8"
 )
 
 // A Config struct has configurations for the HTML based renderers.
@@ -405,8 +406,8 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 	label := n.Label(source)
 	w.SetMarkStart()
 
-	start := int32(len(w.GetText()))
-	labelLength := int32(len(label))
+	start := int32(utf8.RuneCountInString(w.GetText()))
+	labelLength := int32(utf8.RuneCount(label))
 	w.AddMark(model.BlockContentTextMark{
 		Range: &model.Range{From: start, To: start + labelLength},
 		Type:  model.BlockContentTextMark_Link,
@@ -440,7 +441,7 @@ func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Nod
 		}
 		return ast.WalkSkipChildren, nil
 	} else {
-		to := int32(len(w.GetText()))
+		to := int32(utf8.RuneCountInString(w.GetText()))
 
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
@@ -463,7 +464,7 @@ func (r *Renderer) renderEmphasis(w blocksUtil.RWriter, source []byte, node ast.
 	if entering {
 		w.SetMarkStart()
 	} else {
-		to := int32(len(w.GetText()))
+		to := int32(utf8.RuneCountInString(w.GetText()))
 
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
@@ -478,7 +479,7 @@ func (r *Renderer) renderLink(w blocksUtil.RWriter, source []byte, node ast.Node
 	if entering {
 		w.SetMarkStart()
 	} else {
-		to := int32(len(w.GetText()))
+		to := int32(utf8.RuneCountInString(w.GetText()))
 
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},

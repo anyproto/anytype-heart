@@ -164,16 +164,16 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 /*	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
 	md = reLinkBreaks.ReplaceAllString(md, `[$1]($2)`)
 
-	// Pattern: <a href> <div style=background-image:...>  </div> <a>
-	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
-	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
-
 	md = strings.ReplaceAll(md, "`", "@@@")
 	reCode := regexp.MustCompile(`\n(@@@([\s\S]*?)@@@)\n`)
 	md = reCode.ReplaceAllString(md, `@@@@@@@@@$2@@@@@@@@@`)
 	reCodeStart := regexp.MustCompile(`@@@@@@@@@([\S]*?)`)
 	md = reCodeStart.ReplaceAllString(md, "\n@@@@@@@@@\n$1")
 	md = strings.ReplaceAll(md, "@@@", "`")*/
+
+	// Pattern: <a href> <div style=background-image:...>  </div> <a>
+	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
+	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
 	fmt.Println("MD:", md)
 

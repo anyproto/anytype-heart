@@ -3,6 +3,7 @@ package blocksUtil
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"io"
 )
@@ -109,6 +110,7 @@ func NewRWriter (writer *bufio.Writer) RWriter {
 }
 
 func (rw *rWriter) GetText () string {
+	fmt.Println("text:", len(rw.textBuffer), rw.textBuffer)
 	return rw.textBuffer
 }
 
