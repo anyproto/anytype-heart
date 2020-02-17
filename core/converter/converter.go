@@ -310,7 +310,7 @@ func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
 		case model.BlockContentText_Title:     out += "</h1>"
 		case model.BlockContentText_Checkbox:  out += `</div>`
 		case model.BlockContentText_Marked:    out += "</li></ul>"
-		case model.BlockContentText_Numbered:  out += "<li></ol>"
+		case model.BlockContentText_Numbered:  out += "</li></ol>"
 		case model.BlockContentText_Toggle:    out += `</div>`
 		}
 	}
