@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
@@ -57,8 +58,13 @@ func TestConvertHTMLToBlocks2(t *testing.T) {
 	for i, b := range blocks {
 		fmt.Println(i, " block: ", b)
 	}
-
 }
+
+func TestRuneLength (t *testing.T) {
+	el := "—"
+	fmt.Println(el, len(el), utf8.RuneCountInString(el))
+}
+
 
 func convertToBlocksAndPrint(html string) error {
 	mdToBlocksConverter := anymark.New()

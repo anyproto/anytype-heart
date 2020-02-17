@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"io"
+	"unicode/utf8"
 )
 
 // A RWriter is a subset of the bufio.Writer .
@@ -53,7 +54,7 @@ type rWriter struct {
 }
 
 func (rw *rWriter) SetMarkStart () {
-	rw.marksStartQueue = append(rw.marksStartQueue, len(rw.textBuffer))
+	rw.marksStartQueue = append(rw.marksStartQueue, utf8.RuneCountInString(rw.textBuffer))
 }
 
 func (rw *rWriter) AddTextByte (b []byte) {
@@ -110,7 +111,7 @@ func NewRWriter (writer *bufio.Writer) RWriter {
 }
 
 func (rw *rWriter) GetText () string {
-	fmt.Println("text:", len(rw.textBuffer), rw.textBuffer)
+	fmt.Println("text:", utf8.RuneCountInString(rw.textBuffer), rw.textBuffer)
 	return rw.textBuffer
 }
 

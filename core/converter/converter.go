@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
 	"github.com/yosssi/gohtml"
+	"strconv"
 )
 
 
@@ -393,7 +394,7 @@ func renderLayout(isOpened bool, child *model.BlockContentOfLayout, block *model
 			if fields != nil && fields.Fields != nil && fields.Fields["width"] != nil {
 				width, _ := fieldsGetFloat(fields, "width")
 				if width > 0 {
-					style = `style="width: ` + string(int64(width * 100)) + `%">`
+					style = `style="width: ` + strconv.Itoa(int(width * 100)) + `%">`
 				}
 			}
 			out = `<div class="column" ` + style + `>`
