@@ -92,6 +92,16 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 
 	cIds := p.versions[p.GetId()].Model().ChildrenIds
 
+	reqFiltered := []*model.Block{}
+	for i:=0; i < len(req.AnySlot); i++ {
+		switch req.AnySlot[i].Content.(type) {
+		case *model.BlockContentOfLayout: continue
+		default: reqFiltered = append(reqFiltered, req.AnySlot[i])
+		}
+	}
+
+	req.AnySlot = reqFiltered
+
 	if len(req.SelectedBlockIds) > 0 {
 		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
 
