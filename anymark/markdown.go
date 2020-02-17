@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/lunny/html2md"
+	htmlConverter "github.com/anytypeio/html-to-markdown"
 )
 
 // DefaultParser returns a new Parser that is configured by default values.
@@ -155,10 +155,13 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	reWikiCode := regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
-	md := html2md.Convert(preprocessedSource)
+	converter := htmlConverter.NewConverter("", true, nil)
+	md, _ := converter.ConvertString(preprocessedSource)
+
+	//md := html2md.Convert(preprocessedSource)
 	md = spaceReplace.WhitespaceNormalizeString(md)
 
-	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
+/*	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
 	md = reLinkBreaks.ReplaceAllString(md, `[$1]($2)`)
 
 	// Pattern: <a href> <div style=background-image:...>  </div> <a>
@@ -170,7 +173,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	md = reCode.ReplaceAllString(md, `@@@@@@@@@$2@@@@@@@@@`)
 	reCodeStart := regexp.MustCompile(`@@@@@@@@@([\S]*?)`)
 	md = reCodeStart.ReplaceAllString(md, "\n@@@@@@@@@\n$1")
-	md = strings.ReplaceAll(md, "@@@", "`")
+	md = strings.ReplaceAll(md, "@@@", "`")*/
 
 	fmt.Println("MD:", md)
 
