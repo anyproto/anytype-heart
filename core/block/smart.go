@@ -31,6 +31,7 @@ type smartBlock interface {
 	GetId() string
 	Type() smartBlockType
 	Show() error
+	Active(isActive bool)
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
 	CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
@@ -75,8 +76,8 @@ func openSmartBlock(s *service, id string, active bool) (sb smartBlock, err erro
 		return
 	}
 
-	fmt.Printf("block: %+v\n", b)
-	fmt.Printf("version: %+v\n", ver)
+	log.Infof("block: %+v", b)
+	log.Infof("version: %+v", ver)
 
 	switch ver.Model().Content.(type) {
 	case *model.BlockContentOfDashboard:
@@ -117,6 +118,10 @@ type commonSmart struct {
 
 func (p *commonSmart) GetId() string {
 	return p.block.GetId()
+}
+
+func (p *commonSmart) Active(isActive bool) {
+	p.active = isActive
 }
 
 func (p *commonSmart) hideArchiveBlock() {
@@ -224,7 +229,7 @@ func (p *commonSmart) UpdateBlock(ids []string, hist bool, apply func(b simple.B
 func (p *commonSmart) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
-	fmt.Println("middle: create block request in:", p.GetId())
+	log.Debugf("create block request in: %v", p.GetId())
 	s := p.newState()
 	if id, err = p.create(s, req); err != nil {
 		return
@@ -375,7 +380,7 @@ func (p *commonSmart) normalize() {
 	before := len(p.versions)
 	p.versions = cleanVersion
 	after := len(p.versions)
-	fmt.Printf("normalize block: ignore %d blocks; %v\n", before-after, time.Since(st))
+	log.Infof("normalize block: ignore %d blocks; %v", before-after, time.Since(st))
 }
 
 func (p *commonSmart) normalizeBlock(usedIds map[string]struct{}, b simple.Block) {

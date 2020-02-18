@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"image"
 	"io"
 	"net/http"
@@ -10,7 +9,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("anytype-mw")
 
 type uploader struct {
 	updateFile func(f func(file Block))
@@ -22,12 +24,12 @@ func (u *uploader) DoImage(localPath, url string) {
 	u.isImage = true
 	err := u.do(localPath, url)
 	if err == image.ErrFormat {
-		fmt.Println("can't decode image upload as file:", err)
+		log.Infof("can't decode image upload as file: %v", err)
 		u.isImage = false
 		err = u.do(localPath, url)
 	}
 	if err != nil {
-		fmt.Println("upload file error:", err)
+		log.Warningf("upload file error: %v", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})
@@ -36,7 +38,7 @@ func (u *uploader) DoImage(localPath, url string) {
 
 func (u *uploader) Do(localPath, url string) {
 	if err := u.do(localPath, url); err != nil {
-		fmt.Println("upload file error:", err)
+		log.Warningf("upload file error: %v", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})

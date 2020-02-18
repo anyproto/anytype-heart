@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 
@@ -23,6 +24,11 @@ var (
 )
 
 var log = logging.Logger("anytype-mw")
+
+var (
+	blockCacheTTL       = time.Minute
+	blockCleanupTimeout = time.Second * 30
+)
 
 type Service interface {
 	OpenBlock(id string, breadcrumbsIds ...string) error
@@ -63,41 +69,54 @@ type Service interface {
 }
 
 func NewService(accountId string, a anytype.Anytype, sendEvent func(event *pb.Event)) Service {
-	return &service{
+	s := &service{
 		accountId: accountId,
 		anytype:   a,
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
-		smartBlocks: make(map[string]smartBlock),
-		ls:          newLinkSubscriptions(a),
+		openedBlocks: make(map[string]*openedBlock),
+		ls:           newLinkSubscriptions(a),
 	}
+	go s.cleanupTicker()
+	return s
+}
+
+type openedBlock struct {
+	smartBlock
+	lastUsage time.Time
+	refs      int32
 }
 
 type service struct {
-	anytype     anytype.Anytype
-	accountId   string
-	sendEvent   func(event *pb.Event)
-	smartBlocks map[string]smartBlock
-	ls          *linkSubscriptions
-	m           sync.RWMutex
+	anytype      anytype.Anytype
+	accountId    string
+	sendEvent    func(event *pb.Event)
+	openedBlocks map[string]*openedBlock
+	closed       bool
+	ls           *linkSubscriptions
+	m            sync.RWMutex
 }
 
 func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if sb, ok := s.smartBlocks[id]; ok {
+	if sb, ok := s.openedBlocks[id]; ok {
+		sb.Active(true)
 		return sb.Show()
 	}
 	sb, err := openSmartBlock(s, id, true)
-	fmt.Println("middle: open smart block:", id, err)
 	if err != nil {
 		return
 	}
-	s.smartBlocks[id] = sb
+	s.openedBlocks[id] = &openedBlock{
+		smartBlock: sb,
+		lastUsage:  time.Now(),
+		refs:       1,
+	}
 	for _, bid := range breadcrumbsIds {
-		if b, ok := s.smartBlocks[bid]; ok {
-			if bs, ok := b.(*breadcrumbs); ok {
+		if b, ok := s.openedBlocks[bid]; ok {
+			if bs, ok := b.smartBlock.(*breadcrumbs); ok {
 				bs.OnSmartOpen(id)
 			}
 		}
@@ -114,25 +133,26 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 		return
 	}
 	bs.Init()
-	s.smartBlocks[bs.GetId()] = bs
+	s.openedBlocks[bs.GetId()] = &openedBlock{
+		smartBlock: bs,
+		lastUsage:  time.Now(),
+		refs:       1,
+	}
 	return bs.GetId(), nil
 }
 
 func (s *service) CloseBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if sb, ok := s.smartBlocks[id]; ok {
-		delete(s.smartBlocks, id)
-		fmt.Println("middle: close smart block:", id, err)
-		return sb.Close()
+	if ob, ok := s.openedBlocks[id]; ok {
+		ob.Active(false)
+		ob.refs--
+		return
 	}
-
 	return ErrBlockNotFound
 }
 
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
 	archiveId := s.anytype.PredefinedBlockIds().Archive
 	sb, release, err := s.pickBlock(archiveId)
 	if err != nil {
@@ -151,116 +171,117 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 }
 
 func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-	if sb, ok := s.smartBlocks[req.BreadcrumbsId]; ok {
-		if bc, ok := sb.(*breadcrumbs); ok {
-			return bc.Cut(int(req.Index))
-		}
+	sb, release, err := s.pickBlock(req.BreadcrumbsId)
+	if err != nil {
+		return
 	}
-	return ErrBlockNotFound
+	defer release()
+	if bc, ok := sb.(*breadcrumbs); ok {
+		return bc.Cut(int(req.Index))
+	}
+	return ErrUnexpectedSmartBlockType
 }
 
-func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (string, error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Create(req)
+func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (id string, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return "", ErrBlockNotFound
+	defer release()
+	return sb.Create(req)
 }
 
-func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.CreatePage(req)
+func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (id string, targetId string, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return "", "", ErrBlockNotFound
+	defer release()
+	return sb.CreatePage(req)
 }
 
-func (s *service) DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Duplicate(req)
+func (s *service) DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return nil, ErrBlockNotFound
+	defer release()
+	return sb.Duplicate(req)
 }
 
-func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Unlink(req.BlockIds...)
+func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return ErrBlockNotFound
+	defer release()
+	return sb.Unlink(req.BlockIds...)
 }
 
 func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Split(req.BlockId, req.CursorPosition)
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return "", ErrBlockNotFound
+	defer release()
+	return sb.Split(req.BlockId, req.CursorPosition)
 }
 
-func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Merge(req.FirstBlockId, req.SecondBlockId)
+func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return ErrBlockNotFound
+	defer release()
+	return sb.Merge(req.FirstBlockId, req.SecondBlockId)
 }
 
-func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Move(req)
+func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return ErrBlockNotFound
+	defer release()
+	return sb.Move(req)
 }
 
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Replace(req.BlockId, req.Block)
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return "", ErrBlockNotFound
+	defer release()
+	return sb.Replace(req.BlockId, req.Block)
 }
 
 func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
-			BlockId: req.BlockId,
-			Fields:  req.Fields,
-		})
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return ErrBlockNotFound
+	defer release()
+	return sb.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+		BlockId: req.BlockId,
+		Fields:  req.Fields,
+	})
 }
 
 func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.SetFields(req.BlockFields...)
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return ErrBlockNotFound
+	defer release()
+	return sb.SetFields(req.BlockFields...)
 }
 
-func (s *service) Paste(req pb.RpcBlockPasteRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if sb, ok := s.smartBlocks[req.ContextId]; ok {
-		return sb.Paste(req)
+func (s *service) Paste(req pb.RpcBlockPasteRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
-	return ErrBlockNotFound
+	defer release()
+	return sb.Paste(req)
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
@@ -298,80 +319,119 @@ func (s *service) SetTextBackgroundColor(contextId, color string, blockIds ...st
 }
 
 func (s *service) updateTextBlock(contextId string, blockIds []string, event bool, apply func(b text.Block) error) (err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	sb, ok := s.smartBlocks[contextId]
-	if !ok {
-		err = ErrBlockNotFound
+	sb, release, err := s.pickBlock(contextId)
+	if err != nil {
 		return
 	}
+	defer release()
 	return sb.UpdateTextBlocks(blockIds, event, apply)
 }
 
 func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	sb, ok := s.smartBlocks[req.ContextId]
-	if !ok {
-		err = ErrBlockNotFound
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
 		return
 	}
+	defer release()
 	return sb.UpdateIconBlock(req.BlockId, func(t base.IconBlock) error {
 		return t.SetIconName(req.Name)
 	})
 }
 
-func (s *service) UploadFile(req pb.RpcBlockUploadRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	sb, ok := s.smartBlocks[req.ContextId]
-	if !ok {
-		return ErrBlockNotFound
+func (s *service) UploadFile(req pb.RpcBlockUploadRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
+	defer release()
 	return sb.Upload(req.BlockId, req.FilePath, req.Url)
 }
 
-func (s *service) Undo(req pb.RpcBlockUndoRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	sb, ok := s.smartBlocks[req.ContextId]
-	if !ok {
-		return ErrBlockNotFound
+func (s *service) Undo(req pb.RpcBlockUndoRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
+	defer release()
 	return sb.Undo()
 }
 
-func (s *service) Redo(req pb.RpcBlockRedoRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	sb, ok := s.smartBlocks[req.ContextId]
-	if !ok {
-		return ErrBlockNotFound
+func (s *service) Redo(req pb.RpcBlockRedoRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
+	defer release()
 	return sb.Redo()
 }
 
 func (s *service) Close() error {
 	s.m.Lock()
 	defer s.m.Unlock()
-	for _, sb := range s.smartBlocks {
+	if s.closed {
+		return nil
+	}
+	s.closed = true
+	for _, sb := range s.openedBlocks {
 		if err := sb.Close(); err != nil {
 			log.Errorf("block[%s] close error: %v", sb.GetId(), err)
 		}
 	}
+	log.Infof("block service closed")
 	return nil
 }
 
 // pickBlock returns opened smartBlock or opens smartBlock in silent mode
-// must be called and released under RLock
 func (s *service) pickBlock(id string) (sb smartBlock, release func(), err error) {
-	if b, ok := s.smartBlocks[id]; ok {
-		return b, func() {}, nil
-	}
-	if sb, err = openSmartBlock(s, id, false); err != nil {
+	s.m.Lock()
+	defer s.m.Unlock()
+	if s.closed {
+		err = fmt.Errorf("block service closed")
 		return
 	}
-	return sb, func() {
-		sb.Close()
+	ob, ok := s.openedBlocks[id]
+	if !ok {
+		sb, err = openSmartBlock(s, id, false)
+		if err != nil {
+			return
+		}
+		ob = &openedBlock{
+			smartBlock: sb,
+		}
+		s.openedBlocks[id] = ob
+	}
+	ob.refs++
+	ob.lastUsage = time.Now()
+	return ob.smartBlock, func() {
+		s.m.Lock()
+		defer s.m.Unlock()
+		ob.refs--
 	}, nil
+}
+
+func (s *service) cleanupTicker() {
+	ticker := time.NewTicker(blockCleanupTimeout)
+	defer ticker.Stop()
+	for _ = range ticker.C {
+		if s.cleanupBlocks() {
+			return
+		}
+	}
+}
+
+func (s *service) cleanupBlocks() (closed bool) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	var closedCount int
+	for id, ob := range s.openedBlocks {
+		if ob.refs == 0 && time.Now().After(ob.lastUsage.Add(blockCacheTTL)) {
+			if err := ob.Close(); err != nil {
+				log.Warningf("error while close block[%s]: %v", id, err)
+			}
+			delete(s.openedBlocks, id)
+			closedCount++
+		}
+	}
+	log.Infof("cleanup: block closed %d", closedCount)
+	return s.closed
 }
