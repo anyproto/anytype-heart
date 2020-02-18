@@ -27,9 +27,13 @@ github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d h1:UQZhZ2O0vMHr2c
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/andybalholm/cascadia v1.0.0 h1:hOCXnnZ5A+3eVDX8pvgl4kofXv2ELss0bKcqRySc45o=
 github.com/andybalholm/cascadia v1.0.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/anytypeio/go-anytype-library v0.0.0-20200218064703-e8ebb038e48a h1:Qzz/lglp2Zvi9N1YaSercs93Gffqvxkpzd5cuIGPGmk=
+github.com/anytypeio/go-anytype-library v0.0.0-20200211121715-16eeba1a2e4d h1:41EtWCwpWLbAWdd0AqoL+ZHsgTvti6Io1gtV6Aa7DdI=
+github.com/anytypeio/go-anytype-library v0.0.0-20200211121715-16eeba1a2e4d/go.mod h1:GlKZUsdpJePFbhZWJfMZhXpOW0C9CpPVMaPqo3L/09U=
 github.com/anytypeio/go-anytype-library v0.0.0-20200218064703-e8ebb038e48a/go.mod h1:IQjzMeRkomPx/98yIA6iLVMstsj+oZXyyE61eh0Q82o=
-github.com/anytypeio/go-textile v0.7.8-0.20200217213349-f936f40b6472 h1:pNva8yArG2vTPO9wqGQitfjoyAL7w719x5rPSQwSx78=
+github.com/anytypeio/go-anytype-library v0.0.0-20200218100524-682ee63bd2a7 h1:j7MuI64+j5SsuApFOXThW4jk/jZkIWnrCkjMzbY4iIo=
+github.com/anytypeio/go-anytype-library v0.0.0-20200218100524-682ee63bd2a7/go.mod h1:/C2HeI9lOiewAtzoIAq7ecfO5WTnsAqPWaI9VHzJrkY=
+github.com/anytypeio/go-textile v0.7.8-0.20200205164649-a38fa26a4621 h1:WKIoqcvNon5cU8ZxwzIESR34+NG6Lt8horyQ6cJhREQ=
+github.com/anytypeio/go-textile v0.7.8-0.20200205164649-a38fa26a4621/go.mod h1:GpthA3sPUte8bRAATVaBj0rzWtxhv+8k6Js2jiMYIlw=
 github.com/anytypeio/go-textile v0.7.8-0.20200217213349-f936f40b6472/go.mod h1:UIsQckZkySRDAd06pmnm4BEuop1gDgVEr9QKu+jktMo=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13 h1:XMUxybyqCaEAGZZK/Qv2cRB0klc04dNTgtSqpacg15Y=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13/go.mod h1:r6Y5BY7LcHVQIKk00MK2lBIkkKk0z1LWO2bJcXox6bI=
@@ -146,6 +150,7 @@ github.com/golang/protobuf v1.3.0/go.mod h1:Qd/q+1AKNOZr9uGQzbzCmRO6sUih6GTPZv6a
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.3/go.mod h1:vzj43D7+SQXF/4pzW/hwtAqwc6iTitCiVSaWz5lYuqw=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db h1:woRePGFeVFfLKN/pOkfl+p/TAqKOfFu+7KPlMVpok/w=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=

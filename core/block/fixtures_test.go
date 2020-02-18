@@ -234,7 +234,7 @@ func newPageFixture(t *testing.T, blocks ...*model.Block) *pageFixture {
 	serviceFx.anytype.EXPECT().GetBlockWithBatcher(pageFx.pageId).Return(pageFx.block, nil)
 
 	require.NoError(t, serviceFx.OpenBlock(pageFx.pageId))
-	pageFx.page = serviceFx.Service.(*service).smartBlocks[pageFx.pageId].(*page)
+	pageFx.page = serviceFx.Service.(*service).openedBlocks[pageFx.pageId].smartBlock.(*page)
 	return pageFx
 }
 

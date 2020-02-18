@@ -36,6 +36,10 @@ func (e emptySmart) GetId() (id string) {
 	return
 }
 
+func (e emptySmart) Active(isActive bool) {
+	return
+}
+
 func (e emptySmart) Type() (t smartBlockType) {
 	return
 }
