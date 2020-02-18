@@ -372,6 +372,7 @@ jobs:
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
             cp ./pb/protos/*.proto protobuf/protos
+            cp ./pb/protos/service/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
             protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
       - run:
@@ -466,6 +467,7 @@ jobs:
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
             cp ./pb/protos/*.proto protobuf/protos
+            cp ./pb/protos/service/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
             protoc -I ./ --java_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
       - run:
