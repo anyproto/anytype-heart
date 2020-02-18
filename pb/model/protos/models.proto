@@ -9,6 +9,8 @@ message Block {
     google.protobuf.Struct fields = 2;
     Restrictions restrictions = 3;
     repeated string childrenIds = 4;
+    string backgroundColor = 5;
+    Align align = 6;
 
 
     oneof content {
@@ -42,6 +44,12 @@ message Block {
         Right = 4;
         Inner = 5;
         Replace = 6;
+    }
+
+    enum Align {
+        AlignLeft = 0;
+        AlignCenter = 1;
+        AlignRight = 2;
     }
 
     message Content {
@@ -125,7 +133,6 @@ message Block {
             Marks marks = 3; // list of marks to apply to the text
             bool checked = 4;
             string color = 5;
-            string backgroundColor = 6;
 
             message Marks {
                 repeated Mark marks = 1;
