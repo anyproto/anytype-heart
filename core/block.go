@@ -527,7 +527,7 @@ func (mw *Middleware) switchAccount(accountId string) {
 		mw.blockService.Close()
 	}
 
-	mw.blockService = block.NewService(accountId, anytype.NewAnytype(mw.Anytype), mw.SendEvent)
+	mw.blockService = block.NewService(accountId, anytype.NewAnytype(mw.Anytype), mw.linkPreview, mw.SendEvent)
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
@@ -572,4 +572,19 @@ func (mw *Middleware) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlo
 	}
 	// TODO
 	return response(pb.RpcBlockSetLinkTargetBlockIdResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
+	response := func(code pb.RpcBlockBookmarkFetchResponseErrorCode, err error) *pb.RpcBlockBookmarkFetchResponse {
+		m := &pb.RpcBlockBookmarkFetchResponse{Error: &pb.RpcBlockBookmarkFetchResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.BookmarkFetch(*req); err != nil {
+		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockBookmarkFetchResponseError_NULL, nil)
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	logging "github.com/ipfs/go-log"
 )
 
@@ -33,6 +34,8 @@ type Middleware struct {
 	localAccountCachedAt *time.Time
 	SendEvent            func(event *pb.Event)
 	blockService         block.Service
+	linkPreview          linkpreview.LinkPreview
+
 	*libCore.Anytype
 
 	debugGrpcEventSender      chan struct{}
@@ -59,6 +62,7 @@ func (mw *Middleware) Start() error {
 	mw.gatewayAddr = "http://" + gateway.GatewayAddr()
 	log.Debug("Gateway started: " + mw.gatewayAddr)
 
+	mw.linkPreview = linkpreview.NewWithCache()
 	return nil
 }
 

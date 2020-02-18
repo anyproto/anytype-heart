@@ -779,6 +779,31 @@ message Rpc {
             }
         }
 
+        message Bookmark {
+            message Fetch {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    string url = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+        }
+
         message Get {
             /*
              * Get marks list in the selected range in text block.
@@ -1474,6 +1499,28 @@ message Rpc {
         message Response {
             Error error = 1;
             int32 index = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                }
+            }
+        }
+    }
+
+    message LinkPreview {
+        message Request {
+            string url = 1;
+        }
+
+        message Response {
+            Error error = 1;
+            anytype.model.LinkPreview linkPreview = 2;
 
             message Error {
                 Code code = 1;

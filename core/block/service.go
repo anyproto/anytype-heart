@@ -6,11 +6,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -65,10 +69,12 @@ type Service interface {
 
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 
+	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
+
 	Close() error
 }
 
-func NewService(accountId string, a anytype.Anytype, sendEvent func(event *pb.Event)) Service {
+func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
 	s := &service{
 		accountId: accountId,
 		anytype:   a,
@@ -77,6 +83,7 @@ func NewService(accountId string, a anytype.Anytype, sendEvent func(event *pb.Ev
 		},
 		openedBlocks: make(map[string]*openedBlock),
 		ls:           newLinkSubscriptions(a),
+		linkPreview:  lp,
 	}
 	go s.cleanupTicker()
 	return s
@@ -94,6 +101,7 @@ type service struct {
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
 	closed       bool
+	linkPreview  linkpreview.LinkPreview
 	ls           *linkSubscriptions
 	m            sync.RWMutex
 }
@@ -363,6 +371,25 @@ func (s *service) Redo(req pb.RpcBlockRedoRequest) (err error) {
 	}
 	defer release()
 	return sb.Redo()
+}
+
+func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.UpdateBlock([]string{req.BlockId}, true, func(b simple.Block) error {
+		if bm, ok := b.(bookmark.Block); ok {
+			return bm.Fetch(bookmark.FetchParams{
+				Url:         req.Url,
+				Anytype:     s.anytype,
+				Updater:     sb,
+				LinkPreview: s.linkPreview,
+			})
+		}
+		return ErrUnexpectedBlockType
+	})
 }
 
 func (s *service) Close() error {
