@@ -83,7 +83,7 @@ func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview,
 		},
 		openedBlocks: make(map[string]*openedBlock),
 		ls:           newLinkSubscriptions(a),
-		linkPreview: lp,
+		linkPreview:  lp,
 	}
 	go s.cleanupTicker()
 	return s
@@ -101,7 +101,7 @@ type service struct {
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
 	closed       bool
-	linkPreview linkpreview.LinkPreview
+	linkPreview  linkpreview.LinkPreview
 	ls           *linkSubscriptions
 	m            sync.RWMutex
 }
@@ -373,13 +373,12 @@ func (s *service) Redo(req pb.RpcBlockRedoRequest) (err error) {
 	return sb.Redo()
 }
 
-func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	sb, ok := s.smartBlocks[req.ContextId]
-	if !ok {
-		return ErrBlockNotFound
+func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
 	}
+	defer release()
 	return sb.UpdateBlock([]string{req.BlockId}, true, func(b simple.Block) error {
 		if bm, ok := b.(bookmark.Block); ok {
 			return bm.Fetch(bookmark.FetchParams{

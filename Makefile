@@ -1,3 +1,5 @@
+export GOPRIVATE=github.com/anytypeio
+
 .PHONY : protos_deps
 setup:
 	GOPRIVATE=github.com/anytypeio go mod download
