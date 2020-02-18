@@ -165,9 +165,12 @@ func (version *SmartBlockVersionMeta) Date() *types.Timestamp {
 }
 
 func (version *SmartBlockVersionMeta) ExternalFields() *types.Struct {
-	return &types.Struct{Fields: map[string]*types.Value{
-		"name":       version.Model().Fields.Fields["name"],
-		"icon":       version.Model().Fields.Fields["icon"],
-		"isArchived": version.Model().Fields.Fields["isArchived"],
+	fields := &types.Struct{Fields: map[string]*types.Value{
+		"name": version.Model().Fields.Fields["name"],
+		"icon": version.Model().Fields.Fields["icon"],
 	}}
+	if isArchived, ok := version.Model().Fields.Fields["isArchived"]; ok {
+		fields.Fields["isArchived"] = isArchived
+	}
+	return fields
 }
