@@ -25,12 +25,14 @@ message Event {
             Block.Set.Fields blockSetFields = 6;
             Block.Set.ChildrenIds blockSetChildrenIds = 7;
             Block.Set.Restrictions blockSetRestrictions = 8;
+            Block.Set.BackgroundColor blockSetBackgroundColor = 9;
 
             Block.Set.Text blockSetText = 10;
             Block.Set.File blockSetFile = 11;
             Block.Set.Icon blockSetIcon = 12;
             Block.Set.Link blockSetLink = 13;
             Block.Set.Bookmark blockSetBookmark = 14;
+            Block.Set.Align blockSetAlign = 15;
 
             Block.Show blockShow = 20;
             User.Block.Join userBlockJoin = 21;
@@ -117,6 +119,16 @@ message Event {
                 anytype.model.Block.Restrictions restrictions = 2;
             }
 
+            message BackgroundColor {
+                string id = 1;
+                string backgroundColor = 2;
+            }
+
+            message Align {
+                string id = 1;
+                anytype.model.Block.Align align = 2;
+            }
+
 
             message Text {
                 string id = 1;
@@ -125,7 +137,6 @@ message Event {
                 Marks marks = 4;
                 Checked checked = 5;
                 Color color = 6;
-                BackgroundColor backgroundColor = 7;
 
                 message Text {
                     string value = 1;
@@ -147,9 +158,6 @@ message Event {
                     string value = 1;
                 }
 
-                message BackgroundColor {
-                    string value = 1;
-                }
             }
 
             message File {

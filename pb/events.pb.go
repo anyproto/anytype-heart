@@ -96,11 +96,13 @@ type EventMessage struct {
 	//	*EventMessageValueOfBlockSetFields
 	//	*EventMessageValueOfBlockSetChildrenIds
 	//	*EventMessageValueOfBlockSetRestrictions
+	//	*EventMessageValueOfBlockSetBackgroundColor
 	//	*EventMessageValueOfBlockSetText
 	//	*EventMessageValueOfBlockSetFile
 	//	*EventMessageValueOfBlockSetIcon
 	//	*EventMessageValueOfBlockSetLink
 	//	*EventMessageValueOfBlockSetBookmark
+	//	*EventMessageValueOfBlockSetAlign
 	//	*EventMessageValueOfBlockShow
 	//	*EventMessageValueOfUserBlockJoin
 	//	*EventMessageValueOfUserBlockLeft
@@ -173,6 +175,9 @@ type EventMessageValueOfBlockSetChildrenIds struct {
 type EventMessageValueOfBlockSetRestrictions struct {
 	BlockSetRestrictions *EventBlockSetRestrictions `protobuf:"bytes,8,opt,name=blockSetRestrictions,proto3,oneof" json:"blockSetRestrictions,omitempty"`
 }
+type EventMessageValueOfBlockSetBackgroundColor struct {
+	BlockSetBackgroundColor *EventBlockSetBackgroundColor `protobuf:"bytes,9,opt,name=blockSetBackgroundColor,proto3,oneof" json:"blockSetBackgroundColor,omitempty"`
+}
 type EventMessageValueOfBlockSetText struct {
 	BlockSetText *EventBlockSetText `protobuf:"bytes,10,opt,name=blockSetText,proto3,oneof" json:"blockSetText,omitempty"`
 }
@@ -187,6 +192,9 @@ type EventMessageValueOfBlockSetLink struct {
 }
 type EventMessageValueOfBlockSetBookmark struct {
 	BlockSetBookmark *EventBlockSetBookmark `protobuf:"bytes,14,opt,name=blockSetBookmark,proto3,oneof" json:"blockSetBookmark,omitempty"`
+}
+type EventMessageValueOfBlockSetAlign struct {
+	BlockSetAlign *EventBlockSetAlign `protobuf:"bytes,15,opt,name=blockSetAlign,proto3,oneof" json:"blockSetAlign,omitempty"`
 }
 type EventMessageValueOfBlockShow struct {
 	BlockShow *EventBlockShow `protobuf:"bytes,20,opt,name=blockShow,proto3,oneof" json:"blockShow,omitempty"`
@@ -207,25 +215,27 @@ type EventMessageValueOfPing struct {
 	Ping *EventPing `protobuf:"bytes,100,opt,name=ping,proto3,oneof" json:"ping,omitempty"`
 }
 
-func (*EventMessageValueOfAccountShow) IsEventMessageValue()          {}
-func (*EventMessageValueOfBlockAdd) IsEventMessageValue()             {}
-func (*EventMessageValueOfBlockDelete) IsEventMessageValue()          {}
-func (*EventMessageValueOfFilesUpload) IsEventMessageValue()          {}
-func (*EventMessageValueOfMarksInfo) IsEventMessageValue()            {}
-func (*EventMessageValueOfBlockSetFields) IsEventMessageValue()       {}
-func (*EventMessageValueOfBlockSetChildrenIds) IsEventMessageValue()  {}
-func (*EventMessageValueOfBlockSetRestrictions) IsEventMessageValue() {}
-func (*EventMessageValueOfBlockSetText) IsEventMessageValue()         {}
-func (*EventMessageValueOfBlockSetFile) IsEventMessageValue()         {}
-func (*EventMessageValueOfBlockSetIcon) IsEventMessageValue()         {}
-func (*EventMessageValueOfBlockSetLink) IsEventMessageValue()         {}
-func (*EventMessageValueOfBlockSetBookmark) IsEventMessageValue()     {}
-func (*EventMessageValueOfBlockShow) IsEventMessageValue()            {}
-func (*EventMessageValueOfUserBlockJoin) IsEventMessageValue()        {}
-func (*EventMessageValueOfUserBlockLeft) IsEventMessageValue()        {}
-func (*EventMessageValueOfUserBlockSelectRange) IsEventMessageValue() {}
-func (*EventMessageValueOfUserBlockTextRange) IsEventMessageValue()   {}
-func (*EventMessageValueOfPing) IsEventMessageValue()                 {}
+func (*EventMessageValueOfAccountShow) IsEventMessageValue()             {}
+func (*EventMessageValueOfBlockAdd) IsEventMessageValue()                {}
+func (*EventMessageValueOfBlockDelete) IsEventMessageValue()             {}
+func (*EventMessageValueOfFilesUpload) IsEventMessageValue()             {}
+func (*EventMessageValueOfMarksInfo) IsEventMessageValue()               {}
+func (*EventMessageValueOfBlockSetFields) IsEventMessageValue()          {}
+func (*EventMessageValueOfBlockSetChildrenIds) IsEventMessageValue()     {}
+func (*EventMessageValueOfBlockSetRestrictions) IsEventMessageValue()    {}
+func (*EventMessageValueOfBlockSetBackgroundColor) IsEventMessageValue() {}
+func (*EventMessageValueOfBlockSetText) IsEventMessageValue()            {}
+func (*EventMessageValueOfBlockSetFile) IsEventMessageValue()            {}
+func (*EventMessageValueOfBlockSetIcon) IsEventMessageValue()            {}
+func (*EventMessageValueOfBlockSetLink) IsEventMessageValue()            {}
+func (*EventMessageValueOfBlockSetBookmark) IsEventMessageValue()        {}
+func (*EventMessageValueOfBlockSetAlign) IsEventMessageValue()           {}
+func (*EventMessageValueOfBlockShow) IsEventMessageValue()               {}
+func (*EventMessageValueOfUserBlockJoin) IsEventMessageValue()           {}
+func (*EventMessageValueOfUserBlockLeft) IsEventMessageValue()           {}
+func (*EventMessageValueOfUserBlockSelectRange) IsEventMessageValue()    {}
+func (*EventMessageValueOfUserBlockTextRange) IsEventMessageValue()      {}
+func (*EventMessageValueOfPing) IsEventMessageValue()                    {}
 
 func (m *EventMessage) GetValue() IsEventMessageValue {
 	if m != nil {
@@ -290,6 +300,13 @@ func (m *EventMessage) GetBlockSetRestrictions() *EventBlockSetRestrictions {
 	return nil
 }
 
+func (m *EventMessage) GetBlockSetBackgroundColor() *EventBlockSetBackgroundColor {
+	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetBackgroundColor); ok {
+		return x.BlockSetBackgroundColor
+	}
+	return nil
+}
+
 func (m *EventMessage) GetBlockSetText() *EventBlockSetText {
 	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetText); ok {
 		return x.BlockSetText
@@ -321,6 +338,13 @@ func (m *EventMessage) GetBlockSetLink() *EventBlockSetLink {
 func (m *EventMessage) GetBlockSetBookmark() *EventBlockSetBookmark {
 	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetBookmark); ok {
 		return x.BlockSetBookmark
+	}
+	return nil
+}
+
+func (m *EventMessage) GetBlockSetAlign() *EventBlockSetAlign {
+	if x, ok := m.GetValue().(*EventMessageValueOfBlockSetAlign); ok {
+		return x.BlockSetAlign
 	}
 	return nil
 }
@@ -378,11 +402,13 @@ func (*EventMessage) XXX_OneofWrappers() []interface{} {
 		(*EventMessageValueOfBlockSetFields)(nil),
 		(*EventMessageValueOfBlockSetChildrenIds)(nil),
 		(*EventMessageValueOfBlockSetRestrictions)(nil),
+		(*EventMessageValueOfBlockSetBackgroundColor)(nil),
 		(*EventMessageValueOfBlockSetText)(nil),
 		(*EventMessageValueOfBlockSetFile)(nil),
 		(*EventMessageValueOfBlockSetIcon)(nil),
 		(*EventMessageValueOfBlockSetLink)(nil),
 		(*EventMessageValueOfBlockSetBookmark)(nil),
+		(*EventMessageValueOfBlockSetAlign)(nil),
 		(*EventMessageValueOfBlockShow)(nil),
 		(*EventMessageValueOfUserBlockJoin)(nil),
 		(*EventMessageValueOfUserBlockLeft)(nil),
@@ -967,21 +993,124 @@ func (m *EventBlockSetRestrictions) GetRestrictions() *model.BlockRestrictions {
 	return nil
 }
 
+type EventBlockSetBackgroundColor struct {
+	Id              string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BackgroundColor string `protobuf:"bytes,2,opt,name=backgroundColor,proto3" json:"backgroundColor,omitempty"`
+}
+
+func (m *EventBlockSetBackgroundColor) Reset()         { *m = EventBlockSetBackgroundColor{} }
+func (m *EventBlockSetBackgroundColor) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetBackgroundColor) ProtoMessage()    {}
+func (*EventBlockSetBackgroundColor) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3}
+}
+func (m *EventBlockSetBackgroundColor) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetBackgroundColor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetBackgroundColor.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetBackgroundColor) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetBackgroundColor.Merge(m, src)
+}
+func (m *EventBlockSetBackgroundColor) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetBackgroundColor) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetBackgroundColor.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetBackgroundColor proto.InternalMessageInfo
+
+func (m *EventBlockSetBackgroundColor) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *EventBlockSetBackgroundColor) GetBackgroundColor() string {
+	if m != nil {
+		return m.BackgroundColor
+	}
+	return ""
+}
+
+type EventBlockSetAlign struct {
+	Id    string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Align model.BlockAlign `protobuf:"varint,2,opt,name=align,proto3,enum=anytype.model.BlockAlign" json:"align,omitempty"`
+}
+
+func (m *EventBlockSetAlign) Reset()         { *m = EventBlockSetAlign{} }
+func (m *EventBlockSetAlign) String() string { return proto.CompactTextString(m) }
+func (*EventBlockSetAlign) ProtoMessage()    {}
+func (*EventBlockSetAlign) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4}
+}
+func (m *EventBlockSetAlign) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EventBlockSetAlign) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EventBlockSetAlign.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *EventBlockSetAlign) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EventBlockSetAlign.Merge(m, src)
+}
+func (m *EventBlockSetAlign) XXX_Size() int {
+	return m.Size()
+}
+func (m *EventBlockSetAlign) XXX_DiscardUnknown() {
+	xxx_messageInfo_EventBlockSetAlign.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EventBlockSetAlign proto.InternalMessageInfo
+
+func (m *EventBlockSetAlign) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *EventBlockSetAlign) GetAlign() model.BlockAlign {
+	if m != nil {
+		return m.Align
+	}
+	return model.Block_AlignLeft
+}
+
 type EventBlockSetText struct {
-	Id              string                            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Text            *EventBlockSetTextText            `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	Style           *EventBlockSetTextStyle           `protobuf:"bytes,3,opt,name=style,proto3" json:"style,omitempty"`
-	Marks           *EventBlockSetTextMarks           `protobuf:"bytes,4,opt,name=marks,proto3" json:"marks,omitempty"`
-	Checked         *EventBlockSetTextChecked         `protobuf:"bytes,5,opt,name=checked,proto3" json:"checked,omitempty"`
-	Color           *EventBlockSetTextColor           `protobuf:"bytes,6,opt,name=color,proto3" json:"color,omitempty"`
-	BackgroundColor *EventBlockSetTextBackgroundColor `protobuf:"bytes,7,opt,name=backgroundColor,proto3" json:"backgroundColor,omitempty"`
+	Id      string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Text    *EventBlockSetTextText    `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Style   *EventBlockSetTextStyle   `protobuf:"bytes,3,opt,name=style,proto3" json:"style,omitempty"`
+	Marks   *EventBlockSetTextMarks   `protobuf:"bytes,4,opt,name=marks,proto3" json:"marks,omitempty"`
+	Checked *EventBlockSetTextChecked `protobuf:"bytes,5,opt,name=checked,proto3" json:"checked,omitempty"`
+	Color   *EventBlockSetTextColor   `protobuf:"bytes,6,opt,name=color,proto3" json:"color,omitempty"`
 }
 
 func (m *EventBlockSetText) Reset()         { *m = EventBlockSetText{} }
 func (m *EventBlockSetText) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetText) ProtoMessage()    {}
 func (*EventBlockSetText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5}
 }
 func (m *EventBlockSetText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1052,13 +1181,6 @@ func (m *EventBlockSetText) GetColor() *EventBlockSetTextColor {
 	return nil
 }
 
-func (m *EventBlockSetText) GetBackgroundColor() *EventBlockSetTextBackgroundColor {
-	if m != nil {
-		return m.BackgroundColor
-	}
-	return nil
-}
-
 type EventBlockSetTextText struct {
 	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
 }
@@ -1067,7 +1189,7 @@ func (m *EventBlockSetTextText) Reset()         { *m = EventBlockSetTextText{} }
 func (m *EventBlockSetTextText) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetTextText) ProtoMessage()    {}
 func (*EventBlockSetTextText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3, 0}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5, 0}
 }
 func (m *EventBlockSetTextText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1111,7 +1233,7 @@ func (m *EventBlockSetTextStyle) Reset()         { *m = EventBlockSetTextStyle{}
 func (m *EventBlockSetTextStyle) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetTextStyle) ProtoMessage()    {}
 func (*EventBlockSetTextStyle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3, 1}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5, 1}
 }
 func (m *EventBlockSetTextStyle) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1155,7 +1277,7 @@ func (m *EventBlockSetTextMarks) Reset()         { *m = EventBlockSetTextMarks{}
 func (m *EventBlockSetTextMarks) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetTextMarks) ProtoMessage()    {}
 func (*EventBlockSetTextMarks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3, 2}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5, 2}
 }
 func (m *EventBlockSetTextMarks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1199,7 +1321,7 @@ func (m *EventBlockSetTextChecked) Reset()         { *m = EventBlockSetTextCheck
 func (m *EventBlockSetTextChecked) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetTextChecked) ProtoMessage()    {}
 func (*EventBlockSetTextChecked) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3, 3}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5, 3}
 }
 func (m *EventBlockSetTextChecked) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1243,7 +1365,7 @@ func (m *EventBlockSetTextColor) Reset()         { *m = EventBlockSetTextColor{}
 func (m *EventBlockSetTextColor) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetTextColor) ProtoMessage()    {}
 func (*EventBlockSetTextColor) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3, 4}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5, 4}
 }
 func (m *EventBlockSetTextColor) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1279,50 +1401,6 @@ func (m *EventBlockSetTextColor) GetValue() string {
 	return ""
 }
 
-type EventBlockSetTextBackgroundColor struct {
-	Value string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-}
-
-func (m *EventBlockSetTextBackgroundColor) Reset()         { *m = EventBlockSetTextBackgroundColor{} }
-func (m *EventBlockSetTextBackgroundColor) String() string { return proto.CompactTextString(m) }
-func (*EventBlockSetTextBackgroundColor) ProtoMessage()    {}
-func (*EventBlockSetTextBackgroundColor) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 3, 5}
-}
-func (m *EventBlockSetTextBackgroundColor) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *EventBlockSetTextBackgroundColor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_EventBlockSetTextBackgroundColor.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *EventBlockSetTextBackgroundColor) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EventBlockSetTextBackgroundColor.Merge(m, src)
-}
-func (m *EventBlockSetTextBackgroundColor) XXX_Size() int {
-	return m.Size()
-}
-func (m *EventBlockSetTextBackgroundColor) XXX_DiscardUnknown() {
-	xxx_messageInfo_EventBlockSetTextBackgroundColor.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EventBlockSetTextBackgroundColor proto.InternalMessageInfo
-
-func (m *EventBlockSetTextBackgroundColor) GetValue() string {
-	if m != nil {
-		return m.Value
-	}
-	return ""
-}
-
 type EventBlockSetFile struct {
 	Id    string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Type  *EventBlockSetFileType  `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
@@ -1337,7 +1415,7 @@ func (m *EventBlockSetFile) Reset()         { *m = EventBlockSetFile{} }
 func (m *EventBlockSetFile) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFile) ProtoMessage()    {}
 func (*EventBlockSetFile) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6}
 }
 func (m *EventBlockSetFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1423,7 +1501,7 @@ func (m *EventBlockSetFileName) Reset()         { *m = EventBlockSetFileName{} }
 func (m *EventBlockSetFileName) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFileName) ProtoMessage()    {}
 func (*EventBlockSetFileName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 0}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 0}
 }
 func (m *EventBlockSetFileName) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1467,7 +1545,7 @@ func (m *EventBlockSetFileWidth) Reset()         { *m = EventBlockSetFileWidth{}
 func (m *EventBlockSetFileWidth) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFileWidth) ProtoMessage()    {}
 func (*EventBlockSetFileWidth) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 1}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 1}
 }
 func (m *EventBlockSetFileWidth) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1511,7 +1589,7 @@ func (m *EventBlockSetFileState) Reset()         { *m = EventBlockSetFileState{}
 func (m *EventBlockSetFileState) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFileState) ProtoMessage()    {}
 func (*EventBlockSetFileState) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 2}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 2}
 }
 func (m *EventBlockSetFileState) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1555,7 +1633,7 @@ func (m *EventBlockSetFileType) Reset()         { *m = EventBlockSetFileType{} }
 func (m *EventBlockSetFileType) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFileType) ProtoMessage()    {}
 func (*EventBlockSetFileType) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 3}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 3}
 }
 func (m *EventBlockSetFileType) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1599,7 +1677,7 @@ func (m *EventBlockSetFileHash) Reset()         { *m = EventBlockSetFileHash{} }
 func (m *EventBlockSetFileHash) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFileHash) ProtoMessage()    {}
 func (*EventBlockSetFileHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 4}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 4}
 }
 func (m *EventBlockSetFileHash) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1643,7 +1721,7 @@ func (m *EventBlockSetFileMime) Reset()         { *m = EventBlockSetFileMime{} }
 func (m *EventBlockSetFileMime) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFileMime) ProtoMessage()    {}
 func (*EventBlockSetFileMime) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 5}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 5}
 }
 func (m *EventBlockSetFileMime) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1687,7 +1765,7 @@ func (m *EventBlockSetFileSize) Reset()         { *m = EventBlockSetFileSize{} }
 func (m *EventBlockSetFileSize) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetFileSize) ProtoMessage()    {}
 func (*EventBlockSetFileSize) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 4, 6}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 6}
 }
 func (m *EventBlockSetFileSize) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1732,7 +1810,7 @@ func (m *EventBlockSetIcon) Reset()         { *m = EventBlockSetIcon{} }
 func (m *EventBlockSetIcon) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetIcon) ProtoMessage()    {}
 func (*EventBlockSetIcon) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7}
 }
 func (m *EventBlockSetIcon) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1783,7 +1861,7 @@ func (m *EventBlockSetIconName) Reset()         { *m = EventBlockSetIconName{} }
 func (m *EventBlockSetIconName) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetIconName) ProtoMessage()    {}
 func (*EventBlockSetIconName) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 5, 0}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 0}
 }
 func (m *EventBlockSetIconName) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1830,7 +1908,7 @@ func (m *EventBlockSetLink) Reset()         { *m = EventBlockSetLink{} }
 func (m *EventBlockSetLink) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetLink) ProtoMessage()    {}
 func (*EventBlockSetLink) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 8}
 }
 func (m *EventBlockSetLink) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1895,7 +1973,7 @@ func (m *EventBlockSetLinkTargetBlockId) Reset()         { *m = EventBlockSetLin
 func (m *EventBlockSetLinkTargetBlockId) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetLinkTargetBlockId) ProtoMessage()    {}
 func (*EventBlockSetLinkTargetBlockId) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 0}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 8, 0}
 }
 func (m *EventBlockSetLinkTargetBlockId) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1939,7 +2017,7 @@ func (m *EventBlockSetLinkStyle) Reset()         { *m = EventBlockSetLinkStyle{}
 func (m *EventBlockSetLinkStyle) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetLinkStyle) ProtoMessage()    {}
 func (*EventBlockSetLinkStyle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 1}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 8, 1}
 }
 func (m *EventBlockSetLinkStyle) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1983,7 +2061,7 @@ func (m *EventBlockSetLinkFields) Reset()         { *m = EventBlockSetLinkFields
 func (m *EventBlockSetLinkFields) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetLinkFields) ProtoMessage()    {}
 func (*EventBlockSetLinkFields) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 6, 2}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 8, 2}
 }
 func (m *EventBlockSetLinkFields) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2033,7 +2111,7 @@ func (m *EventBlockSetBookmark) Reset()         { *m = EventBlockSetBookmark{} }
 func (m *EventBlockSetBookmark) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetBookmark) ProtoMessage()    {}
 func (*EventBlockSetBookmark) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 9}
 }
 func (m *EventBlockSetBookmark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2119,7 +2197,7 @@ func (m *EventBlockSetBookmarkUrl) Reset()         { *m = EventBlockSetBookmarkU
 func (m *EventBlockSetBookmarkUrl) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetBookmarkUrl) ProtoMessage()    {}
 func (*EventBlockSetBookmarkUrl) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 0}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 9, 0}
 }
 func (m *EventBlockSetBookmarkUrl) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2163,7 +2241,7 @@ func (m *EventBlockSetBookmarkTitle) Reset()         { *m = EventBlockSetBookmar
 func (m *EventBlockSetBookmarkTitle) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetBookmarkTitle) ProtoMessage()    {}
 func (*EventBlockSetBookmarkTitle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 1}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 9, 1}
 }
 func (m *EventBlockSetBookmarkTitle) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2207,7 +2285,7 @@ func (m *EventBlockSetBookmarkDescription) Reset()         { *m = EventBlockSetB
 func (m *EventBlockSetBookmarkDescription) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetBookmarkDescription) ProtoMessage()    {}
 func (*EventBlockSetBookmarkDescription) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 2}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 9, 2}
 }
 func (m *EventBlockSetBookmarkDescription) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2251,7 +2329,7 @@ func (m *EventBlockSetBookmarkImageHash) Reset()         { *m = EventBlockSetBoo
 func (m *EventBlockSetBookmarkImageHash) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetBookmarkImageHash) ProtoMessage()    {}
 func (*EventBlockSetBookmarkImageHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 3}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 9, 3}
 }
 func (m *EventBlockSetBookmarkImageHash) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2295,7 +2373,7 @@ func (m *EventBlockSetBookmarkFaviconHash) Reset()         { *m = EventBlockSetB
 func (m *EventBlockSetBookmarkFaviconHash) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetBookmarkFaviconHash) ProtoMessage()    {}
 func (*EventBlockSetBookmarkFaviconHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 4}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 9, 4}
 }
 func (m *EventBlockSetBookmarkFaviconHash) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2339,7 +2417,7 @@ func (m *EventBlockSetBookmarkType) Reset()         { *m = EventBlockSetBookmark
 func (m *EventBlockSetBookmarkType) String() string { return proto.CompactTextString(m) }
 func (*EventBlockSetBookmarkType) ProtoMessage()    {}
 func (*EventBlockSetBookmarkType) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 7, 5}
+	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 5, 9, 5}
 }
 func (m *EventBlockSetBookmarkType) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -2726,13 +2804,14 @@ func init() {
 	proto.RegisterType((*EventBlockSetFields)(nil), "anytype.Event.Block.Set.Fields")
 	proto.RegisterType((*EventBlockSetChildrenIds)(nil), "anytype.Event.Block.Set.ChildrenIds")
 	proto.RegisterType((*EventBlockSetRestrictions)(nil), "anytype.Event.Block.Set.Restrictions")
+	proto.RegisterType((*EventBlockSetBackgroundColor)(nil), "anytype.Event.Block.Set.BackgroundColor")
+	proto.RegisterType((*EventBlockSetAlign)(nil), "anytype.Event.Block.Set.Align")
 	proto.RegisterType((*EventBlockSetText)(nil), "anytype.Event.Block.Set.Text")
 	proto.RegisterType((*EventBlockSetTextText)(nil), "anytype.Event.Block.Set.Text.Text")
 	proto.RegisterType((*EventBlockSetTextStyle)(nil), "anytype.Event.Block.Set.Text.Style")
 	proto.RegisterType((*EventBlockSetTextMarks)(nil), "anytype.Event.Block.Set.Text.Marks")
 	proto.RegisterType((*EventBlockSetTextChecked)(nil), "anytype.Event.Block.Set.Text.Checked")
 	proto.RegisterType((*EventBlockSetTextColor)(nil), "anytype.Event.Block.Set.Text.Color")
-	proto.RegisterType((*EventBlockSetTextBackgroundColor)(nil), "anytype.Event.Block.Set.Text.BackgroundColor")
 	proto.RegisterType((*EventBlockSetFile)(nil), "anytype.Event.Block.Set.File")
 	proto.RegisterType((*EventBlockSetFileName)(nil), "anytype.Event.Block.Set.File.Name")
 	proto.RegisterType((*EventBlockSetFileWidth)(nil), "anytype.Event.Block.Set.File.Width")
@@ -2766,109 +2845,113 @@ func init() {
 func init() { proto.RegisterFile("pb/protos/events.proto", fileDescriptor_a966342d378ae5f5) }
 
 var fileDescriptor_a966342d378ae5f5 = []byte{
-	// 1629 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x98, 0xcb, 0x6f, 0xdb, 0x46,
-	0x1e, 0xc7, 0xf5, 0xa2, 0x64, 0xfd, 0x64, 0x3b, 0x8b, 0x89, 0xe3, 0x70, 0x19, 0xc7, 0x71, 0x1e,
-	0x4e, 0xb2, 0x9b, 0x35, 0xb5, 0x70, 0x76, 0xf3, 0x58, 0x24, 0x1b, 0xf8, 0x11, 0x43, 0x6a, 0xf3,
-	0xea, 0xc8, 0x46, 0xfa, 0xba, 0x50, 0xe4, 0x58, 0x22, 0x4c, 0x91, 0x02, 0x49, 0x39, 0x71, 0xae,
-	0xbd, 0xf5, 0x50, 0xf4, 0xd8, 0x7b, 0xff, 0x81, 0x02, 0xfd, 0x27, 0x7a, 0xcc, 0xb1, 0x97, 0x02,
-	0x45, 0x7c, 0xe9, 0xb5, 0xff, 0x41, 0x31, 0x0f, 0x52, 0x43, 0x96, 0x34, 0x6d, 0xa0, 0x37, 0x0f,
-	0xe7, 0xfb, 0xfd, 0xcc, 0x70, 0xe6, 0xa7, 0xef, 0x70, 0x0c, 0x8b, 0xe3, 0x7e, 0x7b, 0xec, 0x7b,
-	0xa1, 0x17, 0xb4, 0xc9, 0x21, 0x71, 0xc3, 0x40, 0x67, 0x2d, 0xd4, 0x30, 0xdc, 0xa3, 0xf0, 0x68,
-	0x4c, 0xb4, 0x8f, 0x0f, 0x89, 0x6b, 0x79, 0x7e, 0x7b, 0x60, 0x87, 0xc3, 0x49, 0x5f, 0x37, 0xbd,
-	0x51, 0x5b, 0x74, 0xd9, 0x5e, 0x7b, 0xe0, 0xad, 0x89, 0xc6, 0x9a, 0x63, 0xf7, 0x7d, 0xc3, 0x3f,
-	0x6a, 0x8f, 0xfb, 0xed, 0x91, 0x67, 0x11, 0x27, 0xa2, 0xb2, 0x86, 0xa0, 0x6a, 0x4b, 0x03, 0xcf,
-	0x1b, 0x38, 0x84, 0xf7, 0xf5, 0x27, 0xfb, 0xed, 0x20, 0xf4, 0x27, 0x66, 0xc8, 0x7b, 0xaf, 0x7d,
-	0x77, 0x1b, 0x94, 0xa7, 0x74, 0x12, 0x68, 0x1d, 0x66, 0x46, 0x24, 0x08, 0x8c, 0x01, 0x09, 0xd4,
-	0xf2, 0x4a, 0xf5, 0x76, 0x6b, 0x7d, 0x51, 0x17, 0x03, 0xe9, 0x4c, 0xa1, 0x3f, 0xe7, 0xdd, 0x38,
-	0xd6, 0xa1, 0x25, 0x68, 0x9a, 0x9e, 0x1b, 0x92, 0xb7, 0x61, 0xd7, 0x52, 0x2b, 0x2b, 0xe5, 0xdb,
-	0x4d, 0x3c, 0x7d, 0x80, 0xfe, 0x03, 0x4d, 0xdb, 0xb5, 0x43, 0xdb, 0x08, 0x3d, 0x5f, 0xad, 0xae,
-	0x94, 0x13, 0x48, 0x36, 0x47, 0x7d, 0xc3, 0x34, 0xbd, 0x89, 0x1b, 0xe2, 0xa9, 0x50, 0x3b, 0x06,
-	0x68, 0x88, 0x91, 0xd0, 0x13, 0x68, 0x19, 0x5c, 0xd1, 0x1b, 0x7a, 0x6f, 0xd4, 0x32, 0x63, 0x5c,
-	0x4a, 0x4d, 0x4b, 0x30, 0x74, 0x2a, 0xe9, 0x94, 0xb0, 0xec, 0x40, 0xf7, 0x60, 0xa6, 0xef, 0x78,
-	0xe6, 0xc1, 0x86, 0xc5, 0xe7, 0xd7, 0x5a, 0x57, 0x53, 0xee, 0x4d, 0xda, 0xad, 0x6f, 0x58, 0x56,
-	0xa7, 0x84, 0x63, 0x2d, 0x1d, 0x98, 0xfd, 0xbd, 0x4d, 0x1c, 0x12, 0x12, 0x31, 0xf9, 0x4b, 0x99,
-	0x56, 0x2e, 0xa1, 0x03, 0x4b, 0x0e, 0xb4, 0x0d, 0xad, 0x7d, 0xdb, 0x21, 0xc1, 0xde, 0xd8, 0xf1,
-	0x0c, 0x4b, 0xad, 0x31, 0xc0, 0x4a, 0x26, 0x60, 0x67, 0xaa, 0xa3, 0x14, 0xc9, 0x86, 0xfe, 0x0f,
-	0xcd, 0x91, 0xe1, 0x1f, 0x04, 0x5d, 0x77, 0xdf, 0x53, 0x15, 0xc6, 0x58, 0xce, 0x64, 0x3c, 0x8f,
-	0x54, 0x9d, 0x12, 0x9e, 0x5a, 0x50, 0x17, 0xe6, 0xd9, 0xa4, 0x7a, 0x24, 0xdc, 0xb1, 0x89, 0x63,
-	0x05, 0x6a, 0x9d, 0x41, 0xae, 0x64, 0x42, 0x7a, 0x24, 0xd4, 0xb9, 0xac, 0x53, 0xc2, 0x29, 0x23,
-	0xfa, 0x14, 0xce, 0x47, 0x4f, 0xb6, 0x86, 0xb6, 0x63, 0xf9, 0xc4, 0xed, 0x5a, 0x81, 0xda, 0x60,
-	0xbc, 0x1b, 0xb9, 0x3c, 0x49, 0xdb, 0x29, 0xe1, 0x2c, 0x04, 0xfa, 0x02, 0x16, 0xa2, 0xc7, 0x98,
-	0x04, 0xa1, 0x6f, 0x9b, 0xa1, 0xed, 0xb9, 0x81, 0x3a, 0xc3, 0xd0, 0xab, 0xb9, 0x68, 0x59, 0xdc,
-	0x29, 0xe1, 0x4c, 0x08, 0xda, 0x82, 0xd9, 0xe8, 0xf9, 0x2e, 0x79, 0x1b, 0xaa, 0xc0, 0xa0, 0x97,
-	0x73, 0xa1, 0x54, 0xd4, 0x29, 0xe1, 0x84, 0x49, 0x86, 0xd0, 0xcd, 0x52, 0x5b, 0x05, 0x10, 0x2a,
-	0x92, 0x21, 0xb4, 0x2d, 0x43, 0xba, 0xa6, 0xe7, 0xaa, 0xb3, 0x05, 0x10, 0x2a, 0x92, 0x21, 0xb4,
-	0x2d, 0x43, 0x9e, 0xd9, 0xee, 0x81, 0x3a, 0x57, 0x00, 0xa1, 0x22, 0x19, 0x42, 0xdb, 0xe8, 0x25,
-	0xfc, 0x2d, 0x6a, 0x6f, 0x7a, 0xde, 0x01, 0x2d, 0x17, 0x75, 0x9e, 0x81, 0xae, 0xe6, 0x82, 0x22,
-	0x61, 0xa7, 0x84, 0xff, 0x64, 0x46, 0x0f, 0xa1, 0xc9, 0x9f, 0xd1, 0x1f, 0xe9, 0x02, 0x23, 0xfd,
-	0x3d, 0x9b, 0xc4, 0x7f, 0xa2, 0x53, 0x35, 0xda, 0x81, 0xb9, 0x49, 0x40, 0x7c, 0xd6, 0xfd, 0x91,
-	0x67, 0xbb, 0xea, 0x85, 0xcc, 0x2a, 0xdf, 0x0b, 0x88, 0x2f, 0x18, 0x54, 0xd5, 0x29, 0xe1, 0xa4,
-	0x2d, 0xc1, 0x79, 0x46, 0xf6, 0x43, 0x75, 0xb1, 0x88, 0x43, 0x55, 0x09, 0x0e, 0x7d, 0x40, 0x8b,
-	0x31, 0x7e, 0xd0, 0x23, 0x0e, 0x31, 0x43, 0x6c, 0xb8, 0x03, 0xa2, 0x5e, 0xcc, 0x2c, 0x46, 0x09,
-	0x27, 0x89, 0x69, 0x31, 0x66, 0x41, 0xd0, 0x1e, 0xa0, 0xf8, 0x39, 0x2d, 0x2c, 0x8e, 0x56, 0x19,
-	0xfa, 0x7a, 0x3e, 0x3a, 0x96, 0x76, 0x4a, 0x38, 0x03, 0x80, 0xfe, 0x01, 0xb5, 0xb1, 0xed, 0x0e,
-	0x54, 0x8b, 0x81, 0xce, 0xa7, 0x40, 0xaf, 0x6c, 0x77, 0xd0, 0x29, 0x61, 0x26, 0xd9, 0x6c, 0x80,
-	0x72, 0x68, 0x38, 0x13, 0xa2, 0x7d, 0x06, 0x0d, 0x91, 0x9b, 0xda, 0x0b, 0xa8, 0xb1, 0xad, 0x58,
-	0x00, 0xc5, 0x76, 0x2d, 0xf2, 0x96, 0xc5, 0xac, 0x82, 0x79, 0x03, 0xfd, 0x1b, 0x1a, 0x22, 0x50,
-	0x45, 0x80, 0xe6, 0x45, 0x78, 0x24, 0xd3, 0x7e, 0x54, 0x41, 0x61, 0x33, 0xd4, 0xee, 0x42, 0x95,
-	0x86, 0xe9, 0xbf, 0xa0, 0xce, 0x36, 0x3c, 0x3a, 0x57, 0x16, 0x52, 0x04, 0x26, 0xc6, 0x42, 0xa3,
-	0x3d, 0x13, 0xd3, 0x59, 0x84, 0xba, 0xef, 0x79, 0xf4, 0x60, 0x29, 0xb3, 0x83, 0x45, 0xb4, 0x24,
-	0x5a, 0xe5, 0x14, 0xb4, 0x2d, 0x68, 0x49, 0xf9, 0x8a, 0x54, 0x68, 0xb0, 0x8e, 0x98, 0x1a, 0x35,
-	0x91, 0x06, 0x33, 0x34, 0x79, 0x5f, 0x19, 0xe1, 0x90, 0x81, 0x9b, 0x38, 0x6e, 0x6b, 0x37, 0xa0,
-	0x2e, 0x62, 0x5d, 0x13, 0xe7, 0x09, 0x8d, 0xbe, 0x32, 0x57, 0x45, 0x6d, 0xed, 0x4b, 0x68, 0xc6,
-	0x31, 0x8c, 0x5e, 0xc2, 0xac, 0x88, 0x61, 0xbe, 0xc9, 0x54, 0x3c, 0xbf, 0x7e, 0x27, 0x6b, 0xae,
-	0xfa, 0x16, 0x3d, 0x31, 0x5d, 0x9e, 0x3d, 0x2c, 0xc9, 0xf5, 0xdd, 0xa3, 0x31, 0xc1, 0x09, 0x80,
-	0xf6, 0xcb, 0x05, 0xa8, 0xf6, 0x48, 0xa8, 0x75, 0xa1, 0x2e, 0x12, 0x79, 0x1e, 0x2a, 0x76, 0xf4,
-	0x1a, 0x15, 0xdb, 0x42, 0x6d, 0xa8, 0xef, 0xf3, 0x90, 0xe7, 0x1b, 0x75, 0x51, 0xe7, 0x27, 0xbf,
-	0x1e, 0x9d, 0xfc, 0x7a, 0x8f, 0x9d, 0xfc, 0x58, 0xc8, 0xb4, 0x27, 0xd0, 0x92, 0x73, 0x38, 0xcd,
-	0x5b, 0x81, 0x96, 0x29, 0x25, 0x3d, 0x5f, 0x14, 0xf9, 0x91, 0x46, 0x60, 0x36, 0x11, 0xb6, 0x69,
-	0xc2, 0x53, 0x98, 0xf5, 0xe5, 0x44, 0xaf, 0xa4, 0x42, 0x46, 0x5e, 0x04, 0x19, 0x84, 0x13, 0x36,
-	0xed, 0x07, 0x05, 0x6a, 0x2c, 0x87, 0xd3, 0xfc, 0x7b, 0x50, 0xa3, 0x9f, 0x1a, 0x82, 0x7b, 0xed,
-	0xc4, 0x50, 0xe7, 0xbf, 0x22, 0xa6, 0x47, 0x0f, 0x41, 0x09, 0xc2, 0x23, 0x27, 0x3a, 0xd7, 0xaf,
-	0x9f, 0x6c, 0xec, 0x51, 0x29, 0xe6, 0x0e, 0x6a, 0x65, 0xdb, 0x22, 0x4e, 0xf4, 0x02, 0x2b, 0xab,
-	0x07, 0xcc, 0x1d, 0xe8, 0x09, 0x34, 0xcc, 0x21, 0x31, 0x0f, 0x88, 0x25, 0x8e, 0xf2, 0xd5, 0x93,
-	0xcd, 0x5b, 0x5c, 0x8c, 0x23, 0x17, 0x1d, 0xdb, 0xf4, 0x1c, 0xcf, 0x17, 0x87, 0x78, 0xc1, 0xd8,
-	0x5b, 0x54, 0x8a, 0xb9, 0x03, 0xbd, 0x86, 0x73, 0x7d, 0xc3, 0x3c, 0x18, 0xf8, 0xde, 0xc4, 0xb5,
-	0x58, 0x8f, 0x38, 0xb9, 0xd7, 0x4e, 0x86, 0x6c, 0x26, 0x4d, 0x38, 0x4d, 0xd1, 0x96, 0xc4, 0xd6,
-	0x2c, 0x88, 0x60, 0x11, 0xbb, 0x23, 0x52, 0x66, 0x07, 0x14, 0xb6, 0x7a, 0xe8, 0xb1, 0xdc, 0x3d,
-	0xbf, 0x7e, 0xab, 0xf8, 0x77, 0x20, 0x56, 0x3d, 0xe6, 0xb0, 0xa5, 0x4c, 0x72, 0x5a, 0xa7, 0xe1,
-	0x88, 0x2d, 0xe0, 0x9c, 0x2b, 0xd0, 0x10, 0xab, 0x9a, 0x9c, 0xf0, 0x4c, 0x24, 0xb8, 0x0c, 0x0a,
-	0x7b, 0xaf, 0x9c, 0xf7, 0xb9, 0x05, 0xe7, 0x52, 0x2b, 0x92, 0x23, 0xfc, 0x46, 0x81, 0x1a, 0x3b,
-	0xf5, 0xb3, 0x4a, 0xf6, 0x68, 0x4c, 0x0a, 0x4b, 0x96, 0x9a, 0x79, 0x0c, 0x30, 0x3d, 0x2f, 0x59,
-	0x23, 0x2c, 0x2e, 0x59, 0x66, 0xec, 0x51, 0x29, 0xe6, 0x0e, 0x3a, 0xe4, 0xc8, 0x1e, 0x11, 0x51,
-	0xb1, 0x05, 0x43, 0x3e, 0xb7, 0x47, 0x04, 0x33, 0x3d, 0xf5, 0x0d, 0x8d, 0x60, 0x28, 0x8a, 0xb5,
-	0xc0, 0xd7, 0x31, 0x82, 0x21, 0x66, 0x7a, 0xea, 0x73, 0x8d, 0x11, 0x11, 0x55, 0x5a, 0xe0, 0x7b,
-	0x61, 0xd0, 0xf1, 0xa8, 0x9e, 0xfa, 0x02, 0xfb, 0x1d, 0x11, 0x85, 0x59, 0xe0, 0xeb, 0xd9, 0xef,
-	0x08, 0x66, 0x7a, 0x5a, 0x82, 0x94, 0x92, 0xb3, 0x13, 0x97, 0x41, 0x79, 0x6d, 0x5b, 0xe1, 0x30,
-	0xd9, 0xad, 0x24, 0x2a, 0x94, 0xae, 0xd2, 0x99, 0x2a, 0x54, 0x5e, 0x64, 0xce, 0xd9, 0x86, 0x1a,
-	0xdd, 0x2d, 0xf4, 0x28, 0x89, 0xb9, 0x59, 0x8c, 0x61, 0x9b, 0x2c, 0x28, 0x4b, 0x50, 0xa3, 0x0b,
-	0x99, 0xf3, 0x2a, 0x4b, 0x50, 0xa3, 0xdb, 0x93, 0xdf, 0x4b, 0x17, 0x25, 0xd9, 0x5b, 0x8d, 0x7a,
-	0x1d, 0xa8, 0xb1, 0x0f, 0xc8, 0x8c, 0x7a, 0x64, 0x9b, 0x55, 0x54, 0x8f, 0xd4, 0x2c, 0x6d, 0x56,
-	0xc1, 0xa2, 0x7f, 0x5d, 0x85, 0x1a, 0xfb, 0xd4, 0x4c, 0x0f, 0xf7, 0x09, 0xcc, 0x85, 0x86, 0x3f,
-	0x20, 0xe1, 0xa6, 0x38, 0x85, 0xf9, 0xb8, 0x77, 0x4e, 0xfc, 0x80, 0xd5, 0x77, 0x65, 0x0b, 0x4e,
-	0x12, 0x4e, 0x1f, 0xe6, 0x0c, 0x95, 0x08, 0xf3, 0x47, 0xf1, 0x89, 0x59, 0x2b, 0xb8, 0xc6, 0x30,
-	0x2f, 0x3f, 0x77, 0xe3, 0xe3, 0x73, 0x15, 0xe6, 0x12, 0x13, 0xfb, 0x4b, 0x33, 0x50, 0x9e, 0x2c,
-	0xe7, 0xdc, 0x8f, 0x0f, 0xfe, 0xb5, 0x64, 0x08, 0xe6, 0x9e, 0xf3, 0xc2, 0xf8, 0xbd, 0x02, 0x33,
-	0xf1, 0xa7, 0x7a, 0x7a, 0x43, 0xee, 0x43, 0x75, 0xe2, 0x3b, 0x62, 0x1b, 0x56, 0x0b, 0x3f, 0xff,
-	0xf5, 0x3d, 0xdf, 0xc1, 0xd4, 0x41, 0xdf, 0x26, 0xb4, 0xc3, 0x78, 0xd9, 0x6f, 0x15, 0x5b, 0x77,
-	0xa9, 0x1c, 0x73, 0x17, 0x7a, 0x09, 0x2d, 0x8b, 0x04, 0xa6, 0x6f, 0x8f, 0xe9, 0x19, 0x2f, 0xd6,
-	0x7f, 0xad, 0x18, 0xb2, 0x3d, 0x35, 0x61, 0x99, 0x80, 0xba, 0xd0, 0xb4, 0x47, 0xc6, 0x80, 0x74,
-	0xa6, 0x91, 0x75, 0xa7, 0x18, 0xd7, 0x8d, 0x2c, 0x78, 0xea, 0xa6, 0x73, 0xdb, 0x37, 0x0e, 0x6d,
-	0x7a, 0xff, 0xa2, 0xb0, 0xfa, 0x69, 0xe7, 0xb6, 0x33, 0x35, 0x61, 0x99, 0x80, 0xfe, 0x27, 0x42,
-	0x9f, 0x27, 0xdb, 0xcd, 0x53, 0x2c, 0x55, 0x1c, 0xfc, 0xda, 0x25, 0xa8, 0xee, 0xf9, 0x4e, 0x7e,
-	0xb8, 0xb1, 0x55, 0xcd, 0xe9, 0xbe, 0x0e, 0x2d, 0x69, 0xbd, 0x72, 0x44, 0x57, 0xa1, 0x19, 0xaf,
-	0x42, 0x3e, 0x47, 0x7a, 0xb7, 0x1c, 0xd1, 0x63, 0x91, 0x80, 0xff, 0x4d, 0x96, 0xf9, 0x95, 0x54,
-	0x99, 0xd3, 0xc2, 0x7e, 0xe5, 0x93, 0x43, 0x9b, 0xbc, 0x49, 0x44, 0xdf, 0xef, 0x15, 0xa8, 0xd1,
-	0x3b, 0x8f, 0xf6, 0x5b, 0x25, 0xba, 0x3e, 0x3c, 0x80, 0x1a, 0xbb, 0xdb, 0x49, 0x57, 0x90, 0x72,
-	0xea, 0x0a, 0x92, 0xf8, 0x0f, 0xd0, 0xf4, 0x0a, 0xf2, 0x00, 0x6a, 0xec, 0x36, 0x77, 0x76, 0xe7,
-	0x57, 0x65, 0x68, 0x4e, 0x6f, 0x56, 0x67, 0xf6, 0xcb, 0x17, 0x8c, 0x4a, 0xf2, 0x82, 0xf1, 0x4f,
-	0x50, 0x7c, 0x76, 0x15, 0xe0, 0x3f, 0x98, 0xf4, 0xb5, 0x85, 0x0d, 0x88, 0xb9, 0x44, 0x23, 0xd0,
-	0x92, 0xef, 0x8d, 0x67, 0x9f, 0xc6, 0x0d, 0x98, 0x8b, 0xee, 0x25, 0x1b, 0xbe, 0x6f, 0x1c, 0x89,
-	0xaf, 0xf7, 0xe4, 0x43, 0x1a, 0xe2, 0xf4, 0x76, 0x98, 0x7d, 0xf3, 0xdb, 0x5c, 0xfa, 0xe9, 0xc3,
-	0x72, 0xf9, 0xfd, 0x87, 0xe5, 0xf2, 0xaf, 0x1f, 0x96, 0xcb, 0xdf, 0x1e, 0x2f, 0x97, 0xde, 0x1f,
-	0x2f, 0x97, 0x7e, 0x3e, 0x5e, 0x2e, 0x7d, 0x5e, 0x19, 0xf7, 0xfb, 0x75, 0x96, 0x36, 0x77, 0xff,
-	0x08, 0x00, 0x00, 0xff, 0xff, 0x6c, 0xd6, 0x7d, 0x91, 0xcd, 0x14, 0x00, 0x00,
+	// 1691 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x98, 0x4b, 0x73, 0xdb, 0xba,
+	0x15, 0xc7, 0xf5, 0x20, 0x25, 0xeb, 0xc8, 0x76, 0x3a, 0xbc, 0xbe, 0x0e, 0xcb, 0x38, 0x8e, 0xef,
+	0x4d, 0x7c, 0xaf, 0x6f, 0x53, 0x53, 0x19, 0xa7, 0xcd, 0xa3, 0x93, 0x34, 0xe3, 0x47, 0x3c, 0x52,
+	0xf3, 0x2c, 0x64, 0x4f, 0x9f, 0x1b, 0x4a, 0x84, 0x25, 0x8e, 0x29, 0x52, 0x43, 0x52, 0x4e, 0x9c,
+	0x6d, 0x77, 0x5d, 0x74, 0xda, 0xcf, 0xd0, 0x7d, 0x3f, 0x47, 0xbb, 0xcb, 0xb2, 0x8b, 0x2e, 0x3a,
+	0xc9, 0xa6, 0xdb, 0x4e, 0xbf, 0x40, 0xe7, 0x00, 0x20, 0x05, 0xb2, 0xa4, 0x69, 0xcf, 0x74, 0x67,
+	0x00, 0xff, 0xff, 0x0f, 0x20, 0x70, 0x74, 0x0e, 0x60, 0x58, 0x9d, 0x0e, 0x3a, 0xd3, 0xc0, 0x8f,
+	0xfc, 0xb0, 0x43, 0xcf, 0xa8, 0x17, 0x85, 0x26, 0x6b, 0x69, 0x4d, 0xcb, 0x3b, 0x8f, 0xce, 0xa7,
+	0xd4, 0x78, 0x71, 0x46, 0x3d, 0xdb, 0x0f, 0x3a, 0x23, 0x27, 0x1a, 0xcf, 0x06, 0xe6, 0xd0, 0x9f,
+	0x74, 0xc4, 0x90, 0xe3, 0x77, 0x46, 0xfe, 0xb6, 0x68, 0x6c, 0xbb, 0xce, 0x20, 0xb0, 0x82, 0xf3,
+	0xce, 0x74, 0xd0, 0x99, 0xf8, 0x36, 0x75, 0x63, 0x2a, 0x6b, 0x08, 0xaa, 0xb1, 0x36, 0xf2, 0xfd,
+	0x91, 0x4b, 0xf9, 0xd8, 0x60, 0x76, 0xd2, 0x09, 0xa3, 0x60, 0x36, 0x8c, 0xf8, 0xe8, 0xd7, 0xff,
+	0xf8, 0x0e, 0xd4, 0xe7, 0xb8, 0x08, 0x6d, 0x07, 0x16, 0x26, 0x34, 0x0c, 0xad, 0x11, 0x0d, 0xf5,
+	0xea, 0x46, 0x7d, 0xab, 0xbd, 0xb3, 0x6a, 0x8a, 0x89, 0x4c, 0xa6, 0x30, 0x5f, 0xf1, 0x61, 0x92,
+	0xe8, 0xb4, 0x35, 0x68, 0x0d, 0x7d, 0x2f, 0xa2, 0xef, 0xa3, 0x9e, 0xad, 0xd7, 0x36, 0xaa, 0x5b,
+	0x2d, 0x32, 0xef, 0xd0, 0x7e, 0x04, 0x2d, 0xc7, 0x73, 0x22, 0xc7, 0x8a, 0xfc, 0x40, 0xaf, 0x6f,
+	0x54, 0x53, 0x48, 0xb6, 0x46, 0x73, 0x77, 0x38, 0xf4, 0x67, 0x5e, 0x44, 0xe6, 0x42, 0xe3, 0x4f,
+	0x8b, 0xd0, 0x14, 0x33, 0x69, 0xcf, 0xa0, 0x6d, 0x71, 0x45, 0x7f, 0xec, 0xbf, 0xd3, 0xab, 0x8c,
+	0x71, 0x23, 0xb3, 0x2c, 0xc1, 0x30, 0x51, 0xd2, 0xad, 0x10, 0xd9, 0xa1, 0x3d, 0x80, 0x85, 0x81,
+	0xeb, 0x0f, 0x4f, 0x77, 0x6d, 0xbe, 0xbe, 0xf6, 0x8e, 0x9e, 0x71, 0xef, 0xe1, 0xb0, 0xb9, 0x6b,
+	0xdb, 0xdd, 0x0a, 0x49, 0xb4, 0x38, 0x31, 0xfb, 0xfb, 0x80, 0xba, 0x34, 0xa2, 0x62, 0xf1, 0x37,
+	0x72, 0xad, 0x5c, 0x82, 0x13, 0x4b, 0x0e, 0xed, 0x00, 0xda, 0x27, 0x8e, 0x4b, 0xc3, 0xe3, 0xa9,
+	0xeb, 0x5b, 0xb6, 0xae, 0x30, 0xc0, 0x46, 0x2e, 0xe0, 0x70, 0xae, 0x43, 0x8a, 0x64, 0xd3, 0x7e,
+	0x0a, 0xad, 0x89, 0x15, 0x9c, 0x86, 0x3d, 0xef, 0xc4, 0xd7, 0x55, 0xc6, 0x58, 0xcf, 0x65, 0xbc,
+	0x8a, 0x55, 0xdd, 0x0a, 0x99, 0x5b, 0xb4, 0x1e, 0x2c, 0xb3, 0x45, 0xf5, 0x69, 0x74, 0xe8, 0x50,
+	0xd7, 0x0e, 0xf5, 0x06, 0x83, 0xdc, 0xca, 0x85, 0xf4, 0x69, 0x64, 0x72, 0x59, 0xb7, 0x42, 0x32,
+	0x46, 0xed, 0x97, 0xf0, 0x45, 0xdc, 0xb3, 0x3f, 0x76, 0x5c, 0x3b, 0xa0, 0x5e, 0xcf, 0x0e, 0xf5,
+	0x26, 0xe3, 0xdd, 0x29, 0xe4, 0x49, 0xda, 0x6e, 0x85, 0xe4, 0x21, 0xb4, 0xdf, 0xc0, 0x4a, 0xdc,
+	0x4d, 0x68, 0x18, 0x05, 0xce, 0x30, 0x72, 0x7c, 0x2f, 0xd4, 0x17, 0x18, 0x7a, 0xb3, 0x10, 0x2d,
+	0x8b, 0xbb, 0x15, 0x92, 0x0b, 0xd1, 0x6c, 0xb8, 0x1e, 0xf7, 0xef, 0x59, 0xc3, 0xd3, 0x51, 0xe0,
+	0xcf, 0x3c, 0x7b, 0xdf, 0x77, 0xfd, 0x40, 0x6f, 0x31, 0xfe, 0x56, 0x21, 0x3f, 0xa3, 0xef, 0x56,
+	0x48, 0x11, 0x4a, 0xdb, 0x87, 0xc5, 0x78, 0xe8, 0x88, 0xbe, 0x8f, 0x74, 0x60, 0xe8, 0x9b, 0x85,
+	0x68, 0x14, 0x75, 0x2b, 0x24, 0x65, 0x92, 0x21, 0x18, 0x12, 0x7a, 0xbb, 0x04, 0x82, 0x22, 0x19,
+	0x82, 0x6d, 0x19, 0xd2, 0x1b, 0xfa, 0x9e, 0xbe, 0x58, 0x02, 0x41, 0x91, 0x0c, 0xc1, 0xb6, 0x0c,
+	0x79, 0xe9, 0x78, 0xa7, 0xfa, 0x52, 0x09, 0x04, 0x45, 0x32, 0x04, 0xdb, 0xda, 0x1b, 0xf8, 0x5e,
+	0xb2, 0x5d, 0xbe, 0x7f, 0x8a, 0x41, 0xa9, 0x2f, 0x33, 0xd0, 0x57, 0xc5, 0x5b, 0x2e, 0x84, 0xdd,
+	0x0a, 0xf9, 0x1f, 0xb3, 0x76, 0x08, 0x4b, 0x71, 0xdf, 0xae, 0xeb, 0x8c, 0x3c, 0xfd, 0xda, 0x05,
+	0x3f, 0x08, 0xa4, 0x31, 0x55, 0xb7, 0x42, 0xd2, 0x36, 0xed, 0x31, 0xb4, 0x78, 0x07, 0xa6, 0x94,
+	0x15, 0xc6, 0xf8, 0x7e, 0x3e, 0x83, 0x27, 0x94, 0xb9, 0x1a, 0x97, 0x30, 0x0b, 0x69, 0xc0, 0x86,
+	0x7f, 0xe6, 0x3b, 0x9e, 0xfe, 0x65, 0xee, 0x12, 0x8e, 0x43, 0x1a, 0x08, 0x06, 0xaa, 0x70, 0x09,
+	0x29, 0x5b, 0x8a, 0xf3, 0x92, 0x9e, 0x44, 0xfa, 0x6a, 0x19, 0x07, 0x55, 0x29, 0x0e, 0x76, 0xe0,
+	0x4f, 0x27, 0xe9, 0xe8, 0x53, 0x97, 0x0e, 0x23, 0x62, 0x79, 0x23, 0xaa, 0x5f, 0xcf, 0xfd, 0xe9,
+	0x48, 0x38, 0x49, 0x8c, 0x3f, 0x9d, 0x3c, 0x88, 0x76, 0x0c, 0x5a, 0xd2, 0x8f, 0x01, 0xca, 0xd1,
+	0x3a, 0x43, 0xdf, 0x2e, 0x46, 0x27, 0xd2, 0x6e, 0x85, 0xe4, 0x00, 0xb4, 0xef, 0x40, 0x99, 0x3a,
+	0xde, 0x48, 0xb7, 0x19, 0xe8, 0x8b, 0x0c, 0xe8, 0xad, 0xe3, 0x8d, 0xba, 0x15, 0xc2, 0x24, 0x7b,
+	0x4d, 0x50, 0xcf, 0x2c, 0x77, 0x46, 0x8d, 0x5f, 0x41, 0x53, 0x64, 0x79, 0xe3, 0x35, 0x28, 0xec,
+	0x28, 0x56, 0x40, 0x75, 0x3c, 0x9b, 0xbe, 0x67, 0x45, 0x41, 0x25, 0xbc, 0xa1, 0xdd, 0x83, 0xa6,
+	0x48, 0xff, 0x22, 0xdd, 0x17, 0x15, 0x9c, 0x58, 0x66, 0xfc, 0x4d, 0x07, 0x95, 0xad, 0xd0, 0xb8,
+	0x0f, 0x75, 0x4c, 0xfd, 0x3f, 0x84, 0x06, 0x3b, 0xf0, 0xb8, 0x0a, 0xae, 0x64, 0x08, 0x4c, 0x4c,
+	0x84, 0xc6, 0x78, 0x29, 0x96, 0xb3, 0x0a, 0x8d, 0xc0, 0xf7, 0xb1, 0x0c, 0x56, 0x59, 0x19, 0x14,
+	0x2d, 0x89, 0x56, 0xbb, 0x04, 0x6d, 0x1f, 0xda, 0x52, 0x35, 0xd0, 0x74, 0x68, 0xb2, 0x81, 0x84,
+	0x1a, 0x37, 0x35, 0x03, 0x16, 0xb0, 0x4e, 0xbc, 0xb5, 0xa2, 0x31, 0x03, 0xb7, 0x48, 0xd2, 0x36,
+	0xee, 0x40, 0x43, 0x14, 0x21, 0x43, 0x54, 0x3f, 0x4c, 0xd4, 0x55, 0xae, 0x8a, 0xdb, 0xc6, 0x6f,
+	0xa1, 0x95, 0x14, 0x0d, 0xed, 0x0d, 0x2c, 0x8a, 0xa2, 0xc1, 0x0f, 0x19, 0xc5, 0xcb, 0x3b, 0x77,
+	0xf3, 0xd6, 0x6a, 0xee, 0x63, 0x7d, 0xf7, 0x78, 0x0e, 0x63, 0x75, 0xc7, 0x3c, 0x3a, 0x9f, 0x52,
+	0x92, 0x02, 0x18, 0xff, 0xf9, 0x12, 0xea, 0x7d, 0x1a, 0x19, 0x3d, 0x68, 0x88, 0xfa, 0xb1, 0x0c,
+	0x35, 0x27, 0xfe, 0x8c, 0x9a, 0x63, 0x6b, 0x1d, 0x68, 0x9c, 0xf0, 0x92, 0xc4, 0x0f, 0xea, 0xba,
+	0xc9, 0xef, 0x29, 0x66, 0x7c, 0x4f, 0x31, 0xfb, 0xec, 0x9e, 0x42, 0x84, 0xcc, 0x78, 0x06, 0x6d,
+	0xb9, 0x6a, 0x64, 0x79, 0x1b, 0xd0, 0x1e, 0x4a, 0x75, 0x89, 0x6f, 0x8a, 0xdc, 0x65, 0x50, 0x58,
+	0x4c, 0x95, 0x86, 0x2c, 0xe1, 0x39, 0x2c, 0x06, 0x72, 0xfd, 0xa9, 0x65, 0x92, 0x95, 0xbc, 0x09,
+	0x32, 0x88, 0xa4, 0x6c, 0xc6, 0x0b, 0xb8, 0x96, 0x2d, 0x0f, 0xd9, 0x99, 0xb6, 0xe0, 0xda, 0x20,
+	0x53, 0x8c, 0xf8, 0xe5, 0x29, 0xdb, 0x6d, 0xf4, 0x40, 0xe5, 0x49, 0x2b, 0x8b, 0xb8, 0x07, 0xaa,
+	0xc5, 0x92, 0x20, 0x1a, 0x97, 0x77, 0x8c, 0xdc, 0x55, 0x32, 0x2b, 0xe1, 0x42, 0xe3, 0x2f, 0x0a,
+	0x28, 0xac, 0xce, 0x64, 0x51, 0x0f, 0x40, 0xc1, 0x0b, 0x9b, 0xf8, 0xde, 0xaf, 0x2f, 0x2c, 0x5a,
+	0xfc, 0xd7, 0xcd, 0xf4, 0xda, 0x63, 0x50, 0xc3, 0xe8, 0xdc, 0x8d, 0x6f, 0x47, 0xb7, 0x2f, 0x36,
+	0xf6, 0x51, 0x4a, 0xb8, 0x03, 0xad, 0x2c, 0x5c, 0xc4, 0xbd, 0xa8, 0xc4, 0xca, 0xe2, 0x94, 0x70,
+	0x87, 0xf6, 0x0c, 0x9a, 0xc3, 0x31, 0x1d, 0x9e, 0x52, 0x5b, 0x5c, 0x88, 0x36, 0x2f, 0x36, 0xef,
+	0x73, 0x31, 0x89, 0x5d, 0x38, 0xf7, 0x90, 0x6d, 0x79, 0xe3, 0x32, 0x73, 0xb3, 0x63, 0x20, 0xdc,
+	0x61, 0xac, 0x89, 0x1d, 0x5c, 0x11, 0x79, 0x49, 0x6c, 0xa2, 0x48, 0x52, 0x87, 0xa0, 0xb2, 0x8f,
+	0xd4, 0x9e, 0xca, 0xc3, 0xcb, 0x3b, 0xdf, 0x96, 0xff, 0x8c, 0xc4, 0xe6, 0x24, 0x1c, 0xf6, 0xc5,
+	0x69, 0x4e, 0xfb, 0x32, 0x1c, 0xb1, 0x53, 0x9c, 0x73, 0x0b, 0x9a, 0xe2, 0xe3, 0xd3, 0x0b, 0x5e,
+	0x88, 0x05, 0x37, 0x41, 0xe5, 0xf1, 0x99, 0xff, 0x3d, 0x7f, 0x50, 0x41, 0x61, 0x77, 0x8a, 0xbc,
+	0x80, 0x39, 0x9f, 0xd2, 0xd2, 0x80, 0x41, 0x33, 0x4f, 0x0e, 0x4c, 0xcf, 0x03, 0xc6, 0x8a, 0xca,
+	0x03, 0x86, 0x19, 0xfb, 0x28, 0x25, 0xdc, 0x81, 0x53, 0x4e, 0x9c, 0x09, 0x15, 0xf1, 0x52, 0x32,
+	0xe5, 0x2b, 0x67, 0x42, 0x09, 0xd3, 0xa3, 0x6f, 0x6c, 0x85, 0x63, 0x11, 0x2a, 0x25, 0xbe, 0xae,
+	0x15, 0x8e, 0x09, 0xd3, 0xa3, 0xcf, 0xb3, 0x26, 0x54, 0xc4, 0x48, 0x89, 0xef, 0xb5, 0x85, 0xf3,
+	0xa1, 0x1e, 0x7d, 0xa1, 0xf3, 0x81, 0x8a, 0x6b, 0x71, 0x89, 0xaf, 0xef, 0x7c, 0xa0, 0x84, 0xe9,
+	0x31, 0xb2, 0x90, 0x52, 0x70, 0x12, 0x37, 0x41, 0xfd, 0x85, 0x63, 0x47, 0xe3, 0xf4, 0xb0, 0x9a,
+	0x0a, 0x3c, 0xdc, 0xa5, 0x2b, 0x05, 0x9e, 0xbc, 0xc9, 0x9c, 0x73, 0x00, 0x0a, 0x9e, 0x96, 0xf6,
+	0x24, 0x8d, 0xf9, 0xa6, 0x1c, 0xc3, 0x0e, 0x59, 0x50, 0xd6, 0x40, 0xc1, 0x8d, 0x2c, 0xf8, 0x94,
+	0x35, 0x50, 0xf0, 0x78, 0x8a, 0x47, 0x71, 0x53, 0xd2, 0xa3, 0xf5, 0x78, 0xd4, 0x05, 0x85, 0x5d,
+	0x4f, 0x73, 0xe2, 0x91, 0x1d, 0x56, 0x59, 0x3c, 0xa2, 0x59, 0x3a, 0xac, 0x92, 0x4d, 0xff, 0x7d,
+	0x1d, 0x14, 0x76, 0x91, 0xcd, 0x4e, 0xf7, 0x73, 0x58, 0x8a, 0xac, 0x60, 0x44, 0xa3, 0x3d, 0x51,
+	0x9b, 0xf9, 0xbc, 0x77, 0x2f, 0xbc, 0x1e, 0x9b, 0x47, 0xb2, 0x85, 0xa4, 0x09, 0x97, 0x4f, 0xa5,
+	0x0c, 0x95, 0x4a, 0xa5, 0x4f, 0x92, 0x3a, 0xaa, 0x94, 0x3c, 0xc5, 0x98, 0x97, 0x57, 0xe3, 0xa4,
+	0xa8, 0x6e, 0xc2, 0x52, 0x6a, 0x61, 0xff, 0xd7, 0xd4, 0x26, 0x2f, 0x96, 0x73, 0x1e, 0x26, 0xd7,
+	0x81, 0xed, 0x74, 0x6e, 0x2b, 0xac, 0xfe, 0xc2, 0xf8, 0x67, 0x15, 0x16, 0x92, 0x87, 0x40, 0xf6,
+	0x40, 0x1e, 0x42, 0x7d, 0x16, 0xb8, 0xe2, 0x18, 0x36, 0x4b, 0x1f, 0x17, 0xe6, 0x71, 0xe0, 0x12,
+	0x74, 0xe0, 0xd7, 0x44, 0x4e, 0x94, 0x6c, 0xfb, 0xb7, 0xe5, 0xd6, 0x23, 0x94, 0x13, 0xee, 0xd2,
+	0xde, 0x40, 0xdb, 0xa6, 0xe1, 0x30, 0x70, 0xa6, 0x58, 0xf9, 0xc5, 0xfe, 0x6f, 0x97, 0x43, 0x0e,
+	0xe6, 0x26, 0x22, 0x13, 0xb4, 0x1e, 0xb4, 0x9c, 0x89, 0x35, 0xa2, 0xdd, 0x79, 0xca, 0xba, 0x5b,
+	0x8e, 0xeb, 0xc5, 0x16, 0x32, 0x77, 0xe3, 0xda, 0x4e, 0xac, 0x33, 0x07, 0x5f, 0x77, 0x08, 0x6b,
+	0x5c, 0x76, 0x6d, 0x87, 0x73, 0x13, 0x91, 0x09, 0xda, 0x4f, 0x44, 0xd2, 0xe7, 0x99, 0xed, 0x9b,
+	0x4b, 0x6c, 0x55, 0x92, 0xf8, 0x8d, 0x1b, 0x50, 0x3f, 0x0e, 0xdc, 0xe2, 0xe4, 0xc6, 0x76, 0xb5,
+	0x60, 0xf8, 0x36, 0xb4, 0xa5, 0xfd, 0x2a, 0x10, 0x7d, 0x05, 0xad, 0x64, 0x17, 0x8a, 0x39, 0xd2,
+	0xb7, 0x15, 0x88, 0x9e, 0x8a, 0x0c, 0xf8, 0xe3, 0x74, 0x98, 0xdf, 0xca, 0x84, 0x39, 0x06, 0xf6,
+	0xdb, 0x80, 0x9e, 0x39, 0xf4, 0x5d, 0x2a, 0xf5, 0xfd, 0xbb, 0x06, 0x0a, 0xbe, 0x84, 0x8c, 0x7f,
+	0xd5, 0xe2, 0x47, 0xc5, 0x23, 0x50, 0xd8, 0x8b, 0x4f, 0x7a, 0x98, 0x54, 0x33, 0x0f, 0x93, 0xd4,
+	0x7f, 0xb1, 0xe6, 0x0f, 0x93, 0x47, 0xa0, 0xb0, 0x37, 0xde, 0xd5, 0x9d, 0xbf, 0xab, 0x42, 0x6b,
+	0xfe, 0xde, 0xba, 0xb2, 0x5f, 0x7e, 0x76, 0xd4, 0xd2, 0xcf, 0x8e, 0x1f, 0x80, 0x1a, 0xb0, 0x07,
+	0x02, 0xff, 0xc1, 0x64, 0x1f, 0x33, 0x6c, 0x42, 0xc2, 0x25, 0x06, 0x85, 0xb6, 0xfc, 0x9a, 0xbc,
+	0xfa, 0x32, 0xee, 0x88, 0xf7, 0x7e, 0xcf, 0x0e, 0x77, 0x83, 0xc0, 0x3a, 0x17, 0x77, 0xfa, 0x74,
+	0x27, 0x26, 0x71, 0x7c, 0x33, 0xe6, 0xbf, 0x07, 0xf7, 0xd6, 0xfe, 0xfa, 0x69, 0xbd, 0xfa, 0xf1,
+	0xd3, 0x7a, 0xf5, 0x9f, 0x9f, 0xd6, 0xab, 0x7f, 0xfc, 0xbc, 0x5e, 0xf9, 0xf8, 0x79, 0xbd, 0xf2,
+	0xf7, 0xcf, 0xeb, 0x95, 0x5f, 0xd7, 0xa6, 0x83, 0x41, 0x83, 0x65, 0x9b, 0xfb, 0xff, 0x0d, 0x00,
+	0x00, 0xff, 0xff, 0x2c, 0x88, 0xf4, 0x71, 0x91, 0x15, 0x00, 0x00,
 }
 
 func (m *Event) Marshal() (dAtA []byte, err error) {
@@ -3127,6 +3210,27 @@ func (m *EventMessageValueOfBlockSetRestrictions) MarshalToSizedBuffer(dAtA []by
 	}
 	return len(dAtA) - i, nil
 }
+func (m *EventMessageValueOfBlockSetBackgroundColor) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventMessageValueOfBlockSetBackgroundColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.BlockSetBackgroundColor != nil {
+		{
+			size, err := m.BlockSetBackgroundColor.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x4a
+	}
+	return len(dAtA) - i, nil
+}
 func (m *EventMessageValueOfBlockSetText) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
@@ -3229,6 +3333,27 @@ func (m *EventMessageValueOfBlockSetBookmark) MarshalToSizedBuffer(dAtA []byte) 
 		}
 		i--
 		dAtA[i] = 0x72
+	}
+	return len(dAtA) - i, nil
+}
+func (m *EventMessageValueOfBlockSetAlign) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventMessageValueOfBlockSetAlign) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.BlockSetAlign != nil {
+		{
+			size, err := m.BlockSetAlign.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintEvents(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x7a
 	}
 	return len(dAtA) - i, nil
 }
@@ -3629,20 +3754,20 @@ func (m *EventBlockMarksInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.MarksInRange) > 0 {
-		dAtA23 := make([]byte, len(m.MarksInRange)*10)
-		var j22 int
+		dAtA25 := make([]byte, len(m.MarksInRange)*10)
+		var j24 int
 		for _, num := range m.MarksInRange {
 			for num >= 1<<7 {
-				dAtA23[j22] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA25[j24] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j22++
+				j24++
 			}
-			dAtA23[j22] = uint8(num)
-			j22++
+			dAtA25[j24] = uint8(num)
+			j24++
 		}
-		i -= j22
-		copy(dAtA[i:], dAtA23[:j22])
-		i = encodeVarintEvents(dAtA, i, uint64(j22))
+		i -= j24
+		copy(dAtA[i:], dAtA25[:j24])
+		i = encodeVarintEvents(dAtA, i, uint64(j24))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -3795,6 +3920,78 @@ func (m *EventBlockSetRestrictions) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
+func (m *EventBlockSetBackgroundColor) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetBackgroundColor) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetBackgroundColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.BackgroundColor) > 0 {
+		i -= len(m.BackgroundColor)
+		copy(dAtA[i:], m.BackgroundColor)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.BackgroundColor)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *EventBlockSetAlign) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EventBlockSetAlign) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *EventBlockSetAlign) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Align != 0 {
+		i = encodeVarintEvents(dAtA, i, uint64(m.Align))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Id) > 0 {
+		i -= len(m.Id)
+		copy(dAtA[i:], m.Id)
+		i = encodeVarintEvents(dAtA, i, uint64(len(m.Id)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *EventBlockSetText) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -3815,18 +4012,6 @@ func (m *EventBlockSetText) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.BackgroundColor != nil {
-		{
-			size, err := m.BackgroundColor.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvents(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x3a
-	}
 	if m.Color != nil {
 		{
 			size, err := m.Color.MarshalToSizedBuffer(dAtA[:i])
@@ -4039,36 +4224,6 @@ func (m *EventBlockSetTextColor) MarshalTo(dAtA []byte) (int, error) {
 }
 
 func (m *EventBlockSetTextColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Value) > 0 {
-		i -= len(m.Value)
-		copy(dAtA[i:], m.Value)
-		i = encodeVarintEvents(dAtA, i, uint64(len(m.Value)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *EventBlockSetTextBackgroundColor) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *EventBlockSetTextBackgroundColor) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *EventBlockSetTextBackgroundColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -5282,6 +5437,18 @@ func (m *EventMessageValueOfBlockSetRestrictions) Size() (n int) {
 	}
 	return n
 }
+func (m *EventMessageValueOfBlockSetBackgroundColor) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlockSetBackgroundColor != nil {
+		l = m.BlockSetBackgroundColor.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
 func (m *EventMessageValueOfBlockSetText) Size() (n int) {
 	if m == nil {
 		return 0
@@ -5338,6 +5505,18 @@ func (m *EventMessageValueOfBlockSetBookmark) Size() (n int) {
 	_ = l
 	if m.BlockSetBookmark != nil {
 		l = m.BlockSetBookmark.Size()
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+func (m *EventMessageValueOfBlockSetAlign) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlockSetAlign != nil {
+		l = m.BlockSetAlign.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -5594,6 +5773,39 @@ func (m *EventBlockSetRestrictions) Size() (n int) {
 	return n
 }
 
+func (m *EventBlockSetBackgroundColor) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	l = len(m.BackgroundColor)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	return n
+}
+
+func (m *EventBlockSetAlign) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovEvents(uint64(l))
+	}
+	if m.Align != 0 {
+		n += 1 + sovEvents(uint64(m.Align))
+	}
+	return n
+}
+
 func (m *EventBlockSetText) Size() (n int) {
 	if m == nil {
 		return 0
@@ -5622,10 +5834,6 @@ func (m *EventBlockSetText) Size() (n int) {
 	}
 	if m.Color != nil {
 		l = m.Color.Size()
-		n += 1 + l + sovEvents(uint64(l))
-	}
-	if m.BackgroundColor != nil {
-		l = m.BackgroundColor.Size()
 		n += 1 + l + sovEvents(uint64(l))
 	}
 	return n
@@ -5682,19 +5890,6 @@ func (m *EventBlockSetTextChecked) Size() (n int) {
 }
 
 func (m *EventBlockSetTextColor) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Value)
-	if l > 0 {
-		n += 1 + l + sovEvents(uint64(l))
-	}
-	return n
-}
-
-func (m *EventBlockSetTextBackgroundColor) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6604,6 +6799,41 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 			}
 			m.Value = &EventMessageValueOfBlockSetRestrictions{v}
 			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetBackgroundColor", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &EventBlockSetBackgroundColor{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &EventMessageValueOfBlockSetBackgroundColor{v}
+			iNdEx = postIndex
 		case 10:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetText", wireType)
@@ -6778,6 +7008,41 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Value = &EventMessageValueOfBlockSetBookmark{v}
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockSetAlign", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &EventBlockSetAlign{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &EventMessageValueOfBlockSetAlign{v}
 			iNdEx = postIndex
 		case 20:
 			if wireType != 2 {
@@ -8169,6 +8434,227 @@ func (m *EventBlockSetRestrictions) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *EventBlockSetBackgroundColor) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BackgroundColor: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BackgroundColor: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BackgroundColor", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BackgroundColor = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *EventBlockSetAlign) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEvents
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Align: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Align: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEvents
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Align", wireType)
+			}
+			m.Align = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEvents
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Align |= model.BlockAlign(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEvents(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *EventBlockSetText) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -8407,42 +8893,6 @@ func (m *EventBlockSetText) Unmarshal(dAtA []byte) error {
 				m.Color = &EventBlockSetTextColor{}
 			}
 			if err := m.Color.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BackgroundColor", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvents
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.BackgroundColor == nil {
-				m.BackgroundColor = &EventBlockSetTextBackgroundColor{}
-			}
-			if err := m.BackgroundColor.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8816,91 +9266,6 @@ func (m *EventBlockSetTextColor) Unmarshal(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: Color: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvents
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthEvents
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Value = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvents(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvents
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *EventBlockSetTextBackgroundColor) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvents
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BackgroundColor: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BackgroundColor: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
