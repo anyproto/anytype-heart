@@ -147,6 +147,18 @@ func checkEvents(t *testing.T, fx *pageFixture, eventsLen int, messagesLen int) 
 	//require.Len(t, fx.serviceFx.events[1].Messages, messagesLen)
 }
 
+//Humans (Homo sapiens) are the only extant members of the subtribe Hominina.
+
+/*func TestCommonSmart_pasteOneBlock(t *testing.T) {
+
+	t.Run("Simple: 2 p blocks", func(t *testing.T) {
+		fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
+		pasteHTML(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, "<p>abcdef</p><p>hello</p>");
+		checkBlockText(t, fx, []string{"11111", "22222", "33333", "ab", "abcdef", "hello", "e", "55555"});
+		checkEvents(t, fx, 2, 5)
+	})
+})
+*/
 func TestCommonSmart_pasteHTML(t *testing.T) {
 
 	t.Run("Simple: 2 p blocks", func(t *testing.T) {
@@ -187,7 +199,7 @@ func TestCommonSmart_pasteHTML(t *testing.T) {
 	t.Run("Code block -> header", func(t *testing.T) {
 		fx := createPage(t, []string{})
 		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<pre><code># foo\n</code></pre>\n",);
-		checkBlockTextAndStyle(t, fx, []string{"\n# foo\n\n\n"});
+		checkBlockTextAndStyle(t, fx, []string{"# foo\n\n"});
 		checkEvents(t, fx, 2, 5)
 	})
 
@@ -222,7 +234,7 @@ func TestCommonSmart_pasteHTML(t *testing.T) {
 	t.Run("Nested tags: h1 && p inside quote", func(t *testing.T) {
 		fx := createPage(t, []string{})
 		pasteHTML(t, fx, "", model.Range{From: 0, To: 0}, []string{}, "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n");
-		checkBlockTextAndStyle(t, fx, []string{"Foo", "bar baz"});
+		checkBlockTextAndStyle(t, fx, []string{"Foo", "bar\nbaz"});
 		checkEvents(t, fx, 2, 5)
 	})
 }

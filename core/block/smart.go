@@ -872,3 +872,11 @@ func (p *commonSmart) onDelete(b simple.Block) {
 		p.s.ls.onDelete(p, b)
 	}
 }
+
+func (p *commonSmart) rangeTextPaste(s *state, id string, from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error {
+	t, err := s.getText(id)
+	if err != nil {
+		return err
+	}
+	return t.RangeTextPaste(from, to, newText, newMarks)
+}

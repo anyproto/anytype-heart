@@ -41,6 +41,7 @@ type Block interface {
 	SetTextBackgroundColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) ([]simple.Block, string, error)
+	RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error
 	Merge(b simple.Block) error
 }
 
@@ -278,6 +279,78 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	}
 	return newBlocks, t.content.Text, nil
 }
+
+func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error {
+	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
+		return ErrOutOfRange
+	}
+	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
+		return ErrOutOfRange
+	}
+	if from > to {
+		return ErrOutOfRange // Maybe different error? @enkogu
+	}
+
+	var combinedMarks []*model.BlockContentTextMark
+
+	addLen := int32(utf8.RuneCountInString(newText))
+
+	for _, mark := range newMarks {
+		mark.Range.From = mark.Range.From + from
+		mark.Range.To = mark.Range.To + from
+
+		combinedMarks = append(combinedMarks, mark)
+	}
+
+	for _, mark := range t.content.Marks.Marks {
+		// mark 100% in right part of the block
+		if mark.Range.From >= to {
+			mark.Range.From = mark.Range.From - to + addLen
+			mark.Range.To = mark.Range.From - to + addLen
+			combinedMarks = append(combinedMarks, mark)
+
+			// mark 100% in left part of the block
+		} else if mark.Range.To <= from {
+
+			combinedMarks = append(combinedMarks, mark)
+
+			// mark 100% in range
+		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
+			// Do nothing, ignore this mark
+
+			// mark partly in left part and partly in range
+		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
+			mark.Range.To = from
+			combinedMarks = append(combinedMarks, mark)
+
+			// mark partly in range and partly in right part
+		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
+			mark.Range.From = to
+			combinedMarks = append(combinedMarks, mark)
+
+			// mark partly in left part and partly in right part
+		} else {
+			newMark := &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: mark.Range.From, // Trivial
+					To:   from,
+				},
+				Type:  mark.Type,
+				Param: mark.Param,
+			}
+			combinedMarks = append(combinedMarks, newMark)
+			mark.Range.From = to + addLen
+			mark.Range.To = mark.Range.To + addLen
+			combinedMarks = append(combinedMarks, mark)
+		}
+	}
+
+	runes := []rune(t.content.Text)
+	t.content.Text = string(runes[:from]) + newText + string(runes[to:])
+	t.content.Marks = &model.BlockContentTextMarks{ Marks: combinedMarks }
+	return nil
+}
+
 
 func (t *Text) Merge(b simple.Block) error {
 	text, ok := b.(*Text)

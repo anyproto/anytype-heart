@@ -102,11 +102,26 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 
 	req.AnySlot = reqFiltered
 
+	// ---- SPECIAL CASE: paste text without new blocks creation ----
+	// If there is 1 block and it is a text =>
+	// if there is a focused block => Do not create new blocks
+	// If selectedBlocks => ignore it, it is an error
+	if  content, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok &&
+		len(req.AnySlot) == 1 &&
+		len(req.FocusedBlockId) > 0 {
+
+		err = p.rangeTextPaste(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To, content.Text.Text, content.Text.Marks.Marks)
+		if err != nil {
+			return blockIds, err
+		}
+	}
+
+
 	if len(req.SelectedBlockIds) > 0 {
 		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
 
 		// selected text -> remove it and split the block
-	} else if len(req.FocusedBlockId) > 0 {
+	} else if len(req.FocusedBlockId) > 0 && len(req.AnySlot) > 1 {
 
 		// split block
 		_, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To)
