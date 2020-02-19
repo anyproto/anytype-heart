@@ -102,20 +102,86 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 
 	req.AnySlot = reqFiltered
 
+	var getPrevBlockId = func(id string) string {
+		var out string
+		var prev string
+		cIds = p.versions[p.GetId()].Model().ChildrenIds
+		for _, i := range cIds {
+			out = prev
+			if i == id {
+				return out
+			}
+			prev = i
+		}
+		return out
+	}
+
+	// ---- SPECIAL CASE: paste in title ----
+	titlePasted := false
+	if len(req.FocusedBlockId) > 0 && p.versions[req.FocusedBlockId] != nil {
+		if contentTitle, ok := p.versions[req.FocusedBlockId].Model().Content.(*model.BlockContentOfText); ok &&
+			len(req.AnySlot) > 0 {
+			if contentPaste, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok {
+				if contentTitle.Text.Style == model.BlockContentText_Title {
+
+					contentPaste.Text.Text = strings.Replace(contentPaste.Text.Text, "\n", " ", -1)
+					contentPaste.Text.Marks = &model.BlockContentTextMarks{}
+					err = p.rangeTextPaste(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To, contentPaste.Text.Text, contentPaste.Text.Marks.Marks)
+					titlePasted = true
+
+					if len(req.AnySlot) == 1 {
+					return blockIds, p.applyAndSendEvent(s)
+						} else {
+						req.AnySlot = req.AnySlot[1:]
+
+						var getNextBlockId = func(id string) string {
+							var out string
+							var isNext = false
+							cIds = p.versions[p.GetId()].Model().ChildrenIds
+							for _, i := range cIds {
+								if isNext {
+									out = i
+									isNext = false
+								}
+
+								if i == id {
+									isNext = true
+								}
+							}
+							return out
+						}
+
+						fmt.Println("NEXT:", getNextBlockId(req.FocusedBlockId))
+						//req.FocusedBlockId = getNextBlockId(req.FocusedBlockId)
+						req.SelectedTextRange.From = 0
+						req.SelectedTextRange.To = 0
+						//return p.pasteAny(req)
+						blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
+						if err != nil {
+							return blockIds, err
+						}
+
+						return blockIds, p.applyAndSendEvent(s)
+					}
+				}
+			}
+		}
+	}
+
 	// ---- SPECIAL CASE: paste text without new blocks creation ----
 	// If there is 1 block and it is a text =>
 	// if there is a focused block => Do not create new blocks
 	// If selectedBlocks => ignore it, it is an error
 	if  content, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok &&
 		len(req.AnySlot) == 1 &&
-		len(req.FocusedBlockId) > 0 {
+		len(req.FocusedBlockId) > 0 &&
+		!titlePasted {
 
 		err = p.rangeTextPaste(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To, content.Text.Text, content.Text.Marks.Marks)
 		if err != nil {
-			return blockIds, err
+			return blockIds, p.applyAndSendEvent(s)
 		}
 	}
-
 
 	if len(req.SelectedBlockIds) > 0 {
 		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
@@ -129,20 +195,6 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 			return blockIds, err
 		}
 		targetId = req.FocusedBlockId
-
-		var getPrevBlockId = func(id string) string {
-			var out string
-			var prev string
-			cIds = p.versions[p.GetId()].Model().ChildrenIds
-			for _, i := range cIds {
-				out = prev
-				if i == id {
-					return out
-				}
-				prev = i
-			}
-			return out
-		}
 
 		// if cursor at (0,0) – paste top
 		if req.SelectedTextRange.From == 0 {

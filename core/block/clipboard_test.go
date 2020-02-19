@@ -67,7 +67,7 @@ func checkBlockText(t *testing.T, fx *pageFixture, textArr []string)  {
 		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
 		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
 	}
-	fmt.Print("\n")
+	//fmt.Print("\n")
 }
 
 func checkBlockMarks(t *testing.T, fx *pageFixture, marksArr [][]*model.BlockContentTextMark)  {
@@ -147,18 +147,48 @@ func checkEvents(t *testing.T, fx *pageFixture, eventsLen int, messagesLen int) 
 	//require.Len(t, fx.serviceFx.events[1].Messages, messagesLen)
 }
 
-//Humans (Homo sapiens) are the only extant members of the subtribe Hominina.
 
-/*func TestCommonSmart_pasteOneBlock(t *testing.T) {
+func TestCommonSmart_pasteTitle(t *testing.T) {
 
 	t.Run("Simple: 2 p blocks", func(t *testing.T) {
-		fx := createPage(t, []string{"11111", "22222", "33333", "abcde", "55555"})
-		pasteHTML(t, fx, "4", model.Range{From: 2, To: 4}, []string{}, "<p>abcdef</p><p>hello</p>");
-		checkBlockText(t, fx, []string{"11111", "22222", "33333", "ab", "abcdef", "hello", "e", "55555"});
-		checkEvents(t, fx, 2, 5)
+		blocks := []*model.Block{}
+
+		blocks = append(blocks, &model.Block{Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Title",
+					Style: model.BlockContentText_Title,
+				},
+			},
+		})
+
+		blocks = append(blocks, &model.Block{Id: "2",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Text1",
+					Style: model.BlockContentText_Paragraph,
+				},
+			},
+		})
+
+		blocks = append(blocks, &model.Block{Id: "3",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Text2",
+					Style: model.BlockContentText_Paragraph,
+				},
+			},
+		})
+
+		fx := newPageFixture(t, blocks...)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+
+		pasteHTML(t, fx, "1", model.Range{From: 5, To: 5}, []string{}, "<p>abcdef</p><p>hello</p><p>ololo</p>");
+		checkBlockText(t, fx, []string{"Titleabcdef", "hello", "ololo", "Text1", "Text2"});
 	})
-})
-*/
+}
+
 func TestCommonSmart_pasteHTML(t *testing.T) {
 
 	t.Run("Simple: 2 p blocks", func(t *testing.T) {
