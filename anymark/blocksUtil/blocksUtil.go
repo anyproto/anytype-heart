@@ -51,6 +51,7 @@ type rWriter struct {
 	marksStartQueue   []int
 	textStylesQueue   []model.BlockContentTextStyle
 	blocks            []*model.Block
+	curStyledBlock    model.BlockContentTextStyle
 }
 
 func (rw *rWriter) SetMarkStart () {
@@ -91,6 +92,10 @@ func (rw *rWriter) AddMark (mark model.BlockContentTextMark) {
 }
 
 func (rw *rWriter) OpenNewTextBlock (style model.BlockContentTextStyle) {
+	if style != model.BlockContentText_Paragraph {
+		rw.curStyledBlock = style
+	}
+
 	rw.textStylesQueue = append(rw.textStylesQueue, style)
 }
 
@@ -138,6 +143,13 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 	if len(rw.textStylesQueue) > 0 {
 		if rw.textStylesQueue[len(rw.textStylesQueue)-1] != content { return }
 		rw.textStylesQueue = rw.textStylesQueue[:len(rw.textStylesQueue)-1]
+	}
+
+	if style == rw.curStyledBlock {
+		rw.curStyledBlock = model.BlockContentText_Paragraph
+	} else
+	if rw.curStyledBlock != model.BlockContentText_Paragraph {
+		style = rw.curStyledBlock
 	}
 
 	newBlock := model.Block{
