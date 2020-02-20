@@ -17,8 +17,9 @@ message Rpc {
         message Files {
             message Request {
                 string contextId = 1;
-                string focusedBlockId = 2; // can be null
-                repeated string localFilePaths = 3;
+                string dropTargetId = 2;
+                anytype.model.Block.Position position = 3;
+                repeated string localFilePaths = 4;
             }
 
             message Response {

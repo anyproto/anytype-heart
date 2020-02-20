@@ -3364,7 +3364,8 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| focusedBlockId | [string](#string) |  | can be null |
+| dropTargetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 | localFilePaths | [string](#string) | repeated |  |
 
 
