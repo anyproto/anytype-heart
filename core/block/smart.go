@@ -301,16 +301,28 @@ func (p *commonSmart) duplicate(s *state, req pb.RpcBlockListDuplicateRequest) (
 	pos := req.Position
 	targetId := req.TargetId
 	for _, id := range req.BlockIds {
-		copyId, e := p.copy(s, id)
-		if e != nil {
-			return nil, e
+
+		restricted := false
+
+		switch block := s.get(id).Model().Content.(type) {
+		case *model.BlockContentOfText:
+			if block.Text.Style == model.BlockContentText_Title {
+				restricted = true
+			}
 		}
-		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
-			return
+
+		if !restricted {
+			copyId, e := p.copy(s, id)
+			if e != nil {
+				return nil, e
+			}
+			if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+				return
+			}
+			pos = model.Block_Bottom
+			targetId = copyId
+			newIds = append(newIds, copyId)
 		}
-		pos = model.Block_Bottom
-		targetId = copyId
-		newIds = append(newIds, copyId)
 	}
 
 	return newIds, nil
@@ -425,6 +437,13 @@ func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
 }
 
 func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos model.BlockPosition) (err error) {
+	switch block := b.Model().Content.(type) {
+	case *model.BlockContentOfText:
+		if block.Text.Style == model.BlockContentText_Title {
+			return nil // Just do not insert, it is not an error
+		}
+	}
+
 	parent := s.get(p.GetId()).Model()
 	var target simple.Block
 	if targetId != "" {
