@@ -3,7 +3,6 @@ package blocksUtil
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"io"
 	"unicode/utf8"
@@ -63,7 +62,7 @@ func (rw *rWriter) AddTextByte (b []byte) {
 }
 
 func (rw *rWriter) GetMarkStart () int {
-	if len(rw.marksStartQueue) > 0 {
+	if rw.marksStartQueue != nil && len(rw.marksStartQueue) > 0 {
 		return rw.marksStartQueue[len(rw.marksStartQueue) - 1]
 	} else {
 		return 0
@@ -79,7 +78,8 @@ func (rw *rWriter) AddMark (mark model.BlockContentTextMark) {
 
 	if len(rw.textStylesQueue) > 0 {
 		// IMPORTANT: ignore if current block is not support markup.
-		if  rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header1 &&
+		if  rw.textStylesQueue !=nil && len(rw.textStylesQueue) > 0 &&
+		    rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header1 &&
 			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header2 &&
 			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header3 &&
 			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header4 {
@@ -116,7 +116,6 @@ func NewRWriter (writer *bufio.Writer) RWriter {
 }
 
 func (rw *rWriter) GetText () string {
-	fmt.Println("text:", utf8.RuneCountInString(rw.textBuffer), rw.textBuffer)
 	return rw.textBuffer
 }
 
