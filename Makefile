@@ -1,11 +1,16 @@
 export GOPRIVATE=github.com/anytypeio
 
-.PHONY : protos_deps
-setup:
+all:
+	@set -e;
+.PHONY : protos-deps
+setup: setup-go
+	npm install
+
+setup-go:
 	GOPRIVATE=github.com/anytypeio go mod download
 	GO111MODULE=off go get github.com/ahmetb/govvv
 	GO111MODULE=off go get golang.org/x/mobile/cmd/...
-	npm install
+
 fmt:
 	echo 'Formatting with prettier...'
 	npx prettier --write "./**" 2> /dev/null || true
@@ -71,12 +76,13 @@ setup-protoc:
 	cd $(GOPATH); go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 	export PATH=$(PATH):$(GOROOT)/bin:$(GOPATH)/bin
 
-protos_deps:
+protos-deps:
 	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
 	mkdir -p vendor/github.com/anytypeio/go-anytype-library/
 	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
+	chmod -R 755 ./vendor/github.com/anytypeio/go-anytype-library/pb
 
-protos-debug: protos_deps
+protos-debug: protos-deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)
@@ -85,7 +91,7 @@ protos-debug: protos_deps
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 GOGO_GRPC_SERVER_METHOD_NO_ERROR=1 GOGO_GRPC_SERVER_METHOD_NO_CONTEXT=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=grpc:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib-debug/
 
-protos: protos_deps
+protos: protos-deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)
@@ -113,7 +119,7 @@ build-debug: protos-debug
 run-debug: build-debug
 	./dist/debug
 
-build-dev-js: setup build-lib build-js protos-ts
+build-dev-js: setup protos-deps build-lib build-js protos-ts
 	cp -r jsaddon/build ../js-anytype/
 	cp build/ts/commands.js ../js-anytype/src/proto/commands.js
 
