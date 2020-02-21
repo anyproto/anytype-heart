@@ -194,6 +194,9 @@ func (smartBlock *SmartBlock) mergeWithLastVersion(newVersion *SmartBlockVersion
 		newVersion.model.Block.Restrictions = lastVersion.Model().Restrictions
 	}
 
+	newVersion.model.Block.BackgroundColor = lastVersion.Model().BackgroundColor
+	newVersion.model.Block.Align = lastVersion.Model().Align
+
 	lastVersionB, _ := proto.Marshal(lastVersion.Model())
 	newVersionB, _ := proto.Marshal(newVersion.Model())
 	if string(lastVersionB) == string(newVersionB) {
@@ -304,6 +307,9 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 				blockVersion.model.Block.Restrictions = block.Restrictions
 			}
 
+			blockVersion.model.Block.Align = block.Align
+			blockVersion.model.Block.BackgroundColor = block.BackgroundColor
+
 			// only add dashboardVersion in case it was intentionally passed to AddVersions blocks
 			blockVersions = append(blockVersions, blockVersion)
 		} else {
@@ -342,6 +348,9 @@ func (smartBlock *SmartBlock) AddVersions(blocks []*model.Block) ([]BlockVersion
 				if block.Content != nil {
 					blockVersion.model.BlockById[block.Id].Content = block.Content
 				}
+
+				blockVersion.model.BlockById[block.Id].BackgroundColor = block.BackgroundColor
+				blockVersion.model.BlockById[block.Id].Align = block.Align
 			}
 
 			if file, ok := block.Content.(*model.BlockContentOfFile); ok {
