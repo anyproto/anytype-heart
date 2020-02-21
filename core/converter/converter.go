@@ -97,6 +97,9 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 }
 
 func contains(s []*Node, e *Node) bool {
+	if s == nil || len(s) < 1 {
+		return false
+	}
 	for _, a := range s {
 		if a.id == e.id {
 			return true
