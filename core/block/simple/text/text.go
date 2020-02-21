@@ -206,58 +206,22 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 		return newBlocks, t.content.Text, nil
 	}
 
-/*	if from == 0 && to > 0 {
-
-	}*/
-
 	runes := []rune(t.content.Text)
 	t.content.Text = string(runes[:from])
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
 	}
+
 	newMarks := &model.BlockContentTextMarks{}
 	oldMarks := &model.BlockContentTextMarks{}
+	r := model.Range{From:from, To:to}
+	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
+	// TODO:
 
-	for _, mark := range t.content.Marks.Marks {
-		// mark 100% in new block
-		if mark.Range.From >= to {
-			mark.Range.From -= to
-			mark.Range.To -= to
-			newMarks.Marks = append(newMarks.Marks, mark)
+	for i, _ := range newMarks.Marks {
+		newMarks.Marks[i].Range.From = newMarks.Marks[i].Range.From - r.To
+		newMarks.Marks[i].Range.To = newMarks.Marks[i].Range.To - r.To
 
-		// mark 100% in old block
-		} else if mark.Range.To <= from {
-			oldMarks.Marks = append(oldMarks.Marks, mark)
-
-		// mark 100% in range
-		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
-			// Do nothing, ignore this mark
-
-		// mark partly in old block and partly in range
-		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
-			mark.Range.To = from
-			oldMarks.Marks = append(oldMarks.Marks, mark)
-
-			// mark partly in range and partly in new block
-		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
-			mark.Range.From = to
-			newMarks.Marks = append(newMarks.Marks, mark)
-
-		// mark partly in old block and partly in new block
-		} else {
-			newMark := &model.BlockContentTextMark{
-				Range: &model.Range{
-					From: mark.Range.From, // Trivial
-					To:   from,
-				},
-				Type:  mark.Type,
-				Param: mark.Param,
-			}
-			newMarks.Marks = append(newMarks.Marks, newMark)
-			mark.Range.From = to
-			// Trivial: mark.Range.To = mark.Range.To
-			oldMarks.Marks = append(oldMarks.Marks, mark)
-		}
 	}
 	t.content.Marks = oldMarks
 	newBlock := NewText(&model.Block{
@@ -279,6 +243,82 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	}
 	return newBlocks, t.content.Text, nil
 }
+
+ func Abs (x int32) int32 {
+	if x < 0 { return -x }
+	return x
+}
+
+func (t *Text) splitMarks (marks []*model.BlockContentTextMark, r *model.Range, textLength int32) (topMarks []*model.BlockContentTextMark, botMarks []*model.BlockContentTextMark) {
+	for i := 0; i < len(marks); i++ {
+		m := marks[i]
+
+		// <b>lorem</b> lorem (**********)  :--->   <b>lorem</b> lorem __PASTE__
+		if (m.Range.From < r.From) && (m.Range.To <= r.From) {
+			topMarks = append(topMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From,
+					To:   m.Range.To,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+		} else
+
+		// <b>lorem lorem(******</b>******)  :--->   <b>lorem lorem</b> __PASTE__
+		if (m.Range.From < r.From) && (m.Range.To > r.From) && (m.Range.To < r.To) {
+			topMarks = append(topMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From,
+					To:   r.From,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+
+		} else
+
+		// (**<b>******</b>******)  :--->     __PASTE__
+		if (m.Range.From >= r.From) && (m.Range.To <= r.To) {
+			continue
+		} else
+
+		// <b>lorem (*********) lorem</b>  :--->   <b>lorem</b> __PASTE__ <b>lorem</b>
+		if (m.Range.From < r.From) && (m.Range.To > r.To) {
+			topMarks = append(topMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From,
+					To:   r.From,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+
+			botMarks = append(botMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: r.From + textLength,
+					To:   m.Range.To - (r.To - r.From) + textLength,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+
+		} else
+		// (*********) <b>lorem lorem</b>  :--->   __PASTE__ <b>lorem lorem</b>
+		if (m.Range.From >= r.To) {
+			botMarks = append(botMarks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From  - (r.To - r.From) + textLength,
+					To:   m.Range.To - (r.To - r.From) + textLength,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+		}
+	}
+	return topMarks, botMarks
+}
+
 
 func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
@@ -302,47 +342,17 @@ func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*
 		combinedMarks = append(combinedMarks, mark)
 	}
 
-	for _, mark := range t.content.Marks.Marks {
-		// mark 100% in right part of the block
-		if mark.Range.From >= to {
-			mark.Range.From = mark.Range.From - to + addLen
-			mark.Range.To = mark.Range.From - to + addLen
-			combinedMarks = append(combinedMarks, mark)
+	leftMarks := &model.BlockContentTextMarks{}
+	rightMarks := &model.BlockContentTextMarks{}
+	r := model.Range{From:from, To:to}
+	leftMarks.Marks, rightMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, addLen)
+//....
+	for _, mark := range leftMarks.Marks {
+		combinedMarks = append(combinedMarks, mark)
+	}
 
-			// mark 100% in left part of the block
-		} else if mark.Range.To <= from {
-
-			combinedMarks = append(combinedMarks, mark)
-
-			// mark 100% in range
-		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
-			// Do nothing, ignore this mark
-
-			// mark partly in left part and partly in range
-		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
-			mark.Range.To = from
-			combinedMarks = append(combinedMarks, mark)
-
-			// mark partly in range and partly in right part
-		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
-			mark.Range.From = to
-			combinedMarks = append(combinedMarks, mark)
-
-			// mark partly in left part and partly in right part
-		} else {
-			newMark := &model.BlockContentTextMark{
-				Range: &model.Range{
-					From: mark.Range.From, // Trivial
-					To:   from,
-				},
-				Type:  mark.Type,
-				Param: mark.Param,
-			}
-			combinedMarks = append(combinedMarks, newMark)
-			mark.Range.From = to + addLen
-			mark.Range.To = mark.Range.To + addLen
-			combinedMarks = append(combinedMarks, mark)
-		}
+	for _, mark := range rightMarks.Marks {
+		combinedMarks = append(combinedMarks, mark)
 	}
 
 	runes := []rune(t.content.Text)

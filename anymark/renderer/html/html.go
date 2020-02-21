@@ -481,7 +481,6 @@ func (r *Renderer) renderLink(w blocksUtil.RWriter, source []byte, node ast.Node
 		w.SetMarkStart()
 	} else {
 		to := int32(utf8.RuneCountInString(w.GetText()))
-		fmt.Println(">>> DEBUG:", "\n     text:", "\n     ", w.GetText(), "\n     length:", to, int32(len(w.GetText())))
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
 			Type:  model.BlockContentTextMark_Link,

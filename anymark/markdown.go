@@ -193,8 +193,10 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 
 	//md := html2md.Convert(preprocessedSource)
 	md = spaceReplace.WhitespaceNormalizeString(md)
-	md = strings.ReplaceAll(md, "*  *", "* *")
+	//md = strings.ReplaceAll(md, "*  *", "* *")
 
+	reCode := regexp.MustCompile(`[ ]+`)
+	md = reCode.ReplaceAllString(md, ` `)
 
 /*	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
 	md = reLinkBreaks.ReplaceAllString(md, `[$1]($2)`)

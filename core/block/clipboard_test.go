@@ -87,9 +87,10 @@ func checkBlockMarks(t *testing.T, fx *pageFixture, marksArr [][]*model.BlockCon
 			marksArr[i] != nil {
 
 			require.Equal(t, len(marksArr[i]), len(fx.versions[id].Model().GetText().Marks.Marks))
-
+			//fmt.Println("Marks count:", len(marksArr[i]), len(fx.versions[id].Model().GetText().Marks.Marks))
 			for j := 0; j < len(marksArr[i]); j++ {
 				require.Equal(t, marksArr[i][j], fx.versions[id].Model().GetText().Marks.Marks[j])
+				//fmt.Println("Should be:", marksArr[i][j], "Real:", fx.versions[id].Model().GetText().Marks.Marks[j])
 			}
 		}
 	}
@@ -145,6 +146,165 @@ func pasteHTML(t *testing.T, fx *pageFixture, id string, textRange model.Range, 
 func checkEvents(t *testing.T, fx *pageFixture, eventsLen int, messagesLen int) {
 	//require.Len(t, fx.serviceFx.events, eventsLen)
 	//require.Len(t, fx.serviceFx.events[1].Messages, messagesLen)
+}
+
+func TestCommonSmart_splitMarks(t *testing.T) {
+	t.Run("<b>lorem</b> lorem (**********)  :--->   <b>lorem</b> lorem __PASTE__  \n(m.Range.From < r.From) && (m.Range.To <= r.From)", func(t *testing.T) {
+		initialText := []string{"abcdef"}
+		initialMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:3},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		pasteText := []string{"123456"}
+		pasteMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:0, To:4},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		fx := createPageWithMarks(t, initialText, initialMarks)
+
+		pasteAny(t, fx, "1", model.Range{From: 5, To: 5}, []string{}, createBlocksWithMarks(pasteText, pasteMarks));
+		checkBlockMarks(t, fx, [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:0+5, To:4+5},
+				Type: model.BlockContentTextMark_Bold,
+			},{
+				Range: &model.Range{From:1, To:3},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		});
+	})
+
+	t.Run("<b>lorem lorem(******</b>******)  :--->   <b>lorem lorem</b> __PASTE__  \n(m.Range.From < r.From) && (m.Range.To > r.From) && (m.Range.To < r.To)", func(t *testing.T) {
+		initialText := []string{"abcdef"}
+		initialMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:3},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		pasteText := []string{"123456"}
+		pasteMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:0, To:4},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		fx := createPageWithMarks(t, initialText, initialMarks)
+
+		pasteAny(t, fx, "1", model.Range{From: 2, To: 5}, []string{}, createBlocksWithMarks(pasteText, pasteMarks));
+		checkBlockMarks(t, fx, [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:0+5-3, To:4+5-3},
+				Type: model.BlockContentTextMark_Bold,
+			},{
+				Range: &model.Range{From:1, To:2},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		});
+	})
+
+	t.Run("(**<b>******</b>******)  :--->     __PASTE__  (m.Range.From >= r.From) && (m.Range.To <= r.To)", func(t *testing.T) {
+		initialText := []string{"abcdef"}
+		initialMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:3},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		pasteText := []string{"123456"}
+		pasteMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:0, To:4},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		fx := createPageWithMarks(t, initialText, initialMarks)
+
+		pasteAny(t, fx, "1", model.Range{From: 1, To: 3}, []string{}, createBlocksWithMarks(pasteText, pasteMarks));
+		checkBlockMarks(t, fx, [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:5},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		});
+	})
+
+	t.Run("<b>lorem (*********) lorem</b>  :--->   <b>lorem</b> __PASTE__ <b>lorem</b>  (m.Range.From < r.From) && (m.Range.To > r.To)", func(t *testing.T) {
+		initialText := []string{"abcdef"}
+		initialMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:4},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		pasteText := []string{"123456"}
+		pasteMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:1, To:4},
+				Type: model.BlockContentTextMark_Italic,
+			}},
+		}
+
+		fx := createPageWithMarks(t, initialText, initialMarks)
+
+		pasteAny(t, fx, "1", model.Range{From: 2, To: 3}, []string{}, createBlocksWithMarks(pasteText, pasteMarks));
+		checkBlockMarks(t, fx, [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:3, To:6},
+				Type: model.BlockContentTextMark_Italic,
+			},{
+				Range: &model.Range{From:1, To:2},
+				Type: model.BlockContentTextMark_Bold,
+			},
+			{
+				Range: &model.Range{From:8, To:9},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		});
+	})
+
+	t.Run("(*********) <b>lorem lorem</b>  :--->   __PASTE__ <b>lorem lorem</b>  (m.Range.From > r.To)", func(t *testing.T) {
+		initialText := []string{"abcdef"}
+		initialMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:3, To:4},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		}
+
+		pasteText := []string{"123456"}
+		pasteMarks := [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:3, To:4},
+				Type: model.BlockContentTextMark_Italic,
+			}},
+		}
+
+		fx := createPageWithMarks(t, initialText, initialMarks)
+
+		pasteAny(t, fx, "1", model.Range{From: 1, To: 2}, []string{}, createBlocksWithMarks(pasteText, pasteMarks));
+
+		checkBlockMarks(t, fx, [][]*model.BlockContentTextMark{
+			{{
+				Range: &model.Range{From:4, To:5},
+				Type: model.BlockContentTextMark_Italic,
+			},{
+				Range: &model.Range{From:8, To:9},
+				Type: model.BlockContentTextMark_Bold,
+			}},
+		});
+	})
 }
 
 

@@ -127,11 +127,16 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 					contentPaste.Text.Text = strings.Replace(contentPaste.Text.Text, "\n", " ", -1)
 					contentPaste.Text.Marks = &model.BlockContentTextMarks{}
 					err = p.rangeTextPaste(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To, contentPaste.Text.Text, contentPaste.Text.Marks.Marks)
+					if err != nil {
+						fmt.Println(">>>> OUT3")
+						return blockIds, err
+					}
+
 					titlePasted = true
 
 					if len(req.AnySlot) == 1 {
-					return blockIds, p.applyAndSendEvent(s)
-						} else {
+						return blockIds, p.applyAndSendEvent(s)
+					} else {
 						req.AnySlot = req.AnySlot[1:]
 
 						var getNextBlockId = func(id string) string {
@@ -174,13 +179,25 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 	// If selectedBlocks => ignore it, it is an error
 	if  content, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok &&
 		len(req.AnySlot) == 1 &&
-		len(req.FocusedBlockId) > 0 &&
+		len(req.FocusedBlockId) > 0 && p.versions[req.FocusedBlockId] != nil &&
 		!titlePasted {
 
-		err = p.rangeTextPaste(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To, content.Text.Text, content.Text.Marks.Marks)
-		if err != nil {
-			return blockIds, p.applyAndSendEvent(s)
+		if req.SelectedTextRange == nil {
+			req.SelectedTextRange = &model.Range{From:0, To:0}
 		}
+		err = p.rangeTextPaste(s,
+			req.FocusedBlockId,
+			req.SelectedTextRange.From,
+			req.SelectedTextRange.To,
+			content.Text.Text,
+			content.Text.Marks.Marks)
+		if err != nil {
+			fmt.Println(">>> OUT2", err)
+			return blockIds, err
+		}
+
+		fmt.Println(">>> OUT1")
+		return blockIds, p.applyAndSendEvent(s)
 	}
 
 	if len(req.SelectedBlockIds) > 0 {
