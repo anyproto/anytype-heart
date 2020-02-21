@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
@@ -155,11 +156,45 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	reWikiCode := regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
+
+
+	strikethrough := htmlConverter.Rule{
+		Filter: []string{"span"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			// If the span element has not the classname `bb_strike` return nil.
+			// That way the next rules will apply. In this case the commonmark rules.
+			// -> return nil -> next rule applies
+			if !selec.HasClass("bb_strike") {
+				return nil
+			}
+
+			// Trim spaces so that the following does NOT happen: `~ and cake~`.
+			// Because of the space it is not recognized as strikethrough.
+			// -> trim spaces at begin&end of string when inside strong/italic/...
+			content = strings.TrimSpace(content)
+			return htmlConverter.String("~" + content + "~")
+		},
+	}
+
+	italic := htmlConverter.Rule{
+		Filter: []string{"i"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			content = strings.TrimSpace(content)
+			return htmlConverter.String(" *" + content + "* ")
+		},
+	}
+
+
+
 	converter := htmlConverter.NewConverter("", true, nil)
+	converter.AddRules(strikethrough, italic)
+
 	md, _ := converter.ConvertString(preprocessedSource)
 
 	//md := html2md.Convert(preprocessedSource)
 	md = spaceReplace.WhitespaceNormalizeString(md)
+	md = strings.ReplaceAll(md, "*  *", "* *")
+
 
 /*	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
 	md = reLinkBreaks.ReplaceAllString(md, `[$1]($2)`)
