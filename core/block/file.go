@@ -70,7 +70,7 @@ func (p *commonSmart) dropFilesCreateStructure(targetId string, pos model.BlockP
 					Fields: &types.Struct{
 						Fields: map[string]*types.Value{
 							"name": testStringValue(entry.name),
-							"icon": testStringValue(":folder:"),
+							"icon": testStringValue(":file_folder:"),
 						},
 					},
 					Content: &model.BlockContentOfPage{
@@ -90,14 +90,14 @@ func (p *commonSmart) dropFilesCreateStructure(targetId string, pos model.BlockP
 		} else {
 			fb, e := s.create(&model.Block{Content: &model.BlockContentOfFile{
 				File: &model.BlockContentFile{
-					Name:  entry.name,
-					State: model.BlockContentFile_Uploading,
+					Name: entry.name,
 				},
 			}})
-
 			if e != nil {
 				return nil, e
 			}
+			fb.(file.Block).SetState(model.BlockContentFile_Uploading)
+
 			if err = p.insertTo(s, fb, targetId, pos); err != nil {
 				return
 			}
@@ -116,12 +116,17 @@ func (p *commonSmart) dropFilesCreateStructure(targetId string, pos model.BlockP
 func (p *commonSmart) dropFilesSetInfo(info dropFileInfo) (err error) {
 	return p.UpdateFileBlock(info.blockId, func(f file.Block) {
 		if info.err != nil {
+			log.Warningf("upload file[%v] error: %v", info.name, info.err)
 			f.SetState(model.BlockContentFile_Error)
 			return
 		}
-		f.Model().Content = &model.BlockContentOfFile{
-			File: info.file,
-		}
+		fc := f.Model().GetFile()
+		fc.Type = info.file.Type
+		fc.Mime = info.file.Mime
+		fc.Hash = info.file.Hash
+		fc.Name = info.file.Name
+		fc.State = info.file.State
+		fc.Size_ = info.file.Size_
 	})
 }
 
@@ -271,6 +276,8 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 				close(in)
 				return
 			}
+			targetId = ""
+			pos = 0
 		}
 		if err != nil {
 			log.Warningf("can't create files: %v", err)
@@ -280,7 +287,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		}
 		idx++
 	}
-
+	close(in)
 	return
 }
 
@@ -295,10 +302,12 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 			if ! ok {
 				return
 			}
+			log.Infof("received file %v", info.name)
 			if canceled {
 				info.err = context.Canceled
 			} else {
 				info.err = dp.addFile(info)
+				log.Infof("add file file %v", info.err)
 			}
 			if err := dp.apply(info); err != nil {
 				log.Warningf("can't apply file: %v", err)
@@ -324,6 +333,7 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 
 func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 	defer atomic.AddInt64(&dp.done, 1)
+	log.Infof("apply file: %+v", f)
 	sb, release, err := dp.s.pickBlock(f.pageId)
 	if err != nil {
 		return
