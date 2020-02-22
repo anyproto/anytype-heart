@@ -23,7 +23,7 @@ func (e emptySmart) Show() (err error) {
 	return
 }
 
-func (e emptySmart) Open(b anytype.Block) (err error) {
+func (e emptySmart) Open(b anytype.Block, active bool) (err error) {
 	err = errEmptyBlock
 	return
 }
@@ -33,6 +33,10 @@ func (e emptySmart) Init() {
 }
 
 func (e emptySmart) GetId() (id string) {
+	return
+}
+
+func (e emptySmart) Active(isActive bool) {
 	return
 }
 

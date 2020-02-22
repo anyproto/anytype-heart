@@ -15,6 +15,12 @@ func testStringValue(x string) *types.Value {
 	}
 }
 
+func testBoolValue(x bool) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_BoolValue{BoolValue: x},
+	}
+}
+
 func testFloatValue(x float64) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_NumberValue{NumberValue: x},
@@ -328,11 +334,11 @@ var testBlocks = []*model.Block{
 				TargetBlockId: "testpage",
 				Fields: &types.Struct{
 					Fields: map[string]*types.Value{
-						"name": testStringValue("Test page"),
-						"icon": testStringValue(":deciduous_tree:"),
+						"name":       testStringValue("Test page"),
+						"icon":       testStringValue(":deciduous_tree:"),
+						"isArchived": testBoolValue(true),
 					},
 				},
-				IsArchived: true,
 			},
 		},
 	},
@@ -344,11 +350,11 @@ var testBlocks = []*model.Block{
 				TargetBlockId: "testpage",
 				Fields: &types.Struct{
 					Fields: map[string]*types.Value{
-						"name": testStringValue("Test page"),
-						"icon": testStringValue(":family:"),
+						"name":       testStringValue("Test page"),
+						"icon":       testStringValue(":family:"),
+						"isArchived": testBoolValue(true),
 					},
 				},
-				IsArchived: false,
 			},
 		},
 	},
@@ -365,11 +371,11 @@ var testBlocks = []*model.Block{
 				TargetBlockId: "testpage",
 				Fields: &types.Struct{
 					Fields: map[string]*types.Value{
-						"name": testStringValue("Test page"),
-						"icon": testStringValue(":wastebasket:"),
+						"name":       testStringValue("Test page"),
+						"icon":       testStringValue(":wastebasket:"),
+						"isArchived": testBoolValue(true),
 					},
 				},
-				IsArchived: true,
 			},
 		},
 	},
@@ -660,7 +666,7 @@ type testPage struct {
 	emptySmart
 }
 
-func (t *testPage) Open(b anytype.Block) error {
+func (t *testPage) Open(b anytype.Block, active bool) error {
 	return nil
 }
 

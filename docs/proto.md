@@ -31,6 +31,11 @@
     - [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response)
     - [Rpc.Account.Stop.Response.Error](#anytype.Rpc.Account.Stop.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
+    - [Rpc.Block.Bookmark](#anytype.Rpc.Block.Bookmark)
+    - [Rpc.Block.Bookmark.Fetch](#anytype.Rpc.Block.Bookmark.Fetch)
+    - [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request)
+    - [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response)
+    - [Rpc.Block.Bookmark.Fetch.Response.Error](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error)
     - [Rpc.Block.Close](#anytype.Rpc.Block.Close)
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
     - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
@@ -108,24 +113,21 @@
     - [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request)
     - [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response)
     - [Rpc.Block.Set.Image.Width.Response.Error](#anytype.Rpc.Block.Set.Image.Width.Response.Error)
-    - [Rpc.Block.Set.IsArchived](#anytype.Rpc.Block.Set.IsArchived)
-    - [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request)
-    - [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response)
-    - [Rpc.Block.Set.IsArchived.Response.Error](#anytype.Rpc.Block.Set.IsArchived.Response.Error)
     - [Rpc.Block.Set.Link](#anytype.Rpc.Block.Set.Link)
     - [Rpc.Block.Set.Link.TargetBlockId](#anytype.Rpc.Block.Set.Link.TargetBlockId)
     - [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request)
     - [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response)
     - [Rpc.Block.Set.Link.TargetBlockId.Response.Error](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response.Error)
+    - [Rpc.Block.Set.Page](#anytype.Rpc.Block.Set.Page)
+    - [Rpc.Block.Set.Page.IsArchived](#anytype.Rpc.Block.Set.Page.IsArchived)
+    - [Rpc.Block.Set.Page.IsArchived.Request](#anytype.Rpc.Block.Set.Page.IsArchived.Request)
+    - [Rpc.Block.Set.Page.IsArchived.Response](#anytype.Rpc.Block.Set.Page.IsArchived.Response)
+    - [Rpc.Block.Set.Page.IsArchived.Response.Error](#anytype.Rpc.Block.Set.Page.IsArchived.Response.Error)
     - [Rpc.Block.Set.Restrictions](#anytype.Rpc.Block.Set.Restrictions)
     - [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request)
     - [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response)
     - [Rpc.Block.Set.Restrictions.Response.Error](#anytype.Rpc.Block.Set.Restrictions.Response.Error)
     - [Rpc.Block.Set.Text](#anytype.Rpc.Block.Set.Text)
-    - [Rpc.Block.Set.Text.BackgroundColor](#anytype.Rpc.Block.Set.Text.BackgroundColor)
-    - [Rpc.Block.Set.Text.BackgroundColor.Request](#anytype.Rpc.Block.Set.Text.BackgroundColor.Request)
-    - [Rpc.Block.Set.Text.BackgroundColor.Response](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response)
-    - [Rpc.Block.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error)
     - [Rpc.Block.Set.Text.Checked](#anytype.Rpc.Block.Set.Text.Checked)
     - [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request)
     - [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response)
@@ -177,16 +179,20 @@
     - [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response)
     - [Rpc.BlockList.Move.Response.Error](#anytype.Rpc.BlockList.Move.Response.Error)
     - [Rpc.BlockList.Set](#anytype.Rpc.BlockList.Set)
+    - [Rpc.BlockList.Set.Align](#anytype.Rpc.BlockList.Set.Align)
+    - [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request)
+    - [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response)
+    - [Rpc.BlockList.Set.Align.Response.Error](#anytype.Rpc.BlockList.Set.Align.Response.Error)
+    - [Rpc.BlockList.Set.BackgroundColor](#anytype.Rpc.BlockList.Set.BackgroundColor)
+    - [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request)
+    - [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response)
+    - [Rpc.BlockList.Set.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error)
     - [Rpc.BlockList.Set.Fields](#anytype.Rpc.BlockList.Set.Fields)
     - [Rpc.BlockList.Set.Fields.Request](#anytype.Rpc.BlockList.Set.Fields.Request)
     - [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField)
     - [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response)
     - [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
-    - [Rpc.BlockList.Set.Text.BackgroundColor](#anytype.Rpc.BlockList.Set.Text.BackgroundColor)
-    - [Rpc.BlockList.Set.Text.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request)
-    - [Rpc.BlockList.Set.Text.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response)
-    - [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error)
     - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
     - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
     - [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response)
@@ -225,6 +231,10 @@
     - [Rpc.Ipfs.Image.Get.File.Request](#anytype.Rpc.Ipfs.Image.Get.File.Request)
     - [Rpc.Ipfs.Image.Get.File.Response](#anytype.Rpc.Ipfs.Image.Get.File.Response)
     - [Rpc.Ipfs.Image.Get.File.Response.Error](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error)
+    - [Rpc.LinkPreview](#anytype.Rpc.LinkPreview)
+    - [Rpc.LinkPreview.Request](#anytype.Rpc.LinkPreview.Request)
+    - [Rpc.LinkPreview.Response](#anytype.Rpc.LinkPreview.Response)
+    - [Rpc.LinkPreview.Response.Error](#anytype.Rpc.LinkPreview.Response.Error)
     - [Rpc.Log](#anytype.Rpc.Log)
     - [Rpc.Log.Send](#anytype.Rpc.Log.Send)
     - [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request)
@@ -253,6 +263,7 @@
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
+    - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
@@ -271,10 +282,9 @@
     - [Rpc.Block.Set.Icon.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Icon.Name.Response.Error.Code)
     - [Rpc.Block.Set.Image.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Name.Response.Error.Code)
     - [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code)
-    - [Rpc.Block.Set.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.IsArchived.Response.Error.Code)
     - [Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code)
+    - [Rpc.Block.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.Page.IsArchived.Response.Error.Code)
     - [Rpc.Block.Set.Restrictions.Response.Error.Code](#anytype.Rpc.Block.Set.Restrictions.Response.Error.Code)
-    - [Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code)
     - [Rpc.Block.Set.Text.Checked.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code)
     - [Rpc.Block.Set.Text.Color.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Color.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
@@ -287,8 +297,9 @@
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.Duplicate.Response.Error.Code](#anytype.Rpc.BlockList.Duplicate.Response.Error.Code)
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
+    - [Rpc.BlockList.Set.Align.Response.Error.Code](#anytype.Rpc.BlockList.Set.Align.Response.Error.Code)
+    - [Rpc.BlockList.Set.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
-    - [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
@@ -297,6 +308,7 @@
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
+    - [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
@@ -317,6 +329,15 @@
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo)
     - [Event.Block.Set](#anytype.Event.Block.Set)
+    - [Event.Block.Set.Align](#anytype.Event.Block.Set.Align)
+    - [Event.Block.Set.BackgroundColor](#anytype.Event.Block.Set.BackgroundColor)
+    - [Event.Block.Set.Bookmark](#anytype.Event.Block.Set.Bookmark)
+    - [Event.Block.Set.Bookmark.Description](#anytype.Event.Block.Set.Bookmark.Description)
+    - [Event.Block.Set.Bookmark.FaviconHash](#anytype.Event.Block.Set.Bookmark.FaviconHash)
+    - [Event.Block.Set.Bookmark.ImageHash](#anytype.Event.Block.Set.Bookmark.ImageHash)
+    - [Event.Block.Set.Bookmark.Title](#anytype.Event.Block.Set.Bookmark.Title)
+    - [Event.Block.Set.Bookmark.Type](#anytype.Event.Block.Set.Bookmark.Type)
+    - [Event.Block.Set.Bookmark.Url](#anytype.Event.Block.Set.Bookmark.Url)
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
     - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
     - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
@@ -329,14 +350,12 @@
     - [Event.Block.Set.File.Width](#anytype.Event.Block.Set.File.Width)
     - [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon)
     - [Event.Block.Set.Icon.Name](#anytype.Event.Block.Set.Icon.Name)
-    - [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived)
     - [Event.Block.Set.Link](#anytype.Event.Block.Set.Link)
     - [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields)
     - [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style)
     - [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId)
     - [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
-    - [Event.Block.Set.Text.BackgroundColor](#anytype.Event.Block.Set.Text.BackgroundColor)
     - [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked)
     - [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color)
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
@@ -375,8 +394,10 @@
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
+    - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
   
+    - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
@@ -387,6 +408,7 @@
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
+    - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
   
   
@@ -427,6 +449,7 @@
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
 | ExternalDropFiles | [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request) | [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response) |  |
 | ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
+| LinkPreview | [Rpc.LinkPreview.Request](#anytype.Rpc.LinkPreview.Request) | [Rpc.LinkPreview.Response](#anytype.Rpc.LinkPreview.Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
@@ -442,16 +465,16 @@
 | BlockRedo | [Rpc.Block.Redo.Request](#anytype.Rpc.Block.Redo.Request) | [Rpc.Block.Redo.Response](#anytype.Rpc.Block.Redo.Response) |  |
 | BlockSetFields | [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request) | [Rpc.Block.Set.Fields.Response](#anytype.Rpc.Block.Set.Fields.Response) |  |
 | BlockSetRestrictions | [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request) | [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response) |  |
-| BlockSetIsArchived | [Rpc.Block.Set.IsArchived.Request](#anytype.Rpc.Block.Set.IsArchived.Request) | [Rpc.Block.Set.IsArchived.Response](#anytype.Rpc.Block.Set.IsArchived.Response) |  |
+| BlockSetPageIsArchived | [Rpc.Block.Set.Page.IsArchived.Request](#anytype.Rpc.Block.Set.Page.IsArchived.Request) | [Rpc.Block.Set.Page.IsArchived.Response](#anytype.Rpc.Block.Set.Page.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListSetFields | [Rpc.BlockList.Set.Fields.Request](#anytype.Rpc.BlockList.Set.Fields.Request) | [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response) |  |
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockListDuplicate | [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request) | [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response) |  |
+| BlockListSetBackgroundColor | [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request) | [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response) |  |
+| BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
 | BlockListSetTextColor | [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request) | [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response) |  |
-| BlockSetTextBackgroundColor | [Rpc.Block.Set.Text.BackgroundColor.Request](#anytype.Rpc.Block.Set.Text.BackgroundColor.Request) | [Rpc.Block.Set.Text.BackgroundColor.Response](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response) |  |
-| BlockListSetTextBackgroundColor | [Rpc.BlockList.Set.Text.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request) | [Rpc.BlockList.Set.Text.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
@@ -465,6 +488,7 @@
 | BlockSetVideoWidth | [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request) | [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response) |  |
 | BlockSetIconName | [Rpc.Block.Set.Icon.Name.Request](#anytype.Rpc.Block.Set.Icon.Name.Request) | [Rpc.Block.Set.Icon.Name.Response](#anytype.Rpc.Block.Set.Icon.Name.Response) |  |
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
+| BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
 
@@ -742,6 +766,74 @@ Middleware-to-front-end response for an account stop request
 
 ### Rpc.Block
 Namespace, that agregates subtopics and actions, that relates to blocks.
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark"></a>
+
+### Rpc.Block.Bookmark
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.Fetch"></a>
+
+### Rpc.Block.Bookmark.Fetch
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.Fetch.Request"></a>
+
+### Rpc.Block.Bookmark.Fetch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.Fetch.Response"></a>
+
+### Rpc.Block.Bookmark.Fetch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Bookmark.Fetch.Response.Error](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.Fetch.Response.Error"></a>
+
+### Rpc.Block.Bookmark.Fetch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -1874,64 +1966,6 @@ Image/Video/File blocks then:
 
 
 
-<a name="anytype.Rpc.Block.Set.IsArchived"></a>
-
-### Rpc.Block.Set.IsArchived
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.IsArchived.Request"></a>
-
-### Rpc.Block.Set.IsArchived.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| IsArchived | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.IsArchived.Response"></a>
-
-### Rpc.Block.Set.IsArchived.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.IsArchived.Response.Error](#anytype.Rpc.Block.Set.IsArchived.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.IsArchived.Response.Error"></a>
-
-### Rpc.Block.Set.IsArchived.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.IsArchived.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Block.Set.Link"></a>
 
 ### Rpc.Block.Set.Link
@@ -1993,6 +2027,74 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Page"></a>
+
+### Rpc.Block.Set.Page
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Page.IsArchived"></a>
+
+### Rpc.Block.Set.Page.IsArchived
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Page.IsArchived.Request"></a>
+
+### Rpc.Block.Set.Page.IsArchived.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| isArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Page.IsArchived.Response"></a>
+
+### Rpc.Block.Set.Page.IsArchived.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Page.IsArchived.Response.Error](#anytype.Rpc.Block.Set.Page.IsArchived.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Page.IsArchived.Response.Error"></a>
+
+### Rpc.Block.Set.Page.IsArchived.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.Page.IsArchived.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2062,64 +2164,6 @@ Image/Video/File blocks then:
 
 ### Rpc.Block.Set.Text
 
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.BackgroundColor"></a>
-
-### Rpc.Block.Set.Text.BackgroundColor
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Request"></a>
-
-### Rpc.Block.Set.Text.BackgroundColor.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| color | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Response"></a>
-
-### Rpc.Block.Set.Text.BackgroundColor.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error"></a>
-
-### Rpc.Block.Set.Text.BackgroundColor.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -2856,6 +2900,122 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Align"></a>
+
+### Rpc.BlockList.Set.Align
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Align.Request"></a>
+
+### Rpc.BlockList.Set.Align.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| align | [model.Block.Align](#anytype.model.Block.Align) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Align.Response"></a>
+
+### Rpc.BlockList.Set.Align.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Align.Response.Error](#anytype.Rpc.BlockList.Set.Align.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Align.Response.Error"></a>
+
+### Rpc.BlockList.Set.Align.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Align.Response.Error.Code](#anytype.Rpc.BlockList.Set.Align.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.BackgroundColor"></a>
+
+### Rpc.BlockList.Set.BackgroundColor
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.BackgroundColor.Request"></a>
+
+### Rpc.BlockList.Set.BackgroundColor.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| color | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.BackgroundColor.Response"></a>
+
+### Rpc.BlockList.Set.BackgroundColor.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error"></a>
+
+### Rpc.BlockList.Set.BackgroundColor.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Fields"></a>
 
 ### Rpc.BlockList.Set.Fields
@@ -2933,64 +3093,6 @@ Makes blocks copy by given ids and paste it to shown place
 
 ### Rpc.BlockList.Set.Text
 
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor"></a>
-
-### Rpc.BlockList.Set.Text.BackgroundColor
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request"></a>
-
-### Rpc.BlockList.Set.Text.BackgroundColor.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
-| color | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response"></a>
-
-### Rpc.BlockList.Set.Text.BackgroundColor.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error"></a>
-
-### Rpc.BlockList.Set.Text.BackgroundColor.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -3518,6 +3620,63 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 
 
+<a name="anytype.Rpc.LinkPreview"></a>
+
+### Rpc.LinkPreview
+
+
+
+
+
+
+
+<a name="anytype.Rpc.LinkPreview.Request"></a>
+
+### Rpc.LinkPreview.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.LinkPreview.Response"></a>
+
+### Rpc.LinkPreview.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.LinkPreview.Response.Error](#anytype.Rpc.LinkPreview.Response.Error) |  |  |
+| linkPreview | [model.LinkPreview](#anytype.model.LinkPreview) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.LinkPreview.Response.Error"></a>
+
+### Rpc.LinkPreview.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Log"></a>
 
 ### Rpc.Log
@@ -3684,7 +3843,8 @@ Info is a string, that contains: BuildDate, GitCommit, GitBranch, GitState
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Version.Get.Response.Error](#anytype.Rpc.Version.Get.Response.Error) |  |  |
-| version | [string](#string) |  | BuildDate, GitCommit, GitBranch, GitState |
+| version | [string](#string) |  |  |
+| details | [string](#string) |  | build date, branch and commit |
 
 
 
@@ -3903,6 +4063,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_IS_NOT_RUNNING | 101 |  |
 | FAILED_TO_STOP_NODE | 102 |  |
 | FAILED_TO_REMOVE_ACCOUNT_DATA | 103 |  |
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code"></a>
+
+### Rpc.Block.Bookmark.Fetch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -4141,19 +4314,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.IsArchived.Response.Error.Code"></a>
-
-### Rpc.Block.Set.IsArchived.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code
@@ -4167,9 +4327,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.Restrictions.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Set.Page.IsArchived.Response.Error.Code"></a>
 
-### Rpc.Block.Set.Restrictions.Response.Error.Code
+### Rpc.Block.Set.Page.IsArchived.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -4180,9 +4340,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Set.Restrictions.Response.Error.Code"></a>
 
-### Rpc.Block.Set.Text.BackgroundColor.Response.Error.Code
+### Rpc.Block.Set.Restrictions.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -4350,9 +4510,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.BlockList.Set.Fields.Response.Error.Code"></a>
+<a name="anytype.Rpc.BlockList.Set.Align.Response.Error.Code"></a>
 
-### Rpc.BlockList.Set.Fields.Response.Error.Code
+### Rpc.BlockList.Set.Align.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -4363,9 +4523,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code"></a>
+<a name="anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code"></a>
 
-### Rpc.BlockList.Set.Text.BackgroundColor.Response.Error.Code
+### Rpc.BlockList.Set.BackgroundColor.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Fields.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Fields.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -4486,6 +4659,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
 | NODE_NOT_STARTED | 103 |  |
+
+
+
+<a name="anytype.Rpc.LinkPreview.Response.Error.Code"></a>
+
+### Rpc.LinkPreview.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -4727,6 +4913,149 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.Align"></a>
+
+### Event.Block.Set.Align
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| align | [model.Block.Align](#anytype.model.Block.Align) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.BackgroundColor"></a>
+
+### Event.Block.Set.BackgroundColor
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| backgroundColor | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Bookmark"></a>
+
+### Event.Block.Set.Bookmark
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| url | [Event.Block.Set.Bookmark.Url](#anytype.Event.Block.Set.Bookmark.Url) |  |  |
+| title | [Event.Block.Set.Bookmark.Title](#anytype.Event.Block.Set.Bookmark.Title) |  |  |
+| description | [Event.Block.Set.Bookmark.Description](#anytype.Event.Block.Set.Bookmark.Description) |  |  |
+| imageHash | [Event.Block.Set.Bookmark.ImageHash](#anytype.Event.Block.Set.Bookmark.ImageHash) |  |  |
+| faviconHash | [Event.Block.Set.Bookmark.FaviconHash](#anytype.Event.Block.Set.Bookmark.FaviconHash) |  |  |
+| type | [Event.Block.Set.Bookmark.Type](#anytype.Event.Block.Set.Bookmark.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Bookmark.Description"></a>
+
+### Event.Block.Set.Bookmark.Description
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Bookmark.FaviconHash"></a>
+
+### Event.Block.Set.Bookmark.FaviconHash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Bookmark.ImageHash"></a>
+
+### Event.Block.Set.Bookmark.ImageHash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Bookmark.Title"></a>
+
+### Event.Block.Set.Bookmark.Title
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Bookmark.Type"></a>
+
+### Event.Block.Set.Bookmark.Type
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Bookmark.Url"></a>
+
+### Event.Block.Set.Bookmark.Url
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.ChildrenIds"></a>
 
 ### Event.Block.Set.ChildrenIds
@@ -4916,22 +5245,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.IsArchived"></a>
-
-### Event.Block.Set.IsArchived
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| IsArchived | [bool](#bool) |  |  |
-
-
-
-
-
-
 <a name="anytype.Event.Block.Set.Link"></a>
 
 ### Event.Block.Set.Link
@@ -5025,22 +5338,6 @@ Precondition: user A opened a block
 | marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
 | checked | [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked) |  |  |
 | color | [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color) |  |  |
-| backgroundColor | [Event.Block.Set.Text.BackgroundColor](#anytype.Event.Block.Set.Text.BackgroundColor) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Text.BackgroundColor"></a>
-
-### Event.Block.Set.Text.BackgroundColor
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
 
 
 
@@ -5155,11 +5452,13 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetFields | [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields) |  |  |
 | blockSetChildrenIds | [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds) |  |  |
 | blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  |  |
-| blockSetIsArchived | [Event.Block.Set.IsArchived](#anytype.Event.Block.Set.IsArchived) |  |  |
+| blockSetBackgroundColor | [Event.Block.Set.BackgroundColor](#anytype.Event.Block.Set.BackgroundColor) |  |  |
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
 | blockSetIcon | [Event.Block.Set.Icon](#anytype.Event.Block.Set.Icon) |  |  |
 | blockSetLink | [Event.Block.Set.Link](#anytype.Event.Block.Set.Link) |  |  |
+| blockSetBookmark | [Event.Block.Set.Bookmark](#anytype.Event.Block.Set.Bookmark) |  |  |
+| blockSetAlign | [Event.Block.Set.Align](#anytype.Event.Block.Set.Align) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
@@ -5343,7 +5642,8 @@ Avatar of a user&#39;s account. It could be an image or color
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | restrictions | [Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
 | childrenIds | [string](#string) | repeated |  |
-| isArchived | [bool](#bool) |  |  |
+| backgroundColor | [string](#string) |  |  |
+| align | [Block.Align](#anytype.model.Block.Align) |  |  |
 | dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
 | page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
@@ -5375,7 +5675,15 @@ Avatar of a user&#39;s account. It could be an image or color
 ### Block.Content.Bookmark
 Bookmark is to keep a web-link and to preview a content.
 
-Model.Link.Preview preview = 1;
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+| imageHash | [string](#string) |  |  |
+| faviconHash | [string](#string) |  |  |
+| type | [LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
 
 
 
@@ -5486,7 +5794,6 @@ Link: block to link some content from an external sources.
 | targetBlockId | [string](#string) |  | id of the target block |
 | style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  |  |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| isArchived | [bool](#bool) |  |  |
 
 
 
@@ -5521,7 +5828,6 @@ Link: block to link some content from an external sources.
 | marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
 | checked | [bool](#bool) |  |  |
 | color | [string](#string) |  |  |
-| backgroundColor | [string](#string) |  |  |
 
 
 
@@ -5589,7 +5895,26 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| isArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.LinkPreview"></a>
+
+### LinkPreview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+| imageUrl | [string](#string) |  |  |
+| faviconUrl | [string](#string) |  |  |
+| type | [LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
 
 
 
@@ -5612,6 +5937,19 @@ General purpose structure, uses in Mark.
 
 
  
+
+
+<a name="anytype.model.Block.Align"></a>
+
+### Block.Align
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| AlignLeft | 0 |  |
+| AlignCenter | 1 |  |
+| AlignRight | 2 |  |
+
 
 
 <a name="anytype.model.Block.Content.Dashboard.Style"></a>
@@ -5687,7 +6025,8 @@ General purpose structure, uses in Mark.
 | ---- | ------ | ----------- |
 | Page | 0 |  |
 | Dataview | 1 |  |
-| Dashboard | 2 | ... |
+| Dashboard | 2 |  |
+| Archive | 3 | ... |
 
 
 
@@ -5759,6 +6098,20 @@ General purpose structure, uses in Mark.
 | Right | 4 |  |
 | Inner | 5 |  |
 | Replace | 6 |  |
+
+
+
+<a name="anytype.model.LinkPreview.Type"></a>
+
+### LinkPreview.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 |  |
+| Page | 1 |  |
+| Image | 2 |  |
+| Text | 3 |  |
 
 
  

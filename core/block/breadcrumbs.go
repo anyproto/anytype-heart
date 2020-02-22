@@ -26,7 +26,7 @@ type breadcrumbs struct {
 	mu     sync.Mutex
 }
 
-func (b *breadcrumbs) Open(_ anytype.Block) error {
+func (b *breadcrumbs) Open(_ anytype.Block, active bool) error {
 	b.blocks = map[string]simple.Block{
 		b.id: simple.New(&model.Block{
 			Id: b.id,
@@ -46,6 +46,8 @@ func (b *breadcrumbs) Init() {
 
 	b.show()
 }
+
+func (b *breadcrumbs) Active(isActive bool) {}
 
 func (b *breadcrumbs) Show() error {
 	b.mu.Lock()
@@ -155,6 +157,9 @@ func (b *breadcrumbs) OnSmartOpen(id string) {
 func (b *breadcrumbs) Cut(index int) (err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if index < 0 {
+		index = 0
+	}
 	linkIds := b.blocks[b.id].Model().ChildrenIds
 	if len(linkIds) < index {
 		return fmt.Errorf("index out of range: %d vs %d", index, len(linkIds))

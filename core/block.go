@@ -260,17 +260,19 @@ func (mw *Middleware) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsReques
 	return response(pb.RpcBlockSetRestrictionsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetIsArchived(req *pb.RpcBlockSetIsArchivedRequest) *pb.RpcBlockSetIsArchivedResponse {
-	response := func(code pb.RpcBlockSetIsArchivedResponseErrorCode, err error) *pb.RpcBlockSetIsArchivedResponse {
-		m := &pb.RpcBlockSetIsArchivedResponse{Error: &pb.RpcBlockSetIsArchivedResponseError{Code: code}}
+func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse {
+	response := func(code pb.RpcBlockSetPageIsArchivedResponseErrorCode, err error) *pb.RpcBlockSetPageIsArchivedResponse {
+		m := &pb.RpcBlockSetPageIsArchivedResponse{Error: &pb.RpcBlockSetPageIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	// TODO
-	return response(pb.RpcBlockSetIsArchivedResponseError_NULL, nil)
+	if err := mw.blockService.SetPageIsArchived(*req); err != nil {
+		return response(pb.RpcBlockSetPageIsArchivedResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockSetPageIsArchivedResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
@@ -304,19 +306,34 @@ func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb
 	return response(pb.RpcBlockSetTextColorResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetTextBackgroundColor(req *pb.RpcBlockSetTextBackgroundColorRequest) *pb.RpcBlockSetTextBackgroundColorResponse {
-	response := func(code pb.RpcBlockSetTextBackgroundColorResponseErrorCode, err error) *pb.RpcBlockSetTextBackgroundColorResponse {
-		m := &pb.RpcBlockSetTextBackgroundColorResponse{Error: &pb.RpcBlockSetTextBackgroundColorResponseError{Code: code}}
+func (mw *Middleware) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse {
+	response := func(code pb.RpcBlockListSetBackgroundColorResponseErrorCode, err error) *pb.RpcBlockListSetBackgroundColorResponse {
+		m := &pb.RpcBlockListSetBackgroundColorResponse{Error: &pb.RpcBlockListSetBackgroundColorResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 
 		return m
 	}
-	if err := mw.blockService.SetTextBackgroundColor(req.ContextId, req.Color, req.BlockId); err != nil {
-		return response(pb.RpcBlockSetTextBackgroundColorResponseError_UNKNOWN_ERROR, err)
+	if err := mw.blockService.SetBackgroundColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetBackgroundColorResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockSetTextBackgroundColorResponseError_NULL, nil)
+	return response(pb.RpcBlockListSetBackgroundColorResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
+	response := func(code pb.RpcBlockListSetAlignResponseErrorCode, err error) *pb.RpcBlockListSetAlignResponse {
+		m := &pb.RpcBlockListSetAlignResponse{Error: &pb.RpcBlockListSetAlignResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.SetAlign(req.ContextId, req.Align, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetAlignResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetAlignResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse {
@@ -387,21 +404,6 @@ func (mw *Middleware) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequ
 		return response(pb.RpcBlockListSetTextColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetTextColorResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockListSetTextBackgroundColor(req *pb.RpcBlockListSetTextBackgroundColorRequest) *pb.RpcBlockListSetTextBackgroundColorResponse {
-	response := func(code pb.RpcBlockListSetTextBackgroundColorResponseErrorCode, err error) *pb.RpcBlockListSetTextBackgroundColorResponse {
-		m := &pb.RpcBlockListSetTextBackgroundColorResponse{Error: &pb.RpcBlockListSetTextBackgroundColorResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	if err := mw.blockService.SetTextBackgroundColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
-		return response(pb.RpcBlockListSetTextBackgroundColorResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockListSetTextBackgroundColorResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
@@ -534,7 +536,7 @@ func (mw *Middleware) switchAccount(accountId string) {
 		mw.blockService.Close()
 	}
 
-	mw.blockService = block.NewService(accountId, anytype.NewAnytype(mw.Anytype), mw.SendEvent)
+	mw.blockService = block.NewService(accountId, anytype.NewAnytype(mw.Anytype), mw.linkPreview, mw.SendEvent)
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
@@ -579,4 +581,19 @@ func (mw *Middleware) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlo
 	}
 	// TODO
 	return response(pb.RpcBlockSetLinkTargetBlockIdResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
+	response := func(code pb.RpcBlockBookmarkFetchResponseErrorCode, err error) *pb.RpcBlockBookmarkFetchResponse {
+		m := &pb.RpcBlockBookmarkFetchResponse{Error: &pb.RpcBlockBookmarkFetchResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.BookmarkFetch(*req); err != nil {
+		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockBookmarkFetchResponseError_NULL, nil)
 }

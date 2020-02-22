@@ -192,32 +192,60 @@ func (RpcBlockListSetTextColorResponseErrorCode) EnumDescriptor() ([]byte, []int
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 1, 1, 0, 0}
 }
 
-type RpcBlockListSetTextBackgroundColorResponseErrorCode int32
+type RpcBlockListSetBackgroundColorResponseErrorCode int32
 
 const (
-	RpcBlockListSetTextBackgroundColorResponseError_NULL          RpcBlockListSetTextBackgroundColorResponseErrorCode = 0
-	RpcBlockListSetTextBackgroundColorResponseError_UNKNOWN_ERROR RpcBlockListSetTextBackgroundColorResponseErrorCode = 1
-	RpcBlockListSetTextBackgroundColorResponseError_BAD_INPUT     RpcBlockListSetTextBackgroundColorResponseErrorCode = 2
+	RpcBlockListSetBackgroundColorResponseError_NULL          RpcBlockListSetBackgroundColorResponseErrorCode = 0
+	RpcBlockListSetBackgroundColorResponseError_UNKNOWN_ERROR RpcBlockListSetBackgroundColorResponseErrorCode = 1
+	RpcBlockListSetBackgroundColorResponseError_BAD_INPUT     RpcBlockListSetBackgroundColorResponseErrorCode = 2
 )
 
-var RpcBlockListSetTextBackgroundColorResponseErrorCode_name = map[int32]string{
+var RpcBlockListSetBackgroundColorResponseErrorCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 }
 
-var RpcBlockListSetTextBackgroundColorResponseErrorCode_value = map[string]int32{
+var RpcBlockListSetBackgroundColorResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 }
 
-func (x RpcBlockListSetTextBackgroundColorResponseErrorCode) String() string {
-	return proto.EnumName(RpcBlockListSetTextBackgroundColorResponseErrorCode_name, int32(x))
+func (x RpcBlockListSetBackgroundColorResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockListSetBackgroundColorResponseErrorCode_name, int32(x))
 }
 
-func (RpcBlockListSetTextBackgroundColorResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 2, 1, 0, 0}
+func (RpcBlockListSetBackgroundColorResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1, 0, 0}
+}
+
+type RpcBlockListSetAlignResponseErrorCode int32
+
+const (
+	RpcBlockListSetAlignResponseError_NULL          RpcBlockListSetAlignResponseErrorCode = 0
+	RpcBlockListSetAlignResponseError_UNKNOWN_ERROR RpcBlockListSetAlignResponseErrorCode = 1
+	RpcBlockListSetAlignResponseError_BAD_INPUT     RpcBlockListSetAlignResponseErrorCode = 2
+)
+
+var RpcBlockListSetAlignResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockListSetAlignResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockListSetAlignResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockListSetAlignResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockListSetAlignResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 1, 0, 0}
 }
 
 type RpcBlockListSetFieldsResponseErrorCode int32
@@ -245,7 +273,7 @@ func (x RpcBlockListSetFieldsResponseErrorCode) String() string {
 }
 
 func (RpcBlockListSetFieldsResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1, 0, 0}
 }
 
 type RpcBlockReplaceResponseErrorCode int32
@@ -500,32 +528,32 @@ func (RpcBlockSetRestrictionsResponseErrorCode) EnumDescriptor() ([]byte, []int)
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 1, 1, 0, 0}
 }
 
-type RpcBlockSetIsArchivedResponseErrorCode int32
+type RpcBlockSetPageIsArchivedResponseErrorCode int32
 
 const (
-	RpcBlockSetIsArchivedResponseError_NULL          RpcBlockSetIsArchivedResponseErrorCode = 0
-	RpcBlockSetIsArchivedResponseError_UNKNOWN_ERROR RpcBlockSetIsArchivedResponseErrorCode = 1
-	RpcBlockSetIsArchivedResponseError_BAD_INPUT     RpcBlockSetIsArchivedResponseErrorCode = 2
+	RpcBlockSetPageIsArchivedResponseError_NULL          RpcBlockSetPageIsArchivedResponseErrorCode = 0
+	RpcBlockSetPageIsArchivedResponseError_UNKNOWN_ERROR RpcBlockSetPageIsArchivedResponseErrorCode = 1
+	RpcBlockSetPageIsArchivedResponseError_BAD_INPUT     RpcBlockSetPageIsArchivedResponseErrorCode = 2
 )
 
-var RpcBlockSetIsArchivedResponseErrorCode_name = map[int32]string{
+var RpcBlockSetPageIsArchivedResponseErrorCode_name = map[int32]string{
 	0: "NULL",
 	1: "UNKNOWN_ERROR",
 	2: "BAD_INPUT",
 }
 
-var RpcBlockSetIsArchivedResponseErrorCode_value = map[string]int32{
+var RpcBlockSetPageIsArchivedResponseErrorCode_value = map[string]int32{
 	"NULL":          0,
 	"UNKNOWN_ERROR": 1,
 	"BAD_INPUT":     2,
 }
 
-func (x RpcBlockSetIsArchivedResponseErrorCode) String() string {
-	return proto.EnumName(RpcBlockSetIsArchivedResponseErrorCode_name, int32(x))
+func (x RpcBlockSetPageIsArchivedResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockSetPageIsArchivedResponseErrorCode_name, int32(x))
 }
 
-func (RpcBlockSetIsArchivedResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 1, 0, 0}
+func (RpcBlockSetPageIsArchivedResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 0, 1, 0, 0}
 }
 
 type RpcBlockSetTextTextResponseErrorCode int32
@@ -584,34 +612,6 @@ func (RpcBlockSetTextColorResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 1, 1, 0, 0}
 }
 
-type RpcBlockSetTextBackgroundColorResponseErrorCode int32
-
-const (
-	RpcBlockSetTextBackgroundColorResponseError_NULL          RpcBlockSetTextBackgroundColorResponseErrorCode = 0
-	RpcBlockSetTextBackgroundColorResponseError_UNKNOWN_ERROR RpcBlockSetTextBackgroundColorResponseErrorCode = 1
-	RpcBlockSetTextBackgroundColorResponseError_BAD_INPUT     RpcBlockSetTextBackgroundColorResponseErrorCode = 2
-)
-
-var RpcBlockSetTextBackgroundColorResponseErrorCode_name = map[int32]string{
-	0: "NULL",
-	1: "UNKNOWN_ERROR",
-	2: "BAD_INPUT",
-}
-
-var RpcBlockSetTextBackgroundColorResponseErrorCode_value = map[string]int32{
-	"NULL":          0,
-	"UNKNOWN_ERROR": 1,
-	"BAD_INPUT":     2,
-}
-
-func (x RpcBlockSetTextBackgroundColorResponseErrorCode) String() string {
-	return proto.EnumName(RpcBlockSetTextBackgroundColorResponseErrorCode_name, int32(x))
-}
-
-func (RpcBlockSetTextBackgroundColorResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 1, 0, 0}
-}
-
 type RpcBlockSetTextStyleResponseErrorCode int32
 
 const (
@@ -637,7 +637,7 @@ func (x RpcBlockSetTextStyleResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextStyleResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 1, 0, 0}
 }
 
 type RpcBlockSetTextCheckedResponseErrorCode int32
@@ -665,7 +665,7 @@ func (x RpcBlockSetTextCheckedResponseErrorCode) String() string {
 }
 
 func (RpcBlockSetTextCheckedResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 4, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 1, 0, 0}
 }
 
 type RpcBlockSetFileNameResponseErrorCode int32
@@ -864,6 +864,34 @@ func (RpcBlockSetLinkTargetBlockIdResponseErrorCode) EnumDescriptor() ([]byte, [
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 8, 0, 1, 0, 0}
 }
 
+type RpcBlockBookmarkFetchResponseErrorCode int32
+
+const (
+	RpcBlockBookmarkFetchResponseError_NULL          RpcBlockBookmarkFetchResponseErrorCode = 0
+	RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR RpcBlockBookmarkFetchResponseErrorCode = 1
+	RpcBlockBookmarkFetchResponseError_BAD_INPUT     RpcBlockBookmarkFetchResponseErrorCode = 2
+)
+
+var RpcBlockBookmarkFetchResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcBlockBookmarkFetchResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcBlockBookmarkFetchResponseErrorCode) String() string {
+	return proto.EnumName(RpcBlockBookmarkFetchResponseErrorCode_name, int32(x))
+}
+
+func (RpcBlockBookmarkFetchResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 1, 0, 0}
+}
+
 type RpcBlockGetMarksResponseErrorCode int32
 
 const (
@@ -889,7 +917,7 @@ func (x RpcBlockGetMarksResponseErrorCode) String() string {
 }
 
 func (RpcBlockGetMarksResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 0, 1, 0, 0}
 }
 
 type RpcBlockUndoResponseErrorCode int32
@@ -920,7 +948,7 @@ func (x RpcBlockUndoResponseErrorCode) String() string {
 }
 
 func (RpcBlockUndoResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 1, 0, 0}
 }
 
 type RpcBlockRedoResponseErrorCode int32
@@ -951,7 +979,7 @@ func (x RpcBlockRedoResponseErrorCode) String() string {
 }
 
 func (RpcBlockRedoResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 1, 0, 0}
 }
 
 type RpcBlockOpenResponseErrorCode int32
@@ -979,7 +1007,7 @@ func (x RpcBlockOpenResponseErrorCode) String() string {
 }
 
 func (RpcBlockOpenResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 1, 0, 0}
 }
 
 type RpcBlockOpenBreadcrumbsResponseErrorCode int32
@@ -1007,7 +1035,7 @@ func (x RpcBlockOpenBreadcrumbsResponseErrorCode) String() string {
 }
 
 func (RpcBlockOpenBreadcrumbsResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 1, 0, 0}
 }
 
 type RpcBlockCutBreadcrumbsResponseErrorCode int32
@@ -1035,7 +1063,7 @@ func (x RpcBlockCutBreadcrumbsResponseErrorCode) String() string {
 }
 
 func (RpcBlockCutBreadcrumbsResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 1, 0, 0}
 }
 
 type RpcBlockCreateResponseErrorCode int32
@@ -1063,7 +1091,7 @@ func (x RpcBlockCreateResponseErrorCode) String() string {
 }
 
 func (RpcBlockCreateResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 1, 0, 0}
 }
 
 type RpcBlockCreatePageResponseErrorCode int32
@@ -1091,7 +1119,7 @@ func (x RpcBlockCreatePageResponseErrorCode) String() string {
 }
 
 func (RpcBlockCreatePageResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 1, 0, 0}
 }
 
 type RpcBlockUnlinkResponseErrorCode int32
@@ -1119,7 +1147,7 @@ func (x RpcBlockUnlinkResponseErrorCode) String() string {
 }
 
 func (RpcBlockUnlinkResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 1, 0, 0}
 }
 
 type RpcBlockCloseResponseErrorCode int32
@@ -1147,7 +1175,7 @@ func (x RpcBlockCloseResponseErrorCode) String() string {
 }
 
 func (RpcBlockCloseResponseErrorCode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 18, 1, 0, 0}
 }
 
 type RpcWalletCreateResponseErrorCode int32
@@ -1660,6 +1688,34 @@ func (x RpcPingResponseErrorCode) String() string {
 
 func (RpcPingResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 9, 1, 0, 0}
+}
+
+type RpcLinkPreviewResponseErrorCode int32
+
+const (
+	RpcLinkPreviewResponseError_NULL          RpcLinkPreviewResponseErrorCode = 0
+	RpcLinkPreviewResponseError_UNKNOWN_ERROR RpcLinkPreviewResponseErrorCode = 1
+	RpcLinkPreviewResponseError_BAD_INPUT     RpcLinkPreviewResponseErrorCode = 2
+)
+
+var RpcLinkPreviewResponseErrorCode_name = map[int32]string{
+	0: "NULL",
+	1: "UNKNOWN_ERROR",
+	2: "BAD_INPUT",
+}
+
+var RpcLinkPreviewResponseErrorCode_value = map[string]int32{
+	"NULL":          0,
+	"UNKNOWN_ERROR": 1,
+	"BAD_INPUT":     2,
+}
+
+func (x RpcLinkPreviewResponseErrorCode) String() string {
+	return proto.EnumName(RpcLinkPreviewResponseErrorCode_name, int32(x))
+}
+
+func (RpcLinkPreviewResponseErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 10, 1, 0, 0}
 }
 
 //
@@ -3033,21 +3089,21 @@ func (m *RpcBlockListSetTextColorResponseError) GetDescription() string {
 	return ""
 }
 
-type RpcBlockListSetTextBackgroundColor struct {
+type RpcBlockListSetBackgroundColor struct {
 }
 
-func (m *RpcBlockListSetTextBackgroundColor) Reset()         { *m = RpcBlockListSetTextBackgroundColor{} }
-func (m *RpcBlockListSetTextBackgroundColor) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockListSetTextBackgroundColor) ProtoMessage()    {}
-func (*RpcBlockListSetTextBackgroundColor) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 2}
+func (m *RpcBlockListSetBackgroundColor) Reset()         { *m = RpcBlockListSetBackgroundColor{} }
+func (m *RpcBlockListSetBackgroundColor) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListSetBackgroundColor) ProtoMessage()    {}
+func (*RpcBlockListSetBackgroundColor) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1}
 }
-func (m *RpcBlockListSetTextBackgroundColor) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockListSetBackgroundColor) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockListSetTextBackgroundColor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockListSetBackgroundColor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockListSetTextBackgroundColor.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockListSetBackgroundColor.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3057,38 +3113,36 @@ func (m *RpcBlockListSetTextBackgroundColor) XXX_Marshal(b []byte, deterministic
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockListSetTextBackgroundColor) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColor.Merge(m, src)
+func (m *RpcBlockListSetBackgroundColor) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetBackgroundColor.Merge(m, src)
 }
-func (m *RpcBlockListSetTextBackgroundColor) XXX_Size() int {
+func (m *RpcBlockListSetBackgroundColor) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockListSetTextBackgroundColor) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColor.DiscardUnknown(m)
+func (m *RpcBlockListSetBackgroundColor) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetBackgroundColor.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockListSetTextBackgroundColor proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockListSetBackgroundColor proto.InternalMessageInfo
 
-type RpcBlockListSetTextBackgroundColorRequest struct {
+type RpcBlockListSetBackgroundColorRequest struct {
 	ContextId string   `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
 	BlockIds  []string `protobuf:"bytes,2,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
 	Color     string   `protobuf:"bytes,3,opt,name=color,proto3" json:"color,omitempty"`
 }
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) Reset() {
-	*m = RpcBlockListSetTextBackgroundColorRequest{}
+func (m *RpcBlockListSetBackgroundColorRequest) Reset()         { *m = RpcBlockListSetBackgroundColorRequest{} }
+func (m *RpcBlockListSetBackgroundColorRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListSetBackgroundColorRequest) ProtoMessage()    {}
+func (*RpcBlockListSetBackgroundColorRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 0}
 }
-func (m *RpcBlockListSetTextBackgroundColorRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockListSetTextBackgroundColorRequest) ProtoMessage()    {}
-func (*RpcBlockListSetTextBackgroundColorRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 2, 0}
-}
-func (m *RpcBlockListSetTextBackgroundColorRequest) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockListSetBackgroundColorRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockListSetTextBackgroundColorRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockListSetBackgroundColorRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockListSetTextBackgroundColorRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockListSetBackgroundColorRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3098,59 +3152,57 @@ func (m *RpcBlockListSetTextBackgroundColorRequest) XXX_Marshal(b []byte, determ
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockListSetTextBackgroundColorRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColorRequest.Merge(m, src)
+func (m *RpcBlockListSetBackgroundColorRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetBackgroundColorRequest.Merge(m, src)
 }
-func (m *RpcBlockListSetTextBackgroundColorRequest) XXX_Size() int {
+func (m *RpcBlockListSetBackgroundColorRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockListSetTextBackgroundColorRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColorRequest.DiscardUnknown(m)
+func (m *RpcBlockListSetBackgroundColorRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetBackgroundColorRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockListSetTextBackgroundColorRequest proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockListSetBackgroundColorRequest proto.InternalMessageInfo
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) GetContextId() string {
+func (m *RpcBlockListSetBackgroundColorRequest) GetContextId() string {
 	if m != nil {
 		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) GetBlockIds() []string {
+func (m *RpcBlockListSetBackgroundColorRequest) GetBlockIds() []string {
 	if m != nil {
 		return m.BlockIds
 	}
 	return nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) GetColor() string {
+func (m *RpcBlockListSetBackgroundColorRequest) GetColor() string {
 	if m != nil {
 		return m.Color
 	}
 	return ""
 }
 
-type RpcBlockListSetTextBackgroundColorResponse struct {
-	Error *RpcBlockListSetTextBackgroundColorResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcBlockListSetBackgroundColorResponse struct {
+	Error *RpcBlockListSetBackgroundColorResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponse) Reset() {
-	*m = RpcBlockListSetTextBackgroundColorResponse{}
+func (m *RpcBlockListSetBackgroundColorResponse) Reset() {
+	*m = RpcBlockListSetBackgroundColorResponse{}
 }
-func (m *RpcBlockListSetTextBackgroundColorResponse) String() string {
-	return proto.CompactTextString(m)
+func (m *RpcBlockListSetBackgroundColorResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListSetBackgroundColorResponse) ProtoMessage()    {}
+func (*RpcBlockListSetBackgroundColorResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1}
 }
-func (*RpcBlockListSetTextBackgroundColorResponse) ProtoMessage() {}
-func (*RpcBlockListSetTextBackgroundColorResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 2, 1}
-}
-func (m *RpcBlockListSetTextBackgroundColorResponse) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockListSetBackgroundColorResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockListSetTextBackgroundColorResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockListSetBackgroundColorResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockListSetBackgroundColorResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3160,46 +3212,46 @@ func (m *RpcBlockListSetTextBackgroundColorResponse) XXX_Marshal(b []byte, deter
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockListSetTextBackgroundColorResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponse.Merge(m, src)
+func (m *RpcBlockListSetBackgroundColorResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetBackgroundColorResponse.Merge(m, src)
 }
-func (m *RpcBlockListSetTextBackgroundColorResponse) XXX_Size() int {
+func (m *RpcBlockListSetBackgroundColorResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockListSetTextBackgroundColorResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponse.DiscardUnknown(m)
+func (m *RpcBlockListSetBackgroundColorResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetBackgroundColorResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponse proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockListSetBackgroundColorResponse proto.InternalMessageInfo
 
-func (m *RpcBlockListSetTextBackgroundColorResponse) GetError() *RpcBlockListSetTextBackgroundColorResponseError {
+func (m *RpcBlockListSetBackgroundColorResponse) GetError() *RpcBlockListSetBackgroundColorResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type RpcBlockListSetTextBackgroundColorResponseError struct {
-	Code        RpcBlockListSetTextBackgroundColorResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockListSetTextBackgroundColorResponseErrorCode" json:"code,omitempty"`
-	Description string                                              `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcBlockListSetBackgroundColorResponseError struct {
+	Code        RpcBlockListSetBackgroundColorResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockListSetBackgroundColorResponseErrorCode" json:"code,omitempty"`
+	Description string                                          `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponseError) Reset() {
-	*m = RpcBlockListSetTextBackgroundColorResponseError{}
+func (m *RpcBlockListSetBackgroundColorResponseError) Reset() {
+	*m = RpcBlockListSetBackgroundColorResponseError{}
 }
-func (m *RpcBlockListSetTextBackgroundColorResponseError) String() string {
+func (m *RpcBlockListSetBackgroundColorResponseError) String() string {
 	return proto.CompactTextString(m)
 }
-func (*RpcBlockListSetTextBackgroundColorResponseError) ProtoMessage() {}
-func (*RpcBlockListSetTextBackgroundColorResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 0, 2, 1, 0}
+func (*RpcBlockListSetBackgroundColorResponseError) ProtoMessage() {}
+func (*RpcBlockListSetBackgroundColorResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1, 0}
 }
-func (m *RpcBlockListSetTextBackgroundColorResponseError) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockListSetBackgroundColorResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockListSetTextBackgroundColorResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockListSetBackgroundColorResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponseError.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockListSetBackgroundColorResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -3209,26 +3261,218 @@ func (m *RpcBlockListSetTextBackgroundColorResponseError) XXX_Marshal(b []byte, 
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockListSetTextBackgroundColorResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponseError.Merge(m, src)
+func (m *RpcBlockListSetBackgroundColorResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetBackgroundColorResponseError.Merge(m, src)
 }
-func (m *RpcBlockListSetTextBackgroundColorResponseError) XXX_Size() int {
+func (m *RpcBlockListSetBackgroundColorResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockListSetTextBackgroundColorResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponseError.DiscardUnknown(m)
+func (m *RpcBlockListSetBackgroundColorResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetBackgroundColorResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockListSetTextBackgroundColorResponseError proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockListSetBackgroundColorResponseError proto.InternalMessageInfo
 
-func (m *RpcBlockListSetTextBackgroundColorResponseError) GetCode() RpcBlockListSetTextBackgroundColorResponseErrorCode {
+func (m *RpcBlockListSetBackgroundColorResponseError) GetCode() RpcBlockListSetBackgroundColorResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return RpcBlockListSetTextBackgroundColorResponseError_NULL
+	return RpcBlockListSetBackgroundColorResponseError_NULL
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponseError) GetDescription() string {
+func (m *RpcBlockListSetBackgroundColorResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+type RpcBlockListSetAlign struct {
+}
+
+func (m *RpcBlockListSetAlign) Reset()         { *m = RpcBlockListSetAlign{} }
+func (m *RpcBlockListSetAlign) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListSetAlign) ProtoMessage()    {}
+func (*RpcBlockListSetAlign) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2}
+}
+func (m *RpcBlockListSetAlign) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockListSetAlign) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockListSetAlign.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockListSetAlign) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetAlign.Merge(m, src)
+}
+func (m *RpcBlockListSetAlign) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockListSetAlign) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetAlign.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockListSetAlign proto.InternalMessageInfo
+
+type RpcBlockListSetAlignRequest struct {
+	ContextId string           `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockIds  []string         `protobuf:"bytes,2,rep,name=blockIds,proto3" json:"blockIds,omitempty"`
+	Align     model.BlockAlign `protobuf:"varint,3,opt,name=align,proto3,enum=anytype.model.BlockAlign" json:"align,omitempty"`
+}
+
+func (m *RpcBlockListSetAlignRequest) Reset()         { *m = RpcBlockListSetAlignRequest{} }
+func (m *RpcBlockListSetAlignRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListSetAlignRequest) ProtoMessage()    {}
+func (*RpcBlockListSetAlignRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 0}
+}
+func (m *RpcBlockListSetAlignRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockListSetAlignRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockListSetAlignRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockListSetAlignRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetAlignRequest.Merge(m, src)
+}
+func (m *RpcBlockListSetAlignRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockListSetAlignRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetAlignRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockListSetAlignRequest proto.InternalMessageInfo
+
+func (m *RpcBlockListSetAlignRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockListSetAlignRequest) GetBlockIds() []string {
+	if m != nil {
+		return m.BlockIds
+	}
+	return nil
+}
+
+func (m *RpcBlockListSetAlignRequest) GetAlign() model.BlockAlign {
+	if m != nil {
+		return m.Align
+	}
+	return model.Block_AlignLeft
+}
+
+type RpcBlockListSetAlignResponse struct {
+	Error *RpcBlockListSetAlignResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockListSetAlignResponse) Reset()         { *m = RpcBlockListSetAlignResponse{} }
+func (m *RpcBlockListSetAlignResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListSetAlignResponse) ProtoMessage()    {}
+func (*RpcBlockListSetAlignResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 1}
+}
+func (m *RpcBlockListSetAlignResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockListSetAlignResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockListSetAlignResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockListSetAlignResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetAlignResponse.Merge(m, src)
+}
+func (m *RpcBlockListSetAlignResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockListSetAlignResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetAlignResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockListSetAlignResponse proto.InternalMessageInfo
+
+func (m *RpcBlockListSetAlignResponse) GetError() *RpcBlockListSetAlignResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockListSetAlignResponseError struct {
+	Code        RpcBlockListSetAlignResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockListSetAlignResponseErrorCode" json:"code,omitempty"`
+	Description string                                `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockListSetAlignResponseError) Reset()         { *m = RpcBlockListSetAlignResponseError{} }
+func (m *RpcBlockListSetAlignResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListSetAlignResponseError) ProtoMessage()    {}
+func (*RpcBlockListSetAlignResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 2, 1, 0}
+}
+func (m *RpcBlockListSetAlignResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockListSetAlignResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockListSetAlignResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockListSetAlignResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockListSetAlignResponseError.Merge(m, src)
+}
+func (m *RpcBlockListSetAlignResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockListSetAlignResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockListSetAlignResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockListSetAlignResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockListSetAlignResponseError) GetCode() RpcBlockListSetAlignResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockListSetAlignResponseError_NULL
+}
+
+func (m *RpcBlockListSetAlignResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
@@ -3242,7 +3486,7 @@ func (m *RpcBlockListSetFields) Reset()         { *m = RpcBlockListSetFields{} }
 func (m *RpcBlockListSetFields) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockListSetFields) ProtoMessage()    {}
 func (*RpcBlockListSetFields) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3}
 }
 func (m *RpcBlockListSetFields) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3280,7 +3524,7 @@ func (m *RpcBlockListSetFieldsRequest) Reset()         { *m = RpcBlockListSetFie
 func (m *RpcBlockListSetFieldsRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockListSetFieldsRequest) ProtoMessage()    {}
 func (*RpcBlockListSetFieldsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0}
 }
 func (m *RpcBlockListSetFieldsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3334,7 +3578,7 @@ func (m *RpcBlockListSetFieldsRequestBlockField) Reset() {
 func (m *RpcBlockListSetFieldsRequestBlockField) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockListSetFieldsRequestBlockField) ProtoMessage()    {}
 func (*RpcBlockListSetFieldsRequestBlockField) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 0, 0}
 }
 func (m *RpcBlockListSetFieldsRequestBlockField) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3385,7 +3629,7 @@ func (m *RpcBlockListSetFieldsResponse) Reset()         { *m = RpcBlockListSetFi
 func (m *RpcBlockListSetFieldsResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockListSetFieldsResponse) ProtoMessage()    {}
 func (*RpcBlockListSetFieldsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1}
 }
 func (m *RpcBlockListSetFieldsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -3430,7 +3674,7 @@ func (m *RpcBlockListSetFieldsResponseError) Reset()         { *m = RpcBlockList
 func (m *RpcBlockListSetFieldsResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockListSetFieldsResponseError) ProtoMessage()    {}
 func (*RpcBlockListSetFieldsResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 1, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 2, 3, 1, 0}
 }
 func (m *RpcBlockListSetFieldsResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5331,21 +5575,21 @@ func (m *RpcBlockSetRestrictionsResponseError) GetDescription() string {
 	return ""
 }
 
-type RpcBlockSetIsArchived struct {
+type RpcBlockSetPage struct {
 }
 
-func (m *RpcBlockSetIsArchived) Reset()         { *m = RpcBlockSetIsArchived{} }
-func (m *RpcBlockSetIsArchived) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetIsArchived) ProtoMessage()    {}
-func (*RpcBlockSetIsArchived) Descriptor() ([]byte, []int) {
+func (m *RpcBlockSetPage) Reset()         { *m = RpcBlockSetPage{} }
+func (m *RpcBlockSetPage) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetPage) ProtoMessage()    {}
+func (*RpcBlockSetPage) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2}
 }
-func (m *RpcBlockSetIsArchived) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetPage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetIsArchived) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetIsArchived.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetPage.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -5355,36 +5599,33 @@ func (m *RpcBlockSetIsArchived) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetIsArchived) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetIsArchived.Merge(m, src)
+func (m *RpcBlockSetPage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetPage.Merge(m, src)
 }
-func (m *RpcBlockSetIsArchived) XXX_Size() int {
+func (m *RpcBlockSetPage) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetIsArchived) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetIsArchived.DiscardUnknown(m)
+func (m *RpcBlockSetPage) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetPage.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetIsArchived proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetPage proto.InternalMessageInfo
 
-type RpcBlockSetIsArchivedRequest struct {
-	ContextId  string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	BlockId    string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	IsArchived bool   `protobuf:"varint,3,opt,name=IsArchived,proto3" json:"IsArchived,omitempty"`
+type RpcBlockSetPageIsArchived struct {
 }
 
-func (m *RpcBlockSetIsArchivedRequest) Reset()         { *m = RpcBlockSetIsArchivedRequest{} }
-func (m *RpcBlockSetIsArchivedRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetIsArchivedRequest) ProtoMessage()    {}
-func (*RpcBlockSetIsArchivedRequest) Descriptor() ([]byte, []int) {
+func (m *RpcBlockSetPageIsArchived) Reset()         { *m = RpcBlockSetPageIsArchived{} }
+func (m *RpcBlockSetPageIsArchived) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetPageIsArchived) ProtoMessage()    {}
+func (*RpcBlockSetPageIsArchived) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 0}
 }
-func (m *RpcBlockSetIsArchivedRequest) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetPageIsArchived) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetIsArchivedRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetPageIsArchived) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetIsArchivedRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetPageIsArchived.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -5394,55 +5635,94 @@ func (m *RpcBlockSetIsArchivedRequest) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetIsArchivedRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetIsArchivedRequest.Merge(m, src)
+func (m *RpcBlockSetPageIsArchived) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetPageIsArchived.Merge(m, src)
 }
-func (m *RpcBlockSetIsArchivedRequest) XXX_Size() int {
+func (m *RpcBlockSetPageIsArchived) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetIsArchivedRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetIsArchivedRequest.DiscardUnknown(m)
+func (m *RpcBlockSetPageIsArchived) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetPageIsArchived.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetIsArchivedRequest proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetPageIsArchived proto.InternalMessageInfo
 
-func (m *RpcBlockSetIsArchivedRequest) GetContextId() string {
+type RpcBlockSetPageIsArchivedRequest struct {
+	ContextId  string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId    string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	IsArchived bool   `protobuf:"varint,3,opt,name=isArchived,proto3" json:"isArchived,omitempty"`
+}
+
+func (m *RpcBlockSetPageIsArchivedRequest) Reset()         { *m = RpcBlockSetPageIsArchivedRequest{} }
+func (m *RpcBlockSetPageIsArchivedRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetPageIsArchivedRequest) ProtoMessage()    {}
+func (*RpcBlockSetPageIsArchivedRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 0, 0}
+}
+func (m *RpcBlockSetPageIsArchivedRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockSetPageIsArchivedRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockSetPageIsArchivedRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockSetPageIsArchivedRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetPageIsArchivedRequest.Merge(m, src)
+}
+func (m *RpcBlockSetPageIsArchivedRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockSetPageIsArchivedRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetPageIsArchivedRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockSetPageIsArchivedRequest proto.InternalMessageInfo
+
+func (m *RpcBlockSetPageIsArchivedRequest) GetContextId() string {
 	if m != nil {
 		return m.ContextId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetIsArchivedRequest) GetBlockId() string {
+func (m *RpcBlockSetPageIsArchivedRequest) GetBlockId() string {
 	if m != nil {
 		return m.BlockId
 	}
 	return ""
 }
 
-func (m *RpcBlockSetIsArchivedRequest) GetIsArchived() bool {
+func (m *RpcBlockSetPageIsArchivedRequest) GetIsArchived() bool {
 	if m != nil {
 		return m.IsArchived
 	}
 	return false
 }
 
-type RpcBlockSetIsArchivedResponse struct {
-	Error *RpcBlockSetIsArchivedResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+type RpcBlockSetPageIsArchivedResponse struct {
+	Error *RpcBlockSetPageIsArchivedResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *RpcBlockSetIsArchivedResponse) Reset()         { *m = RpcBlockSetIsArchivedResponse{} }
-func (m *RpcBlockSetIsArchivedResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetIsArchivedResponse) ProtoMessage()    {}
-func (*RpcBlockSetIsArchivedResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 1}
+func (m *RpcBlockSetPageIsArchivedResponse) Reset()         { *m = RpcBlockSetPageIsArchivedResponse{} }
+func (m *RpcBlockSetPageIsArchivedResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetPageIsArchivedResponse) ProtoMessage()    {}
+func (*RpcBlockSetPageIsArchivedResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 0, 1}
 }
-func (m *RpcBlockSetIsArchivedResponse) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetPageIsArchivedResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetIsArchivedResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetPageIsArchivedResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetIsArchivedResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetPageIsArchivedResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -5452,42 +5732,44 @@ func (m *RpcBlockSetIsArchivedResponse) XXX_Marshal(b []byte, deterministic bool
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetIsArchivedResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetIsArchivedResponse.Merge(m, src)
+func (m *RpcBlockSetPageIsArchivedResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetPageIsArchivedResponse.Merge(m, src)
 }
-func (m *RpcBlockSetIsArchivedResponse) XXX_Size() int {
+func (m *RpcBlockSetPageIsArchivedResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetIsArchivedResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetIsArchivedResponse.DiscardUnknown(m)
+func (m *RpcBlockSetPageIsArchivedResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetPageIsArchivedResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetIsArchivedResponse proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetPageIsArchivedResponse proto.InternalMessageInfo
 
-func (m *RpcBlockSetIsArchivedResponse) GetError() *RpcBlockSetIsArchivedResponseError {
+func (m *RpcBlockSetPageIsArchivedResponse) GetError() *RpcBlockSetPageIsArchivedResponseError {
 	if m != nil {
 		return m.Error
 	}
 	return nil
 }
 
-type RpcBlockSetIsArchivedResponseError struct {
-	Code        RpcBlockSetIsArchivedResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockSetIsArchivedResponseErrorCode" json:"code,omitempty"`
-	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+type RpcBlockSetPageIsArchivedResponseError struct {
+	Code        RpcBlockSetPageIsArchivedResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockSetPageIsArchivedResponseErrorCode" json:"code,omitempty"`
+	Description string                                     `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 }
 
-func (m *RpcBlockSetIsArchivedResponseError) Reset()         { *m = RpcBlockSetIsArchivedResponseError{} }
-func (m *RpcBlockSetIsArchivedResponseError) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetIsArchivedResponseError) ProtoMessage()    {}
-func (*RpcBlockSetIsArchivedResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 1, 0}
+func (m *RpcBlockSetPageIsArchivedResponseError) Reset() {
+	*m = RpcBlockSetPageIsArchivedResponseError{}
 }
-func (m *RpcBlockSetIsArchivedResponseError) XXX_Unmarshal(b []byte) error {
+func (m *RpcBlockSetPageIsArchivedResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetPageIsArchivedResponseError) ProtoMessage()    {}
+func (*RpcBlockSetPageIsArchivedResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 2, 0, 1, 0}
+}
+func (m *RpcBlockSetPageIsArchivedResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RpcBlockSetIsArchivedResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RpcBlockSetPageIsArchivedResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RpcBlockSetIsArchivedResponseError.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RpcBlockSetPageIsArchivedResponseError.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -5497,26 +5779,26 @@ func (m *RpcBlockSetIsArchivedResponseError) XXX_Marshal(b []byte, deterministic
 		return b[:n], nil
 	}
 }
-func (m *RpcBlockSetIsArchivedResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetIsArchivedResponseError.Merge(m, src)
+func (m *RpcBlockSetPageIsArchivedResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockSetPageIsArchivedResponseError.Merge(m, src)
 }
-func (m *RpcBlockSetIsArchivedResponseError) XXX_Size() int {
+func (m *RpcBlockSetPageIsArchivedResponseError) XXX_Size() int {
 	return m.Size()
 }
-func (m *RpcBlockSetIsArchivedResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetIsArchivedResponseError.DiscardUnknown(m)
+func (m *RpcBlockSetPageIsArchivedResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockSetPageIsArchivedResponseError.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RpcBlockSetIsArchivedResponseError proto.InternalMessageInfo
+var xxx_messageInfo_RpcBlockSetPageIsArchivedResponseError proto.InternalMessageInfo
 
-func (m *RpcBlockSetIsArchivedResponseError) GetCode() RpcBlockSetIsArchivedResponseErrorCode {
+func (m *RpcBlockSetPageIsArchivedResponseError) GetCode() RpcBlockSetPageIsArchivedResponseErrorCode {
 	if m != nil {
 		return m.Code
 	}
-	return RpcBlockSetIsArchivedResponseError_NULL
+	return RpcBlockSetPageIsArchivedResponseError_NULL
 }
 
-func (m *RpcBlockSetIsArchivedResponseError) GetDescription() string {
+func (m *RpcBlockSetPageIsArchivedResponseError) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
@@ -5951,204 +6233,6 @@ func (m *RpcBlockSetTextColorResponseError) GetDescription() string {
 	return ""
 }
 
-type RpcBlockSetTextBackgroundColor struct {
-}
-
-func (m *RpcBlockSetTextBackgroundColor) Reset()         { *m = RpcBlockSetTextBackgroundColor{} }
-func (m *RpcBlockSetTextBackgroundColor) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetTextBackgroundColor) ProtoMessage()    {}
-func (*RpcBlockSetTextBackgroundColor) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2}
-}
-func (m *RpcBlockSetTextBackgroundColor) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcBlockSetTextBackgroundColor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextBackgroundColor.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcBlockSetTextBackgroundColor) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColor.Merge(m, src)
-}
-func (m *RpcBlockSetTextBackgroundColor) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcBlockSetTextBackgroundColor) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColor.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcBlockSetTextBackgroundColor proto.InternalMessageInfo
-
-type RpcBlockSetTextBackgroundColorRequest struct {
-	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
-	Color     string `protobuf:"bytes,3,opt,name=color,proto3" json:"color,omitempty"`
-}
-
-func (m *RpcBlockSetTextBackgroundColorRequest) Reset()         { *m = RpcBlockSetTextBackgroundColorRequest{} }
-func (m *RpcBlockSetTextBackgroundColorRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetTextBackgroundColorRequest) ProtoMessage()    {}
-func (*RpcBlockSetTextBackgroundColorRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 0}
-}
-func (m *RpcBlockSetTextBackgroundColorRequest) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcBlockSetTextBackgroundColorRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextBackgroundColorRequest.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcBlockSetTextBackgroundColorRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColorRequest.Merge(m, src)
-}
-func (m *RpcBlockSetTextBackgroundColorRequest) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcBlockSetTextBackgroundColorRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColorRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcBlockSetTextBackgroundColorRequest proto.InternalMessageInfo
-
-func (m *RpcBlockSetTextBackgroundColorRequest) GetContextId() string {
-	if m != nil {
-		return m.ContextId
-	}
-	return ""
-}
-
-func (m *RpcBlockSetTextBackgroundColorRequest) GetBlockId() string {
-	if m != nil {
-		return m.BlockId
-	}
-	return ""
-}
-
-func (m *RpcBlockSetTextBackgroundColorRequest) GetColor() string {
-	if m != nil {
-		return m.Color
-	}
-	return ""
-}
-
-type RpcBlockSetTextBackgroundColorResponse struct {
-	Error *RpcBlockSetTextBackgroundColorResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponse) Reset() {
-	*m = RpcBlockSetTextBackgroundColorResponse{}
-}
-func (m *RpcBlockSetTextBackgroundColorResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetTextBackgroundColorResponse) ProtoMessage()    {}
-func (*RpcBlockSetTextBackgroundColorResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 1}
-}
-func (m *RpcBlockSetTextBackgroundColorResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcBlockSetTextBackgroundColorResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextBackgroundColorResponse.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcBlockSetTextBackgroundColorResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColorResponse.Merge(m, src)
-}
-func (m *RpcBlockSetTextBackgroundColorResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcBlockSetTextBackgroundColorResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColorResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcBlockSetTextBackgroundColorResponse proto.InternalMessageInfo
-
-func (m *RpcBlockSetTextBackgroundColorResponse) GetError() *RpcBlockSetTextBackgroundColorResponseError {
-	if m != nil {
-		return m.Error
-	}
-	return nil
-}
-
-type RpcBlockSetTextBackgroundColorResponseError struct {
-	Code        RpcBlockSetTextBackgroundColorResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockSetTextBackgroundColorResponseErrorCode" json:"code,omitempty"`
-	Description string                                          `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponseError) Reset() {
-	*m = RpcBlockSetTextBackgroundColorResponseError{}
-}
-func (m *RpcBlockSetTextBackgroundColorResponseError) String() string {
-	return proto.CompactTextString(m)
-}
-func (*RpcBlockSetTextBackgroundColorResponseError) ProtoMessage() {}
-func (*RpcBlockSetTextBackgroundColorResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 1, 0}
-}
-func (m *RpcBlockSetTextBackgroundColorResponseError) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RpcBlockSetTextBackgroundColorResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_RpcBlockSetTextBackgroundColorResponseError.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *RpcBlockSetTextBackgroundColorResponseError) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColorResponseError.Merge(m, src)
-}
-func (m *RpcBlockSetTextBackgroundColorResponseError) XXX_Size() int {
-	return m.Size()
-}
-func (m *RpcBlockSetTextBackgroundColorResponseError) XXX_DiscardUnknown() {
-	xxx_messageInfo_RpcBlockSetTextBackgroundColorResponseError.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RpcBlockSetTextBackgroundColorResponseError proto.InternalMessageInfo
-
-func (m *RpcBlockSetTextBackgroundColorResponseError) GetCode() RpcBlockSetTextBackgroundColorResponseErrorCode {
-	if m != nil {
-		return m.Code
-	}
-	return RpcBlockSetTextBackgroundColorResponseError_NULL
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponseError) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
 type RpcBlockSetTextStyle struct {
 }
 
@@ -6156,7 +6240,7 @@ func (m *RpcBlockSetTextStyle) Reset()         { *m = RpcBlockSetTextStyle{} }
 func (m *RpcBlockSetTextStyle) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyle) ProtoMessage()    {}
 func (*RpcBlockSetTextStyle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2}
 }
 func (m *RpcBlockSetTextStyle) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6195,7 +6279,7 @@ func (m *RpcBlockSetTextStyleRequest) Reset()         { *m = RpcBlockSetTextStyl
 func (m *RpcBlockSetTextStyleRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyleRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextStyleRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 0}
 }
 func (m *RpcBlockSetTextStyleRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6253,7 +6337,7 @@ func (m *RpcBlockSetTextStyleResponse) Reset()         { *m = RpcBlockSetTextSty
 func (m *RpcBlockSetTextStyleResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyleResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextStyleResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 1}
 }
 func (m *RpcBlockSetTextStyleResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6298,7 +6382,7 @@ func (m *RpcBlockSetTextStyleResponseError) Reset()         { *m = RpcBlockSetTe
 func (m *RpcBlockSetTextStyleResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextStyleResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextStyleResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 2, 1, 0}
 }
 func (m *RpcBlockSetTextStyleResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6348,7 +6432,7 @@ func (m *RpcBlockSetTextChecked) Reset()         { *m = RpcBlockSetTextChecked{}
 func (m *RpcBlockSetTextChecked) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextChecked) ProtoMessage()    {}
 func (*RpcBlockSetTextChecked) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 4}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3}
 }
 func (m *RpcBlockSetTextChecked) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6387,7 +6471,7 @@ func (m *RpcBlockSetTextCheckedRequest) Reset()         { *m = RpcBlockSetTextCh
 func (m *RpcBlockSetTextCheckedRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckedRequest) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckedRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 4, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 0}
 }
 func (m *RpcBlockSetTextCheckedRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6445,7 +6529,7 @@ func (m *RpcBlockSetTextCheckedResponse) Reset()         { *m = RpcBlockSetTextC
 func (m *RpcBlockSetTextCheckedResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckedResponse) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckedResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 4, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 1}
 }
 func (m *RpcBlockSetTextCheckedResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -6490,7 +6574,7 @@ func (m *RpcBlockSetTextCheckedResponseError) Reset()         { *m = RpcBlockSet
 func (m *RpcBlockSetTextCheckedResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockSetTextCheckedResponseError) ProtoMessage()    {}
 func (*RpcBlockSetTextCheckedResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 4, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 7, 3, 3, 1, 0}
 }
 func (m *RpcBlockSetTextCheckedResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8059,6 +8143,234 @@ func (m *RpcBlockSetLinkTargetBlockIdResponseError) GetDescription() string {
 	return ""
 }
 
+type RpcBlockBookmark struct {
+}
+
+func (m *RpcBlockBookmark) Reset()         { *m = RpcBlockBookmark{} }
+func (m *RpcBlockBookmark) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockBookmark) ProtoMessage()    {}
+func (*RpcBlockBookmark) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8}
+}
+func (m *RpcBlockBookmark) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockBookmark) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockBookmark.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockBookmark) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockBookmark.Merge(m, src)
+}
+func (m *RpcBlockBookmark) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockBookmark) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockBookmark.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockBookmark proto.InternalMessageInfo
+
+type RpcBlockBookmarkFetch struct {
+}
+
+func (m *RpcBlockBookmarkFetch) Reset()         { *m = RpcBlockBookmarkFetch{} }
+func (m *RpcBlockBookmarkFetch) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockBookmarkFetch) ProtoMessage()    {}
+func (*RpcBlockBookmarkFetch) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0}
+}
+func (m *RpcBlockBookmarkFetch) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockBookmarkFetch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockBookmarkFetch.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockBookmarkFetch) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockBookmarkFetch.Merge(m, src)
+}
+func (m *RpcBlockBookmarkFetch) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockBookmarkFetch) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockBookmarkFetch.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockBookmarkFetch proto.InternalMessageInfo
+
+type RpcBlockBookmarkFetchRequest struct {
+	ContextId string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
+	BlockId   string `protobuf:"bytes,2,opt,name=blockId,proto3" json:"blockId,omitempty"`
+	Url       string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+}
+
+func (m *RpcBlockBookmarkFetchRequest) Reset()         { *m = RpcBlockBookmarkFetchRequest{} }
+func (m *RpcBlockBookmarkFetchRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockBookmarkFetchRequest) ProtoMessage()    {}
+func (*RpcBlockBookmarkFetchRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 0}
+}
+func (m *RpcBlockBookmarkFetchRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockBookmarkFetchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockBookmarkFetchRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockBookmarkFetchRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockBookmarkFetchRequest.Merge(m, src)
+}
+func (m *RpcBlockBookmarkFetchRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockBookmarkFetchRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockBookmarkFetchRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockBookmarkFetchRequest proto.InternalMessageInfo
+
+func (m *RpcBlockBookmarkFetchRequest) GetContextId() string {
+	if m != nil {
+		return m.ContextId
+	}
+	return ""
+}
+
+func (m *RpcBlockBookmarkFetchRequest) GetBlockId() string {
+	if m != nil {
+		return m.BlockId
+	}
+	return ""
+}
+
+func (m *RpcBlockBookmarkFetchRequest) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+type RpcBlockBookmarkFetchResponse struct {
+	Error *RpcBlockBookmarkFetchResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *RpcBlockBookmarkFetchResponse) Reset()         { *m = RpcBlockBookmarkFetchResponse{} }
+func (m *RpcBlockBookmarkFetchResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockBookmarkFetchResponse) ProtoMessage()    {}
+func (*RpcBlockBookmarkFetchResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 1}
+}
+func (m *RpcBlockBookmarkFetchResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockBookmarkFetchResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockBookmarkFetchResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockBookmarkFetchResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockBookmarkFetchResponse.Merge(m, src)
+}
+func (m *RpcBlockBookmarkFetchResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockBookmarkFetchResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockBookmarkFetchResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockBookmarkFetchResponse proto.InternalMessageInfo
+
+func (m *RpcBlockBookmarkFetchResponse) GetError() *RpcBlockBookmarkFetchResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type RpcBlockBookmarkFetchResponseError struct {
+	Code        RpcBlockBookmarkFetchResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcBlockBookmarkFetchResponseErrorCode" json:"code,omitempty"`
+	Description string                                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcBlockBookmarkFetchResponseError) Reset()         { *m = RpcBlockBookmarkFetchResponseError{} }
+func (m *RpcBlockBookmarkFetchResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockBookmarkFetchResponseError) ProtoMessage()    {}
+func (*RpcBlockBookmarkFetchResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 1, 0}
+}
+func (m *RpcBlockBookmarkFetchResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcBlockBookmarkFetchResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcBlockBookmarkFetchResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcBlockBookmarkFetchResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcBlockBookmarkFetchResponseError.Merge(m, src)
+}
+func (m *RpcBlockBookmarkFetchResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcBlockBookmarkFetchResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcBlockBookmarkFetchResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcBlockBookmarkFetchResponseError proto.InternalMessageInfo
+
+func (m *RpcBlockBookmarkFetchResponseError) GetCode() RpcBlockBookmarkFetchResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcBlockBookmarkFetchResponseError_NULL
+}
+
+func (m *RpcBlockBookmarkFetchResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 type RpcBlockGet struct {
 }
 
@@ -8066,7 +8378,7 @@ func (m *RpcBlockGet) Reset()         { *m = RpcBlockGet{} }
 func (m *RpcBlockGet) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGet) ProtoMessage()    {}
 func (*RpcBlockGet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9}
 }
 func (m *RpcBlockGet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8104,7 +8416,7 @@ func (m *RpcBlockGetMarks) Reset()         { *m = RpcBlockGetMarks{} }
 func (m *RpcBlockGetMarks) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarks) ProtoMessage()    {}
 func (*RpcBlockGetMarks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 0}
 }
 func (m *RpcBlockGetMarks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8143,7 +8455,7 @@ func (m *RpcBlockGetMarksRequest) Reset()         { *m = RpcBlockGetMarksRequest
 func (m *RpcBlockGetMarksRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarksRequest) ProtoMessage()    {}
 func (*RpcBlockGetMarksRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 0, 0}
 }
 func (m *RpcBlockGetMarksRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8201,7 +8513,7 @@ func (m *RpcBlockGetMarksResponse) Reset()         { *m = RpcBlockGetMarksRespon
 func (m *RpcBlockGetMarksResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarksResponse) ProtoMessage()    {}
 func (*RpcBlockGetMarksResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 0, 1}
 }
 func (m *RpcBlockGetMarksResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8246,7 +8558,7 @@ func (m *RpcBlockGetMarksResponseError) Reset()         { *m = RpcBlockGetMarksR
 func (m *RpcBlockGetMarksResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockGetMarksResponseError) ProtoMessage()    {}
 func (*RpcBlockGetMarksResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 8, 0, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 0, 1, 0}
 }
 func (m *RpcBlockGetMarksResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8296,7 +8608,7 @@ func (m *RpcBlockUndo) Reset()         { *m = RpcBlockUndo{} }
 func (m *RpcBlockUndo) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUndo) ProtoMessage()    {}
 func (*RpcBlockUndo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10}
 }
 func (m *RpcBlockUndo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8333,7 +8645,7 @@ func (m *RpcBlockUndoRequest) Reset()         { *m = RpcBlockUndoRequest{} }
 func (m *RpcBlockUndoRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUndoRequest) ProtoMessage()    {}
 func (*RpcBlockUndoRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 0}
 }
 func (m *RpcBlockUndoRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8377,7 +8689,7 @@ func (m *RpcBlockUndoResponse) Reset()         { *m = RpcBlockUndoResponse{} }
 func (m *RpcBlockUndoResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUndoResponse) ProtoMessage()    {}
 func (*RpcBlockUndoResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 1}
 }
 func (m *RpcBlockUndoResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8422,7 +8734,7 @@ func (m *RpcBlockUndoResponseError) Reset()         { *m = RpcBlockUndoResponseE
 func (m *RpcBlockUndoResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUndoResponseError) ProtoMessage()    {}
 func (*RpcBlockUndoResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 9, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 1, 0}
 }
 func (m *RpcBlockUndoResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8472,7 +8784,7 @@ func (m *RpcBlockRedo) Reset()         { *m = RpcBlockRedo{} }
 func (m *RpcBlockRedo) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockRedo) ProtoMessage()    {}
 func (*RpcBlockRedo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11}
 }
 func (m *RpcBlockRedo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8509,7 +8821,7 @@ func (m *RpcBlockRedoRequest) Reset()         { *m = RpcBlockRedoRequest{} }
 func (m *RpcBlockRedoRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockRedoRequest) ProtoMessage()    {}
 func (*RpcBlockRedoRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 0}
 }
 func (m *RpcBlockRedoRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8553,7 +8865,7 @@ func (m *RpcBlockRedoResponse) Reset()         { *m = RpcBlockRedoResponse{} }
 func (m *RpcBlockRedoResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockRedoResponse) ProtoMessage()    {}
 func (*RpcBlockRedoResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 1}
 }
 func (m *RpcBlockRedoResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8598,7 +8910,7 @@ func (m *RpcBlockRedoResponseError) Reset()         { *m = RpcBlockRedoResponseE
 func (m *RpcBlockRedoResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockRedoResponseError) ProtoMessage()    {}
 func (*RpcBlockRedoResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 1, 0}
 }
 func (m *RpcBlockRedoResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8664,7 +8976,7 @@ func (m *RpcBlockOpen) Reset()         { *m = RpcBlockOpen{} }
 func (m *RpcBlockOpen) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpen) ProtoMessage()    {}
 func (*RpcBlockOpen) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12}
 }
 func (m *RpcBlockOpen) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8703,7 +9015,7 @@ func (m *RpcBlockOpenRequest) Reset()         { *m = RpcBlockOpenRequest{} }
 func (m *RpcBlockOpenRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenRequest) ProtoMessage()    {}
 func (*RpcBlockOpenRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 0}
 }
 func (m *RpcBlockOpenRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8761,7 +9073,7 @@ func (m *RpcBlockOpenResponse) Reset()         { *m = RpcBlockOpenResponse{} }
 func (m *RpcBlockOpenResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenResponse) ProtoMessage()    {}
 func (*RpcBlockOpenResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 1}
 }
 func (m *RpcBlockOpenResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8806,7 +9118,7 @@ func (m *RpcBlockOpenResponseError) Reset()         { *m = RpcBlockOpenResponseE
 func (m *RpcBlockOpenResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenResponseError) ProtoMessage()    {}
 func (*RpcBlockOpenResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 11, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 1, 0}
 }
 func (m *RpcBlockOpenResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8856,7 +9168,7 @@ func (m *RpcBlockOpenBreadcrumbs) Reset()         { *m = RpcBlockOpenBreadcrumbs
 func (m *RpcBlockOpenBreadcrumbs) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenBreadcrumbs) ProtoMessage()    {}
 func (*RpcBlockOpenBreadcrumbs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13}
 }
 func (m *RpcBlockOpenBreadcrumbs) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8893,7 +9205,7 @@ func (m *RpcBlockOpenBreadcrumbsRequest) Reset()         { *m = RpcBlockOpenBrea
 func (m *RpcBlockOpenBreadcrumbsRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenBreadcrumbsRequest) ProtoMessage()    {}
 func (*RpcBlockOpenBreadcrumbsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 0}
 }
 func (m *RpcBlockOpenBreadcrumbsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8938,7 +9250,7 @@ func (m *RpcBlockOpenBreadcrumbsResponse) Reset()         { *m = RpcBlockOpenBre
 func (m *RpcBlockOpenBreadcrumbsResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenBreadcrumbsResponse) ProtoMessage()    {}
 func (*RpcBlockOpenBreadcrumbsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 1}
 }
 func (m *RpcBlockOpenBreadcrumbsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -8990,7 +9302,7 @@ func (m *RpcBlockOpenBreadcrumbsResponseError) Reset()         { *m = RpcBlockOp
 func (m *RpcBlockOpenBreadcrumbsResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockOpenBreadcrumbsResponseError) ProtoMessage()    {}
 func (*RpcBlockOpenBreadcrumbsResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 12, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 1, 0}
 }
 func (m *RpcBlockOpenBreadcrumbsResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9040,7 +9352,7 @@ func (m *RpcBlockCutBreadcrumbs) Reset()         { *m = RpcBlockCutBreadcrumbs{}
 func (m *RpcBlockCutBreadcrumbs) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCutBreadcrumbs) ProtoMessage()    {}
 func (*RpcBlockCutBreadcrumbs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14}
 }
 func (m *RpcBlockCutBreadcrumbs) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9078,7 +9390,7 @@ func (m *RpcBlockCutBreadcrumbsRequest) Reset()         { *m = RpcBlockCutBreadc
 func (m *RpcBlockCutBreadcrumbsRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCutBreadcrumbsRequest) ProtoMessage()    {}
 func (*RpcBlockCutBreadcrumbsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 0}
 }
 func (m *RpcBlockCutBreadcrumbsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9129,7 +9441,7 @@ func (m *RpcBlockCutBreadcrumbsResponse) Reset()         { *m = RpcBlockCutBread
 func (m *RpcBlockCutBreadcrumbsResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCutBreadcrumbsResponse) ProtoMessage()    {}
 func (*RpcBlockCutBreadcrumbsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 1}
 }
 func (m *RpcBlockCutBreadcrumbsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9174,7 +9486,7 @@ func (m *RpcBlockCutBreadcrumbsResponseError) Reset()         { *m = RpcBlockCut
 func (m *RpcBlockCutBreadcrumbsResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCutBreadcrumbsResponseError) ProtoMessage()    {}
 func (*RpcBlockCutBreadcrumbsResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 13, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 1, 0}
 }
 func (m *RpcBlockCutBreadcrumbsResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9238,7 +9550,7 @@ func (m *RpcBlockCreate) Reset()         { *m = RpcBlockCreate{} }
 func (m *RpcBlockCreate) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreate) ProtoMessage()    {}
 func (*RpcBlockCreate) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15}
 }
 func (m *RpcBlockCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9278,7 +9590,7 @@ func (m *RpcBlockCreateRequest) Reset()         { *m = RpcBlockCreateRequest{} }
 func (m *RpcBlockCreateRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreateRequest) ProtoMessage()    {}
 func (*RpcBlockCreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 0}
 }
 func (m *RpcBlockCreateRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9344,7 +9656,7 @@ func (m *RpcBlockCreateResponse) Reset()         { *m = RpcBlockCreateResponse{}
 func (m *RpcBlockCreateResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreateResponse) ProtoMessage()    {}
 func (*RpcBlockCreateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 1}
 }
 func (m *RpcBlockCreateResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9396,7 +9708,7 @@ func (m *RpcBlockCreateResponseError) Reset()         { *m = RpcBlockCreateRespo
 func (m *RpcBlockCreateResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreateResponseError) ProtoMessage()    {}
 func (*RpcBlockCreateResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 14, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 1, 0}
 }
 func (m *RpcBlockCreateResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9446,7 +9758,7 @@ func (m *RpcBlockCreatePage) Reset()         { *m = RpcBlockCreatePage{} }
 func (m *RpcBlockCreatePage) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreatePage) ProtoMessage()    {}
 func (*RpcBlockCreatePage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16}
 }
 func (m *RpcBlockCreatePage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9486,7 +9798,7 @@ func (m *RpcBlockCreatePageRequest) Reset()         { *m = RpcBlockCreatePageReq
 func (m *RpcBlockCreatePageRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreatePageRequest) ProtoMessage()    {}
 func (*RpcBlockCreatePageRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 0}
 }
 func (m *RpcBlockCreatePageRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9553,7 +9865,7 @@ func (m *RpcBlockCreatePageResponse) Reset()         { *m = RpcBlockCreatePageRe
 func (m *RpcBlockCreatePageResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreatePageResponse) ProtoMessage()    {}
 func (*RpcBlockCreatePageResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 1}
 }
 func (m *RpcBlockCreatePageResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9612,7 +9924,7 @@ func (m *RpcBlockCreatePageResponseError) Reset()         { *m = RpcBlockCreateP
 func (m *RpcBlockCreatePageResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCreatePageResponseError) ProtoMessage()    {}
 func (*RpcBlockCreatePageResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 1, 0}
 }
 func (m *RpcBlockCreatePageResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9664,7 +9976,7 @@ func (m *RpcBlockUnlink) Reset()         { *m = RpcBlockUnlink{} }
 func (m *RpcBlockUnlink) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlink) ProtoMessage()    {}
 func (*RpcBlockUnlink) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17}
 }
 func (m *RpcBlockUnlink) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9702,7 +10014,7 @@ func (m *RpcBlockUnlinkRequest) Reset()         { *m = RpcBlockUnlinkRequest{} }
 func (m *RpcBlockUnlinkRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlinkRequest) ProtoMessage()    {}
 func (*RpcBlockUnlinkRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 0}
 }
 func (m *RpcBlockUnlinkRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9753,7 +10065,7 @@ func (m *RpcBlockUnlinkResponse) Reset()         { *m = RpcBlockUnlinkResponse{}
 func (m *RpcBlockUnlinkResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlinkResponse) ProtoMessage()    {}
 func (*RpcBlockUnlinkResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 1}
 }
 func (m *RpcBlockUnlinkResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9798,7 +10110,7 @@ func (m *RpcBlockUnlinkResponseError) Reset()         { *m = RpcBlockUnlinkRespo
 func (m *RpcBlockUnlinkResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockUnlinkResponseError) ProtoMessage()    {}
 func (*RpcBlockUnlinkResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 16, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 1, 0}
 }
 func (m *RpcBlockUnlinkResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9851,7 +10163,7 @@ func (m *RpcBlockClose) Reset()         { *m = RpcBlockClose{} }
 func (m *RpcBlockClose) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockClose) ProtoMessage()    {}
 func (*RpcBlockClose) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 18}
 }
 func (m *RpcBlockClose) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9889,7 +10201,7 @@ func (m *RpcBlockCloseRequest) Reset()         { *m = RpcBlockCloseRequest{} }
 func (m *RpcBlockCloseRequest) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCloseRequest) ProtoMessage()    {}
 func (*RpcBlockCloseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 18, 0}
 }
 func (m *RpcBlockCloseRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9940,7 +10252,7 @@ func (m *RpcBlockCloseResponse) Reset()         { *m = RpcBlockCloseResponse{} }
 func (m *RpcBlockCloseResponse) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCloseResponse) ProtoMessage()    {}
 func (*RpcBlockCloseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 1}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 18, 1}
 }
 func (m *RpcBlockCloseResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -9985,7 +10297,7 @@ func (m *RpcBlockCloseResponseError) Reset()         { *m = RpcBlockCloseRespons
 func (m *RpcBlockCloseResponseError) String() string { return proto.CompactTextString(m) }
 func (*RpcBlockCloseResponseError) ProtoMessage()    {}
 func (*RpcBlockCloseResponseError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 17, 1, 0}
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 18, 1, 0}
 }
 func (m *RpcBlockCloseResponseError) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -11604,6 +11916,7 @@ var xxx_messageInfo_RpcVersionGetRequest proto.InternalMessageInfo
 type RpcVersionGetResponse struct {
 	Error   *RpcVersionGetResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Version string                      `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Details string                      `protobuf:"bytes,3,opt,name=details,proto3" json:"details,omitempty"`
 }
 
 func (m *RpcVersionGetResponse) Reset()         { *m = RpcVersionGetResponse{} }
@@ -11649,6 +11962,13 @@ func (m *RpcVersionGetResponse) GetError() *RpcVersionGetResponseError {
 func (m *RpcVersionGetResponse) GetVersion() string {
 	if m != nil {
 		return m.Version
+	}
+	return ""
+}
+
+func (m *RpcVersionGetResponse) GetDetails() string {
+	if m != nil {
+		return m.Details
 	}
 	return ""
 }
@@ -12855,6 +13175,190 @@ func (m *RpcPingResponseError) GetDescription() string {
 	return ""
 }
 
+type RpcLinkPreview struct {
+}
+
+func (m *RpcLinkPreview) Reset()         { *m = RpcLinkPreview{} }
+func (m *RpcLinkPreview) String() string { return proto.CompactTextString(m) }
+func (*RpcLinkPreview) ProtoMessage()    {}
+func (*RpcLinkPreview) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 10}
+}
+func (m *RpcLinkPreview) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLinkPreview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLinkPreview.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLinkPreview) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLinkPreview.Merge(m, src)
+}
+func (m *RpcLinkPreview) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLinkPreview) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLinkPreview.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLinkPreview proto.InternalMessageInfo
+
+type RpcLinkPreviewRequest struct {
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+}
+
+func (m *RpcLinkPreviewRequest) Reset()         { *m = RpcLinkPreviewRequest{} }
+func (m *RpcLinkPreviewRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcLinkPreviewRequest) ProtoMessage()    {}
+func (*RpcLinkPreviewRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 10, 0}
+}
+func (m *RpcLinkPreviewRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLinkPreviewRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLinkPreviewRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLinkPreviewRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLinkPreviewRequest.Merge(m, src)
+}
+func (m *RpcLinkPreviewRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLinkPreviewRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLinkPreviewRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLinkPreviewRequest proto.InternalMessageInfo
+
+func (m *RpcLinkPreviewRequest) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+type RpcLinkPreviewResponse struct {
+	Error       *RpcLinkPreviewResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	LinkPreview *model.LinkPreview           `protobuf:"bytes,2,opt,name=linkPreview,proto3" json:"linkPreview,omitempty"`
+}
+
+func (m *RpcLinkPreviewResponse) Reset()         { *m = RpcLinkPreviewResponse{} }
+func (m *RpcLinkPreviewResponse) String() string { return proto.CompactTextString(m) }
+func (*RpcLinkPreviewResponse) ProtoMessage()    {}
+func (*RpcLinkPreviewResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 10, 1}
+}
+func (m *RpcLinkPreviewResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLinkPreviewResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLinkPreviewResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLinkPreviewResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLinkPreviewResponse.Merge(m, src)
+}
+func (m *RpcLinkPreviewResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLinkPreviewResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLinkPreviewResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLinkPreviewResponse proto.InternalMessageInfo
+
+func (m *RpcLinkPreviewResponse) GetError() *RpcLinkPreviewResponseError {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (m *RpcLinkPreviewResponse) GetLinkPreview() *model.LinkPreview {
+	if m != nil {
+		return m.LinkPreview
+	}
+	return nil
+}
+
+type RpcLinkPreviewResponseError struct {
+	Code        RpcLinkPreviewResponseErrorCode `protobuf:"varint,1,opt,name=code,proto3,enum=anytype.RpcLinkPreviewResponseErrorCode" json:"code,omitempty"`
+	Description string                          `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *RpcLinkPreviewResponseError) Reset()         { *m = RpcLinkPreviewResponseError{} }
+func (m *RpcLinkPreviewResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcLinkPreviewResponseError) ProtoMessage()    {}
+func (*RpcLinkPreviewResponseError) Descriptor() ([]byte, []int) {
+	return fileDescriptor_8261c968b2e6f45c, []int{0, 10, 1, 0}
+}
+func (m *RpcLinkPreviewResponseError) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RpcLinkPreviewResponseError) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RpcLinkPreviewResponseError.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RpcLinkPreviewResponseError) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RpcLinkPreviewResponseError.Merge(m, src)
+}
+func (m *RpcLinkPreviewResponseError) XXX_Size() int {
+	return m.Size()
+}
+func (m *RpcLinkPreviewResponseError) XXX_DiscardUnknown() {
+	xxx_messageInfo_RpcLinkPreviewResponseError.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RpcLinkPreviewResponseError proto.InternalMessageInfo
+
+func (m *RpcLinkPreviewResponseError) GetCode() RpcLinkPreviewResponseErrorCode {
+	if m != nil {
+		return m.Code
+	}
+	return RpcLinkPreviewResponseError_NULL
+}
+
+func (m *RpcLinkPreviewResponseError) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 type Empty struct {
 }
 
@@ -12898,7 +13402,8 @@ func init() {
 	proto.RegisterEnum("anytype.RpcBlockListDuplicateResponseErrorCode", RpcBlockListDuplicateResponseErrorCode_name, RpcBlockListDuplicateResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockListSetTextStyleResponseErrorCode", RpcBlockListSetTextStyleResponseErrorCode_name, RpcBlockListSetTextStyleResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockListSetTextColorResponseErrorCode", RpcBlockListSetTextColorResponseErrorCode_name, RpcBlockListSetTextColorResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcBlockListSetTextBackgroundColorResponseErrorCode", RpcBlockListSetTextBackgroundColorResponseErrorCode_name, RpcBlockListSetTextBackgroundColorResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockListSetBackgroundColorResponseErrorCode", RpcBlockListSetBackgroundColorResponseErrorCode_name, RpcBlockListSetBackgroundColorResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockListSetAlignResponseErrorCode", RpcBlockListSetAlignResponseErrorCode_name, RpcBlockListSetAlignResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockListSetFieldsResponseErrorCode", RpcBlockListSetFieldsResponseErrorCode_name, RpcBlockListSetFieldsResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockReplaceResponseErrorCode", RpcBlockReplaceResponseErrorCode_name, RpcBlockReplaceResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSplitResponseErrorCode", RpcBlockSplitResponseErrorCode_name, RpcBlockSplitResponseErrorCode_value)
@@ -12909,10 +13414,9 @@ func init() {
 	proto.RegisterEnum("anytype.RpcBlockDownloadResponseErrorCode", RpcBlockDownloadResponseErrorCode_name, RpcBlockDownloadResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetFieldsResponseErrorCode", RpcBlockSetFieldsResponseErrorCode_name, RpcBlockSetFieldsResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetRestrictionsResponseErrorCode", RpcBlockSetRestrictionsResponseErrorCode_name, RpcBlockSetRestrictionsResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcBlockSetIsArchivedResponseErrorCode", RpcBlockSetIsArchivedResponseErrorCode_name, RpcBlockSetIsArchivedResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockSetPageIsArchivedResponseErrorCode", RpcBlockSetPageIsArchivedResponseErrorCode_name, RpcBlockSetPageIsArchivedResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetTextTextResponseErrorCode", RpcBlockSetTextTextResponseErrorCode_name, RpcBlockSetTextTextResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetTextColorResponseErrorCode", RpcBlockSetTextColorResponseErrorCode_name, RpcBlockSetTextColorResponseErrorCode_value)
-	proto.RegisterEnum("anytype.RpcBlockSetTextBackgroundColorResponseErrorCode", RpcBlockSetTextBackgroundColorResponseErrorCode_name, RpcBlockSetTextBackgroundColorResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetTextStyleResponseErrorCode", RpcBlockSetTextStyleResponseErrorCode_name, RpcBlockSetTextStyleResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetTextCheckedResponseErrorCode", RpcBlockSetTextCheckedResponseErrorCode_name, RpcBlockSetTextCheckedResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetFileNameResponseErrorCode", RpcBlockSetFileNameResponseErrorCode_name, RpcBlockSetFileNameResponseErrorCode_value)
@@ -12922,6 +13426,7 @@ func init() {
 	proto.RegisterEnum("anytype.RpcBlockSetVideoWidthResponseErrorCode", RpcBlockSetVideoWidthResponseErrorCode_name, RpcBlockSetVideoWidthResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetIconNameResponseErrorCode", RpcBlockSetIconNameResponseErrorCode_name, RpcBlockSetIconNameResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockSetLinkTargetBlockIdResponseErrorCode", RpcBlockSetLinkTargetBlockIdResponseErrorCode_name, RpcBlockSetLinkTargetBlockIdResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcBlockBookmarkFetchResponseErrorCode", RpcBlockBookmarkFetchResponseErrorCode_name, RpcBlockBookmarkFetchResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockGetMarksResponseErrorCode", RpcBlockGetMarksResponseErrorCode_name, RpcBlockGetMarksResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockUndoResponseErrorCode", RpcBlockUndoResponseErrorCode_name, RpcBlockUndoResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcBlockRedoResponseErrorCode", RpcBlockRedoResponseErrorCode_name, RpcBlockRedoResponseErrorCode_value)
@@ -12946,6 +13451,7 @@ func init() {
 	proto.RegisterEnum("anytype.RpcIpfsImageGetFileResponseErrorCode", RpcIpfsImageGetFileResponseErrorCode_name, RpcIpfsImageGetFileResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcConfigGetResponseErrorCode", RpcConfigGetResponseErrorCode_name, RpcConfigGetResponseErrorCode_value)
 	proto.RegisterEnum("anytype.RpcPingResponseErrorCode", RpcPingResponseErrorCode_name, RpcPingResponseErrorCode_value)
+	proto.RegisterEnum("anytype.RpcLinkPreviewResponseErrorCode", RpcLinkPreviewResponseErrorCode_name, RpcLinkPreviewResponseErrorCode_value)
 	proto.RegisterType((*Rpc)(nil), "anytype.Rpc")
 	proto.RegisterType((*RpcExternalDrop)(nil), "anytype.Rpc.ExternalDrop")
 	proto.RegisterType((*RpcExternalDropFiles)(nil), "anytype.Rpc.ExternalDrop.Files")
@@ -12975,10 +13481,14 @@ func init() {
 	proto.RegisterType((*RpcBlockListSetTextColorRequest)(nil), "anytype.Rpc.BlockList.Set.Text.Color.Request")
 	proto.RegisterType((*RpcBlockListSetTextColorResponse)(nil), "anytype.Rpc.BlockList.Set.Text.Color.Response")
 	proto.RegisterType((*RpcBlockListSetTextColorResponseError)(nil), "anytype.Rpc.BlockList.Set.Text.Color.Response.Error")
-	proto.RegisterType((*RpcBlockListSetTextBackgroundColor)(nil), "anytype.Rpc.BlockList.Set.Text.BackgroundColor")
-	proto.RegisterType((*RpcBlockListSetTextBackgroundColorRequest)(nil), "anytype.Rpc.BlockList.Set.Text.BackgroundColor.Request")
-	proto.RegisterType((*RpcBlockListSetTextBackgroundColorResponse)(nil), "anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response")
-	proto.RegisterType((*RpcBlockListSetTextBackgroundColorResponseError)(nil), "anytype.Rpc.BlockList.Set.Text.BackgroundColor.Response.Error")
+	proto.RegisterType((*RpcBlockListSetBackgroundColor)(nil), "anytype.Rpc.BlockList.Set.BackgroundColor")
+	proto.RegisterType((*RpcBlockListSetBackgroundColorRequest)(nil), "anytype.Rpc.BlockList.Set.BackgroundColor.Request")
+	proto.RegisterType((*RpcBlockListSetBackgroundColorResponse)(nil), "anytype.Rpc.BlockList.Set.BackgroundColor.Response")
+	proto.RegisterType((*RpcBlockListSetBackgroundColorResponseError)(nil), "anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error")
+	proto.RegisterType((*RpcBlockListSetAlign)(nil), "anytype.Rpc.BlockList.Set.Align")
+	proto.RegisterType((*RpcBlockListSetAlignRequest)(nil), "anytype.Rpc.BlockList.Set.Align.Request")
+	proto.RegisterType((*RpcBlockListSetAlignResponse)(nil), "anytype.Rpc.BlockList.Set.Align.Response")
+	proto.RegisterType((*RpcBlockListSetAlignResponseError)(nil), "anytype.Rpc.BlockList.Set.Align.Response.Error")
 	proto.RegisterType((*RpcBlockListSetFields)(nil), "anytype.Rpc.BlockList.Set.Fields")
 	proto.RegisterType((*RpcBlockListSetFieldsRequest)(nil), "anytype.Rpc.BlockList.Set.Fields.Request")
 	proto.RegisterType((*RpcBlockListSetFieldsRequestBlockField)(nil), "anytype.Rpc.BlockList.Set.Fields.Request.BlockField")
@@ -13022,10 +13532,11 @@ func init() {
 	proto.RegisterType((*RpcBlockSetRestrictionsRequest)(nil), "anytype.Rpc.Block.Set.Restrictions.Request")
 	proto.RegisterType((*RpcBlockSetRestrictionsResponse)(nil), "anytype.Rpc.Block.Set.Restrictions.Response")
 	proto.RegisterType((*RpcBlockSetRestrictionsResponseError)(nil), "anytype.Rpc.Block.Set.Restrictions.Response.Error")
-	proto.RegisterType((*RpcBlockSetIsArchived)(nil), "anytype.Rpc.Block.Set.IsArchived")
-	proto.RegisterType((*RpcBlockSetIsArchivedRequest)(nil), "anytype.Rpc.Block.Set.IsArchived.Request")
-	proto.RegisterType((*RpcBlockSetIsArchivedResponse)(nil), "anytype.Rpc.Block.Set.IsArchived.Response")
-	proto.RegisterType((*RpcBlockSetIsArchivedResponseError)(nil), "anytype.Rpc.Block.Set.IsArchived.Response.Error")
+	proto.RegisterType((*RpcBlockSetPage)(nil), "anytype.Rpc.Block.Set.Page")
+	proto.RegisterType((*RpcBlockSetPageIsArchived)(nil), "anytype.Rpc.Block.Set.Page.IsArchived")
+	proto.RegisterType((*RpcBlockSetPageIsArchivedRequest)(nil), "anytype.Rpc.Block.Set.Page.IsArchived.Request")
+	proto.RegisterType((*RpcBlockSetPageIsArchivedResponse)(nil), "anytype.Rpc.Block.Set.Page.IsArchived.Response")
+	proto.RegisterType((*RpcBlockSetPageIsArchivedResponseError)(nil), "anytype.Rpc.Block.Set.Page.IsArchived.Response.Error")
 	proto.RegisterType((*RpcBlockSetText)(nil), "anytype.Rpc.Block.Set.Text")
 	proto.RegisterType((*RpcBlockSetTextText)(nil), "anytype.Rpc.Block.Set.Text.Text")
 	proto.RegisterType((*RpcBlockSetTextTextRequest)(nil), "anytype.Rpc.Block.Set.Text.Text.Request")
@@ -13035,10 +13546,6 @@ func init() {
 	proto.RegisterType((*RpcBlockSetTextColorRequest)(nil), "anytype.Rpc.Block.Set.Text.Color.Request")
 	proto.RegisterType((*RpcBlockSetTextColorResponse)(nil), "anytype.Rpc.Block.Set.Text.Color.Response")
 	proto.RegisterType((*RpcBlockSetTextColorResponseError)(nil), "anytype.Rpc.Block.Set.Text.Color.Response.Error")
-	proto.RegisterType((*RpcBlockSetTextBackgroundColor)(nil), "anytype.Rpc.Block.Set.Text.BackgroundColor")
-	proto.RegisterType((*RpcBlockSetTextBackgroundColorRequest)(nil), "anytype.Rpc.Block.Set.Text.BackgroundColor.Request")
-	proto.RegisterType((*RpcBlockSetTextBackgroundColorResponse)(nil), "anytype.Rpc.Block.Set.Text.BackgroundColor.Response")
-	proto.RegisterType((*RpcBlockSetTextBackgroundColorResponseError)(nil), "anytype.Rpc.Block.Set.Text.BackgroundColor.Response.Error")
 	proto.RegisterType((*RpcBlockSetTextStyle)(nil), "anytype.Rpc.Block.Set.Text.Style")
 	proto.RegisterType((*RpcBlockSetTextStyleRequest)(nil), "anytype.Rpc.Block.Set.Text.Style.Request")
 	proto.RegisterType((*RpcBlockSetTextStyleResponse)(nil), "anytype.Rpc.Block.Set.Text.Style.Response")
@@ -13080,6 +13587,11 @@ func init() {
 	proto.RegisterType((*RpcBlockSetLinkTargetBlockIdRequest)(nil), "anytype.Rpc.Block.Set.Link.TargetBlockId.Request")
 	proto.RegisterType((*RpcBlockSetLinkTargetBlockIdResponse)(nil), "anytype.Rpc.Block.Set.Link.TargetBlockId.Response")
 	proto.RegisterType((*RpcBlockSetLinkTargetBlockIdResponseError)(nil), "anytype.Rpc.Block.Set.Link.TargetBlockId.Response.Error")
+	proto.RegisterType((*RpcBlockBookmark)(nil), "anytype.Rpc.Block.Bookmark")
+	proto.RegisterType((*RpcBlockBookmarkFetch)(nil), "anytype.Rpc.Block.Bookmark.Fetch")
+	proto.RegisterType((*RpcBlockBookmarkFetchRequest)(nil), "anytype.Rpc.Block.Bookmark.Fetch.Request")
+	proto.RegisterType((*RpcBlockBookmarkFetchResponse)(nil), "anytype.Rpc.Block.Bookmark.Fetch.Response")
+	proto.RegisterType((*RpcBlockBookmarkFetchResponseError)(nil), "anytype.Rpc.Block.Bookmark.Fetch.Response.Error")
 	proto.RegisterType((*RpcBlockGet)(nil), "anytype.Rpc.Block.Get")
 	proto.RegisterType((*RpcBlockGetMarks)(nil), "anytype.Rpc.Block.Get.Marks")
 	proto.RegisterType((*RpcBlockGetMarksRequest)(nil), "anytype.Rpc.Block.Get.Marks.Request")
@@ -13182,234 +13694,246 @@ func init() {
 	proto.RegisterType((*RpcPingRequest)(nil), "anytype.Rpc.Ping.Request")
 	proto.RegisterType((*RpcPingResponse)(nil), "anytype.Rpc.Ping.Response")
 	proto.RegisterType((*RpcPingResponseError)(nil), "anytype.Rpc.Ping.Response.Error")
+	proto.RegisterType((*RpcLinkPreview)(nil), "anytype.Rpc.LinkPreview")
+	proto.RegisterType((*RpcLinkPreviewRequest)(nil), "anytype.Rpc.LinkPreview.Request")
+	proto.RegisterType((*RpcLinkPreviewResponse)(nil), "anytype.Rpc.LinkPreview.Response")
+	proto.RegisterType((*RpcLinkPreviewResponseError)(nil), "anytype.Rpc.LinkPreview.Response.Error")
 	proto.RegisterType((*Empty)(nil), "anytype.Empty")
 }
 
 func init() { proto.RegisterFile("pb/protos/commands.proto", fileDescriptor_8261c968b2e6f45c) }
 
 var fileDescriptor_8261c968b2e6f45c = []byte{
-	// 3534 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5c, 0x6d, 0x8c, 0x24, 0x55,
-	0xb9, 0xde, 0xae, 0xea, 0x9e, 0x8f, 0x77, 0x76, 0x66, 0x9b, 0xba, 0x7b, 0x61, 0xee, 0xb9, 0xcb,
-	0xb0, 0x2c, 0xcb, 0xee, 0xb2, 0x77, 0xe9, 0x81, 0xe1, 0xc2, 0xbd, 0xcb, 0xbd, 0x0b, 0xf4, 0x74,
-	0xd7, 0xec, 0x36, 0x3b, 0xd3, 0x3d, 0x56, 0x77, 0xcf, 0x88, 0xc6, 0x74, 0x6a, 0xba, 0xcf, 0xf4,
-	0x34, 0x5b, 0x5d, 0xd5, 0x54, 0xd5, 0xcc, 0xee, 0xfc, 0x53, 0xc4, 0x80, 0x44, 0x13, 0xf1, 0x23,
-	0x7e, 0x05, 0x54, 0x50, 0x51, 0x04, 0x63, 0x8c, 0x11, 0x12, 0x43, 0x08, 0x98, 0x18, 0x51, 0x30,
-	0xf0, 0x07, 0x31, 0x44, 0x83, 0xbb, 0x1a, 0x45, 0x30, 0xc6, 0x08, 0x3f, 0x40, 0x44, 0x73, 0x4e,
-	0x7d, 0x74, 0x9d, 0xd9, 0xae, 0x9e, 0xaa, 0x9e, 0x2e, 0x76, 0x8d, 0x7f, 0x26, 0x7d, 0x4e, 0x9d,
-	0x7a, 0xde, 0xb7, 0x9e, 0xe7, 0x3d, 0x9f, 0xf5, 0xd6, 0xc0, 0x78, 0x6b, 0x69, 0xb2, 0xa5, 0x6b,
-	0xa6, 0x66, 0x4c, 0x56, 0xb5, 0x66, 0x53, 0x56, 0x6b, 0x46, 0x8a, 0x96, 0x85, 0x41, 0x59, 0x5d,
-	0x37, 0xd7, 0x5b, 0x18, 0x1d, 0x5f, 0xc3, 0x6a, 0x4d, 0xd3, 0x27, 0xeb, 0x0d, 0x73, 0x65, 0x75,
-	0x29, 0x55, 0xd5, 0x9a, 0x93, 0xf6, 0xa5, 0x86, 0x36, 0x59, 0xd7, 0xae, 0xb4, 0x0b, 0x57, 0x2a,
-	0x8d, 0x25, 0x5d, 0xd6, 0xd7, 0x27, 0x5b, 0x4b, 0x93, 0x4d, 0xad, 0x86, 0x15, 0x07, 0x97, 0x16,
-	0x6c, 0x54, 0xb4, 0xab, 0xae, 0x69, 0x75, 0x05, 0x5b, 0xd7, 0x96, 0x56, 0x97, 0x27, 0x0d, 0x53,
-	0x5f, 0xad, 0x9a, 0xd6, 0xd5, 0x3d, 0x4f, 0x3e, 0x10, 0x03, 0x5e, 0x6a, 0x55, 0xd1, 0x1d, 0x03,
-	0xb0, 0x5d, 0x3c, 0x65, 0x62, 0x5d, 0x95, 0x95, 0xac, 0xae, 0xb5, 0xd0, 0xdb, 0x1c, 0x24, 0x66,
-	0x1a, 0x0a, 0x36, 0xd0, 0x49, 0x18, 0x94, 0xf0, 0x6d, 0xab, 0xd8, 0x30, 0x85, 0x5d, 0x30, 0x5c,
-	0xd5, 0x54, 0x13, 0x9f, 0x32, 0x73, 0xb5, 0xf1, 0xd8, 0xee, 0xd8, 0x81, 0x61, 0xa9, 0x5d, 0x21,
-	0xec, 0x83, 0xb1, 0x65, 0xad, 0xba, 0x6a, 0xe0, 0xda, 0xb4, 0xa2, 0x55, 0x4f, 0xe4, 0x6a, 0xe3,
-	0x1c, 0x6d, 0xb2, 0xa1, 0x96, 0xb4, 0x53, 0xb4, 0xaa, 0xac, 0x10, 0xf8, 0x79, 0xd9, 0x5c, 0x31,
-	0xc6, 0xf9, 0xdd, 0x3c, 0x69, 0xc7, 0xd6, 0xa2, 0x37, 0x63, 0x30, 0x24, 0x61, 0xa3, 0xa5, 0xa9,
-	0x06, 0x16, 0xb2, 0x90, 0xc0, 0xba, 0xae, 0xe9, 0xd4, 0xec, 0xc8, 0x54, 0x2a, 0x65, 0xb3, 0x90,
-	0x92, 0x5a, 0xd5, 0x94, 0xd7, 0xf3, 0x14, 0xf5, 0x3a, 0xe5, 0xdc, 0x98, 0x12, 0xc9, 0x5d, 0x92,
-	0x75, 0x33, 0xfa, 0x7a, 0x0c, 0x12, 0xb4, 0x42, 0x38, 0x0a, 0xf1, 0xaa, 0x56, 0xc3, 0x14, 0x6e,
-	0x6c, 0xea, 0x9a, 0x70, 0x70, 0xa9, 0x8c, 0x56, 0xc3, 0x12, 0x05, 0x10, 0x76, 0xc3, 0x48, 0x0d,
-	0x1b, 0x55, 0xbd, 0xd1, 0x32, 0x1b, 0x9a, 0x6a, 0x3f, 0xb2, 0xb7, 0x6a, 0xcf, 0x14, 0xc4, 0x49,
-	0x7b, 0x61, 0x08, 0xe2, 0xf9, 0xf2, 0xec, 0x6c, 0x72, 0x9b, 0x70, 0x01, 0x8c, 0x96, 0xf3, 0xc7,
-	0xf3, 0x85, 0xc5, 0x7c, 0x45, 0x94, 0xa4, 0x82, 0x94, 0x8c, 0x09, 0xa3, 0x30, 0x3c, 0x9d, 0xce,
-	0x56, 0x72, 0xf9, 0xf9, 0x72, 0x29, 0xc9, 0xa1, 0xd7, 0x39, 0x18, 0xcc, 0x10, 0x66, 0x55, 0x13,
-	0x35, 0xfa, 0x2d, 0xc0, 0x38, 0x0c, 0x56, 0x2d, 0xec, 0x71, 0x7e, 0x77, 0xec, 0xc0, 0x76, 0xc9,
-	0x29, 0xa2, 0xbf, 0x79, 0x29, 0x9f, 0x61, 0x29, 0xbf, 0xca, 0x9f, 0x23, 0xdb, 0x53, 0x1f, 0xd2,
-	0xbf, 0xe1, 0x92, 0x9e, 0x63, 0x48, 0xbf, 0x36, 0x2c, 0x60, 0xf4, 0xb4, 0xdf, 0xbf, 0x13, 0x86,
-	0x29, 0x4b, 0xb3, 0x0d, 0xc3, 0x44, 0x4f, 0xf3, 0x10, 0x9f, 0xd3, 0xd6, 0x30, 0x7a, 0x26, 0x16,
-	0x54, 0x02, 0x04, 0x43, 0x4b, 0x16, 0xcb, 0xc6, 0x38, 0x47, 0xa3, 0xda, 0x2d, 0x0b, 0x07, 0x60,
-	0x87, 0x29, 0xeb, 0x75, 0x6c, 0x66, 0xdc, 0xfb, 0x79, 0x7a, 0xff, 0xc6, 0x6a, 0x61, 0x0f, 0x6c,
-	0xaf, 0xe9, 0x5a, 0xab, 0x44, 0xab, 0x73, 0xb5, 0xf1, 0x38, 0x6d, 0xc6, 0xd4, 0x09, 0x87, 0x61,
-	0xa8, 0xa5, 0x19, 0x0d, 0xfa, 0xf4, 0x09, 0xca, 0xe7, 0xc5, 0x2e, 0x9f, 0x74, 0x04, 0x48, 0xd1,
-	0x07, 0x49, 0xcd, 0xdb, 0x8d, 0x24, 0xb7, 0x39, 0xfa, 0xb3, 0x57, 0xe5, 0x9b, 0x58, 0x95, 0x0f,
-	0x32, 0xa2, 0xb8, 0x5c, 0xa4, 0x08, 0x0f, 0x3e, 0xfa, 0xde, 0xef, 0xea, 0x9b, 0x61, 0xf4, 0x9d,
-	0x0c, 0x0e, 0x15, 0xbd, 0xb2, 0x4f, 0xf1, 0x30, 0x9c, 0x5d, 0x6d, 0x29, 0x8d, 0xaa, 0x6c, 0x62,
-	0xf4, 0x85, 0x30, 0x82, 0x9a, 0x8e, 0x0c, 0x96, 0x2b, 0x6e, 0x99, 0x11, 0x9b, 0xdf, 0x20, 0xb6,
-	0x57, 0x9e, 0x78, 0x38, 0x79, 0x3e, 0xcb, 0x79, 0xe4, 0x11, 0x59, 0x79, 0xfc, 0x38, 0x75, 0x1f,
-	0xad, 0xb3, 0x46, 0xdd, 0xe2, 0x12, 0x3d, 0xe8, 0xea, 0x77, 0x8c, 0xd1, 0xef, 0xbf, 0x43, 0xda,
-	0x8a, 0x5e, 0xc4, 0x0f, 0x8f, 0x02, 0x5f, 0xc4, 0x26, 0xfa, 0xcc, 0x30, 0xc4, 0x4b, 0xf8, 0x94,
-	0x89, 0x3e, 0xcd, 0x43, 0xa2, 0x68, 0xae, 0x2b, 0x18, 0xdd, 0xde, 0x97, 0x2e, 0x7a, 0x04, 0x12,
-	0x06, 0x81, 0xa3, 0x1d, 0x73, 0x6c, 0x6a, 0x7f, 0x47, 0xc9, 0x9c, 0xc1, 0x89, 0x78, 0x90, 0xa2,
-	0xd6, 0x25, 0xeb, 0x2e, 0xf4, 0x11, 0xaf, 0x72, 0x37, 0xb3, 0xca, 0xf9, 0xb1, 0x59, 0xc4, 0x5e,
-	0x24, 0x9f, 0x2e, 0xf6, 0xb0, 0x2b, 0xd1, 0x1c, 0x23, 0xd1, 0xe1, 0x5e, 0x40, 0xa3, 0xd7, 0xe9,
-	0x0f, 0x1c, 0x24, 0x32, 0x9a, 0xa2, 0xe9, 0xe8, 0x96, 0x7e, 0xa8, 0xb2, 0x13, 0x12, 0x55, 0x82,
-	0x66, 0x0f, 0x97, 0x56, 0x61, 0x6b, 0x64, 0x53, 0xef, 0xfa, 0x4d, 0x76, 0x27, 0xd0, 0xe8, 0xc9,
-	0xbe, 0x8b, 0x87, 0x1d, 0xd3, 0x72, 0xf5, 0x44, 0x5d, 0xd7, 0x56, 0xd5, 0x5a, 0xe4, 0xb4, 0x7f,
-	0xde, 0x4b, 0x7b, 0x89, 0xa5, 0xfd, 0x86, 0xcd, 0x18, 0xda, 0xe0, 0xa7, 0x8f, 0x00, 0xdf, 0x77,
-	0x05, 0x58, 0x64, 0x04, 0xc8, 0x6c, 0x0d, 0x3e, 0x7a, 0x29, 0xce, 0xf0, 0x30, 0x30, 0xd3, 0xc0,
-	0x4a, 0xcd, 0x40, 0x2f, 0x06, 0x1e, 0x8f, 0x16, 0x60, 0x84, 0x52, 0x6e, 0xdd, 0x48, 0x55, 0xe8,
-	0x1e, 0xc0, 0x56, 0xc3, 0x94, 0x8d, 0x6e, 0x5d, 0xa4, 0x75, 0x92, 0x17, 0x08, 0x2d, 0x02, 0xb4,
-	0x2f, 0x91, 0x35, 0x9f, 0x2d, 0xac, 0xed, 0x81, 0x53, 0x14, 0x26, 0x61, 0x60, 0xd9, 0x31, 0x4d,
-	0x44, 0xbc, 0x28, 0x65, 0x6d, 0x19, 0x52, 0xce, 0x96, 0x21, 0x55, 0xa4, 0x5b, 0x06, 0xc9, 0x6e,
-	0x16, 0x62, 0x91, 0xe8, 0xe3, 0x77, 0xef, 0x8b, 0xc4, 0x00, 0x80, 0xd1, 0xab, 0xfc, 0xea, 0x07,
-	0x20, 0x41, 0x1d, 0x41, 0x77, 0xf0, 0x44, 0xe4, 0x96, 0x22, 0x57, 0x31, 0x6a, 0x06, 0xd5, 0xdb,
-	0xa3, 0x04, 0xc7, 0x2a, 0x71, 0x10, 0x12, 0xf4, 0x27, 0xed, 0x70, 0x23, 0x53, 0x3b, 0x3b, 0xcd,
-	0x3e, 0x92, 0xd5, 0x04, 0x7d, 0xd4, 0xdb, 0x0d, 0x6f, 0x64, 0x45, 0xb8, 0xe2, 0x6c, 0xce, 0x52,
-	0xb6, 0x9b, 0x3e, 0xcb, 0x03, 0x5f, 0x9f, 0xd0, 0x57, 0x5c, 0x5d, 0xa6, 0x19, 0x5d, 0x52, 0x81,
-	0x6d, 0x44, 0x2f, 0xc8, 0x5b, 0x1c, 0x24, 0x8a, 0x2d, 0xa5, 0x11, 0x62, 0xab, 0xe4, 0x2f, 0xc2,
-	0x3e, 0x18, 0xab, 0xae, 0xea, 0x86, 0xa6, 0x3b, 0x2b, 0x33, 0xaa, 0x46, 0x42, 0xda, 0x50, 0xcb,
-	0x4e, 0x3f, 0x47, 0x58, 0x01, 0xf6, 0x77, 0x20, 0x87, 0x3a, 0x18, 0x9a, 0xfe, 0x2f, 0xb9, 0xf4,
-	0xdf, 0xc4, 0xd0, 0x7f, 0x28, 0xa0, 0x85, 0xe8, 0xc9, 0xff, 0x3d, 0x07, 0x89, 0x39, 0xac, 0xd7,
-	0x31, 0xba, 0x2d, 0x28, 0xf9, 0x7b, 0x60, 0xfb, 0x72, 0x43, 0x37, 0x4c, 0x76, 0x97, 0xca, 0xd4,
-	0x09, 0x7b, 0x61, 0xd4, 0xc0, 0x55, 0x4d, 0x75, 0xb7, 0xb2, 0xd6, 0x24, 0xc4, 0x56, 0xa2, 0x57,
-	0x63, 0xe1, 0x44, 0xa0, 0x8e, 0xfa, 0x8c, 0x40, 0x61, 0xa8, 0xee, 0x84, 0x13, 0x3d, 0xd5, 0xbf,
-	0xe4, 0xc8, 0x4d, 0xad, 0x75, 0x54, 0x0e, 0xca, 0xf4, 0x21, 0x18, 0xa0, 0x91, 0xe4, 0x4c, 0x2b,
-	0x9d, 0x87, 0x14, 0xbb, 0x0d, 0x3b, 0xb0, 0xff, 0x3f, 0xcb, 0xe6, 0xbe, 0x0e, 0x2c, 0x10, 0x5f,
-	0x7c, 0x22, 0x5a, 0x80, 0xf8, 0x8a, 0xd9, 0x54, 0xec, 0x27, 0xa7, 0xbf, 0xd1, 0x7d, 0x2e, 0xc1,
-	0x37, 0x32, 0x04, 0xff, 0x57, 0x30, 0xe8, 0xe8, 0xf9, 0xfd, 0x41, 0x1c, 0x12, 0xf3, 0xb2, 0x61,
-	0x62, 0xf4, 0x20, 0xd7, 0xef, 0x33, 0x97, 0x69, 0xb8, 0xc0, 0xc0, 0x0a, 0xae, 0x9a, 0xb8, 0x46,
-	0x96, 0x2a, 0x92, 0xac, 0xd6, 0xb1, 0xcf, 0x38, 0x4f, 0xaf, 0x49, 0x67, 0x37, 0x17, 0x0e, 0x42,
-	0xd2, 0xa9, 0x9c, 0x76, 0x16, 0x6d, 0x71, 0xba, 0x68, 0x3b, 0xab, 0x9e, 0xee, 0x5b, 0xf1, 0x29,
-	0xb3, 0xa8, 0x68, 0x26, 0x3d, 0x1e, 0x20, 0xfb, 0x56, 0xbb, 0x4c, 0xae, 0x11, 0x41, 0xe8, 0xb5,
-	0x01, 0xeb, 0x9a, 0x53, 0x16, 0x52, 0x30, 0x28, 0xab, 0xeb, 0xf4, 0xd2, 0x60, 0x97, 0x90, 0x71,
-	0x1a, 0xa1, 0x3b, 0x43, 0x0e, 0x83, 0x94, 0xdf, 0x1e, 0x36, 0xa9, 0x61, 0x7a, 0x67, 0x27, 0x1b,
-	0xd1, 0x47, 0xcf, 0x2b, 0x1c, 0x0c, 0x94, 0x5b, 0x8a, 0x26, 0xd7, 0x90, 0xb6, 0xf5, 0x69, 0x08,
-	0xc1, 0xd0, 0xb2, 0x7d, 0x12, 0x6a, 0x0f, 0x7d, 0x6e, 0x59, 0x48, 0x02, 0xbf, 0xaa, 0x2b, 0xf6,
-	0xa9, 0x10, 0xf9, 0x89, 0xfe, 0xe8, 0xed, 0xb9, 0x37, 0xb0, 0x2a, 0x1c, 0xe8, 0xc0, 0x90, 0xe5,
-	0xa7, 0xcf, 0x40, 0xf8, 0x65, 0x97, 0xea, 0x34, 0x43, 0xf5, 0x95, 0x41, 0x81, 0xa2, 0xe7, 0xfa,
-	0x49, 0x0e, 0x86, 0xb2, 0xda, 0x49, 0x95, 0xb2, 0x9d, 0xde, 0x32, 0xdb, 0x61, 0x4f, 0xc4, 0x52,
-	0x8e, 0xed, 0xad, 0x9f, 0x88, 0xf9, 0x41, 0x45, 0xcf, 0xe1, 0xa7, 0x0e, 0x59, 0x87, 0x29, 0xaf,
-	0x73, 0xee, 0xa6, 0x45, 0xdf, 0x7a, 0xdc, 0xb6, 0x77, 0x13, 0x7c, 0xb0, 0xdd, 0xc4, 0x1b, 0x5e,
-	0xea, 0xa7, 0x59, 0xea, 0x3b, 0xae, 0x72, 0x36, 0xdb, 0x49, 0x7c, 0xd5, 0x25, 0x5f, 0x64, 0xc8,
-	0xbf, 0x3a, 0x0c, 0x58, 0xf4, 0xf4, 0xdf, 0xcb, 0xc3, 0x76, 0x09, 0x1b, 0xa6, 0xde, 0xa8, 0x12,
-	0x0c, 0x03, 0xdd, 0x15, 0xdb, 0x3a, 0xfb, 0x22, 0x6c, 0xd7, 0x3d, 0x98, 0xb6, 0x06, 0x97, 0x76,
-	0x3c, 0xc6, 0xf2, 0x1a, 0x97, 0x98, 0xdb, 0xd0, 0x87, 0xbc, 0x83, 0xfa, 0x31, 0x56, 0x93, 0x29,
-	0x1f, 0x1a, 0xbd, 0x70, 0x3e, 0xca, 0x3c, 0xe4, 0x2a, 0x73, 0x9c, 0x51, 0xe6, 0x7f, 0xc2, 0x43,
-	0x46, 0xaf, 0xcf, 0x9f, 0x38, 0x80, 0x9c, 0x91, 0xd6, 0xab, 0x2b, 0x8d, 0x35, 0x5c, 0x43, 0xf2,
-	0xd6, 0xc5, 0x99, 0xf0, 0x02, 0x52, 0x69, 0x86, 0x24, 0xaf, 0x89, 0x90, 0xfb, 0x6a, 0x4a, 0x51,
-	0xfb, 0xf6, 0xad, 0xef, 0xab, 0xbb, 0x03, 0x46, 0xcf, 0xf8, 0xed, 0x3b, 0xec, 0x53, 0xdd, 0x2f,
-	0xf2, 0xce, 0xf1, 0x6e, 0x1f, 0xba, 0x84, 0x00, 0x71, 0xd2, 0xc6, 0x9e, 0x44, 0xe9, 0x6f, 0xb2,
-	0x4e, 0x69, 0xca, 0xfa, 0x09, 0x83, 0x4e, 0xa1, 0x23, 0x41, 0x8e, 0x79, 0xe7, 0x48, 0x73, 0xc9,
-	0xba, 0x0b, 0xfd, 0x35, 0x16, 0xea, 0x80, 0xbe, 0x7d, 0x3e, 0x45, 0xff, 0x74, 0xd6, 0x29, 0xc4,
-	0x21, 0x7c, 0x57, 0xbc, 0xe8, 0x65, 0x7a, 0xd9, 0x3d, 0xdc, 0x5d, 0xdc, 0xba, 0x3a, 0x9d, 0xcf,
-	0x18, 0x7b, 0xe9, 0x09, 0x9b, 0x1e, 0xeb, 0x86, 0xed, 0x09, 0xe7, 0xf0, 0x48, 0xf7, 0x1d, 0xee,
-	0xec, 0x23, 0xdd, 0xc8, 0xc8, 0xbe, 0xc7, 0x3b, 0xd8, 0xcf, 0xb3, 0x64, 0x5f, 0xdf, 0x8d, 0x9b,
-	0x60, 0x87, 0xb9, 0xdf, 0x75, 0x69, 0x2f, 0x32, 0xb4, 0xdf, 0xd8, 0x3b, 0x74, 0xf4, 0x02, 0xdc,
-	0xed, 0xbe, 0x57, 0xfa, 0x60, 0x1f, 0x86, 0xa0, 0x2d, 0xbe, 0x55, 0xea, 0xb9, 0x37, 0x74, 0x7b,
-	0xa3, 0xd4, 0x53, 0x6f, 0x38, 0x67, 0x6f, 0x93, 0x06, 0x33, 0x2b, 0xb8, 0x7a, 0x02, 0xd7, 0xd0,
-	0xfb, 0xb7, 0xae, 0xc6, 0x38, 0x0c, 0x56, 0x2d, 0x34, 0x7b, 0x0e, 0x76, 0x8a, 0x3d, 0x2d, 0x7b,
-	0xac, 0x51, 0xc2, 0x02, 0xe8, 0xd3, 0xb2, 0xa7, 0x0b, 0x64, 0xf4, 0x64, 0xff, 0x86, 0x83, 0xf8,
-	0x4c, 0x43, 0xc1, 0xe8, 0x25, 0x0e, 0xe2, 0x79, 0xb9, 0x89, 0x83, 0x1f, 0x36, 0x75, 0x9d, 0x83,
-	0x55, 0xb9, 0x89, 0x9d, 0x39, 0x98, 0xfc, 0xee, 0x69, 0x12, 0x25, 0x8e, 0xa5, 0x88, 0x53, 0x7d,
-	0x9a, 0x44, 0xfd, 0xf0, 0xa2, 0xa7, 0xf9, 0x99, 0x04, 0x24, 0x72, 0x4d, 0xb9, 0x8e, 0xe9, 0xa1,
-	0x5e, 0x94, 0x3c, 0xf7, 0xb4, 0xaa, 0x24, 0x9e, 0x75, 0x23, 0x3a, 0xf4, 0xaa, 0xd2, 0x0f, 0x30,
-	0x7a, 0xa6, 0x4f, 0x73, 0x90, 0x58, 0x6c, 0xd4, 0xcc, 0x95, 0x3e, 0xcd, 0xa0, 0x27, 0x09, 0x96,
-	0xfd, 0x4e, 0xc0, 0x2a, 0xa0, 0xbf, 0x7b, 0x29, 0x3e, 0xca, 0x52, 0x7c, 0x75, 0x57, 0x46, 0xa8,
-	0x63, 0x3e, 0x1c, 0x7f, 0xd3, 0xe5, 0xf8, 0x66, 0x86, 0xe3, 0xeb, 0x42, 0x23, 0xbe, 0x3b, 0xe1,
-	0xbc, 0xd0, 0xa8, 0x61, 0xed, 0xbc, 0x0c, 0x67, 0xea, 0x59, 0x3f, 0xc3, 0xd9, 0x17, 0xf0, 0x5f,
-	0x36, 0x9c, 0x2d, 0x46, 0xfa, 0x19, 0xce, 0xfe, 0x88, 0xef, 0xce, 0x24, 0x98, 0xab, 0x6a, 0xea,
-	0x79, 0x39, 0x09, 0x12, 0xc7, 0xfa, 0x39, 0x09, 0xfa, 0xe1, 0x45, 0x4f, 0xf3, 0x3d, 0x3c, 0xc4,
-	0x67, 0x1b, 0xea, 0x09, 0x74, 0x17, 0x0f, 0xa3, 0x56, 0x62, 0xa3, 0xf3, 0x62, 0xaf, 0xbe, 0x75,
-	0xbe, 0xf7, 0xc2, 0xa8, 0xe9, 0xc5, 0x74, 0xde, 0x20, 0x32, 0x95, 0xe8, 0xe3, 0xde, 0x35, 0x5f,
-	0x9e, 0x55, 0xe0, 0x7f, 0x7d, 0x18, 0x23, 0x3e, 0xa7, 0x18, 0x7f, 0x7d, 0xa4, 0xf8, 0x8e, 0x2b,
-	0xc5, 0x7b, 0x18, 0x29, 0x8e, 0xf4, 0x0a, 0xfc, 0xae, 0x24, 0x1e, 0xf3, 0x47, 0xb1, 0x89, 0x5e,
-	0xe3, 0x20, 0x41, 0x0f, 0x3d, 0xfa, 0x94, 0xd8, 0xa0, 0x6f, 0xfa, 0xc2, 0xcb, 0x6a, 0x82, 0xfe,
-	0xe2, 0xed, 0x12, 0x69, 0x56, 0x90, 0x4e, 0x6f, 0x0a, 0x8f, 0x62, 0xfb, 0x74, 0xc6, 0x47, 0x83,
-	0x07, 0x5c, 0x0d, 0xb2, 0x8c, 0x06, 0x57, 0x85, 0xc0, 0x8a, 0x9e, 0xf6, 0x47, 0x38, 0x88, 0x97,
-	0xd5, 0x9a, 0x86, 0xf6, 0x07, 0x64, 0x9b, 0x1d, 0x3a, 0x02, 0xbc, 0xac, 0x25, 0xe8, 0x9b, 0x86,
-	0xe9, 0xe6, 0x2f, 0x66, 0x3b, 0xc0, 0x84, 0x63, 0x27, 0x1b, 0x9e, 0x1d, 0x21, 0x09, 0xdb, 0x33,
-	0xe9, 0x7c, 0x25, 0x5f, 0x28, 0x55, 0xe6, 0x0a, 0x0b, 0x62, 0x92, 0xa7, 0x7c, 0x49, 0x38, 0x4a,
-	0xbe, 0x08, 0x7a, 0x1f, 0xf8, 0xea, 0x00, 0x73, 0x2e, 0xf8, 0x22, 0xcb, 0xb2, 0x42, 0x0b, 0xab,
-	0x7d, 0xca, 0x90, 0x59, 0xd2, 0xb1, 0x5c, 0xab, 0xea, 0xab, 0xcd, 0x25, 0xa3, 0x9d, 0xfc, 0xbc,
-	0xa1, 0x16, 0xbd, 0x12, 0x92, 0x71, 0xe2, 0x9f, 0x0f, 0xe3, 0x61, 0x52, 0x07, 0x3a, 0xc0, 0x44,
-	0xdf, 0x7f, 0x5f, 0xe0, 0x60, 0x07, 0x31, 0x3c, 0xdd, 0xa6, 0x20, 0x78, 0x68, 0x32, 0x29, 0x95,
-	0x01, 0x16, 0x5c, 0x1b, 0x0c, 0x85, 0x4e, 0x2a, 0x0a, 0xb3, 0x14, 0xeb, 0x6e, 0x2b, 0x7a, 0x62,
-	0x7f, 0xce, 0xc1, 0x58, 0x66, 0xd5, 0xf4, 0xf2, 0x2a, 0xb6, 0x79, 0xdd, 0x0b, 0xa3, 0x4c, 0xd0,
-	0xd9, 0xdc, 0xb2, 0x95, 0x64, 0x99, 0xdb, 0x50, 0x6b, 0xf8, 0x14, 0xf5, 0x29, 0x21, 0x59, 0x85,
-	0xd0, 0x3b, 0x09, 0xd6, 0x8b, 0x3e, 0xec, 0x24, 0xba, 0x02, 0x46, 0xcf, 0xec, 0x13, 0x3c, 0x0c,
-	0x64, 0x74, 0x2c, 0x9b, 0x18, 0x3d, 0xd4, 0x97, 0xcf, 0x21, 0x42, 0xa4, 0x2f, 0x6e, 0xe5, 0xf3,
-	0x08, 0x26, 0xe3, 0x24, 0x40, 0xae, 0x83, 0xf5, 0x8c, 0xa1, 0x3b, 0x49, 0x98, 0x2c, 0x88, 0x8e,
-	0x26, 0xa2, 0x57, 0xf0, 0x77, 0x3c, 0x80, 0x65, 0x7a, 0x5e, 0xae, 0xff, 0x93, 0xa9, 0xf8, 0x2d,
-	0x2e, 0xdc, 0x6b, 0xff, 0xf6, 0x73, 0x86, 0x55, 0x92, 0x79, 0x5a, 0x9e, 0x7d, 0xda, 0x50, 0xc9,
-	0x02, 0xbe, 0x2e, 0x44, 0xaf, 0xf4, 0xe3, 0x1c, 0x0c, 0x94, 0x55, 0x85, 0xec, 0x95, 0x32, 0x7d,
-	0x48, 0xed, 0x0f, 0x9f, 0x2f, 0x44, 0x6d, 0xf7, 0x23, 0x5f, 0xa8, 0x13, 0x50, 0xf4, 0xfc, 0x3d,
-	0xc6, 0x41, 0x22, 0xa3, 0x68, 0x06, 0xee, 0x47, 0xb2, 0x50, 0xd8, 0xa4, 0x53, 0x6a, 0xb8, 0x0f,
-	0x49, 0xa7, 0x9d, 0x70, 0xa2, 0xa7, 0xee, 0xd9, 0x04, 0x0c, 0x2c, 0xca, 0x8a, 0x82, 0x4d, 0xf4,
-	0x2b, 0xce, 0x9d, 0x31, 0x2e, 0x6f, 0xd3, 0x88, 0x60, 0x48, 0xd7, 0x34, 0x93, 0x66, 0xaa, 0x59,
-	0x2c, 0xba, 0x65, 0xf4, 0x70, 0xe0, 0x2c, 0x75, 0xcb, 0x44, 0xf7, 0xc1, 0x1a, 0xc1, 0x50, 0x53,
-	0xc5, 0x4d, 0x4d, 0x6d, 0x54, 0x9d, 0x61, 0xcb, 0x29, 0xa3, 0xa7, 0x02, 0xe5, 0xa9, 0x77, 0xb3,
-	0x12, 0x8e, 0xca, 0x62, 0x0f, 0xcb, 0xf2, 0x4b, 0xe0, 0x3f, 0x67, 0xd2, 0xb9, 0x59, 0x31, 0x5b,
-	0x29, 0x15, 0x2a, 0x19, 0x49, 0x4c, 0x97, 0xc4, 0xca, 0x6c, 0x21, 0x93, 0x9e, 0xad, 0x48, 0xe2,
-	0x7c, 0x21, 0x89, 0xd1, 0xaf, 0x69, 0xda, 0x69, 0x55, 0x5b, 0xc3, 0xba, 0x37, 0x50, 0xbb, 0x30,
-	0xdc, 0x95, 0x93, 0x4f, 0x72, 0x41, 0xb3, 0xda, 0x6c, 0x5e, 0x6c, 0xdb, 0x3e, 0xb1, 0xfa, 0xc3,
-	0x40, 0x59, 0x6d, 0x5d, 0xa1, 0xce, 0x03, 0x8e, 0xbf, 0x96, 0x84, 0xc1, 0x74, 0xb5, 0xaa, 0xad,
-	0xaa, 0x26, 0x7a, 0x3e, 0xee, 0x06, 0xb4, 0xe7, 0x2b, 0x77, 0xe7, 0xa0, 0x2e, 0xd6, 0x3e, 0xa8,
-	0x13, 0x0e, 0xc2, 0x0e, 0x79, 0x4d, 0x36, 0x65, 0x7d, 0x56, 0xab, 0xca, 0x0a, 0x55, 0x82, 0x3a,
-	0x7c, 0x6c, 0x9b, 0xb4, 0xf1, 0x82, 0xb0, 0x07, 0x46, 0xac, 0xaa, 0x4c, 0xfb, 0x65, 0xfb, 0xb1,
-	0x6d, 0x92, 0xb7, 0x72, 0x7a, 0x08, 0x06, 0xac, 0x22, 0x7a, 0x96, 0x0f, 0x2a, 0x92, 0xed, 0x75,
-	0xf7, 0x3e, 0x72, 0x15, 0x0c, 0xca, 0x56, 0x3b, 0xfb, 0x73, 0x9e, 0x0b, 0x37, 0xcc, 0xc8, 0x36,
-	0x8a, 0xe4, 0x34, 0x43, 0xcf, 0x70, 0x41, 0x64, 0xed, 0x6a, 0x3c, 0x9c, 0xac, 0x2f, 0xc5, 0x7a,
-	0xd0, 0xf5, 0x10, 0x1c, 0x48, 0x67, 0x32, 0x85, 0x72, 0xbe, 0x64, 0xab, 0x9a, 0xad, 0x4c, 0x97,
-	0x4b, 0x95, 0xb6, 0xd6, 0xc5, 0x52, 0x5a, 0x2a, 0x55, 0xf2, 0x85, 0xac, 0x98, 0x24, 0x72, 0xed,
-	0xdb, 0xa4, 0xb5, 0x58, 0xaa, 0xe4, 0xd3, 0x73, 0x62, 0x72, 0x39, 0x00, 0xb2, 0x58, 0xaa, 0xa4,
-	0x17, 0xd2, 0xa5, 0xb4, 0x94, 0xac, 0xb3, 0xf1, 0x55, 0x2c, 0x15, 0xe6, 0x2b, 0x52, 0x39, 0x9f,
-	0xcf, 0xe5, 0x8f, 0x5a, 0xa6, 0x57, 0xd0, 0x6f, 0xf9, 0x76, 0x1f, 0x1e, 0x76, 0x83, 0x0a, 0xfd,
-	0x8c, 0x0f, 0x7a, 0xac, 0xe5, 0x30, 0xdd, 0xbd, 0x33, 0xbe, 0xc3, 0x05, 0x39, 0xd6, 0xea, 0x8e,
-	0x15, 0x4e, 0xb6, 0x8f, 0x71, 0x3d, 0xc8, 0xf6, 0xef, 0x70, 0x41, 0xbe, 0x50, 0xb1, 0xf9, 0x2d,
-	0x56, 0x66, 0x0a, 0xe5, 0x7c, 0x36, 0x49, 0xac, 0xed, 0xca, 0x8b, 0x16, 0x87, 0x92, 0x98, 0x29,
-	0x2c, 0x88, 0x52, 0x65, 0x31, 0x3d, 0x3b, 0x2b, 0x96, 0x2a, 0x33, 0x39, 0xa9, 0x58, 0x4a, 0x2e,
-	0x6f, 0xd6, 0x8f, 0xeb, 0xc2, 0x65, 0x70, 0x49, 0xbb, 0x5c, 0x11, 0xdf, 0x9b, 0x2b, 0x96, 0x8a,
-	0x54, 0xb8, 0x4c, 0x41, 0x92, 0xca, 0xf3, 0x25, 0x31, 0x9b, 0x5c, 0x11, 0x2e, 0x04, 0xa1, 0x8d,
-	0x22, 0x95, 0xf3, 0x96, 0x48, 0x0d, 0x62, 0xdf, 0xb6, 0xe7, 0x98, 0xcf, 0x17, 0x4a, 0x95, 0x79,
-	0x51, 0x9a, 0x29, 0x48, 0x73, 0x62, 0x36, 0x79, 0xeb, 0x66, 0x3a, 0x9f, 0x40, 0x2f, 0xc7, 0x61,
-	0xa0, 0x48, 0xb3, 0xee, 0xd1, 0xb5, 0xed, 0xb1, 0x63, 0x0c, 0xb8, 0x86, 0xb3, 0x98, 0xe0, 0x1a,
-	0x35, 0x66, 0xe8, 0xe6, 0x36, 0x4c, 0x8e, 0xf7, 0xc5, 0xc3, 0xf6, 0x7c, 0xcb, 0x5e, 0xdf, 0x7a,
-	0xfe, 0xbd, 0x7c, 0x98, 0x9e, 0xdf, 0xd1, 0x78, 0xb8, 0x10, 0x7a, 0x98, 0x8b, 0x60, 0x44, 0x0f,
-	0x12, 0x09, 0xcb, 0x3e, 0x91, 0xb0, 0xa1, 0x3f, 0xcf, 0xe4, 0xf2, 0x59, 0x27, 0x58, 0x2b, 0xb9,
-	0xfc, 0x4c, 0x21, 0xb9, 0x22, 0xa4, 0xe0, 0xa0, 0x07, 0x9d, 0x84, 0x89, 0x6d, 0x21, 0x9d, 0xcf,
-	0x56, 0xe6, 0xf2, 0xe2, 0x5c, 0x21, 0x9f, 0xcb, 0xd0, 0xfa, 0xa2, 0x58, 0xb2, 0x42, 0x6b, 0x43,
-	0xe0, 0x14, 0xc5, 0xb4, 0x94, 0x39, 0x46, 0x63, 0x2c, 0x2b, 0x26, 0x6f, 0x15, 0xf6, 0xc3, 0x65,
-	0x1e, 0x57, 0xec, 0xf8, 0x9b, 0x97, 0xc4, 0xac, 0x38, 0x93, 0xcb, 0x93, 0xd1, 0x67, 0xb6, 0x90,
-	0x39, 0x5e, 0x4c, 0x9e, 0x40, 0x6f, 0x71, 0x10, 0x2f, 0x9a, 0x5a, 0x0b, 0x5d, 0xd1, 0x0e, 0xb0,
-	0x09, 0x00, 0x1d, 0x37, 0xb5, 0x35, 0x9c, 0x95, 0x4d, 0x99, 0xea, 0x35, 0x24, 0x79, 0x6a, 0xd0,
-	0x8f, 0x02, 0xef, 0x8e, 0x5d, 0x5d, 0x4d, 0xad, 0xe5, 0x33, 0xc8, 0xbc, 0x19, 0x68, 0x65, 0xdf,
-	0x05, 0x28, 0x5c, 0x78, 0xdc, 0xdd, 0xcb, 0xc4, 0x80, 0xe0, 0x42, 0x57, 0xb1, 0x22, 0xd5, 0xc1,
-	0xee, 0xa8, 0x49, 0x2c, 0x5c, 0x04, 0xff, 0xb6, 0x41, 0x0b, 0x2a, 0xc1, 0xb2, 0x70, 0x29, 0x5c,
-	0xec, 0x95, 0x60, 0xae, 0xb0, 0x20, 0xba, 0xba, 0x67, 0xd3, 0xa5, 0x74, 0xb2, 0x8e, 0x9e, 0xe0,
-	0x81, 0x9f, 0xd5, 0xea, 0xe8, 0x51, 0x1e, 0xe2, 0x45, 0xac, 0xd6, 0x98, 0xed, 0xf5, 0x38, 0x0c,
-	0x36, 0xb1, 0x61, 0xc8, 0x75, 0x67, 0x95, 0xe0, 0x14, 0x85, 0xc3, 0x90, 0x50, 0xf0, 0x1a, 0xb6,
-	0xbe, 0x7c, 0x1a, 0x9b, 0xba, 0x8c, 0x61, 0x6a, 0x56, 0xab, 0xa7, 0x08, 0x96, 0xfb, 0xed, 0xee,
-	0x2c, 0x69, 0x2a, 0x59, 0x77, 0xec, 0xb9, 0x19, 0x12, 0xb4, 0x2c, 0x0c, 0x43, 0x22, 0x2b, 0x4e,
-	0x97, 0x8f, 0x26, 0xb7, 0x91, 0x9f, 0xce, 0x73, 0x0f, 0x43, 0x62, 0x26, 0x5d, 0x4a, 0xcf, 0x26,
-	0x39, 0xc2, 0x0f, 0x8d, 0x4e, 0x9e, 0x54, 0xce, 0xa7, 0xf3, 0xb9, 0x4c, 0x32, 0x2e, 0x8c, 0xc0,
-	0xe0, 0x62, 0x5a, 0xa2, 0x4f, 0x9e, 0x60, 0x53, 0x99, 0xae, 0x67, 0xc3, 0x60, 0xaf, 0x9f, 0x4f,
-	0x9d, 0x42, 0xe0, 0x31, 0x37, 0x04, 0x8e, 0x30, 0x21, 0x70, 0x45, 0x10, 0x90, 0x70, 0xf2, 0xe7,
-	0x7b, 0x50, 0x7f, 0x14, 0x86, 0x89, 0xe4, 0xce, 0xbc, 0x32, 0x02, 0x83, 0xa5, 0xdc, 0x9c, 0x58,
-	0x28, 0x97, 0x92, 0xcb, 0xe8, 0x05, 0x0e, 0x06, 0x17, 0xb0, 0x6e, 0x34, 0x34, 0x15, 0xfd, 0xc4,
-	0x7e, 0xad, 0xe5, 0x99, 0x91, 0x1f, 0x0d, 0xfc, 0xe5, 0x92, 0x0d, 0x42, 0x5f, 0x0f, 0xf9, 0x1e,
-	0x3e, 0xac, 0x59, 0x8d, 0x9c, 0xcd, 0xa2, 0x5d, 0x44, 0xcf, 0x07, 0xda, 0xe0, 0xf9, 0x5b, 0x08,
-	0x47, 0x61, 0xad, 0x07, 0x0a, 0x77, 0x42, 0x72, 0x41, 0x94, 0x8a, 0xb9, 0x42, 0x9e, 0x74, 0x20,
-	0x71, 0x6e, 0xbe, 0x74, 0x4b, 0x92, 0xef, 0x4a, 0xec, 0xb7, 0x87, 0x21, 0x9e, 0x6b, 0x2d, 0x1b,
-	0xe8, 0x0d, 0x27, 0x59, 0xec, 0x35, 0x9b, 0xde, 0xff, 0xf0, 0x9d, 0x09, 0xd1, 0xd3, 0x81, 0xb7,
-	0x82, 0x04, 0xda, 0x4a, 0xcd, 0xf2, 0x27, 0x5c, 0x80, 0x78, 0x8d, 0x0c, 0x80, 0x1c, 0xfd, 0xff,
-	0x45, 0xf4, 0xb7, 0xb0, 0x13, 0x12, 0x4d, 0x5c, 0x6b, 0xc8, 0x4e, 0x7a, 0x2b, 0x2d, 0xb8, 0xab,
-	0xf9, 0xb8, 0xe7, 0xb5, 0xfb, 0xe3, 0x81, 0x36, 0x8b, 0xdd, 0xfc, 0x38, 0xb7, 0x91, 0xfd, 0xc8,
-	0x80, 0x93, 0x3d, 0xf6, 0xc0, 0x80, 0x45, 0xfc, 0x9d, 0x3c, 0xc4, 0xa7, 0x15, 0x6d, 0x09, 0xfd,
-	0x1f, 0xb3, 0x8f, 0x59, 0x91, 0x0d, 0x67, 0xcb, 0x48, 0x7f, 0x0b, 0xbb, 0x60, 0xf8, 0xa4, 0xac,
-	0x9a, 0x34, 0xad, 0xc2, 0x3e, 0x0e, 0x6f, 0x57, 0xd0, 0xcf, 0xaa, 0x82, 0xa5, 0x23, 0x50, 0x6e,
-	0xac, 0x8c, 0x23, 0x42, 0x0e, 0x31, 0xed, 0xaf, 0xd4, 0x92, 0xa2, 0x2d, 0x39, 0x4a, 0x91, 0xdf,
-	0xe8, 0x17, 0x81, 0x52, 0x14, 0x36, 0xb7, 0x11, 0x7d, 0xe7, 0xe8, 0xa2, 0x02, 0xe9, 0x38, 0x64,
-	0x3a, 0xb1, 0xe6, 0x7e, 0xb2, 0xfb, 0x10, 0xb3, 0xc9, 0x3a, 0x4d, 0x6a, 0xa0, 0x7d, 0x62, 0x4b,
-	0x4a, 0xfc, 0xb4, 0x57, 0x25, 0x68, 0xbc, 0x76, 0x56, 0x62, 0x17, 0x0c, 0x2b, 0xec, 0xee, 0x55,
-	0x6a, 0x57, 0xf4, 0xa6, 0x49, 0x07, 0x6b, 0xe7, 0xa3, 0x26, 0x77, 0xf2, 0x30, 0x90, 0xd1, 0xd4,
-	0xe5, 0x46, 0x1d, 0xbd, 0x7d, 0xf6, 0x44, 0xf0, 0x0a, 0x17, 0xf4, 0x3d, 0xa5, 0x85, 0xd1, 0x65,
-	0x58, 0xda, 0x0d, 0x23, 0x2b, 0x5a, 0x13, 0xb3, 0x9f, 0x02, 0x7b, 0xab, 0x84, 0x7d, 0x30, 0x26,
-	0x5b, 0x1f, 0xd8, 0xb0, 0x69, 0x29, 0x1b, 0x6a, 0xc9, 0x3a, 0xaf, 0x2e, 0x9b, 0xf8, 0xa4, 0xbc,
-	0x5e, 0xd6, 0x95, 0x71, 0x4c, 0xdb, 0x78, 0x6a, 0xd0, 0xf7, 0x02, 0xbd, 0x11, 0xf5, 0x75, 0x38,
-	0x9c, 0x4a, 0xc7, 0x7a, 0x9b, 0x56, 0xce, 0x52, 0x02, 0xa3, 0xe7, 0x39, 0x88, 0xcf, 0x37, 0xd4,
-	0x3a, 0x2a, 0xb6, 0x7b, 0x87, 0xfb, 0x7a, 0x2e, 0xe6, 0x79, 0x3d, 0x27, 0x4c, 0xc1, 0x4e, 0x75,
-	0xb5, 0xb9, 0x84, 0xf5, 0xc2, 0xb2, 0xb8, 0x86, 0x55, 0xd3, 0x28, 0x69, 0x64, 0x85, 0x61, 0x77,
-	0x95, 0x8e, 0xd7, 0xd8, 0xdc, 0x91, 0xeb, 0x58, 0x25, 0x77, 0x33, 0xc4, 0x10, 0x1f, 0x7c, 0x34,
-	0xec, 0xfc, 0xb6, 0xf0, 0x73, 0x2e, 0xdf, 0x87, 0x19, 0xbe, 0x2f, 0xdf, 0x0c, 0x36, 0xf2, 0x13,
-	0xda, 0x3d, 0x83, 0x90, 0x10, 0x9b, 0x2d, 0x73, 0x7d, 0x7a, 0xd7, 0x8f, 0x4f, 0x4f, 0xc4, 0x9e,
-	0x3b, 0x3d, 0x11, 0x7b, 0xf9, 0xf4, 0x44, 0xec, 0x13, 0x67, 0x26, 0xb6, 0x3d, 0x77, 0x66, 0x62,
-	0xdb, 0x8b, 0x67, 0x26, 0xb6, 0xbd, 0x8f, 0x6b, 0x2d, 0x2d, 0x0d, 0xd0, 0x2f, 0x30, 0xaf, 0xf9,
-	0x47, 0x00, 0x00, 0x00, 0xff, 0xff, 0xa1, 0xd3, 0x67, 0xc2, 0x82, 0x52, 0x00, 0x00,
+	// 3663 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x5c, 0x7b, 0x6c, 0x23, 0xd7,
+	0x5a, 0x5f, 0xcf, 0xd8, 0x4e, 0xf2, 0x25, 0x9b, 0x75, 0x87, 0xa5, 0x0d, 0xe7, 0xee, 0xcd, 0xdd,
+	0xbb, 0xdd, 0xbb, 0x2f, 0x5a, 0x67, 0x6f, 0x2e, 0x2d, 0x6c, 0xe9, 0xb6, 0x75, 0xec, 0xc9, 0xae,
+	0xbb, 0x8e, 0x1d, 0xc6, 0x76, 0x96, 0x82, 0x90, 0x35, 0xb1, 0x4f, 0x9c, 0x69, 0xc6, 0x33, 0xee,
+	0xcc, 0x24, 0xbb, 0xf9, 0x8f, 0x56, 0x45, 0x2d, 0x15, 0x88, 0x87, 0x90, 0xca, 0x43, 0x2d, 0x8f,
+	0x52, 0x4a, 0x4b, 0x8b, 0x40, 0x42, 0xa2, 0x12, 0xaa, 0x2a, 0x8a, 0x84, 0xa8, 0x68, 0x51, 0xfb,
+	0x0f, 0x14, 0x95, 0xa2, 0xb2, 0x5b, 0x04, 0x85, 0x22, 0x81, 0x68, 0x25, 0x5a, 0x4a, 0x41, 0xe7,
+	0xcc, 0xc3, 0x73, 0xb2, 0x1e, 0x67, 0xc6, 0xf1, 0xec, 0x2e, 0xba, 0xff, 0x44, 0x3e, 0x67, 0x8e,
+	0x7f, 0xe7, 0x9b, 0xdf, 0xef, 0x3b, 0xaf, 0xef, 0x7c, 0x0e, 0xcc, 0x74, 0x57, 0xe7, 0xba, 0x86,
+	0x6e, 0xe9, 0xe6, 0x5c, 0x53, 0xef, 0x74, 0x64, 0xad, 0x65, 0x66, 0x69, 0x59, 0x18, 0x93, 0xb5,
+	0x6d, 0x6b, 0xbb, 0x8b, 0xd1, 0x85, 0x2d, 0xac, 0xb5, 0x74, 0x63, 0xae, 0xad, 0x58, 0xeb, 0x9b,
+	0xab, 0xd9, 0xa6, 0xde, 0x99, 0x73, 0x1e, 0x29, 0xfa, 0x5c, 0x5b, 0xbf, 0xd3, 0x29, 0xdc, 0xa9,
+	0x2a, 0xab, 0x86, 0x6c, 0x6c, 0xcf, 0x75, 0x57, 0xe7, 0x3a, 0x7a, 0x0b, 0xab, 0x2e, 0x2e, 0x2d,
+	0x38, 0xa8, 0xe8, 0x50, 0x5b, 0xd7, 0xdb, 0x2a, 0xb6, 0x9f, 0xad, 0x6e, 0xae, 0xcd, 0x99, 0x96,
+	0xb1, 0xd9, 0xb4, 0xec, 0xa7, 0x47, 0x5e, 0x78, 0x31, 0x01, 0xbc, 0xd4, 0x6d, 0xa2, 0xc7, 0xd3,
+	0x30, 0x25, 0x5e, 0xb6, 0xb0, 0xa1, 0xc9, 0x6a, 0xc1, 0xd0, 0xbb, 0xe8, 0x4b, 0x0e, 0x52, 0x8b,
+	0x8a, 0x8a, 0x4d, 0x74, 0x09, 0xc6, 0x24, 0xfc, 0xc8, 0x26, 0x36, 0x2d, 0xe1, 0x10, 0x4c, 0x34,
+	0x75, 0xcd, 0xc2, 0x97, 0xad, 0x62, 0x6b, 0x26, 0x71, 0x38, 0x71, 0x62, 0x42, 0xea, 0x55, 0x08,
+	0xc7, 0x60, 0x7a, 0x4d, 0x6f, 0x6e, 0x9a, 0xb8, 0xb5, 0xa0, 0xea, 0xcd, 0x8d, 0x62, 0x6b, 0x86,
+	0xa3, 0x4d, 0x76, 0xd4, 0x92, 0x76, 0xaa, 0xde, 0x94, 0x55, 0x02, 0xbf, 0x2c, 0x5b, 0xeb, 0xe6,
+	0x0c, 0x7f, 0x98, 0x27, 0xed, 0xd8, 0x5a, 0xf4, 0x79, 0x02, 0xc6, 0x25, 0x6c, 0x76, 0x75, 0xcd,
+	0xc4, 0x42, 0x01, 0x52, 0xd8, 0x30, 0x74, 0x83, 0x76, 0x3b, 0x39, 0x9f, 0xcd, 0x3a, 0x2c, 0x64,
+	0xa5, 0x6e, 0x33, 0xeb, 0xb7, 0x3c, 0x4b, 0xad, 0xce, 0xba, 0x5f, 0xcc, 0x8a, 0xe4, 0x5b, 0x92,
+	0xfd, 0x65, 0xf4, 0x3b, 0x09, 0x48, 0xd1, 0x0a, 0xe1, 0x1c, 0x24, 0x9b, 0x7a, 0x0b, 0x53, 0xb8,
+	0xe9, 0xf9, 0xef, 0x44, 0x83, 0xcb, 0xe6, 0xf5, 0x16, 0x96, 0x28, 0x80, 0x70, 0x18, 0x26, 0x5b,
+	0xd8, 0x6c, 0x1a, 0x4a, 0xd7, 0x52, 0x74, 0xcd, 0x79, 0x65, 0x7f, 0xd5, 0x91, 0x79, 0x48, 0x92,
+	0xf6, 0xc2, 0x38, 0x24, 0xcb, 0xf5, 0x52, 0x29, 0xb3, 0x4f, 0xb8, 0x05, 0xf6, 0xd7, 0xcb, 0x17,
+	0xca, 0x95, 0x8b, 0xe5, 0x86, 0x28, 0x49, 0x15, 0x29, 0x93, 0x10, 0xf6, 0xc3, 0xc4, 0x42, 0xae,
+	0xd0, 0x28, 0x96, 0x97, 0xeb, 0xb5, 0x0c, 0x87, 0x3e, 0xe5, 0x60, 0x2c, 0x4f, 0x98, 0xd5, 0x2c,
+	0xa4, 0x8c, 0x5a, 0x80, 0x19, 0x18, 0x6b, 0xda, 0xd8, 0x33, 0xfc, 0xe1, 0xc4, 0x89, 0x29, 0xc9,
+	0x2d, 0xa2, 0xff, 0xf1, 0x53, 0xbe, 0xc8, 0x52, 0x7e, 0x3a, 0x98, 0x23, 0xc7, 0xd2, 0x00, 0xd2,
+	0x7f, 0xd7, 0x23, 0xbd, 0xc8, 0x90, 0x7e, 0x57, 0x54, 0xc0, 0xf8, 0x69, 0x7f, 0xfa, 0x36, 0x98,
+	0xa0, 0x2c, 0x95, 0x14, 0xd3, 0x42, 0x6f, 0xf2, 0x90, 0x5c, 0xd2, 0xb7, 0x30, 0x7a, 0x2b, 0x11,
+	0x56, 0x02, 0x04, 0xe3, 0xab, 0x36, 0xcb, 0xe6, 0x0c, 0x47, 0xbd, 0xda, 0x2b, 0x0b, 0x27, 0xe0,
+	0x80, 0x25, 0x1b, 0x6d, 0x6c, 0xe5, 0xbd, 0xef, 0xf3, 0xf4, 0xfb, 0x3b, 0xab, 0x85, 0x23, 0x30,
+	0xd5, 0x32, 0xf4, 0x6e, 0x8d, 0x56, 0x17, 0x5b, 0x33, 0x49, 0xda, 0x8c, 0xa9, 0x13, 0xce, 0xc0,
+	0x78, 0x57, 0x37, 0x15, 0xfa, 0xf6, 0x29, 0xca, 0xe7, 0xd7, 0x3d, 0x3e, 0xe9, 0x0c, 0x90, 0xa5,
+	0x2f, 0x92, 0x5d, 0x76, 0x1a, 0x49, 0x5e, 0x73, 0xf4, 0x1f, 0x7e, 0x95, 0x1f, 0x60, 0x55, 0x3e,
+	0xc5, 0x88, 0xe2, 0x71, 0x91, 0x25, 0x3c, 0x04, 0xe8, 0xfb, 0x5b, 0x9e, 0xbe, 0x79, 0x46, 0xdf,
+	0xb9, 0xf0, 0x50, 0xf1, 0x2b, 0xfb, 0x06, 0x0f, 0x13, 0x85, 0xcd, 0xae, 0xaa, 0x34, 0x65, 0x0b,
+	0xa3, 0x5f, 0x8d, 0x22, 0xa8, 0xe5, 0xca, 0x60, 0x9b, 0xe2, 0x95, 0x19, 0xb1, 0xf9, 0x1d, 0x62,
+	0xfb, 0xe5, 0x49, 0x46, 0x93, 0xe7, 0x69, 0xce, 0x27, 0x8f, 0xc8, 0xca, 0x13, 0xc4, 0xa9, 0xf7,
+	0x6a, 0xfd, 0x35, 0x1a, 0xe4, 0x97, 0xe8, 0x05, 0x4f, 0xbf, 0xf3, 0x8c, 0x7e, 0x3f, 0x10, 0xb1,
+	0xaf, 0xf8, 0x45, 0xfc, 0xaf, 0x03, 0xc0, 0x57, 0xb1, 0x85, 0x9e, 0x4a, 0x43, 0xb2, 0x86, 0x2f,
+	0x5b, 0xe8, 0x97, 0x78, 0x48, 0x55, 0xad, 0x6d, 0x15, 0xa3, 0xc7, 0x46, 0x32, 0x44, 0xcf, 0x42,
+	0xca, 0x24, 0x70, 0x74, 0x60, 0x4e, 0xcf, 0x1f, 0xef, 0x2b, 0x99, 0x3b, 0x39, 0x11, 0x0b, 0xb2,
+	0xb4, 0x77, 0xc9, 0xfe, 0x16, 0xfa, 0x29, 0xbf, 0x72, 0x0f, 0xb2, 0xca, 0x05, 0xb1, 0x59, 0xc5,
+	0x7e, 0xa4, 0x80, 0x21, 0xf6, 0xb2, 0x27, 0xd1, 0x12, 0x23, 0xd1, 0x99, 0x61, 0x40, 0xe3, 0xd7,
+	0xe9, 0x5f, 0x38, 0x48, 0xe5, 0x75, 0x55, 0x37, 0xd0, 0x43, 0xa3, 0x50, 0xe5, 0x20, 0xa4, 0x9a,
+	0x04, 0xcd, 0x99, 0x2e, 0xed, 0xc2, 0xde, 0xc8, 0xa6, 0xd6, 0x8d, 0x9a, 0xec, 0x7e, 0xa0, 0xf1,
+	0x93, 0xfd, 0x15, 0x07, 0x07, 0x16, 0xe4, 0xe6, 0x46, 0xdb, 0xd0, 0x37, 0xb5, 0x56, 0xec, 0xb4,
+	0xff, 0x9c, 0x9f, 0xf6, 0x0a, 0x4b, 0xfb, 0x20, 0x86, 0x76, 0x98, 0x18, 0xc0, 0xfd, 0x1f, 0x7a,
+	0xdc, 0x4b, 0x0c, 0xf7, 0xf7, 0x0d, 0x8d, 0x1c, 0xbf, 0x00, 0x64, 0xab, 0x9c, 0x53, 0x95, 0xb6,
+	0x86, 0x36, 0x47, 0x41, 0xfb, 0x69, 0x48, 0xc9, 0x04, 0xcd, 0x99, 0x83, 0x50, 0xdf, 0x39, 0x88,
+	0xf6, 0x27, 0xd9, 0x0d, 0xd1, 0x7f, 0x27, 0xa2, 0x2f, 0x18, 0x84, 0x38, 0x0a, 0x12, 0x20, 0x44,
+	0xd4, 0x45, 0x21, 0x08, 0x2f, 0x7e, 0xfa, 0xaf, 0xf2, 0x90, 0x5e, 0x54, 0xb0, 0xda, 0x32, 0xd1,
+	0x7b, 0xa1, 0x17, 0x81, 0x15, 0x98, 0xa4, 0x84, 0xdb, 0x5f, 0xa4, 0x1a, 0x0c, 0x9e, 0x35, 0xec,
+	0x86, 0x59, 0x07, 0xdd, 0x7e, 0x48, 0xeb, 0x24, 0x3f, 0x10, 0xba, 0x08, 0xd0, 0x7b, 0x44, 0x36,
+	0xda, 0x8e, 0xac, 0x8e, 0x05, 0x6e, 0x51, 0x98, 0x83, 0xf4, 0x9a, 0xdb, 0x35, 0x91, 0xe9, 0xb6,
+	0xac, 0x7d, 0x4e, 0xcb, 0xba, 0xe7, 0xb4, 0x6c, 0x95, 0x9e, 0xd3, 0x24, 0xa7, 0x59, 0x84, 0x9d,
+	0x79, 0x80, 0xdd, 0xc3, 0xef, 0xcc, 0x43, 0x00, 0xc6, 0xaf, 0xf2, 0xc7, 0x3f, 0x01, 0x29, 0x6a,
+	0x08, 0x7a, 0x9c, 0x27, 0x22, 0x77, 0x55, 0xb9, 0x89, 0x51, 0x27, 0xac, 0xde, 0x3e, 0x25, 0x38,
+	0x56, 0x89, 0x53, 0x90, 0xa2, 0x1f, 0xe9, 0x70, 0x9b, 0x9c, 0x3f, 0xd8, 0x6f, 0xb8, 0x49, 0x76,
+	0x13, 0xf4, 0xd3, 0xfe, 0xb9, 0xef, 0x7e, 0x56, 0x84, 0x93, 0xd7, 0x72, 0x96, 0x75, 0xcc, 0x0c,
+	0xd8, 0x93, 0x05, 0xda, 0x84, 0x7e, 0xd3, 0xd3, 0x65, 0x81, 0xd1, 0x25, 0x1b, 0xba, 0x8f, 0xf8,
+	0x05, 0xf9, 0x82, 0x83, 0x54, 0xb5, 0xab, 0x2a, 0x11, 0xce, 0xa7, 0xc1, 0x22, 0x1c, 0x83, 0xe9,
+	0xe6, 0xa6, 0x61, 0xea, 0x86, 0xbb, 0x1d, 0xa6, 0x6a, 0xa4, 0xa4, 0x1d, 0xb5, 0xec, 0x9a, 0x7f,
+	0x96, 0x15, 0xe0, 0x78, 0x1f, 0x72, 0xa8, 0x81, 0x91, 0xe9, 0xff, 0x75, 0x8f, 0xfe, 0x07, 0x18,
+	0xfa, 0xef, 0x08, 0xd9, 0x43, 0xfc, 0xe4, 0xff, 0x33, 0x07, 0xa9, 0x25, 0x6c, 0xb4, 0x31, 0x7a,
+	0x24, 0x2c, 0xf9, 0x47, 0x60, 0x6a, 0x4d, 0x31, 0x4c, 0x8b, 0x0d, 0x0d, 0x30, 0x75, 0xc2, 0x51,
+	0xd8, 0x6f, 0xe2, 0xa6, 0xae, 0x79, 0xf1, 0x03, 0x7b, 0xe5, 0x67, 0x2b, 0xd1, 0xbf, 0x26, 0xa2,
+	0x89, 0x40, 0x0d, 0x0d, 0x98, 0x81, 0xa2, 0x50, 0xdd, 0x0f, 0x27, 0x7e, 0xaa, 0x3f, 0xe0, 0xc8,
+	0x97, 0xba, 0xdb, 0xa8, 0x1e, 0x96, 0xe9, 0x3b, 0x20, 0x4d, 0x3d, 0xc9, 0x5d, 0x56, 0xfa, 0x4f,
+	0x29, 0x4e, 0x1b, 0x76, 0x62, 0xbf, 0x97, 0x65, 0xf3, 0x58, 0x1f, 0x16, 0x88, 0x2d, 0x01, 0x1e,
+	0x2d, 0x40, 0x72, 0xdd, 0xea, 0xa8, 0xce, 0x9b, 0xd3, 0xcf, 0xe8, 0x59, 0x8f, 0xe0, 0xfb, 0x19,
+	0x82, 0xbf, 0x3f, 0x1c, 0x74, 0xfc, 0xfc, 0xfe, 0x49, 0x12, 0x52, 0xcb, 0xb2, 0x69, 0x61, 0xf4,
+	0x02, 0x37, 0xea, 0x40, 0xd7, 0x02, 0xdc, 0x62, 0x62, 0x15, 0x37, 0x2d, 0xdc, 0x22, 0x1b, 0x74,
+	0x49, 0xd6, 0xda, 0x38, 0x60, 0x9e, 0xa7, 0xcf, 0xa4, 0x6b, 0x9b, 0x0b, 0xa7, 0x20, 0xe3, 0x56,
+	0x2e, 0xb8, 0x5b, 0xb6, 0x24, 0xdd, 0xb2, 0x5d, 0x53, 0x4f, 0x83, 0x05, 0xf8, 0xb2, 0x55, 0x55,
+	0x75, 0x8b, 0xc6, 0x64, 0x26, 0x24, 0xaf, 0x4c, 0x9e, 0x11, 0x41, 0xe8, 0xb3, 0xb4, 0xfd, 0xcc,
+	0x2d, 0x0b, 0x59, 0x18, 0x93, 0xb5, 0x6d, 0xfa, 0x68, 0x6c, 0x80, 0xcb, 0xb8, 0x8d, 0xd0, 0x13,
+	0x11, 0xa7, 0x41, 0xca, 0xef, 0x10, 0x91, 0x81, 0x28, 0xa3, 0xb3, 0x5f, 0x1f, 0xd7, 0x61, 0x5b,
+	0xc0, 0x41, 0xba, 0xde, 0x55, 0x75, 0xb9, 0x85, 0xf4, 0xbd, 0x2f, 0x43, 0x08, 0xc6, 0xd7, 0x9c,
+	0xf0, 0xb3, 0x33, 0xf5, 0x79, 0x65, 0x21, 0x03, 0xfc, 0xa6, 0xa1, 0x3a, 0xa1, 0x38, 0xf2, 0x11,
+	0xfd, 0x9b, 0x7f, 0xe4, 0xde, 0xc7, 0xaa, 0x70, 0xa2, 0x0f, 0x43, 0xb6, 0x9d, 0x01, 0x13, 0xe1,
+	0x6f, 0x78, 0x54, 0xe7, 0x18, 0xaa, 0xef, 0x0c, 0x0b, 0x14, 0x3f, 0xd7, 0x7f, 0xca, 0xc1, 0x78,
+	0x41, 0xbf, 0xa4, 0x51, 0xb6, 0x73, 0x7b, 0x66, 0x3b, 0x6a, 0x18, 0x32, 0xeb, 0xf6, 0xbd, 0xf7,
+	0x30, 0x64, 0x10, 0x54, 0xfc, 0x1c, 0x3e, 0x7f, 0xd2, 0x8e, 0x60, 0x7d, 0xca, 0x79, 0x87, 0x16,
+	0x63, 0xef, 0x7e, 0xdb, 0x3b, 0x4d, 0xf0, 0xe1, 0x4e, 0x13, 0x9f, 0xf9, 0xa9, 0x5f, 0x60, 0xa9,
+	0xef, 0xbb, 0xcb, 0xd9, 0xed, 0x24, 0xf1, 0xdb, 0x1e, 0xf9, 0x22, 0x43, 0xfe, 0xb7, 0xa3, 0x80,
+	0xc5, 0x4f, 0xff, 0x33, 0x3c, 0x4c, 0x49, 0xd8, 0xb4, 0x0c, 0xa5, 0x49, 0x30, 0x4c, 0xf4, 0x64,
+	0x62, 0xef, 0xec, 0x8b, 0x30, 0x65, 0xf8, 0x30, 0x1d, 0x0d, 0xbe, 0xd9, 0xf7, 0xdc, 0xee, 0xef,
+	0x5c, 0x62, 0xbe, 0x86, 0x1e, 0xf5, 0x4f, 0xea, 0xe7, 0x59, 0x4d, 0xe6, 0x03, 0x68, 0xf4, 0xc3,
+	0x05, 0x28, 0xf3, 0x92, 0xa7, 0xcc, 0x05, 0x46, 0x99, 0x1f, 0x8c, 0x0e, 0x19, 0xbf, 0x3e, 0x8f,
+	0xf1, 0x90, 0x5c, 0x96, 0xdb, 0x18, 0x7d, 0xce, 0x01, 0x14, 0xcd, 0x9c, 0xd1, 0x5c, 0x57, 0xb6,
+	0x70, 0x0b, 0xc9, 0x7b, 0x57, 0x69, 0x16, 0x40, 0xf1, 0x00, 0xa9, 0x46, 0xe3, 0x92, 0xaf, 0x86,
+	0x5d, 0x53, 0x2f, 0xb0, 0xf4, 0xdf, 0x15, 0xc0, 0x15, 0x31, 0x35, 0xdb, 0x33, 0x33, 0x40, 0x81,
+	0x57, 0x3c, 0x05, 0xca, 0x8c, 0x02, 0xf7, 0x0c, 0x85, 0x1a, 0xbf, 0x08, 0x8f, 0x4e, 0x39, 0xd1,
+	0xf5, 0x5f, 0xe3, 0xdd, 0x30, 0xfb, 0x08, 0x46, 0x89, 0x00, 0x49, 0xd2, 0xc6, 0x59, 0x57, 0xe9,
+	0x67, 0xb2, 0x75, 0xe9, 0xc8, 0xc6, 0x86, 0x49, 0x57, 0xd5, 0xc9, 0x30, 0xe1, 0xf6, 0x25, 0xd2,
+	0x5c, 0xb2, 0xbf, 0x15, 0x35, 0xee, 0xd5, 0x0b, 0xd4, 0xd2, 0x3f, 0x7b, 0x8e, 0x7b, 0x0d, 0xc4,
+	0x8b, 0x5f, 0xa6, 0x0f, 0xbd, 0x20, 0xfb, 0xc5, 0xbd, 0xab, 0xd3, 0x3f, 0xd6, 0x1b, 0x31, 0xe8,
+	0x14, 0x2e, 0xbc, 0x1e, 0x21, 0xe8, 0x74, 0xa3, 0x43, 0xeb, 0x4f, 0x79, 0xd7, 0x4b, 0x3f, 0x39,
+	0x82, 0x11, 0xb0, 0xc7, 0xcb, 0xa5, 0xa1, 0xc5, 0x18, 0x74, 0xb1, 0x34, 0x94, 0x18, 0x37, 0xec,
+	0x52, 0x69, 0x2c, 0xbf, 0x8e, 0x9b, 0x1b, 0xb8, 0x85, 0x7e, 0x7c, 0xef, 0x6a, 0xcc, 0xc0, 0x58,
+	0xd3, 0x46, 0x73, 0x16, 0x03, 0xb7, 0x38, 0xd4, 0x42, 0x6c, 0x3b, 0xa9, 0x0d, 0x30, 0xa2, 0x85,
+	0x78, 0x00, 0x64, 0xfc, 0x64, 0x7f, 0xc4, 0x41, 0x72, 0x51, 0x51, 0x31, 0x7a, 0x9f, 0x83, 0x64,
+	0x59, 0xee, 0xe0, 0xf0, 0xe1, 0x8f, 0x81, 0x4b, 0x80, 0x26, 0x77, 0xb0, 0xbb, 0x04, 0x90, 0xcf,
+	0x43, 0xcd, 0xe1, 0xc4, 0xb0, 0x2c, 0x31, 0x6a, 0x44, 0x73, 0x78, 0x10, 0x5e, 0xfc, 0x34, 0xbf,
+	0x95, 0x82, 0x54, 0xb1, 0x43, 0x36, 0x3c, 0x1f, 0xc4, 0xcc, 0xf3, 0x30, 0xb3, 0x07, 0xb5, 0x6c,
+	0x10, 0xd1, 0x51, 0x67, 0x8f, 0x40, 0xc0, 0xf8, 0x99, 0xbe, 0xc2, 0x41, 0xea, 0xa2, 0xd2, 0xb2,
+	0xd6, 0x47, 0xb4, 0x5a, 0x5e, 0x22, 0x58, 0x4e, 0x94, 0xda, 0x2e, 0xa0, 0xff, 0xf5, 0x53, 0x7c,
+	0x8e, 0xa5, 0xf8, 0xdb, 0x03, 0x19, 0xa1, 0x86, 0x05, 0x70, 0xfc, 0xa2, 0xc7, 0xf1, 0x83, 0x0c,
+	0xc7, 0x77, 0x47, 0x46, 0xbc, 0x3e, 0xee, 0xbc, 0xa2, 0xb4, 0xb0, 0x7e, 0x53, 0xba, 0x33, 0xb5,
+	0x6c, 0x94, 0xee, 0x1c, 0x08, 0xf8, 0x5d, 0xeb, 0xce, 0x36, 0x23, 0xa3, 0x74, 0xe7, 0x60, 0xc4,
+	0xeb, 0xb3, 0x08, 0x16, 0x9b, 0xba, 0x76, 0x53, 0x2e, 0x82, 0xc4, 0xb0, 0x51, 0x2e, 0x82, 0x41,
+	0x78, 0xf1, 0xd3, 0xfc, 0x0b, 0x3c, 0x24, 0x4b, 0x8a, 0xb6, 0x81, 0x9e, 0xe4, 0x61, 0xbf, 0x9d,
+	0xdf, 0xe8, 0x5e, 0x35, 0xb5, 0xf7, 0xce, 0xf7, 0x51, 0xd8, 0x6f, 0xf9, 0x31, 0xdd, 0x3b, 0x2d,
+	0xa6, 0x12, 0xfd, 0xac, 0x7f, 0xcf, 0x57, 0x66, 0x15, 0xf8, 0xa1, 0x00, 0xc6, 0x88, 0xcd, 0x59,
+	0xc6, 0xde, 0x00, 0x29, 0xfe, 0xc0, 0x93, 0xe2, 0x47, 0x18, 0x29, 0xce, 0x0e, 0x0b, 0x7c, 0x5d,
+	0xe2, 0xea, 0xe3, 0x0b, 0xba, 0xbe, 0x41, 0x0e, 0xda, 0xe8, 0xef, 0x38, 0x48, 0x2d, 0x62, 0xab,
+	0xb9, 0x8e, 0xaa, 0x7b, 0xd7, 0xc3, 0x89, 0xa3, 0xf3, 0xbd, 0x38, 0x7a, 0xd4, 0xb9, 0xdc, 0xb5,
+	0x2b, 0x4b, 0x6d, 0x1a, 0xc1, 0x5c, 0x3e, 0x10, 0xf0, 0xba, 0xe4, 0x7a, 0xf3, 0xe7, 0xb0, 0x85,
+	0x3e, 0xe1, 0x20, 0x45, 0xe3, 0x1b, 0x23, 0x4a, 0x6b, 0x30, 0x76, 0xbd, 0xee, 0xb2, 0x9b, 0xa0,
+	0xff, 0xf4, 0x0b, 0x90, 0x63, 0x05, 0xe8, 0x77, 0x4f, 0x78, 0x0e, 0x3b, 0x81, 0x98, 0x00, 0xee,
+	0x9f, 0xf3, 0xb8, 0x2f, 0x30, 0xdc, 0x9f, 0x8e, 0x80, 0x15, 0x3f, 0xed, 0xaf, 0x70, 0x90, 0xac,
+	0x6b, 0x2d, 0x1d, 0x1d, 0x0f, 0xc9, 0x36, 0x3b, 0x4d, 0x87, 0xb8, 0xaa, 0x25, 0xe8, 0xbb, 0x4e,
+	0x09, 0xbb, 0x5f, 0xcb, 0xf6, 0x81, 0x89, 0xc6, 0x4e, 0x21, 0x3a, 0x3b, 0x42, 0x06, 0xa6, 0xf2,
+	0xb9, 0x72, 0xa3, 0x5c, 0xa9, 0x35, 0x96, 0x2a, 0x2b, 0x62, 0x86, 0xa7, 0x7c, 0x49, 0x38, 0x4e,
+	0xbe, 0x08, 0xfa, 0x08, 0xf8, 0xea, 0x03, 0x73, 0x23, 0xf8, 0x22, 0x5b, 0xe0, 0x4a, 0x17, 0x6b,
+	0x23, 0xca, 0x8f, 0x59, 0x35, 0xb0, 0xdc, 0x6a, 0x1a, 0x9b, 0x9d, 0x55, 0xb3, 0x97, 0x6f, 0xbe,
+	0xa3, 0x16, 0x7d, 0x1c, 0x91, 0x71, 0x62, 0x5f, 0x00, 0xe3, 0x51, 0x12, 0x07, 0xfa, 0xc0, 0xc4,
+	0x3f, 0x7e, 0xff, 0x9a, 0x83, 0x03, 0xa4, 0xe3, 0x85, 0x1e, 0x05, 0xe1, 0x5d, 0xf3, 0x57, 0xb8,
+	0x68, 0x9b, 0xdb, 0x1d, 0x1d, 0x45, 0x4e, 0x29, 0x8a, 0xb2, 0xed, 0x1d, 0xdc, 0x57, 0xfc, 0xc4,
+	0xfe, 0x0d, 0x07, 0xd3, 0xf9, 0x4d, 0xcb, 0xcf, 0xab, 0xd8, 0xe3, 0xf5, 0x28, 0xec, 0x67, 0x9c,
+	0xce, 0xe1, 0x96, 0xad, 0x24, 0x47, 0x0a, 0x45, 0x6b, 0xe1, 0xcb, 0xd4, 0xa6, 0x94, 0x64, 0x17,
+	0x22, 0xaf, 0xf4, 0xac, 0x15, 0x23, 0x58, 0xe9, 0x07, 0x02, 0xc6, 0xcf, 0xec, 0xeb, 0x3c, 0xa4,
+	0xf3, 0x06, 0x96, 0x2d, 0x8c, 0x5e, 0x1a, 0xc9, 0x2f, 0x50, 0x22, 0x24, 0x2f, 0xee, 0xe5, 0x17,
+	0x29, 0xcc, 0xdd, 0x58, 0x88, 0x4c, 0x07, 0xfb, 0x1d, 0x23, 0x0f, 0x92, 0x28, 0x39, 0x10, 0x7d,
+	0xbb, 0x88, 0x5f, 0xc1, 0x7f, 0xe2, 0x01, 0xec, 0xae, 0xe9, 0x35, 0xe5, 0xff, 0x2b, 0x15, 0x7f,
+	0x8f, 0x8b, 0x76, 0xe9, 0xdf, 0x7b, 0xcf, 0xa8, 0x4a, 0x32, 0x6f, 0xcb, 0xb3, 0x6f, 0x1b, 0x29,
+	0x55, 0x20, 0xd0, 0x84, 0xf8, 0x95, 0x7e, 0x8d, 0x83, 0x74, 0x5d, 0x53, 0xc9, 0xb9, 0x34, 0x3f,
+	0x82, 0xb4, 0xfe, 0xe8, 0xd9, 0x42, 0xb4, 0xef, 0x51, 0x64, 0x0b, 0xf5, 0x03, 0x8a, 0x9f, 0xbf,
+	0x57, 0x39, 0x48, 0xe5, 0x55, 0xdd, 0xc4, 0xa3, 0x48, 0x15, 0x8a, 0x9a, 0x72, 0x4a, 0x3b, 0x1e,
+	0x41, 0xca, 0x69, 0x3f, 0x9c, 0xf8, 0xa9, 0x7b, 0x3b, 0x05, 0xe9, 0x8b, 0xb2, 0xaa, 0x62, 0x0b,
+	0xfd, 0x3d, 0xe7, 0xad, 0x18, 0xdf, 0xea, 0xd1, 0x88, 0x60, 0xdc, 0xd0, 0x75, 0x8b, 0xe6, 0xa9,
+	0xd9, 0x2c, 0x7a, 0x65, 0xf4, 0x72, 0xe8, 0x1c, 0x75, 0xbb, 0x8b, 0xc1, 0x93, 0x35, 0x82, 0xf1,
+	0x8e, 0x86, 0x3b, 0xba, 0xa6, 0x34, 0xdd, 0x69, 0xcb, 0x2d, 0xa3, 0x37, 0x42, 0x65, 0xa9, 0x0f,
+	0xea, 0x25, 0x1a, 0x95, 0xd5, 0x21, 0xb6, 0xe5, 0xdf, 0x80, 0xaf, 0x2d, 0xe6, 0x8a, 0x25, 0xb1,
+	0xd0, 0xa8, 0x55, 0x1a, 0x79, 0x49, 0xcc, 0xd5, 0xc4, 0x46, 0xa9, 0x92, 0xcf, 0x95, 0x1a, 0x92,
+	0xb8, 0x5c, 0xc9, 0x60, 0xf4, 0x0f, 0x34, 0xe9, 0xb4, 0xa9, 0x6f, 0x61, 0xc3, 0xef, 0xa8, 0x03,
+	0x18, 0x1e, 0xc8, 0xc9, 0x2f, 0x72, 0x61, 0x73, 0xda, 0x1c, 0x5e, 0x9c, 0xbe, 0x03, 0x7c, 0xf5,
+	0xcf, 0x42, 0xe5, 0xb4, 0x0d, 0x84, 0xba, 0x09, 0x38, 0x7e, 0x3e, 0x03, 0x63, 0xb9, 0x66, 0x53,
+	0xdf, 0xd4, 0x2c, 0xf4, 0x6e, 0xd2, 0x73, 0x68, 0xdf, 0x3f, 0x16, 0x70, 0x83, 0xa2, 0x89, 0x5e,
+	0x50, 0x54, 0x38, 0x05, 0x07, 0xe4, 0x2d, 0xd9, 0x92, 0x8d, 0x92, 0xde, 0x94, 0x55, 0xaa, 0x04,
+	0x35, 0xf8, 0xfc, 0x3e, 0x69, 0xe7, 0x03, 0xe1, 0x08, 0x4c, 0xda, 0x55, 0xf9, 0x5e, 0x12, 0xc3,
+	0xf9, 0x7d, 0x92, 0xbf, 0x72, 0x61, 0x1c, 0xd2, 0x76, 0x11, 0xbd, 0xcd, 0x87, 0x15, 0xc9, 0xb1,
+	0x7a, 0xf0, 0x18, 0x39, 0x0d, 0x63, 0xb2, 0xdd, 0xce, 0xf9, 0x31, 0xcf, 0xad, 0x3b, 0x56, 0x64,
+	0x07, 0x45, 0x72, 0x9b, 0xa1, 0xb7, 0xb8, 0x30, 0xb2, 0x0e, 0xec, 0x3c, 0x9a, 0xac, 0xef, 0x27,
+	0x86, 0xd0, 0xf5, 0x0e, 0x38, 0x91, 0xcb, 0xe7, 0x2b, 0xf5, 0x72, 0xcd, 0x51, 0xb5, 0xd0, 0x58,
+	0xa8, 0xd7, 0x1a, 0x3d, 0xad, 0xab, 0xb5, 0x9c, 0x54, 0x6b, 0x94, 0x2b, 0x05, 0x31, 0x43, 0xe4,
+	0x3a, 0xb6, 0x4b, 0x6b, 0xb1, 0xd6, 0x28, 0xe7, 0x96, 0xc4, 0xcc, 0x5a, 0x08, 0x64, 0xb1, 0xd6,
+	0xc8, 0xad, 0xe4, 0x6a, 0x39, 0x29, 0xd3, 0x66, 0xfd, 0xab, 0x5a, 0xab, 0x2c, 0x37, 0xa4, 0x7a,
+	0xb9, 0x5c, 0x2c, 0x9f, 0xb3, 0xbb, 0x5e, 0x47, 0xff, 0xc8, 0xf7, 0xc6, 0xf0, 0x84, 0xe7, 0x54,
+	0xe8, 0xaf, 0xf8, 0xb0, 0x61, 0x2d, 0x97, 0xe9, 0xc1, 0x83, 0xf1, 0x2b, 0x2e, 0x4c, 0x58, 0x6b,
+	0x30, 0x56, 0x34, 0xd9, 0x7e, 0x86, 0x1b, 0x42, 0xb6, 0xef, 0x85, 0x5b, 0xca, 0x95, 0x86, 0xc3,
+	0x6f, 0xb5, 0xb1, 0x58, 0xa9, 0x97, 0x0b, 0x19, 0xd2, 0xdb, 0xa1, 0xb2, 0x68, 0x73, 0x28, 0x89,
+	0xf9, 0xca, 0x8a, 0x28, 0x35, 0x2e, 0xe6, 0x4a, 0x25, 0xb1, 0xd6, 0x58, 0x2c, 0x4a, 0xd5, 0x5a,
+	0x66, 0x6d, 0xb7, 0x71, 0xdc, 0x16, 0x6e, 0x87, 0x6f, 0xf4, 0xca, 0x0d, 0xf1, 0x47, 0x8b, 0xd5,
+	0x5a, 0x95, 0x0a, 0x97, 0xaf, 0x48, 0x52, 0x7d, 0xb9, 0x26, 0x16, 0x32, 0xeb, 0xc2, 0xad, 0x20,
+	0xf4, 0x50, 0xa4, 0x7a, 0xd9, 0x16, 0x49, 0x21, 0xfd, 0x3b, 0xfd, 0xb9, 0xdd, 0x97, 0x2b, 0xb5,
+	0xc6, 0xb2, 0x28, 0x2d, 0x56, 0xa4, 0x25, 0xb1, 0x90, 0x79, 0x78, 0x37, 0x9d, 0x37, 0xd0, 0x87,
+	0x49, 0x48, 0x57, 0x69, 0xce, 0x3d, 0xba, 0xab, 0x37, 0x77, 0x4c, 0x03, 0xa7, 0xb8, 0x9b, 0x09,
+	0x4e, 0x69, 0x31, 0x53, 0x37, 0xb7, 0x63, 0x71, 0x7c, 0x36, 0x19, 0x75, 0xe4, 0xdb, 0xfd, 0x8d,
+	0x6c, 0xe4, 0x3f, 0xc3, 0x47, 0x19, 0xf9, 0x7d, 0x3b, 0x8f, 0xe6, 0x42, 0x2f, 0x73, 0x31, 0xcc,
+	0xe8, 0x61, 0x3c, 0x61, 0x2d, 0xc0, 0x13, 0x76, 0x8c, 0xe7, 0xc5, 0x62, 0xb9, 0xe0, 0x3a, 0x6b,
+	0xa3, 0x58, 0x5e, 0xac, 0x64, 0xd6, 0x85, 0x2c, 0x9c, 0xf2, 0xa1, 0x13, 0x37, 0x71, 0x7a, 0xc8,
+	0x95, 0x0b, 0x8d, 0xa5, 0xb2, 0xb8, 0x54, 0x29, 0x17, 0xf3, 0xb4, 0xbe, 0x2a, 0xd6, 0x6c, 0xd7,
+	0xda, 0xe1, 0x38, 0x55, 0x31, 0x27, 0xe5, 0xcf, 0x53, 0x1f, 0x2b, 0x88, 0x99, 0x87, 0x85, 0xe3,
+	0x70, 0xbb, 0xcf, 0x14, 0xc7, 0xff, 0x96, 0x25, 0xb1, 0x20, 0x2e, 0x16, 0xcb, 0x64, 0xf6, 0x29,
+	0x55, 0xf2, 0x17, 0xaa, 0x99, 0x0d, 0xf4, 0x05, 0x07, 0xc9, 0xaa, 0xa5, 0x77, 0xd1, 0xc9, 0x9e,
+	0x83, 0xcd, 0x02, 0x18, 0xb8, 0xa3, 0x6f, 0xe1, 0x82, 0x6c, 0xc9, 0x54, 0xaf, 0x71, 0xc9, 0x57,
+	0x83, 0xfe, 0x3c, 0xf4, 0xe9, 0xd8, 0xd3, 0xd5, 0xd2, 0xbb, 0x01, 0x93, 0xcc, 0xe7, 0xa1, 0x76,
+	0xf6, 0x03, 0x80, 0xa2, 0xb9, 0xc7, 0x53, 0xc3, 0x2c, 0x0c, 0x08, 0x6e, 0xf5, 0x14, 0xab, 0x52,
+	0x1d, 0x9c, 0x81, 0x9a, 0xc1, 0xc2, 0x6d, 0xf0, 0x3d, 0x3b, 0xb4, 0xa0, 0x12, 0xac, 0x09, 0xdf,
+	0x84, 0xaf, 0xfb, 0x25, 0x58, 0xaa, 0xac, 0x88, 0x9e, 0xee, 0x85, 0x5c, 0x2d, 0x97, 0x69, 0xa3,
+	0xd7, 0x79, 0xe0, 0x4b, 0x7a, 0x1b, 0xfd, 0x31, 0x0f, 0xc9, 0x2a, 0xd6, 0x5a, 0xcc, 0xf1, 0x7a,
+	0x06, 0xc6, 0x3a, 0xd8, 0x34, 0xe5, 0xb6, 0xbb, 0x4b, 0x70, 0x8b, 0xc2, 0x19, 0x48, 0xa9, 0x78,
+	0x0b, 0xdb, 0xbf, 0x7b, 0x9a, 0x9e, 0xbf, 0x9d, 0x61, 0xaa, 0xa4, 0xb7, 0xb3, 0x04, 0xcb, 0xfb,
+	0xe5, 0x6e, 0x89, 0x34, 0x95, 0xec, 0x6f, 0x1c, 0x79, 0x10, 0x52, 0xb4, 0x2c, 0x4c, 0x40, 0xaa,
+	0x20, 0x2e, 0xd4, 0xcf, 0x65, 0xf6, 0x91, 0x8f, 0xee, 0x7b, 0x4f, 0x40, 0x6a, 0x31, 0x57, 0xcb,
+	0x95, 0x32, 0x1c, 0xe1, 0x87, 0x7a, 0x27, 0x4f, 0x2a, 0x97, 0x73, 0xe5, 0x62, 0x3e, 0x93, 0x14,
+	0x26, 0x61, 0xec, 0x62, 0x4e, 0xa2, 0x6f, 0x9e, 0x62, 0xd3, 0xc6, 0xee, 0x61, 0xdd, 0xe0, 0x68,
+	0x90, 0x4d, 0xfd, 0x5c, 0xe0, 0x55, 0xcf, 0x05, 0xce, 0x32, 0x2e, 0x70, 0x32, 0x0c, 0x48, 0x34,
+	0xf9, 0xcb, 0x43, 0xa8, 0xbf, 0x1f, 0x26, 0x88, 0xe4, 0xee, 0xba, 0x32, 0x09, 0x63, 0xb5, 0xe2,
+	0x92, 0x58, 0xa9, 0xd7, 0x32, 0x6b, 0xe8, 0xdf, 0x39, 0x18, 0x5b, 0xc1, 0x86, 0xa9, 0xe8, 0x1a,
+	0xfa, 0xc8, 0xb9, 0xd6, 0xf2, 0xad, 0xc8, 0xef, 0x86, 0xfe, 0xdd, 0x92, 0x03, 0x42, 0xaf, 0x87,
+	0x02, 0x83, 0x0f, 0x5b, 0x76, 0x23, 0xf7, 0xb0, 0xe8, 0x14, 0xc9, 0x93, 0x16, 0xb6, 0x64, 0x45,
+	0x35, 0x9d, 0xd8, 0x83, 0x5b, 0x44, 0xef, 0x86, 0x3a, 0xfa, 0x05, 0xf7, 0x1d, 0x8d, 0xdc, 0xd6,
+	0x10, 0xe4, 0x1e, 0x84, 0xcc, 0x8a, 0x28, 0x55, 0x8b, 0x95, 0x32, 0x19, 0x5a, 0xe2, 0xd2, 0x72,
+	0xed, 0xa1, 0x0c, 0x3f, 0x90, 0xf2, 0xdf, 0x9f, 0x80, 0x64, 0xb1, 0xbb, 0x66, 0xa2, 0xcf, 0xdc,
+	0x94, 0xbd, 0x4f, 0x1c, 0xe2, 0xbf, 0x2f, 0x70, 0x8d, 0x44, 0x6f, 0x86, 0x3e, 0x24, 0x12, 0x68,
+	0x3b, 0x41, 0x2e, 0x58, 0x0a, 0x01, 0x92, 0x2d, 0x32, 0x35, 0x72, 0xf4, 0x9f, 0x49, 0xd1, 0xcf,
+	0xc2, 0x41, 0x48, 0x75, 0x70, 0x4b, 0x91, 0xdd, 0x84, 0x62, 0x5a, 0xf0, 0xf6, 0xf9, 0x49, 0x5f,
+	0xf2, 0xc3, 0x6b, 0xa1, 0x8e, 0x91, 0x83, 0xec, 0xb8, 0xb1, 0x3e, 0xff, 0x4a, 0xda, 0xcd, 0xe1,
+	0x7b, 0x2e, 0x6d, 0x13, 0xff, 0x04, 0x0f, 0xc9, 0x05, 0x55, 0x5f, 0x45, 0x3f, 0xcc, 0x9c, 0x70,
+	0xd6, 0x65, 0xd3, 0x3d, 0x4c, 0xd2, 0xcf, 0xc2, 0x21, 0x98, 0xb8, 0x24, 0x6b, 0x16, 0x4d, 0x6e,
+	0x71, 0x02, 0xe5, 0xbd, 0x0a, 0xfa, 0x73, 0xab, 0x70, 0x49, 0x21, 0x94, 0x1b, 0x3b, 0xef, 0x8b,
+	0x90, 0x43, 0xba, 0x0e, 0x56, 0x6a, 0x55, 0xd5, 0x57, 0x5d, 0xa5, 0xc8, 0x67, 0xf4, 0xb7, 0xa1,
+	0x12, 0x45, 0x76, 0xef, 0x23, 0xfe, 0xc1, 0x31, 0x40, 0x05, 0x32, 0x70, 0xc8, 0x42, 0x63, 0xef,
+	0x0a, 0xc8, 0xb9, 0x44, 0x2c, 0x64, 0xda, 0x34, 0xb5, 0x84, 0x8e, 0x89, 0x3d, 0x29, 0xf1, 0x97,
+	0xc3, 0x2a, 0x41, 0xfd, 0xb5, 0xbf, 0x12, 0x87, 0x60, 0x42, 0x65, 0xcf, 0xb5, 0x52, 0xaf, 0x62,
+	0x38, 0x4d, 0xfa, 0xf4, 0x76, 0x33, 0x6a, 0xf2, 0x04, 0x0f, 0xe9, 0xbc, 0xae, 0xad, 0x29, 0x6d,
+	0xf4, 0xe5, 0xb5, 0x4b, 0xc4, 0xc7, 0x5c, 0xd8, 0x1b, 0x4c, 0x1b, 0x63, 0xc0, 0xb4, 0x74, 0x18,
+	0x26, 0xd7, 0xf5, 0x0e, 0x66, 0x7f, 0x22, 0xec, 0xaf, 0x12, 0x8e, 0xc1, 0xb4, 0x6c, 0xff, 0xca,
+	0x86, 0x4d, 0x0e, 0xda, 0x51, 0x4b, 0x76, 0x80, 0x6d, 0xd9, 0xc2, 0x97, 0xe4, 0xed, 0xba, 0xa1,
+	0xce, 0x60, 0xda, 0xc6, 0x57, 0x83, 0xfe, 0x28, 0xd4, 0x5d, 0x69, 0xa0, 0xc1, 0xd1, 0x54, 0x3a,
+	0x3f, 0xdc, 0xb2, 0x72, 0x8d, 0x12, 0x98, 0x2c, 0xc7, 0xc9, 0x65, 0x45, 0x6b, 0xfb, 0xd3, 0x7a,
+	0xbc, 0x8b, 0xbb, 0x84, 0xef, 0xe2, 0x4e, 0x98, 0x87, 0x83, 0xda, 0x66, 0x67, 0x15, 0x1b, 0x95,
+	0x35, 0x71, 0x0b, 0x6b, 0x96, 0x59, 0xd3, 0xc9, 0xde, 0xc3, 0x19, 0x2a, 0x7d, 0x9f, 0xb1, 0x59,
+	0x25, 0x77, 0xb3, 0x4a, 0x1e, 0x66, 0x88, 0x21, 0x36, 0x04, 0x68, 0xd8, 0xff, 0x1e, 0xf1, 0x97,
+	0x3d, 0xbe, 0xcf, 0x30, 0x7c, 0x7f, 0x6b, 0x37, 0xd8, 0xeb, 0x72, 0x2b, 0x3d, 0x59, 0x52, 0xb4,
+	0x8d, 0x65, 0x03, 0x6f, 0x29, 0xf8, 0x12, 0xfa, 0x5a, 0x8f, 0x5a, 0x27, 0xf3, 0x29, 0xd1, 0xcb,
+	0x7c, 0x7a, 0x31, 0xf4, 0x7e, 0xc8, 0x07, 0x19, 0xc0, 0xd4, 0xbd, 0x30, 0xa9, 0xf6, 0x1a, 0x39,
+	0xe7, 0xd1, 0x9d, 0xff, 0x3c, 0xc8, 0x07, 0x23, 0xf9, 0x9b, 0x87, 0x0c, 0x8a, 0x07, 0x5b, 0x11,
+	0x3b, 0xb1, 0x47, 0xc6, 0x20, 0x25, 0x76, 0xba, 0xd6, 0xf6, 0xc2, 0xa1, 0xbf, 0xb8, 0x32, 0x9b,
+	0x78, 0xe7, 0xca, 0x6c, 0xe2, 0xc3, 0x2b, 0xb3, 0x89, 0x9f, 0xbf, 0x3a, 0xbb, 0xef, 0x9d, 0xab,
+	0xb3, 0xfb, 0xde, 0xbb, 0x3a, 0xbb, 0xef, 0xc7, 0xb8, 0xee, 0xea, 0x6a, 0x9a, 0xfe, 0xe4, 0xf5,
+	0x3b, 0xff, 0x17, 0x00, 0x00, 0xff, 0xff, 0x06, 0x3f, 0x37, 0x56, 0x68, 0x55, 0x00, 0x00,
 }
 
 func (m *Rpc) Marshal() (dAtA []byte, err error) {
@@ -14383,7 +14907,7 @@ func (m *RpcBlockListSetTextColorResponseError) MarshalToSizedBuffer(dAtA []byte
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColor) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockListSetBackgroundColor) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -14393,12 +14917,12 @@ func (m *RpcBlockListSetTextBackgroundColor) Marshal() (dAtA []byte, err error) 
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColor) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColor) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockListSetTextBackgroundColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -14406,7 +14930,7 @@ func (m *RpcBlockListSetTextBackgroundColor) MarshalToSizedBuffer(dAtA []byte) (
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockListSetBackgroundColorRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -14416,12 +14940,12 @@ func (m *RpcBlockListSetTextBackgroundColorRequest) Marshal() (dAtA []byte, err 
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColorRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColorRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -14452,7 +14976,7 @@ func (m *RpcBlockListSetTextBackgroundColorRequest) MarshalToSizedBuffer(dAtA []
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponse) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockListSetBackgroundColorResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -14462,12 +14986,12 @@ func (m *RpcBlockListSetTextBackgroundColorResponse) Marshal() (dAtA []byte, err
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColorResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColorResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -14487,7 +15011,7 @@ func (m *RpcBlockListSetTextBackgroundColorResponse) MarshalToSizedBuffer(dAtA [
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponseError) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockListSetBackgroundColorResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -14497,12 +15021,149 @@ func (m *RpcBlockListSetTextBackgroundColorResponseError) Marshal() (dAtA []byte
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponseError) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColorResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockListSetBackgroundColorResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockListSetAlign) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockListSetAlign) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockListSetAlign) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockListSetAlignRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockListSetAlignRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockListSetAlignRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Align != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Align))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.BlockIds) > 0 {
+		for iNdEx := len(m.BlockIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.BlockIds[iNdEx])
+			copy(dAtA[i:], m.BlockIds[iNdEx])
+			i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockIds[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockListSetAlignResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockListSetAlignResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockListSetAlignResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockListSetAlignResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockListSetAlignResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockListSetAlignResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -16065,7 +16726,7 @@ func (m *RpcBlockSetRestrictionsResponseError) MarshalToSizedBuffer(dAtA []byte)
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetIsArchived) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetPage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -16075,12 +16736,12 @@ func (m *RpcBlockSetIsArchived) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetIsArchived) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPage) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetIsArchived) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -16088,7 +16749,7 @@ func (m *RpcBlockSetIsArchived) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetIsArchivedRequest) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetPageIsArchived) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -16098,12 +16759,35 @@ func (m *RpcBlockSetIsArchivedRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetIsArchivedRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPageIsArchived) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetIsArchivedRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPageIsArchived) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockSetPageIsArchivedRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockSetPageIsArchivedRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockSetPageIsArchivedRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -16135,7 +16819,7 @@ func (m *RpcBlockSetIsArchivedRequest) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetIsArchivedResponse) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetPageIsArchivedResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -16145,12 +16829,12 @@ func (m *RpcBlockSetIsArchivedResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetIsArchivedResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPageIsArchivedResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetIsArchivedResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPageIsArchivedResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -16170,7 +16854,7 @@ func (m *RpcBlockSetIsArchivedResponse) MarshalToSizedBuffer(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *RpcBlockSetIsArchivedResponseError) Marshal() (dAtA []byte, err error) {
+func (m *RpcBlockSetPageIsArchivedResponseError) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -16180,12 +16864,12 @@ func (m *RpcBlockSetIsArchivedResponseError) Marshal() (dAtA []byte, err error) 
 	return dAtA[:n], nil
 }
 
-func (m *RpcBlockSetIsArchivedResponseError) MarshalTo(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPageIsArchivedResponseError) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RpcBlockSetIsArchivedResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RpcBlockSetPageIsArchivedResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -16495,143 +17179,6 @@ func (m *RpcBlockSetTextColorResponseError) MarshalTo(dAtA []byte) (int, error) 
 }
 
 func (m *RpcBlockSetTextColorResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Description) > 0 {
-		i -= len(m.Description)
-		copy(dAtA[i:], m.Description)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Code != 0 {
-		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcBlockSetTextBackgroundColor) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcBlockSetTextBackgroundColor) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcBlockSetTextBackgroundColor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcBlockSetTextBackgroundColorRequest) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcBlockSetTextBackgroundColorRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcBlockSetTextBackgroundColorRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Color) > 0 {
-		i -= len(m.Color)
-		copy(dAtA[i:], m.Color)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.Color)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.BlockId) > 0 {
-		i -= len(m.BlockId)
-		copy(dAtA[i:], m.BlockId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.ContextId) > 0 {
-		i -= len(m.ContextId)
-		copy(dAtA[i:], m.ContextId)
-		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponse) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Error != nil {
-		{
-			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintCommands(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponseError) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponseError) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -17977,6 +18524,166 @@ func (m *RpcBlockSetLinkTargetBlockIdResponseError) MarshalTo(dAtA []byte) (int,
 }
 
 func (m *RpcBlockSetLinkTargetBlockIdResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockBookmark) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockBookmark) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockBookmark) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockBookmarkFetch) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockBookmarkFetch) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockBookmarkFetch) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockBookmarkFetchRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockBookmarkFetchRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockBookmarkFetchRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Url) > 0 {
+		i -= len(m.Url)
+		copy(dAtA[i:], m.Url)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Url)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.BlockId) > 0 {
+		i -= len(m.BlockId)
+		copy(dAtA[i:], m.BlockId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.BlockId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ContextId) > 0 {
+		i -= len(m.ContextId)
+		copy(dAtA[i:], m.ContextId)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.ContextId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockBookmarkFetchResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockBookmarkFetchResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockBookmarkFetchResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcBlockBookmarkFetchResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcBlockBookmarkFetchResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcBlockBookmarkFetchResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -20483,6 +21190,13 @@ func (m *RpcVersionGetResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Details) > 0 {
+		i -= len(m.Details)
+		copy(dAtA[i:], m.Details)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Details)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.Version) > 0 {
 		i -= len(m.Version)
 		copy(dAtA[i:], m.Version)
@@ -21339,6 +22053,141 @@ func (m *RpcPingResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *RpcLinkPreview) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcLinkPreview) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcLinkPreview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcLinkPreviewRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcLinkPreviewRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcLinkPreviewRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Url) > 0 {
+		i -= len(m.Url)
+		copy(dAtA[i:], m.Url)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Url)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcLinkPreviewResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcLinkPreviewResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcLinkPreviewResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.LinkPreview != nil {
+		{
+			size, err := m.LinkPreview.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Error != nil {
+		{
+			size, err := m.Error.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommands(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RpcLinkPreviewResponseError) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RpcLinkPreviewResponseError) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RpcLinkPreviewResponseError) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintCommands(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.Code != 0 {
+		i = encodeVarintCommands(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *Empty) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -21797,7 +22646,7 @@ func (m *RpcBlockListSetTextColorResponseError) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockListSetTextBackgroundColor) Size() (n int) {
+func (m *RpcBlockListSetBackgroundColor) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -21806,7 +22655,7 @@ func (m *RpcBlockListSetTextBackgroundColor) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockListSetTextBackgroundColorRequest) Size() (n int) {
+func (m *RpcBlockListSetBackgroundColorRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -21829,7 +22678,7 @@ func (m *RpcBlockListSetTextBackgroundColorRequest) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponse) Size() (n int) {
+func (m *RpcBlockListSetBackgroundColorResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -21842,7 +22691,67 @@ func (m *RpcBlockListSetTextBackgroundColorResponse) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockListSetTextBackgroundColorResponseError) Size() (n int) {
+func (m *RpcBlockListSetBackgroundColorResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockListSetAlign) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockListSetAlignRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if len(m.BlockIds) > 0 {
+		for _, s := range m.BlockIds {
+			l = len(s)
+			n += 1 + l + sovCommands(uint64(l))
+		}
+	}
+	if m.Align != 0 {
+		n += 1 + sovCommands(uint64(m.Align))
+	}
+	return n
+}
+
+func (m *RpcBlockListSetAlignResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockListSetAlignResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -22516,7 +23425,7 @@ func (m *RpcBlockSetRestrictionsResponseError) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockSetIsArchived) Size() (n int) {
+func (m *RpcBlockSetPage) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -22525,7 +23434,16 @@ func (m *RpcBlockSetIsArchived) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockSetIsArchivedRequest) Size() (n int) {
+func (m *RpcBlockSetPageIsArchived) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockSetPageIsArchivedRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -22545,7 +23463,7 @@ func (m *RpcBlockSetIsArchivedRequest) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockSetIsArchivedResponse) Size() (n int) {
+func (m *RpcBlockSetPageIsArchivedResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -22558,7 +23476,7 @@ func (m *RpcBlockSetIsArchivedResponse) Size() (n int) {
 	return n
 }
 
-func (m *RpcBlockSetIsArchivedResponseError) Size() (n int) {
+func (m *RpcBlockSetPageIsArchivedResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -22690,65 +23608,6 @@ func (m *RpcBlockSetTextColorResponse) Size() (n int) {
 }
 
 func (m *RpcBlockSetTextColorResponseError) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Code != 0 {
-		n += 1 + sovCommands(uint64(m.Code))
-	}
-	l = len(m.Description)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	return n
-}
-
-func (m *RpcBlockSetTextBackgroundColor) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
-func (m *RpcBlockSetTextBackgroundColorRequest) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.ContextId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	l = len(m.BlockId)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	l = len(m.Color)
-	if l > 0 {
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	return n
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponse) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Error != nil {
-		l = m.Error.Size()
-		n += 1 + l + sovCommands(uint64(l))
-	}
-	return n
-}
-
-func (m *RpcBlockSetTextBackgroundColorResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -23321,6 +24180,74 @@ func (m *RpcBlockSetLinkTargetBlockIdResponse) Size() (n int) {
 }
 
 func (m *RpcBlockSetLinkTargetBlockIdResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockBookmark) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockBookmarkFetch) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcBlockBookmarkFetchRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ContextId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.BlockId)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	l = len(m.Url)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockBookmarkFetchResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcBlockBookmarkFetchResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -24390,6 +25317,10 @@ func (m *RpcVersionGetResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovCommands(uint64(l))
 	}
+	l = len(m.Details)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
 	return n
 }
 
@@ -24733,6 +25664,61 @@ func (m *RpcPingResponse) Size() (n int) {
 }
 
 func (m *RpcPingResponseError) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovCommands(uint64(m.Code))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcLinkPreview) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RpcLinkPreviewRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Url)
+	if l > 0 {
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcLinkPreviewResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Error != nil {
+		l = m.Error.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	if m.LinkPreview != nil {
+		l = m.LinkPreview.Size()
+		n += 1 + l + sovCommands(uint64(l))
+	}
+	return n
+}
+
+func (m *RpcLinkPreviewResponseError) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -27489,7 +28475,7 @@ func (m *RpcBlockListSetTextColorResponseError) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockListSetTextBackgroundColor) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockListSetBackgroundColor) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -27542,7 +28528,7 @@ func (m *RpcBlockListSetTextBackgroundColor) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockListSetTextBackgroundColorRequest) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockListSetBackgroundColorRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -27691,7 +28677,7 @@ func (m *RpcBlockListSetTextBackgroundColorRequest) Unmarshal(dAtA []byte) error
 	}
 	return nil
 }
-func (m *RpcBlockListSetTextBackgroundColorResponse) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockListSetBackgroundColorResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -27750,7 +28736,7 @@ func (m *RpcBlockListSetTextBackgroundColorResponse) Unmarshal(dAtA []byte) erro
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &RpcBlockListSetTextBackgroundColorResponseError{}
+				m.Error = &RpcBlockListSetBackgroundColorResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -27780,7 +28766,7 @@ func (m *RpcBlockListSetTextBackgroundColorResponse) Unmarshal(dAtA []byte) erro
 	}
 	return nil
 }
-func (m *RpcBlockListSetTextBackgroundColorResponseError) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockListSetBackgroundColorResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -27823,7 +28809,389 @@ func (m *RpcBlockListSetTextBackgroundColorResponseError) Unmarshal(dAtA []byte)
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= RpcBlockListSetTextBackgroundColorResponseErrorCode(b&0x7F) << shift
+				m.Code |= RpcBlockListSetBackgroundColorResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockListSetAlign) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Align: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Align: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockListSetAlignRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockIds", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockIds = append(m.BlockIds, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Align", wireType)
+			}
+			m.Align = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Align |= model.BlockAlign(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockListSetAlignResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockListSetAlignResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockListSetAlignResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockListSetAlignResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -32262,7 +33630,60 @@ func (m *RpcBlockSetRestrictionsResponseError) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetIsArchived) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetPage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Page: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Page: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockSetPageIsArchived) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -32315,7 +33736,7 @@ func (m *RpcBlockSetIsArchived) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetIsArchivedRequest) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetPageIsArchivedRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -32452,7 +33873,7 @@ func (m *RpcBlockSetIsArchivedRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetIsArchivedResponse) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetPageIsArchivedResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -32511,7 +33932,7 @@ func (m *RpcBlockSetIsArchivedResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Error == nil {
-				m.Error = &RpcBlockSetIsArchivedResponseError{}
+				m.Error = &RpcBlockSetPageIsArchivedResponseError{}
 			}
 			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -32541,7 +33962,7 @@ func (m *RpcBlockSetIsArchivedResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RpcBlockSetIsArchivedResponseError) Unmarshal(dAtA []byte) error {
+func (m *RpcBlockSetPageIsArchivedResponseError) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -32584,7 +34005,7 @@ func (m *RpcBlockSetIsArchivedResponseError) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Code |= RpcBlockSetIsArchivedResponseErrorCode(b&0x7F) << shift
+				m.Code |= RpcBlockSetPageIsArchivedResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -33464,401 +34885,6 @@ func (m *RpcBlockSetTextColorResponseError) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Code |= RpcBlockSetTextColorResponseErrorCode(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Description = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcBlockSetTextBackgroundColor) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: BackgroundColor: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: BackgroundColor: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcBlockSetTextBackgroundColorRequest) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Request: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ContextId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BlockId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Color", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Color = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcBlockSetTextBackgroundColorResponse) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Response: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthCommands
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Error == nil {
-				m.Error = &RpcBlockSetTextBackgroundColorResponseError{}
-			}
-			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCommands(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthCommands
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *RpcBlockSetTextBackgroundColorResponseError) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCommands
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Error: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
-			}
-			m.Code = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCommands
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Code |= RpcBlockSetTextBackgroundColorResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -37628,6 +38654,454 @@ func (m *RpcBlockSetLinkTargetBlockIdResponseError) Unmarshal(dAtA []byte) error
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Code |= RpcBlockSetLinkTargetBlockIdResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockBookmark) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Bookmark: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Bookmark: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockBookmarkFetch) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Fetch: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Fetch: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockBookmarkFetchRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContextId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContextId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BlockId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Url = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockBookmarkFetchResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcBlockBookmarkFetchResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcBlockBookmarkFetchResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcBlockBookmarkFetchResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -44507,6 +45981,38 @@ func (m *RpcVersionGetResponse) Unmarshal(dAtA []byte) error {
 			}
 			m.Version = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Details", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Details = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipCommands(dAtA[iNdEx:])
@@ -46786,6 +48292,373 @@ func (m *RpcPingResponseError) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Code |= RpcPingResponseErrorCode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcLinkPreview) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LinkPreview: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LinkPreview: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcLinkPreviewRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Request: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Request: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Url = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcLinkPreviewResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Error == nil {
+				m.Error = &RpcLinkPreviewResponseError{}
+			}
+			if err := m.Error.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LinkPreview", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommands
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LinkPreview == nil {
+				m.LinkPreview = &model.LinkPreview{}
+			}
+			if err := m.LinkPreview.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommands(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthCommands
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RpcLinkPreviewResponseError) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommands
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Error: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Error: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommands
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= RpcLinkPreviewResponseErrorCode(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

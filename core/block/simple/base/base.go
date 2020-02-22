@@ -15,6 +15,12 @@ func init() {
 		}
 		return nil
 	})
+	simple.RegisterCreator(func(m *model.Block) simple.Block {
+		if m.GetPage() != nil {
+			return NewPage(m)
+		}
+		return nil
+	})
 	simple.RegisterFallback(func(m *model.Block) simple.Block {
 		return NewBase(m)
 	})
@@ -38,14 +44,6 @@ func (s *Base) Model() *model.Block {
 
 func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 	m := block.Model()
-	if m.IsArchived != s.IsArchived {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetIsArchived{BlockSetIsArchived: &pb.EventBlockSetIsArchived{
-			Id:         s.Id,
-			IsArchived: m.IsArchived,
-		}}}
-		msgs = append(msgs, m)
-	}
-
 	if !stringSlicesEq(m.ChildrenIds, s.ChildrenIds) {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetChildrenIds{BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
 			Id:          s.Id,
@@ -74,6 +72,21 @@ func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 		}}}
 		msgs = append(msgs, m)
 	}
+	if s.BackgroundColor != m.BackgroundColor {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBackgroundColor{BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
+			Id:              s.Id,
+			BackgroundColor: m.BackgroundColor,
+		}}}
+		msgs = append(msgs, m)
+	}
+	if s.Align != m.Align {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetAlign{BlockSetAlign: &pb.EventBlockSetAlign{
+			Id:    s.Id,
+			Align: m.Align,
+		}}}
+		msgs = append(msgs, m)
+	}
+
 	return
 }
 

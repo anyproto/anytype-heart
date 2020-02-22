@@ -38,7 +38,6 @@ type Block interface {
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
 	SetTextColor(color string)
-	SetTextBackgroundColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) ([]simple.Block, string, error)
 	RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error
@@ -105,10 +104,6 @@ func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.Color = &pb.EventBlockSetTextColor{Value: text.content.Color}
 	}
-	if t.content.Color != text.content.BackgroundColor {
-		hasChanges = true
-		changes.BackgroundColor = &pb.EventBlockSetTextBackgroundColor{Value: text.content.BackgroundColor}
-	}
 	if hasChanges {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}})
 	}
@@ -125,10 +120,6 @@ func (t *Text) SetChecked(v bool) {
 
 func (t *Text) SetTextColor(color string) {
 	t.content.Color = color
-}
-
-func (t *Text) SetTextBackgroundColor(color string) {
-	t.content.BackgroundColor = color
 }
 
 func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
@@ -218,11 +209,6 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
 	// TODO:
 
-	for i, _ := range newMarks.Marks {
-		newMarks.Marks[i].Range.From = newMarks.Marks[i].Range.From - r.To
-		newMarks.Marks[i].Range.To = newMarks.Marks[i].Range.To - r.To
-
-	}
 	t.content.Marks = oldMarks
 	newBlock := NewText(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
@@ -237,7 +223,7 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	if len(string(runes[:from])) == 0 {
 		t.content.Text = string(runes[to:])
 
-	// if newBlock is empty -> don't push it
+		// if newBlock is empty -> don't push it
 	} else if len(string(runes[to:])) > 0 {
 		newBlocks = append(newBlocks, newBlock)
 	}

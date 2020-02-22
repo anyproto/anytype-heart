@@ -56,6 +56,11 @@ func (s *state) createLink(target *model.Block) (m *model.Block) {
 	style := model.BlockContentLink_Page
 	if target.GetDataview() != nil {
 		style = model.BlockContentLink_Dataview
+	} else if dashboard := target.GetDashboard(); dashboard != nil {
+		style = model.BlockContentLink_Dashboard
+		if dashboard.Style == model.BlockContentDashboard_Archive {
+			style = model.BlockContentLink_Archive
+		}
 	}
 	return &model.Block{
 		Content: &model.BlockContentOfLink{
@@ -219,20 +224,25 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 		}
 	}
 	s.checkChangeSmartFields(msgs)
-	fmt.Printf("middle: state apply: %d for save; %d for remove; %d copied; for a %v\n", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
+	log.Infof("middle: state apply: %d for save; %d for remove; %d copied; for a %v", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return
 }
 
 func (s *state) checkChangeSmartFields(msgs []*pb.EventMessage) {
+	var changed bool
 	for _, msg := range msgs {
 		if fieldsChange := msg.GetBlockSetFields(); fieldsChange != nil {
 			if fieldsChange.Id == s.sb.GetId() && s.sb.s != nil && s.sb.s.ls != nil {
-				s.sb.s.ls.onMeta(metaInfo{
-					targetId: s.sb.GetId(),
-					meta:     fakeCoreMeta{fields: fieldsChange.Fields},
-				})
+				changed = true
+				break
 			}
 		}
+	}
+	if changed {
+		s.sb.s.ls.onMeta(metaInfo{
+			targetId: s.sb.GetId(),
+			meta:     fakeCoreMeta{b: s.sb.versions[s.sb.GetId()].Copy().Model()},
+		})
 	}
 }
 
@@ -247,7 +257,6 @@ func (s *state) normalize() {
 			if len(b.Model().ChildrenIds) == 0 {
 				s.removeFromChilds(b.Model().Id)
 				s.remove(b.Model().Id)
-				fmt.Println("normalize: remove empty layout:", b.Model().Id)
 			}
 			// pick parent for checking
 			s.findParentOf(b.Model().Id)
@@ -266,7 +275,6 @@ func (s *state) normalizeChildren(b simple.Block) {
 	m := b.Model()
 	for _, cid := range m.ChildrenIds {
 		if !s.exists(cid) {
-			fmt.Println("normalize: remove missed children:", cid)
 			m.ChildrenIds = removeFromSlice(m.ChildrenIds, cid)
 			s.normalizeChildren(b)
 			return
@@ -282,7 +290,6 @@ func (s *state) normalizeLayoutRow(b simple.Block) {
 	if len(b.Model().ChildrenIds) == 0 {
 		s.removeFromChilds(b.Model().Id)
 		s.remove(b.Model().Id)
-		fmt.Println("normalize: remove empty row:", b.Model().Id)
 		return
 	}
 	// one column - remove row
@@ -310,7 +317,6 @@ func (s *state) normalizeLayoutRow(b simple.Block) {
 					s.remove(column.Model().Id)
 				}
 				s.remove(b.Model().Id)
-				fmt.Println("normalize: remove one column row:", b.Model().Id)
 			}
 		}
 		return
@@ -362,7 +368,7 @@ func (s *state) validateBlock(b simple.Block) (err error) {
 }
 
 type fakeCoreMeta struct {
-	fields *types.Struct
+	b *model.Block
 }
 
 func (f fakeCoreMeta) VersionId() string {
@@ -382,5 +388,5 @@ func (f fakeCoreMeta) Date() *types.Timestamp {
 }
 
 func (f fakeCoreMeta) ExternalFields() *types.Struct {
-	return f.fields
+	return f.b.Fields
 }

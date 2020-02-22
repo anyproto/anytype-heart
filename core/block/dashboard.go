@@ -1,18 +1,16 @@
 package block
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 )
 
-func newDashboard(s *service, block anytype.Block) (smartBlock, error) {
+func newDashboard(s *service) (smartBlock, error) {
 	p := &dashboard{&commonSmart{s: s}}
 	return p, nil
 }
@@ -27,11 +25,12 @@ func (p *dashboard) Init() {
 	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
 		// virtually add testpage to home screen
 		p.addTestPage()
-		// todo: deprecated, remove after migration to the right link style
-		p.removeArchive()
 	}
 
 	p.migratePageToLinks()
+	if err := p.checkArchive(); err != nil {
+		log.Infof("can't check archive: %v", err)
+	}
 	p.history = history.NewHistory(0)
 	p.init()
 }
@@ -39,10 +38,10 @@ func (p *dashboard) Init() {
 func (p *dashboard) migratePageToLinks() {
 	s := p.newState()
 	for id, v := range p.versions {
-		if v.Model().GetPage() != nil {
+		if id != p.GetId() && (v.Model().GetPage() != nil || v.Model().GetDashboard() != nil) {
 			link := s.createLink(v.Model())
 			if _, err := p.replace(s, id, link); err != nil {
-				fmt.Println("middle: can't wrap page to link:", err)
+				log.Infof("can't wrap page to link: %v", err)
 			}
 		}
 		if link := v.Model().GetLink(); link != nil && link.TargetBlockId == testPageId {
@@ -53,17 +52,46 @@ func (p *dashboard) migratePageToLinks() {
 		}
 	}
 	if _, err := s.apply(nil); err != nil {
-		fmt.Println("can't apply state for migrating page to link", err)
+		log.Infof("can't apply state for migrating page to link: %v", err)
 	}
 }
 
-// todo: deprecated, remove after migration to the right link style
-func (p *dashboard) removeArchive() {
-	if os.Getenv("ANYTYPE_SHOW_ARCHIVE") == "1" {
+func (p *dashboard) checkArchive() (err error) {
+	archiveId := p.s.anytype.PredefinedBlockIds().Archive
+	if archiveId == "" {
 		return
 	}
-
-	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, p.Anytype().PredefinedBlockIds().Archive)
+	var removeId string
+	for _, b := range p.versions {
+		if link := b.Model().GetLink(); link != nil && link.TargetBlockId == archiveId {
+			if link.Style != model.BlockContentLink_Archive {
+				removeId = b.Model().Id
+				break
+			} else {
+				return
+			}
+		}
+	}
+	s := p.newState()
+	if removeId != "" {
+		s.removeFromChilds(removeId)
+		s.remove(removeId)
+	}
+	link := s.createLink(&model.Block{
+		Id: archiveId,
+		Content: &model.BlockContentOfDashboard{
+			Dashboard: &model.BlockContentDashboard{
+				Style: model.BlockContentDashboard_Archive,
+			},
+		},
+	})
+	l, err := s.create(link)
+	if err != nil {
+		return
+	}
+	root := s.get(p.GetId()).Model()
+	root.ChildrenIds = append(root.ChildrenIds, l.Model().Id)
+	return p.applyAndSendEventHist(s, false, false)
 }
 
 func (p *dashboard) addTestPage() {

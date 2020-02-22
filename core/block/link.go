@@ -131,7 +131,7 @@ func (ls *linkSubscriptions) loop() {
 func (ls *linkSubscriptions) create(u linkBlockUpdater, l link.Block) {
 	linkId := l.Model().Id
 	targetId := l.Model().GetLink().TargetBlockId
-	fmt.Println("add link to subscriber", linkId)
+	log.Debugf("add link to subscriber: %v", linkId)
 	ls.startListener(targetId)
 	updaters := ls.links[targetId]
 	if updaters == nil {
@@ -199,10 +199,10 @@ func (ls *linkSubscriptions) startListener(targetId string) {
 	if _, ok := ls.listeners[targetId]; ok {
 		return
 	}
-	fmt.Println("start listener for:", targetId)
+	log.Debugf("start listener for: %v", targetId)
 	listener, err := newLinkListener(targetId, ls)
 	if err != nil {
-		fmt.Println("middle: can't create link listener:", err)
+		log.Warningf("can't create link listener: %v", err)
 		return
 	}
 	ls.listeners[targetId] = listener
@@ -210,14 +210,14 @@ func (ls *linkSubscriptions) startListener(targetId string) {
 
 func (ls *linkSubscriptions) stopListener(targetId string) {
 	if _, ok := ls.listeners[targetId]; ok {
-		fmt.Println("stop listener for:", targetId)
+		log.Debugf("stop listener for: %v", targetId)
 		ls.listeners[targetId].close()
 		delete(ls.listeners, targetId)
 	}
 }
 
 func (ls *linkSubscriptions) setMeta(info metaInfo) {
-	fmt.Println("middle: update link meta for", info.targetId)
+	log.Debugf("update link meta for %v", info.targetId)
 	ls.setMetaCache(info.targetId, &linkData{fields: info.meta.ExternalFields()})
 	updaters := ls.links[info.targetId]
 	if updaters == nil {
@@ -231,7 +231,7 @@ func (ls *linkSubscriptions) setMeta(info metaInfo) {
 			return nil
 		})
 		if err != nil {
-			fmt.Println("middle: can't set updated meta to block:", err)
+			log.Warningf("middle: can't set updated meta to block: %v", err)
 		}
 	}
 }
