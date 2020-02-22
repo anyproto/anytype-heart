@@ -61,6 +61,7 @@ type Service interface {
 	SetTextBackgroundColor(contextId string, color string, blockIds ...string) error
 
 	UploadFile(req pb.RpcBlockUploadRequest) error
+	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
 	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
@@ -353,6 +354,15 @@ func (s *service) UploadFile(req pb.RpcBlockUploadRequest) (err error) {
 	}
 	defer release()
 	return sb.Upload(req.BlockId, req.FilePath, req.Url)
+}
+
+func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
+	_, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return //sb.DropeFiles(req)
 }
 
 func (s *service) Undo(req pb.RpcBlockUndoRequest) (err error) {

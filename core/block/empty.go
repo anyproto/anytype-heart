@@ -109,6 +109,11 @@ func (e emptySmart) Upload(id string, localPath, url string) (err error) {
 	return
 }
 
+func (e emptySmart) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
+	err = errEmptyBlock
+	return
+}
+
 func (e emptySmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
 	err = errEmptyBlock
 	return

@@ -6,18 +6,40 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/h2non/filetype"
 	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("anytype-mw")
 
+func NewUploader(a anytype.Anytype, fn func(f func(file Block))) Uploader {
+	return &uploader{
+		updateFile: fn,
+		storage:    a,
+	}
+}
+
+type Uploader interface {
+	DoAuto(localPath string)
+}
+
 type uploader struct {
 	updateFile func(f func(file Block))
 	storage    anytype.Anytype
 	isImage    bool
+}
+
+func (u *uploader) DoAuto(localPath string) {
+	tp, _ := filetype.MatchFile(localPath)
+	if strings.HasPrefix(tp.MIME.Value, "image") {
+		u.DoImage(localPath, "")
+	} else {
+		u.Do(localPath, "")
+	}
 }
 
 func (u *uploader) DoImage(localPath, url string) {

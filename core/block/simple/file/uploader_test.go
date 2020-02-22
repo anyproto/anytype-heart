@@ -141,7 +141,6 @@ func TestUploader_Do(t *testing.T) {
 		case <-fx.done:
 		}
 	})
-
 }
 
 func newFixture(t *testing.T, file *File) *fixture {

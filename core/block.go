@@ -318,10 +318,11 @@ func (mw *Middleware) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-	// TODO
+	if err := mw.blockService.DropFiles(*req); err != nil {
+		return response(pb.RpcExternalDropFilesResponseError_UNKNOWN_ERROR, err)
+	}
 	return response(pb.RpcExternalDropFilesResponseError_NULL, nil)
 }
 

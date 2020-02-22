@@ -45,6 +45,7 @@ type smartBlock interface {
 	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
+	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Undo() error
 	Redo() error
@@ -698,31 +699,6 @@ func (p *commonSmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockF
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
-	p.m.Lock()
-	defer p.m.Unlock()
-	s := p.newState()
-	f, err := s.getFile(id)
-	if err != nil {
-		return
-	}
-	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
-		return
-	}
-	return p.applyAndSendEventHist(s, false, true)
-}
-
-func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
-	p.m.Lock()
-	defer p.m.Unlock()
-	s := p.newState()
-	f, err := s.getFile(id)
-	if err != nil {
-		return err
-	}
-	apply(f)
-	return p.applyAndSendEvent(s)
-}
 
 func (p *commonSmart) setFields(s *state, id string, fields *types.Struct) (err error) {
 	b := s.get(id)
