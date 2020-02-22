@@ -12,7 +12,6 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-log v0.0.1
-	github.com/lunny/html2md v0.0.0-20181018071239-7d234de44546
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
