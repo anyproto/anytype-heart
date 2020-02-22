@@ -128,7 +128,6 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 					contentPaste.Text.Marks = &model.BlockContentTextMarks{}
 					err = p.rangeTextPaste(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To, contentPaste.Text.Text, contentPaste.Text.Marks.Marks)
 					if err != nil {
-						fmt.Println(">>>> OUT3")
 						return blockIds, err
 					}
 
@@ -192,11 +191,9 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 			content.Text.Text,
 			content.Text.Marks.Marks)
 		if err != nil {
-			fmt.Println(">>> OUT2", err)
 			return blockIds, err
 		}
 
-		fmt.Println(">>> OUT1")
 		return blockIds, p.applyAndSendEvent(s)
 	}
 
