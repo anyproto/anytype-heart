@@ -18,5 +18,4 @@ func TestDropFilesProcess_Init(t *testing.T) {
 	assert.Equal(t, "testdir", fp.root.child[0].name)
 	assert.True(t, fp.root.child[0].isDir)
 	assert.Equal(t, "testdir2", fp.root.child[1].name)
-	assert.Equal(t, "a.txt", fp.root.child[0].child[0].child[0].name)
 }
