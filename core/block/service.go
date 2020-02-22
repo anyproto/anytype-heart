@@ -357,12 +357,12 @@ func (s *service) UploadFile(req pb.RpcBlockUploadRequest) (err error) {
 }
 
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
-	_, release, err := s.pickBlock(req.ContextId)
+	sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return
 	}
 	defer release()
-	return //sb.DropeFiles(req)
+	return sb.DropFiles(req)
 }
 
 func (s *service) Undo(req pb.RpcBlockUndoRequest) (err error) {
