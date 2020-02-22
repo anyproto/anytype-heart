@@ -233,12 +233,11 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 
 	var flatEntries = [][]*dropFileEntry{dp.root.child}
 	var smartBockIds = []string{rootId}
-	var i = 0
-	var handleLevel = func(i int) (ok bool, err error) {
-		if i >= len(smartBockIds) {
+	var handleLevel = func(idx int) (ok bool, err error) {
+		if idx >= len(smartBockIds) {
 			return
 		}
-		sb, release, err := dp.s.pickBlock(smartBockIds[i])
+		sb, release, err := dp.s.pickBlock(smartBockIds[idx])
 		if err != nil {
 			return
 		}
@@ -246,20 +245,20 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 
 		sbHandler, ok := sb.(dropFilesHandler)
 		if !ok {
-			return i != 0, fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
+			return idx != 0, fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
 		}
-		blockIds, err := sbHandler.dropFilesCreateStructure(targetId, pos, flatEntries[i])
+		blockIds, err := sbHandler.dropFilesCreateStructure(targetId, pos, flatEntries[idx])
 		if err != nil {
-			return i != 0, err
+			return idx != 0, err
 		}
-		for i, entry := range flatEntries[i] {
+		for i, entry := range flatEntries[idx] {
 			if entry.isDir {
 				smartBockIds = append(smartBockIds, blockIds[i])
 				flatEntries = append(flatEntries, entry.child)
 				atomic.AddInt64(&dp.done, 1)
 			} else {
 				in <- &dropFileInfo{
-					pageId:  smartBockIds[i],
+					pageId:  smartBockIds[idx],
 					blockId: blockIds[i],
 					path:    entry.path,
 					name:    entry.name,
@@ -268,9 +267,10 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		}
 		return true, nil
 	}
+	var idx = 0
 	for {
-		ok, err := handleLevel(i)
-		if i == 0 {
+		ok, err := handleLevel(idx)
+		if idx == 0 {
 			rootDone <- err
 			if err != nil {
 				log.Warningf("can't create files: %v", err)
@@ -284,7 +284,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		if ! ok {
 			break
 		}
-		i++
+		idx++
 	}
 
 	return
