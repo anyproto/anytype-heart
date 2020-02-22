@@ -9,7 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -120,12 +119,9 @@ func (p *commonSmart) dropFilesSetInfo(info dropFileInfo) (err error) {
 			f.SetState(model.BlockContentFile_Error)
 			return
 		}
-		if info.fileType == model.BlockContentFile_Image {
-			f.SetImage(info.hash, info.name)
-		} else {
-			f.SetFileData(info.hash, info.meta)
+		f.Model().Content = &model.BlockContentOfFile{
+			File: info.file,
 		}
-		f.SetState(model.BlockContentFile_Done)
 	})
 }
 
@@ -141,9 +137,7 @@ type dropFileInfo struct {
 	path            string
 	err             error
 	name            string
-	fileType        model.BlockContentFileType
-	hash            string
-	meta            core.FileMeta
+	file            *model.BlockContentFile
 }
 
 type dropFilesHandler interface {
@@ -324,6 +318,7 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 		f.err = fmt.Errorf("upload error")
 		return
 	}
+	f.file = fc
 	return
 }
 
