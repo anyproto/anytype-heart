@@ -3,9 +3,9 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.13
 
 require (
-	github.com/PuerkitoBio/goquery v1.5.0 // indirect
+	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/anytypeio/go-anytype-library v0.4.1-0.20200221104451-04fd1ffd67b3
-	github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13
+	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
 
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.0
@@ -18,7 +18,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/otiai10/opengraph v1.1.0
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
 	github.com/yuin/goldmark v1.1.22

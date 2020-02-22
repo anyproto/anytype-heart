@@ -39,7 +39,8 @@ type smartBlock interface {
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
-	Paste(req pb.RpcBlockPasteRequest) error
+	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
+	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
 	Replace(id string, block *model.Block) (newId string, err error)
 	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
@@ -304,6 +305,7 @@ func (p *commonSmart) copy(s *state, sourceId string) (id string, err error) {
 			return
 		}
 	}
+
 	return copy.Model().Id, nil
 }
 
@@ -311,24 +313,38 @@ func (p *commonSmart) duplicate(s *state, req pb.RpcBlockListDuplicateRequest) (
 	pos := req.Position
 	targetId := req.TargetId
 	for _, id := range req.BlockIds {
-		copyId, e := p.copy(s, id)
-		if e != nil {
-			return nil, e
+
+		restricted := false
+
+		switch block := s.get(id).Model().Content.(type) {
+		case *model.BlockContentOfText:
+			if block.Text.Style == model.BlockContentText_Title {
+				restricted = true
+			}
 		}
-		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
-			return
+
+		if !restricted {
+			copyId, e := p.copy(s, id)
+			if e != nil {
+				return nil, e
+			}
+			if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+				return
+			}
+			pos = model.Block_Bottom
+			targetId = copyId
+			newIds = append(newIds, copyId)
 		}
-		pos = model.Block_Bottom
-		targetId = copyId
-		newIds = append(newIds, copyId)
 	}
 
 	return newIds, nil
 }
 
-func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (err error) {
+func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetId string) (blockIds []string, err error) {
 	parent := s.get(p.GetId()).Model()
 	emptyPage := false
+
+	blockIds = []string{}
 
 	if len(parent.ChildrenIds) == 0 {
 		emptyPage = true
@@ -337,10 +353,12 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 	for i := 0; i < len(req.AnySlot); i++ {
 		copyBlock, err := s.create(req.AnySlot[i])
 		if err != nil {
-			return err
+			return blockIds, err
 		}
 
 		copyBlockId := copyBlock.Model().Id
+
+		blockIds = append(blockIds, copyBlockId)
 
 		if f, ok := copyBlock.(file.Block); ok {
 			file := copyBlock.Model().GetFile()
@@ -349,11 +367,11 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 		}
 
 		if err != nil {
-			return err
+			return blockIds, err
 		}
 		for i, childrenId := range copyBlock.Model().ChildrenIds {
 			if copyBlock.Model().ChildrenIds[i], err = p.copy(s, childrenId); err != nil {
-				return err
+				return blockIds, err
 			}
 		}
 
@@ -361,13 +379,13 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 			parent.ChildrenIds = append(parent.ChildrenIds, copyBlockId)
 		} else {
 			if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
-				return err
+				return blockIds, err
 			}
 			targetId = copyBlockId
 		}
 	}
 
-	return nil
+	return blockIds, nil
 }
 
 func (p *commonSmart) normalize() {
@@ -431,6 +449,13 @@ func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
 }
 
 func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos model.BlockPosition) (err error) {
+	switch block := b.Model().Content.(type) {
+	case *model.BlockContentOfText:
+		if block.Text.Style == model.BlockContentText_Title {
+			return nil // Just do not insert, it is not an error
+		}
+	}
+
 	parent := s.get(p.GetId()).Model()
 	var target simple.Block
 	if targetId != "" {
@@ -854,4 +879,12 @@ func (p *commonSmart) onDelete(b simple.Block) {
 	if p.s.ls != nil {
 		p.s.ls.onDelete(p, b)
 	}
+}
+
+func (p *commonSmart) rangeTextPaste(s *state, id string, from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error {
+	t, err := s.getText(id)
+	if err != nil {
+		return err
+	}
+	return t.RangeTextPaste(from, to, newText, newMarks)
 }

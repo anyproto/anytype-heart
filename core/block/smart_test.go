@@ -196,3 +196,30 @@ func TestCommonSmart_SetFields(t *testing.T) {
 		assert.Equal(t, "value", fx.savedBlocks["b1"].Fields.Fields["key"].GetStringValue())
 	})
 }
+
+func TestCommonSmart_Copy(t *testing.T) {
+	t.Run("should duplicate correctly", func(t *testing.T) {
+		pageBlocks := []*model.Block{
+			{Id: "b1"},
+		}
+		fx := newPageFixture(t, pageBlocks...)
+		defer fx.ctrl.Finish()
+		defer fx.tearDown()
+
+		err := fx.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+			BlockId: "b1",
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"key": testStringValue("value"),
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "value", fx.commonSmart.versions["b1"].Model().Fields.Fields["key"].GetStringValue())
+
+		require.Len(t, fx.serviceFx.events, 2)
+		assert.Len(t, fx.serviceFx.events[1].Messages, 1)
+		assert.Equal(t, "value", fx.savedBlocks["b1"].Fields.Fields["key"].GetStringValue())
+	})
+}

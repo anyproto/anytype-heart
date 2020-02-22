@@ -4,7 +4,8 @@ package anymark
 import (
 	"bufio"
 	"bytes"
-
+	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
@@ -20,7 +21,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/lunny/html2md"
+	htmlConverter "github.com/anytypeio/html-to-markdown"
 )
 
 // DefaultParser returns a new Parser that is configured by default values.
@@ -151,15 +152,75 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	// special wiki spaces
 	preprocessedSource = strings.ReplaceAll(preprocessedSource, "<span> </span>", " ")
 
-	md := html2md.Convert(preprocessedSource)
-	md = spaceReplace.WhitespaceNormalizeString(md)
+	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
+	reWikiCode := regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
+	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
-	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
+
+
+	strikethrough := htmlConverter.Rule{
+		Filter: []string{"span"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			// If the span element has not the classname `bb_strike` return nil.
+			// That way the next rules will apply. In this case the commonmark rules.
+			// -> return nil -> next rule applies
+			if !selec.HasClass("bb_strike") {
+				return nil
+			}
+
+			// Trim spaces so that the following does NOT happen: `~ and cake~`.
+			// Because of the space it is not recognized as strikethrough.
+			// -> trim spaces at begin&end of string when inside strong/italic/...
+			content = strings.TrimSpace(content)
+			return htmlConverter.String("~" + content + "~")
+		},
+	}
+
+	italic := htmlConverter.Rule{
+		Filter: []string{"i"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			content = strings.TrimSpace(content)
+			return htmlConverter.String(" *" + content + "* ")
+		},
+	}
+
+	br := htmlConverter.Rule{
+		Filter: []string{"br"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			content = strings.TrimSpace(content)
+			return htmlConverter.String( "\n" + content)
+		},
+	}
+
+	converter := htmlConverter.NewConverter("", true, nil)
+	converter.AddRules(strikethrough, italic, br)
+
+	md, _ := converter.ConvertString(preprocessedSource)
+
+	//md := html2md.Convert(preprocessedSource)
+	md = spaceReplace.WhitespaceNormalizeString(md)
+	//md = strings.ReplaceAll(md, "*  *", "* *")
+
+	reCode := regexp.MustCompile(`[ ]+`)
+	md = reCode.ReplaceAllString(md, ` `)
+
+/*	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
 	md = reLinkBreaks.ReplaceAllString(md, `[$1]($2)`)
+
+	md = strings.ReplaceAll(md, "`", "@@@")
+	reCode := regexp.MustCompile(`\n(@@@([\s\S]*?)@@@)\n`)
+	md = reCode.ReplaceAllString(md, `@@@@@@@@@$2@@@@@@@@@`)
+	reCodeStart := regexp.MustCompile(`@@@@@@@@@([\S]*?)`)
+	md = reCodeStart.ReplaceAllString(md, "\n@@@@@@@@@\n$1")
+	md = strings.ReplaceAll(md, "@@@", "`")*/
 
 	// Pattern: <a href> <div style=background-image:...>  </div> <a>
 	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
+
+	fmt.Println("MD:", md)
+
+	//md = "\n```code```\n ## 123123"
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)

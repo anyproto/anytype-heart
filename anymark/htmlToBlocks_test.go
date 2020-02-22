@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os/exec"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
@@ -19,19 +19,6 @@ var (
 	pasteCmdArgs = "pbpaste"
 	copyCmdArgs  = "pbcopy"
 )
-
-func getPasteCommand() *exec.Cmd {
-	return exec.Command(pasteCmdArgs)
-}
-
-func readAll() (string, error) {
-	pasteCmd := getPasteCommand()
-	out, err := pasteCmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
-}
 
 type TestCase struct {
 	HTML string `json:"html"`
@@ -62,7 +49,7 @@ func TestConvertHTMLToBlocks2(t *testing.T) {
 		panic(err)
 	}
 
-	testNum := 9
+	testNum := 16
 	s := testCases[testNum].HTML
 
 	mdToBlocksConverter := anymark.New()
@@ -71,8 +58,13 @@ func TestConvertHTMLToBlocks2(t *testing.T) {
 	for i, b := range blocks {
 		fmt.Println(i, " block: ", b)
 	}
-
 }
+
+func TestRuneLength (t *testing.T) {
+	el := "—"
+	fmt.Println(el, len(el), utf8.RuneCountInString(el))
+}
+
 
 func convertToBlocksAndPrint(html string) error {
 	mdToBlocksConverter := anymark.New()

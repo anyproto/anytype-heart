@@ -163,7 +163,7 @@ func (p *archive) Move(req pb.RpcBlockListMoveRequest) (err error) {
 	err = errNotPossibleForArchive
 	return
 }
-func (p *archive) Paste(req pb.RpcBlockPasteRequest) (err error) {
+func (p *archive) Paste(req pb.RpcBlockPasteRequest) (ids []string, err error) {
 	err = errNotPossibleForArchive
 	return
 }

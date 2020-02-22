@@ -50,7 +50,8 @@ type Service interface {
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
-	Paste(req pb.RpcBlockPasteRequest) error
+	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
+	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -285,7 +286,16 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 	return sb.SetFields(req.BlockFields...)
 }
 
-func (s *service) Paste(req pb.RpcBlockPasteRequest) (err error) {
+func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.Copy(req)
+}
+
+func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return

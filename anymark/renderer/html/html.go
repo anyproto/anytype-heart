@@ -2,12 +2,13 @@ package html
 
 import (
 	"bytes"
-
+	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/util"
+	"unicode/utf8"
 )
 
 // A Config struct has configurations for the HTML based renderers.
@@ -190,7 +191,7 @@ func (r *Renderer) writeLines(w blocksUtil.RWriter, source []byte, n ast.Node) {
 	l := n.Lines().Len()
 	for i := 0; i < l; i++ {
 		line := n.Lines().At(i)
-		r.Writer.RawWrite(w, line.Value(source))
+		w.AddTextToBuffer(string(line.Value(source)))
 	}
 }
 
@@ -267,20 +268,39 @@ func (r *Renderer) renderBlockquote(w blocksUtil.RWriter, source []byte, n ast.N
 }
 
 func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	if entering {
-		// TODO: start code markup
-	} else {
-		// TODO: end code markup
-	}
-
-	return ast.WalkContinue, nil
-}
-
-func (r *Renderer) renderFencedCodeBlock(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	fmt.Println("renderCodeBlock")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
 		w.CloseTextBlock(model.BlockContentText_Code)
+	}
+	return ast.WalkContinue, nil
+}
+
+func (r *Renderer) renderFencedCodeBlock(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	n := node.(*ast.FencedCodeBlock)
+	if entering {
+		w.OpenNewTextBlock(model.BlockContentText_Code)
+		// TODO: language?
+		/*language := n.Language(source)
+		if language != nil {
+			_, _ = w.WriteString(" class=\"language-")
+			r.Writer.Write(w, language)
+			_, _ = w.WriteString("\"")
+		}*/
+		r.writeLines(w, source, n)
+	} else {
+		w.CloseTextBlock(model.BlockContentText_Code)
+	}
+	return ast.WalkContinue, nil
+
+
+
+	fmt.Println("renderFencedCodeBlock")
+	if entering {
+		w.OpenNewTextBlock(model.BlockContentText_Code)
+	} else {
+		w.ForceCloseTextBlock()
 	}
 	return ast.WalkContinue, nil
 }
@@ -386,8 +406,9 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 	label := n.Label(source)
 	w.SetMarkStart()
 
-	start := int32(len(w.GetText()))
-	labelLength := int32(len(label))
+	start := int32(utf8.RuneCountInString(w.GetText()))
+	fmt.Println(">>> DEBUG:", "\n     text:", "\n     ", w.GetText(), "\n     length:", start, int32(len(w.GetText())))
+	labelLength := int32(utf8.RuneCount(label))
 	w.AddMark(model.BlockContentTextMark{
 		Range: &model.Range{From: start, To: start + labelLength},
 		Type:  model.BlockContentTextMark_Link,
@@ -402,30 +423,32 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 var CodeAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	// TODO
-	/*	if entering {
-			if n.Attributes() != nil {
-				_, _ = w.WriteString("<code")
-				RenderAttributes(w, n, CodeAttributeFilter)
-				_ = w.WriteByte('>')
-			} else {
-				_, _ = w.WriteString("<code>")
-			}
-			for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-				segment := c.(*ast.Text).Segment
-				value := segment.Value(source)
-				if bytes.HasSuffix(value, []byte("\n")) {
-					r.Writer.RawWrite(w, value[:len(value)-1])
-					if c != n.LastChild() {
-						r.Writer.RawWrite(w, []byte(" "))
-					}
-				} else {
-					r.Writer.RawWrite(w, value)
+	fmt.Println("renderCodeSpan")
+
+	if entering {
+		w.SetMarkStart()
+
+		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+			segment := c.(*ast.Text).Segment
+			value := segment.Value(source)
+			if bytes.HasSuffix(value, []byte("\n")) {
+				w.AddTextToBuffer(string(value[:len(value)-1]))
+				if c != n.LastChild() {
+					w.AddTextToBuffer(" ")
 				}
+			} else {
+				w.AddTextToBuffer(string(value))
 			}
-			return ast.WalkSkipChildren, nil
 		}
-		_, _ = w.WriteString("</code>")*/
+		return ast.WalkSkipChildren, nil
+	} else {
+		to := int32(utf8.RuneCountInString(w.GetText()))
+
+		w.AddMark(model.BlockContentTextMark{
+			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
+			Type:  model.BlockContentTextMark_Keyboard,
+		})
+	}
 	return ast.WalkContinue, nil
 }
 
@@ -442,7 +465,7 @@ func (r *Renderer) renderEmphasis(w blocksUtil.RWriter, source []byte, node ast.
 	if entering {
 		w.SetMarkStart()
 	} else {
-		to := int32(len(w.GetText()))
+		to := int32(utf8.RuneCountInString(w.GetText()))
 
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
@@ -457,8 +480,7 @@ func (r *Renderer) renderLink(w blocksUtil.RWriter, source []byte, node ast.Node
 	if entering {
 		w.SetMarkStart()
 	} else {
-		to := int32(len(w.GetText()))
-
+		to := int32(utf8.RuneCountInString(w.GetText()))
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
 			Type:  model.BlockContentTextMark_Link,
@@ -514,7 +536,7 @@ func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node
 		w.ForceCloseTextBlock()
 
 	} else if n.SoftLineBreak() {
-		w.AddTextToBuffer(" ")
+		w.AddTextToBuffer("\n")
 	}
 	return ast.WalkContinue, nil
 }
@@ -532,26 +554,6 @@ func (r *Renderer) renderString(w blocksUtil.RWriter, source []byte, node ast.No
 
 var dataPrefix = []byte("data-")
 
-// RenderAttributes renders given node's attributes.
-// You can specify attribute names to render by the filter.
-// If filter is nil, RenderAttributes renders all attributes.
-func RenderAttributes(w blocksUtil.RWriter, node ast.Node, filter util.BytesFilter) {
-	// TODO: Do we need attributes?
-	/*	for _, attr := range node.Attributes() {
-		if filter != nil && !filter.Contains(attr.Name) {
-			if !bytes.HasPrefix(attr.Name, dataPrefix) {
-				continue
-			}
-		}
-		_, _ = w.WriteString(" ")
-		_, _ = w.Write(attr.Name)
-		_, _ = w.WriteString(`="`)
-		// TODO: convert numeric values to strings
-		_, _ = w.Write(util.EscapeHTML(attr.Value.([]byte)))
-		_ = w.WriteByte('"')
-	}*/
-}
-
 // A Writer interface wirtes textual contents to a writer.
 type Writer interface {
 	// Write writes the given source to writer with resolving references and unescaping
@@ -566,35 +568,7 @@ type Writer interface {
 type defaultWriter struct {
 }
 
-func escapeRune(writer blocksUtil.RWriter, r rune) {
-	if r < 256 {
-		v := util.EscapeHTMLByte(byte(r))
-		if v != nil {
-			_, _ = writer.Write(v)
-			return
-		}
-	}
-	_, _ = writer.WriteRune(util.ToValidRune(r))
-}
-
 func (d *defaultWriter) RawWrite(writer blocksUtil.RWriter, source []byte) {
-	/*	n := 0
-		l := len(source)
-		for i := 0; i < l; i++ {
-			v := util.EscapeHTMLByte(source[i])
-
-			//fmt.Println("char:", v[0])
-			if v != nil {
-				writer.AddTextByte(source[i-n : i])
-				n = 0
-				writer.AddTextByte(v)
-				continue
-			}
-			n++
-		}
-		if n != 0 {
-			writer.AddTextByte(source[l-n:])
-		}*/
 	writer.AddTextToBuffer(string(source))
 }
 
@@ -614,18 +588,3 @@ var bJs = []byte("javascript:")
 var bVb = []byte("vbscript:")
 var bFile = []byte("file:")
 var bData = []byte("data:")
-
-// IsDangerousURL returns true if the given url seems a potentially dangerous url,
-// otherwise false.
-func IsDangerousURL(url []byte) bool {
-	if bytes.HasPrefix(url, bDataImage) && len(url) >= 11 {
-		v := url[11:]
-		if bytes.HasPrefix(v, bPng) || bytes.HasPrefix(v, bGif) ||
-			bytes.HasPrefix(v, bJpeg) || bytes.HasPrefix(v, bWebp) {
-			return false
-		}
-		return true
-	}
-	return bytes.HasPrefix(url, bJs) || bytes.HasPrefix(url, bVb) ||
-		bytes.HasPrefix(url, bFile) || bytes.HasPrefix(url, bData)
-}
