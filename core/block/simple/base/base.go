@@ -72,6 +72,21 @@ func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 		}}}
 		msgs = append(msgs, m)
 	}
+	if s.BackgroundColor != m.BackgroundColor {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBackgroundColor{BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
+			Id:              s.Id,
+			BackgroundColor: m.BackgroundColor,
+		}}}
+		msgs = append(msgs, m)
+	}
+	if s.Align != m.Align {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetAlign{BlockSetAlign: &pb.EventBlockSetAlign{
+			Id:    s.Id,
+			Align: m.Align,
+		}}}
+		msgs = append(msgs, m)
+	}
+
 	return
 }
 

@@ -58,7 +58,8 @@ type Service interface {
 	SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
 	SetTextColor(contextId string, color string, blockIds ...string) error
-	SetTextBackgroundColor(contextId string, color string, blockIds ...string) error
+	SetBackgroundColor(contextId string, color string, blockIds ...string) error
+	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
 	UploadFile(req pb.RpcBlockUploadRequest) error
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
@@ -320,9 +321,26 @@ func (s *service) SetTextColor(contextId, color string, blockIds ...string) erro
 	})
 }
 
-func (s *service) SetTextBackgroundColor(contextId, color string, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
-		b.SetTextBackgroundColor(color)
+func (s *service) SetBackgroundColor(contextId, color string, blockIds ...string) (err error) {
+	sb, release, err := s.pickBlock(contextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.UpdateBlock(blockIds, true, func(b simple.Block) error {
+		b.Model().BackgroundColor = color
+		return nil
+	})
+}
+
+func (s *service) SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error) {
+	sb, release, err := s.pickBlock(contextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.UpdateBlock(blockIds, true, func(b simple.Block) error {
+		b.Model().Align = align
 		return nil
 	})
 }

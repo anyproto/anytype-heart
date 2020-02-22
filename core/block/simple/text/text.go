@@ -38,7 +38,6 @@ type Block interface {
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
 	SetTextColor(color string)
-	SetTextBackgroundColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) ([]simple.Block, string, error)
 	Merge(b simple.Block) error
@@ -104,10 +103,6 @@ func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.Color = &pb.EventBlockSetTextColor{Value: text.content.Color}
 	}
-	if t.content.Color != text.content.BackgroundColor {
-		hasChanges = true
-		changes.BackgroundColor = &pb.EventBlockSetTextBackgroundColor{Value: text.content.BackgroundColor}
-	}
 	if hasChanges {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}})
 	}
@@ -124,10 +119,6 @@ func (t *Text) SetChecked(v bool) {
 
 func (t *Text) SetTextColor(color string) {
 	t.content.Color = color
-}
-
-func (t *Text) SetTextBackgroundColor(color string) {
-	t.content.BackgroundColor = color
 }
 
 func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
@@ -205,9 +196,9 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 		return newBlocks, t.content.Text, nil
 	}
 
-/*	if from == 0 && to > 0 {
+	/*	if from == 0 && to > 0 {
 
-	}*/
+		}*/
 
 	runes := []rune(t.content.Text)
 	t.content.Text = string(runes[:from])
@@ -224,15 +215,15 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 			mark.Range.To -= to
 			newMarks.Marks = append(newMarks.Marks, mark)
 
-		// mark 100% in old block
+			// mark 100% in old block
 		} else if mark.Range.To <= from {
 			oldMarks.Marks = append(oldMarks.Marks, mark)
 
-		// mark 100% in range
+			// mark 100% in range
 		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
 			// Do nothing, ignore this mark
 
-		// mark partly in old block and partly in range
+			// mark partly in old block and partly in range
 		} else if (mark.Range.From >= from) && (mark.Range.To <= to) {
 			mark.Range.To = from
 			oldMarks.Marks = append(oldMarks.Marks, mark)
@@ -242,7 +233,7 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 			mark.Range.From = to
 			newMarks.Marks = append(newMarks.Marks, mark)
 
-		// mark partly in old block and partly in new block
+			// mark partly in old block and partly in new block
 		} else {
 			newMark := &model.BlockContentTextMark{
 				Range: &model.Range{
@@ -272,7 +263,7 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	if len(string(runes[:from])) == 0 {
 		t.content.Text = string(runes[to:])
 
-	// if newBlock is empty -> don't push it
+		// if newBlock is empty -> don't push it
 	} else if len(string(runes[to:])) > 0 {
 		newBlocks = append(newBlocks, newBlock)
 	}
