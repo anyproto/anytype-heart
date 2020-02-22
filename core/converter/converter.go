@@ -345,12 +345,17 @@ func renderFile(isOpened bool, child *model.BlockContentOfFile) (out string) {
 }
 
 func renderBookmark(isOpened bool, child *model.BlockContentOfBookmark) (out string) {
+/*
+	TODO: ImageHash   string
+	TODO: FaviconHash string
+	*/
 	if isOpened {
-		href := "" // TODO
-		title := "" // TODO
-		out = `<div class="bookmark"><a href="` + href + `">` + title
+		href := child.Bookmark.Url
+		title := child.Bookmark.Title
+		description := child.Bookmark.Description
+		out = `<div class="bookmark"><a href="` + href + `">` + title + `</a><div class="description">` + description + `</div>`
 	} else {
-		out = "</a></div>"
+		out = "</div>"
 	}
 
 	return out
