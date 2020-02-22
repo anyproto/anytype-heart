@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"io"
+	"unicode/utf8"
 )
 
 // A RWriter is a subset of the bufio.Writer .
@@ -39,10 +40,6 @@ type RWriter interface {
 	GetIsNumberedList() (isNumbered bool)
 }
 
-type contentBuff struct {
-
-}
-
 type rWriter struct {
 	*bufio.Writer
 
@@ -53,10 +50,11 @@ type rWriter struct {
 	marksStartQueue   []int
 	textStylesQueue   []model.BlockContentTextStyle
 	blocks            []*model.Block
+	curStyledBlock    model.BlockContentTextStyle
 }
 
 func (rw *rWriter) SetMarkStart () {
-	rw.marksStartQueue = append(rw.marksStartQueue, len(rw.textBuffer))
+	rw.marksStartQueue = append(rw.marksStartQueue, utf8.RuneCountInString(rw.textBuffer))
 }
 
 func (rw *rWriter) AddTextByte (b []byte) {
@@ -64,26 +62,40 @@ func (rw *rWriter) AddTextByte (b []byte) {
 }
 
 func (rw *rWriter) GetMarkStart () int {
-	return rw.marksStartQueue[len(rw.marksStartQueue) - 1]
+	if rw.marksStartQueue != nil && len(rw.marksStartQueue) > 0 {
+		return rw.marksStartQueue[len(rw.marksStartQueue) - 1]
+	} else {
+		return 0
+	}
 }
-
 
 func (rw *rWriter) AddMark (mark model.BlockContentTextMark) {
 	s := rw.marksStartQueue
-	rw.marksStartQueue = s[:len(s)-1]
 
-	// IMPORTANT: ignore if current block is not support markup.
-	if  rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header1 &&
-	    rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header2 &&
-		rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header3 &&
-		rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header4 {
+	if len(s) > 0 {
+		rw.marksStartQueue = s[:len(s)-1]
+	}
 
+	if len(rw.textStylesQueue) > 0 {
+		// IMPORTANT: ignore if current block is not support markup.
+		if  rw.textStylesQueue !=nil && len(rw.textStylesQueue) > 0 &&
+		    rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header1 &&
+			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header2 &&
+			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header3 &&
+			rw.textStylesQueue[len(rw.textStylesQueue) - 1] != model.BlockContentText_Header4 {
+
+			rw.marksBuffer = append(rw.marksBuffer, &mark)
+		}
+	} else {
 		rw.marksBuffer = append(rw.marksBuffer, &mark)
 	}
 }
 
 func (rw *rWriter) OpenNewTextBlock (style model.BlockContentTextStyle) {
-	//fmt.Println("OPEN:", style)
+	if style != model.BlockContentText_Paragraph {
+		rw.curStyledBlock = style
+	}
+
 	rw.textStylesQueue = append(rw.textStylesQueue, style)
 }
 
@@ -125,7 +137,6 @@ func (rw *rWriter) AddImageBlock (url string) {
 }
 
 func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
-	//fmt.Println("CLOSE:", content, rw.textBuffer)
 	var style = content;
 
 	if len(rw.textStylesQueue) > 0 {
@@ -133,7 +144,13 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 		rw.textStylesQueue = rw.textStylesQueue[:len(rw.textStylesQueue)-1]
 	}
 
-	//style = model.BlockContentText_Paragraph
+	if style == rw.curStyledBlock {
+		rw.curStyledBlock = model.BlockContentText_Paragraph
+	} else
+	if rw.curStyledBlock != model.BlockContentText_Paragraph {
+		style = rw.curStyledBlock
+	}
+
 	newBlock := model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
@@ -164,8 +181,4 @@ func (rw *rWriter) ForceCloseTextBlock() {
 	}
 
 	rw.CloseTextBlock(style)
-}
-
-
-func (rw *rWriter) OpenNewBlock(content model.IsBlockContent) {
 }

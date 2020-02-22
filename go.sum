@@ -33,6 +33,10 @@ github.com/anytypeio/go-textile v0.7.8-0.20200217213349-f936f40b6472 h1:pNva8yAr
 github.com/anytypeio/go-textile v0.7.8-0.20200217213349-f936f40b6472/go.mod h1:UIsQckZkySRDAd06pmnm4BEuop1gDgVEr9QKu+jktMo=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13 h1:XMUxybyqCaEAGZZK/Qv2cRB0klc04dNTgtSqpacg15Y=
 github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13/go.mod h1:r6Y5BY7LcHVQIKk00MK2lBIkkKk0z1LWO2bJcXox6bI=
+github.com/anytypeio/html-to-markdown v0.0.0-20200217102707-1d8fe5158be5 h1:q9FUKdH8XHB31420Q3QaVY5W0hKxhNp05Y25CtAueuo=
+github.com/anytypeio/html-to-markdown v0.0.0-20200217102707-1d8fe5158be5/go.mod h1:r6Y5BY7LcHVQIKk00MK2lBIkkKk0z1LWO2bJcXox6bI=
+github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129 h1:DiOKuUqYVk658xDMH3RFSzD/Myojb8HWrQjt4rJepMw=
+github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129/go.mod h1:r6Y5BY7LcHVQIKk00MK2lBIkkKk0z1LWO2bJcXox6bI=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=

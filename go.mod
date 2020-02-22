@@ -3,9 +3,9 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.13
 
 require (
-	github.com/PuerkitoBio/goquery v1.5.0 // indirect
+	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/anytypeio/go-anytype-library v0.4.1-0.20200221104451-04fd1ffd67b3
-	github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13
+	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
 
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.0
