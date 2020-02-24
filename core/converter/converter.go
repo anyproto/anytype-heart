@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
@@ -157,7 +158,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 		case *model.BlockContentOfDashboard: break;
 		case *model.BlockContentOfPage: break;
 		case *model.BlockContentOfDataview: break;
-		case *model.BlockContentOfLink: break;
+		case *model.BlockContentOfLink: out += renderLink(true, cont, child.model);
 		}
 
 		if len(child.children) > 0 {
@@ -174,7 +175,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 		case *model.BlockContentOfDashboard: break;
 		case *model.BlockContentOfPage: break;
 		case *model.BlockContentOfDataview: break;
-		case *model.BlockContentOfLink: break;
+		case *model.BlockContentOfLink: out += renderLink(false, cont, child.model);
 		}
 	}
 
@@ -327,18 +328,52 @@ func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
 	return out
 }
 
+func renderLink(isOpened bool, child *model.BlockContentOfLink) (out string) {
+	goToAnytypeMsg := `<div class="message">
+		<div class="header">This content is available in Anytype.</div>
+		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
+	</div>`
+
+	return out
+}
+
 func renderFile(isOpened bool, child *model.BlockContentOfFile) (out string) {
+	if child.File.State != model.BlockContentFile_Done {
+		return ""
+	}
+
+	goToAnytypeMsg := `<div class="message">
+		<div class="header">This content is available in Anytype.</div>
+		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
+	</div>`
+
 	if isOpened {
 		switch child.File.Type {
-		case model.BlockContentFile_File: break // TODO
-		case model.BlockContentFile_Image: break // TODO
-		case model.BlockContentFile_Video: break // TODO
+		case model.BlockContentFile_File:
+			out = `<div class="file">
+				<div class="name">` + child.File.Name + `</div>` +
+				goToAnytypeMsg
+
+		case model.BlockContentFile_Image:
+			// TODO: 1. Get image as a []byte
+			img := []byte{} // child.File.Hash
+
+			// TODO: child.File.Size_
+			// TODO: child.File.Mime
+
+			encodedImg := base64.StdEncoding.EncodeToString(img)
+			out = `<img src="data:image/png;base64, ` + encodedImg + `" alt="` + child.File.Name + `" />`
+
+		case model.BlockContentFile_Video:
+			out = `<div class="video">
+				<div class="name">` + child.File.Name + `</div>` +
+				goToAnytypeMsg
 		}
 	} else {
 		switch child.File.Type {
-		case model.BlockContentFile_File: break
-		case model.BlockContentFile_Image: break
-		case model.BlockContentFile_Video: break
+		case model.BlockContentFile_File: out = `</div>`
+		case model.BlockContentFile_Image: out = `</div>`
+		case model.BlockContentFile_Video: out = `</div>`
 		}
 	}
 	return out
@@ -469,8 +504,6 @@ func (c *converter) Convert (blocks []*model.Block) (out string) {
 	tree := c.CreateTree(blocks)
 	html := c.ProcessTree(&tree)
 
-	fmt.Println("req.Blocks:", blocks)
-	fmt.Println("tree:", c.ProcessTree(&tree))
-	return wrapCopyHtml(html) //  gohtml.Format
+	return wrapCopyHtml(html) // gohtml.Format
 
 }
