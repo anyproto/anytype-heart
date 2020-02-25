@@ -168,7 +168,11 @@ func (dp *dropFilesProcess) Id() string {
 }
 
 func (dp *dropFilesProcess) Cancel() (err error) {
-	close(dp.cancel)
+	select {
+	case <-dp.cancel:
+	default:
+		close(dp.cancel)
+	}
 	return
 }
 
