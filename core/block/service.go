@@ -112,24 +112,32 @@ type service struct {
 func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if sb, ok := s.openedBlocks[id]; ok {
+	sb, ok := s.openedBlocks[id]
+	if ok {
 		sb.Active(true)
-		return sb.Show()
-	}
-	sb, err := openSmartBlock(s, id, true)
-	if err != nil {
-		return
-	}
-	s.openedBlocks[id] = &openedBlock{
-		smartBlock: sb,
-		lastUsage:  time.Now(),
-		refs:       1,
+		if err = sb.Show(); err != nil {
+			return
+		}
+	} else {
+		sb, e := openSmartBlock(s, id, true)
+		if e != nil {
+			return e
+		}
+		s.openedBlocks[id] = &openedBlock{
+			smartBlock: sb,
+			lastUsage:  time.Now(),
+			refs:       1,
+		}
 	}
 	for _, bid := range breadcrumbsIds {
 		if b, ok := s.openedBlocks[bid]; ok {
 			if bs, ok := b.smartBlock.(*breadcrumbs); ok {
 				bs.OnSmartOpen(id)
+			} else {
+				log.Warningf("unexpected smart block type %T; wand breadcrumbs", b)
 			}
+		} else {
+			log.Warningf("breadcrumbs block not found")
 		}
 	}
 	return nil
