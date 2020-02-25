@@ -161,7 +161,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 		case *model.BlockContentOfDashboard: break;
 		case *model.BlockContentOfPage: break;
 		case *model.BlockContentOfDataview: break;
-		case *model.BlockContentOfLink: out += renderLink(true, cont, child.model);
+		case *model.BlockContentOfLink: out += renderLink(true, cont);
 		}
 
 		if len(child.children) > 0 {
@@ -178,7 +178,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 		case *model.BlockContentOfDashboard: break;
 		case *model.BlockContentOfPage: break;
 		case *model.BlockContentOfDataview: break;
-		case *model.BlockContentOfLink: out += renderLink(false, cont, child.model);
+		case *model.BlockContentOfLink: out += renderLink(false, cont);
 		}
 	}
 
@@ -336,6 +336,8 @@ func renderLink(isOpened bool, child *model.BlockContentOfLink) (out string) {
 		<div class="header">This content is available in Anytype.</div>
 		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
 	</div>`
+
+	out = goToAnytypeMsg
 
 	return out
 }
