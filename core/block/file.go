@@ -161,6 +161,7 @@ type dropFilesProcess struct {
 	total, done int64
 	cancel      chan struct{}
 	doneCh      chan struct{}
+	canceling   int32
 }
 
 func (dp *dropFilesProcess) Id() string {
@@ -168,9 +169,7 @@ func (dp *dropFilesProcess) Id() string {
 }
 
 func (dp *dropFilesProcess) Cancel() (err error) {
-	select {
-	case <-dp.cancel:
-	default:
+	if atomic.AddInt32(&dp.canceling, 1) == 1 {
 		close(dp.cancel)
 	}
 	return
@@ -391,7 +390,11 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 }
 
 func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
-	defer atomic.AddInt64(&dp.done, 1)
+	defer func() {
+		if f.err != context.Canceled {
+			atomic.AddInt64(&dp.done, 1)
+		}
+	}()
 	sb, release, err := dp.s.pickBlock(f.pageId)
 	if err != nil {
 		return
