@@ -244,6 +244,11 @@
     - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
     - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
     - [Rpc.Ping.Response.Error](#anytype.Rpc.Ping.Response.Error)
+    - [Rpc.Process](#anytype.Rpc.Process)
+    - [Rpc.Process.Cancel](#anytype.Rpc.Process.Cancel)
+    - [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request)
+    - [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response)
+    - [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error)
     - [Rpc.Version](#anytype.Rpc.Version)
     - [Rpc.Version.Get](#anytype.Rpc.Version.Get)
     - [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request)
@@ -312,6 +317,7 @@
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
+    - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
@@ -499,6 +505,7 @@
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
+| ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
 
  
@@ -3813,6 +3820,72 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.Process"></a>
+
+### Rpc.Process
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel"></a>
+
+### Rpc.Process.Cancel
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel.Request"></a>
+
+### Rpc.Process.Cancel.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel.Response"></a>
+
+### Rpc.Process.Cancel.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel.Response.Error"></a>
+
+### Rpc.Process.Cancel.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Version"></a>
 
 ### Rpc.Version
@@ -4719,6 +4792,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Ping.Response.Error.Code"></a>
 
 ### Rpc.Ping.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Process.Cancel.Response.Error.Code"></a>
+
+### Rpc.Process.Cancel.Response.Error.Code
 
 
 | Name | Number | Description |

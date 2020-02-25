@@ -75,6 +75,8 @@ type Service interface {
 
 	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
 
+	ProcessCancel(id string) error
+
 	Close() error
 }
 
@@ -439,6 +441,10 @@ func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error)
 		}
 		return ErrUnexpectedBlockType
 	})
+}
+
+func (s *service) ProcessCancel(id string) (err error) {
+	return s.process.Cancel(id)
 }
 
 func (s *service) Close() error {
