@@ -379,6 +379,7 @@
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
   
     - [Model.Process.State](#anytype.Model.Process.State)
+    - [Model.Process.Type](#anytype.Model.Process.Type)
   
   
   
@@ -5667,7 +5668,7 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
+| type | [Model.Process.Type](#anytype.Model.Process.Type) |  |  |
 | state | [Model.Process.State](#anytype.Model.Process.State) |  |  |
 | progress | [Model.Process.Progress](#anytype.Model.Process.Progress) |  |  |
 
@@ -5706,6 +5707,17 @@ Precondition: user A and user B opened the same block
 | Done | 2 |  |
 | Canceled | 3 |  |
 | Error | 4 |  |
+
+
+
+<a name="anytype.Model.Process.Type"></a>
+
+### Model.Process.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DropFiles | 0 |  |
 
 
  

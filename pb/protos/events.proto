@@ -337,9 +337,13 @@ message Event {
 message Model {
     message Process {
         string id = 1;
-        string name = 2;
+        Type type = 2;
         State state = 3;
         Progress progress = 4;
+
+        enum Type {
+            DropFiles = 0;
+        }
 
         enum State {
             None = 0;
