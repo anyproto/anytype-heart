@@ -363,12 +363,10 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 			if ! ok {
 				return
 			}
-			log.Infof("received file %v", info.name)
 			if canceled {
 				info.err = context.Canceled
 			} else {
 				info.err = dp.addFile(info)
-				log.Infof("add file file %v", info.err)
 			}
 			if err := dp.apply(info); err != nil {
 				log.Warningf("can't apply file: %v", err)
@@ -394,7 +392,6 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 
 func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 	defer atomic.AddInt64(&dp.done, 1)
-	log.Infof("apply file: %+v", f)
 	sb, release, err := dp.s.pickBlock(f.pageId)
 	if err != nil {
 		return
