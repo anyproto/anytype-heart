@@ -364,13 +364,21 @@
     - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
+    - [Event.Process](#anytype.Event.Process)
+    - [Event.Process.Done](#anytype.Event.Process.Done)
+    - [Event.Process.New](#anytype.Event.Process.New)
+    - [Event.Process.Update](#anytype.Event.Process.Update)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
     - [Event.User.Block.Left](#anytype.Event.User.Block.Left)
     - [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange)
     - [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange)
+    - [Model](#anytype.Model)
+    - [Model.Process](#anytype.Model.Process)
+    - [Model.Process.Progress](#anytype.Model.Process.Progress)
   
+    - [Model.Process.State](#anytype.Model.Process.State)
   
   
   
@@ -5466,6 +5474,9 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
 | userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
 | ping | [Event.Ping](#anytype.Event.Ping) |  |  |
+| processNew | [Event.Process.New](#anytype.Event.Process.New) |  |  |
+| processUpdate | [Event.Process.Update](#anytype.Event.Process.Update) |  |  |
+| processDone | [Event.Process.Done](#anytype.Event.Process.Done) |  |  |
 
 
 
@@ -5481,6 +5492,61 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | index | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Process"></a>
+
+### Event.Process
+
+
+
+
+
+
+
+<a name="anytype.Event.Process.Done"></a>
+
+### Event.Process.Done
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Model.Process](#anytype.Model.Process) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Process.New"></a>
+
+### Event.Process.New
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Model.Process](#anytype.Model.Process) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Process.Update"></a>
+
+### Event.Process.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Model.Process](#anytype.Model.Process) |  |  |
 
 
 
@@ -5581,7 +5647,66 @@ Precondition: user A and user B opened the same block
 
 
 
+
+<a name="anytype.Model"></a>
+
+### Model
+
+
+
+
+
+
+
+<a name="anytype.Model.Process"></a>
+
+### Model.Process
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| state | [Model.Process.State](#anytype.Model.Process.State) |  |  |
+| progress | [Model.Process.Progress](#anytype.Model.Process.Progress) |  |  |
+
+
+
+
+
+
+<a name="anytype.Model.Process.Progress"></a>
+
+### Model.Process.Progress
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| total | [int64](#int64) |  |  |
+| done | [int64](#int64) |  |  |
+
+
+
+
+
  
+
+
+<a name="anytype.Model.Process.State"></a>
+
+### Model.Process.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Running | 1 |  |
+| Done | 2 |  |
+| Canceled | 3 |  |
+| Error | 4 |  |
+
 
  
 

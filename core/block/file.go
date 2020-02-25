@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 )
 
 const (
@@ -114,6 +115,9 @@ func (p *commonSmart) dropFilesCreateStructure(targetId string, pos model.BlockP
 }
 
 func (p *commonSmart) dropFilesSetInfo(info dropFileInfo) (err error) {
+	if info.err == context.Canceled {
+		return p.Unlink(info.blockId)
+	}
 	return p.UpdateFileBlock(info.blockId, func(f file.Block) {
 		if info.err != nil {
 			log.Warningf("upload file[%v] error: %v", info.name, info.err)
@@ -151,10 +155,46 @@ type dropFilesHandler interface {
 }
 
 type dropFilesProcess struct {
+	id          string
 	s           *service
 	root        *dropFileEntry
 	total, done int64
 	cancel      chan struct{}
+	doneCh      chan struct{}
+}
+
+func (dp *dropFilesProcess) Id() string {
+	return dp.id
+}
+
+func (dp *dropFilesProcess) Cancel() (err error) {
+	close(dp.cancel)
+	return
+}
+
+func (dp *dropFilesProcess) Info() pb.ModelProcess {
+	var state pb.ModelProcessState
+	select {
+	case <-dp.cancel:
+		state = pb.ModelProcess_Canceled
+	case <-dp.doneCh:
+		state = pb.ModelProcess_Done
+	default:
+		state = pb.ModelProcess_Running
+	}
+	return pb.ModelProcess{
+		Id:    dp.id,
+		Name:  "files copy",
+		State: state,
+		Progress: &pb.ModelProcessProgress{
+			Total: atomic.LoadInt64(&dp.total),
+			Done:  atomic.LoadInt64(&dp.done),
+		},
+	}
+}
+
+func (dp *dropFilesProcess) Done() chan struct{} {
+	return dp.doneCh
 }
 
 func (dp *dropFilesProcess) Init(paths []string) (err error) {
@@ -218,6 +258,11 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 }
 
 func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPosition, rootDone chan error) {
+	dp.id = uuid.New().String()
+	dp.doneCh = make(chan struct{})
+	defer close(dp.doneCh)
+	dp.s.process.Add(dp)
+
 	// start addFiles workers
 	var wc = int(dp.total)
 	var in = make(chan *dropFileInfo, wc)
@@ -288,6 +333,8 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		idx++
 	}
 	close(in)
+	wg.Wait()
+
 	return
 }
 

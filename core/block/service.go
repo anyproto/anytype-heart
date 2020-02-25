@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -87,6 +88,7 @@ func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview,
 		openedBlocks: make(map[string]*openedBlock),
 		ls:           newLinkSubscriptions(a),
 		linkPreview:  lp,
+		process:      process.NewService(sendEvent),
 	}
 	go s.cleanupTicker()
 	return s
@@ -106,6 +108,7 @@ type service struct {
 	closed       bool
 	linkPreview  linkpreview.LinkPreview
 	ls           *linkSubscriptions
+	process      process.Service
 	m            sync.RWMutex
 }
 
@@ -439,8 +442,12 @@ func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error)
 }
 
 func (s *service) Close() error {
+	if err := s.process.Close(); err != nil {
+		log.Errorf("close error: %v", err)
+	}
 	s.m.Lock()
 	defer s.m.Unlock()
+
 	if s.closed {
 		return nil
 	}
