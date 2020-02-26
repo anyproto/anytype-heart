@@ -11,7 +11,7 @@ import (
 
 
 type Node struct {
-	id     string
+	Id     string
 	model  *model.Block
 	children []*Node
 }
@@ -35,8 +35,8 @@ type Converter interface {
 
 func New() Converter {
 	c := &converter{
-		rootNode: &Node{id: "root"},
-		nodeTable: map[string]*Node{},
+		rootNode: &Node{Id: "root"},
+		nodeTable: make(map[string]*Node),
 		remainBlocks: []*model.Block{},
 	}
 
@@ -44,21 +44,34 @@ func New() Converter {
 }
 
 
-func (c *converter) filterById (blocks []*model.Block, id string) (out []*model.Block) {
+func (c *converter) filterById (blocks []*model.Block, Id string) (out []*model.Block) {
 	for _, b := range blocks {
-		if b.Id != id {
+		if b.Id != Id {
 			out = append(out, b)
 		}
 	}
 	return out
 }
 
-func (c *converter) CreateTree (blocks []*model.Block) Node {
+func (c *converter) filterLayout (blocks []*model.Block) (out []*model.Block) {
+	for _, b := range blocks {
+		switch b.Content.(type) {
+			case *model.BlockContentOfDashboard: continue
+			default: out = append(out, b)
+		}
+	}
+	return out
+}
 
+func (c *converter) CreateTree (blocks []*model.Block) Node {
+	blocks = c.filterLayout(blocks)
 	// 1. Create map
 	for _, b := range blocks {
 		c.nodeTable[b.Id] = &Node{b.Id, b,[]*Node{} }
+		fmt.Println("c.nodeTable", b.Id, c.nodeTable[b.Id])
 	}
+
+
 
 	// 2. Fill children field
 	for _, b := range blocks {
@@ -104,7 +117,8 @@ func contains(s []*Node, e *Node) bool {
 
 	if len(s) > 0 {
 		for i:= 0; i < len(s); i++ {
-			if s[i].id == e.id {
+			fmt.Println(">>>", i, "len(s)", len(s), s[i])
+			if s[i] != nil && s[i].Id == e.Id {
 				return true
 			}
 		}
@@ -114,7 +128,7 @@ func contains(s []*Node, e *Node) bool {
 }
 
 func (c *converter) nextTreeLayer (node *Node) *Node {
-	c.remainBlocks = c.filterById(c.remainBlocks, node.id)
+	c.remainBlocks = c.filterById(c.remainBlocks, node.Id)
 
 	for _, childId := range node.model.ChildrenIds {
 		c.remainBlocks = c.filterById(c.remainBlocks, childId)
@@ -126,8 +140,10 @@ func (c *converter) nextTreeLayer (node *Node) *Node {
 			c.nodeTable[childId] = c.nextTreeLayer(c.nodeTable[childId])
 		}
 
-		if !contains(node.children, c.nodeTable[childId]) {
-			node.children = append(node.children, c.nodeTable[childId])
+		if n := c.nodeTable[childId]; n != nil {
+			if !contains(node.children, n) {
+				node.children = append(node.children, n)
+			}
 		}
 	}
 
@@ -137,7 +153,7 @@ func (c *converter) nextTreeLayer (node *Node) *Node {
 // For test purposes
 func (c *converter) PrintNode (node *Node) (out string) {
 	for _, child := range node.children {
-		out += "<node>" + child.id
+		out += "<node>" + child.Id
 		if len(child.children) > 0 {
 			out += c.PrintNode(child)
 		}
@@ -150,35 +166,58 @@ func (c *converter) PrintNode (node *Node) (out string) {
 
 func (c *converter) ProcessTree (node *Node) (out string) {
 	for _, child := range node.children {
-
-		switch  cont := child.model.Content.(type) {
-		case *model.BlockContentOfText:     out += renderText(true, cont)
-		case *model.BlockContentOfFile:     out += renderFile(true, cont)
-		case *model.BlockContentOfBookmark: out += renderBookmark(true, cont)
-		case *model.BlockContentOfDiv:      out += renderDiv(true, cont)
-		case *model.BlockContentOfIcon:     out += renderIcon(true, cont)
-		case *model.BlockContentOfLayout:   out += renderLayout(true, cont, child.model)
-		case *model.BlockContentOfDashboard: break;
-		case *model.BlockContentOfPage: break;
-		case *model.BlockContentOfDataview: break;
-		case *model.BlockContentOfLink: out += renderLink(true, cont);
+		if child != nil && child.model != nil && child.model.Content != nil {
+			switch cont := child.model.Content.(type) {
+			case *model.BlockContentOfText:
+				out += renderText(true, cont)
+			case *model.BlockContentOfFile:
+				out += renderFile(true, cont)
+			case *model.BlockContentOfBookmark:
+				out += renderBookmark(true, cont)
+			case *model.BlockContentOfDiv:
+				out += renderDiv(true, cont)
+			case *model.BlockContentOfIcon:
+				out += renderIcon(true, cont)
+			case *model.BlockContentOfLayout:
+				out += renderLayout(true, cont, child.model)
+			case *model.BlockContentOfDashboard:
+				break;
+			case *model.BlockContentOfPage:
+				break;
+			case *model.BlockContentOfDataview:
+				break;
+			case *model.BlockContentOfLink:
+				out += renderLink(true, cont);
+			}
 		}
 
-		if len(child.children) > 0 {
+		if child != nil && child.children != nil && len(child.children) > 0 {
 			out += c.ProcessTree(child)
 		}
 
-		switch cont := child.model.Content.(type) {
-		case *model.BlockContentOfText:     out += renderText(false, cont)
-		case *model.BlockContentOfFile:     out += renderFile(false, cont)
-		case *model.BlockContentOfBookmark: out += renderBookmark(false, cont)
-		case *model.BlockContentOfDiv:      out += renderDiv(false, cont)
-		case *model.BlockContentOfIcon:     out += renderIcon(false, cont)
-		case *model.BlockContentOfLayout:   out += renderLayout(false, cont, child.model)
-		case *model.BlockContentOfDashboard: break;
-		case *model.BlockContentOfPage: break;
-		case *model.BlockContentOfDataview: break;
-		case *model.BlockContentOfLink: out += renderLink(false, cont);
+		if child != nil && child.model != nil && child.model.Content != nil {
+			switch cont := child.model.Content.(type) {
+			case *model.BlockContentOfText:
+				out += renderText(false, cont)
+			case *model.BlockContentOfFile:
+				out += renderFile(false, cont)
+			case *model.BlockContentOfBookmark:
+				out += renderBookmark(false, cont)
+			case *model.BlockContentOfDiv:
+				out += renderDiv(false, cont)
+			case *model.BlockContentOfIcon:
+				out += renderIcon(false, cont)
+			case *model.BlockContentOfLayout:
+				out += renderLayout(false, cont, child.model)
+			case *model.BlockContentOfDashboard:
+				break;
+			case *model.BlockContentOfPage:
+				break;
+			case *model.BlockContentOfDataview:
+				break;
+			case *model.BlockContentOfLink:
+				out += renderLink(false, cont);
+			}
 		}
 	}
 
