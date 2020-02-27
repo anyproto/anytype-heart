@@ -99,10 +99,10 @@ func (p *commonSmart) dropFilesCreateStructure(targetId string, pos model.BlockP
 			}
 			fb.(file.Block).SetState(model.BlockContentFile_Uploading)
 
-			if err = p.insertTo(s, fb, targetId, pos); err != nil {
+			blockId = fb.Model().Id
+			if err = p.insertTo(s, targetId, pos, blockId); err != nil {
 				return
 			}
-			blockId = fb.Model().Id
 			targetId = blockId
 			pos = model.Block_Bottom
 		}
