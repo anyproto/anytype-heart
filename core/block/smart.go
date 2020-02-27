@@ -455,9 +455,8 @@ func (p *commonSmart) insertTo(s *state, targetId string, reqPos model.BlockPosi
 		targetPos     int
 	)
 	if targetId == "" {
-		reqPos = model.Block_None
-		targetParentM = s.get(p.GetId()).Model()
-		targetPos = len(targetParentM.ChildrenIds)
+		reqPos = model.Block_Inner
+		target = s.get(p.GetId())
 	} else {
 		target = s.get(targetId)
 		if target == nil {
@@ -510,8 +509,6 @@ func (p *commonSmart) insertTo(s *state, targetId string, reqPos model.BlockPosi
 		insertPos()
 		s.remove(target.Model().Id)
 		s.removeFromChilds(target.Model().Id)
-	case model.Block_None:
-		insertPos()
 	default:
 		return fmt.Errorf("unexpected position")
 	}
