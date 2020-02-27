@@ -806,11 +806,13 @@ func (p *commonSmart) excludeVirtualIds(ids []string, sources ...map[string]simp
 
 func (p *commonSmart) toSave(b *model.Block, sources ...map[string]simple.Block) *model.Block {
 	return &model.Block{
-		Id:           b.Id,
-		Fields:       b.Fields,
-		Restrictions: b.Restrictions,
-		ChildrenIds:  p.excludeVirtualIds(b.ChildrenIds, sources...),
-		Content:      b.Content,
+		Id:              b.Id,
+		Fields:          b.Fields,
+		Restrictions:    b.Restrictions,
+		ChildrenIds:     p.excludeVirtualIds(b.ChildrenIds, sources...),
+		BackgroundColor: b.BackgroundColor,
+		Align:           b.Align,
+		Content:         b.Content,
 	}
 }
 
