@@ -1,58 +1,42 @@
 package core
 
 import (
-	"crypto/rand"
+	"context"
 	"fmt"
-	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
-	libp2pc "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/segmentio/ksuid"
-	tcore "github.com/textileio/go-textile/core"
-	tpb "github.com/textileio/go-textile/pb"
+
+	"github.com/textileio/go-threads/core/thread"
 )
 
 var ErrorNoBlockVersionsFound = fmt.Errorf("no block versions found")
 
-func (a *Anytype) newBlockThread(schema string) (*tcore.Thread, error) {
-	config := tpb.AddThreadConfig{
-		Name: schema,
-		Key:  ksuid.New().String(),
-		Schema: &tpb.AddThreadConfig_Schema{
-			Json: schema,
-		},
-		Sharing: tpb.Thread_SHARED,
-		Type:    tpb.Thread_OPEN,
-	}
-
-	// make a new secret
-	sk, _, err := libp2pc.GenerateEd25519Key(rand.Reader)
+func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) {
+	thrdId, err := newThreadID(thread.AccessControlled, blockType)
 	if err != nil {
-		return nil, err
+		return thread.Info{}, err
 	}
-
-	return a.Textile.Node().AddThread(config, sk, a.Textile.Node().Account().Address(), true, true)
+	return a.ts.CreateThread(context.TODO(), thrdId)
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*SmartBlock, error) {
 	thrd, _ := a.predefinedThreadByName(id)
-	if thrd == nil {
-		thrd = a.Textile.Node().Thread(id)
+	if thrd.ID == thread.Undef {
+		tid, err := thread.Decode(id)
+
+		if err != nil {
+			return nil, err
+		}
+
+		thrd, err = a.ts.GetThread(context.TODO(), tid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	tv, err := a.Textile.Node().ThreadView(id)
-	if err != nil {
-		return nil, err
-	}
-
-	switch strings.ToLower(tv.SchemaNode.Name) {
-	case "dashboard", "page", "dataview":
-		return &SmartBlock{thread: thrd, node: a}, nil
-	default:
-		return nil, fmt.Errorf("unknown schema name: %s", tv.SchemaNode.Name)
-	}
+	return &SmartBlock{thread: thrd, node: a}, nil
 }
 
 func (a *Anytype) smartBlockVersionWithFullRestrictions(id string) *SmartBlockVersion {

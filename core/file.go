@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -49,5 +50,5 @@ func (file *file) Hash() string {
 }
 
 func (file *file) Reader() (io.ReadSeeker, error) {
-	return file.node.Textile.Node().FileIndexContent(file.index)
+	return nil, fmt.Errorf("not implemented")
 }

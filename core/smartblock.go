@@ -1,32 +1,82 @@
 package core
 
 import (
+	"context"
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/schema"
-	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
+	mh "github.com/multiformats/go-multihash"
 	uuid "github.com/satori/go.uuid"
-	tcore "github.com/textileio/go-textile/core"
-	"github.com/textileio/go-textile/mill"
-	tpb "github.com/textileio/go-textile/pb"
+	"github.com/textileio/go-threads/cbor"
+	"github.com/textileio/go-threads/core/service"
+	"github.com/textileio/go-threads/core/thread"
+)
+
+type SmartBlockType uint64
+
+const (
+	SmartBlockTypePage      SmartBlockType = 0x10
+	SmartBlockTypeDashboard SmartBlockType = 0x20
 )
 
 type SmartBlock struct {
-	thread *tcore.Thread
+	thread thread.Info
 	node   *Anytype
 }
 
-func (smartBlock *SmartBlock) GetThread() *tcore.Thread {
+type threadVersionSnapshot struct {
+	Data []byte
+}
+
+func init() {
+	cbornode.RegisterCborType(threadVersionSnapshot{})
+}
+
+func (s *threadVersionSnapshot) BlockWithMeta() (*storage.BlockWithMeta, error) {
+	var blockWithMeta storage.BlockWithMeta
+	err := proto.Unmarshal(s.Data, &blockWithMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	return &blockWithMeta, nil
+}
+
+func (s *threadVersionSnapshot) BlockMetaOnly() (*storage.BlockMetaOnly, error) {
+	var blockWithMeta storage.BlockMetaOnly
+	err := proto.Unmarshal(s.Data, &blockWithMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	return &blockWithMeta, nil
+}
+
+func (smartBlock *SmartBlock) GetThread() thread.Info {
 	return smartBlock.thread
 }
 
+func (smartBlock *SmartBlock) GetType() SmartBlockType {
+	id := smartBlock.thread.ID.KeyString()
+	v := smartBlock.thread.ID.Variant()
+	fmt.Println(v)
+	// skip version
+	_, n := uvarint(id)
+	// skip variant
+	_, n2 := uvarint(id[n:])
+	blockType, _ := uvarint(id[n+n2:])
+
+	return SmartBlockType(blockType)
+}
+
 func (smartBlock *SmartBlock) GetId() string {
-	return smartBlock.thread.Id
+	return smartBlock.thread.ID.String()
 }
 
 func (smartBlock *SmartBlock) GetCurrentVersion() (BlockVersion, error) {
@@ -53,106 +103,181 @@ func (smartBlock *SmartBlock) GetCurrentVersionId() (string, error) {
 	return versions[0].VersionId(), nil
 }
 
+func (smartBlock *SmartBlock) getVersionTime(event service.Event) (*types.Timestamp, error) {
+	header, err := event.GetHeader(context.TODO(), smartBlock.node.ts, smartBlock.thread.ReadKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get headers: %w", err)
+	}
+
+	versionTime, err := header.Time()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get record time from headers: %w", err)
+	}
+
+	versionTimePB, err := types.TimestampProto(*versionTime)
+	if err != nil {
+		return nil, err
+	}
+
+	return versionTimePB, nil
+}
+
+func (smartBlock *SmartBlock) getVersionSnapshotEvent(id string) (service.Event, error) {
+	vid, err := cid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	rec, err := smartBlock.node.ts.GetRecord(context.TODO(), smartBlock.thread.ID, vid)
+	if err != nil {
+		return nil, err
+	}
+
+	if smartBlock.thread.ReadKey == nil {
+		return nil, fmt.Errorf("no read key")
+	}
+	event, err := cbor.EventFromRecord(context.TODO(), smartBlock.node.ts, rec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get event: %w", err)
+
+	}
+
+	return event, nil
+}
+
 func (smartBlock *SmartBlock) GetVersion(id string) (BlockVersion, error) {
-	fileMeta, err := smartBlock.node.textile().File(id)
+	event, err := smartBlock.getVersionSnapshotEvent(id)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(fileMeta.Files) == 0 {
-		return nil, fmt.Errorf("version block not found")
+	node, err := event.GetBody(context.TODO(), smartBlock.node.ts, smartBlock.thread.ReadKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get record body: %w", err)
+	}
+	m := new(threadVersionSnapshot)
+	err = cbornode.DecodeInto(node.RawData(), m)
+	if err != nil {
+		return nil, fmt.Errorf("incorrect record type: %w", err)
 	}
 
-	plaintext, err := readFile(smartBlock.node.textile(), fileMeta.Files[0].File)
+	model, err := m.BlockWithMeta()
 	if err != nil {
-		return nil, fmt.Errorf("readFile error: %s", err.Error())
+		return nil, fmt.Errorf("failed to decode pb block version: %w", err)
 	}
 
-	var block *storage.BlockWithMeta
-	err = proto.Unmarshal(plaintext, block)
+	time, err := smartBlock.getVersionTime(event)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal error: %s", err.Error())
+		return nil, fmt.Errorf("failed to decode pb block version: %w", err)
 	}
-
-	version := &SmartBlockVersion{model: block, versionId: fileMeta.Block, date: util.CastTimestampToGogo(fileMeta.Date), user: fileMeta.User.Address}
-	err = version.addMissingFiles()
-	if err != nil {
-		return nil, err
-	}
+	// todo: how to get creator peer id?
+	version := &SmartBlockVersion{model: model, versionId: id, date: time, user: "<todo>"}
+	//err = version.addMissingFiles()
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	return version, nil
 }
 
 func (smartBlock *SmartBlock) GetVersionMeta(id string) (BlockVersionMeta, error) {
-	fileMeta, err := smartBlock.node.textile().File(id)
+	event, err := smartBlock.getVersionSnapshotEvent(id)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(fileMeta.Files) == 0 {
-		return nil, fmt.Errorf("version block not found")
-	}
-
-	plaintext, err := readFile(smartBlock.node.textile(), fileMeta.Files[0].File)
+	node, err := event.GetBody(context.TODO(), smartBlock.node.ts, smartBlock.thread.ReadKey)
 	if err != nil {
-		return nil, fmt.Errorf("readFile error: %s", err.Error())
+		return nil, fmt.Errorf("failed to get record body: %w", err)
 	}
-
-	var block storage.BlockMetaOnly
-	err = proto.Unmarshal(plaintext, &block)
+	m := new(threadVersionSnapshot)
+	err = cbornode.DecodeInto(node.RawData(), m)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal error: %s", err.Error())
+		return nil, fmt.Errorf("incorrect record type: %w", err)
 	}
 
-	version := &SmartBlockVersionMeta{model: &block, versionId: fileMeta.Block, date: util.CastTimestampToGogo(fileMeta.Date), user: fileMeta.User.Address}
+	model, err := m.BlockMetaOnly()
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode pb block version: %w", err)
+	}
+
+	time, err := smartBlock.getVersionTime(event)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode pb block version: %w", err)
+	}
+
+	// todo: how to get creator peer id?
+	version := &SmartBlockVersionMeta{model: model, versionId: id, date: time, user: "<todo>"}
 
 	return version, nil
 }
 
 func (smartBlock *SmartBlock) GetVersions(offset string, limit int, metaOnly bool) (versions []BlockVersion, err error) {
-	files, err := smartBlock.node.textile().Files(offset, limit, smartBlock.thread.Id)
+	var head cid.Cid
+
+	var offsetTime *time.Time
+	if offset != "" {
+		head, err = cid.Decode(offset)
+		if err != nil {
+			return nil, err
+		}
+		rec, err2 := smartBlock.node.ts.GetRecord(context.TODO(), smartBlock.thread.ID, head)
+		if err2 != nil {
+			err = err2
+			return nil, err
+		}
+		event, err2 := cbor.EventFromRecord(context.TODO(), smartBlock.node.ts, rec)
+		if err2 != nil {
+			err = err2
+			return
+		}
+
+		header, err2 := event.GetHeader(context.TODO(), smartBlock.node.ts, smartBlock.thread.ReadKey)
+		if err2 != nil {
+			err = err2
+			return
+		}
+
+		offsetTime, err = header.Time()
+		if err != nil {
+			return
+		}
+	}
+
+	records, err := smartBlock.node.traverseLogs(context.TODO(), smartBlock.thread, offsetTime, limit)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	for _, item := range files.Items {
-		version := &SmartBlockVersion{versionId: item.Block, user: item.User.Address, date: util.CastTimestampToGogo(item.Date), node: smartBlock.node}
-		if metaOnly {
-			versions = append(versions, version)
-			continue
-		}
-
-		block := &storage.BlockWithMeta{}
-
-		plaintext, err := readFile(smartBlock.node.Textile.Node(), item.Files[0].File)
+	for _, rec := range records {
+		event, err := cbor.EventFromRecord(context.TODO(), smartBlock.node.ts, rec)
 		if err != nil {
-			// todo: decide if it will be ok to have more meta than blocks content itself
-			// in case of error cut off filesMeta in order to have related indexes in both slices
-			return versions, fmt.Errorf("readFile error: %s", err.Error())
+			return nil, fmt.Errorf("failed to get event: %w", err)
 		}
 
-		err = proto.Unmarshal(plaintext, block)
+		node, err := event.GetBody(context.TODO(), smartBlock.node.ts, smartBlock.thread.ReadKey)
 		if err != nil {
-			return versions, fmt.Errorf("page version proto unmarshal error: %s", err.Error())
+			return nil, fmt.Errorf("failed to get record body: %w", err)
 		}
-
-		version.model = block
-		err = version.addMissingFiles()
+		m := new(threadVersionSnapshot)
+		err = cbornode.DecodeInto(node.RawData(), m)
 		if err != nil {
-			log.Errorf("addMissingFiles for version %s got error: %s", version.versionId, err.Error())
+			return nil, fmt.Errorf("incorrect record type: %w", err)
 		}
 
-		versions = append(versions, version)
+		model, err := m.BlockWithMeta()
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode pb block version: %w", err)
+		}
+
+		t, err := types.TimestampProto(rec.Date)
+		if err != nil {
+			return nil, fmt.Errorf("can't convert tme to pb: %w", err)
+		}
+
+		versions = append(versions, &SmartBlockVersion{model: model, versionId: rec.Cid().String(), date: t, user: "<todo>"})
 	}
 
-	if len(versions) > 0 && !metaOnly {
-		db := versions[0].DependentBlocks()
-		for _, child := range versions[0].Model().ChildrenIds {
-			if _, exists := db[child]; !exists {
-				log.Warningf("GetVersions: id=%d child %s is missing", versions[0].Model().Id, child)
-			}
-		}
-	}
 	return
 }
 
@@ -219,17 +344,17 @@ func (smartBlock *SmartBlock) AddVersion(block *model.Block) (BlockVersion, erro
 	newVersion := &SmartBlockVersion{model: &storage.BlockWithMeta{Block: block}}
 
 	if block.Content != nil {
-		switch strings.ToLower(smartBlock.thread.Schema.Name) {
-		case "dashboard":
+		switch smartBlock.GetType() {
+		case SmartBlockTypeDashboard:
 			if _, ok := block.Content.(*model.BlockContentOfDashboard); !ok {
 				return nil, fmt.Errorf("unxpected smartblock type")
 			}
-		case "page":
+		case SmartBlockTypePage:
 			if _, ok := block.Content.(*model.BlockContentOfPage); !ok {
 				return nil, fmt.Errorf("unxpected smartblock type")
 			}
 		default:
-			return nil, fmt.Errorf("for now only smartblocks are queriable")
+			return nil, fmt.Errorf("for now you can only add smartblocks")
 		}
 
 		newVersion.model.Block.Content = block.Content
@@ -388,49 +513,42 @@ func (smartBlock *SmartBlock) addVersion(newVersion *storage.BlockWithMeta) (ver
 		return
 	}
 
-	millBlob := &mill.Blob{}
-
-	conf := tcore.AddFileConfig{
-		Media:     "application/json",
-		Plaintext: false,
-		Input:     newVersionB,
-	}
-
-	var newBlockVersionFile *tpb.FileIndex
-	newBlockVersionFile, err = smartBlock.node.textile().AddFileIndex(millBlob, conf)
-	if err != nil {
-		err = fmt.Errorf("AddFileIndex error: %s", err.Error())
+	body, err2 := cbornode.WrapObject(&threadVersionSnapshot{Data: newVersionB}, mh.SHA2_256, -1)
+	if err2 != nil {
+		err = err2
 		return
 	}
 
-	node, keys, err := smartBlock.node.textile().AddNodeFromFiles([]*tpb.FileIndex{newBlockVersionFile})
-	if err != nil {
-		err = fmt.Errorf("AddNodeFromFiles error: %s", err.Error())
+	rec, err2 := smartBlock.node.ts.CreateRecord(context.TODO(), smartBlock.thread.ID, body)
+	if err2 != nil {
+		err = err2
 		return
 	}
 
-	var caption string
-
-	if name, exist := newVersion.Block.GetFields().Fields["name"]; exist {
-		caption = name.GetStringValue()
-	}
-
-	block, err := smartBlock.thread.AddFiles(node, "", caption, keys.Files)
-	if err != nil {
-		err = fmt.Errorf("thread.AddFiles error: %s", err.Error())
+	event, err2 := cbor.EventFromRecord(context.TODO(), smartBlock.node.ts, rec.Value())
+	if err2 != nil {
+		err = err2
 		return
 	}
 
-	versionId = block.B58String()
+	header, err2 := event.GetHeader(context.TODO(), smartBlock.node.ts, smartBlock.thread.ReadKey)
+	if err2 != nil {
+		err = err2
+		return
+	}
+
+	msgTime, err2 := header.Time()
+	if err2 != nil {
+		err = err2
+		return
+	}
+
+	versionId = rec.LogID().String()
 	log.Debugf("SmartBlock.addVersion: blockId = %s newVersionId = %s", smartBlock.GetId(), versionId)
-	user = smartBlock.node.textile().Account().Address()
-	newBlock, err := smartBlock.node.textile().Block(block.B58String())
+	user = smartBlock.node.account.Address()
+	date, err = types.TimestampProto(*msgTime)
 	if err != nil {
-		log.Errorf("failed to get the block %s: %s", block.B58String(), err.Error())
-	}
-
-	if newBlock != nil {
-		date = util.CastTimestampToGogo(newBlock.Date)
+		return
 	}
 
 	return
@@ -442,17 +560,17 @@ func (smartBlock *SmartBlock) NewBlock(block model.Block) (Block, error) {
 		return nil, fmt.Errorf("content not set")
 	}
 
-	var smartBlockSchemaBlob string
+	var smartBlockType SmartBlockType
 	switch block.Content.(type) {
 	case *model.BlockContentOfPage:
-		smartBlockSchemaBlob = schema.Page
+		smartBlockType = SmartBlockTypePage
 
 	case *model.BlockContentOfDashboard:
-		smartBlockSchemaBlob = schema.Dashboard
+		smartBlockType = SmartBlockTypeDashboard
 
 	}
-	if smartBlockSchemaBlob != "" {
-		thrd, err := smartBlock.node.newBlockThread(schema.Page)
+	if smartBlockType != 0 {
+		thrd, err := smartBlock.node.newBlockThread(smartBlockType)
 		if err != nil {
 			return nil, err
 		}
@@ -468,10 +586,10 @@ func (smartBlock *SmartBlock) NewBlock(block model.Block) (Block, error) {
 
 func (smartBlock *SmartBlock) EmptyVersion() BlockVersion {
 	var content model.IsBlockContent
-	switch strings.ToLower(smartBlock.thread.Schema.Name) {
-	case "dashboard":
+	switch smartBlock.GetType() {
+	case SmartBlockTypeDashboard:
 		content = &model.BlockContentOfDashboard{Dashboard: &model.BlockContentDashboard{}}
-	case "page":
+	case SmartBlockTypePage:
 		content = &model.BlockContentOfPage{Page: &model.BlockContentPage{}}
 	default:
 		// shouldn't happen as checks for the schema performed before
@@ -542,4 +660,37 @@ func (smartBlock *SmartBlock) SubscribeClientEvents(events chan<- proto.Message)
 func (smartBlock *SmartBlock) PublishClientEvent(event proto.Message) error {
 	//todo: to be implemented
 	return fmt.Errorf("not implemented")
+}
+
+// Version of varint function that work with a string rather than
+// []byte to avoid unnecessary allocation
+
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license as given at https://golang.org/LICENSE
+
+// uvarint decodes a uint64 from buf and returns that value and the
+// number of characters read (> 0). If an error occurred, the value is 0
+// and the number of bytes n is <= 0 meaning:
+//
+// 	n == 0: buf too small
+// 	n  < 0: value larger than 64 bits (overflow)
+// 	        and -n is the number of bytes read
+//
+func uvarint(buf string) (uint64, int) {
+	var x uint64
+	var s uint
+	// we have a binary string so we can't use a range loope
+	for i := 0; i < len(buf); i++ {
+		b := buf[i]
+		if b < 0x80 {
+			if i > 9 || i == 9 && b > 1 {
+				return 0, -(i + 1) // overflow
+			}
+			return x | uint64(b)<<s, i + 1
+		}
+		x |= uint64(b&0x7f) << s
+		s += 7
+	}
+	return 0, 0
 }

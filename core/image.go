@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"math"
 
-	"github.com/anytypeio/go-anytype-library/schema"
 	"github.com/textileio/go-textile/mill"
 	tpb "github.com/textileio/go-textile/pb"
 )
@@ -69,39 +68,7 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 }
 
 func (a *Anytype) ImageAddWithBytes(content []byte, filename string) (Image, error) {
-	dir, err := a.buildDirectory(content, filename, schema.ImageNode())
-	if err != nil {
-		return nil, err
-	}
-
-	node, keys, err := a.textile().AddNodeFromDirs(&tpb.DirectoryList{Items: []*tpb.Directory{dir}})
-	if err != nil {
-		return nil, err
-	}
-
-	nodeHash := node.Cid().Hash().B58String()
-
-	filesKeysCacheMutex.Lock()
-	defer filesKeysCacheMutex.Unlock()
-	filesKeysCache[nodeHash] = keys.Files
-
-	err = a.indexFileData(node, nodeHash)
-	if err != nil {
-		return nil, err
-	}
-
-	var variantsByWidth = make(map[int]tpb.FileIndex, len(dir.Files))
-	for _, f := range dir.Files {
-		if v, exists := f.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = *f
-		}
-	}
-
-	return &image{
-		hash:            nodeHash,
-		variantsByWidth: variantsByWidth,
-		node:            a,
-	}, nil
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image, error) {

@@ -12,7 +12,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	logging "github.com/ipfs/go-log"
-	tcore "github.com/textileio/go-textile/core"
 )
 
 const defaultGatewayAddr = "127.0.0.1:47800"
@@ -84,7 +83,6 @@ func (g *Gateway) Start(addr string) error {
 		}
 	}()
 
-
 	log.Infof("gateway listening at %s", g.server.Addr)
 	return nil
 }
@@ -112,7 +110,7 @@ func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(w)
 	file, err := g.Node.FileByHash(fileHash)
 	if err != nil {
-		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
 			return
 		}
@@ -144,7 +142,7 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(w)
 	image, err := g.Node.ImageByHash(imageHash)
 	if err != nil {
-		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
 			return
 		}
@@ -166,7 +164,7 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
 			return
 		}

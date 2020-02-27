@@ -201,7 +201,10 @@ message Block {
                 Empty = 0; // Ordinary page, without additional fields
                 Task = 1; // Page with a task fields
                 Set = 2; // Page, that organize a set of blocks by a specific criterio
-                Breadcrumbs = 3;
+                Profile = 3;
+
+                Breadcrumbs = 101;
+
                 // ...
             }
 

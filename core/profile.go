@@ -4,137 +4,58 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
-	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/structs"
+	"github.com/gogo/protobuf/types"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/textileio/go-textile/broadcast"
-	"github.com/textileio/go-textile/core"
 	tpb "github.com/textileio/go-textile/pb"
 )
 
-func (a *Anytype) AccountSetName(username string) error {
-	return a.Textile.SetName(username)
+func (a *Anytype) AccountSetNameAndAvatar(name string, avatarFilePath, color string) error {
+	block, err := a.GetBlock(a.predefinedBlockIds.Profile)
+	if err != nil {
+		return err
+	}
+
+	if version, _ := block.GetCurrentVersion(); version == nil || version.Model() == nil || version.Model().Content == nil {
+		// version not yet created
+		log.Debugf("create predefined archive block")
+		_, err = block.AddVersion(&model.Block{
+			Id: block.GetId(),
+			Fields: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name":  structs.String(name),
+					"image": structs.String(avatarFilePath),
+					"color": structs.String(color),
+				},
+			},
+			Content: &model.BlockContentOfPage{
+				Page: &model.BlockContentPage{
+					Style: model.BlockContentPage_Empty,
+				},
+			},
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 var hexColorRegexp = regexp.MustCompile(`^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$`)
 var invalidHexColor = fmt.Errorf("HEX color has invalid format")
 
 func (a *Anytype) AccountSetAvatarColor(hex string) (err error) {
-	if !a.Textile.Online() {
-		return core.ErrOffline
-	}
-	if !hexColorRegexp.MatchString(hex) {
-		return invalidHexColor
-	}
-
-	hex = strings.ToUpper(hex)
-
-	if latest, _ := a.Textile.Avatar(); latest == hex {
-		return nil
-	}
-
-	thrd := a.Textile.Node().AccountThread()
-	if thrd == nil {
-		return fmt.Errorf("account thread not found")
-	}
-
-	err = a.Textile.Node().Datastore().Peers().UpdateAvatar(a.ipfs().Identity.Pretty(), hex)
-	if err != nil {
-		return err
-	}
-
-	for _, thrd := range a.Textile.Node().Threads() {
-		_, err = thrd.Annouce(nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	a.Textile.Node().FlushCafes()
-
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 func (a *Anytype) AccountSetAvatar(localPath string) (hash mh.Multihash, err error) {
-	if !a.Textile.Online() {
-		return nil, core.ErrOffline
-	}
-
-	thrd := a.Textile.Node().AccountThread()
-	if thrd == nil {
-		return nil, fmt.Errorf("account thread not found")
-	}
-
-	hash, err = a.Textile.AddFilesSync([]string{localPath}, thrd.Id, "")
-	if err != nil {
-		return nil, err
-	}
-
-	err = a.Textile.Node().SetAvatar()
-	if err != nil {
-		return nil, err
-	}
-
-	a.Textile.Node().FlushCafes()
-
-	return hash, nil
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (a *Anytype) AccountRequestStoredContact(ctx context.Context, accountId string) (contact *tpb.Contact, err error) {
-	contact = a.Textile.Node().Contact(accountId)
-
-	if contact != nil && (contact.Name != "" || contact.Avatar != "") {
-		return contact, nil
-	}
-	// reset in case local contact wasn't full
-	contact = nil
-
-	var resCh <-chan *tpb.QueryResult
-	var errCh <-chan error
-	var cancel *broadcast.Broadcaster
-	resCh, errCh, cancel, err = a.Textile.Node().SearchContacts(&tpb.ContactQuery{Address: accountId}, &tpb.QueryOptions{
-		Wait: 5,
-	})
-
-	if err != nil {
-		return
-	}
-
-	readTimeout := time.After(time.Second * 30)
-	for {
-		// SearchContacts can send multiple contacts for one address, because it is based on peers
-		// the last one should be most accurate so we need to wait until the last available contact
-		select {
-		case <-ctx.Done():
-			cancel.Close()
-			err = fmt.Errorf("overall read timeout")
-			return
-		case <-readTimeout:
-			// this was introduced because we don't use pubsub currently to query this (only cafe api)
-			// so all results will come in the one batch
-			if contact == nil {
-				// only set error if there was no any contacts received so far
-				err = fmt.Errorf("read timeout")
-			}
-
-			cancel.Close()
-			return
-		case err = <-errCh:
-			return
-		case res, ok := <-resCh:
-			if !ok {
-				return
-			}
-			contact = &tpb.Contact{}
-			err = ptypes.UnmarshalAny(res.Value, contact)
-			if err != nil {
-				return
-			}
-			// reset readTimeout
-			readTimeout = time.After(time.Second)
-		}
-	}
-
+	return nil, fmt.Errorf("not implemented")
 }

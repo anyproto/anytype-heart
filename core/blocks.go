@@ -6,12 +6,12 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
-	mh "github.com/multiformats/go-multihash"
 	uuid "github.com/satori/go.uuid"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 func (a *Anytype) GetBlock(id string) (Block, error) {
-	_, err := mh.FromB58String(id)
+	_, err := thread.Decode(id)
 	if err == nil {
 		smartBlock, err := a.GetSmartBlock(id)
 		if err != nil {
@@ -56,13 +56,22 @@ func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion Blo
 }
 
 func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) error {
+	// profile
+	profile, err := a.predefinedThreadAdd(threadDerivedIndexProfilePage, syncSnapshotIfNotExist)
+	if err != nil {
+		return err
+	}
+
+	a.predefinedBlockIds.Profile = profile.ID.String()
+	// no need to create the version here
+
 	// archive
 	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchiveDashboard, syncSnapshotIfNotExist)
 	if err != nil {
 		return err
 	}
-	a.predefinedBlockIds.Archive = thread.Id
-	block, err := a.GetBlock(thread.Id)
+	a.predefinedBlockIds.Archive = thread.ID.String()
+	block, err := a.GetBlock(thread.ID.String())
 	if err != nil {
 		return err
 	}
@@ -95,9 +104,9 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 	if err != nil {
 		return err
 	}
-	a.predefinedBlockIds.Home = thread.Id
+	a.predefinedBlockIds.Home = thread.ID.String()
 
-	block, err = a.GetBlock(thread.Id)
+	block, err = a.GetBlock(thread.ID.String())
 	if err != nil {
 		return err
 	}
@@ -135,9 +144,9 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 		}
 	}
 
-	err = a.textile().SnapshotThreads()
+	/*err = a.textile().SnapshotThreads()
 	if err != nil {
 		log.Errorf("SnapshotThreads error: %s")
-	}
+	}*/
 	return nil
 }
