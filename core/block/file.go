@@ -178,12 +178,13 @@ func (dp *dropFilesProcess) Cancel() (err error) {
 func (dp *dropFilesProcess) Info() pb.ModelProcess {
 	var state pb.ModelProcessState
 	select {
-	case <-dp.cancel:
-		state = pb.ModelProcess_Canceled
 	case <-dp.doneCh:
 		state = pb.ModelProcess_Done
 	default:
 		state = pb.ModelProcess_Running
+	}
+	if atomic.LoadInt32(&dp.canceling) != 0 {
+		state = pb.ModelProcess_Canceled
 	}
 	return pb.ModelProcess{
 		Id:    dp.id,
@@ -256,13 +257,13 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 			dp.total++
 		}
 	}
-	dp.cancel = make(chan struct{})
 	return true, nil
 }
 
 func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPosition, rootDone chan error) {
 	dp.id = uuid.New().String()
 	dp.doneCh = make(chan struct{})
+	dp.cancel = make(chan struct{})
 	defer close(dp.doneCh)
 	dp.s.process.Add(dp)
 
@@ -312,10 +313,8 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 				}
 			}
 		}
-		select {
-		case <-dp.cancel:
+		if atomic.LoadInt32(&dp.canceling) != 0 {
 			return false, nil
-		default:
 		}
 		return true, nil
 	}
@@ -342,7 +341,6 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 	}
 	close(in)
 	wg.Wait()
-
 	return
 }
 
