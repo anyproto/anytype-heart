@@ -137,7 +137,7 @@ func (t *Text) GetText() (text string) {
 }
 
 func (t *Text) Split(pos int32) (simple.Block, error) {
-	if pos < 0 || int(pos) >= utf8.RuneCountInString(t.content.Text) {
+	if pos < 0 || int(pos) > utf8.RuneCountInString(t.content.Text) {
 		return nil, ErrOutOfRange
 	}
 	runes := []rune(t.content.Text)

@@ -184,6 +184,11 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 		if req.SelectedTextRange == nil {
 			req.SelectedTextRange = &model.Range{From:0, To:0}
 		}
+
+		if content.Text.Marks == nil {
+			content.Text.Marks = &model.BlockContentTextMarks{Marks:[]*model.BlockContentTextMark{}}
+		}
+
 		err = p.rangeTextPaste(s,
 			req.FocusedBlockId,
 			req.SelectedTextRange.From,
