@@ -24,9 +24,9 @@ type converter struct {
 
 type Converter interface {
 	CreateTree (blocks []*model.Block) Node
-	ProcessTree (node *Node) (out string)
+	ProcessTree (node *Node, images map[string][]byte) (out string)
 	PrintNode (node *Node) (out string)
-	Convert (blocks []*model.Block) (out string)
+	Convert (blocks []*model.Block, images map[string][]byte) (out string)
 
 	nextTreeLayer (node *Node) (processedNode *Node)
 	filterById (blocks []*model.Block, id string) (out []*model.Block)
@@ -164,14 +164,14 @@ func (c *converter) PrintNode (node *Node) (out string) {
 	return "\n" + gohtml.Format(out)
 }
 
-func (c *converter) ProcessTree (node *Node) (out string) {
+func (c *converter) ProcessTree (node *Node, images map[string][]byte) (out string) {
 	for _, child := range node.children {
 		if child != nil && child.model != nil && child.model.Content != nil {
 			switch cont := child.model.Content.(type) {
 			case *model.BlockContentOfText:
 				out += renderText(true, cont)
 			case *model.BlockContentOfFile:
-				out += renderFile(true, cont)
+				out += renderFile(true, cont, images)
 			case *model.BlockContentOfBookmark:
 				out += renderBookmark(true, cont)
 			case *model.BlockContentOfDiv:
@@ -192,7 +192,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 		}
 
 		if child != nil && child.children != nil && len(child.children) > 0 {
-			out += c.ProcessTree(child)
+			out += c.ProcessTree(child, images)
 		}
 
 		if child != nil && child.model != nil && child.model.Content != nil {
@@ -200,7 +200,7 @@ func (c *converter) ProcessTree (node *Node) (out string) {
 			case *model.BlockContentOfText:
 				out += renderText(false, cont)
 			case *model.BlockContentOfFile:
-				out += renderFile(false, cont)
+				out += renderFile(false, cont, images)
 			case *model.BlockContentOfBookmark:
 				out += renderBookmark(false, cont)
 			case *model.BlockContentOfDiv:
@@ -381,7 +381,7 @@ func renderLink(isOpened bool, child *model.BlockContentOfLink) (out string) {
 	return out
 }
 
-func renderFile(isOpened bool, child *model.BlockContentOfFile) (out string) {
+func renderFile(isOpened bool, child *model.BlockContentOfFile, images map[string][]byte) (out string) {
 	if child.File.State != model.BlockContentFile_Done {
 		return ""
 	}
@@ -399,14 +399,15 @@ func renderFile(isOpened bool, child *model.BlockContentOfFile) (out string) {
 				goToAnytypeMsg
 
 		case model.BlockContentFile_Image:
-			// TODO: 1. Get image as a []byte
-			img := []byte{} // child.File.Hash
-
 			// TODO: child.File.Size_
 			// TODO: child.File.Mime
+			img := images[child.File.Hash]
+			fmt.Println("IMAGES MAP:", "HASH:", child.File.Hash,  "|||", images)
+			if img != nil {
+				encodedImg := base64.StdEncoding.EncodeToString(img)
+				out = `<img src="data:image/png;base64, ` + encodedImg + `" alt="` + child.File.Name + `" />`
+			}
 
-			encodedImg := base64.StdEncoding.EncodeToString(img)
-			out = `<img src="data:image/png;base64, ` + encodedImg + `" alt="` + child.File.Name + `" />`
 
 		case model.BlockContentFile_Video:
 			out = `<div class="video">
@@ -544,10 +545,9 @@ func wrapCopyHtml (innerHtml string) string {
 }
 
 
-func (c *converter) Convert (blocks []*model.Block) (out string) {
+func (c *converter) Convert (blocks []*model.Block, images map[string][]byte) (out string) {
 	tree := c.CreateTree(blocks)
-	html := c.ProcessTree(&tree)
+	html := c.ProcessTree(&tree, images)
 
 	return wrapCopyHtml(html) // gohtml.Format
-
 }

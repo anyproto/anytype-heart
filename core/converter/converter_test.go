@@ -37,7 +37,8 @@ func TestConverter_ProcessTree(t *testing.T) {
 		newTree := W.CreateTree(blocks)
 
 		fmt.Println("TREE:", newTree)
-		fmt.Println("TREE:", W.ProcessTree(&newTree))
+		images := make(map[string][]byte)
+		fmt.Println("TREE:", W.ProcessTree(&newTree, images))
 	})
 
 	t.Run("Tree: medium", func(t *testing.T) {
@@ -57,7 +58,8 @@ func TestConverter_ProcessTree(t *testing.T) {
 		newTree := W.CreateTree(blocks)
 
 		fmt.Println("TREE:", newTree)
-		fmt.Println("HTML:", W.ProcessTree(&newTree))
+		images := make(map[string][]byte)
+		fmt.Println("HTML:", W.ProcessTree(&newTree, images))
 	})
 }
 
@@ -74,7 +76,8 @@ func TestConverter_Convert(t *testing.T) {
 		fmt.Println("blocks:", blocks)
 
 		W := converter.New()
-		fmt.Println("TREE:", W.Convert(blocks))
+		images := make(map[string][]byte)
+		fmt.Println("TREE:", W.Convert(blocks, images))
 	})
 
 	t.Run("No structure", func(t *testing.T) {
@@ -86,7 +89,8 @@ func TestConverter_Convert(t *testing.T) {
 		fmt.Println("blocks:", blocks)
 
 		W := converter.New()
-		fmt.Println("TREE:", W.Convert(blocks))
+		images := make(map[string][]byte)
+		fmt.Println("TREE:", W.Convert(blocks, images))
 	})
 
 	t.Run("Layout", func(t *testing.T) {
@@ -122,7 +126,11 @@ func TestConverter_Convert(t *testing.T) {
 		fmt.Println("blocks:", blocks)
 
 		W := converter.New()
-		fmt.Println("TREE:", W.Convert(blocks))
+
+		images := make(map[string][]byte)
+		images["Qmcm5gdPCMDRAgmHdnduWB93Qk1X4RyUrsjFXjeAchnGcZ"] = []byte{0, 0, 0, 0, 0}
+
+		fmt.Println("TREE:", W.Convert(blocks, images))
 	})
 
 }
