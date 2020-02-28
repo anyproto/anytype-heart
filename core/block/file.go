@@ -299,11 +299,6 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 			return idx != 0, err
 		}
 		for i, entry := range flatEntries[idx] {
-			select {
-			case <-dp.cancel:
-				return false, nil
-			default:
-			}
 			if entry.isDir {
 				smartBockIds = append(smartBockIds, blockIds[i])
 				flatEntries = append(flatEntries, entry.child)
