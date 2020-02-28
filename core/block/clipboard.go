@@ -156,10 +156,8 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 						}
 
 						fmt.Println("NEXT:", getNextBlockId(req.FocusedBlockId))
-						//req.FocusedBlockId = getNextBlockId(req.FocusedBlockId)
 						req.SelectedTextRange.From = 0
 						req.SelectedTextRange.To = 0
-						//return p.pasteAny(req)
 						blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
 						if err != nil {
 							return blockIds, err
@@ -207,6 +205,15 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 
 		// selected text -> remove it and split the block
 	} else if len(req.FocusedBlockId) > 0 && len(req.AnySlot) > 1 {
+
+		if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 {
+			blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
+			if err != nil {
+				return blockIds, err
+			} else {
+				return blockIds, p.applyAndSendEvent(s)
+			}
+		}
 
 		// split block
 		_, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To)

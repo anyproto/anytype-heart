@@ -583,6 +583,10 @@ func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blo
 		return "", err
 	}
 
+	if from == 0 && to == 0 {
+
+	}
+
 	newBlocks, text, err := t.RangeSplit(from, to)
 	if err != nil {
 		return "", err
