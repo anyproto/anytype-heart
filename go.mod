@@ -8,7 +8,7 @@ require (
 	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
 
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/mock v1.4.0
+	github.com/golang/mock v1.4.1
 	github.com/google/uuid v1.1.1
 	github.com/h2non/filetype v1.0.12
 	github.com/hashicorp/golang-lru v0.5.4
