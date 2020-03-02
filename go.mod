@@ -19,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
-	github.com/yuin/goldmark v1.1.22
+	github.com/yuin/goldmark v1.1.24
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.2
