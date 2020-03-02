@@ -46,6 +46,7 @@ type smartBlock interface {
 	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
 	UpdateIconBlock(id string, apply func(t base.IconBlock) error) error
 	Upload(id string, localPath, url string) error
+	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Undo() error
 	Redo() error
@@ -277,7 +278,7 @@ func (p *commonSmart) Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []s
 		if e != nil {
 			return nil, e
 		}
-		if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+		if err = p.insertTo(s, targetId, pos, copyId); err != nil {
 			return
 		}
 		pos = model.Block_Bottom
@@ -327,7 +328,7 @@ func (p *commonSmart) duplicate(s *state, req pb.RpcBlockListDuplicateRequest) (
 			if e != nil {
 				return nil, e
 			}
-			if err = p.insertTo(s, s.get(copyId), targetId, pos); err != nil {
+			if err = p.insertTo(s, targetId, pos, copyId); err != nil {
 				return
 			}
 			pos = model.Block_Bottom
@@ -377,7 +378,7 @@ func (p *commonSmart) pasteBlocks(s *state, req pb.RpcBlockPasteRequest, targetI
 		if emptyPage {
 			parent.ChildrenIds = append(parent.ChildrenIds, copyBlockId)
 		} else {
-			if err = p.insertTo(s, s.get(copyBlockId), targetId, model.Block_Bottom); err != nil {
+			if err = p.insertTo(s, targetId, model.Block_Bottom, copyBlockId); err != nil {
 				return blockIds, err
 			}
 			targetId = copyBlockId
@@ -428,7 +429,7 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 		return
 	}
 	id = newBlock.Model().Id
-	if err = p.insertTo(s, newBlock, req.TargetId, req.Position); err != nil {
+	if err = p.insertTo(s, req.TargetId, req.Position, id); err != nil {
 		return
 	}
 	return
@@ -447,50 +448,69 @@ func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
 	return
 }
 
-func (p *commonSmart) insertTo(s *state, b simple.Block, targetId string, reqPos model.BlockPosition) (err error) {
-	switch block := b.Model().Content.(type) {
-	case *model.BlockContentOfText:
-		if block.Text.Style == model.BlockContentText_Title {
-			return nil // Just do not insert, it is not an error
-		}
-	}
-
-	parent := s.get(p.GetId()).Model()
-	var target simple.Block
-	if targetId != "" {
+func (p *commonSmart) insertTo(s *state, targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
+	var (
+		target        simple.Block
+		targetParentM *model.Block
+		targetPos     int
+	)
+	if targetId == "" {
+		reqPos = model.Block_Inner
+		target = s.get(p.GetId())
+	} else {
 		target = s.get(targetId)
 		if target == nil {
 			return fmt.Errorf("target block[%s] not found", targetId)
 		}
-		if pv := s.findParentOf(targetId); pv != nil {
-			parent = pv.Model()
+		if reqPos != model.Block_Inner {
+			if pv := s.findParentOf(targetId); pv != nil {
+				targetParentM = pv.Model()
+			} else {
+				return fmt.Errorf("target without parent")
+			}
+			targetPos = findPosInSlice(targetParentM.ChildrenIds, target.Model().Id)
 		}
 	}
 
-	var pos = len(parent.ChildrenIds) + 1
-	if target != nil {
-		var targetPos int
-		if reqPos != model.Block_Inner {
-			targetPos = findPosInSlice(parent.ChildrenIds, target.Model().Id)
-			if targetPos == -1 {
-				return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, parent.Id)
-			}
-		}
-		switch reqPos {
-		case model.Block_Bottom, model.Block_Replace:
-			pos = targetPos + 1
-		case model.Block_Top:
-			pos = targetPos
-		case model.Block_Inner:
-			parent = target.Model()
-		default:
-			return fmt.Errorf("unexpected position for create operation: %v", reqPos)
+	if targetId != "" && findPosInSlice(ids, targetId) != -1 {
+		return fmt.Errorf("blockIds contains target")
+	}
+	if targetParentM != nil && findPosInSlice(ids, targetParentM.Id) != -1 {
+		return fmt.Errorf("blockIds contains parent")
+	}
+
+	if targetPos == -1 {
+		return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, targetParentM.Id)
+	}
+
+	var pos int
+	insertPos := func() {
+		for _, id := range ids {
+			targetParentM.ChildrenIds = insertToSlice(targetParentM.ChildrenIds, id, pos)
+			pos++
 		}
 	}
-	parent.ChildrenIds = insertToSlice(parent.ChildrenIds, b.Model().Id, pos)
-	if reqPos == model.Block_Replace {
-		s.remove(targetId)
-		parent.ChildrenIds = removeFromSlice(parent.ChildrenIds, targetId)
+
+	switch reqPos {
+	case model.Block_Bottom:
+		pos = targetPos + 1
+		insertPos()
+	case model.Block_Top:
+		pos = targetPos
+		insertPos()
+	case model.Block_Left, model.Block_Right:
+		if err = p.moveFromSide(s, target, reqPos, ids...); err != nil {
+			return
+		}
+	case model.Block_Inner:
+		target.Model().ChildrenIds = append(target.Model().ChildrenIds, ids...)
+	case model.Block_Replace:
+		pos = targetPos + 1
+		insertPos()
+		s.remove(target.Model().Id)
+		s.removeFromChilds(target.Model().Id)
+	default:
+		return fmt.Errorf("unexpected position")
 	}
 	return
 }
@@ -723,32 +743,6 @@ func (p *commonSmart) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockF
 	return p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) Upload(id string, localPath, url string) (err error) {
-	p.m.Lock()
-	defer p.m.Unlock()
-	s := p.newState()
-	f, err := s.getFile(id)
-	if err != nil {
-		return
-	}
-	if err = f.Upload(p.s.anytype, p, localPath, url); err != nil {
-		return
-	}
-	return p.applyAndSendEventHist(s, false, true)
-}
-
-func (p *commonSmart) UpdateFileBlock(id string, apply func(f file.Block)) error {
-	p.m.Lock()
-	defer p.m.Unlock()
-	s := p.newState()
-	f, err := s.getFile(id)
-	if err != nil {
-		return err
-	}
-	apply(f)
-	return p.applyAndSendEvent(s)
-}
-
 func (p *commonSmart) setFields(s *state, id string, fields *types.Struct) (err error) {
 	b := s.get(id)
 	if b == nil {
@@ -809,11 +803,13 @@ func (p *commonSmart) excludeVirtualIds(ids []string, sources ...map[string]simp
 
 func (p *commonSmart) toSave(b *model.Block, sources ...map[string]simple.Block) *model.Block {
 	return &model.Block{
-		Id:           b.Id,
-		Fields:       b.Fields,
-		Restrictions: b.Restrictions,
-		ChildrenIds:  p.excludeVirtualIds(b.ChildrenIds, sources...),
-		Content:      b.Content,
+		Id:              b.Id,
+		Fields:          b.Fields,
+		Restrictions:    b.Restrictions,
+		ChildrenIds:     p.excludeVirtualIds(b.ChildrenIds, sources...),
+		BackgroundColor: b.BackgroundColor,
+		Align:           b.Align,
+		Content:         b.Content,
 	}
 }
 

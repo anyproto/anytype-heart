@@ -244,6 +244,11 @@
     - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
     - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
     - [Rpc.Ping.Response.Error](#anytype.Rpc.Ping.Response.Error)
+    - [Rpc.Process](#anytype.Rpc.Process)
+    - [Rpc.Process.Cancel](#anytype.Rpc.Process.Cancel)
+    - [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request)
+    - [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response)
+    - [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error)
     - [Rpc.Version](#anytype.Rpc.Version)
     - [Rpc.Version.Get](#anytype.Rpc.Version.Get)
     - [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request)
@@ -312,6 +317,7 @@
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
+    - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
@@ -364,13 +370,22 @@
     - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
+    - [Event.Process](#anytype.Event.Process)
+    - [Event.Process.Done](#anytype.Event.Process.Done)
+    - [Event.Process.New](#anytype.Event.Process.New)
+    - [Event.Process.Update](#anytype.Event.Process.Update)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
     - [Event.User.Block.Left](#anytype.Event.User.Block.Left)
     - [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange)
     - [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange)
+    - [Model](#anytype.Model)
+    - [Model.Process](#anytype.Model.Process)
+    - [Model.Process.Progress](#anytype.Model.Process.Progress)
   
+    - [Model.Process.State](#anytype.Model.Process.State)
+    - [Model.Process.Type](#anytype.Model.Process.Type)
   
   
   
@@ -490,6 +505,7 @@
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
+| ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
 
  
@@ -3366,7 +3382,8 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| focusedBlockId | [string](#string) |  | can be null |
+| dropTargetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 | localFilePaths | [string](#string) | repeated |  |
 
 
@@ -3796,6 +3813,72 @@ Usage: send request with topic (Level) and description (message) from client to 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Process"></a>
+
+### Rpc.Process
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel"></a>
+
+### Rpc.Process.Cancel
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel.Request"></a>
+
+### Rpc.Process.Cancel.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel.Response"></a>
+
+### Rpc.Process.Cancel.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Process.Cancel.Response.Error"></a>
+
+### Rpc.Process.Cancel.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4719,6 +4802,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Process.Cancel.Response.Error.Code"></a>
+
+### Rpc.Process.Cancel.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Version.Get.Response.Error.Code"></a>
 
 ### Rpc.Version.Get.Response.Error.Code
@@ -5465,6 +5561,9 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
 | userBlockTextRange | [Event.User.Block.TextRange](#anytype.Event.User.Block.TextRange) |  |  |
 | ping | [Event.Ping](#anytype.Event.Ping) |  |  |
+| processNew | [Event.Process.New](#anytype.Event.Process.New) |  |  |
+| processUpdate | [Event.Process.Update](#anytype.Event.Process.Update) |  |  |
+| processDone | [Event.Process.Done](#anytype.Event.Process.Done) |  |  |
 
 
 
@@ -5480,6 +5579,61 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | index | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Process"></a>
+
+### Event.Process
+
+
+
+
+
+
+
+<a name="anytype.Event.Process.Done"></a>
+
+### Event.Process.Done
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Model.Process](#anytype.Model.Process) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Process.New"></a>
+
+### Event.Process.New
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Model.Process](#anytype.Model.Process) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Process.Update"></a>
+
+### Event.Process.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Model.Process](#anytype.Model.Process) |  |  |
 
 
 
@@ -5580,7 +5734,77 @@ Precondition: user A and user B opened the same block
 
 
 
+
+<a name="anytype.Model"></a>
+
+### Model
+
+
+
+
+
+
+
+<a name="anytype.Model.Process"></a>
+
+### Model.Process
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| type | [Model.Process.Type](#anytype.Model.Process.Type) |  |  |
+| state | [Model.Process.State](#anytype.Model.Process.State) |  |  |
+| progress | [Model.Process.Progress](#anytype.Model.Process.Progress) |  |  |
+
+
+
+
+
+
+<a name="anytype.Model.Process.Progress"></a>
+
+### Model.Process.Progress
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| total | [int64](#int64) |  |  |
+| done | [int64](#int64) |  |  |
+
+
+
+
+
  
+
+
+<a name="anytype.Model.Process.State"></a>
+
+### Model.Process.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Running | 1 |  |
+| Done | 2 |  |
+| Canceled | 3 |  |
+| Error | 4 |  |
+
+
+
+<a name="anytype.Model.Process.Type"></a>
+
+### Model.Process.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DropFiles | 0 |  |
+
 
  
 
@@ -6124,21 +6348,21 @@ General purpose structure, uses in Mark.
 
 ## Scalar Value Types
 
-| .proto Type | Notes | C++ Type | Java Type | Python Type |
-| ----------- | ----- | -------- | --------- | ----------- |
-| <a name="double" /> double |  | double | double | float |
-| <a name="float" /> float |  | float | float | float |
-| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int |
-| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long |
-| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long |
-| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long |
-| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int |
-| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long |
-| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int |
-| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long |
-| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int |
-| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long |
-| <a name="bool" /> bool |  | bool | boolean | boolean |
-| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode |
-| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str |
+| .proto Type | Notes | C++ | Java | Python | Go | C# | PHP | Ruby |
+| ----------- | ----- | --- | ---- | ------ | -- | -- | --- | ---- |
+| <a name="double" /> double |  | double | double | float | float64 | double | float | Float |
+| <a name="float" /> float |  | float | float | float | float32 | float | float | Float |
+| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long | uint32 | uint | integer | Bignum or Fixnum (as required) |
+| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum or Fixnum (as required) |
+| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int | uint32 | uint | integer | Bignum or Fixnum (as required) |
+| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum |
+| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
+| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
+| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
 
