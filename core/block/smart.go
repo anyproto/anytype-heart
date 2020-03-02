@@ -39,6 +39,7 @@ type smartBlock interface {
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
+	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Replace(id string, block *model.Block) (newId string, err error)
@@ -51,6 +52,7 @@ type smartBlock interface {
 	Redo() error
 	Close() error
 	Anytype() anytype.Anytype
+
 }
 
 type smartBlockType int

@@ -166,6 +166,47 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, nil)
 }
 
+func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
+	response := func(code pb.RpcBlockCutResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCutResponse {
+		m := &pb.RpcBlockCutResponse{
+			Error: &pb.RpcBlockCutResponseError{Code: code},
+			TextSlot: textSlot,
+			HtmlSlot: htmlSlot,
+			AnySlot: anySlot,
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	images := make(map[string][]byte)
+	for _, b := range req.Blocks {
+		switch c := b.Content.(type) {
+
+		case *model.BlockContentOfFile:
+			if b.GetFile().Type == model.BlockContentFile_Image {
+				getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
+					Hash: c.File.Hash,
+				}
+				resp := mw.ImageGetBlob(getBlobReq)
+
+				images[c.File.Hash] = resp.Blob
+			}
+		}
+	}
+
+	textSlot, htmlSlot, anySlot, err := mw.blockService.Cut(*req, images)
+
+	if err != nil {
+		var emptyAnySlot []*model.Block
+		return response(pb.RpcBlockCutResponseError_UNKNOWN_ERROR, "", "", emptyAnySlot, err)
+	}
+
+	return response(pb.RpcBlockCutResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
+}
+
 func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
 	response := func(code pb.RpcBlockUploadResponseErrorCode, err error) *pb.RpcBlockUploadResponse {
 		m := &pb.RpcBlockUploadResponse{Error: &pb.RpcBlockUploadResponseError{Code: code}}

@@ -1,5 +1,6 @@
 package block
 
+import "C"
 import (
 	"errors"
 	"fmt"
@@ -38,6 +39,21 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
 	C := converter.New()
 	return C.Convert(req.Blocks, images), nil
+}
+
+func (p *commonSmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	textSlot = ""
+	for _, b := range req.Blocks {
+		switch text := b.Content.(type) {
+		case *model.BlockContentOfText:
+			textSlot += text.Text.Text + "\n"
+		}
+	}
+	C := converter.New()
+	htmlSlot = C.Convert(req.Blocks, images)
+	anySlot = req.Blocks
+
+	return textSlot, htmlSlot, anySlot, nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {

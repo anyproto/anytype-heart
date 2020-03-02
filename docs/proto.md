@@ -52,6 +52,10 @@
     - [Rpc.Block.CreatePage.Request](#anytype.Rpc.Block.CreatePage.Request)
     - [Rpc.Block.CreatePage.Response](#anytype.Rpc.Block.CreatePage.Response)
     - [Rpc.Block.CreatePage.Response.Error](#anytype.Rpc.Block.CreatePage.Response.Error)
+    - [Rpc.Block.Cut](#anytype.Rpc.Block.Cut)
+    - [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request)
+    - [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response)
+    - [Rpc.Block.Cut.Response.Error](#anytype.Rpc.Block.Cut.Response.Error)
     - [Rpc.Block.CutBreadcrumbs](#anytype.Rpc.Block.CutBreadcrumbs)
     - [Rpc.Block.CutBreadcrumbs.Request](#anytype.Rpc.Block.CutBreadcrumbs.Request)
     - [Rpc.Block.CutBreadcrumbs.Response](#anytype.Rpc.Block.CutBreadcrumbs.Response)
@@ -268,6 +272,7 @@
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
+    - [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code)
     - [Rpc.Block.CutBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.CutBreadcrumbs.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
@@ -481,6 +486,7 @@
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
 | BlockPaste | [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request) | [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response) |  |
+| BlockCut | [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request) | [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response) |  |
 | BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
 | BlockSetImageName | [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request) | [Rpc.Block.Set.Image.Name.Response](#anytype.Rpc.Block.Set.Image.Name.Response) |  |
 | BlockSetImageWidth | [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request) | [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response) |  |
@@ -1082,6 +1088,66 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Cut"></a>
+
+### Rpc.Block.Cut
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Cut.Request"></a>
+
+### Rpc.Block.Cut.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blocks | [model.Block](#anytype.model.Block) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Cut.Response"></a>
+
+### Rpc.Block.Cut.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Cut.Response.Error](#anytype.Rpc.Block.Cut.Response.Error) |  |  |
+| textSlot | [string](#string) |  |  |
+| htmlSlot | [string](#string) |  |  |
+| anySlot | [model.Block](#anytype.model.Block) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Cut.Response.Error"></a>
+
+### Rpc.Block.Cut.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4121,6 +4187,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.CreatePage.Response.Error.Code"></a>
 
 ### Rpc.Block.CreatePage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Cut.Response.Error.Code"></a>
+
+### Rpc.Block.Cut.Response.Error.Code
 
 
 | Name | Number | Description |

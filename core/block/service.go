@@ -52,6 +52,7 @@ type Service interface {
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
+	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -74,6 +75,7 @@ type Service interface {
 	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
 
 	Close() error
+
 }
 
 func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
@@ -301,6 +303,15 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err err
 	}
 	defer release()
 	return sb.Paste(req)
+}
+
+func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.Cut(req)
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
