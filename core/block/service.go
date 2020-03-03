@@ -203,7 +203,7 @@ func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err erro
 	}
 	defer release()
 	if bc, ok := sb.(*breadcrumbs); ok {
-		return bc.Cut(int(req.Index))
+		return bc.BreadcrumbsCut(int(req.Index))
 	}
 	return ErrUnexpectedSmartBlockType
 }
@@ -319,13 +319,13 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err err
 	return sb.Paste(req)
 }
 
-func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return
 	}
 	defer release()
-	return sb.Cut(req)
+	return sb.Cut(req, images)
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {

@@ -89,6 +89,11 @@ func (e emptySmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (
 	return
 }
 
+func (e emptySmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	err = errEmptyBlock
+	return
+}
+
 func (e emptySmart) Replace(id string, block *model.Block) (newId string, err error) {
 	err = errEmptyBlock
 	return
