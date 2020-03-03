@@ -37,8 +37,8 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 }
 
 func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
-	C := converter.New()
-	return C.Convert(req.Blocks, images), nil
+	conv := converter.New()
+	return conv.Convert(req.Blocks, images), nil
 }
 
 func (p *commonSmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
@@ -50,8 +50,8 @@ func (p *commonSmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (
 			textSlot += text.Text.Text + "\n"
 		}
 	}
-	C := converter.New()
-	htmlSlot = C.Convert(req.Blocks, images)
+	conv := converter.New()
+	htmlSlot = conv.Convert(req.Blocks, images)
 	anySlot = req.Blocks
 
 	var ids []string
