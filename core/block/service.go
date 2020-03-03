@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -64,6 +65,7 @@ type Service interface {
 	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
 	UploadFile(req pb.RpcBlockUploadRequest) error
+	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
 	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
@@ -73,6 +75,8 @@ type Service interface {
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 
 	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
+
+	ProcessCancel(id string) error
 
 	Close() error
 
@@ -88,6 +92,7 @@ func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview,
 		openedBlocks: make(map[string]*openedBlock),
 		ls:           newLinkSubscriptions(a),
 		linkPreview:  lp,
+		process:      process.NewService(sendEvent),
 	}
 	go s.cleanupTicker()
 	return s
@@ -107,30 +112,39 @@ type service struct {
 	closed       bool
 	linkPreview  linkpreview.LinkPreview
 	ls           *linkSubscriptions
+	process      process.Service
 	m            sync.RWMutex
 }
 
 func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if sb, ok := s.openedBlocks[id]; ok {
+	sb, ok := s.openedBlocks[id]
+	if ok {
 		sb.Active(true)
-		return sb.Show()
-	}
-	sb, err := openSmartBlock(s, id, true)
-	if err != nil {
-		return
-	}
-	s.openedBlocks[id] = &openedBlock{
-		smartBlock: sb,
-		lastUsage:  time.Now(),
-		refs:       1,
+		if err = sb.Show(); err != nil {
+			return
+		}
+	} else {
+		sb, e := openSmartBlock(s, id, true)
+		if e != nil {
+			return e
+		}
+		s.openedBlocks[id] = &openedBlock{
+			smartBlock: sb,
+			lastUsage:  time.Now(),
+			refs:       1,
+		}
 	}
 	for _, bid := range breadcrumbsIds {
 		if b, ok := s.openedBlocks[bid]; ok {
 			if bs, ok := b.smartBlock.(*breadcrumbs); ok {
 				bs.OnSmartOpen(id)
+			} else {
+				log.Warningf("unexpected smart block type %T; wand breadcrumbs", b)
 			}
+		} else {
+			log.Warningf("breadcrumbs block not found")
 		}
 	}
 	return nil
@@ -394,6 +408,15 @@ func (s *service) UploadFile(req pb.RpcBlockUploadRequest) (err error) {
 	return sb.Upload(req.BlockId, req.FilePath, req.Url)
 }
 
+func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.DropFiles(req)
+}
+
 func (s *service) Undo(req pb.RpcBlockUndoRequest) (err error) {
 	sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
@@ -431,9 +454,17 @@ func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error)
 	})
 }
 
+func (s *service) ProcessCancel(id string) (err error) {
+	return s.process.Cancel(id)
+}
+
 func (s *service) Close() error {
+	if err := s.process.Close(); err != nil {
+		log.Errorf("close error: %v", err)
+	}
 	s.m.Lock()
 	defer s.m.Unlock()
+
 	if s.closed {
 		return nil
 	}

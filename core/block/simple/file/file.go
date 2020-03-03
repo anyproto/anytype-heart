@@ -19,13 +19,6 @@ func init() {
 
 func NewFile(m *model.Block) simple.Block {
 	if file := m.GetFile(); file != nil {
-		if file.State == model.BlockContentFile_Uploading {
-			if file.Hash != "" {
-				file.State = model.BlockContentFile_Done
-			} else {
-				file.State = model.BlockContentFile_Error
-			}
-		}
 		return &File{
 			Base:    base.NewBase(m).(*base.Base),
 			content: file,

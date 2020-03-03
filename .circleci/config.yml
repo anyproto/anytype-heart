@@ -111,7 +111,7 @@ jobs:
             OUT=~/dist/lib
             mkdir -p ${OUT}
             mkdir -p tmp
-            make protos_deps
+            make protos-deps
             cd tmp
             mkdir protos
             cp ../pb/protos/*.proto protos
@@ -220,7 +220,7 @@ jobs:
             # workaround for gox putting .exe ext
             mv windows-amd64.a.exe windows-amd64.a
             mv windows-amd64.a.h windows-amd64.h
-            make protos_deps
+            make protos-deps
       - save_cache:
           key: go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
           paths:
@@ -351,7 +351,7 @@ jobs:
             source ./source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
-            make protos_deps
+            make protos-deps
             mkdir -p ~/go/src/github.com/anytypeio
             cd ~ && mv project go/src/github.com/anytypeio/go-anytype-middleware
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
@@ -446,7 +446,7 @@ jobs:
             source ./source.env
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             go mod vendor
-            make protos_deps
+            make protos-deps
             mkdir -p ~/go/src/github.com/anytypeio
             cd ~ && mv project ~/go/src/github.com/anytypeio/go-anytype-middleware
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware

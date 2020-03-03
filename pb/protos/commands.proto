@@ -17,8 +17,9 @@ message Rpc {
         message Files {
             message Request {
                 string contextId = 1;
-                string focusedBlockId = 2; // can be null
-                repeated string localFilePaths = 3;
+                string dropTargetId = 2;
+                anytype.model.Block.Position position = 3;
+                repeated string localFilePaths = 4;
             }
 
             message Response {
@@ -1538,6 +1539,30 @@ message Rpc {
             }
         }
     }
+
+    message Process {
+        message Cancel {
+            message Request {
+                string id = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+    }
+
 
     message LinkPreview {
         message Request {

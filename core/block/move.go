@@ -14,52 +14,12 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 
 	s := p.newState()
 
-	if findPosInSlice(req.BlockIds, req.DropTargetId) != -1 {
-		return fmt.Errorf("blockIds contains targetId")
-	}
-
 	if err = p.cut(s, req.BlockIds...); err != nil {
 		return
 	}
 
-	target := s.get(req.DropTargetId)
-	if target == nil {
-		return fmt.Errorf("target block %s not found", req.DropTargetId)
-	}
-	targetParent := s.findParentOf(req.DropTargetId)
-	if targetParent == nil {
-		return fmt.Errorf("target has not parent")
-	}
-	targetParentM := targetParent.Model()
-
-	targetPos := findPosInSlice(targetParentM.ChildrenIds, target.Model().Id)
-	if targetPos == -1 {
-		return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, targetParentM.Id)
-	}
-
-	var pos int
-	insertPos := func() {
-		for _, id := range req.BlockIds {
-			targetParentM.ChildrenIds = insertToSlice(targetParentM.ChildrenIds, id, pos)
-			pos++
-		}
-	}
-
-	switch req.Position {
-	case model.Block_Bottom:
-		pos = targetPos + 1
-		insertPos()
-	case model.Block_Top:
-		pos = targetPos
-		insertPos()
-	case model.Block_Left, model.Block_Right:
-		if err = p.moveFromSide(s, target, req.Position, req.BlockIds...); err != nil {
-			return
-		}
-	case model.Block_Inner:
-		target.Model().ChildrenIds = append(target.Model().ChildrenIds, req.BlockIds...)
-	default:
-		return fmt.Errorf("unexpected position")
+	if err = p.insertTo(s, req.DropTargetId, req.Position, req.BlockIds...); err != nil {
+		return
 	}
 	return p.applyAndSendEvent(s)
 }
@@ -67,9 +27,7 @@ func (p *commonSmart) Move(req pb.RpcBlockListMoveRequest) (err error) {
 func (p *commonSmart) cut(s *state, ids ...string) (err error) {
 	for _, id := range ids {
 		if b := s.get(id); b != nil {
-			if parent := s.findParentOf(id); parent != nil {
-				parent.Model().ChildrenIds = removeFromSlice(parent.Model().ChildrenIds, id)
-			}
+			s.removeFromChilds(id)
 		} else {
 			err = fmt.Errorf("block '%s' not found", id)
 			return
