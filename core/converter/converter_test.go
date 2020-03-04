@@ -1,9 +1,9 @@
 package converter_test
 
 import (
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -18,8 +18,7 @@ func TestConverter_ProcessTree(t *testing.T) {
 
 		newTree := W.CreateTree(blocks)
 
-		fmt.Println("TREE:", newTree)
-		fmt.Println("TREE:", W.PrintNode(&newTree))
+		assert.NotEmpty(t, W.PrintNode(&newTree))
 	})
 
 
@@ -36,9 +35,8 @@ func TestConverter_ProcessTree(t *testing.T) {
 
 		newTree := W.CreateTree(blocks)
 
-		fmt.Println("TREE:", newTree)
 		images := make(map[string][]byte)
-		fmt.Println("TREE:", W.ProcessTree(&newTree, images))
+		assert.NotEmpty(t, W.ProcessTree(&newTree, images))
 	})
 
 	t.Run("Tree: medium", func(t *testing.T) {
@@ -57,9 +55,8 @@ func TestConverter_ProcessTree(t *testing.T) {
 
 		newTree := W.CreateTree(blocks)
 
-		fmt.Println("TREE:", newTree)
 		images := make(map[string][]byte)
-		fmt.Println("HTML:", W.ProcessTree(&newTree, images))
+		assert.NotEmpty(t, W.ProcessTree(&newTree, images))
 	})
 }
 
@@ -73,11 +70,10 @@ func TestConverter_Convert(t *testing.T) {
 			{Id: "5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "555"}}},
 		}
 
-		fmt.Println("blocks:", blocks)
 
 		W := converter.New()
 		images := make(map[string][]byte)
-		fmt.Println("TREE:", W.Convert(blocks, images))
+		assert.NotEmpty(t, W.Convert(blocks, images))
 	})
 
 	t.Run("No structure", func(t *testing.T) {
@@ -86,29 +82,29 @@ func TestConverter_Convert(t *testing.T) {
 			{Id: "2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "222"}}},
 		}
 
-		fmt.Println("blocks:", blocks)
 
 		W := converter.New()
 		images := make(map[string][]byte)
-		fmt.Println("TREE:", W.Convert(blocks, images))
+
+		assert.NotEmpty(t, W.Convert(blocks, images))
 	})
 
 	t.Run("Layout", func(t *testing.T) {
 		blocks := []*model.Block{
 			{
-				Id: "1",
-				ChildrenIds: []string{ "2", "3" },
-				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Column}},
+				Id:          "1",
+				ChildrenIds: []string{"2", "3"},
+				Content:     &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Column}},
 			},
 
 			{
-				Id: "3",
-				ChildrenIds: []string{ "4", "5" },
-				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Row}},
+				Id:          "3",
+				ChildrenIds: []string{"4", "5"},
+				Content:     &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Row}},
 			},
 
 			{
-				Id: "4",
+				Id:      "4",
 				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "abcdef"}},
 			},
 
@@ -123,14 +119,12 @@ func TestConverter_Convert(t *testing.T) {
 			},
 		}
 
-		fmt.Println("blocks:", blocks)
-
 		W := converter.New()
 
 		images := make(map[string][]byte)
 		images["Qmcm5gdPCMDRAgmHdnduWB93Qk1X4RyUrsjFXjeAchnGcZ"] = []byte{0, 0, 0, 0, 0}
 
-		fmt.Println("TREE:", W.Convert(blocks, images))
+		assert.NotEmpty(t, W.Convert(blocks, images))
 	})
 
 }

@@ -1,7 +1,6 @@
 package block
 
 import (
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/require"
@@ -94,7 +93,6 @@ func checkBlockMarks(t *testing.T, fx *pageFixture, marksArr [][]*model.BlockCon
 			}
 		}
 	}
-	fmt.Print("\n")
 }
 
 func checkBlockTextAndStyle(t *testing.T, fx *pageFixture, textArr []string)  {
@@ -110,7 +108,6 @@ func checkBlockTextAndStyle(t *testing.T, fx *pageFixture, textArr []string)  {
 		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
 		//fmt.Println( i, ": ",fx.versions[id].Model().String() )
 	}
-	fmt.Print("\n")
 }
 
 func pasteAny(t *testing.T, fx *pageFixture, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
