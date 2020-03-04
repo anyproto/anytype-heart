@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
@@ -11,18 +12,26 @@ import (
 )
 
 func (a *Anytype) GetBlock(id string) (Block, error) {
-	_, err := thread.Decode(id)
-	if err == nil {
-		smartBlock, err := a.GetSmartBlock(id)
-		if err != nil {
-			return nil, err
-		}
+	parts := strings.Split(id, "/")
 
-		return smartBlock, nil
+	_, err := thread.Decode(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("incorrect block id: %w", err)
+	}
+	smartBlock, err := a.GetSmartBlock(parts[0])
+	if err != nil {
+		return nil, err
 	}
 
-	// todo: allow to query simple blocks via smart blocks
-	return nil, fmt.Errorf("for now only smartblocks are queriable")
+	if len(parts)>1{
+		return &SimpleBlock{
+			id: parts[len(parts)-1],
+			parentSmartBlock:smartBlock,
+			node: a,
+		}, nil
+	}
+
+	return smartBlock, nil
 }
 
 func isSmartBlock(block *model.Block) bool {

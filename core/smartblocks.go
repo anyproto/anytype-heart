@@ -7,8 +7,11 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/service"
+	"github.com/textileio/go-threads/crypto/symmetric"
 
 	"github.com/textileio/go-threads/core/thread"
+
 )
 
 var ErrorNoBlockVersionsFound = fmt.Errorf("no block versions found")
@@ -18,7 +21,17 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 	if err != nil {
 		return thread.Info{}, err
 	}
-	return a.ts.CreateThread(context.TODO(), thrdId)
+	followKey, err := symmetric.CreateKey()
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	readKey, err := symmetric.CreateKey()
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	return a.ts.CreateThread(context.TODO(), thrdId, service.FollowKey(followKey), service.ReadKey(readKey))
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*SmartBlock, error) {
