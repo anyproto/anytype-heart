@@ -1,6 +1,5 @@
 package block
 
-import "C"
 import (
 	"errors"
 	"github.com/anytypeio/go-anytype-library/pb/model"
