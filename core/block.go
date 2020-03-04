@@ -122,7 +122,19 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 		return m
 	}
 
-	html, err := mw.blockService.Copy(*req)
+	images := make(map[string][]byte)
+	for _, b := range req.Blocks {
+		if file := b.GetFile(); file != nil {
+			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
+					Hash: file.Hash,
+			}
+			resp := mw.ImageGetBlob(getBlobReq)
+
+			images[file.Hash] = resp.Blob
+		}
+	}
+
+	html, err := mw.blockService.Copy(*req, images)
 
 	if err != nil {
 		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)

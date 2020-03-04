@@ -1,7 +1,6 @@
 package block
 
 import (
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/require"
@@ -94,7 +93,6 @@ func checkBlockMarks(t *testing.T, fx *pageFixture, marksArr [][]*model.BlockCon
 			}
 		}
 	}
-	fmt.Print("\n")
 }
 
 func checkBlockTextAndStyle(t *testing.T, fx *pageFixture, textArr []string)  {
@@ -110,7 +108,6 @@ func checkBlockTextAndStyle(t *testing.T, fx *pageFixture, textArr []string)  {
 		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
 		//fmt.Println( i, ": ",fx.versions[id].Model().String() )
 	}
-	fmt.Print("\n")
 }
 
 func pasteAny(t *testing.T, fx *pageFixture, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
@@ -538,7 +535,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteAny(t, fx, "4", model.Range{From:0, To:0}, []string{}, createBlocks([]string{ "aaaaa",  "bbbbb" }));
 
-		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555" });
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb",  "55555" });
 		checkEvents(t, fx, 2, 6)
 	})
 
@@ -596,7 +593,7 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 		fx := createPage(t, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" })
 		pasteText(t, fx, "4", model.Range{From:0, To:0}, []string{}, "aaaaa\nbbbbb");
 
-		checkBlockText(t, fx, []string{ "11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555" });
+		checkBlockText(t, fx, []string{ "11111", "22222", "33333",  "qwerty", "aaaaa", "bbbbb", "55555" });
 	})
 
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {

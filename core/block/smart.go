@@ -40,7 +40,7 @@ type smartBlock interface {
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
+	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Replace(id string, block *model.Block) (newId string, err error)
 	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error

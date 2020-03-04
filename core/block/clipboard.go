@@ -2,7 +2,6 @@ package block
 
 import (
 	"errors"
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
@@ -35,9 +34,9 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 	}
 }
 
-func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
-	C := converter.New()
-	return C.Convert(req.Blocks), nil
+func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+	conv := converter.New()
+	return conv.Convert(req.Blocks, images), nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
@@ -74,10 +73,10 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string,
 		})
 	}
 
-	fmt.Println("BLOCKS text:", req.AnySlot)
+	log.Debug("BLOCKS text:", req.AnySlot)
 
 	blockIds, err = p.pasteAny(req)
-	fmt.Println("ERROR pasteAny:", err)
+	log.Error("ERROR pasteAny:", err)
 	return blockIds, err
 
 }
@@ -155,11 +154,9 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 							return out
 						}
 
-						fmt.Println("NEXT:", getNextBlockId(req.FocusedBlockId))
-						//req.FocusedBlockId = getNextBlockId(req.FocusedBlockId)
+						log.Debug("NEXT:", getNextBlockId(req.FocusedBlockId))
 						req.SelectedTextRange.From = 0
 						req.SelectedTextRange.To = 0
-						//return p.pasteAny(req)
 						blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
 						if err != nil {
 							return blockIds, err
@@ -184,6 +181,11 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 		if req.SelectedTextRange == nil {
 			req.SelectedTextRange = &model.Range{From:0, To:0}
 		}
+
+		if content.Text.Marks == nil {
+			content.Text.Marks = &model.BlockContentTextMarks{Marks:[]*model.BlockContentTextMark{}}
+		}
+
 		err = p.rangeTextPaste(s,
 			req.FocusedBlockId,
 			req.SelectedTextRange.From,
@@ -202,6 +204,15 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 
 		// selected text -> remove it and split the block
 	} else if len(req.FocusedBlockId) > 0 && len(req.AnySlot) > 1 {
+
+		if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 {
+			blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
+			if err != nil {
+				return blockIds, err
+			} else {
+				return blockIds, p.applyAndSendEvent(s)
+			}
+		}
 
 		// split block
 		_, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To)
