@@ -7,6 +7,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 )
 var (
@@ -76,10 +79,9 @@ func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err err
 
 		b := p.versions[id].Model()
 		blocks = append(blocks, b)
-		switch c := b.Content.(type) {
 
-		case *model.BlockContentOfFile:
-			if c.File.Type == model.BlockContentFile_Image {
+		if  file := b.GetFile(); file != nil {
+			if file.Type == model.BlockContentFile_Image {
 				fh, err := p.s.anytype.FileByHash(id)
 				if err != nil {
 					return "", err
@@ -90,16 +92,24 @@ func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err err
 					return "", err
 				}
 
-				reader.Read(images[c.File.Hash])
+				reader.Read(images[file.Hash])
 			}
 		}
 	}
 
-	//conv := converter.New()
-	//html := conv.Convert(blocks, images)
-	// TODO: #243
+	conv := converter.New()
+	html := conv.Convert(blocks, images)
 
-	return path, nil
+	dir := os.TempDir()
+	fileName := "export-" + p.GetId() + ".html"
+	file, err := ioutil.TempFile(dir, fileName)
+	file.Write([]byte(html))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return filepath.Join(dir, fileName), nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
