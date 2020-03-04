@@ -1,8 +1,8 @@
 package block
 
+import "C"
 import (
 	"errors"
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
@@ -36,8 +36,8 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 }
 
 func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
-	C := converter.New()
-	return C.Convert(req.Blocks, images), nil
+	conv := converter.New()
+	return conv.Convert(req.Blocks, images), nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
@@ -74,10 +74,10 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string,
 		})
 	}
 
-	fmt.Println("BLOCKS text:", req.AnySlot)
+	log.Info("BLOCKS text:", req.AnySlot)
 
 	blockIds, err = p.pasteAny(req)
-	fmt.Println("ERROR pasteAny:", err)
+	log.Error("ERROR pasteAny:", err)
 	return blockIds, err
 
 }
@@ -155,7 +155,7 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 							return out
 						}
 
-						fmt.Println("NEXT:", getNextBlockId(req.FocusedBlockId))
+						log.Info("NEXT:", getNextBlockId(req.FocusedBlockId))
 						req.SelectedTextRange.From = 0
 						req.SelectedTextRange.To = 0
 						blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)

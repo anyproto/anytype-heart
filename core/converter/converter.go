@@ -2,13 +2,14 @@ package converter
 
 import (
 	"encoding/base64"
-	"fmt"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
+	logging "github.com/ipfs/go-log"
 	"github.com/yosssi/gohtml"
 	"strconv"
 )
 
+var log = logging.Logger("anytype-converter")
 
 type Node struct {
 	Id     string
@@ -68,7 +69,7 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 	// 1. Create map
 	for _, b := range blocks {
 		c.nodeTable[b.Id] = &Node{b.Id, b,[]*Node{} }
-		fmt.Println("c.nodeTable", b.Id, c.nodeTable[b.Id])
+		log.Info("c.nodeTable", b.Id, c.nodeTable[b.Id])
 	}
 
 
@@ -89,7 +90,7 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 		}
 	}
 
-	fmt.Println("ROOT LEVEL:", blocksRootLvl)
+	log.Info("ROOT LEVEL:", blocksRootLvl)
 
 	// 4. Create root
 	c.rootNode.model = &model.Block{ChildrenIds:[]string{}}
@@ -102,10 +103,10 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 		c.remainBlocks = c.filterById(c.remainBlocks, br.Id)
 	}
 
-	fmt.Println("ROOT NODE BEFORE:", c.rootNode)
+	log.Info("ROOT NODE BEFORE:", c.rootNode)
 	c.rootNode = c.nextTreeLayer(c.rootNode)
 
-	fmt.Println("ROOT NODE AFTER:", c.rootNode)
+	log.Info("ROOT NODE AFTER:", c.rootNode)
 
 	return *c.rootNode
 }
@@ -117,7 +118,7 @@ func contains(s []*Node, e *Node) bool {
 
 	if len(s) > 0 {
 		for i:= 0; i < len(s); i++ {
-			fmt.Println(">>>", i, "len(s)", len(s), s[i])
+			log.Info(">>>", i, "len(s)", len(s), s[i])
 			if s[i] != nil && s[i].Id == e.Id {
 				return true
 			}
@@ -402,7 +403,7 @@ func renderFile(isOpened bool, child *model.BlockContentOfFile, images map[strin
 			// TODO: child.File.Size_
 			// TODO: child.File.Mime
 			img := images[child.File.Hash]
-			fmt.Println("IMAGES MAP:", "HASH:", child.File.Hash,  "|||", images)
+			log.Info("IMAGES MAP:", "HASH:", child.File.Hash,  "|||", images)
 			if img != nil {
 				encodedImg := base64.StdEncoding.EncodeToString(img)
 				out = `<img src="data:image/png;base64, ` + encodedImg + `" alt="` + child.File.Name + `" />`
