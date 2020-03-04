@@ -179,17 +179,13 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 
 	images := make(map[string][]byte)
 	for _, b := range req.Blocks {
-		switch c := b.Content.(type) {
-
-		case *model.BlockContentOfFile:
-			if b.GetFile().Type == model.BlockContentFile_Image {
-				getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
-					Hash: c.File.Hash,
-				}
-				resp := mw.ImageGetBlob(getBlobReq)
-
-				images[c.File.Hash] = resp.Blob
+		if file := b.GetFile(); file != nil {
+			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
+				Hash: file.Hash,
 			}
+			resp := mw.ImageGetBlob(getBlobReq)
+
+			images[file.Hash] = resp.Blob
 		}
 	}
 

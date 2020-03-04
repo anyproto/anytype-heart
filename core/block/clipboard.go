@@ -105,7 +105,7 @@ func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err err
 	file.Write([]byte(html))
 
 	if err != nil {
-		log.Fatal(err)
+		log.Warning(err)
 		return "", err
 	}
 
