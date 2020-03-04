@@ -1,6 +1,5 @@
 package block
 
-import "C"
 import (
 	"errors"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -98,7 +97,7 @@ func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err err
 	}
 
 	conv := converter.New()
-	html := conv.Convert(blocks, images)
+	html := conv.Export(blocks, images)
 
 	dir := os.TempDir()
 	fileName := "export-" + p.GetId() + ".html"

@@ -28,11 +28,11 @@ type Converter interface {
 	ProcessTree (node *Node, images map[string][]byte) (out string)
 	PrintNode (node *Node) (out string)
 	Convert (blocks []*model.Block, images map[string][]byte) (out string)
+	Export (blocks []*model.Block, images map[string][]byte) (out string)
 
 	nextTreeLayer (node *Node) (processedNode *Node)
 	filterById (blocks []*model.Block, id string) (out []*model.Block)
 }
-
 
 func New() Converter {
 	c := &converter{
@@ -43,7 +43,6 @@ func New() Converter {
 
 	return c
 }
-
 
 func (c *converter) filterById (blocks []*model.Block, Id string) (out []*model.Block) {
 	for _, b := range blocks {
@@ -71,8 +70,6 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 		c.nodeTable[b.Id] = &Node{b.Id, b,[]*Node{} }
 		log.Debug("c.nodeTable", b.Id, c.nodeTable[b.Id])
 	}
-
-
 
 	// 2. Fill children field
 	for _, b := range blocks {
@@ -545,6 +542,12 @@ func wrapCopyHtml (innerHtml string) string {
 	return output
 }
 
+func (c *converter) Export (blocks []*model.Block, images map[string][]byte) (out string) {
+	tree := c.CreateTree(blocks)
+	html := c.ProcessTree(&tree, images)
+
+	return wrapExportHtml(gohtml.Format(html))
+}
 
 func (c *converter) Convert (blocks []*model.Block, images map[string][]byte) (out string) {
 	tree := c.CreateTree(blocks)
