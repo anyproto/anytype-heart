@@ -54,6 +54,7 @@ type Service interface {
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Export(req pb.RpcBlockExportRequest) (html string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -326,6 +327,15 @@ func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (text
 	}
 	defer release()
 	return sb.Cut(req, images)
+}
+
+func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte) (html string, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.Export(req, images)
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {

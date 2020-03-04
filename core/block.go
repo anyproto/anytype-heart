@@ -129,7 +129,7 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 
 		case *model.BlockContentOfFile:
 			if b.GetFile().Type == model.BlockContentFile_Image {
-					getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
+				getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
 					Hash: c.File.Hash,
 				}
 				resp := mw.ImageGetBlob(getBlobReq)
@@ -205,6 +205,28 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 	}
 
 	return response(pb.RpcBlockCutResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
+}
+
+func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
+	response := func(code pb.RpcBlockExportResponseErrorCode, path string, err error) *pb.RpcBlockExportResponse {
+		m := &pb.RpcBlockExportResponse{
+			Error: &pb.RpcBlockExportResponseError{Code: code},
+			Path: path,
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	path, err := mw.blockService.Export(*req)
+
+	if err != nil {
+		return response(pb.RpcBlockExportResponseError_UNKNOWN_ERROR, path, err)
+	}
+
+	return response(pb.RpcBlockExportResponseError_NULL, "", nil)
 }
 
 func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {

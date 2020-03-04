@@ -64,6 +64,10 @@
     - [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request)
     - [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response)
     - [Rpc.Block.Download.Response.Error](#anytype.Rpc.Block.Download.Response.Error)
+    - [Rpc.Block.Export](#anytype.Rpc.Block.Export)
+    - [Rpc.Block.Export.Request](#anytype.Rpc.Block.Export.Request)
+    - [Rpc.Block.Export.Response](#anytype.Rpc.Block.Export.Response)
+    - [Rpc.Block.Export.Response.Error](#anytype.Rpc.Block.Export.Response.Error)
     - [Rpc.Block.Get](#anytype.Rpc.Block.Get)
     - [Rpc.Block.Get.Marks](#anytype.Rpc.Block.Get.Marks)
     - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
@@ -280,6 +284,7 @@
     - [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code)
     - [Rpc.Block.CutBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.CutBreadcrumbs.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
+    - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype.Rpc.Block.Merge.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
@@ -502,6 +507,7 @@
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
 | BlockPaste | [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request) | [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response) |  |
 | BlockCut | [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request) | [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response) |  |
+| BlockExport | [Rpc.Block.Export.Request](#anytype.Rpc.Block.Export.Request) | [Rpc.Block.Export.Response](#anytype.Rpc.Block.Export.Response) |  |
 | BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
 | BlockSetImageName | [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request) | [Rpc.Block.Set.Image.Name.Response](#anytype.Rpc.Block.Set.Image.Name.Response) |  |
 | BlockSetImageWidth | [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request) | [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response) |  |
@@ -1278,6 +1284,63 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Export"></a>
+
+### Rpc.Block.Export
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Export.Request"></a>
+
+### Rpc.Block.Export.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Export.Response"></a>
+
+### Rpc.Block.Export.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Export.Response.Error](#anytype.Rpc.Block.Export.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Export.Response.Error"></a>
+
+### Rpc.Block.Export.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4309,6 +4372,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Download.Response.Error.Code"></a>
 
 ### Rpc.Block.Download.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Export.Response.Error.Code"></a>
+
+### Rpc.Block.Export.Response.Error.Code
 
 
 | Name | Number | Description |

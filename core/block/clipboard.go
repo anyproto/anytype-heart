@@ -67,6 +67,41 @@ func (p *commonSmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (
 	return textSlot, htmlSlot, anySlot, p.applyAndSendEvent(s)
 }
 
+func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+
+	images := make(map[string][]byte)
+	cIds := p.versions[p.GetId()].Model().ChildrenIds
+	var blocks []*model.Block
+	for _, id := range cIds {
+
+		b := p.versions[id].Model()
+		blocks = append(blocks, b)
+		switch c := b.Content.(type) {
+
+		case *model.BlockContentOfFile:
+			if c.File.Type == model.BlockContentFile_Image {
+				fh, err := p.s.anytype.FileByHash(id)
+				if err != nil {
+					return "", err
+				}
+
+				reader, err := fh.Reader()
+				if err != nil {
+					return "", err
+				}
+
+				reader.Read(images[c.File.Hash])
+			}
+		}
+	}
+
+	//conv := converter.New()
+	//html := conv.Convert(blocks, images)
+	// TODO: #243
+
+	return path, nil
+}
+
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))

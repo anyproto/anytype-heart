@@ -94,6 +94,11 @@ func (e emptySmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (te
 	return
 }
 
+func (e emptySmart) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+	err = errEmptyBlock
+	return
+}
+
 func (e emptySmart) Replace(id string, block *model.Block) (newId string, err error) {
 	err = errEmptyBlock
 	return
