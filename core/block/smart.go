@@ -42,6 +42,7 @@ type smartBlock interface {
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
+	Export(req pb.RpcBlockExportRequest) (string, error)
 	Replace(id string, block *model.Block) (newId string, err error)
 	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
@@ -53,7 +54,6 @@ type smartBlock interface {
 	Redo() error
 	Close() error
 	Anytype() anytype.Anytype
-
 }
 
 type smartBlockType int
@@ -603,10 +603,6 @@ func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blo
 	t, err := s.getText(id)
 	if err != nil {
 		return "", err
-	}
-
-	if from == 0 && to == 0 {
-
 	}
 
 	newBlocks, text, err := t.RangeSplit(from, to)

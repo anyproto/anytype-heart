@@ -107,6 +107,7 @@ func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err err
 
 	if err != nil {
 		log.Fatal(err)
+		return "", err
 	}
 
 	return filepath.Join(dir, fileName), nil
@@ -146,7 +147,7 @@ func (p *commonSmart) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string,
 		})
 	}
 
-	log.Info("BLOCKS text:", req.AnySlot)
+	log.Debug("BLOCKS text:", req.AnySlot)
 
 	blockIds, err = p.pasteAny(req)
 	log.Error("ERROR pasteAny:", err)
@@ -227,7 +228,7 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 							return out
 						}
 
-						log.Info("NEXT:", getNextBlockId(req.FocusedBlockId))
+						log.Debug("NEXT:", getNextBlockId(req.FocusedBlockId))
 						req.SelectedTextRange.From = 0
 						req.SelectedTextRange.To = 0
 						blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)

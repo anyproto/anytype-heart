@@ -29,5 +29,4 @@ func TestConvertBlocks(t *testing.T) {
 	}
 
 	assert.NotEmpty(t, BR.GetBlocks())
-	assert.NotEmpty(t, b)
 }

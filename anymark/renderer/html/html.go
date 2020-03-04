@@ -231,7 +231,7 @@ func (r *Renderer) renderHeading(w blocksUtil.RWriter, source []byte, node ast.N
 	n := node.(*ast.Heading)
 
 	var style model.BlockContentTextStyle
-	//log.Info("LVL:", n.Level)
+
 	switch n.Level {
 	case 1:
 		style = model.BlockContentText_Header1
@@ -270,7 +270,7 @@ func (r *Renderer) renderBlockquote(w blocksUtil.RWriter, source []byte, n ast.N
 }
 
 func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	log.Info("renderCodeBlock")
+	log.Debug("renderCodeBlock")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
@@ -296,7 +296,8 @@ func (r *Renderer) renderFencedCodeBlock(w blocksUtil.RWriter, source []byte, no
 	}
 	return ast.WalkContinue, nil
 
-	log.Info("renderFencedCodeBlock")
+	log.Debug("renderFencedCodeBlock")
+
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
@@ -407,7 +408,7 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 	w.SetMarkStart()
 
 	start := int32(utf8.RuneCountInString(w.GetText()))
-	log.Info(">>> DEBUG:", "\n     text:", "\n     ", w.GetText(), "\n     length:", start, int32(len(w.GetText())))
+	log.Debug("DEBUG:", "\n     text:", "\n     ", w.GetText(), "\n     length:", start, int32(len(w.GetText())))
 
 	labelLength := int32(utf8.RuneCount(label))
 	w.AddMark(model.BlockContentTextMark{
@@ -424,7 +425,7 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 var CodeAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	log.Info("renderCodeSpan")
+	log.Debug("renderCodeSpan")
 
 	if entering {
 		w.SetMarkStart()

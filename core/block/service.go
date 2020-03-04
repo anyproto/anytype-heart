@@ -329,13 +329,13 @@ func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (text
 	return sb.Cut(req, images)
 }
 
-func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte) (html string, err error) {
+func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return
 	}
 	defer release()
-	return sb.Export(req, images)
+	return sb.Export(req)
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {

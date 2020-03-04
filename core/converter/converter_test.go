@@ -14,11 +14,11 @@ func TestConverter_ProcessTree(t *testing.T) {
 			{Id:"2", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
 		}
 
-		W := converter.New()
+		conv := converter.New()
 
-		newTree := W.CreateTree(blocks)
+		newTree := conv.CreateTree(blocks)
 
-		assert.NotEmpty(t, W.PrintNode(&newTree))
+		assert.NotEmpty(t, conv.PrintNode(&newTree))
 	})
 
 
@@ -31,12 +31,12 @@ func TestConverter_ProcessTree(t *testing.T) {
 			{Id:"5", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"555"}}},
 		}
 
-		W := converter.New()
+		conv := converter.New()
 
-		newTree := W.CreateTree(blocks)
+		newTree := conv.CreateTree(blocks)
 
 		images := make(map[string][]byte)
-		assert.NotEmpty(t, W.ProcessTree(&newTree, images))
+		assert.NotEmpty(t, conv.ProcessTree(&newTree, images))
 	})
 
 	t.Run("Tree: medium", func(t *testing.T) {
@@ -51,12 +51,12 @@ func TestConverter_ProcessTree(t *testing.T) {
 			{Id:"8", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"888"}}},
 		}
 
-		W := converter.New()
+		conv := converter.New()
 
-		newTree := W.CreateTree(blocks)
+		newTree := conv.CreateTree(blocks)
 
 		images := make(map[string][]byte)
-		assert.NotEmpty(t, W.ProcessTree(&newTree, images))
+		assert.NotEmpty(t, conv.ProcessTree(&newTree, images))
 	})
 }
 
@@ -71,9 +71,9 @@ func TestConverter_Convert(t *testing.T) {
 		}
 
 
-		W := converter.New()
+		conv := converter.New()
 		images := make(map[string][]byte)
-		assert.NotEmpty(t, W.Convert(blocks, images))
+		assert.NotEmpty(t, conv.Convert(blocks, images))
 	})
 
 	t.Run("No structure", func(t *testing.T) {
@@ -83,10 +83,10 @@ func TestConverter_Convert(t *testing.T) {
 		}
 
 
-		W := converter.New()
+		conv := converter.New()
 		images := make(map[string][]byte)
 
-		assert.NotEmpty(t, W.Convert(blocks, images))
+		assert.NotEmpty(t, conv.Convert(blocks, images))
 	})
 
 	t.Run("Layout", func(t *testing.T) {
@@ -119,12 +119,12 @@ func TestConverter_Convert(t *testing.T) {
 			},
 		}
 
-		W := converter.New()
+		conv := converter.New()
 
 		images := make(map[string][]byte)
 		images["Qmcm5gdPCMDRAgmHdnduWB93Qk1X4RyUrsjFXjeAchnGcZ"] = []byte{0, 0, 0, 0, 0}
 
-		assert.NotEmpty(t, W.Convert(blocks, images))
+		assert.NotEmpty(t, conv.Convert(blocks, images))
 	})
 
 }
