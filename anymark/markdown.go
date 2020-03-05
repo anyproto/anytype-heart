@@ -51,7 +51,7 @@ type Markdown interface {
 	// contents to a writer w.
 	Convert(source []byte, writer io.Writer, opts ...parser.ParseOption) error
 
-	ConvertBlocks(source []byte, BR blocksUtil.RWriter, opts ...parser.ParseOption) error
+	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
 	HTMLToBlocks(source []byte) (error, []*model.Block)
 
 	// Parser returns a Parser that will be used for conversion.
@@ -132,17 +132,17 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 	doc := m.parser.Parse(reader, opts...)
 
 	writer := bufio.NewWriter(w)
-	BR := blocksUtil.NewRWriter(writer)
-	//BR := blocksUtil.ExtendWriter(writer, &rState)
+	bWriter := blocksUtil.NewRWriter(writer)
+	//bWriter := blocksUtil.ExtendWriter(writer, &rState)
 
-	return m.renderer.Render(BR, source, doc)
+	return m.renderer.Render(bWriter, source, doc)
 }
 
-func (m *markdown) ConvertBlocks(source []byte, BR blocksUtil.RWriter, opts ...parser.ParseOption) error {
+func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error {
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
 
-	return m.renderer.Render(BR, source, doc)
+	return m.renderer.Render(bWriter, source, doc)
 }
 
 func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
@@ -208,14 +208,14 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer)
+	bWriter := blocksUtil.NewRWriter(writer)
 
-	err := m.ConvertBlocks([]byte(md), BR)
+	err := m.ConvertBlocks([]byte(md), bWriter)
 	if err != nil {
 		return err, nil
 	}
 
-	return nil, BR.GetBlocks()
+	return nil, bWriter.GetBlocks()
 }
 
 func (m *markdown) Parser() parser.Parser {

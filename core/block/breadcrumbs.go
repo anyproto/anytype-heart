@@ -154,7 +154,7 @@ func (b *breadcrumbs) OnSmartOpen(id string) {
 	return
 }
 
-func (b *breadcrumbs) Cut(index int) (err error) {
+func (b *breadcrumbs) BreadcrumbsCut(index int) (err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if index < 0 {

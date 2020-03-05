@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -122,19 +123,7 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 		return m
 	}
 
-	images := make(map[string][]byte)
-	for _, b := range req.Blocks {
-		if file := b.GetFile(); file != nil {
-			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
-					Hash: file.Hash,
-			}
-			resp := mw.ImageGetBlob(getBlobReq)
-
-			images[file.Hash] = resp.Blob
-		}
-	}
-
-	html, err := mw.blockService.Copy(*req, images)
+	html, err := mw.blockService.Copy(*req)
 
 	if err != nil {
 		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)
@@ -159,6 +148,53 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 	}
 
 	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, nil)
+}
+
+func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
+	response := func(code pb.RpcBlockCutResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCutResponse {
+		m := &pb.RpcBlockCutResponse{
+			Error: &pb.RpcBlockCutResponseError{Code: code},
+			TextSlot: textSlot,
+			HtmlSlot: htmlSlot,
+			AnySlot: anySlot,
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	textSlot, htmlSlot, anySlot, err := mw.blockService.Cut(*req)
+
+	if err != nil {
+		var emptyAnySlot []*model.Block
+		return response(pb.RpcBlockCutResponseError_UNKNOWN_ERROR, "", "", emptyAnySlot, err)
+	}
+
+	return response(pb.RpcBlockCutResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
+}
+
+func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
+	response := func(code pb.RpcBlockExportResponseErrorCode, path string, err error) *pb.RpcBlockExportResponse {
+		m := &pb.RpcBlockExportResponse{
+			Error: &pb.RpcBlockExportResponseError{Code: code},
+			Path: path,
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	path, err := mw.blockService.Export(*req)
+
+	if err != nil {
+		return response(pb.RpcBlockExportResponseError_UNKNOWN_ERROR, path, err)
+	}
+
+	return response(pb.RpcBlockExportResponseError_NULL, "", nil)
 }
 
 func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {

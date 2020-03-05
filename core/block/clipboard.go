@@ -6,6 +6,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 )
 var (
@@ -34,9 +37,136 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 	}
 }
 
-func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
+	p.m.Lock()
+
+	blocksMap := make(map[string]*model.Block)
+	for _, b := range req.Blocks {
+		blocksMap[b.Id] = b
+	}
+
+	p.m.Unlock()
+
+	images, err := p.getImages(blocksMap)
+
+	if err != nil {
+		return "", err
+	}
+
 	conv := converter.New()
 	return conv.Convert(req.Blocks, images), nil
+}
+
+func (p *commonSmart) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	p.m.Lock()
+
+	s := p.newState()
+
+	blocksMap := make(map[string]*model.Block)
+	textSlot = ""
+	var ids []string
+
+	for _, b := range req.Blocks {
+		blocksMap[b.Id] = b
+
+		if text := b.GetText(); text != nil {
+			textSlot += text.Text + "\n"
+		}
+
+		ids = append(ids, b.Id)
+	}
+
+	if len(ids) > 0 {
+		if err := p.unlink(s, ids...); err != nil {
+			p.m.Unlock()
+			return textSlot, htmlSlot, anySlot, err
+		}
+	}
+
+	p.m.Unlock()
+
+	images, err := p.getImages(blocksMap)
+	if err != nil {
+		return textSlot, htmlSlot, anySlot, err
+	}
+
+	conv := converter.New()
+	htmlSlot = conv.Convert(req.Blocks, images)
+	anySlot = req.Blocks
+
+	return textSlot, htmlSlot, anySlot, p.applyAndSendEvent(s)
+}
+
+func (p *commonSmart) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block) {
+	blocksMapOut = blocksMapIn
+
+	for _, id := range ids {
+		b := p.versions[id].Copy().Model()
+
+		blocksMapOut[id] = b
+
+		if len(b.ChildrenIds) > 0 {
+			blocksMapOut = p.blocksTreeToMap(blocksMapOut, b.ChildrenIds)
+		}
+	}
+	return blocksMapOut
+}
+
+func (p *commonSmart) getImages (blocks map[string]*model.Block) (images map[string][]byte, err error) {
+	for _, b := range blocks {
+		if file := b.GetFile(); file != nil {
+			if file.Type == model.BlockContentFile_Image {
+				fh, err := p.s.anytype.FileByHash(file.Hash)
+				if err != nil {
+					return images, err
+				}
+
+				reader, err := fh.Reader()
+				if err != nil {
+					return images, err
+				}
+
+				reader.Read(images[file.Hash])
+			}
+		}
+	}
+
+	return images, nil
+}
+
+func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+	p.m.Lock()
+
+	cIds := p.versions[p.GetId()].Model().ChildrenIds
+
+	blocksMap := make(map[string]*model.Block)
+	blocksMap = p.blocksTreeToMap(blocksMap, cIds)
+
+	p.m.Unlock()
+
+	images, err := p.getImages(blocksMap)
+	if err != nil {
+		return "", err
+	}
+
+	var blocks []*model.Block
+	for _, b := range blocksMap {
+		blocks = append(blocks, b)
+	}
+	conv := converter.New()
+	html := conv.Export(blocks, images) // TODO
+
+	dir := os.TempDir()
+	fileName := "export-" + p.GetId() + ".html"
+	file, err := ioutil.TempFile(dir, fileName)
+	file.Write([]byte(html))
+
+	if err != nil {
+		log.Warning(err)
+		return "", err
+	}
+
+	return filepath.Join(dir, fileName), nil
 }
 
 func (p *commonSmart) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
