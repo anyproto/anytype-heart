@@ -39,9 +39,9 @@ type smartBlock interface {
 	Split(id string, pos int32) (blockId string, err error)
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
-	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
+	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 	Replace(id string, block *model.Block) (newId string, err error)
 	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)

@@ -123,19 +123,7 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 		return m
 	}
 
-	images := make(map[string][]byte)
-	for _, b := range req.Blocks {
-		if file := b.GetFile(); file != nil {
-			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
-					Hash: file.Hash,
-			}
-			resp := mw.ImageGetBlob(getBlobReq)
-
-			images[file.Hash] = resp.Blob
-		}
-	}
-
-	html, err := mw.blockService.Copy(*req, images)
+	html, err := mw.blockService.Copy(*req)
 
 	if err != nil {
 		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)
@@ -177,19 +165,7 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 		return m
 	}
 
-	images := make(map[string][]byte)
-	for _, b := range req.Blocks {
-		if file := b.GetFile(); file != nil {
-			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
-				Hash: file.Hash,
-			}
-			resp := mw.ImageGetBlob(getBlobReq)
-
-			images[file.Hash] = resp.Blob
-		}
-	}
-
-	textSlot, htmlSlot, anySlot, err := mw.blockService.Cut(*req, images)
+	textSlot, htmlSlot, anySlot, err := mw.blockService.Cut(*req)
 
 	if err != nil {
 		var emptyAnySlot []*model.Block

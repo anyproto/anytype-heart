@@ -37,20 +37,52 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 	}
 }
 
-func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
+	p.m.Lock()
+
+	var blocksMap map[string]*model.Block
+	for _, b := range req.Blocks {
+		blocksMap[b.Id] = b
+	}
+
+	p.m.Unlock()
+
+	images, err := p.getImages(blocksMap)
+
+	if err != nil {
+		return "", err
+	}
+
 	conv := converter.New()
 	return conv.Convert(req.Blocks, images), nil
 }
 
-func (p *commonSmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (p *commonSmart) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	p.m.Lock()
+
 	s := p.newState()
+
+	var blocksMap map[string]*model.Block
+	for _, b := range req.Blocks {
+		blocksMap[b.Id] = b
+	}
+
+	p.m.Unlock()
+	images, err := p.getImages(blocksMap)
+
+	if err != nil {
+		return textSlot, htmlSlot, anySlot, err
+	}
+
+	p.m.Lock()
+
 	textSlot = ""
 	for _, b := range req.Blocks {
-		switch text := b.Content.(type) {
-		case *model.BlockContentOfText:
-			textSlot += text.Text.Text + "\n"
+		if text := b.GetText(); text != nil {
+			textSlot += text.Text + "\n"
 		}
 	}
+
 	conv := converter.New()
 	htmlSlot = conv.Convert(req.Blocks, images)
 	anySlot = req.Blocks
@@ -62,38 +94,65 @@ func (p *commonSmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (
 	}
 	if len(ids) > 0 {
 		if err := p.unlink(s, ids...); err != nil {
+			p.m.Unlock()
 			return textSlot, htmlSlot, anySlot, err
 		}
 	}
 
+	p.m.Unlock()
 	return textSlot, htmlSlot, anySlot, p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+func (p *commonSmart) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block, err error) {
+	blocksMapOut = blocksMapIn
 
-	images := make(map[string][]byte)
-	cIds := p.versions[p.GetId()].Model().ChildrenIds
-	var blocks []*model.Block
-	for _, id := range cIds {
+	for _, id := range ids {
+		b := p.versions[id].Copy().Model()
 
-		b := p.versions[id].Model()
-		blocks = append(blocks, b)
+		blocksMapOut[id] = b
 
-		if  file := b.GetFile(); file != nil {
+		if len(b.ChildrenIds) > 0 {
+			blocksMapOut, _ = p.blocksTreeToMap(blocksMapOut, b.ChildrenIds)
+		}
+	}
+	return blocksMapOut, nil
+}
+
+func (p *commonSmart) getImages (blocks map[string]*model.Block) (images map[string][]byte, err error) {
+	for _, b := range blocks {
+		if file := b.GetFile(); file != nil {
 			if file.Type == model.BlockContentFile_Image {
-				fh, err := p.s.anytype.FileByHash(id)
+				fh, err := p.s.anytype.FileByHash(file.Hash)
 				if err != nil {
-					return "", err
+					return images, err
 				}
 
 				reader, err := fh.Reader()
 				if err != nil {
-					return "", err
+					return images, err
 				}
 
 				reader.Read(images[file.Hash])
 			}
 		}
+	}
+
+	return images, nil
+}
+
+func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+	p.m.Lock()
+
+	cIds := p.versions[p.GetId()].Model().ChildrenIds
+
+	var blocksMap map[string]*model.Block
+	blocksMap, _ = p.blocksTreeToMap(blocksMap, cIds)
+
+	p.m.Unlock()
+
+	images, err := p.getImages(blocksMap)
+	if err != nil {
+		return "", err
 	}
 
 	conv := converter.New()

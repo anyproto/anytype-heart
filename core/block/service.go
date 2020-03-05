@@ -52,8 +52,8 @@ type Service interface {
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
-	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
+	Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest) (html string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
@@ -302,13 +302,13 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 	return sb.SetFields(req.BlockFields...)
 }
 
-func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
 	sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return
 	}
 	defer release()
-	return sb.Copy(req, images)
+	return sb.Copy(req)
 }
 
 func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
@@ -320,13 +320,13 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err err
 	return sb.Paste(req)
 }
 
-func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return
 	}
 	defer release()
-	return sb.Cut(req, images)
+	return sb.Cut(req)
 }
 
 func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {

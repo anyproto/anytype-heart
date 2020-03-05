@@ -84,12 +84,12 @@ func (e emptySmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err e
 	return
 }
 
-func (e emptySmart) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+func (e emptySmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
 	err = errEmptyBlock
 	return
 }
 
-func (e emptySmart) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (e emptySmart) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = errEmptyBlock
 	return
 }
