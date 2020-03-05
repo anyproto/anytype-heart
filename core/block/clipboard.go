@@ -40,7 +40,7 @@ func (p *commonSmart) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err
 func (p *commonSmart) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
 	p.m.Lock()
 
-	var blocksMap map[string]*model.Block
+	blocksMap := make(map[string]*model.Block)
 	for _, b := range req.Blocks {
 		blocksMap[b.Id] = b
 	}
@@ -62,36 +62,20 @@ func (p *commonSmart) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot 
 
 	s := p.newState()
 
-	var blocksMap map[string]*model.Block
-	for _, b := range req.Blocks {
-		blocksMap[b.Id] = b
-	}
-
-	p.m.Unlock()
-	images, err := p.getImages(blocksMap)
-
-	if err != nil {
-		return textSlot, htmlSlot, anySlot, err
-	}
-
-	p.m.Lock()
-
+	blocksMap := make(map[string]*model.Block)
 	textSlot = ""
-	for _, b := range req.Blocks {
-		if text := b.GetText(); text != nil {
-			textSlot += text.Text + "\n"
-		}
-	}
-
-	conv := converter.New()
-	htmlSlot = conv.Convert(req.Blocks, images)
-	anySlot = req.Blocks
-
 	var ids []string
 
 	for _, b := range req.Blocks {
-	 	ids = append(ids, b.Id)
+		blocksMap[b.Id] = b
+
+		if text := b.GetText(); text != nil {
+			textSlot += text.Text + "\n"
+		}
+
+		ids = append(ids, b.Id)
 	}
+
 	if len(ids) > 0 {
 		if err := p.unlink(s, ids...); err != nil {
 			p.m.Unlock()
@@ -100,10 +84,20 @@ func (p *commonSmart) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot 
 	}
 
 	p.m.Unlock()
+
+	images, err := p.getImages(blocksMap)
+	if err != nil {
+		return textSlot, htmlSlot, anySlot, err
+	}
+
+	conv := converter.New()
+	htmlSlot = conv.Convert(req.Blocks, images)
+	anySlot = req.Blocks
+
 	return textSlot, htmlSlot, anySlot, p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block, err error) {
+func (p *commonSmart) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block) {
 	blocksMapOut = blocksMapIn
 
 	for _, id := range ids {
@@ -112,10 +106,10 @@ func (p *commonSmart) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids 
 		blocksMapOut[id] = b
 
 		if len(b.ChildrenIds) > 0 {
-			blocksMapOut, _ = p.blocksTreeToMap(blocksMapOut, b.ChildrenIds)
+			blocksMapOut = p.blocksTreeToMap(blocksMapOut, b.ChildrenIds)
 		}
 	}
-	return blocksMapOut, nil
+	return blocksMapOut
 }
 
 func (p *commonSmart) getImages (blocks map[string]*model.Block) (images map[string][]byte, err error) {
@@ -145,8 +139,8 @@ func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err err
 
 	cIds := p.versions[p.GetId()].Model().ChildrenIds
 
-	var blocksMap map[string]*model.Block
-	blocksMap, _ = p.blocksTreeToMap(blocksMap, cIds)
+	blocksMap := make(map[string]*model.Block)
+	blocksMap = p.blocksTreeToMap(blocksMap, cIds)
 
 	p.m.Unlock()
 
@@ -155,8 +149,12 @@ func (p *commonSmart) Export(req pb.RpcBlockExportRequest) (path string, err err
 		return "", err
 	}
 
+	var blocks []*model.Block
+	for _, b := range blocksMap {
+		blocks = append(blocks, b)
+	}
 	conv := converter.New()
-	html := conv.Export(blocks, images)
+	html := conv.Export(blocks, images) // TODO
 
 	dir := os.TempDir()
 	fileName := "export-" + p.GetId() + ".html"
