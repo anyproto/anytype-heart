@@ -4,6 +4,18 @@ option go_package = "github.com/anytypeio/go-anytype-library/pb/model";
 
 import "google/protobuf/struct.proto";
 
+message SmartBlock {
+    string id = 1;
+    Type type = 2;
+    enum Type {
+        Dashboard = 0;
+        Page = 1;
+        Archive = 2;
+        Breadcrumbs = 3;
+        Dataview = 4;
+    }
+}
+
 message Block {
     string id = 1;
     google.protobuf.Struct fields = 2;
@@ -11,7 +23,6 @@ message Block {
     repeated string childrenIds = 4;
     string backgroundColor = 5;
     Align align = 6;
-
 
     oneof content {
         Content.Dashboard dashboard = 11;

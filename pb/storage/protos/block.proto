@@ -4,13 +4,14 @@ option go_package = "github.com/anytypeio/go-anytype-library/pb/storage";
 
 import "pb/model/protos/models.proto";
 import "pb/storage/protos/file.proto";
+import "google/protobuf/struct.proto";
 
-message BlockWithMeta {
-    anytype.model.Block block = 1;
-    map<string, anytype.model.Block> blockById = 2;
+message SmartBlockWithMeta {
+    repeated anytype.model.Block blocks = 1;
+    google.protobuf.Struct details = 2;
     map<string, FileKeys> keysByHash = 3;
 }
 
 message BlockMetaOnly {
-    anytype.model.BlockMetaOnly blockMeta = 1;
+    google.protobuf.Struct details = 2;
 }

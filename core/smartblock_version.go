@@ -1,129 +1,87 @@
 package core
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	mh "github.com/multiformats/go-multihash"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 )
 
-type SmartBlockVersion struct {
-	model     *storage.BlockWithMeta
-	versionId string
+type smartBlockSnapshot struct {
+	model     *storage.SmartBlockWithMeta
+	state     SmartBlockState
 	user      string
 	date      *types.Timestamp
 	node      *Anytype
 }
 
-type SmartBlockVersionMeta struct {
+type smartBlockSnapshotMeta struct {
 	model     *storage.BlockMetaOnly
-	versionId string
 	user      string
 	date      *types.Timestamp
 	node      *Anytype
 }
 
-func (version *SmartBlockVersion) Model() *model.Block {
-	return version.model.Block
+func (snapshot smartBlockSnapshot) State() SmartBlockState {
+	return snapshot.state
 }
 
-func (version *SmartBlockVersion) VersionId() string {
-	return version.versionId
+func (snapshot smartBlockSnapshot) Creator() (string, error) {
+	return snapshot.user, nil
 }
 
-func (version *SmartBlockVersion) User() string {
-	return version.user
+func (snapshot smartBlockSnapshot) CreatedDate() *time.Time {
+	return nil
 }
 
-func (version *SmartBlockVersion) Date() *types.Timestamp {
-	return version.date
+func (snapshot smartBlockSnapshot) ReceivedDate()  *time.Time {
+	return nil
 }
 
-func (version *SmartBlockVersion) GetContent() model.IsBlockContent {
-	return version.model.Block.Content
+func (snapshot smartBlockSnapshot) Blocks() []*model.Block {
+	return snapshot.model.Blocks
 }
 
-func (version *SmartBlockVersion) DependentBlocks() map[string]BlockVersion {
-	var allChildren = version.Model().ChildrenIds
-	var allChildrenMap = make(map[string]struct{}, 0)
-	var m = make(map[string]BlockVersion, len(version.model.BlockById))
-	for blockId, block := range version.model.BlockById {
-		switch block.Content.(type) {
-		case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
-			// not supported
+func (snapshot smartBlockSnapshot) Meta() (*Meta, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
-		default:
-			m[blockId] = &SimpleBlockVersion{
-				model:                   block,
-				parentSmartBlockVersion: version,
-			}
+func (snapshot smartBlockSnapshotMeta) User() string {
+	return snapshot.user
+}
 
-			for _, child := range block.ChildrenIds {
-				if _, exists := allChildrenMap[child]; !exists {
-					allChildren = append(allChildren, child)
-					allChildrenMap[child] = struct{}{}
-				}
-			}
-		}
+func (snapshot smartBlockSnapshotMeta) Date() *types.Timestamp {
+	return snapshot.date
+}
+
+type threadSnapshot struct {
+	Data []byte
+}
+
+func init() {
+	cbornode.RegisterCborType(threadSnapshot{})
+}
+
+func (s *threadSnapshot) BlockWithMeta() (*storage.SmartBlockWithMeta, error) {
+	var blockWithMeta storage.SmartBlockWithMeta
+	err := proto.Unmarshal(s.Data, &blockWithMeta)
+	if err != nil {
+		return nil, err
 	}
 
-	// inject smart blocks children
-	for _, child := range version.model.Block.ChildrenIds {
-		if _, err := mh.FromB58String(child); err != nil {
-			if _, exists := m[child]; !exists {
-				log.Errorf("DependentBlocks: children simple block '%s' not presented in the stored dependent blocks of smart block '%s'", child, version.model.Block.Id)
-			}
+	return &blockWithMeta, nil
+}
 
-			continue
-		}
-
-		smartBlock, err := version.node.GetBlock(child)
-		if err != nil {
-			m[child] = version.node.smartBlockVersionWithFullRestrictions(child)
-		} else {
-
-			smartBlockVersion, err := smartBlock.GetCurrentVersion()
-			if err != nil {
-				m[child] = smartBlock.EmptyVersion()
-				continue
-			}
-
-			m[child] = smartBlockVersion
-		}
+func (s *threadSnapshot) BlockMetaOnly() (*storage.BlockMetaOnly, error) {
+	var blockWithMeta storage.BlockMetaOnly
+	err := proto.Unmarshal(s.Data, &blockWithMeta)
+	if err != nil {
+		return nil, err
 	}
-	return m
-}
 
-func (version *SmartBlockVersion) ExternalFields() *types.Struct {
-	return &types.Struct{Fields: map[string]*types.Value{
-		"name": version.Model().Fields.Fields["name"],
-		"icon": version.Model().Fields.Fields["icon"],
-	}}
-}
-
-func (version *SmartBlockVersionMeta) Model() *model.BlockMetaOnly {
-	return version.model.BlockMeta
-}
-
-func (version *SmartBlockVersionMeta) VersionId() string {
-	return version.versionId
-}
-
-func (version *SmartBlockVersionMeta) User() string {
-	return version.user
-}
-
-func (version *SmartBlockVersionMeta) Date() *types.Timestamp {
-	return version.date
-}
-
-func (version *SmartBlockVersionMeta) ExternalFields() *types.Struct {
-	fields := &types.Struct{Fields: map[string]*types.Value{
-		"name": version.Model().Fields.Fields["name"],
-		"icon": version.Model().Fields.Fields["icon"],
-	}}
-	if isArchived, ok := version.Model().Fields.Fields["isArchived"]; ok {
-		fields.Fields["isArchived"] = isArchived
-	}
-	return fields
+	return &blockWithMeta, nil
 }

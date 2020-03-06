@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -53,8 +54,27 @@ type Anytype struct {
 	done               chan struct{}
 }
 
-func (a *Anytype) Account() *keypair.Full {
-	return a.account
+type Service interface {
+	Account() string
+	Start() error
+	Stop() error
+	IsStarted() bool
+
+	PredefinedBlocks() PredefinedBlockIds
+	GetBlock(blockId string) (SmartBlock, error)
+	CreateBlock(t SmartBlockType) (SmartBlock, error)
+
+	FileAddWithBytes(content []byte, filename string) (File, error)
+	FileAddWithReader(content io.Reader, filename string) (File, error)
+	FileByHash(hash string) (File, error)
+
+	ImageByHash(hash string) (*image, error)
+	ImageAddWithBytes(content []byte, filename string) (Image, error)
+	ImageAddWithReader(content io.Reader, filename string) (Image, error)
+}
+
+func (a *Anytype) Account() string {
+	return a.account.Address()
 }
 
 func (a *Anytype) ipfs() *ipfslite.Peer {
@@ -65,9 +85,19 @@ func (a *Anytype) IsStarted() bool {
 	return a.ts != nil && a.ts.GetIpfsLite() != nil
 }
 
-// PredefinedBlockIds returns default blocks like home and archive
-// ⚠️ Will return empty struct in case it runs before Anytype.Run()
-func (a *Anytype) PredefinedBlockIds() PredefinedBlockIds {
+
+func (a *Anytype) CreateBlock(t SmartBlockType) (SmartBlock, error) {
+	thrd, err := a.newBlockThread(t)
+	if err != nil {
+		return nil, err
+	}
+
+	return &smartBlock{thread: thrd, node: a}, nil
+}
+
+// PredefinedBlocks returns default blocks like home and archive
+// ⚠️ Will return empty struct in case it runs before Anytype.Start()
+func (a *Anytype) PredefinedBlocks() PredefinedBlockIds {
 	return a.predefinedBlockIds
 }
 
@@ -96,7 +126,7 @@ func getLogLevels() map[string]string {
 	return logLevels
 }
 
-func New(rootPath string, account string) (*Anytype, error) {
+func New(rootPath string, account string) (Service, error) {
 	repoPath := filepath.Join(rootPath, account)
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("not exists")
@@ -172,8 +202,7 @@ func (a *Anytype) readKeyFile() (*keypair.Full, error) {
 	return full, nil
 }
 
-// Run start account
-func (a *Anytype) Run() error {
+func (a *Anytype) Start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	hostAddr, err := ma.NewMultiaddr("/ip4/0.0.0.0/tcp/4006")

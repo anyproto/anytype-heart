@@ -5,13 +5,11 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/gogo/protobuf/types"
 	uuid "github.com/satori/go.uuid"
 	"github.com/textileio/go-threads/core/thread"
 )
 
-func (a *Anytype) GetBlock(id string) (Block, error) {
+func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
 	parts := strings.Split(id, "/")
 
 	_, err := thread.Decode(parts[0])
@@ -23,31 +21,14 @@ func (a *Anytype) GetBlock(id string) (Block, error) {
 		return nil, err
 	}
 
-	if len(parts)>1{
-		return &SimpleBlock{
-			id: parts[len(parts)-1],
-			parentSmartBlock:smartBlock,
-			node: a,
-		}, nil
-	}
-
 	return smartBlock, nil
 }
 
-func isSmartBlock(block *model.Block) bool {
+/*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, user string, date *types.Timestamp) BlockVersion {
 	switch block.Content.(type) {
 	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
-		return true
-	default:
-		return false
-	}
-}
-
-func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, user string, date *types.Timestamp) BlockVersion {
-	switch block.Content.(type) {
-	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
-		return &SmartBlockVersion{
-			model: &storage.BlockWithMeta{
+		return &smartBlockSnapshot{
+			model: &storage.SmartBlockWithMeta{
 				Block: block,
 			},
 			versionId: versionId,
@@ -62,7 +43,7 @@ func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion Blo
 			node:                    a,
 		}
 	}
-}
+}*/
 
 func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) error {
 	// profile
@@ -72,7 +53,6 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 	}
 
 	a.predefinedBlockIds.Profile = profile.ID.String()
-	// no need to create the version here
 
 	// archive
 	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchiveDashboard, syncSnapshotIfNotExist)
@@ -85,23 +65,10 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 		return err
 	}
 
-	if version, _ := block.GetCurrentVersion(); version == nil || version.Model() == nil || version.Model().Content == nil {
-		// version not yet created
+	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil || snapshot.Blocks() == nil {
+		// snapshot not yet created
 		log.Debugf("create predefined archive block")
-		_, err = block.AddVersion(&model.Block{
-			Id: block.GetId(),
-			Fields: &types.Struct{
-				Fields: map[string]*types.Value{
-					"name": {Kind: &types.Value_StringValue{StringValue: "Archive"}},
-					"icon": {Kind: &types.Value_StringValue{StringValue: ":package:"}},
-				},
-			},
-			Content: &model.BlockContentOfDashboard{
-				Dashboard: &model.BlockContentDashboard{
-					Style: model.BlockContentDashboard_Archive,
-				},
-			},
-		})
+		_, err = block.PushSnapshot(SmartBlockState{}, &Meta{}, []*model.Block{})
 
 		if err != nil {
 			return err
@@ -120,34 +87,19 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 		return err
 	}
 
-	if version, _ := block.GetCurrentVersion(); version == nil || version.Model() == nil || version.Model().Content == nil {
-		// version not yet created
+	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil || snapshot.Blocks() == nil {
+		// snapshot not yet created
 		log.Debugf("create predefined home block")
-		archiveLinkId := block.GetId() + "/" + uuid.NewV4().String()
-		_, err = block.AddVersions([]*model.Block{
-			{
-				Id:          block.GetId(),
-				ChildrenIds: []string{archiveLinkId},
-				Fields: &types.Struct{
-					Fields: map[string]*types.Value{
-						"name": {Kind: &types.Value_StringValue{StringValue: "Home"}},
-						"icon": {Kind: &types.Value_StringValue{StringValue: ":house:"}},
-					},
-				},
-				Content: &model.BlockContentOfDashboard{
-					Dashboard: &model.BlockContentDashboard{
-						Style: model.BlockContentDashboard_MainScreen,
-					},
-				},
-			},
+		archiveLinkId := block.ID() + "/" + uuid.NewV4().String()
+		_, err = block.PushSnapshot(SmartBlockState{}, &Meta{}, []*model.Block{
 			{
 				Id: archiveLinkId,
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 					TargetBlockId: a.predefinedBlockIds.Archive,
 					Style:         model.BlockContentLink_Dataview,
 				}},
-			},
-		})
+			}})
+
 		if err != nil {
 			return err
 		}

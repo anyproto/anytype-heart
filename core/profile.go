@@ -18,23 +18,19 @@ func (a *Anytype) AccountSetNameAndAvatar(name string, avatarFilePath, color str
 		return err
 	}
 
-	if version, _ := block.GetCurrentVersion(); version == nil || version.Model() == nil || version.Model().Content == nil {
-		// version not yet created
-		log.Debugf("create predefined archive block")
-		_, err = block.AddVersion(&model.Block{
-			Id: block.GetId(),
-			Fields: &types.Struct{
+	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil || snapshot.Blocks() == nil {
+		// snapshot not yet created
+		log.Debugf("add predefined profile block snapshot")
+		_, err = block.PushSnapshot(SmartBlockState{}, &Meta{
+			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name":  structs.String(name),
 					"image": structs.String(avatarFilePath),
 					"color": structs.String(color),
 				},
 			},
-			Content: &model.BlockContentOfPage{
-				Page: &model.BlockContentPage{
-					Style: model.BlockContentPage_Empty,
-				},
-			},
+		}, []*model.Block{
+			// todo: add title and avatar blocks
 		})
 
 		if err != nil {
