@@ -55,7 +55,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			break
 		}
 
-		log.Warningf("Account already exists locally, but doesn't exist in the localAccounts list")
+		log.Warnf("Account already exists locally, but doesn't exist in the localAccounts list")
 		index++
 		continue
 	}

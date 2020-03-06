@@ -666,7 +666,7 @@ type testPage struct {
 	emptySmart
 }
 
-func (t *testPage) Open(b anytype.Block, active bool) error {
+func (t *testPage) Open(b anytype.SmartBlock, active bool) error {
 	return nil
 }
 

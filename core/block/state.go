@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/mohae/deepcopy"
 )
 
@@ -42,12 +43,8 @@ func (s *state) create(b *model.Block) (new simple.Block, err error) {
 		}
 		b = s.createLink(b)
 	}
-	nb, err := s.sb.block.NewBlock(*b)
-	if err != nil {
-		return
-	}
+	b.Id = uuid.New().String()
 	new = simple.New(b)
-	new.Model().Id = nb.GetId()
 	s.blocks[new.Model().Id] = new
 	return
 }
@@ -161,7 +158,7 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 		if ! ok {
 			newBlocks = append(newBlocks, b.Model())
 			if !b.Virtual() {
-				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
+				toSave = append(toSave, b.Model())
 			}
 			if action != nil {
 				action.Add = append(action.Add, b)
@@ -175,7 +172,7 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 		}
 		if len(diff) > 0 {
 			if !b.Virtual() {
-				toSave = append(toSave, s.sb.toSave(b.Model(), s.blocks, s.sb.versions))
+				toSave = append(toSave, b.Model())
 			}
 			msgs = append(msgs, diff...)
 			if action != nil {
@@ -211,9 +208,7 @@ func (s *state) apply(action *history.Action) (msgs []*pb.EventMessage, err erro
 		})
 	}
 	if len(toSave) > 0 {
-		if _, err = s.sb.block.AddVersions(toSave); err != nil {
-			return
-		}
+		// TODO: save snapshot
 	}
 	for _, b := range s.blocks {
 		s.sb.setBlock(b)
@@ -232,17 +227,14 @@ func (s *state) checkChangeSmartFields(msgs []*pb.EventMessage) {
 	var changed bool
 	for _, msg := range msgs {
 		if fieldsChange := msg.GetBlockSetFields(); fieldsChange != nil {
-			if fieldsChange.Id == s.sb.GetId() && s.sb.s != nil && s.sb.s.ls != nil {
+			if fieldsChange.Id == s.sb.GetId() && s.sb.s != nil {
 				changed = true
 				break
 			}
 		}
 	}
 	if changed {
-		s.sb.s.ls.onMeta(metaInfo{
-			targetId: s.sb.GetId(),
-			meta:     fakeCoreMeta{b: s.sb.versions[s.sb.GetId()].Copy().Model()},
-		})
+		// TODO:
 	}
 }
 

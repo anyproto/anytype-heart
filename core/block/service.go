@@ -80,7 +80,7 @@ type Service interface {
 	Close() error
 }
 
-func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
+func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
 	s := &service{
 		accountId: accountId,
 		anytype:   a,
@@ -88,7 +88,6 @@ func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview,
 			sendEvent(event)
 		},
 		openedBlocks: make(map[string]*openedBlock),
-		ls:           newLinkSubscriptions(a),
 		linkPreview:  lp,
 		process:      process.NewService(sendEvent),
 	}
@@ -103,13 +102,12 @@ type openedBlock struct {
 }
 
 type service struct {
-	anytype      anytype.Anytype
+	anytype      anytype.Service
 	accountId    string
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
 	closed       bool
 	linkPreview  linkpreview.LinkPreview
-	ls           *linkSubscriptions
 	process      process.Service
 	m            sync.RWMutex
 }
@@ -177,7 +175,7 @@ func (s *service) CloseBlock(id string) (err error) {
 }
 
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
-	archiveId := s.anytype.PredefinedBlockIds().Archive
+	archiveId := s.anytype.PredefinedBlocks().Archive
 	sb, release, err := s.pickBlock(archiveId)
 	if err != nil {
 		return

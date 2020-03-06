@@ -3,13 +3,11 @@ package block
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -26,7 +24,7 @@ var (
 )
 
 type smartBlock interface {
-	Open(b anytype.Block, active bool) error
+	Open(b anytype.SmartBlock, active bool) error
 	Init()
 	GetId() string
 	Type() smartBlockType
@@ -51,7 +49,7 @@ type smartBlock interface {
 	Undo() error
 	Redo() error
 	Close() error
-	Anytype() anytype.Anytype
+	Anytype() anytype.Service
 }
 
 type smartBlockType int
@@ -69,29 +67,19 @@ func openSmartBlock(s *service, id string, active bool) (sb smartBlock, err erro
 		return
 	}
 
-	b, err := s.anytype.GetBlockWithBatcher(id)
-	if err != nil {
-		return
-	}
-	ver, err := b.GetCurrentVersion()
+	b, err := s.anytype.GetBlock(id)
 	if err != nil {
 		return
 	}
 
-	log.Infof("block: %+v", b)
-	log.Infof("version: %+v", ver)
-
-	switch ver.Model().Content.(type) {
-	case *model.BlockContentOfDashboard:
-		if ver.Model().GetDashboard().Style == model.BlockContentDashboard_Archive {
-			sb, err = newArchive(s)
-		} else {
-			sb, err = newDashboard(s)
-		}
-	case *model.BlockContentOfPage:
+	switch b.Type() {
+	case core.SmartBlockTypeDashboard:
+		sb, err = newDashboard(s)
+	case core.SmartBlockTypePage:
 		sb, err = newPage(s)
+	// TODO: archive
 	default:
-		return nil, fmt.Errorf("%v %T", ErrUnexpectedSmartBlockType, ver.Model().Content)
+		return nil, fmt.Errorf("%v %T", ErrUnexpectedSmartBlockType, b.Type())
 	}
 	if err = sb.Open(b, active); err != nil {
 		sb.Close()
@@ -103,7 +91,7 @@ func openSmartBlock(s *service, id string, active bool) (sb smartBlock, err erro
 
 type commonSmart struct {
 	s        *service
-	block    anytype.Block
+	block    anytype.SmartBlock
 	versions map[string]simple.Block
 	active   bool
 
@@ -111,80 +99,36 @@ type commonSmart struct {
 
 	m sync.RWMutex
 
-	versionsChange func(vers []core.BlockVersion)
-
 	clientEventsCancel func()
 	blockChangesCancel func()
 	closeWg            *sync.WaitGroup
 }
 
 func (p *commonSmart) GetId() string {
-	return p.block.GetId()
+	return p.block.ID()
 }
 
 func (p *commonSmart) Active(isActive bool) {
 	p.active = isActive
 }
 
-func (p *commonSmart) hideArchiveBlock() {
-	if os.Getenv("ANYTYPE_ARCHIVE") == "1" {
-		return
-	}
-	archiveBlockId := p.Anytype().PredefinedBlockIds().Archive
-	if p.block.GetId() != p.Anytype().PredefinedBlockIds().Home {
-		return
-	}
-	var archiveBlockLinkId string
-	for id, v := range p.versions {
-		if link, isLink := v.Model().Content.(*model.BlockContentOfLink); isLink && link.Link.TargetBlockId == archiveBlockId {
-			archiveBlockLinkId = id
-			break
-		}
-	}
-	if archiveBlockLinkId == "" {
-		return
-	}
-
-	p.versions[p.block.GetId()].Model().ChildrenIds = removeFromSlice(p.versions[p.block.GetId()].Model().ChildrenIds, archiveBlockLinkId)
-}
-
-func (p *commonSmart) Open(block anytype.Block, active bool) (err error) {
+func (p *commonSmart) Open(block anytype.SmartBlock, active bool) (err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	p.closeWg = new(sync.WaitGroup)
 	p.versions = make(map[string]simple.Block)
 	p.active = active
 	p.block = block
-	ver, err := p.block.GetCurrentVersion()
+
+	snapshot, err := block.GetLastSnapshot()
 	if err != nil {
 		return
 	}
 
-	for id, v := range ver.DependentBlocks() {
-		p.versions[id] = simple.New(v.Model())
+	for _, m := range snapshot.Blocks() {
+		p.versions[m.Id] = simple.New(m)
 	}
-	p.versions[p.GetId()] = simple.New(ver.Model())
-	p.hideArchiveBlock()
-
 	p.normalize()
-	if p.active {
-		events := make(chan proto.Message)
-		p.clientEventsCancel, err = p.block.SubscribeClientEvents(events)
-		if err != nil {
-			return
-		}
-		if p.versionsChange != nil {
-			blockChanges := make(chan []core.BlockVersion)
-			p.blockChangesCancel, err = block.SubscribeNewVersionsOfBlocks(ver.Model().Id, false, blockChanges)
-			if err != nil {
-				return
-			}
-			p.closeWg.Add(1)
-			go p.versionChangesLoop(blockChanges)
-		}
-		p.closeWg.Add(1)
-		go p.clientEventsLoop(events)
-	}
 	return
 }
 
@@ -208,7 +152,7 @@ func (p *commonSmart) Show() error {
 	return nil
 }
 
-func (p *commonSmart) Anytype() anytype.Anytype {
+func (p *commonSmart) Anytype() anytype.Service {
 	return p.s.anytype
 }
 
@@ -436,15 +380,15 @@ func (p *commonSmart) create(s *state, req pb.RpcBlockCreateRequest) (id string,
 }
 
 func (p *commonSmart) createSmartBlock(m *model.Block) (err error) {
-	nb, err := p.block.NewBlock(*m)
+	sbType := core.SmartBlockTypePage
+	if m.GetDashboard() != nil {
+		sbType = core.SmartBlockTypeDashboard
+	}
+	nb, err := p.s.anytype.CreateBlock(sbType)
 	if err != nil {
 		return
 	}
-	m.Id = nb.GetId()
-	if _, err = p.block.AddVersions([]*model.Block{m}); err != nil {
-		return
-	}
-	p.block.Flush()
+	m.Id = nb.ID()
 	return
 }
 
@@ -777,44 +721,8 @@ func (p *commonSmart) show() {
 	p.s.sendEvent(event)
 }
 
-func (p *commonSmart) clientEventsLoop(events chan proto.Message) {
-	defer p.closeWg.Done()
-	for m := range events {
-		_ = m // TODO: handle client events
-	}
-}
-
-func (p *commonSmart) versionChangesLoop(blockChanges chan []core.BlockVersion) {
-	defer p.closeWg.Done()
-	for versions := range blockChanges {
-		p.versionsChange(versions)
-	}
-}
-
-func (p *commonSmart) excludeVirtualIds(ids []string, sources ...map[string]simple.Block) []string {
-	res := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if v := p.find(id, sources...); v != nil && !v.Virtual() {
-			res = append(res, id)
-		}
-	}
-	return res
-}
-
-func (p *commonSmart) toSave(b *model.Block, sources ...map[string]simple.Block) *model.Block {
-	return &model.Block{
-		Id:              b.Id,
-		Fields:          b.Fields,
-		Restrictions:    b.Restrictions,
-		ChildrenIds:     p.excludeVirtualIds(b.ChildrenIds, sources...),
-		BackgroundColor: b.BackgroundColor,
-		Align:           b.Align,
-		Content:         b.Content,
-	}
-}
-
 func (p *commonSmart) root() *model.Block {
-	return p.versions[p.block.GetId()].Model()
+	return p.versions[p.GetId()].Model()
 }
 
 func (p *commonSmart) Close() error {
@@ -826,15 +734,7 @@ func (p *commonSmart) Close() error {
 	if p.blockChangesCancel != nil {
 		p.blockChangesCancel()
 	}
-	for _, b := range p.versions {
-		if p.s.ls != nil {
-			p.s.ls.onDelete(p, b)
-		}
-	}
 	p.closeWg.Wait()
-	if p.block != nil {
-		p.block.Close()
-	}
 	return nil
 }
 
@@ -884,21 +784,15 @@ func (p *commonSmart) deleteBlock(id string) (deleted simple.Block) {
 }
 
 func (p *commonSmart) onChange(b simple.Block) {
-	if p.s.ls != nil {
-		p.s.ls.onChange(p, b)
-	}
+
 }
 
 func (p *commonSmart) onCreate(b simple.Block) {
-	if p.s.ls != nil {
-		p.s.ls.onCreate(p, b)
-	}
+
 }
 
 func (p *commonSmart) onDelete(b simple.Block) {
-	if p.s.ls != nil {
-		p.s.ls.onDelete(p, b)
-	}
+
 }
 
 func (p *commonSmart) rangeTextPaste(s *state, id string, from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error {

@@ -48,7 +48,7 @@ func (p *page) Init() {
 func (p *page) addName(title string) {
 	var b = &pageTitleBlock{
 		Block: simple.New(&model.Block{
-			Id: p.block.GetId() + pageTitleSuffix,
+			Id: p.GetId() + pageTitleSuffix,
 			Restrictions: &model.BlockRestrictions{
 				Read:   false,
 				Edit:   false,
@@ -72,7 +72,7 @@ func (p *page) addName(title string) {
 func (p *page) addIcon(icon string) {
 	var b = &pageIconBlock{
 		IconBlock: simple.New(&model.Block{
-			Id: p.block.GetId() + pageIconSuffix,
+			Id: p.GetId() + pageIconSuffix,
 			Restrictions: &model.BlockRestrictions{
 				Read:   false,
 				Edit:   false,
@@ -128,12 +128,12 @@ func (p *page) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (
 		if bf.BlockId == p.GetId() {
 			// apply changes to virtual blocks
 			name, _ := fieldsGetString(p.versions[bf.BlockId].Model().Fields, "name")
-			nameId := p.block.GetId() + pageTitleSuffix
+			nameId := p.GetId() + pageTitleSuffix
 			nameBlock := s.get(nameId).(*pageTitleBlock)
 			nameBlock.Block.SetText(name, nil)
 
 			icon, _ := fieldsGetString(p.versions[bf.BlockId].Model().Fields, "icon")
-			iconId := p.block.GetId() + pageIconSuffix
+			iconId := p.GetId() + pageIconSuffix
 			iconBlock := s.get(iconId).(*pageIconBlock)
 			iconBlock.IconBlock.SetIconName(icon)
 		}
@@ -147,7 +147,7 @@ func (p *page) UpdateTextBlocks(ids []string, event bool, apply func(t text.Bloc
 	s := p.newState()
 	var (
 		tb      text.Block
-		titleId = p.block.GetId() + pageTitleSuffix
+		titleId = p.GetId() + pageTitleSuffix
 	)
 	for _, id := range ids {
 		if tb, err = s.getText(id); err != nil {
@@ -174,7 +174,7 @@ func (p *page) UpdateIconBlock(id string, apply func(t base.IconBlock) error) (e
 	if err = apply(icon); err != nil {
 		return
 	}
-	if id == p.block.GetId()+pageIconSuffix {
+	if id == p.GetId()+pageIconSuffix {
 		p.updateIcon(s, icon.Model().GetIcon().Name)
 	}
 	return p.applyAndSendEvent(s)

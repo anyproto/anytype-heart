@@ -26,7 +26,7 @@ type breadcrumbs struct {
 	mu     sync.Mutex
 }
 
-func (b *breadcrumbs) Open(_ anytype.Block, active bool) error {
+func (b *breadcrumbs) Open(_ anytype.SmartBlock, active bool) error {
 	b.blocks = map[string]simple.Block{
 		b.id: simple.New(&model.Block{
 			Id: b.id,
@@ -129,7 +129,6 @@ func (b *breadcrumbs) OnSmartOpen(id string) {
 	newLink := b.createLink(id)
 	b.blocks[newLink.Model().Id] = newLink
 	b.blocks[b.id].Model().ChildrenIds = append(linkIds, newLink.Model().Id)
-	b.s.ls.onCreate(b, newLink)
 
 	event := &pb.Event{
 		ContextId: b.id,
@@ -200,12 +199,10 @@ func (b *breadcrumbs) Cut(index int) (err error) {
 }
 
 func (b *breadcrumbs) Close() error {
-	for _, l := range b.blocks {
-		b.s.ls.onDelete(b, l)
-	}
+	// TODO:
 	return nil
 }
 
-func (b *breadcrumbs) Anytype() anytype.Anytype {
+func (b *breadcrumbs) Anytype() anytype.Service {
 	return b.s.anytype
 }

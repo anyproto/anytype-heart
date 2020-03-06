@@ -1,32 +1,15 @@
 package anytype
 
 import (
-	"io"
-
 	"github.com/anytypeio/go-anytype-library/core"
 )
 
-type Anytype interface {
-	GetBlock(id string) (core.Block, error)
-	GetBlockWithBatcher(id string) (Block, error)
-	PredefinedBlockIds() core.PredefinedBlockIds
-	FileAddWithReader(content io.Reader, name string) (core.File, error)
-	ImageAddWithReader(content io.Reader, name string) (core.Image, error)
-	FileByHash(hash string) (core.File, error)
+type Service interface {
+	core.Service
 }
 
-type Block interface {
-	core.Block
-	Flush()
-	Close() error
-}
-
-type BlockVersion interface {
-	core.BlockVersion
-}
-
-type BlockVersionMeta interface {
-	core.BlockVersionMeta
+type SmartBlock interface {
+	core.SmartBlock
 }
 
 type File interface {

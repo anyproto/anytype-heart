@@ -16,7 +16,7 @@ import (
 
 var log = logging.Logger("anytype-mw")
 
-func NewUploader(a anytype.Anytype, fn func(f func(file Block))) Uploader {
+func NewUploader(a anytype.Service, fn func(f func(file Block))) Uploader {
 	return &uploader{
 		updateFile: fn,
 		storage:    a,
@@ -29,7 +29,7 @@ type Uploader interface {
 
 type uploader struct {
 	updateFile func(f func(file Block))
-	storage    anytype.Anytype
+	storage    anytype.Service
 	isImage    bool
 }
 

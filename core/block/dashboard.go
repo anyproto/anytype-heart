@@ -22,7 +22,7 @@ type dashboard struct {
 func (p *dashboard) Init() {
 	p.m.Lock()
 	defer p.m.Unlock()
-	if p.block.GetId() == p.s.anytype.PredefinedBlockIds().Home {
+	if p.GetId() == p.s.anytype.PredefinedBlocks().Home {
 		// virtually add testpage to home screen
 		p.addTestPage()
 	}
@@ -57,7 +57,7 @@ func (p *dashboard) migratePageToLinks() {
 }
 
 func (p *dashboard) checkArchive() (err error) {
-	archiveId := p.s.anytype.PredefinedBlockIds().Archive
+	archiveId := p.s.anytype.PredefinedBlocks().Archive
 	if archiveId == "" {
 		return
 	}
@@ -114,7 +114,7 @@ func (p *dashboard) addTestPage() {
 			},
 		},
 	})
-	p.versions[p.block.GetId()].Model().ChildrenIds = append(p.versions[p.block.GetId()].Model().ChildrenIds, testPageId+"-link")
+	p.versions[p.GetId()].Model().ChildrenIds = append(p.versions[p.GetId()].Model().ChildrenIds, testPageId+"-link")
 }
 
 func (p *dashboard) Create(req pb.RpcBlockCreateRequest) (id string, err error) {

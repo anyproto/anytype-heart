@@ -40,7 +40,7 @@ type Block interface {
 
 type FetchParams struct {
 	Url         string
-	Anytype     anytype.Anytype
+	Anytype     anytype.Service
 	Updater     Updater
 	LinkPreview linkpreview.LinkPreview
 }
@@ -190,7 +190,7 @@ func fetcher(id string, params FetchParams) {
 	}
 }
 
-func loadImage(stor anytype.Anytype, url string) (hash string, err error) {
+func loadImage(stor anytype.Service, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
