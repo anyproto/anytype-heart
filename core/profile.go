@@ -18,10 +18,10 @@ func (a *Anytype) AccountSetNameAndAvatar(name string, avatarFilePath, color str
 		return err
 	}
 
-	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil || snapshot.Blocks() == nil {
+	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil {
 		// snapshot not yet created
 		log.Debugf("add predefined profile block snapshot")
-		_, err = block.PushSnapshot(SmartBlockState{}, &Meta{
+		_, err = block.PushSnapshot(SmartBlockState{}, &SmartBlockMeta{
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name":  structs.String(name),

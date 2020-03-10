@@ -44,26 +44,26 @@ func (state SmartBlockState) ShouldCreateSnapshot() bool{
 	return true
 }
 
-type ContentChanges struct {
+type SmartBlockContentChanges struct {
 	// to be discussed
 }
 
-type Meta struct {
+type SmartBlockMeta struct {
 	Details *types.Struct
 }
 
-type MetaChanges struct {
-	Meta
+type SmartBlockMetaChanges struct {
+	SmartBlockMeta
 	state SmartBlockState
 }
 
-func (meta *MetaChanges) State() SmartBlockState{
+func (meta *SmartBlockMetaChanges) State() SmartBlockState{
 	return meta.state
 }
 
-type Changes interface {
-	Content() ContentChanges
-	Meta() MetaChanges
+type SmartBlockChanges interface {
+	Content() SmartBlockContentChanges
+	Meta() SmartBlockMetaChanges
 }
 
 type SmartBlock interface {
@@ -71,11 +71,13 @@ type SmartBlock interface {
 	Type() SmartBlockType
 	Creator() (string, error)
 	GetLastSnapshot() (SmartBlockSnapshot, error)
+	GetSnapshotBefore(state SmartBlockState) (SmartBlockSnapshot, error)
+
 	GetCurrentState() (SmartBlockState, error)
-	PushChanges(content *ContentChanges, meta *MetaChanges) (state SmartBlockState, err error)
-	PushSnapshot(state SmartBlockState, meta *Meta, blocks []*model.Block) (SmartBlockSnapshot, error)
-	SubscribeForChangesSinceState(state SmartBlockState, ch chan Changes) (cancel func(), err error)
-	SubscribeForMetaChangesSinceState(state SmartBlockState, ch chan MetaChanges) (cancel func(), err error)
+	PushChanges(content *SmartBlockContentChanges, meta *SmartBlockMetaChanges) (state SmartBlockState, err error)
+	PushSnapshot(state SmartBlockState, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error)
+	SubscribeForChangesSinceState(state SmartBlockState, ch chan SmartBlockChanges) (cancel func(), err error)
+	SubscribeForMetaChangesSinceState(state SmartBlockState, ch chan SmartBlockMetaChanges) (cancel func(), err error)
 
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
 	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error)
@@ -89,8 +91,8 @@ type SmartBlockSnapshot interface {
 	Creator() (string, error)
 	CreatedDate() *time.Time
 	ReceivedDate() *time.Time
-	Blocks() []*model.Block
-	Meta() (*Meta, error)
+	Blocks() ([]*model.Block, error)
+	Meta() (*SmartBlockMeta, error)
 }
 
 type smartBlock struct {
@@ -108,7 +110,7 @@ func (block *smartBlock) GetCurrentState() (SmartBlockState, error) {
 	return nil, fmt.Errorf("to be implemented")
 }
 
-func (block *smartBlock) PushChanges(content *ContentChanges, meta *MetaChanges) (state SmartBlockState, err error) {
+func (block *smartBlock) PushChanges(content *SmartBlockContentChanges, meta *SmartBlockMetaChanges) (state SmartBlockState, err error) {
 	// todo: to be implemented
 	return nil, fmt.Errorf("to be implemented")
 }
@@ -144,6 +146,10 @@ func (block *smartBlock) GetLastSnapshot() (SmartBlockSnapshot, error) {
 	}
 
 	return versions[0], nil
+}
+
+func (block *smartBlock) GetSnapshotBefore(state SmartBlockState) (SmartBlockSnapshot, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (block *smartBlock) getSnapshotTime(event service.Event) (*types.Timestamp, error) {
@@ -289,7 +295,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 	return
 }
 
-func (block *smartBlock) PushSnapshot(state SmartBlockState, meta *Meta, blocks []*model.Block) (SmartBlockSnapshot, error) {
+func (block *smartBlock) PushSnapshot(state SmartBlockState, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
 	model := &storage.SmartBlockWithMeta{}
 	if meta != nil && meta.Details != nil{
 		model.Details = meta.Details
@@ -369,14 +375,14 @@ func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
 	}
 }
 
-func (block *smartBlock) SubscribeForChangesSinceState(state SmartBlockState, ch chan Changes) (cancel func(), err error) {
+func (block *smartBlock) SubscribeForChangesSinceState(state SmartBlockState, ch chan SmartBlockChanges) (cancel func(), err error) {
 	chCloseFn := func() { close(ch) }
 
 	//todo: to be implemented
 	return chCloseFn, nil
 }
 
-func (block *smartBlock) SubscribeForMetaChangesSinceState(state SmartBlockState, ch chan MetaChanges) (cancel func(), err error) {
+func (block *smartBlock) SubscribeForMetaChangesSinceState(state SmartBlockState, ch chan SmartBlockMetaChanges) (cancel func(), err error) {
 	chCloseFn := func() { close(ch) }
 
 	/*// temporary just sent the last version

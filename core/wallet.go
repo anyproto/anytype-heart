@@ -8,6 +8,7 @@ import (
 
 	"C"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-textile/keypair"
 	"github.com/textileio/go-textile/wallet"
 )
@@ -60,7 +61,17 @@ func WalletInitRepo(rootPath string, seed string) error {
 
 	os.MkdirAll(repoPath, 0700)
 	keyPath := filepath.Join(repoPath, "key")
-	if err = ioutil.WriteFile(keyPath, []byte(seed), 0400); err != nil {
+
+	priv, err := kp.LibP2PPrivKey()
+	if err != nil {
+		return err
+	}
+
+	key, err := crypto.MarshalPrivateKey(priv)
+	if err != nil {
+		panic(err)
+	}
+	if err = ioutil.WriteFile(keyPath, key, 0400); err != nil {
 		panic(err)
 	}
 

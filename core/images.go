@@ -12,7 +12,7 @@ func (a *Anytype) getFileIndexes(hash string) ([]tpb.FileIndex, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Anytype) ImageByHash(hash string) (*image, error) {
+func (a *Anytype) ImageByHash(hash string) (Image, error) {
 	files, err := a.getFileIndexByTarget(hash)
 	if err != nil {
 		return nil, err

@@ -15,12 +15,12 @@ import (
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-textile/keypair"
-	"github.com/textileio/go-textile/strkey"
 	"github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
 )
@@ -68,7 +68,7 @@ type Service interface {
 	FileAddWithReader(content io.Reader, filename string) (File, error)
 	FileByHash(hash string) (File, error)
 
-	ImageByHash(hash string) (*image, error)
+	ImageByHash(hash string) (Image, error)
 	ImageAddWithBytes(content []byte, filename string) (Image, error)
 	ImageAddWithReader(content io.Reader, filename string) (Image, error)
 }
@@ -132,9 +132,15 @@ func New(rootPath string, account string) (Service, error) {
 		return nil, fmt.Errorf("not exists")
 	}
 
-	anytype := Anytype{repoPath: repoPath, logLevels: getLogLevels()}
+	a := Anytype{repoPath: repoPath, logLevels: getLogLevels()}
 
-	return &anytype, nil
+	kp, err := a.readKeyFile()
+	if err != nil {
+		return nil, err
+	}
+	a.account = kp
+
+	return &a, nil
 }
 
 func (a *Anytype) SetLogLevel(subsystem string, level string) {
@@ -181,25 +187,29 @@ func (a *Anytype) readKeyFile() (*keypair.Full, error) {
 		return nil, err
 	}
 
-	seed, err := ioutil.ReadFile(pth)
+	b, err := ioutil.ReadFile(pth)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err = strkey.Decode(strkey.VersionByteSeed, string(seed)); err != nil {
-		return nil, err
-	}
-
-	kp, err := keypair.Parse(string(seed))
+	priv, err := crypto.UnmarshalPrivateKey(b)
 	if err != nil {
 		return nil, err
 	}
-	full, ok := kp.(*keypair.Full)
-	if !ok {
-		return nil, fmt.Errorf("invalid seed")
+
+	privRaw, err := priv.Raw()
+	if err != nil {
+		return nil, err
 	}
 
-	return full, nil
+	var privRawAr [32]byte
+	copy(privRawAr[:], privRaw[:32])
+	kp, err := keypair.FromRawSeed(privRawAr)
+	if err != nil {
+		return nil, err
+	}
+
+	return kp, nil
 }
 
 func (a *Anytype) Start() error {
@@ -210,13 +220,7 @@ func (a *Anytype) Start() error {
 		return err
 	}
 
-	kp, err := a.readKeyFile()
-	if err != nil {
-		return err
-	}
-	a.account = kp
-
-	privKey, err := kp.LibP2PPrivKey()
+	privKey, err := a.account.LibP2PPrivKey()
 	if err != nil {
 		return err
 	}
@@ -251,10 +255,11 @@ func (a *Anytype) Start() error {
 	a.mdns = mdns
 	mdns.RegisterNotifee(a)
 
+	a.initPredefinedBlocks(false)
 	return nil
 }
 
-func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
+func (a *Anytype) initPredefinedBlocks(mustSyncFromRemote bool) error {
 	err := a.createPredefinedBlocksIfNotExist(mustSyncFromRemote)
 	if err != nil {
 		return err

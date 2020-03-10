@@ -42,11 +42,12 @@ func (snapshot smartBlockSnapshot) ReceivedDate()  *time.Time {
 	return nil
 }
 
-func (snapshot smartBlockSnapshot) Blocks() []*model.Block {
-	return snapshot.model.Blocks
+func (snapshot smartBlockSnapshot) Blocks() ([]*model.Block, error) {
+	// todo: blocks lazy loading
+	return snapshot.model.Blocks, nil
 }
 
-func (snapshot smartBlockSnapshot) Meta() (*Meta, error) {
+func (snapshot smartBlockSnapshot) Meta() (*SmartBlockMeta, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
