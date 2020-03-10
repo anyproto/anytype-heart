@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"C"
-
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-textile/keypair"
 	"github.com/textileio/go-textile/wallet"
