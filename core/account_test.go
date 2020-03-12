@@ -1,13 +1,17 @@
 package core
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,22 +34,32 @@ func recoverWallet(t *testing.T, mnemonic string) *Middleware {
 
 func TestAccountCreate(t *testing.T) {
 	mw := createWallet(t)
+	defer func() {
+		err := mw.Stop()
+		require.NoError(t, err, "failed to stop mw")
+	}()
 
 	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_test", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
+	require.Equal(t, pb.RpcAccountCreateResponseError_NULL, accountCreateResp.Error.Code, "AccountCreateResponse contains error: %+v", accountCreateResp.Error)
+
 	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
+	require.NotNil(t, accountCreateResp.Account.Avatar, "avatar is nil")
 	imageGetBlobResp := mw.ImageGetBlob(&pb.RpcIpfsImageGetBlobRequest{Hash: accountCreateResp.Account.Avatar.GetImage().Hash})
 	require.Equal(t, pb.RpcIpfsImageGetBlobResponseError_NULL, imageGetBlobResp.Error.Code, "ImageGetBlobResponse contains error: %+v", imageGetBlobResp.Error)
 	require.True(t, len(imageGetBlobResp.Blob) > 0, "ava size should be greater than 0")
 
-	err := mw.Stop()
-	require.NoError(t, err, "failed to stop mw")
 }
 
 func TestAccountRecoverLocalWithoutRestart(t *testing.T) {
 	mw := createWallet(t)
+	defer func() {
+		err := mw.Stop()
+		require.NoError(t, err, "failed to stop mw")
+	}()
 
 	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_to_test_recover", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
+	require.Equal(t, pb.RpcAccountCreateResponseError_NULL, accountCreateResp.Error.Code, "AccountCreateResponse error: %+v", accountCreateResp.Error)
 	require.Equal(t, "name_to_test_recover", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
 	err := mw.Stop()
@@ -77,7 +91,6 @@ func TestAccountRecoverLocalWithoutRestart(t *testing.T) {
 	}
 	require.NotNil(t, account, "didn't receive event with 0 account")
 
-	err = mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
 }
 
@@ -180,5 +193,59 @@ func TestRecoverRemoteExisting(t *testing.T) {
 
 
 	err := mw.Stop()
+	require.NoError(t, err, "failed to stop mw")
+}
+
+func TestBlockCreate(t *testing.T) {
+	mw := createWallet(t)
+	mw.SendEvent = func(event *pb.Event){
+		fmt.Printf("got event at %s: %+v\n", event.ContextId, event.Messages)
+	}
+
+	accountCreateResp := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "name_test", Avatar: &pb.RpcAccountCreateRequestAvatarOfAvatarLocalPath{"testdata/pic1.jpg"}})
+	require.Equal(t, pb.RpcAccountCreateResponseError_NULL, accountCreateResp.Error.Code, "AccountCreateResponse contains error: %+v", accountCreateResp.Error)
+	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
+
+	cfg := mw.ConfigGet(&pb.RpcConfigGetRequest{})
+	respOpen := mw.BlockOpen(&pb.RpcBlockOpenRequest{ContextId:"", BlockId:cfg.HomeBlockId})
+	require.Equal(t, pb.RpcBlockOpenResponseError_NULL, respOpen.Error.Code, "RpcBlockOpenRequestResponse contains error: %+v", respOpen.Error)
+
+	fmt.Println("Home block ID: "+cfg.HomeBlockId)
+	resp := mw.BlockCreatePage(&pb.RpcBlockCreatePageRequest{cfg.HomeBlockId, "", &model.Block{Content:&model.BlockContentOfPage{Page: &model.BlockContentPage{}}}, model.Block_Bottom})
+	require.Equal(t, pb.RpcBlockCreatePageResponseError_NULL, resp.Error.Code, "RpcBlockCreatePageResponse contains error: %+v", resp.Error)
+
+	respOpen = mw.BlockOpen(&pb.RpcBlockOpenRequest{ContextId:"", BlockId:resp.TargetId})
+	require.Equal(t, pb.RpcBlockOpenResponseError_NULL, respOpen.Error.Code, "RpcBlockOpenRequestResponse contains error: %+v", respOpen.Error)
+
+	setFieldsResp := mw.BlockSetFields(&pb.RpcBlockSetFieldsRequest{resp.TargetId, resp.TargetId, &types.Struct{
+		Fields: map[string]*types.Value{"name": {Kind: &types.Value_StringValue{StringValue:"name1"}}},
+	}})
+
+	require.Equal(t, pb.RpcBlockSetFieldsResponseError_NULL, setFieldsResp.Error.Code, "RpcBlockSetFieldsResponse contains error: %+v", setFieldsResp.Error)
+
+	block, err := mw.Anytype.GetBlock(resp.TargetId)
+	require.NoError(t, err, "GetBlock failed")
+
+	time.Sleep(time.Second*6)
+	ver, err := block.GetLastSnapshot()
+	require.NoError(t, err, "GetCurrentVersion failed")
+
+	var ch = make(chan core.BlockVersionMeta, 1)
+	cancel, err := block.SubscribeMetaOfNewVersionsOfBlock(ver.VersionId(), true, ch)
+	require.NoError(t, err, "SubscribeMetaOfNewVersionsOfBlock failed")
+	defer cancel()
+
+	meta = <- ch
+	require.True(t, len(meta.Model().Id) > 0, "GetVersionMeta returns empty id")
+
+	block, err = mw.Anytype.GetBlock(resp.TargetId)
+	require.NoError(t, err, "GetBlock failed")
+
+	ver, err = block.GetCurrentVersion()
+	require.NoError(t, err, "GetCurrentVersion failed")
+	require.Equal(t, structs.String("name1"), ver.Model().Fields.Fields["name"] , "name field incorrect ")
+
+	ver.Model()
+	err = mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
 }

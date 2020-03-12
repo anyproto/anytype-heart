@@ -4,7 +4,6 @@ package anymark
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 
@@ -52,7 +51,7 @@ type Markdown interface {
 	// contents to a writer w.
 	Convert(source []byte, writer io.Writer, opts ...parser.ParseOption) error
 
-	ConvertBlocks(source []byte, BR blocksUtil.RWriter, opts ...parser.ParseOption) error
+	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
 	HTMLToBlocks(source []byte) (error, []*model.Block)
 
 	// Parser returns a Parser that will be used for conversion.
@@ -133,17 +132,17 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 	doc := m.parser.Parse(reader, opts...)
 
 	writer := bufio.NewWriter(w)
-	BR := blocksUtil.NewRWriter(writer)
-	//BR := blocksUtil.ExtendWriter(writer, &rState)
+	bWriter := blocksUtil.NewRWriter(writer)
+	//bWriter := blocksUtil.ExtendWriter(writer, &rState)
 
-	return m.renderer.Render(BR, source, doc)
+	return m.renderer.Render(bWriter, source, doc)
 }
 
-func (m *markdown) ConvertBlocks(source []byte, BR blocksUtil.RWriter, opts ...parser.ParseOption) error {
+func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error {
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
 
-	return m.renderer.Render(BR, source, doc)
+	return m.renderer.Render(bWriter, source, doc)
 }
 
 func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
@@ -204,34 +203,19 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	reCode := regexp.MustCompile(`[ ]+`)
 	md = reCode.ReplaceAllString(md, ` `)
 
-/*	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
-	md = reLinkBreaks.ReplaceAllString(md, `[$1]($2)`)
-
-	md = strings.ReplaceAll(md, "`", "@@@")
-	reCode := regexp.MustCompile(`\n(@@@([\s\S]*?)@@@)\n`)
-	md = reCode.ReplaceAllString(md, `@@@@@@@@@$2@@@@@@@@@`)
-	reCodeStart := regexp.MustCompile(`@@@@@@@@@([\S]*?)`)
-	md = reCodeStart.ReplaceAllString(md, "\n@@@@@@@@@\n$1")
-	md = strings.ReplaceAll(md, "@@@", "`")*/
-
-	// Pattern: <a href> <div style=background-image:...>  </div> <a>
 	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
-	fmt.Println("MD:", md)
-
-	//md = "\n```code```\n ## 123123"
-
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer)
+	bWriter := blocksUtil.NewRWriter(writer)
 
-	err := m.ConvertBlocks([]byte(md), BR)
+	err := m.ConvertBlocks([]byte(md), bWriter)
 	if err != nil {
 		return err, nil
 	}
 
-	return nil, BR.GetBlocks()
+	return nil, bWriter.GetBlocks()
 }
 
 func (m *markdown) Parser() parser.Parser {

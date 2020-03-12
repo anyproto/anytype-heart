@@ -379,6 +379,55 @@ message Rpc {
             }
         }
 
+        message Cut {
+            message Request {
+                string contextId = 1;
+                repeated anytype.model.Block blocks = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                string textSlot = 2;
+                string htmlSlot = 3;
+                repeated anytype.model.Block anySlot = 4;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Export {
+            message Request {
+                string contextId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string path = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message Upload {
             message Request {
                 string contextId = 1;

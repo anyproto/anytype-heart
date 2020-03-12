@@ -9,7 +9,8 @@ import (
 )
 
 func (mw *Middleware) IpfsGetFile(req *pb.RpcIpfsFileGetRequest) *pb.RpcIpfsFileGetResponse {
-	response := func(data []byte, media string, name string, code pb.RpcIpfsFileGetResponseErrorCode, err error) *pb.RpcIpfsFileGetResponse {
+	return nil
+	/*response := func(data []byte, media string, name string, code pb.RpcIpfsFileGetResponseErrorCode, err error) *pb.RpcIpfsFileGetResponse {
 		m := &pb.RpcIpfsFileGetResponse{Data: data, Media: media, Error: &pb.RpcIpfsFileGetResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -32,7 +33,7 @@ func (mw *Middleware) IpfsGetFile(req *pb.RpcIpfsFileGetRequest) *pb.RpcIpfsFile
 		return response(nil, "", "", pb.RpcIpfsFileGetResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(data, info.Media, info.Name, pb.RpcIpfsFileGetResponseError_NULL, nil)
+	return response(data, info.Media, info.Name, pb.RpcIpfsFileGetResponseError_NULL, nil)*/
 }
 
 /*
@@ -81,12 +82,8 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	if mw.Anytype.Textile == nil {
-		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype.Textile is nil"))
-	}
-
-	if mw.Anytype.Textile.Node() == nil {
-		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype.Textile.Node() is nil"))
+	if !mw.Anytype.IsStarted() {
+		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
 	image, err := mw.Anytype.ImageByHash(req.GetHash())

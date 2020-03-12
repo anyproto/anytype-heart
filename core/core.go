@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
+	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/gateway"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -36,7 +36,7 @@ type Middleware struct {
 	blockService         block.Service
 	linkPreview          linkpreview.LinkPreview
 
-	Anytype core.Service
+	Anytype libCore.Service
 
 	debugGrpcEventSender      chan struct{}
 	debugGrpcEventSenderMutex sync.Mutex
@@ -51,7 +51,7 @@ func (mw *Middleware) Start() error {
 
 	// start the local http gateway
 	gateway.Host = &gateway.Gateway{
-		Node: mw.Anytype.(*core.Anytype),
+		Node: mw.Anytype,
 	}
 
 	err = gateway.Host.Start(gateway.GatewayAddr())

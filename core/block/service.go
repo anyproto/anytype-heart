@@ -53,6 +53,8 @@ type Service interface {
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
+	Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Export(req pb.RpcBlockExportRequest) (html string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -78,6 +80,7 @@ type Service interface {
 	ProcessCancel(id string) error
 
 	Close() error
+
 }
 
 func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
@@ -199,7 +202,7 @@ func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err erro
 	}
 	defer release()
 	if bc, ok := sb.(*breadcrumbs); ok {
-		return bc.Cut(int(req.Index))
+		return bc.BreadcrumbsCut(int(req.Index))
 	}
 	return ErrUnexpectedSmartBlockType
 }
@@ -313,6 +316,24 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err err
 	}
 	defer release()
 	return sb.Paste(req)
+}
+
+func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.Cut(req)
+}
+
+func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+	sb, release, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer release()
+	return sb.Export(req)
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {

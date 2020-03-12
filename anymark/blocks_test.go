@@ -3,7 +3,7 @@ package anymark_test
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
@@ -28,6 +28,5 @@ func TestConvertBlocks(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	fmt.Println("rState:", BR.GetBlocks())
-	fmt.Println("b:", b.String())
+	assert.NotEmpty(t, BR.GetBlocks())
 }
