@@ -12,6 +12,10 @@ type SmartBlock interface {
 	core.SmartBlock
 }
 
+type SmartBlockSnapshot interface {
+	core.SmartBlockSnapshot
+}
+
 type File interface {
 	core.File
 }

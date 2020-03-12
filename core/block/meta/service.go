@@ -3,13 +3,13 @@ package meta
 import (
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/gogo/protobuf/types"
 )
 
 type Meta struct {
 	BlockId string
-	Details *types.Struct
+	core.SmartBlockMeta
 }
 
 type Service interface {
