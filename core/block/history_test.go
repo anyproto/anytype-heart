@@ -1,5 +1,6 @@
 package block
 
+/*
 import (
 	"testing"
 
@@ -98,3 +99,4 @@ func TestCommonSmart_Redo(t *testing.T) {
 		assert.Nil(t, fx.versions["removed"])
 	})
 }
+*/

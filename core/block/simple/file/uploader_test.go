@@ -147,7 +147,7 @@ func newFixture(t *testing.T, file *File) *fixture {
 	ctrl := gomock.NewController(t)
 	return &fixture{
 		ctrl:    ctrl,
-		anytype: testMock.NewMockAnytype(ctrl),
+		anytype: testMock.NewMockService(ctrl),
 		file:    file,
 		t:       t,
 		done:    make(chan struct{}),
@@ -156,7 +156,7 @@ func newFixture(t *testing.T, file *File) *fixture {
 
 type fixture struct {
 	ctrl    *gomock.Controller
-	anytype *testMock.MockAnytype
+	anytype *testMock.MockService
 	file    *File
 	t       *testing.T
 	done    chan struct{}

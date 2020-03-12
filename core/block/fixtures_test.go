@@ -1,5 +1,6 @@
 package block
 
+/*
 import (
 	"fmt"
 	"math/rand"
@@ -18,7 +19,7 @@ import (
 
 func newServiceFixture(t *testing.T, accountId string) *serviceFixture {
 	ctrl := gomock.NewController(t)
-	anytype := testMock.NewMockAnytype(ctrl)
+	anytype := testMock.NewMockService(ctrl)
 	fx := &serviceFixture{
 		t:       t,
 		ctrl:    ctrl,
@@ -32,7 +33,7 @@ type serviceFixture struct {
 	Service
 	t       *testing.T
 	ctrl    *gomock.Controller
-	anytype *testMock.MockAnytype
+	anytype *testMock.MockService
 	events  []*pb.Event
 }
 
@@ -68,7 +69,7 @@ func (fx *serviceFixture) tearDown() {
 }
 
 type blockWrapper struct {
-	*testMock.MockBlock
+	*testMock.MockSmartBlock
 	clientEventsChan          chan<- proto.Message
 	blockVersionsChan         chan<- []core.BlockVersion
 	blockMetaChan             chan<- core.BlockVersionMeta
@@ -251,3 +252,4 @@ type pageFixture struct {
 func (fx *pageFixture) tearDown() {
 	fx.serviceFx.tearDown()
 }
+*/

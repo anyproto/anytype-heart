@@ -22,11 +22,14 @@ type Subscriber interface {
 }
 
 func newPubSub(a anytype.Service) *pubSub {
-	return &pubSub{
+	ps := &pubSub{
 		subscribers: make(map[string]map[Subscriber]struct{}),
 		collectors:  make(map[string]*collector),
 		lastUsage:   make(map[string]time.Time),
+		anytype:     a,
 	}
+	go ps.ticker()
+	return ps
 }
 
 type pubSub struct {
@@ -230,19 +233,36 @@ func (c *collector) setMeta(d Meta) {
 }
 
 func (c *collector) listener() {
+	defer func() {
+		select {
+		case <-c.ready:
+			return
+		default:
+			close(c.ready)
+		}
+	}()
 	sb, err := c.ps.anytype.GetBlock(c.blockId)
 	if err != nil {
 		return
 	}
-	state, err := sb.GetCurrentState()
-	if err != nil {
-		return
-	}
+
 	ss, err := sb.GetLastSnapshot()
 	if err != nil {
 		return
 	}
-
+	meta, err := ss.Meta()
+	if err != nil {
+		return
+	} else {
+		c.m.Lock()
+		c.lastMeta = Meta{
+			BlockId:        c.blockId,
+			SmartBlockMeta: *meta,
+		}
+		c.m.Unlock()
+		close(c.ready)
+	}
+	state := ss.State()
 	var ch = make(chan core.SmartBlockMetaChanges)
 	cancel, err := sb.SubscribeForMetaChangesSinceState(state, ch)
 	if err != nil {

@@ -1,5 +1,6 @@
 package block
 
+/*
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -80,7 +81,7 @@ func checkBlockMarks(t *testing.T, fx *pageFixture, marksArr [][]*model.BlockCon
 			require.True(t, fx.versions[id].Model().GetText().Marks != nil)
 			require.True(t, len(fx.versions[id].Model().GetText().Marks.Marks) > 0)
 		}*/
-
+		/*
 		if fx.versions[id].Model().GetText().Marks != nil &&
 			len(fx.versions[id].Model().GetText().Marks.Marks) > 0 &&
 			marksArr[i] != nil {
@@ -102,7 +103,7 @@ func checkBlockTextAndStyle(t *testing.T, fx *pageFixture, textArr []string)  {
 	for i := 0; i < len(cIds); i++  {
 		fmt.Println( i, ": ", fx.versions[cIds[i]].Model() )
 	}*/
-
+/*
 	for i := 0; i < len(textArr); i++  {
 		id := fx.versions[fx.GetId()].Model().ChildrenIds[i]
 		require.Equal(t, textArr[i], fx.versions[id].Model().GetText().Text)
@@ -676,3 +677,4 @@ func TestCommonSmart_TextSlot_CommonCases(t *testing.T) {
 		checkBlockText(t, fx, []string{"aaaaa", "bbbbb"});
 	})
 }
+*/

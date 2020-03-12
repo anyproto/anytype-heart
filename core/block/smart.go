@@ -124,10 +124,14 @@ func (p *commonSmart) Open(block anytype.SmartBlock, active bool) (err error) {
 
 	snapshot, err := block.GetLastSnapshot()
 	if err != nil {
-		return
+		return fmt.Errorf("GetLastSnapshot error: %v", err)
 	}
 
-	for _, m := range snapshot.Blocks() {
+	blocks, err := snapshot.Blocks()
+	if err != nil {
+		return fmt.Errorf("snapshot.Blocks error: %v", err)
+	}
+	for _, m := range blocks {
 		p.versions[m.Id] = simple.New(m)
 	}
 	p.normalize()
