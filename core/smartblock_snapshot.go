@@ -11,19 +11,28 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 )
 
+type SmartBlockSnapshot interface {
+	State() SmartBlockState
+	Creator() (string, error)
+	CreatedDate() *time.Time
+	ReceivedDate() *time.Time
+	Blocks() ([]*model.Block, error)
+	Meta() (*SmartBlockMeta, error)
+}
+
 type smartBlockSnapshot struct {
-	model     *storage.SmartBlockWithMeta
-	state     SmartBlockState
-	user      string
-	date      *types.Timestamp
-	node      *Anytype
+	model *storage.SmartBlockWithMeta
+	state SmartBlockState
+	user  string
+	date  *types.Timestamp
+	node  *Anytype
 }
 
 type smartBlockSnapshotMeta struct {
-	model     *storage.BlockMetaOnly
-	user      string
-	date      *types.Timestamp
-	node      *Anytype
+	model *storage.BlockMetaOnly
+	user  string
+	date  *types.Timestamp
+	node  *Anytype
 }
 
 func (snapshot smartBlockSnapshot) State() SmartBlockState {
@@ -38,7 +47,7 @@ func (snapshot smartBlockSnapshot) CreatedDate() *time.Time {
 	return nil
 }
 
-func (snapshot smartBlockSnapshot) ReceivedDate()  *time.Time {
+func (snapshot smartBlockSnapshot) ReceivedDate() *time.Time {
 	return nil
 }
 
