@@ -23,7 +23,7 @@ var Host *Gateway
 
 // Gateway is a HTTP API for getting files and links from IPFS
 type Gateway struct {
-	Node   *core.Anytype
+	Node   core.Service
 	server *http.Server
 }
 

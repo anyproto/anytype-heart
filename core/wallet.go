@@ -6,9 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/textileio/go-textile/keypair"
-	"github.com/textileio/go-textile/wallet"
 )
 
 var ErrRepoExists = fmt.Errorf("repo not empty, reinitializing would overwrite your account")
@@ -40,36 +39,57 @@ func WalletGenerateMnemonic(wordCount int) (string, error) {
 	return w.RecoveryPhrase, nil
 }
 
-func WalletAccountAt(mnemonic string, index int, passphrase string) (*keypair.Full, error) {
+func WalletAccountAt(mnemonic string, index int, passphrase string) (*wallet.AccountKeypair, error) {
 	w := wallet.WalletFromMnemonic(mnemonic)
 	return w.AccountAt(index, passphrase)
 }
 
-func WalletInitRepo(rootPath string, seed string) error {
-	kp, err := keypair.Parse(seed)
+func WalletInitRepo(rootPath string, seed []byte) error {
+	pk, err := crypto.UnmarshalEd25519PrivateKey(seed)
 	if err != nil {
 		return err
 	}
 
-	repoPath := filepath.Join(rootPath, kp.Address())
+	accountKP, err := wallet.AccountKeypairFromPrivKey(pk)
+	if err != nil {
+		return err
+	}
+
+	accountKPBinary, err := accountKP.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	devicePrivKey, err := wallet.PrivateKeyFromRandom()
+	if err != nil {
+		return err
+	}
+
+	deviceKP, err := wallet.DeviceKeypairFromPrivKey(devicePrivKey)
+	if err != nil {
+		return err
+	}
+
+	deviceKPBinary, err := deviceKP.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	repoPath := filepath.Join(rootPath, accountKP.Address())
 	_, err = os.Stat(repoPath)
 	if !os.IsNotExist(err) {
 		return ErrRepoExists
 	}
 
 	os.MkdirAll(repoPath, 0700)
-	keyPath := filepath.Join(repoPath, "key")
+	accountKeyPath := filepath.Join(repoPath, "account.key")
+	deviceKeyPath := filepath.Join(repoPath, "device.key")
 
-	priv, err := kp.LibP2PPrivKey()
-	if err != nil {
-		return err
-	}
-
-	key, err := crypto.MarshalPrivateKey(priv)
-	if err != nil {
+	if err = ioutil.WriteFile(accountKeyPath, accountKPBinary, 0400); err != nil {
 		panic(err)
 	}
-	if err = ioutil.WriteFile(keyPath, key, 0400); err != nil {
+
+	if err = ioutil.WriteFile(deviceKeyPath, deviceKPBinary, 0400); err != nil {
 		panic(err)
 	}
 

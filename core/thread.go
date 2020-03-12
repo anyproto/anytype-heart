@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-slip21"
 	"github.com/ipfs/go-cid"
 	"github.com/textileio/go-textile/keypair"
-	"github.com/textileio/go-textile/strkey"
 	twallet "github.com/textileio/go-textile/wallet"
 	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/service"
@@ -58,13 +57,13 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]SmartBlockType{
 }
 
 func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, read *symmetric.Key, log *keypair.Full, err error) {
-	seedRaw, err2 := strkey.Decode(strkey.VersionByteSeed, a.account.Seed())
+	accountSeed, err2 := a.account.PrivKey.Raw()
 	if err2 != nil {
 		err = err2
 		return
 	}
 
-	master, err2 := twallet.NewMasterKey(seedRaw)
+	master, err2 := twallet.NewMasterKey(accountSeed)
 	if err2 != nil {
 		err = err2
 		return
@@ -80,13 +79,13 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 		return
 	}
 
-	nodeKey, err2 := slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadFollowKeySuffix), seedRaw)
+	nodeKey, err2 := slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadFollowKeySuffix), accountSeed)
 	if err2 != nil {
 		err = err2
 		return
 	}
 
-	nodeNonce, err2 := slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadFollowKeySuffix)+"/"+anytypeThreadNonceSuffix, seedRaw)
+	nodeNonce, err2 := slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadFollowKeySuffix)+"/"+anytypeThreadNonceSuffix, accountSeed)
 	if err2 != nil {
 		err = err2
 		return
@@ -97,12 +96,12 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 		return
 	}
 
-	nodeKey, err = slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadReadKeySuffix), seedRaw)
+	nodeKey, err = slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadReadKeySuffix), accountSeed)
 	if err != nil {
 		return
 	}
 
-	nodeNonce, err = slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadReadKeySuffix)+"/"+anytypeThreadNonceSuffix, seedRaw)
+	nodeNonce, err = slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadReadKeySuffix)+"/"+anytypeThreadNonceSuffix, accountSeed)
 	if err != nil {
 		return
 	}
@@ -116,12 +115,12 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 }
 
 func (a *Anytype) deriveThreadId(index threadDerivedIndex) (thread.ID, error) {
-	seedRaw, err := strkey.Decode(strkey.VersionByteSeed, a.account.Seed())
+	accountSeed, err := a.account.PrivKey.Raw()
 	if err != nil {
 		return thread.Undef, err
 	}
 
-	node, err := slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadIdKeySuffix), seedRaw)
+	node, err := slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadIdKeySuffix), accountSeed)
 	if err != nil {
 		return thread.Undef, err
 	}

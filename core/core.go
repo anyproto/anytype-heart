@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,25 +11,29 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/service"
+	"github.com/anytypeio/go-anytype-library/wallet"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-textile/keypair"
 	"github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
 )
 
 var log = logging.Logger("anytype-core")
 
-const privateKey = `/key/swarm/psk/1.0.0/
+const (
+	ipfsPrivateNetworkKey = `/key/swarm/psk/1.0.0/
 /base16/
 fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 
+	keyFileAccount = "account.key"
+	keyFileDevice = "device.key"
+
+)
 var BootstrapNodes = []string{
 	"/ip4/68.183.2.167/tcp/4001/ipfs/12D3KooWB2Ya2GkLLRSR322Z13ZDZ9LP4fDJxauscYwUMKLFCqaD",
 }
@@ -46,7 +49,8 @@ type Anytype struct {
 	repoPath string
 	ts       store.ServiceBoostrapper
 	mdns     discovery.Service
-	account  *keypair.Full
+	account		 wallet.AccountKeypair
+	device       wallet.DeviceKeypair
 
 	predefinedBlockIds PredefinedBlockIds
 	logLevels          map[string]string
@@ -60,6 +64,7 @@ type Service interface {
 	Stop() error
 	IsStarted() bool
 
+	InitPredefinedBlocks(mustSyncFromRemote bool) error
 	PredefinedBlocks() PredefinedBlockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	CreateBlock(t SmartBlockType) (SmartBlock, error)
@@ -84,7 +89,6 @@ func (a *Anytype) ipfs() *ipfslite.Peer {
 func (a *Anytype) IsStarted() bool {
 	return a.ts != nil && a.ts.GetIpfsLite() != nil
 }
-
 
 func (a *Anytype) CreateBlock(t SmartBlockType) (SmartBlock, error) {
 	thrd, err := a.newBlockThread(t)
@@ -133,12 +137,28 @@ func New(rootPath string, account string) (Service, error) {
 	}
 
 	a := Anytype{repoPath: repoPath, logLevels: getLogLevels()}
-
-	kp, err := a.readKeyFile()
+	pk, err := wallet.PrivateKeyFromFile(filepath.Join(rootPath, keyFileAccount))
 	if err != nil {
 		return nil, err
 	}
-	a.account = kp
+
+	accountKP, err := wallet.AccountKeypairFromPrivKey(pk)
+	if err != nil {
+		return nil, err
+	}
+
+	a.account = *accountKP
+
+	pk, err = wallet.PrivateKeyFromFile(filepath.Join(rootPath, keyFileDevice))
+	if err != nil {
+		return nil, err
+	}
+
+	deviceKP, err := wallet.DeviceKeypairFromPrivKey(pk)
+	if err != nil {
+		return nil, err
+	}
+	a.device = *deviceKP
 
 	return &a, nil
 }
@@ -178,40 +198,6 @@ func (a *Anytype) runPeriodicJobsInBackground() {
 	}()
 }
 
-func (a *Anytype) readKeyFile() (*keypair.Full, error) {
-	pth := filepath.Join(a.repoPath, "key")
-	_, err := os.Stat(pth)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("key file not exists")
-	} else if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(pth)
-	if err != nil {
-		return nil, err
-	}
-
-	priv, err := crypto.UnmarshalPrivateKey(b)
-	if err != nil {
-		return nil, err
-	}
-
-	privRaw, err := priv.Raw()
-	if err != nil {
-		return nil, err
-	}
-
-	var privRawAr [32]byte
-	copy(privRawAr[:], privRaw[:32])
-	kp, err := keypair.FromRawSeed(privRawAr)
-	if err != nil {
-		return nil, err
-	}
-
-	return kp, nil
-}
-
 func (a *Anytype) Start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
@@ -220,15 +206,10 @@ func (a *Anytype) Start() error {
 		return err
 	}
 
-	privKey, err := a.account.LibP2PPrivKey()
-	if err != nil {
-		return err
-	}
-
 	ts, err := service.NewService(
 		a.repoPath,
-		privKey,
-		[]byte(privateKey),
+		a.device.PrivKey,
+		[]byte(ipfsPrivateNetworkKey),
 		service.WithServiceHostAddr(hostAddr),
 		service.WithServiceDebug(true))
 	if err != nil {
@@ -255,11 +236,10 @@ func (a *Anytype) Start() error {
 	a.mdns = mdns
 	mdns.RegisterNotifee(a)
 
-	a.initPredefinedBlocks(false)
 	return nil
 }
 
-func (a *Anytype) initPredefinedBlocks(mustSyncFromRemote bool) error {
+func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
 	err := a.createPredefinedBlocksIfNotExist(mustSyncFromRemote)
 	if err != nil {
 		return err
