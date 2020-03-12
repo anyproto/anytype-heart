@@ -86,11 +86,11 @@ func WalletInitRepo(rootPath string, seed []byte) error {
 	deviceKeyPath := filepath.Join(repoPath, "device.key")
 
 	if err = ioutil.WriteFile(accountKeyPath, accountKPBinary, 0400); err != nil {
-		panic(err)
+		return err
 	}
 
 	if err = ioutil.WriteFile(deviceKeyPath, deviceKPBinary, 0400); err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil

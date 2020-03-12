@@ -26,6 +26,7 @@ func TestAnytype_IsStarted(t *testing.T) {
 
 func TestAnytype_PredefinedBlocks(t *testing.T) {
 	s := getRunningService(t)
+	s.InitPredefinedBlocks(false)
 	require.NotNil(t, s)
 	require.Len(t, s.PredefinedBlocks().Home,57)
 }

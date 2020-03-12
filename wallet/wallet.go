@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"bytes"
 	"fmt"
 
 	logging "github.com/ipfs/go-log"
@@ -114,12 +115,11 @@ func (w *Wallet) AccountAt(index int, passphrase string) (*AccountKeypair, error
 	if err != nil {
 		return nil, err
 	}
-
-	privKey, err := crypto.UnmarshalEd25519PrivateKey(key.Key)
+	reader := bytes.NewReader(key.Key)
+	privKey, _, err := crypto.GenerateEd25519Key(reader)
 	if err != nil {
 		return nil, err
 	}
 
 	return &AccountKeypair{privKey}, nil
-
 }

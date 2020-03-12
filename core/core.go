@@ -137,7 +137,7 @@ func New(rootPath string, account string) (Service, error) {
 	}
 
 	a := Anytype{repoPath: repoPath, logLevels: getLogLevels()}
-	pk, err := wallet.PrivateKeyFromFile(filepath.Join(rootPath, keyFileAccount))
+	pk, err := wallet.PrivateKeyFromFile(filepath.Join(repoPath, keyFileAccount))
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func New(rootPath string, account string) (Service, error) {
 
 	a.account = *accountKP
 
-	pk, err = wallet.PrivateKeyFromFile(filepath.Join(rootPath, keyFileDevice))
+	pk, err = wallet.PrivateKeyFromFile(filepath.Join(repoPath, keyFileDevice))
 	if err != nil {
 		return nil, err
 	}
