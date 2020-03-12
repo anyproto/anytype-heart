@@ -76,6 +76,7 @@ type SmartBlock interface {
 	GetCurrentState() (SmartBlockState, error)
 	PushChanges(content *SmartBlockContentChanges, meta *SmartBlockMetaChanges) (state SmartBlockState, err error)
 	PushSnapshot(state SmartBlockState, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error)
+	GetAvailableChangesAfter(state SmartBlockState) ([]SmartBlockChanges, error)
 	SubscribeForChangesSinceState(state SmartBlockState, ch chan SmartBlockChanges) (cancel func(), err error)
 	SubscribeForMetaChangesSinceState(state SmartBlockState, ch chan SmartBlockMetaChanges) (cancel func(), err error)
 
@@ -146,6 +147,10 @@ func (block *smartBlock) GetLastSnapshot() (SmartBlockSnapshot, error) {
 	}
 
 	return versions[0], nil
+}
+
+func (block *smartBlock) GetAvailableChangesAfter(state SmartBlockState) ([]SmartBlockChanges, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (block *smartBlock) GetSnapshotBefore(state SmartBlockState) (SmartBlockSnapshot, error) {
