@@ -36,7 +36,7 @@ type Middleware struct {
 	blockService         block.Service
 	linkPreview          linkpreview.LinkPreview
 
-	*libCore.Anytype
+	Anytype libCore.Service
 
 	debugGrpcEventSender      chan struct{}
 	debugGrpcEventSenderMutex sync.Mutex
@@ -44,7 +44,7 @@ type Middleware struct {
 
 // Start starts the anytype node and HTTP gateway
 func (mw *Middleware) Start() error {
-	err := mw.Anytype.Run()
+	err := mw.Anytype.Start()
 	if err != nil {
 		return err
 	}

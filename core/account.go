@@ -10,8 +10,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/textileio/go-textile/keypair"
 )
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -42,7 +42,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	index := len(mw.localAccounts)
-	var account *keypair.Full
+	var account *wallet.AccountKeypair
 	for {
 		var err error
 		account, err = core.WalletAccountAt(mw.mnemonic, index, "")
@@ -83,16 +83,12 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	err = mw.AccountSetName(req.Name)
-	if err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
-	}
-	newAcc.Name, err = mw.Textile.Name()
-	if err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
-	}
-
-	if req.GetAvatarLocalPath() != "" {
+	//err = mw.AccountSetNameAndAvatar(req.Name, req.GetAvatarLocalPath(), req.GetAvatarColor())
+	//if err != nil {
+	//	return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+	//}
+	newAcc.Name = req.Name
+	/*if req.GetAvatarLocalPath() != "" {
 		_, err := mw.AccountSetAvatar(req.GetAvatarLocalPath())
 		if err != nil {
 			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
@@ -108,7 +104,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		if err != nil {
 			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
 		}
-	}
+	}*/
 
 	mw.localAccounts = append(mw.localAccounts, newAcc)
 	mw.switchAccount(newAcc.Id)
@@ -229,14 +225,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 	}
 
-	for {
-		if mw.Anytype.Textile.Node().Online() {
-			break
-		}
-		time.Sleep(time.Second)
-	}
-
-	for {
+	/*for {
 		// wait for cafe registration
 		// in order to use cafeAPI instead of pubsub
 		if cs := mw.Anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
@@ -244,9 +233,12 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 
 		time.Sleep(time.Second)
-	}
+	}*/
 
-	index := len(mw.localAccounts)
+	// todo: reimplement after cafe2.0 will be ready
+	return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("not implemented"))
+
+	/*index := len(mw.localAccounts)
 	for {
 		// todo: add goroutine to query multiple accounts at once
 		account, err := core.WalletAccountAt(mw.mnemonic, index, "")
@@ -256,7 +248,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 		var ctx context.Context
 		ctx, searchQueryCancel = context.WithCancel(context.Background())
-		contact, err := mw.Anytype.AccountRequestStoredContact(ctx, account.Address())
+		contact, err := mw.Anytype.(ctx, account.Address())
 
 		if err != nil || contact == nil {
 			if index == 0 {
@@ -286,7 +278,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
 		index++
-	}
+	}*/
 }
 
 func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
@@ -304,7 +296,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		mw.accountSearchCancel()
 	}
 
-	if mw.Anytype == nil || req.Id != mw.Anytype.Textile.Address() {
+	if mw.Anytype == nil || req.Id != mw.Anytype.Account() {
 		// in case user selected account other than the first one(used to perform search)
 		// or this is the first time in this session we run the Anytype node
 		if mw.Anytype != nil {
@@ -359,7 +351,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
 	}
 
-	acc.Name, err = mw.Anytype.Textile.Name()
+	/*acc.Name, err = mw.Anytype.Textile.Name()
 	if err != nil {
 		return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
 	}
@@ -391,7 +383,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	if avatarHashOrColor != "" {
 		acc.Avatar = getAvatarFromString(avatarHashOrColor)
 	}
-
+	*/
 	mw.switchAccount(acc.Id)
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
@@ -410,7 +402,7 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 		return response(pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
 	}
 
-	address := mw.Anytype.Textile.Address()
+	address := mw.Anytype.Account()
 	err := mw.Stop()
 	if err != nil {
 		return response(pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE, err)
