@@ -4,10 +4,10 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 )
 
-func NewAnytype(c core.Service) Service {
-	return &anytype{c}
+func NewService(c core.Service) Service {
+	return &service{c}
 }
 
-type anytype struct {
+type service struct {
 	core.Service
 }

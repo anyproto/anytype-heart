@@ -585,7 +585,7 @@ func (mw *Middleware) switchAccount(accountId string) {
 		mw.blockService.Close()
 	}
 
-	mw.blockService = block.NewService(accountId, anytype.NewAnytype(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	mw.blockService = block.NewService(accountId, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
