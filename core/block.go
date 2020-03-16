@@ -3,7 +3,7 @@ package core
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/old"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -50,7 +50,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 
 	if err := mw.blockService.OpenBlock(req.BlockId, req.BreadcrumbsIds...); err != nil {
 		switch err {
-		case block.ErrBlockNotFound:
+		case old.ErrBlockNotFound:
 			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
 		}
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
@@ -71,7 +71,7 @@ func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsReques
 	id, err := mw.blockService.OpenBreadcrumbsBlock()
 	if err != nil {
 		switch err {
-		case block.ErrBlockNotFound:
+		case old.ErrBlockNotFound:
 			return response(pb.RpcBlockOpenBreadcrumbsResponseError_BAD_INPUT, "", err)
 		}
 		return response(pb.RpcBlockOpenBreadcrumbsResponseError_UNKNOWN_ERROR, "", err)
@@ -585,7 +585,7 @@ func (mw *Middleware) switchAccount(accountId string) {
 		mw.blockService.Close()
 	}
 
-	mw.blockService = block.NewService(accountId, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	mw.blockService = old.NewService(accountId, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {

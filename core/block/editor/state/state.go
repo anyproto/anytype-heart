@@ -13,7 +13,12 @@ import (
 
 var log = logging.Logger("anytype-mw")
 
-func New(rootId string, blocks map[string]simple.Block) (s *State) {
+type Doc interface {
+	RootId() string
+	NewState() *State
+}
+
+func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	if blocks == nil {
 		blocks = make(map[string]simple.Block)
 	}
@@ -35,7 +40,7 @@ func (s *State) RootId() string {
 	return s.rootId
 }
 
-func (s *State) New() *State {
+func (s *State) NewState() *State {
 	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId}
 }
 

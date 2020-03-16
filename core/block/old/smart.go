@@ -1,4 +1,4 @@
-package block
+package old
 
 import (
 	"errors"
@@ -34,7 +34,7 @@ type smartBlock interface {
 	CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
-	Split(id string, pos int32) (blockId string, err error)
+	Split(id string, pos int32) (blockId string, err error) //
 	Merge(firstId, secondId string) error
 	Move(req pb.RpcBlockListMoveRequest) error
 	Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)

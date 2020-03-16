@@ -10,7 +10,7 @@ import (
 )
 
 func TestState_Add(t *testing.T) {
-	s := New("1", nil)
+	s := NewDoc("1", nil).NewState()
 	assert.Nil(t, s.Get("1"))
 	assert.True(t, s.Add(base.NewBase(&model.Block{
 		Id: "1",
@@ -22,38 +22,36 @@ func TestState_Add(t *testing.T) {
 }
 
 func TestState_Get(t *testing.T) {
-	s := New("1", map[string]simple.Block{
+	s := NewDoc("1", map[string]simple.Block{
 		"1": base.NewBase(&model.Block{Id: "1"}),
-	})
+	}).NewState()
 	assert.NotNil(t, s.Get("1"))
-	assert.NotNil(t, s.New().Get("1"))
+	assert.NotNil(t, s.NewState().Get("1"))
 }
 
 func TestState_Pick(t *testing.T) {
-	s := New("1", map[string]simple.Block{
+	s := NewDoc("1", map[string]simple.Block{
 		"1": base.NewBase(&model.Block{Id: "1"}),
-	})
+	}).NewState()
 	assert.NotNil(t, s.Pick("1"))
-	assert.NotNil(t, s.New().Pick("1"))
+	assert.NotNil(t, s.NewState().Pick("1"))
 }
 
 func TestState_Unlink(t *testing.T) {
-	s := New("1", map[string]simple.Block{
+	s := NewDoc("1", map[string]simple.Block{
 		"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
 		"2": base.NewBase(&model.Block{Id: "2"}),
-	})
-	s = s.New()
+	}).NewState()
 	assert.True(t, s.Unlink("2"))
 	assert.Len(t, s.Pick("1").Model().ChildrenIds, 0)
 	assert.False(t, s.Unlink("2"))
 }
 
 func TestState_Remove(t *testing.T) {
-	s := New("1", map[string]simple.Block{
+	s := NewDoc("1", map[string]simple.Block{
 		"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
 		"2": base.NewBase(&model.Block{Id: "2"}),
-	})
-	s = s.New()
+	}).NewState()
 	assert.True(t, s.Remove("2"))
 	assert.Len(t, s.Pick("1").Model().ChildrenIds, 0)
 	assert.False(t, s.Remove("2"))
@@ -62,10 +60,9 @@ func TestState_Remove(t *testing.T) {
 }
 
 func TestState_GetParentOf(t *testing.T) {
-	s := New("1", map[string]simple.Block{
+	s := NewDoc("1", map[string]simple.Block{
 		"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
 		"2": base.NewBase(&model.Block{Id: "2"}),
-	})
-	s = s.New()
+	}).NewState()
 	assert.Equal(t, "1", s.GetParentOf("2").Model().Id)
 }

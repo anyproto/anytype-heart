@@ -11,10 +11,10 @@ import (
 
 func TestState_InsertTo(t *testing.T) {
 	t.Run("default insert", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "first"}))
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("", 0, "first", "second")
@@ -29,11 +29,11 @@ func TestState_InsertTo(t *testing.T) {
 		assert.True(t, r.Exists("second"))
 	})
 	t.Run("bottom", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
 		r.Add(simple.New(&model.Block{Id: "target"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "first"}))
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Bottom, "first", "second")
@@ -46,11 +46,11 @@ func TestState_InsertTo(t *testing.T) {
 		assert.Equal(t, []string{"target", "first", "second"}, r.Pick("root").Model().ChildrenIds)
 	})
 	t.Run("top", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
 		r.Add(simple.New(&model.Block{Id: "target"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "first"}))
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Top, "first", "second")
@@ -63,11 +63,11 @@ func TestState_InsertTo(t *testing.T) {
 		assert.Equal(t, []string{"first", "second", "target"}, r.Pick("root").Model().ChildrenIds)
 	})
 	t.Run("inner", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
 		r.Add(simple.New(&model.Block{Id: "target"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "first"}))
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Inner, "first", "second")
@@ -81,11 +81,11 @@ func TestState_InsertTo(t *testing.T) {
 		assert.Equal(t, []string{"first", "second"}, r.Pick("target").Model().ChildrenIds)
 	})
 	t.Run("replace", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
 		r.Add(simple.New(&model.Block{Id: "target"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "first"}))
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Replace, "first", "second")
@@ -100,11 +100,11 @@ func TestState_InsertTo(t *testing.T) {
 	})
 
 	moveFromSide := func(t *testing.T, pos model.BlockPosition) (r *State, c1, c2 simple.Block) {
-		r = New("root", nil)
+		r = NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
 		r.Add(simple.New(&model.Block{Id: "target"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "first"}))
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", pos, "first", "second")
@@ -138,7 +138,7 @@ func TestState_InsertTo(t *testing.T) {
 	})
 	t.Run("left to column", func(t *testing.T) {
 		r, c1, _ := moveFromSide(t, model.Block_Left)
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c1.Model().Id, model.Block_Left, "third")
 
@@ -151,7 +151,7 @@ func TestState_InsertTo(t *testing.T) {
 	})
 	t.Run("left to column 2", func(t *testing.T) {
 		r, _, c2 := moveFromSide(t, model.Block_Left)
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c2.Model().Id, model.Block_Left, "third")
 
@@ -164,7 +164,7 @@ func TestState_InsertTo(t *testing.T) {
 	})
 	t.Run("left to column 2", func(t *testing.T) {
 		r, _, c2 := moveFromSide(t, model.Block_Left)
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c2.Model().Id, model.Block_Right, "third")
 
@@ -177,10 +177,10 @@ func TestState_InsertTo(t *testing.T) {
 	})
 
 	t.Run("cycle ref error", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"2"}}))
 		s.Add(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"1"}}))
 		s.Get("root").Model().ChildrenIds = []string{"1"}

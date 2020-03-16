@@ -1,4 +1,4 @@
-package block
+package old
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"

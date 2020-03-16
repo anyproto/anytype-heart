@@ -8,7 +8,7 @@ import (
 	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/gateway"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/old"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	logging "github.com/ipfs/go-log"
@@ -33,7 +33,7 @@ type Middleware struct {
 	localAccounts        []*model.Account
 	localAccountCachedAt *time.Time
 	SendEvent            func(event *pb.Event)
-	blockService         block.Service
+	blockService         old.Service
 	linkPreview          linkpreview.LinkPreview
 
 	Anytype libCore.Service

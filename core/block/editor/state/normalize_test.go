@@ -33,7 +33,7 @@ func TestState_Normalize(t *testing.T) {
 	)
 
 	t.Run("nothing to change", func(t *testing.T) {
-		s := New("1", nil).New()
+		s := NewDoc("1", nil).NewState()
 		msgs, hist, err := s.Apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
@@ -41,11 +41,11 @@ func TestState_Normalize(t *testing.T) {
 	})
 
 	t.Run("clean missing children", func(t *testing.T) {
-		r := New("root", map[string]simple.Block{
+		r := NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"one"}}),
 			"one":  simple.New(&model.Block{Id: "one", ChildrenIds: []string{"missingid"}}),
-		})
-		s := r.New()
+		}).(*State)
+		s := r.NewState()
 		s.Get("one")
 		msgs, hist, err := s.Apply()
 		require.NoError(t, err)
@@ -55,14 +55,14 @@ func TestState_Normalize(t *testing.T) {
 	})
 
 	t.Run("remove empty layouts", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"r1", "t1"}}))
 		r.Add(simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2"}, Content: contRow}))
 		r.Add(simple.New(&model.Block{Id: "c1", Content: contColumn}))
 		r.Add(simple.New(&model.Block{Id: "c2", Content: contColumn}))
 		r.Add(simple.New(&model.Block{Id: "t1"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Get("c1")
 		s.Get("c2")
 
@@ -78,7 +78,7 @@ func TestState_Normalize(t *testing.T) {
 	})
 
 	t.Run("remove one column row", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"r1", "t1"}}))
 
 		r.Add(simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1"}, Content: contRow}))
@@ -86,7 +86,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "t1"}))
 		r.Add(simple.New(&model.Block{Id: "t2"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Get("c1")
 
 		msgs, hist, err := s.Apply()
@@ -99,7 +99,7 @@ func TestState_Normalize(t *testing.T) {
 		assert.Nil(t, r.Pick("c1"))
 	})
 	t.Run("cleanup width", func(t *testing.T) {
-		r := New("root", nil)
+		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"r1"}}))
 
 		r.Add(simple.New(&model.Block{Id: "r1", ChildrenIds: []string{"c1", "c2", "c3"}, Content: contRow}))
@@ -110,7 +110,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "t2"}))
 		r.Add(simple.New(&model.Block{Id: "t3"}))
 
-		s := r.New()
+		s := r.NewState()
 		s.Remove("c2")
 
 		msgs, hist, err := s.Apply()
