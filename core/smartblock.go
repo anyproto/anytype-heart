@@ -84,6 +84,7 @@ type SmartBlock interface {
 	Type() SmartBlockType
 	Creator() (string, error)
 	GetLastSnapshot() (SmartBlockSnapshot, error)
+	// GetLastDownloadedVersion returns tha last snapshot and all full-downloaded changes
 	GetLastDownloadedVersion() (*SmartBlockVersion, error)
 	GetSnapshotBefore(state SmartBlockState) (SmartBlockSnapshot, error)
 
@@ -106,13 +107,20 @@ type smartBlock struct {
 }
 
 func (block *smartBlock) Creator() (string, error) {
-	// todo: to be implemented
 	return "", fmt.Errorf("to be implemented")
 }
 
 func (block *smartBlock) GetLastDownloadedVersion() (*SmartBlockVersion, error) {
-	// todo: to be implemented
-	return nil, fmt.Errorf("to be implemented")
+	snapshot, err := block.GetLastSnapshot()
+	if err != nil {
+		return nil, err
+	}
+
+	return &SmartBlockVersion{
+		State:    snapshot.State(),
+		Snapshot: snapshot,
+		Changes:  []SmartBlockChange{},
+	}, nil
 }
 
 func (block *smartBlock) PushChanges(changes []*SmartBlockChange) (state SmartBlockState, err error) {
@@ -249,6 +257,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 			err = err2
 			return nil, err
 		}
+
 		event, err2 := cbor.EventFromRecord(context.TODO(), block.node.ts, rec)
 		if err2 != nil {
 			err = err2
@@ -320,7 +329,7 @@ func (block *smartBlock) PushSnapshot(state SmartBlockState, meta *SmartBlockMet
 		return nil, err
 	}
 
-	return &smartBlockSnapshot{model: model, user: user, date: date, node: block.node}, nil
+	return &smartBlockSnapshot{model: model, user: user, date: date, state: state, node: block.node}, nil
 }
 
 func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockWithMeta) (versionId string, user string, date *types.Timestamp, err error) {

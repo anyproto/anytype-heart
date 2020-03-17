@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -10,8 +11,8 @@ import (
 var doOnce sync.Once
 var s Service
 
-func getRunningService(t *testing.T) Service{
-	doOnce.Do(func(){
+func getRunningService(t *testing.T) Service {
+	doOnce.Do(func() {
 		s = createAccount(t)
 		err := s.Start()
 		require.NoError(t, err)
@@ -28,5 +29,9 @@ func TestAnytype_PredefinedBlocks(t *testing.T) {
 	s := getRunningService(t)
 	s.InitPredefinedBlocks(false)
 	require.NotNil(t, s)
-	require.Len(t, s.PredefinedBlocks().Home,57)
+
+	fmt.Printf("profile: %s\n", s.PredefinedBlocks().Profile)
+	fmt.Printf("home: %s\n", s.PredefinedBlocks().Home)
+
+	require.Len(t, s.PredefinedBlocks().Home, 57)
 }

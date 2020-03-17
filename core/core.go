@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,9 +32,9 @@ const (
 fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 
 	keyFileAccount = "account.key"
-	keyFileDevice = "device.key"
-
+	keyFileDevice  = "device.key"
 )
+
 var BootstrapNodes = []string{
 	"/ip4/68.183.2.167/tcp/4001/ipfs/12D3KooWB2Ya2GkLLRSR322Z13ZDZ9LP4fDJxauscYwUMKLFCqaD",
 }
@@ -49,8 +50,8 @@ type Anytype struct {
 	repoPath string
 	ts       store.ServiceBoostrapper
 	mdns     discovery.Service
-	account		 wallet.AccountKeypair
-	device       wallet.DeviceKeypair
+	account  wallet.Keypair
+	device   wallet.Keypair
 
 	predefinedBlockIds PredefinedBlockIds
 	logLevels          map[string]string
@@ -137,28 +138,32 @@ func New(rootPath string, account string) (Service, error) {
 	}
 
 	a := Anytype{repoPath: repoPath, logLevels: getLogLevels()}
-	pk, err := wallet.PrivateKeyFromFile(filepath.Join(repoPath, keyFileAccount))
+	var err error
+
+	b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read account keyfile: %w", err)
+	}
+	a.account, err = wallet.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
 	}
+	if a.account.KeypairType() != wallet.KeypairTypeAccount {
+		return nil, fmt.Errorf("got %s key type instead of %s", a.account.KeypairType(), wallet.KeypairTypeAccount)
+	}
 
-	accountKP, err := wallet.AccountKeypairFromPrivKey(pk)
+	b, err = ioutil.ReadFile(filepath.Join(repoPath, keyFileDevice))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read device keyfile: %w", err)
+	}
+
+	a.device, err = wallet.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
 	}
-
-	a.account = *accountKP
-
-	pk, err = wallet.PrivateKeyFromFile(filepath.Join(repoPath, keyFileDevice))
-	if err != nil {
-		return nil, err
+	if a.device.KeypairType() != wallet.KeypairTypeDevice {
+		return nil, fmt.Errorf("got %s key type instead of %s", a.device.KeypairType(), wallet.KeypairTypeDevice)
 	}
-
-	deviceKP, err := wallet.DeviceKeypairFromPrivKey(pk)
-	if err != nil {
-		return nil, err
-	}
-	a.device = *deviceKP
 
 	return &a, nil
 }
@@ -208,7 +213,7 @@ func (a *Anytype) Start() error {
 
 	ts, err := service.NewService(
 		a.repoPath,
-		a.device.PrivKey,
+		a.device,
 		[]byte(ipfsPrivateNetworkKey),
 		service.WithServiceHostAddr(hostAddr),
 		service.WithServiceDebug(true))

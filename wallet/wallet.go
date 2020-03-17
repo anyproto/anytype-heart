@@ -98,7 +98,7 @@ func WalletFromMnemonic(mnemonic string) *Wallet {
 
 // To understand how this works, refer to the living document:
 // https://paper.dropbox.com/doc/Hierarchical-Deterministic-Wallets--Ae0TOjGObNq_zlyYFh7Ea0jNAQ-t7betWDTvXtK6qqD8HXKf
-func (w *Wallet) AccountAt(index int, passphrase string) (*AccountKeypair, error) {
+func (w *Wallet) AccountAt(index int, passphrase string) (Keypair, error) {
 	seed, err := bip39.NewSeedWithErrorChecking(w.RecoveryPhrase, passphrase)
 	if err != nil {
 		if err == bip39.ErrInvalidMnemonic {
@@ -117,9 +117,6 @@ func (w *Wallet) AccountAt(index int, passphrase string) (*AccountKeypair, error
 	}
 	reader := bytes.NewReader(key.Key)
 	privKey, _, err := crypto.GenerateEd25519Key(reader)
-	if err != nil {
-		return nil, err
-	}
 
-	return &AccountKeypair{privKey}, nil
+	return NewKeypairFromPrivKey(KeypairTypeAccount, privKey)
 }

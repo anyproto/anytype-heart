@@ -57,7 +57,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]SmartBlockType{
 }
 
 func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, read *symmetric.Key, log *keypair.Full, err error) {
-	accountSeed, err2 := a.account.PrivKey.Raw()
+	accountSeed, err2 := a.account.Raw()
 	if err2 != nil {
 		err = err2
 		return
@@ -115,7 +115,7 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 }
 
 func (a *Anytype) deriveThreadId(index threadDerivedIndex) (thread.ID, error) {
-	accountSeed, err := a.account.PrivKey.Raw()
+	accountSeed, err := a.account.Raw()
 	if err != nil {
 		return thread.Undef, err
 	}

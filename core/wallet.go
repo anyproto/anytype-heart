@@ -39,7 +39,7 @@ func WalletGenerateMnemonic(wordCount int) (string, error) {
 	return w.RecoveryPhrase, nil
 }
 
-func WalletAccountAt(mnemonic string, index int, passphrase string) (*wallet.AccountKeypair, error) {
+func WalletAccountAt(mnemonic string, index int, passphrase string) (wallet.Keypair, error) {
 	w := wallet.WalletFromMnemonic(mnemonic)
 	return w.AccountAt(index, passphrase)
 }
@@ -50,7 +50,7 @@ func WalletInitRepo(rootPath string, seed []byte) error {
 		return err
 	}
 
-	accountKP, err := wallet.AccountKeypairFromPrivKey(pk)
+	accountKP, err := wallet.NewKeypairFromPrivKey(wallet.KeypairTypeAccount, pk)
 	if err != nil {
 		return err
 	}
@@ -60,12 +60,7 @@ func WalletInitRepo(rootPath string, seed []byte) error {
 		return err
 	}
 
-	devicePrivKey, err := wallet.PrivateKeyFromRandom()
-	if err != nil {
-		return err
-	}
-
-	deviceKP, err := wallet.DeviceKeypairFromPrivKey(devicePrivKey)
+	deviceKP, err := wallet.NewRandomKeypair(wallet.KeypairTypeDevice)
 	if err != nil {
 		return err
 	}
