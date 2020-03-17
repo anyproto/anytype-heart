@@ -9,7 +9,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
@@ -191,14 +190,13 @@ func TestRecoverRemoteExisting(t *testing.T) {
 	require.Equal(t, pb.RpcIpfsImageGetBlobResponseError_NULL, imageGetBlobResp.Error.Code, "ImageGetBlobResponse contains error: %+v", imageGetBlobResp.Error)
 	require.True(t, len(imageGetBlobResp.Blob) > 0, "ava size should be greater than 0")
 
-
 	err := mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
 }
 
 func TestBlockCreate(t *testing.T) {
 	mw := createWallet(t)
-	mw.SendEvent = func(event *pb.Event){
+	mw.SendEvent = func(event *pb.Event) {
 		fmt.Printf("got event at %s: %+v\n", event.ContextId, event.Messages)
 	}
 
@@ -207,18 +205,18 @@ func TestBlockCreate(t *testing.T) {
 	require.Equal(t, "name_test", accountCreateResp.Account.Name, "AccountCreateResponse has account with wrong name '%s'", accountCreateResp.Account.Name)
 
 	cfg := mw.ConfigGet(&pb.RpcConfigGetRequest{})
-	respOpen := mw.BlockOpen(&pb.RpcBlockOpenRequest{ContextId:"", BlockId:cfg.HomeBlockId})
+	respOpen := mw.BlockOpen(&pb.RpcBlockOpenRequest{ContextId: "", BlockId: cfg.HomeBlockId})
 	require.Equal(t, pb.RpcBlockOpenResponseError_NULL, respOpen.Error.Code, "RpcBlockOpenRequestResponse contains error: %+v", respOpen.Error)
 
-	fmt.Println("Home block ID: "+cfg.HomeBlockId)
-	resp := mw.BlockCreatePage(&pb.RpcBlockCreatePageRequest{cfg.HomeBlockId, "", &model.Block{Content:&model.BlockContentOfPage{Page: &model.BlockContentPage{}}}, model.Block_Bottom})
+	fmt.Println("Home block ID: " + cfg.HomeBlockId)
+	resp := mw.BlockCreatePage(&pb.RpcBlockCreatePageRequest{cfg.HomeBlockId, "", &model.Block{Content: &model.BlockContentOfPage{Page: &model.BlockContentPage{}}}, model.Block_Bottom})
 	require.Equal(t, pb.RpcBlockCreatePageResponseError_NULL, resp.Error.Code, "RpcBlockCreatePageResponse contains error: %+v", resp.Error)
 
-	respOpen = mw.BlockOpen(&pb.RpcBlockOpenRequest{ContextId:"", BlockId:resp.TargetId})
+	respOpen = mw.BlockOpen(&pb.RpcBlockOpenRequest{ContextId: "", BlockId: resp.TargetId})
 	require.Equal(t, pb.RpcBlockOpenResponseError_NULL, respOpen.Error.Code, "RpcBlockOpenRequestResponse contains error: %+v", respOpen.Error)
 
 	setFieldsResp := mw.BlockSetFields(&pb.RpcBlockSetFieldsRequest{resp.TargetId, resp.TargetId, &types.Struct{
-		Fields: map[string]*types.Value{"name": {Kind: &types.Value_StringValue{StringValue:"name1"}}},
+		Fields: map[string]*types.Value{"name": {Kind: &types.Value_StringValue{StringValue: "name1"}}},
 	}})
 
 	require.Equal(t, pb.RpcBlockSetFieldsResponseError_NULL, setFieldsResp.Error.Code, "RpcBlockSetFieldsResponse contains error: %+v", setFieldsResp.Error)
@@ -226,26 +224,15 @@ func TestBlockCreate(t *testing.T) {
 	block, err := mw.Anytype.GetBlock(resp.TargetId)
 	require.NoError(t, err, "GetBlock failed")
 
-	time.Sleep(time.Second*6)
-	ver, err := block.GetLastSnapshot()
+	time.Sleep(time.Second * 6)
+	snapshot, err := block.GetLastSnapshot()
 	require.NoError(t, err, "GetCurrentVersion failed")
 
-	var ch = make(chan core.BlockVersionMeta, 1)
-	cancel, err := block.SubscribeMetaOfNewVersionsOfBlock(ver.VersionId(), true, ch)
+	var ch = make(chan core.SmartBlockMetaChange, 1)
+	cancel, err := block.SubscribeForMetaChanges(snapshot.State(), ch)
 	require.NoError(t, err, "SubscribeMetaOfNewVersionsOfBlock failed")
 	defer cancel()
 
-	meta = <- ch
-	require.True(t, len(meta.Model().Id) > 0, "GetVersionMeta returns empty id")
-
-	block, err = mw.Anytype.GetBlock(resp.TargetId)
-	require.NoError(t, err, "GetBlock failed")
-
-	ver, err = block.GetCurrentVersion()
-	require.NoError(t, err, "GetCurrentVersion failed")
-	require.Equal(t, structs.String("name1"), ver.Model().Fields.Fields["name"] , "name field incorrect ")
-
-	ver.Model()
 	err = mw.Stop()
 	require.NoError(t, err, "failed to stop mw")
 }
