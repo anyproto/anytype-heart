@@ -25,7 +25,7 @@ func newServiceFixture(t *testing.T, accountId string) *serviceFixture {
 		ctrl:    ctrl,
 		anytype: anytype,
 	}
-	fx.Service = NewService(accountId, anytype, nil, fx.sendEvent)
+	fx.Service = newService(accountId, anytype, nil, fx.sendEvent)
 	return fx
 }
 

@@ -83,7 +83,7 @@ type Service interface {
 
 }
 
-func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
+func newService(accountId string, a anytype.Service, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
 	s := &service{
 		accountId: accountId,
 		anytype:   a,

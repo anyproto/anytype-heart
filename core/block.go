@@ -3,6 +3,7 @@ package core
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/old"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -574,9 +575,6 @@ func (mw *Middleware) BlockSetIconName(req *pb.RpcBlockSetIconNameRequest) *pb.R
 
 		return m
 	}
-	if err := mw.blockService.SetIconName(*req); err != nil {
-		return response(pb.RpcBlockSetIconNameResponseError_UNKNOWN_ERROR, err)
-	}
 	return response(pb.RpcBlockSetIconNameResponseError_NULL, nil)
 }
 
@@ -585,7 +583,7 @@ func (mw *Middleware) switchAccount(accountId string) {
 		mw.blockService.Close()
 	}
 
-	mw.blockService = old.NewService(accountId, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	mw.blockService = block.NewService(accountId, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
