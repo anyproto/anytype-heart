@@ -454,7 +454,6 @@ func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error)
 			return bm.Fetch(bookmark.FetchParams{
 				Url:         req.Url,
 				Anytype:     s.anytype,
-				Updater:     sb,
 				LinkPreview: s.linkPreview,
 			})
 		}

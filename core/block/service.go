@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	logging "github.com/ipfs/go-log"
@@ -425,22 +426,24 @@ func (s *service) Redo(req pb.RpcBlockRedoRequest) (err error) {
 }
 
 func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error) {
-	/*	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-			return b.Update(func(b simple.Block) error {
-				if bm, ok := b.(bookmark.Block); ok {
-					return bm.Fetch(bookmark.FetchParams{
-						Url:         req.Url,
-						Anytype:     s.anytype,
-						Updater:     sb,
-						LinkPreview: s.linkPreview,
-					})
-				}
-				return ErrUnexpectedBlockType
-			}, req.BlockId)
-		})
-		return sb.UpdateBlock([]string{req.BlockId}, true, func(b simple.Block) error {
-	*/
-	return
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Update(func(b simple.Block) error {
+			if bm, ok := b.(bookmark.Block); ok {
+				return bm.Fetch(bookmark.FetchParams{
+					Url:     req.Url,
+					Anytype: s.anytype,
+					Updater: func(ids []string, hist bool, apply func(b simple.Block) error) (err error) {
+						return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+							return b.Update(apply, ids...)
+						})
+					},
+					LinkPreview: s.linkPreview,
+				})
+			}
+			return ErrUnexpectedBlockType
+		}, req.BlockId)
+	})
+
 }
 
 func (s *service) ProcessCancel(id string) (err error) {

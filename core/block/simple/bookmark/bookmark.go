@@ -45,9 +45,7 @@ type FetchParams struct {
 	LinkPreview linkpreview.LinkPreview
 }
 
-type Updater interface {
-	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
-}
+type Updater func(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
@@ -143,7 +141,7 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load image url:", data.ImageUrl, err)
 				return
 			}
-			err = params.Updater.UpdateBlock([]string{id}, false, func(b simple.Block) error {
+			err = params.Updater([]string{id}, false, func(b simple.Block) error {
 				if bm, ok := b.(Block); ok {
 					bm.SetImageHash(hash)
 					return nil
@@ -163,7 +161,7 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
 				return
 			}
-			err = params.Updater.UpdateBlock([]string{id}, false, func(b simple.Block) error {
+			err = params.Updater([]string{id}, false, func(b simple.Block) error {
 				if bm, ok := b.(Block); ok {
 					bm.SetFaviconHash(hash)
 					return nil
@@ -177,7 +175,7 @@ func fetcher(id string, params FetchParams) {
 		}()
 	}
 
-	err = params.Updater.UpdateBlock([]string{id}, false, func(b simple.Block) error {
+	err = params.Updater([]string{id}, false, func(b simple.Block) error {
 		if bm, ok := b.(Block); ok {
 			bm.SetLinkPreview(data)
 			return nil
@@ -203,7 +201,7 @@ func loadImage(stor anytype.Service, url string) (hash string, err error) {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
