@@ -6,13 +6,14 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 )
 
 type SmartBlockSnapshot interface {
-	State() SmartBlockState
+	State() vclock.VClock
 	Creator() (string, error)
 	CreatedDate() *time.Time
 	ReceivedDate() *time.Time
@@ -22,7 +23,7 @@ type SmartBlockSnapshot interface {
 
 type smartBlockSnapshot struct {
 	model *storage.SmartBlockWithMeta
-	state SmartBlockState
+	state vclock.VClock
 	user  string
 	date  *types.Timestamp
 	node  *Anytype
@@ -35,7 +36,7 @@ type smartBlockSnapshotMeta struct {
 	node  *Anytype
 }
 
-func (snapshot smartBlockSnapshot) State() SmartBlockState {
+func (snapshot smartBlockSnapshot) State() vclock.VClock {
 	return snapshot.state
 }
 

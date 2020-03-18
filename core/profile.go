@@ -7,6 +7,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/types"
 	mh "github.com/multiformats/go-multihash"
 	tpb "github.com/textileio/go-textile/pb"
@@ -21,7 +22,7 @@ func (a *Anytype) AccountSetNameAndAvatar(name string, avatarFilePath, color str
 	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil {
 		// snapshot not yet created
 		log.Debugf("add predefined profile block snapshot")
-		_, err = block.PushSnapshot(SmartBlockState{}, &SmartBlockMeta{
+		_, err = block.PushSnapshot(vclock.New(), &SmartBlockMeta{
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name":  structs.String(name),

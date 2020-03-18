@@ -2,13 +2,13 @@ package core
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -26,27 +26,20 @@ const (
 	SmartBlockTypeDashboard SmartBlockType = 0x20
 )
 
-type SmartBlockState map[string]uint64
-
-func (state SmartBlockState) Hash() string {
-	var sum [32]byte
-	for k, v := range state {
-		sum = sha256.Sum256(append(sum[:], []byte(k+"="+strconv.Itoa(int(v)))...))
+// ShouldCreateSnapshot informs if you need to make a snapshot based on deterministic alg
+// temporally always returns true
+func (block smartBlock) ShouldCreateSnapshot(state vclock.VClock) bool {
+	if strings.HasSuffix(state.Hash(), "0") {
+		return true
 	}
-	return fmt.Sprintf("%x", sum)
-}
 
-func (state SmartBlockState) VectorCounterPerPeer() map[string]uint64 {
-	return state
-}
-
-func (state SmartBlockState) ShouldCreateSnapshot() bool {
-	// some deterministic alg depends on the hash
+	// return false
+	// todo: return false when changes will be implemented
 	return true
 }
 
 type SmartBlockContentChange struct {
-	state SmartBlockState
+	state vclock.VClock
 	// to be discussed
 }
 
@@ -56,25 +49,25 @@ type SmartBlockMeta struct {
 
 type SmartBlockMetaChange struct {
 	SmartBlockMeta
-	state SmartBlockState
+	state vclock.VClock
 }
 
-func (meta *SmartBlockMetaChange) State() SmartBlockState {
+func (meta *SmartBlockMetaChange) State() vclock.VClock {
 	return meta.state
 }
 
-func (meta *SmartBlockContentChange) State() SmartBlockState {
+func (meta *SmartBlockContentChange) State() vclock.VClock {
 	return meta.state
 }
 
 type SmartBlockChange struct {
-	State   SmartBlockState
+	State   vclock.VClock
 	Content *SmartBlockContentChange
 	Meta    *SmartBlockMetaChange
 }
 
 type SmartBlockVersion struct {
-	State    SmartBlockState
+	State    vclock.VClock
 	Snapshot SmartBlockSnapshot
 	Changes  []SmartBlockChange
 }
@@ -86,14 +79,15 @@ type SmartBlock interface {
 	GetLastSnapshot() (SmartBlockSnapshot, error)
 	// GetLastDownloadedVersion returns tha last snapshot and all full-downloaded changes
 	GetLastDownloadedVersion() (*SmartBlockVersion, error)
-	GetSnapshotBefore(state SmartBlockState) (SmartBlockSnapshot, error)
+	GetSnapshotBefore(state vclock.VClock) (SmartBlockSnapshot, error)
 
-	PushChanges(changes []*SmartBlockChange) (state SmartBlockState, err error)
-	PushSnapshot(state SmartBlockState, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error)
-	GetChangesBetween(since SmartBlockState, until SmartBlockState) ([]SmartBlockChange, error)
+	PushChanges(changes []*SmartBlockChange) (state vclock.VClock, err error)
+	ShouldCreateSnapshot(state vclock.VClock) bool
+	PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error)
+	GetChangesBetween(since vclock.VClock, until vclock.VClock) ([]SmartBlockChange, error)
 
-	SubscribeForChanges(since SmartBlockState, ch chan SmartBlockChange) (cancel func(), err error)
-	SubscribeForMetaChanges(since SmartBlockState, ch chan SmartBlockMetaChange) (cancel func(), err error)
+	SubscribeForChanges(since vclock.VClock, ch chan SmartBlockChange) (cancel func(), err error)
+	SubscribeForMetaChanges(since vclock.VClock, ch chan SmartBlockMetaChange) (cancel func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
 	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error)
 	// PublishClientEvent gives a way to push the new client-side event e.g. carriage position change
@@ -123,9 +117,9 @@ func (block *smartBlock) GetLastDownloadedVersion() (*SmartBlockVersion, error) 
 	}, nil
 }
 
-func (block *smartBlock) PushChanges(changes []*SmartBlockChange) (state SmartBlockState, err error) {
+func (block *smartBlock) PushChanges(changes []*SmartBlockChange) (state vclock.VClock, err error) {
 	// todo: to be implemented
-	return nil, fmt.Errorf("to be implemented")
+	return vclock.Undef, fmt.Errorf("to be implemented")
 }
 
 func (block *smartBlock) GetThread() thread.Info {
@@ -161,11 +155,11 @@ func (block *smartBlock) GetLastSnapshot() (SmartBlockSnapshot, error) {
 	return versions[0], nil
 }
 
-func (block *smartBlock) GetChangesBetween(since SmartBlockState, until SmartBlockState) ([]SmartBlockChange, error) {
+func (block *smartBlock) GetChangesBetween(since vclock.VClock, until vclock.VClock) ([]SmartBlockChange, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (block *smartBlock) GetSnapshotBefore(state SmartBlockState) (SmartBlockSnapshot, error) {
+func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnapshot, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
@@ -313,7 +307,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 	return
 }
 
-func (block *smartBlock) PushSnapshot(state SmartBlockState, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
+func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
 	model := &storage.SmartBlockWithMeta{}
 	if meta != nil && meta.Details != nil {
 		model.Details = meta.Details
@@ -391,14 +385,14 @@ func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
 	}
 }
 
-func (block *smartBlock) SubscribeForChanges(since SmartBlockState, ch chan SmartBlockChange) (cancel func(), err error) {
+func (block *smartBlock) SubscribeForChanges(since vclock.VClock, ch chan SmartBlockChange) (cancel func(), err error) {
 	chCloseFn := func() { close(ch) }
 
 	//todo: to be implemented
 	return chCloseFn, nil
 }
 
-func (block *smartBlock) SubscribeForMetaChanges(since SmartBlockState, ch chan SmartBlockMetaChange) (cancel func(), err error) {
+func (block *smartBlock) SubscribeForMetaChanges(since vclock.VClock, ch chan SmartBlockMetaChange) (cancel func(), err error) {
 	chCloseFn := func() { close(ch) }
 
 	/*// temporary just sent the last version

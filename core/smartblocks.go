@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	uuid "github.com/satori/go.uuid"
 	"github.com/textileio/go-threads/core/service"
 	"github.com/textileio/go-threads/crypto/symmetric"
@@ -74,7 +75,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil {
 		// snapshot not yet created
 		log.Debugf("create predefined archive block")
-		_, err = block.PushSnapshot(SmartBlockState{}, &SmartBlockMeta{}, []*model.Block{})
+		_, err = block.PushSnapshot(vclock.New(), &SmartBlockMeta{}, []*model.Block{})
 
 		if err != nil {
 			return err
@@ -97,7 +98,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 		// snapshot not yet created
 		log.Debugf("create predefined home block")
 		archiveLinkId := block.ID() + "/" + uuid.NewV4().String()
-		_, err = block.PushSnapshot(SmartBlockState{}, &SmartBlockMeta{}, []*model.Block{
+		_, err = block.PushSnapshot(vclock.New(), &SmartBlockMeta{}, []*model.Block{
 			{
 				Id: archiveLinkId,
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
