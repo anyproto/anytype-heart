@@ -123,12 +123,7 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	sb, ok := s.openedBlocks[id]
-	if ok {
-		sb.SetEventFunc(s.sendEvent)
-		if err = sb.Show(); err != nil {
-			return
-		}
-	} else {
+	if !ok {
 		sb, e := s.createSmartBlock(id)
 		if e != nil {
 			return e
@@ -138,6 +133,10 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 			lastUsage:  time.Now(),
 			refs:       1,
 		}
+	}
+	sb.SetEventFunc(s.sendEvent)
+	if err = sb.Show(); err != nil {
+		return
 	}
 	/*
 		for _, bid := range breadcrumbsIds {
