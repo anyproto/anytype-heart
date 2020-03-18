@@ -27,11 +27,23 @@ func TestAnytype_IsStarted(t *testing.T) {
 
 func TestAnytype_PredefinedBlocks(t *testing.T) {
 	s := getRunningService(t)
-	s.InitPredefinedBlocks(false)
 	require.NotNil(t, s)
+
+	err := s.InitPredefinedBlocks(false)
+	require.NoError(t, err)
 
 	fmt.Printf("profile: %s\n", s.PredefinedBlocks().Profile)
 	fmt.Printf("home: %s\n", s.PredefinedBlocks().Home)
 
 	require.Len(t, s.PredefinedBlocks().Home, 57)
+	require.Len(t, s.PredefinedBlocks().Profile, 57)
+	require.Len(t, s.PredefinedBlocks().Archive, 57)
+}
+
+func TestAnytype_CreateBlock(t *testing.T) {
+	s := getRunningService(t)
+	block, err := s.CreateBlock(SmartBlockTypePage)
+	require.NoError(t, err)
+	require.Equal(t, block.Type(), SmartBlockTypePage)
+	require.Len(t, block.ID(), 57)
 }

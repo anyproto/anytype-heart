@@ -1,15 +1,12 @@
 package core
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/anytypeio/go-anytype-library/vclock"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	cbornode "github.com/ipfs/go-ipld-cbor"
 )
 
 type SmartBlockSnapshot interface {
@@ -22,18 +19,14 @@ type SmartBlockSnapshot interface {
 }
 
 type smartBlockSnapshot struct {
-	model *storage.SmartBlockWithMeta
-	state vclock.VClock
-	user  string
-	date  *types.Timestamp
-	node  *Anytype
-}
+	blocks     []*model.Block               `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	details    *types.Struct                `protobuf:"bytes,3,opt,name=details,proto3" json:"details,omitempty"`
+	keysByHash map[string]*storage.FileKeys `protobuf:"bytes,4,rep,name=keysByHash,proto3" json:"keysByHash,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	state      vclock.VClock
 
-type smartBlockSnapshotMeta struct {
-	model *storage.BlockMetaOnly
-	user  string
-	date  *types.Timestamp
-	node  *Anytype
+	user string
+	date *types.Timestamp
+	node *Anytype
 }
 
 func (snapshot smartBlockSnapshot) State() vclock.VClock {
@@ -54,45 +47,9 @@ func (snapshot smartBlockSnapshot) ReceivedDate() *time.Time {
 
 func (snapshot smartBlockSnapshot) Blocks() ([]*model.Block, error) {
 	// todo: blocks lazy loading
-	return snapshot.model.Blocks, nil
+	return snapshot.blocks, nil
 }
 
 func (snapshot smartBlockSnapshot) Meta() (*SmartBlockMeta, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-func (snapshot smartBlockSnapshotMeta) User() string {
-	return snapshot.user
-}
-
-func (snapshot smartBlockSnapshotMeta) Date() *types.Timestamp {
-	return snapshot.date
-}
-
-type threadSnapshot struct {
-	Data []byte
-}
-
-func init() {
-	cbornode.RegisterCborType(threadSnapshot{})
-}
-
-func (s *threadSnapshot) BlockWithMeta() (*storage.SmartBlockWithMeta, error) {
-	var blockWithMeta storage.SmartBlockWithMeta
-	err := proto.Unmarshal(s.Data, &blockWithMeta)
-	if err != nil {
-		return nil, err
-	}
-
-	return &blockWithMeta, nil
-}
-
-func (s *threadSnapshot) BlockMetaOnly() (*storage.BlockMetaOnly, error) {
-	var blockWithMeta storage.BlockMetaOnly
-	err := proto.Unmarshal(s.Data, &blockWithMeta)
-	if err != nil {
-		return nil, err
-	}
-
-	return &blockWithMeta, nil
+	return &SmartBlockMeta{Details: snapshot.details}, nil
 }

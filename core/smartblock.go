@@ -128,8 +128,6 @@ func (block *smartBlock) GetThread() thread.Info {
 
 func (block *smartBlock) Type() SmartBlockType {
 	id := block.thread.ID.KeyString()
-	v := block.thread.ID.Variant()
-	fmt.Println(v)
 	// skip version
 	_, n := uvarint(id)
 	// skip variant
@@ -270,7 +268,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 		}
 	}
 
-	records, err := block.node.traverseLogs(context.TODO(), block.thread, offsetTime, limit)
+	records, err := block.node.traverseLogs(context.TODO(), block.thread.ID, offsetTime, limit)
 	if err != nil {
 		return
 	}
@@ -285,15 +283,20 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 		if err != nil {
 			return nil, fmt.Errorf("failed to get record body: %w", err)
 		}
-		m := new(threadSnapshot)
+		m := new(signedPbPayload)
 		err = cbornode.DecodeInto(node.RawData(), m)
 		if err != nil {
 			return nil, fmt.Errorf("incorrect record type: %w", err)
 		}
-
-		model, err := m.BlockWithMeta()
+		err = m.Verify(block.node.device.GetPublic(), block.node.account.GetPublic())
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode pb block version: %w", err)
+			return nil, err
+		}
+
+		var snapshot = &storage.SmartBlockSnapshot{}
+		err = m.Unmarshal(snapshot)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode pb block snapshot: %w", err)
 		}
 
 		t, err := types.TimestampProto(rec.Date)
@@ -301,14 +304,20 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 			return nil, fmt.Errorf("can't convert tme to pb: %w", err)
 		}
 
-		snapshots = append(snapshots, smartBlockSnapshot{model: model, date: t, user: "<todo>"})
+		snapshots = append(snapshots, smartBlockSnapshot{
+			blocks:  snapshot.Blocks,
+			details: snapshot.Details,
+			state:   vclock.NewFromMap(snapshot.State),
+			date:    t,
+			user:    "<todo>",
+		})
 	}
 
 	return
 }
 
 func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
-	model := &storage.SmartBlockWithMeta{}
+	model := &storage.SmartBlockSnapshot{State: state.Map()}
 	if meta != nil && meta.Details != nil {
 		model.Details = meta.Details
 	}
@@ -323,17 +332,30 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		return nil, err
 	}
 
-	return &smartBlockSnapshot{model: model, user: user, date: date, state: state, node: block.node}, nil
+	return &smartBlockSnapshot{
+		blocks: model.Blocks,
+		user:   user,
+		date:   date,
+		state:  state,
+		node:   block.node,
+	}, nil
 }
 
-func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockWithMeta) (versionId string, user string, date *types.Timestamp, err error) {
+func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (versionId string, user string, date *types.Timestamp, err error) {
 	var newSnapshotB []byte
+
 	newSnapshotB, err = proto.Marshal(newSnapshot)
 	if err != nil {
 		return
 	}
 
-	body, err2 := cbornode.WrapObject(&threadSnapshot{Data: newSnapshotB}, mh.SHA2_256, -1)
+	payload, err2 := newSignedPayload(newSnapshotB, block.node.device, block.node.account)
+	if err2 != nil {
+		err = err2
+		return
+	}
+
+	body, err2 := cbornode.WrapObject(payload, mh.SHA2_256, -1)
 	if err2 != nil {
 		err = err2
 		return
@@ -363,7 +385,7 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockWithMeta) (
 		return
 	}
 
-	versionId = rec.LogID().String()
+	versionId = rec.Value().Cid().String()
 	log.Debugf("SmartBlock.addSnapshot: blockId = %s newSnapshotId = %s", block.ID(), versionId)
 	user = block.node.account.Address()
 	date, err = types.TimestampProto(*msgTime)
@@ -376,12 +398,9 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockWithMeta) (
 
 func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
 	return &smartBlockSnapshot{
-		node: block.node,
-		model: &storage.SmartBlockWithMeta{
-			Blocks: []*model.Block{
-				// todo: add title and icon blocks
-			},
-		},
+		node:   block.node,
+		blocks: []*model.Block{},
+		// todo: add title and icon blocks
 	}
 }
 

@@ -249,8 +249,13 @@ func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, heads [
 	return records, nil
 }
 
-func (a *Anytype) traverseLogs(ctx context.Context, thrd thread.Info, before *time.Time, limit int) ([]RecordWithMetadata, error) {
+func (a *Anytype) traverseLogs(ctx context.Context, thrdId thread.ID, before *time.Time, limit int) ([]RecordWithMetadata, error) {
 	var allRecords []RecordWithMetadata
+	thrd, err := a.ts.GetThread(context.Background(), thrdId)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, log := range thrd.Logs {
 		records, err := a.traverseFromCid(ctx, thrd, log.Heads, before, limit)
 		if err != nil {

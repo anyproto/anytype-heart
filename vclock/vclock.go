@@ -30,7 +30,8 @@ type VClock struct {
 
 var Undef = VClock{}
 
-//New returns a new vector clock
+// New returns a new vector clock
+// VClock is thread safe
 func New() VClock {
 	return VClock{mutex: &sync.RWMutex{}, m: make(map[string]uint64)}
 }
@@ -172,6 +173,19 @@ func (vc VClock) Copy() VClock {
 	}
 	return VClock{mutex: &sync.RWMutex{}, m: cp}
 }
+
+func (vc VClock) Map() map[string]uint64 {
+	vc.mutex.RLock()
+	defer vc.mutex.RUnlock()
+
+	cp := make(map[string]uint64, len(vc.m))
+	for key, value := range vc.m {
+		cp[key] = value
+	}
+
+	return cp
+}
+
 
 func (vc VClock) Hash() string {
 	var (

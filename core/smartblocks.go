@@ -141,7 +141,6 @@ func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
 	thrd, _ := a.predefinedThreadByName(id)
 	if thrd.ID == thread.Undef {
 		tid, err := thread.Decode(id)
-
 		if err != nil {
 			return nil, err
 		}

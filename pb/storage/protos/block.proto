@@ -6,12 +6,9 @@ import "pb/model/protos/models.proto";
 import "pb/storage/protos/file.proto";
 import "google/protobuf/struct.proto";
 
-message SmartBlockWithMeta {
-    repeated anytype.model.Block blocks = 1;
-    google.protobuf.Struct details = 2;
-    map<string, FileKeys> keysByHash = 3;
-}
-
-message BlockMetaOnly {
-    google.protobuf.Struct details = 2;
+message SmartBlockSnapshot {
+    map<string, uint64> state = 1;
+    repeated anytype.model.Block blocks = 2;
+    google.protobuf.Struct details = 3;
+    map<string, FileKeys> keysByHash = 4;
 }
