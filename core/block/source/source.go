@@ -3,6 +3,7 @@ package source
 import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 )
 
@@ -26,10 +27,9 @@ func NewSource(a anytype.Service, id string) (s Source, err error) {
 		return
 	}
 	s = &source{
-		id:    id,
-		a:     a,
-		sb:    sb,
-		state: nil,
+		id: id,
+		a:  a,
+		sb: sb,
 	}
 	return
 }
@@ -38,7 +38,7 @@ type source struct {
 	id    string
 	a     anytype.Service
 	sb    core.SmartBlock
-	state core.SmartBlockState
+	state vclock.VClock
 }
 
 func (s *source) Id() string {
