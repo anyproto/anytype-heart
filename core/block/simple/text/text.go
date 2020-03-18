@@ -169,7 +169,7 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 		}
 	}
 	t.content.Marks = oldMarks
-	newBlock := NewText(&model.Block{
+	newBlock := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:    string(runes[pos:]),
 			Style:   t.content.Style,
@@ -205,12 +205,12 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 
 	newMarks := &model.BlockContentTextMarks{}
 	oldMarks := &model.BlockContentTextMarks{}
-	r := model.Range{From:from, To:to}
+	r := model.Range{From: from, To: to}
 	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
 	// TODO:
 
 	t.content.Marks = oldMarks
-	newBlock := NewText(&model.Block{
+	newBlock := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:    string(runes[to:]),
 			Style:   t.content.Style,
@@ -231,12 +231,14 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	return newBlocks, t.content.Text, nil
 }
 
- func Abs (x int32) int32 {
-	if x < 0 { return -x }
+func Abs(x int32) int32 {
+	if x < 0 {
+		return -x
+	}
 	return x
 }
 
-func (t *Text) splitMarks (marks []*model.BlockContentTextMark, r *model.Range, textLength int32) (topMarks []*model.BlockContentTextMark, botMarks []*model.BlockContentTextMark) {
+func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, textLength int32) (topMarks []*model.BlockContentTextMark, botMarks []*model.BlockContentTextMark) {
 	for i := 0; i < len(marks); i++ {
 		m := marks[i]
 
@@ -292,10 +294,10 @@ func (t *Text) splitMarks (marks []*model.BlockContentTextMark, r *model.Range, 
 
 		} else
 		// (*********) <b>lorem lorem</b>  :--->   __PASTE__ <b>lorem lorem</b>
-		if (m.Range.From >= r.To) {
+		if m.Range.From >= r.To {
 			botMarks = append(botMarks, &model.BlockContentTextMark{
 				Range: &model.Range{
-					From: m.Range.From  - (r.To - r.From) + textLength,
+					From: m.Range.From - (r.To - r.From) + textLength,
 					To:   m.Range.To - (r.To - r.From) + textLength,
 				},
 				Type:  m.Type,
@@ -305,7 +307,6 @@ func (t *Text) splitMarks (marks []*model.BlockContentTextMark, r *model.Range, 
 	}
 	return topMarks, botMarks
 }
-
 
 func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
@@ -331,9 +332,9 @@ func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*
 
 	leftMarks := &model.BlockContentTextMarks{}
 	rightMarks := &model.BlockContentTextMarks{}
-	r := model.Range{From:from, To:to}
+	r := model.Range{From: from, To: to}
 	leftMarks.Marks, rightMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, addLen)
-//....
+	//....
 	for _, mark := range leftMarks.Marks {
 		combinedMarks = append(combinedMarks, mark)
 	}
@@ -344,10 +345,9 @@ func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*
 
 	runes := []rune(t.content.Text)
 	t.content.Text = string(runes[:from]) + newText + string(runes[to:])
-	t.content.Marks = &model.BlockContentTextMarks{ Marks: combinedMarks }
+	t.content.Marks = &model.BlockContentTextMarks{Marks: combinedMarks}
 	return nil
 }
-
 
 func (t *Text) Merge(b simple.Block) error {
 	text, ok := b.(*Text)

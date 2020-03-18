@@ -34,7 +34,7 @@ func TestState_Normalize(t *testing.T) {
 
 	t.Run("nothing to change", func(t *testing.T) {
 		s := NewDoc("1", nil).NewState()
-		msgs, hist, err := s.Apply()
+		msgs, hist, err := s.apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
 		assert.Empty(t, hist)
@@ -47,7 +47,7 @@ func TestState_Normalize(t *testing.T) {
 		}).(*State)
 		s := r.NewState()
 		s.Get("one")
-		msgs, hist, err := s.Apply()
+		msgs, hist, err := s.apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 1)
 		assert.Len(t, hist.Change, 1)
@@ -66,7 +66,7 @@ func TestState_Normalize(t *testing.T) {
 		s.Get("c1")
 		s.Get("c2")
 
-		msgs, hist, err := s.Apply()
+		msgs, hist, err := s.apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -89,7 +89,7 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.Get("c1")
 
-		msgs, hist, err := s.Apply()
+		msgs, hist, err := s.apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -113,7 +113,7 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.Remove("c2")
 
-		msgs, hist, err := s.Apply()
+		msgs, hist, err := s.apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 4) // 1 row change + 1 remove + 2 width reset
 		assert.Len(t, hist.Remove, 1)

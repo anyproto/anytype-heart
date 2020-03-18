@@ -16,6 +16,7 @@ var log = logging.Logger("anytype-mw")
 type Doc interface {
 	RootId() string
 	NewState() *State
+	Blocks() []*model.Block
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -52,6 +53,10 @@ func (s *State) Add(b simple.Block) (ok bool) {
 		return true
 	}
 	return false
+}
+
+func (s *State) Set(b simple.Block) {
+	s.blocks[b.Model().Id] = b
 }
 
 func (s *State) Get(id string) (b simple.Block) {
@@ -164,7 +169,11 @@ func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
 }
 
-func (s *State) Apply() (msgs []*pb.EventMessage, action history.Action, err error) {
+func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
+	return s.apply()
+}
+
+func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
 	st := time.Now()
 	s.normalize()
 	var toSave []*model.Block
@@ -218,9 +227,6 @@ func (s *State) Apply() (msgs []*pb.EventMessage, action history.Action, err err
 			},
 		})
 	}
-	if len(toSave) > 0 {
-		// TODO: save snapshot
-	}
 	for _, b := range s.blocks {
 		if s.parent != nil {
 			s.parent.blocks[b.Model().Id] = b
@@ -236,4 +242,12 @@ func (s *State) Apply() (msgs []*pb.EventMessage, action history.Action, err err
 	}
 	log.Infof("middle: state apply: %d for save; %d for remove; %d copied; for a %v", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return
+}
+
+func (s *State) Blocks() []*model.Block {
+	res := make([]*model.Block, 0, len(s.blocks))
+	for _, b := range s.blocks {
+		res = append(res, b.Copy().Model())
+	}
+	return res
 }
