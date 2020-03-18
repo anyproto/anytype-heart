@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/golang/mock/gomock"
@@ -51,9 +50,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
 
-		fx.source.EXPECT().WriteVersion(source.Version{
-			Blocks: []*model.Block{{Id: "1", Restrictions: &model.BlockRestrictions{}, ChildrenIds: []string{"2"}}, {Id: "2"}},
-		})
+		fx.source.EXPECT().WriteVersion(gomock.Any())
 		var event *pb.Event
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e
