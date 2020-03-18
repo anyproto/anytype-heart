@@ -263,8 +263,8 @@ func (c *collector) listener() {
 		close(c.ready)
 	}
 	state := ss.State()
-	var ch = make(chan core.SmartBlockMetaChanges)
-	cancel, err := sb.SubscribeForMetaChangesSinceState(state, ch)
+	var ch = make(chan core.SmartBlockMetaChange)
+	cancel, err := sb.SubscribeForMetaChanges(state, ch)
 	if err != nil {
 		return
 	}

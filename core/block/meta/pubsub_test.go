@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/golang/mock/gomock"
 )
@@ -14,7 +15,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 
 	var (
 		blockId   = "1"
-		state     = core.SmartBlockState{}
+		state     = vclock.New()
 		mockBlock = testMock.NewMockSmartBlock(fx.ctrl)
 		snapshot  = testMock.NewMockSmartBlockSnapshot(fx.ctrl)
 		meta      = &core.SmartBlockMeta{}
@@ -22,7 +23,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	mockBlock.EXPECT().GetLastSnapshot().Return(snapshot, nil)
 	snapshot.EXPECT().State().Return(state)
 	snapshot.EXPECT().Meta().Return(meta, nil)
-	mockBlock.EXPECT().SubscribeForMetaChangesSinceState(state, gomock.Any())
+	mockBlock.EXPECT().SubscribeForMetaChanges(state, gomock.Any())
 	fx.anytype.EXPECT().GetBlock(blockId).Return(mockBlock, nil)
 	s := fx.PubSub().NewSubscriber()
 	var mch = make(chan Meta, 1)
