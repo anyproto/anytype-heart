@@ -42,7 +42,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	index := len(mw.localAccounts)
-	var account *wallet.AccountKeypair
+	var account wallet.Keypair
 	for {
 		var err error
 		account, err = core.WalletAccountAt(mw.mnemonic, index, "")
@@ -60,7 +60,12 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		continue
 	}
 
-	err := core.WalletInitRepo(mw.rootPath, account.Seed())
+	seedRaw, err := account.Raw()
+	if err != nil {
+		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
+	}
+
+	err = core.WalletInitRepo(mw.rootPath, seedRaw)
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -196,7 +201,12 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 			return response(pb.RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED, err)
 		}
 
-		err = core.WalletInitRepo(mw.rootPath, account.Seed())
+		seedRaw, err := account.Raw()
+		if err != nil {
+			return response(pb.RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED, err)
+		}
+
+		err = core.WalletInitRepo(mw.rootPath, seedRaw)
 		if err != nil && err != core.ErrRepoExists {
 			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
@@ -322,7 +332,12 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 				return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 			}
 
-			err = core.WalletInitRepo(mw.rootPath, account.Seed())
+			seedRaw, err := account.Raw()
+			if err != nil {
+				return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+			}
+
+			err = core.WalletInitRepo(mw.rootPath, seedRaw)
 			if err != nil {
 				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 			}
