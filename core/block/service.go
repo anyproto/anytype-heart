@@ -122,20 +122,21 @@ type service struct {
 func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	sb, ok := s.openedBlocks[id]
+	ob, ok := s.openedBlocks[id]
 	if !ok {
 		sb, e := s.createSmartBlock(id)
 		if e != nil {
 			return e
 		}
-		s.openedBlocks[id] = &openedBlock{
+		ob = &openedBlock{
 			SmartBlock: sb,
 			lastUsage:  time.Now(),
 			refs:       1,
 		}
+		s.openedBlocks[id] = ob
 	}
-	sb.SetEventFunc(s.sendEvent)
-	if err = sb.Show(); err != nil {
+	ob.SetEventFunc(s.sendEvent)
+	if err = ob.Show(); err != nil {
 		return
 	}
 	/*
