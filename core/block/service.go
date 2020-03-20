@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/cipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -565,13 +565,13 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 	return fmt.Errorf("unexpected operation for this block type: %T", sb)
 }
 
-func (s *service) DoClipboard(id string, apply func(b cipboard.Clipboard) error) error {
+func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
 	sb, release, err := s.pickBlock(id)
 	if err != nil {
 		return err
 	}
 	defer release()
-	if bb, ok := sb.(cipboard.Clipboard); ok {
+	if bb, ok := sb.(clipboard.Clipboard); ok {
 		sb.Lock()
 		defer sb.Unlock()
 		return apply(bb)

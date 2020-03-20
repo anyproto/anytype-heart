@@ -421,6 +421,7 @@
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
+    - [SmartBlock](#anytype.model.SmartBlock)
   
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
@@ -434,6 +435,7 @@
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
+    - [SmartBlock.Type](#anytype.model.SmartBlock.Type)
   
   
   
@@ -6315,6 +6317,22 @@ General purpose structure, uses in Mark.
 
 
 
+
+<a name="anytype.model.SmartBlock"></a>
+
+### SmartBlock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| type | [SmartBlock.Type](#anytype.model.SmartBlock.Type) |  |  |
+
+
+
+
+
  
 
 
@@ -6419,7 +6437,8 @@ General purpose structure, uses in Mark.
 | Empty | 0 | Ordinary page, without additional fields |
 | Task | 1 | Page with a task fields |
 | Set | 2 | Page, that organize a set of blocks by a specific criterio |
-| Breadcrumbs | 3 | ... |
+| Profile | 3 |  |
+| Breadcrumbs | 101 |  |
 
 
 
@@ -6491,6 +6510,21 @@ General purpose structure, uses in Mark.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype.model.SmartBlock.Type"></a>
+
+### SmartBlock.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Dashboard | 0 |  |
+| Page | 1 |  |
+| Archive | 2 |  |
+| Breadcrumbs | 3 |  |
+| Dataview | 4 |  |
 
 
  
