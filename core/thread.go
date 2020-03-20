@@ -43,7 +43,6 @@ const (
 	anytypeThreadFollowKeySuffix = `follow`
 	anytypeThreadReadKeySuffix   = `read`
 	anytypeThreadIdKeySuffix     = `id`
-	anytypeThreadNonceSuffix     = `nonce`
 )
 
 var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
@@ -87,13 +86,7 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 		return
 	}
 
-	nodeNonce, err2 := slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadFollowKeySuffix)+"/"+anytypeThreadNonceSuffix, accountSeed)
-	if err2 != nil {
-		err = err2
-		return
-	}
-
-	follow, err = symmetric.FromBytes(append(nodeKey.SymmetricKey(), nodeNonce.SymmetricKey()[0:12]...))
+	follow, err = symmetric.FromBytes(append(nodeKey.SymmetricKey()))
 	if err != nil {
 		return
 	}
@@ -103,12 +96,7 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 		return
 	}
 
-	nodeNonce, err = slip21.DeriveForPath(fmt.Sprintf(anytypeThreadPathFormat, index, anytypeThreadReadKeySuffix)+"/"+anytypeThreadNonceSuffix, accountSeed)
-	if err != nil {
-		return
-	}
-
-	read, err = symmetric.FromBytes(append(nodeKey.SymmetricKey(), nodeNonce.SymmetricKey()[0:12]...))
+	read, err = symmetric.FromBytes(nodeKey.SymmetricKey())
 	if err != nil {
 		return
 	}
