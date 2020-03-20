@@ -11,7 +11,7 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-state")
 
 type Doc interface {
 	RootId() string

@@ -10,7 +10,6 @@ import (
 
 type Basic interface {
 	Create(req pb.RpcBlockCreateRequest) (id string, err error)
-	CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
 	Move(req pb.RpcBlockListMoveRequest) error
@@ -38,11 +37,6 @@ func (bs *basic) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
 		return
 	}
 	return block.Model().Id, nil
-}
-
-func (bs *basic) CreatePage(req pb.RpcBlockCreatePageRequest) (id, targetId string, err error) {
-	// TODO: bs.Anytype().CreateBlock()
-	return
 }
 
 func (bs *basic) Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {

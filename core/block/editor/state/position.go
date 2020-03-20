@@ -9,6 +9,7 @@ import (
 )
 
 func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
+	log.Debugf("insert new block to: target=%v; pos=%v", targetId, reqPos)
 	var (
 		target        simple.Block
 		targetParentM *model.Block

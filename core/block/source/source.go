@@ -1,6 +1,8 @@
 package source
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/vclock"
@@ -24,6 +26,7 @@ type Source interface {
 func NewSource(a anytype.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
+		err = fmt.Errorf("anytype.GetBlock(%v) error: %v", id, err)
 		return
 	}
 	s = &source{
@@ -56,6 +59,7 @@ func (s *source) Type() core.SmartBlockType {
 func (s *source) ReadVersion() (*core.SmartBlockVersion, error) {
 	v, err := s.sb.GetLastDownloadedVersion()
 	if err != nil {
+		err = fmt.Errorf("anytype.GetLastDownloadedVersion error: %v", err)
 		return nil, err
 	}
 	s.state = v.State

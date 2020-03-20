@@ -35,7 +35,7 @@ var (
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-block")
 
 var (
 	blockCacheTTL       = time.Minute
@@ -231,15 +231,35 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (id string, err erro
 }
 
 func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (id string, targetId string, err error) {
-	/*
-		sb, release, err := s.pickBlock(req.ContextId)
-		if err != nil {
-			return
-		}
-		defer release()
-		return sb.CreatePage(req)
-		*
-	*/
+	var bt = core.SmartBlockTypePage
+	var style = model.BlockContentLink_Page
+	switch {
+	case req.Block.GetDashboard() != nil:
+		bt = core.SmartBlockTypeDashboard
+		style = model.BlockContentLink_Dashboard
+	}
+	csm, err := s.anytype.CreateBlock(bt)
+	if err != nil {
+		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
+		return
+	}
+	targetId = csm.ID()
+	log.Infof("created new smartBlock(%v): %v", bt, targetId)
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		id, err = b.Create(pb.RpcBlockCreateRequest{
+			TargetId: req.TargetId,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: targetId,
+						Style:         style,
+					},
+				},
+			},
+			Position: req.Position,
+		})
+		return fmt.Errorf("link create error: %v", err)
+	})
 	return
 }
 
