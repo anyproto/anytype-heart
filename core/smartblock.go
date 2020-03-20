@@ -162,7 +162,7 @@ func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnaps
 }
 
 func (block *smartBlock) getSnapshotTime(event net.Event) (*types.Timestamp, error) {
-	header, err := event.GetHeader(context.TODO(), block.node.ts, block.thread.ReadKey)
+	header, err := event.GetHeader(context.TODO(), block.node.ts, block.thread.Key.Read())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get headers: %w", err)
 	}
@@ -191,7 +191,7 @@ func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) 
 		return nil, err
 	}
 
-	if block.thread.ReadKey == nil {
+	if block.thread.Key.Read() == nil {
 		return nil, fmt.Errorf("no read key")
 	}
 	event, err := cbor.EventFromRecord(context.TODO(), block.node.ts, rec)
@@ -256,7 +256,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 			return
 		}
 
-		header, err2 := event.GetHeader(context.TODO(), block.node.ts, block.thread.ReadKey)
+		header, err2 := event.GetHeader(context.TODO(), block.node.ts, block.thread.Key.Read())
 		if err2 != nil {
 			err = err2
 			return
@@ -279,7 +279,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 			return nil, fmt.Errorf("failed to get event: %w", err)
 		}
 
-		node, err := event.GetBody(context.TODO(), block.node.ts, block.thread.ReadKey)
+		node, err := event.GetBody(context.TODO(), block.node.ts, block.thread.Key.Read())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get record body: %w", err)
 		}
@@ -373,7 +373,7 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	header, err2 := event.GetHeader(context.TODO(), block.node.ts, block.thread.ReadKey)
+	header, err2 := event.GetHeader(context.TODO(), block.node.ts, block.thread.Key.Read())
 	if err2 != nil {
 		err = err2
 		return

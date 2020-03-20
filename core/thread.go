@@ -157,7 +157,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 	}
 
 	thrd, err := a.ts.GetThread(context.TODO(), id)
-	if err == nil && thrd.FollowKey != nil {
+	if err == nil && thrd.Key.Service() != nil {
 		return thrd, nil
 	}
 
@@ -173,8 +173,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 	thrd, err = a.ts.CreateThread(context.TODO(),
 		id,
-		corenet.FollowKey(followKey),
-		corenet.ReadKey(readKey),
+		corenet.ThreadKey(thread.NewKey(followKey,readKey)),
 		corenet.LogKey(logKey))
 	if err != nil {
 		return thread.Info{}, err
@@ -220,7 +219,7 @@ func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, heads [
 				return nil, err
 			}
 
-			header, err := event.GetHeader(ctx, a.ts, thrd.ReadKey)
+			header, err := event.GetHeader(ctx, a.ts, thrd.Key.Read())
 			if err != nil {
 				return nil, err
 			}

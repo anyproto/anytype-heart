@@ -97,7 +97,7 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 		return thread.Info{}, err
 	}
 
-	return a.ts.CreateThread(context.TODO(), thrdId, net.FollowKey(followKey), net.ReadKey(readKey))
+	return a.ts.CreateThread(context.TODO(), thrdId, net.ThreadKey(thread.NewKey(followKey,readKey)))
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {

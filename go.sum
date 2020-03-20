@@ -828,6 +828,8 @@ github.com/textileio/go-textile-bots v0.0.0-20191016222050-575b11f5dfd2/go.mod h
 github.com/textileio/go-textile-core v0.0.0-20191016220101-ae46e632fcf0/go.mod h1:beVrrPkRxs370TRYSGDP44ckHdt/7tye7qhjaO6/GxI=
 github.com/textileio/go-threads v0.1.10-0.20200221210336-b7556d73fec7 h1:5k4iuRYrVEvTr5x8eoCnocCVOYOFGjCzwj1UkGlfQO8=
 github.com/textileio/go-threads v0.1.10-0.20200221210336-b7556d73fec7/go.mod h1:/hQNVyxrMJ9w+OUb7qHD9bq/dDToL/8u2cOc/VGvMg8=
+github.com/textileio/go-threads v0.1.12 h1:X/AC+HIF3WHYU1tNZE75Qm6so3mX68u6HL9n/6qiiCY=
+github.com/textileio/go-threads v0.1.12/go.mod h1:/hQNVyxrMJ9w+OUb7qHD9bq/dDToL/8u2cOc/VGvMg8=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/tidwall/gjson v1.3.5 h1:2oW9FBNu8qt9jy5URgrzsVx/T/KSn3qn/smJQ0crlDQ=
 github.com/tidwall/gjson v1.3.5/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=
