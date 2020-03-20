@@ -15,7 +15,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/cbor"
-	"github.com/textileio/go-threads/core/service"
+	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -161,7 +161,7 @@ func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnaps
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (block *smartBlock) getSnapshotTime(event service.Event) (*types.Timestamp, error) {
+func (block *smartBlock) getSnapshotTime(event net.Event) (*types.Timestamp, error) {
 	header, err := event.GetHeader(context.TODO(), block.node.ts, block.thread.ReadKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get headers: %w", err)
@@ -180,7 +180,7 @@ func (block *smartBlock) getSnapshotTime(event service.Event) (*types.Timestamp,
 	return versionTimePB, nil
 }
 
-func (block *smartBlock) getSnapshotSnapshotEvent(id string) (service.Event, error) {
+func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) {
 	vid, err := cid.Parse(id)
 	if err != nil {
 		return nil, err
@@ -274,7 +274,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 	}
 
 	for _, rec := range records {
-		event, err := cbor.EventFromRecord(context.TODO(), block.node.ts, rec)
+		event, err := cbor.EventFromRecord(context.TODO(), block.node.ts, rec.Record)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get event: %w", err)
 		}

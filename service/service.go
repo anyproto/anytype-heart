@@ -20,9 +20,9 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	ma "github.com/multiformats/go-multiaddr"
-	coreservice "github.com/textileio/go-threads/core/service"
+	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/logstore/lstoreds"
-	"github.com/textileio/go-threads/service"
+	"github.com/textileio/go-threads/net"
 	"google.golang.org/grpc"
 )
 
@@ -34,7 +34,7 @@ const (
 // DefaultService is a boostrapable default Service with
 // sane defaults.
 type ServiceBoostrapper interface {
-	coreservice.Service
+	corenet.Net
 	GetIpfsLite() *ipfslite.Peer
 	Bootstrap(addrs []peer.AddrInfo)
 	Datastore() datastore.Batching
@@ -113,8 +113,7 @@ func NewService(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []
 		return nil, err
 	}
 
-	// Build a service
-	api, err := service.NewService(ctx, h, lite.BlockStore(), lite, tstore, service.Config{
+	api, err := net.NewNetwork(ctx, h, lite.BlockStore(), lite, tstore, net.Config{
 		Debug: config.Debug,
 	}, config.GRPCOptions...)
 	if err != nil {
@@ -128,7 +127,7 @@ func NewService(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []
 
 	return &servBoostrapper{
 		cancel:    cancel,
-		Service:   api,
+		Net:   api,
 		litepeer:  lite,
 		pstore:    pstore,
 		logstore:  logstore,
@@ -169,7 +168,7 @@ func WithServiceGRPCOptions(opts ...grpc.ServerOption) ServiceOption {
 
 type servBoostrapper struct {
 	cancel context.CancelFunc
-	coreservice.Service
+	corenet.Net
 	litepeer  *ipfslite.Peer
 	pstore    peerstore.Peerstore
 	logstore  datastore.Datastore
@@ -197,7 +196,7 @@ func (tsb *servBoostrapper) GetIpfsLite() *ipfslite.Peer {
 }
 
 func (tsb *servBoostrapper) Close() error {
-	if err := tsb.Service.Close(); err != nil {
+	if err := tsb.Net.Close(); err != nil {
 		return err
 	}
 	tsb.cancel()

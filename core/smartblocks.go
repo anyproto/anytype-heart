@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/vclock"
-	uuid "github.com/satori/go.uuid"
-	"github.com/textileio/go-threads/core/service"
+	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/crypto/symmetric"
 
 	"github.com/textileio/go-threads/core/thread"
@@ -53,12 +50,18 @@ func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
 }*/
 
 func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) error {
+	// account
+	account, err := a.predefinedThreadAdd(threadDerivedIndexAccount, syncSnapshotIfNotExist)
+	if err != nil {
+		return err
+	}
+	a.predefinedBlockIds.Account = account.ID.String()
+
 	// profile
 	profile, err := a.predefinedThreadAdd(threadDerivedIndexProfilePage, syncSnapshotIfNotExist)
 	if err != nil {
 		return err
 	}
-
 	a.predefinedBlockIds.Profile = profile.ID.String()
 
 	// archive
@@ -67,20 +70,6 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 		return err
 	}
 	a.predefinedBlockIds.Archive = thread.ID.String()
-	block, err := a.GetBlock(thread.ID.String())
-	if err != nil {
-		return err
-	}
-
-	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil {
-		// snapshot not yet created
-		log.Debugf("create predefined archive block")
-		_, err = block.PushSnapshot(vclock.New(), &SmartBlockMeta{}, []*model.Block{})
-
-		if err != nil {
-			return err
-		}
-	}
 
 	// home
 	thread, err = a.predefinedThreadAdd(threadDerivedIndexHomeDashboard, syncSnapshotIfNotExist)
@@ -89,33 +78,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 	}
 	a.predefinedBlockIds.Home = thread.ID.String()
 
-	block, err = a.GetBlock(thread.ID.String())
-	if err != nil {
-		return err
-	}
 
-	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil {
-		// snapshot not yet created
-		log.Debugf("create predefined home block")
-		archiveLinkId := block.ID() + "/" + uuid.NewV4().String()
-		_, err = block.PushSnapshot(vclock.New(), &SmartBlockMeta{}, []*model.Block{
-			{
-				Id: archiveLinkId,
-				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-					TargetBlockId: a.predefinedBlockIds.Archive,
-					Style:         model.BlockContentLink_Dataview,
-				}},
-			}})
-
-		if err != nil {
-			return err
-		}
-	}
-
-	/*err = a.textile().SnapshotThreads()
-	if err != nil {
-		log.Errorf("SnapshotThreads error: %s")
-	}*/
 	return nil
 }
 
@@ -124,17 +87,17 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 	if err != nil {
 		return thread.Info{}, err
 	}
-	followKey, err := symmetric.CreateKey()
+	followKey, err := symmetric.NewRandom()
 	if err != nil {
 		return thread.Info{}, err
 	}
 
-	readKey, err := symmetric.CreateKey()
+	readKey, err := symmetric.NewRandom()
 	if err != nil {
 		return thread.Info{}, err
 	}
 
-	return a.ts.CreateThread(context.TODO(), thrdId, service.FollowKey(followKey), service.ReadKey(readKey))
+	return a.ts.CreateThread(context.TODO(), thrdId, net.FollowKey(followKey), net.ReadKey(readKey))
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {

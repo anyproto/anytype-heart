@@ -23,7 +23,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/satori/go.uuid v1.2.0
 	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
-	github.com/textileio/go-threads v0.1.10-0.20200221210336-b7556d73fec7
+	github.com/textileio/go-threads v0.1.12
 	github.com/tyler-smith/go-bip39 v1.0.0
 	google.golang.org/grpc v1.25.1
 )

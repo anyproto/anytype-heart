@@ -14,7 +14,7 @@ import (
 	"github.com/textileio/go-textile/keypair"
 	twallet "github.com/textileio/go-textile/wallet"
 	"github.com/textileio/go-threads/cbor"
-	"github.com/textileio/go-threads/core/service"
+	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/crypto/symmetric"
 
 	"github.com/textileio/go-threads/core/thread"
@@ -26,6 +26,8 @@ const (
 	threadDerivedIndexProfilePage      threadDerivedIndex = 0
 	threadDerivedIndexHomeDashboard    threadDerivedIndex = 1
 	threadDerivedIndexArchiveDashboard threadDerivedIndex = 2
+	threadDerivedIndexAccount      	   threadDerivedIndex = 3
+
 
 	// AnytypeThreadPathLogKeyFormat is a path format used for Anytype predefined thread log keypair
 	// Use with `fmt.Sprintf` and `DeriveForPath`.
@@ -91,7 +93,7 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 		return
 	}
 
-	follow, err = symmetric.NewKey(append(nodeKey.SymmetricKey(), nodeNonce.SymmetricKey()[0:12]...))
+	follow, err = symmetric.FromBytes(append(nodeKey.SymmetricKey(), nodeNonce.SymmetricKey()[0:12]...))
 	if err != nil {
 		return
 	}
@@ -106,7 +108,7 @@ func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, r
 		return
 	}
 
-	read, err = symmetric.NewKey(append(nodeKey.SymmetricKey(), nodeNonce.SymmetricKey()[0:12]...))
+	read, err = symmetric.FromBytes(append(nodeKey.SymmetricKey(), nodeNonce.SymmetricKey()[0:12]...))
 	if err != nil {
 		return
 	}
@@ -171,9 +173,9 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 	thrd, err = a.ts.CreateThread(context.TODO(),
 		id,
-		service.FollowKey(followKey),
-		service.ReadKey(readKey),
-		service.LogKey(logKey))
+		corenet.FollowKey(followKey),
+		corenet.ReadKey(readKey),
+		corenet.LogKey(logKey))
 	if err != nil {
 		return thread.Info{}, err
 	}
@@ -190,7 +192,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 }
 
 type RecordWithMetadata struct {
-	service.Record
+	corenet.Record
 	Date time.Time
 }
 

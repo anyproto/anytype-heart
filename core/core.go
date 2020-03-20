@@ -14,13 +14,11 @@ import (
 	"github.com/anytypeio/go-anytype-library/service"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
-	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-threads/store"
 	"github.com/textileio/go-threads/util"
 )
 
@@ -40,15 +38,15 @@ var BootstrapNodes = []string{
 }
 
 type PredefinedBlockIds struct {
+	Account string
 	Profile string
 	Home    string
 	Archive string
 }
 
 type Anytype struct {
-	ds       datastore.Batching
 	repoPath string
-	ts       store.ServiceBoostrapper
+	ts       service.ServiceBoostrapper
 	mdns     discovery.Service
 	account  wallet.Keypair
 	device   wallet.Keypair
@@ -110,7 +108,7 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	a.ts.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
 }
 
-func getLogLevels() map[string]string {
+func applyLogLevels() {
 	levels := os.Getenv("ANYTYPE_LOG_LEVEL")
 	logLevels := make(map[string]string)
 	if levels != "" {
@@ -128,7 +126,21 @@ func getLogLevels() map[string]string {
 		}
 	}
 
-	return logLevels
+	if len(logLevels) == 0 {
+		logging.SetAllLoggers(logging.LevelDebug)
+		return
+	}
+
+	for subsystem, level := range logLevels {
+		err := logging.SetLogLevel(subsystem, level)
+		if err != nil {
+			log.Fatalf("incorrect log level for %s: %s", subsystem, level)
+		}
+	}
+}
+
+func init(){
+	applyLogLevels()
 }
 
 func New(rootPath string, account string) (Service, error) {
@@ -137,7 +149,7 @@ func New(rootPath string, account string) (Service, error) {
 		return nil, fmt.Errorf("not exists")
 	}
 
-	a := Anytype{repoPath: repoPath, logLevels: getLogLevels()}
+	a := Anytype{repoPath: repoPath}
 	var err error
 
 	b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
@@ -166,24 +178,6 @@ func New(rootPath string, account string) (Service, error) {
 	}
 
 	return &a, nil
-}
-
-func (a *Anytype) SetLogLevel(subsystem string, level string) {
-	a.logLevels[subsystem] = strings.ToUpper(level)
-}
-
-func (a *Anytype) applyLogLevel() {
-	if len(a.logLevels) == 0 {
-		logging.SetAllLoggers(logging.LevelDebug)
-		return
-	}
-
-	for subsystem, level := range a.logLevels {
-		err := logging.SetLogLevel(subsystem, level)
-		if err != nil {
-			log.Fatalf("incorrect log level for %s: %s", subsystem, level)
-		}
-	}
 }
 
 func (a *Anytype) runPeriodicJobsInBackground() {
@@ -230,14 +224,11 @@ func (a *Anytype) Start() error {
 	}
 
 	// todo: use the datastore from go-threads to save resources on the second instance
-	ds, err := ipfslite.BadgerDatastore(filepath.Join(a.repoPath, "datastore"))
-	if err != nil {
-		return err
-	}
+	//ds,= ts.Datastore()
 
 	a.done = make(chan struct{})
 	a.ts = ts
-	a.ds = ds
+//	a.ds = ds
 	a.mdns = mdns
 	mdns.RegisterNotifee(a)
 
@@ -278,12 +269,12 @@ func (a *Anytype) Stop() error {
 		}
 	}
 
-	if a.ds != nil {
+	/*if a.ds != nil {
 		err := a.ds.Close()
 		if err != nil {
 			return err
 		}
-	}
+	}*/
 
 	return nil
 }
