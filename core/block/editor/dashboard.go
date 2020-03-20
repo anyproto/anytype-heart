@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -39,5 +41,18 @@ func (p *Dashboard) checkRootBlock() (err error) {
 			Dashboard: &model.BlockContentDashboard{},
 		},
 	}))
+	archive := simple.New(&model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: p.Anytype().PredefinedBlocks().Archive,
+				Style:         model.BlockContentLink_Archive,
+			},
+		},
+	})
+	s.Add(archive)
+	if err = s.InsertTo(p.RootId(), model.Block_Inner, archive.Model().Id); err != nil {
+		return fmt.Errorf("can't insert archive: %v", err)
+	}
+
 	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
 }

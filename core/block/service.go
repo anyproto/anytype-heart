@@ -258,7 +258,10 @@ func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (id string, targe
 			},
 			Position: req.Position,
 		})
-		return fmt.Errorf("link create error: %v", err)
+		if err != nil {
+			err = fmt.Errorf("link create error: %v", err)
+		}
+		return err
 	})
 	return
 }
