@@ -12,8 +12,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/google/uuid"
-	"github.com/prometheus/common/log"
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("anytype-editor")
 
 func NewBreadcrumbs() *Breadcrumbs {
 	return &Breadcrumbs{}
