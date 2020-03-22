@@ -53,7 +53,7 @@ func (f *File) Upload(stor anytype.Service, updater Updater, localPath, url stri
 	up := &uploader{
 		updateFile: func(apply func(file Block)) {
 			if e := updater.UpdateFileBlock(id, apply); e != nil {
-				log.Warningf("can't update file block: %v", e)
+				log.Warnf("can't update file block: %v", e)
 			}
 		},
 		storage: stor,

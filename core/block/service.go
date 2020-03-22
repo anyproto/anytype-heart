@@ -522,7 +522,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	}
 	switch sc.Type() {
 	case core.SmartBlockTypePage:
-		sb = editor.NewPage()
+		sb = editor.NewPage(s)
 	case core.SmartBlockTypeDashboard:
 		sb = editor.NewDashboard()
 	default:
