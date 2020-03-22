@@ -2,16 +2,9 @@ package clipboard
 
 import (
 	"errors"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/prometheus/common/log"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 var (
@@ -25,6 +18,7 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 }
 
+/*
 func NewClipboard(sb smartblock.SmartBlock) Clipboard {
 	return &clipboard{sb}
 }
@@ -373,3 +367,4 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 
 	return blockIds, p.applyAndSendEvent(s)
 }
+*/
