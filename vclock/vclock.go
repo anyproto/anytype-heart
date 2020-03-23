@@ -186,7 +186,6 @@ func (vc VClock) Map() map[string]uint64 {
 	return cp
 }
 
-
 func (vc VClock) Hash() string {
 	var (
 		sum     [32]byte

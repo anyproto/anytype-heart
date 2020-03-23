@@ -26,8 +26,7 @@ const (
 	threadDerivedIndexProfilePage      threadDerivedIndex = 0
 	threadDerivedIndexHomeDashboard    threadDerivedIndex = 1
 	threadDerivedIndexArchiveDashboard threadDerivedIndex = 2
-	threadDerivedIndexAccount      	   threadDerivedIndex = 3
-
+	threadDerivedIndexAccount          threadDerivedIndex = 3
 
 	// AnytypeThreadPathLogKeyFormat is a path format used for Anytype predefined thread log keypair
 	// Use with `fmt.Sprintf` and `DeriveForPath`.
@@ -161,7 +160,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 	thrd, err = a.ts.CreateThread(context.TODO(),
 		id,
-		corenet.ThreadKey(thread.NewKey(followKey,readKey)),
+		corenet.ThreadKey(thread.NewKey(followKey, readKey)),
 		corenet.LogKey(logKey))
 	if err != nil {
 		return thread.Info{}, err

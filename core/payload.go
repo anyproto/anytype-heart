@@ -11,8 +11,8 @@ import (
 
 type signedPbPayload struct {
 	DeviceSig []byte
-	AccSig []byte
-	Data []byte
+	AccSig    []byte
+	Data      []byte
 }
 
 func init() {
@@ -49,5 +49,3 @@ func (p *signedPbPayload) Verify(device crypto.PubKey, account crypto.PubKey) er
 	}
 	return nil
 }
-
-

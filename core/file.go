@@ -1,7 +1,7 @@
 package core
 
 import (
-	"fmt"
+	"context"
 	"io"
 	"sync"
 	"time"
@@ -20,7 +20,7 @@ type File interface {
 
 type file struct {
 	hash  string
-	index *lsmodel.FileIndex
+	index *lsmodel.FileInfo
 	node  *Anytype
 }
 
@@ -45,5 +45,5 @@ func (file *file) Hash() string {
 }
 
 func (file *file) Reader() (io.ReadSeeker, error) {
-	return nil, fmt.Errorf("not implemented")
+	return file.node.fileIndexContent(context.Background(), file.index)
 }

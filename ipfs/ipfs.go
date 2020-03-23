@@ -2,7 +2,6 @@ package ipfs
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"time"
@@ -17,9 +16,10 @@ import (
 	ipfspath "github.com/ipfs/go-path"
 	uio "github.com/ipfs/go-unixfs/io"
 	iface "github.com/ipfs/interface-go-ipfs-core"
+	mh "github.com/multiformats/go-multihash"
 )
 
-var log = logging.Logger("tex-ipfs")
+var log = logging.Logger("anytype-ipfs")
 
 const DefaultTimeout = time.Second * 5
 const PinTimeout = time.Minute
@@ -73,6 +73,8 @@ func LinksAtPath(ctx context.Context, node *ipfslite.Peer, pth string) ([]*ipld.
 		return nil, err
 	}
 
+	dir.SetCidBuilder(cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256})
+
 	return dir.Links(ctx)
 }
 
@@ -108,8 +110,6 @@ func AddDataToDirectory(ctx context.Context, node *ipfslite.Peer, dir uio.Direct
 		return nil, err
 	}
 
-	fmt.Printf("AddDataToDirectory: %s %s\n", fname, id.String())
-
 	n, err := node.Get(ctx, *id)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func AddDataToDirectory(ctx context.Context, node *ipfslite.Peer, dir uio.Direct
 
 // AddLinkToDirectory adds a link to a virtual dir
 func AddLinkToDirectory(ctx context.Context, node *ipfslite.Peer, dir uio.Directory, fname string, pth string) error {
-	fmt.Printf("AddLinkToDirectory: %s %s\n", fname, pth)
+	log.Debugf("AddLinkToDirectory: %s %s\n", fname, pth)
 	id, err := icid.Decode(pth)
 	if err != nil {
 		return err
@@ -138,7 +138,6 @@ func AddLinkToDirectory(ctx context.Context, node *ipfslite.Peer, dir uio.Direct
 	if err != nil {
 		return err
 	}
-	fmt.Printf("dag get ok: %s\n", id.String())
 
 	return dir.AddChild(ctx, fname, nd)
 }
@@ -146,7 +145,7 @@ func AddLinkToDirectory(ctx context.Context, node *ipfslite.Peer, dir uio.Direct
 // AddData takes a reader and adds it, optionally pins it, optionally only hashes it
 func AddData(ctx context.Context, node *ipfslite.Peer, reader io.Reader, pin bool) (*icid.Cid, error) {
 	pth, err := node.AddFile(ctx, files.NewReaderFile(reader), nil)
-	fmt.Printf("AddData: %s\n", pth.Cid().String())
+	log.Debugf("AddData: %s", pth.Cid().String())
 
 	if err != nil {
 		return nil, err

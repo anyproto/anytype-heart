@@ -20,7 +20,7 @@ type Image interface {
 
 type image struct {
 	hash            string // directory hash
-	variantsByWidth map[int]lsmodel.FileIndex
+	variantsByWidth map[int]*lsmodel.FileInfo
 	node            *Anytype
 }
 
@@ -85,10 +85,10 @@ func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, fil
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	var maxWidth int
-	var maxWidthImage lsmodel.FileIndex
+	var maxWidthImage *lsmodel.FileInfo
 
 	var minWidthMatched int
-	var minWidthMatchedImage lsmodel.FileIndex
+	var minWidthMatchedImage *lsmodel.FileInfo
 
 	for width, fileIndex := range i.variantsByWidth {
 		if width >= maxWidth {
@@ -106,13 +106,13 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	if minWidthMatchedImage.Hash != "" {
 		return &file{
 			hash:  minWidthMatchedImage.Hash,
-			index: &minWidthMatchedImage,
+			index: minWidthMatchedImage,
 			node:  i.node,
 		}, nil
 	} else if maxWidthImage.Hash != "" {
 		return &file{
 			hash:  maxWidthImage.Hash,
-			index: &maxWidthImage,
+			index: maxWidthImage,
 			node:  i.node,
 		}, nil
 	}

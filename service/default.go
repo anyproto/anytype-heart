@@ -125,7 +125,7 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 
 	return &netBoostrapper{
 		cancel:    cancel,
-		Net:   api,
+		Net:       api,
 		litepeer:  lite,
 		pstore:    pstore,
 		logstore:  logstore,

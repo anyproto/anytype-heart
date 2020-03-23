@@ -33,6 +33,8 @@ import (
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
+var ErrMissingMetaLink = fmt.Errorf("meta link not in node")
+var ErrMissingContentLink = fmt.Errorf("content link not in node")
 
 const MetaLinkName = "meta"
 const ContentLinkName = "content"
@@ -41,22 +43,27 @@ var ValidMetaLinkNames = []string{"meta", "f"}
 var ValidContentLinkNames = []string{"content", "d"}
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
-	files, err := a.getFileIndexByTarget(hash)
+	files, err := a.localStore.Files.ListByTarget(hash)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(files) == 0 {
+		return nil, ErrFileNotFound
+	}
+
+	/*if len(files) == 0 {
 		files, err = a.getFileIndexes(ctx, hash)
 		if err != nil {
 			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
 		}
-	}
+	}*/
 
 	fileIndex := files[0]
 	return &file{
 		hash:  hash,
-		index: &fileIndex,
+		index: fileIndex,
 		node:  a,
 	}, nil
 }
@@ -77,14 +84,14 @@ func (a *Anytype) FileAddWithReader(ctx context.Context, content io.Reader, file
 		return nil, err
 	}
 
-	node, keys, err := a.AddNodeFromFiles(ctx, []*lsmodel.FileIndex{fileIndex})
+	node, keys, err := a.AddNodeFromFiles(ctx, []*lsmodel.FileInfo{fileIndex})
 	if err != nil {
 		return nil, err
 	}
 
 	nodeHash := node.Cid().Hash().B58String()
 
-	err = a.indexFileData(node, nodeHash)
+	err = a.indexFileData(ctx, node, nodeHash)
 	if err != nil {
 		return nil, err
 	}
@@ -100,54 +107,64 @@ func (a *Anytype) FileAddWithReader(ctx context.Context, content io.Reader, file
 	}, nil
 }
 
-func (a *Anytype) getFileIndexByTarget(target string) ([]lsmodel.FileIndex, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-func (a *Anytype) getFileIndexForPath(pth string) (*lsmodel.FileIndex, error) {
+func (a *Anytype) getFileIndexForPath(pth string) (*lsmodel.FileInfo, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
 // IndexFileData walks a file data node, indexing file links
-func (a *Anytype) indexFileData(inode ipld.Node, data string) error {
-	return fmt.Errorf("not implemented")
+func (a *Anytype) indexFileData(ctx context.Context, inode ipld.Node, data string) error {
+	for _, link := range inode.Links() {
+		nd, err := ipfs.NodeAtLink(ctx, a.ipfs(), link)
+		if err != nil {
+			return err
+		}
+		err = a.indexFileNode(ctx, nd, data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // indexFileNode walks a file node, indexing file links
-func (a *Anytype) indexFileNode(inode ipld.Node, data string) error {
-	return fmt.Errorf("not implemented")
-
-	/*links := inode.Links()
+func (a *Anytype) indexFileNode(ctx context.Context, inode ipld.Node, data string) error {
+	links := inode.Links()
 
 	if looksLikeFileNode(inode) {
-		return a.indexFileLink(inode, data)
+		return a.indexFileLink(ctx, inode, data)
 	}
 
 	for _, link := range links {
-		n, err := ipfs.NodeAtLink(a.ipfs(), link)
+		n, err := ipfs.NodeAtLink(ctx, a.ipfs(), link)
 		if err != nil {
 			return err
 		}
 
-		err = a.indexFileLink(n, data)
+		err = a.indexFileLink(ctx, n, data)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil*/
+	return nil
 }
 
 // indexFileLink indexes a file link
-func (a *Anytype) indexFileLink(inode ipld.Node, data string) error {
-	return fmt.Errorf("not implemented")
+func (a *Anytype) indexFileLink(ctx context.Context, inode ipld.Node, data string) error {
+	dlink := tschema.LinkByName(inode.Links(), ValidContentLinkNames)
+	if dlink == nil {
+		return ErrMissingContentLink
+	}
+
+	return a.localStore.Files.AddTarget(dlink.Cid.String(), data)
 }
 
-func (a *Anytype) addFileIndexFromPath(target string, path string, key string) (*lsmodel.FileIndex, error) {
+func (a *Anytype) addFileIndexFromPath(target string, path string, key string) (*lsmodel.FileInfo, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (t *Anytype) fileMeta(hash string) (*lsmodel.FileIndex, error) {
+func (t *Anytype) fileMeta(hash string) (*lsmodel.FileInfo, error) {
 	file, err := t.localStore.Files.GetByHash(hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get the file meta content for hash %s with error: %w", hash, err)
@@ -155,9 +172,9 @@ func (t *Anytype) fileMeta(hash string) (*lsmodel.FileIndex, error) {
 	return file, nil
 }
 
-func (t *Anytype) fileContent(ctx context.Context, hash string) (io.ReadSeeker, *lsmodel.FileIndex, error) {
+func (t *Anytype) fileContent(ctx context.Context, hash string) (io.ReadSeeker, *lsmodel.FileInfo, error) {
 	var err error
-	var file *lsmodel.FileIndex
+	var file *lsmodel.FileInfo
 	var reader io.ReadSeeker
 	file, err = t.fileMeta(hash)
 	if err != nil {
@@ -167,7 +184,7 @@ func (t *Anytype) fileContent(ctx context.Context, hash string) (io.ReadSeeker, 
 	return reader, file, err
 }
 
-func (t *Anytype) fileIndexContent(ctx context.Context, file *lsmodel.FileIndex) (io.ReadSeeker, error) {
+func (t *Anytype) fileIndexContent(ctx context.Context, file *lsmodel.FileInfo) (io.ReadSeeker, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
 		return nil, err
@@ -216,7 +233,7 @@ func checksum(plaintext []byte, wontEncrypt bool) string {
 	return base58.FastBase58Encoding(sum[:])
 }
 
-func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf AddFileConfig) (*lsmodel.FileIndex, error) {
+func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf AddFileConfig) (*lsmodel.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -245,7 +262,7 @@ func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf AddFileCon
 		return efile, nil
 	}
 
-	model := &lsmodel.FileIndex{
+	model := &lsmodel.FileInfo{
 		Mill:     mill.ID(),
 		Checksum: check,
 		Source:   source,
@@ -299,7 +316,7 @@ func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename 
 		}
 		parts := strings.Split(ref.String(), "/")
 		hash := parts[len(parts)-1]
-		var file *lsmodel.FileIndex
+		var file *lsmodel.FileInfo
 		reader, file, err = a.fileContent(ctx, hash)
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
@@ -341,9 +358,10 @@ func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename 
 	return conf, nil
 }
 
-func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*lsmodel.FileIndex) (ipld.Node, *storage.FileKeys, error) {
+func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*lsmodel.FileInfo) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(t.ts.GetIpfsLite().DAGService)
+	outer.SetCidBuilder(cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256})
 
 	var err error
 	for i, file := range files {
@@ -359,6 +377,12 @@ func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*lsmodel.FileInd
 	if err != nil {
 		return nil, nil, err
 	}
+
+	err = t.ipfs().Add(ctx, node)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	/*err = ipfs.PinNode(t.node, node, false)
 	if err != nil {
 		return nil, nil, err
@@ -366,7 +390,7 @@ func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*lsmodel.FileInd
 	return node, keys, nil
 }
 
-func (t *Anytype) fileNode(ctx context.Context, file *lsmodel.FileIndex, dir uio.Directory, link string) error {
+func (t *Anytype) fileNode(ctx context.Context, file *lsmodel.FileInfo, dir uio.Directory, link string) error {
 	file, err := t.localStore.Files.GetByHash(file.Hash)
 	if err != nil {
 		return err
@@ -414,6 +438,11 @@ func (t *Anytype) fileNode(ctx context.Context, file *lsmodel.FileIndex, dir uio
 	if err != nil {
 		return err
 	}
+	err = t.ipfs().Add(ctx, node)
+	if err != nil {
+		return err
+	}
+
 	/*err = ipfs.PinNode(t.node, node, false)
 	if err != nil {
 		return err

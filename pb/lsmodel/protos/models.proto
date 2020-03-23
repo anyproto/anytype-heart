@@ -4,7 +4,7 @@ option go_package = "github.com/anytypeio/go-anytype-library/pb/lsmodel";
 
 import "google/protobuf/struct.proto";
 
-message FileIndex {
+message FileInfo {
     string mill = 1;
     string checksum = 2;
     string source = 3;

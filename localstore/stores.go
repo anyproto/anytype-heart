@@ -6,13 +6,17 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
+	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	logging "github.com/ipfs/go-log"
 	"github.com/multiformats/go-base32"
 )
 
 var ErrDuplicateKey = fmt.Errorf("duplicate key")
 var ErrNotFound = fmt.Errorf("not found")
+
+var log = logging.Logger("anytype-localstore")
 
 var (
 	indexBase = ds.NewKey("/idx")
@@ -24,13 +28,13 @@ type LocalStore struct {
 
 type FileStore interface {
 	Indexable
-	Add(file *lsmodel.FileIndex) error
-	GetByHash(hash string) (*lsmodel.FileIndex, error)
-	GetBySource(mill string, source string, opts string) (*lsmodel.FileIndex, error)
-	GetByChecksum(mill string, checksum string) (*lsmodel.FileIndex, error)
-
-	//AddTarget(hash string, target string) error
-	//RemoveTarget(hash string, target string) error
+	Add(file *lsmodel.FileInfo) error
+	GetByHash(hash string) (*lsmodel.FileInfo, error)
+	GetBySource(mill string, source string, opts string) (*lsmodel.FileInfo, error)
+	GetByChecksum(mill string, checksum string) (*lsmodel.FileInfo, error)
+	AddTarget(hash string, target string) error
+	RemoveTarget(hash string, target string) error
+	ListByTarget(target string) ([]*lsmodel.FileInfo, error)
 	Count() (int, error)
 	DeleteByHash(hash string) error
 }
@@ -43,26 +47,28 @@ func NewLocalStore(store ds.Batching) LocalStore {
 
 type Indexable interface {
 	Indexes() []Index
-	Prefix() string
 }
 
 type Index struct {
-	Name   string
-	Values func(val interface{}) []string
-	Unique bool
-	Hash   bool
+	Prefix  string
+	Name    string
+	Keys    func(val interface{}) []IndexKeyParts
+	Unique  bool
+	Hash    bool
 	Primary bool
 }
 
-func AddIndexes(store Indexable, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
-	for _, index := range store.Indexes() {
-		keyStr := strings.Join(index.Values(newVal), "")
+type IndexKeyParts []string
+
+func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
+	for _, keyParts := range index.Keys(newVal) {
+		keyStr := strings.Join(keyParts, "")
 		if index.Hash {
 			keyBytesF := sha256.Sum256([]byte(keyStr))
 			keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 		}
 
-		key := indexBase.ChildString(store.Prefix()).ChildString(keyStr)
+		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 		if index.Unique {
 			exists, err := ds.Has(key)
 			if err != nil {
@@ -73,7 +79,18 @@ func AddIndexes(store Indexable, ds ds.TxnDatastore, newVal interface{}, newValP
 			}
 		}
 
+		log.Debugf("add index at %s", key.ChildString(newValPrimary).String())
 		err := ds.Put(key.ChildString(newValPrimary), []byte{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func AddIndexes(store Indexable, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
+	for _, index := range store.Indexes() {
+		err := AddIndex(index, ds, newVal, newValPrimary)
 		if err != nil {
 			return err
 		}
@@ -82,8 +99,8 @@ func AddIndexes(store Indexable, ds ds.TxnDatastore, newVal interface{}, newValP
 	return nil
 }
 
-func GetKeyByIndex(prefix string, index Index, ds ds.TxnDatastore, val interface{}) (string, error) {
-	results, err := GetKeysByIndex(prefix, index, ds, val,1)
+func GetKeyByIndex(index Index, ds ds.TxnDatastore, val interface{}) (string, error) {
+	results, err := GetKeysByIndex(index, ds, val, 1)
 	if err != nil {
 		return "", err
 	}
@@ -98,22 +115,66 @@ func GetKeyByIndex(prefix string, index Index, ds ds.TxnDatastore, val interface
 		return "", res.Error
 	}
 
-	return res.Key, nil
+	key := datastore.RawKey(res.Key)
+	keyParts := key.List()
+
+	return keyParts[len(keyParts)-1], nil
 }
 
-func GetKeysByIndex(prefix string, index Index, ds ds.TxnDatastore, val interface{}, limit int) (query.Results, error) {
-	indexKeyValues := index.Values(val)
+func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
+	keyStr := strings.Join(keyIndexValue, "")
+	if hash {
+		keyBytesF := sha256.Sum256([]byte(keyStr))
+		keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
+	}
+
+	key := indexBase.ChildString(prefix).ChildString(keyIndexName).ChildString(keyStr)
+
+	log.Debugf("GetKeysByIndexParts %s", key.String()+"/")
+	return ds.Query(query.Query{
+		Prefix:   key.String() + "/",
+		Limit:    limit,
+		KeysOnly: true,
+	})
+}
+
+func GetAllKeysFromResults(results query.Results) ([]string, error) {
+	var keys []string
+	for {
+		res, ok := <-results.Next()
+		if !ok {
+			break
+		}
+		if res.Error != nil {
+			return nil, res.Error
+		}
+
+		key := datastore.RawKey(res.Key)
+		keyParts := key.List()
+		keys = append(keys, keyParts[len(keyParts)-1])
+	}
+
+	return keys, nil
+}
+
+func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int) (query.Results, error) {
+	indexKeyValues := index.Keys(val)
 	if indexKeyValues == nil {
 		return nil, fmt.Errorf("failed to get index key values – may be incorrect val interface")
 	}
 
-	keyStr := strings.Join(index.Values(val), "")
+	keys := index.Keys(val)
+	if len(keys) > 0 {
+		return nil, fmt.Errorf("multiple keys index not supported – use GetKeysByIndexParts instead")
+	}
+
+	keyStr := strings.Join(keys[0], "")
 	if index.Hash {
 		keyBytesF := sha256.Sum256([]byte(keyStr))
 		keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 	}
 
-	key := indexBase.ChildString(prefix).ChildString(keyStr)
+	key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 	if index.Unique {
 		limit = 1
 	}
