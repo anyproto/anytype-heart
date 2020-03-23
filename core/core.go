@@ -57,6 +57,7 @@ type Anytype struct {
 	logLevels          map[string]string
 	lock               sync.Mutex
 	done               chan struct{}
+	online             bool
 }
 
 type Service interface {
@@ -64,6 +65,7 @@ type Service interface {
 	Start() error
 	Stop() error
 	IsStarted() bool
+	BecameOnline(ch chan<- error)
 
 	InitPredefinedBlocks(mustSyncFromRemote bool) error
 	PredefinedBlocks() PredefinedBlockIds
@@ -89,6 +91,18 @@ func (a *Anytype) ipfs() *ipfslite.Peer {
 
 func (a *Anytype) IsStarted() bool {
 	return a.ts != nil && a.ts.GetIpfsLite() != nil
+}
+
+func (a *Anytype) BecameOnline(ch chan<- error) {
+	// todo: rewrite with internal chan
+	for {
+		if a.online {
+			ch <- nil
+			close(ch)
+			return
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
 func (a *Anytype) CreateBlock(t SmartBlockType) (SmartBlock, error) {
@@ -199,6 +213,14 @@ func (a *Anytype) runPeriodicJobsInBackground() {
 	}()
 }
 
+func DefaultBoostrapPeers() []peer.AddrInfo {
+	ais, err := util.ParseBootstrapPeers(BootstrapNodes)
+	if err != nil {
+		panic("coudn't parse default bootstrap peers")
+	}
+	return ais
+}
+
 func (a *Anytype) Start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
@@ -217,13 +239,16 @@ func (a *Anytype) Start() error {
 		return err
 	}
 
-	ts.Bootstrap(util.DefaultBoostrapPeers())
+	go func() {
+		ts.Bootstrap(DefaultBoostrapPeers())
+		a.online = true
+	}()
 
-	ctx := context.Background()
-	mdns, err := discovery.NewMdnsService(ctx, ts.Host(), time.Second, "")
+	// ctx := context.Background()
+	/*mdns, err := discovery.NewMdnsService(ctx, ts.Host(), time.Second, "")
 	if err != nil {
 		log.Fatal(err)
-	}
+	}*/
 
 	// todo: use the datastore from go-threads to save resources on the second instance
 	//ds,= ts.Datastore()
@@ -232,8 +257,8 @@ func (a *Anytype) Start() error {
 	a.ts = ts
 	a.localStore = localstore.NewLocalStore(a.ts.Datastore())
 	//	a.ds = ds
-	a.mdns = mdns
-	mdns.RegisterNotifee(a)
+	//a.mdns = mdns
+	//mdns.RegisterNotifee(a)
 
 	return nil
 }
