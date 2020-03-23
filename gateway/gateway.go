@@ -108,7 +108,9 @@ func enableCors(w http.ResponseWriter) {
 func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	fileHash := r.URL.Path[len("/file/"):]
 	enableCors(w)
-	file, err := g.Node.FileByHash(fileHash)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	file, err := g.Node.FileByHash(ctx, fileHash)
 	if err != nil {
 		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
@@ -140,7 +142,9 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	enableCors(w)
-	image, err := g.Node.ImageByHash(imageHash)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	image, err := g.Node.ImageByHash(ctx, imageHash)
 	if err != nil {
 		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
