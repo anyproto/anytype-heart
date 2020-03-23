@@ -61,6 +61,9 @@ service ClientCommands {
 
     rpc BlockCopy (anytype.Rpc.Block.Copy.Request) returns (anytype.Rpc.Block.Copy.Response);
     rpc BlockPaste (anytype.Rpc.Block.Paste.Request) returns (anytype.Rpc.Block.Paste.Response);
+    rpc BlockCreateAndCutTo (anytype.Rpc.Block.CreateAndCutTo.Request) returns (anytype.Rpc.Block.CreateAndCutTo.Response);
+    rpc BlockCutTo (anytype.Rpc.Block.CutTo.Request) returns (anytype.Rpc.Block.CutTo.Response);
+
     rpc BlockCut (anytype.Rpc.Block.Cut.Request) returns (anytype.Rpc.Block.Cut.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
 
