@@ -55,7 +55,6 @@ type Index struct {
 	Keys    func(val interface{}) []IndexKeyParts
 	Unique  bool
 	Hash    bool
-	Primary bool
 }
 
 type IndexKeyParts []string
@@ -164,7 +163,7 @@ func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int)
 	}
 
 	keys := index.Keys(val)
-	if len(keys) > 0 {
+	if len(keys) > 1 {
 		return nil, fmt.Errorf("multiple keys index not supported – use GetKeysByIndexParts instead")
 	}
 
