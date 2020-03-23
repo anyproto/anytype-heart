@@ -100,6 +100,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		process:      process.NewService(sendEvent),
 	}
 	go s.cleanupTicker()
+	log.Info("block service started")
 	return s
 }
 

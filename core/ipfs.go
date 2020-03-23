@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
@@ -86,7 +87,7 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
-	image, err := mw.Anytype.ImageByHash(req.GetHash())
+	image, err := mw.Anytype.ImageByHash(context.TODO(), req.GetHash())
 	if err != nil {
 		if err == core.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
@@ -94,7 +95,7 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 
 		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
 	}
-	file, err := image.GetFileForWidth(int(req.WantWidth))
+	file, err := image.GetFileForWidth(context.TODO(), int(req.WantWidth))
 	if err != nil {
 		if err == core.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
