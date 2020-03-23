@@ -14,8 +14,8 @@ import (
 type Image interface {
 	Exif() (*mill.ImageExifSchema, error)
 	Hash() string
-	GetFileForWidth(wantWidth int) (File, error)
-	GetFileForLargestWidth() (File, error)
+	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
+	GetFileForLargestWidth(ctx context.Context) (File, error)
 }
 
 type image struct {
@@ -24,7 +24,7 @@ type image struct {
 	node            *Anytype
 }
 
-func (i *image) GetFileForWidth(wantWidth int) (File, error) {
+func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(wantWidth)
 	}
@@ -42,7 +42,7 @@ func (i *image) GetFileForWidth(wantWidth int) (File, error) {
 	}, nil
 }
 
-func (i *image) GetFileForLargestWidth() (File, error) {
+func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(math.MaxInt32)
 	}

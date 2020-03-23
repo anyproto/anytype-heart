@@ -156,7 +156,7 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	var file core.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
-		file, err = image.GetFileForLargestWidth()
+		file, err = image.GetFileForLargestWidth(ctx)
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
 		if err != nil {
@@ -164,7 +164,7 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		file, err = image.GetFileForWidth(wantWidth)
+		file, err = image.GetFileForWidth(ctx, wantWidth)
 	}
 
 	if err != nil {
