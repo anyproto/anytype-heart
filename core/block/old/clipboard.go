@@ -1,6 +1,7 @@
 package old
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
+
 var (
 	ErrAllSlotsEmpty = errors.New("All slots are empty")
 )
@@ -98,7 +100,7 @@ func (p *commonSmart) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot 
 	return textSlot, htmlSlot, anySlot, p.applyAndSendEvent(s)
 }
 
-func (p *commonSmart) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block) {
+func (p *commonSmart) blocksTreeToMap(blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block) {
 	blocksMapOut = blocksMapIn
 
 	for _, id := range ids {
@@ -113,11 +115,11 @@ func (p *commonSmart) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids 
 	return blocksMapOut
 }
 
-func (p *commonSmart) getImages (blocks map[string]*model.Block) (images map[string][]byte, err error) {
+func (p *commonSmart) getImages(blocks map[string]*model.Block) (images map[string][]byte, err error) {
 	for _, b := range blocks {
 		if file := b.GetFile(); file != nil {
 			if file.Type == model.BlockContentFile_Image {
-				fh, err := p.s.anytype.FileByHash(file.Hash)
+				fh, err := p.s.anytype.FileByHash(context.TODO(), file.Hash)
 				if err != nil {
 					return images, err
 				}
@@ -223,10 +225,12 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 	cIds := p.versions[p.GetId()].Model().ChildrenIds
 
 	reqFiltered := []*model.Block{}
-	for i:=0; i < len(req.AnySlot); i++ {
+	for i := 0; i < len(req.AnySlot); i++ {
 		switch req.AnySlot[i].Content.(type) {
-		case *model.BlockContentOfLayout: continue
-		default: reqFiltered = append(reqFiltered, req.AnySlot[i])
+		case *model.BlockContentOfLayout:
+			continue
+		default:
+			reqFiltered = append(reqFiltered, req.AnySlot[i])
 		}
 	}
 
@@ -304,17 +308,17 @@ func (p *commonSmart) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, 
 	// If there is 1 block and it is a text =>
 	// if there is a focused block => Do not create new blocks
 	// If selectedBlocks => ignore it, it is an error
-	if  content, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok &&
+	if content, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok &&
 		len(req.AnySlot) == 1 &&
 		len(req.FocusedBlockId) > 0 && p.versions[req.FocusedBlockId] != nil &&
 		!titlePasted {
 
 		if req.SelectedTextRange == nil {
-			req.SelectedTextRange = &model.Range{From:0, To:0}
+			req.SelectedTextRange = &model.Range{From: 0, To: 0}
 		}
 
 		if content.Text.Marks == nil {
-			content.Text.Marks = &model.BlockContentTextMarks{Marks:[]*model.BlockContentTextMark{}}
+			content.Text.Marks = &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{}}
 		}
 
 		err = p.rangeTextPaste(s,

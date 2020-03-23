@@ -206,7 +206,7 @@ func loadImage(stor anytype.Service, url string) (hash string, err error) {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	im, err := stor.ImageAddWithReader(resp.Body, filepath.Base(url))
+	im, err := stor.ImageAddWithReader(context.TODO(), resp.Body, filepath.Base(url))
 	if err != nil {
 		return
 	}

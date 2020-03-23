@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"image"
 	"io"
 	"net/http"
@@ -102,7 +103,7 @@ func (u *uploader) upload(rd io.ReadCloser, name string) (err error) {
 }
 
 func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
-	image, err := u.storage.ImageAddWithReader(rd, name)
+	image, err := u.storage.ImageAddWithReader(context.TODO(), rd, name)
 	if err != nil {
 		return
 	}
@@ -113,7 +114,7 @@ func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
 }
 
 func (u *uploader) uploadFile(rd io.Reader, name string) (err error) {
-	cf, err := u.storage.FileAddWithReader(rd, name)
+	cf, err := u.storage.FileAddWithReader(context.TODO(), rd, name)
 	if err != nil {
 		return
 	}
