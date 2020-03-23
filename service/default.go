@@ -31,17 +31,15 @@ const (
 	defaultLogstorePath = "logstore"
 )
 
-// DefaultService is a boostrapable default Service with
-// sane defaults.
-type ServiceBoostrapper interface {
+type NetBoostrapper interface {
 	corenet.Net
 	GetIpfsLite() *ipfslite.Peer
 	Bootstrap(addrs []peer.AddrInfo)
 	Datastore() datastore.Batching
 }
 
-func NewService(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []byte, opts ...ServiceOption) (ServiceBoostrapper, error) {
-	config := &ServiceConfig{}
+func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []byte, opts ...NetOption) (NetBoostrapper, error) {
+	config := &NetConfig{}
 	for _, opt := range opts {
 		if err := opt(config); err != nil {
 			return nil, err
@@ -125,7 +123,7 @@ func NewService(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []
 		return nil, err
 	}
 
-	return &servBoostrapper{
+	return &netBoostrapper{
 		cancel:    cancel,
 		Net:   api,
 		litepeer:  lite,
@@ -137,36 +135,36 @@ func NewService(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []
 	}, nil
 }
 
-type ServiceConfig struct {
+type NetConfig struct {
 	HostAddr    ma.Multiaddr
 	Debug       bool
 	GRPCOptions []grpc.ServerOption
 }
 
-type ServiceOption func(c *ServiceConfig) error
+type NetOption func(c *NetConfig) error
 
-func WithServiceHostAddr(addr ma.Multiaddr) ServiceOption {
-	return func(c *ServiceConfig) error {
+func WithNetHostAddr(addr ma.Multiaddr) NetOption {
+	return func(c *NetConfig) error {
 		c.HostAddr = addr
 		return nil
 	}
 }
 
-func WithServiceDebug(enabled bool) ServiceOption {
-	return func(c *ServiceConfig) error {
+func WithNetDebug(enabled bool) NetOption {
+	return func(c *NetConfig) error {
 		c.Debug = enabled
 		return nil
 	}
 }
 
-func WithServiceGRPCOptions(opts ...grpc.ServerOption) ServiceOption {
-	return func(c *ServiceConfig) error {
+func WithNetGRPCOptions(opts ...grpc.ServerOption) NetOption {
+	return func(c *NetConfig) error {
 		c.GRPCOptions = opts
 		return nil
 	}
 }
 
-type servBoostrapper struct {
+type netBoostrapper struct {
 	cancel context.CancelFunc
 	corenet.Net
 	litepeer  *ipfslite.Peer
@@ -177,25 +175,25 @@ type servBoostrapper struct {
 	dht       *dht.IpfsDHT
 }
 
-var _ ServiceBoostrapper = (*servBoostrapper)(nil)
+var _ NetBoostrapper = (*netBoostrapper)(nil)
 
-func (tsb *servBoostrapper) Datastore() datastore.Batching {
+func (tsb *netBoostrapper) Datastore() datastore.Batching {
 	return tsb.litestore
 }
 
-func (tsb *servBoostrapper) Identity() datastore.Batching {
+func (tsb *netBoostrapper) Identity() datastore.Batching {
 	return tsb.litestore
 }
 
-func (tsb *servBoostrapper) Bootstrap(addrs []peer.AddrInfo) {
+func (tsb *netBoostrapper) Bootstrap(addrs []peer.AddrInfo) {
 	tsb.litepeer.Bootstrap(addrs)
 }
 
-func (tsb *servBoostrapper) GetIpfsLite() *ipfslite.Peer {
+func (tsb *netBoostrapper) GetIpfsLite() *ipfslite.Peer {
 	return tsb.litepeer
 }
 
-func (tsb *servBoostrapper) Close() error {
+func (tsb *netBoostrapper) Close() error {
 	if err := tsb.Net.Close(); err != nil {
 		return err
 	}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+package anytype.lsmodel;
+option go_package = "github.com/anytypeio/go-anytype-library/pb/lsmodel";
+
+import "google/protobuf/struct.proto";
+
+message FileIndex {
+    string mill = 1;
+    string checksum = 2;
+    string source = 3;
+    string opts = 4;
+    string hash = 5;
+    string key = 6;
+    string media = 7;
+    string name = 8;
+    int64 size = 9;
+    int64 added = 10;
+    google.protobuf.Struct meta = 11;
+    repeated string targets = 12;
+}

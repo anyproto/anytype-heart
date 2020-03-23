@@ -1,13 +1,14 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
 
-	"github.com/textileio/go-textile/mill"
-	tpb "github.com/textileio/go-textile/pb"
+	"github.com/anytypeio/go-anytype-library/mill"
+	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
 )
 
 type Image interface {
@@ -19,7 +20,7 @@ type Image interface {
 
 type image struct {
 	hash            string // directory hash
-	variantsByWidth map[int]tpb.FileIndex
+	variantsByWidth map[int]lsmodel.FileIndex
 	node            *Anytype
 }
 
@@ -67,11 +68,11 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Anytype) ImageAddWithBytes(content []byte, filename string) (Image, error) {
+func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image, error) {
+func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) {
 	b, err := ioutil.ReadAll(content)
 	if err != nil {
 		return nil, err
@@ -79,15 +80,15 @@ func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image,
 
 	// use ImageAddWithBytes because we need seeker underlying
 	// todo: rewrite when all stack including mill and aes will use reader
-	return a.ImageAddWithBytes(b, filename)
+	return a.ImageAddWithBytes(ctx, b, filename)
 }
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	var maxWidth int
-	var maxWidthImage tpb.FileIndex
+	var maxWidthImage lsmodel.FileIndex
 
 	var minWidthMatched int
-	var minWidthMatchedImage tpb.FileIndex
+	var minWidthMatchedImage lsmodel.FileIndex
 
 	for width, fileIndex := range i.variantsByWidth {
 		if width >= maxWidth {

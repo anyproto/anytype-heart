@@ -6,9 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/util"
-	"github.com/gogo/protobuf/types"
-	tpb "github.com/textileio/go-textile/pb"
+	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
 )
 
 var filesKeysCache = make(map[string]map[string]string)
@@ -22,7 +20,7 @@ type File interface {
 
 type file struct {
 	hash  string
-	index *tpb.FileIndex
+	index *lsmodel.FileIndex
 	node  *Anytype
 }
 
@@ -34,14 +32,11 @@ type FileMeta struct {
 }
 
 func (file *file) Meta() *FileMeta {
-	added, _ := types.TimestampFromProto(util.CastTimestampToGogo(file.index.Added))
-	// ignore error
-
 	return &FileMeta{
 		Media: file.index.Media,
 		Name:  file.index.Name,
-		Size:  file.index.Size,
-		Added: added,
+		Size:  file.index.Size_,
+		Added: time.Unix(file.index.Added, 0),
 	}
 }
 

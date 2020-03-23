@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/service"
-	"github.com/anytypeio/go-anytype-library/wallet"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -20,6 +18,10 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
+
+	"github.com/anytypeio/go-anytype-library/localstore"
+	"github.com/anytypeio/go-anytype-library/service"
+	"github.com/anytypeio/go-anytype-library/wallet"
 )
 
 var log = logging.Logger("anytype-core")
@@ -45,12 +47,12 @@ type PredefinedBlockIds struct {
 }
 
 type Anytype struct {
-	repoPath string
-	ts       service.ServiceBoostrapper
-	mdns     discovery.Service
-	account  wallet.Keypair
-	device   wallet.Keypair
-
+	repoPath           string
+	ts                 service.NetBoostrapper
+	mdns               discovery.Service
+	account            wallet.Keypair
+	device             wallet.Keypair
+	localStore         localstore.LocalStore
 	predefinedBlockIds PredefinedBlockIds
 	logLevels          map[string]string
 	lock               sync.Mutex
@@ -68,13 +70,13 @@ type Service interface {
 	GetBlock(blockId string) (SmartBlock, error)
 	CreateBlock(t SmartBlockType) (SmartBlock, error)
 
-	FileAddWithBytes(content []byte, filename string) (File, error)
-	FileAddWithReader(content io.Reader, filename string) (File, error)
-	FileByHash(hash string) (File, error)
+	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)
+	FileAddWithReader(ctx context.Context, content io.Reader, filename string) (File, error)
+	FileByHash(ctx context.Context, hash string) (File, error)
 
-	ImageByHash(hash string) (Image, error)
-	ImageAddWithBytes(content []byte, filename string) (Image, error)
-	ImageAddWithReader(content io.Reader, filename string) (Image, error)
+	ImageByHash(ctx context.Context, hash string) (Image, error)
+	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)
+	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error)
 }
 
 func (a *Anytype) Account() string {
@@ -139,7 +141,7 @@ func applyLogLevels() {
 	}
 }
 
-func init(){
+func init() {
 	applyLogLevels()
 }
 
@@ -205,12 +207,12 @@ func (a *Anytype) Start() error {
 		return err
 	}
 
-	ts, err := service.NewService(
+	ts, err := service.DefaultNetwork(
 		a.repoPath,
 		a.device,
 		[]byte(ipfsPrivateNetworkKey),
-		service.WithServiceHostAddr(hostAddr),
-		service.WithServiceDebug(true))
+		service.WithNetHostAddr(hostAddr),
+		service.WithNetDebug(true))
 	if err != nil {
 		return err
 	}
@@ -228,7 +230,8 @@ func (a *Anytype) Start() error {
 
 	a.done = make(chan struct{})
 	a.ts = ts
-//	a.ds = ds
+	a.localStore = localstore.NewLocalStore(a.ts.Datastore())
+	//	a.ds = ds
 	a.mdns = mdns
 	mdns.RegisterNotifee(a)
 
