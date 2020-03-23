@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/schema"
 	"github.com/gogo/protobuf/proto"
 	"github.com/h2non/filetype"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
@@ -20,8 +21,9 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
 	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/mr-tron/base58/base58"
+	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
+	tpb "github.com/textileio/go-textile/pb"
 	tschema "github.com/textileio/go-textile/schema"
 	"github.com/textileio/go-threads/crypto/symmetric"
 
@@ -41,6 +43,8 @@ const ContentLinkName = "content"
 
 var ValidMetaLinkNames = []string{"meta", "f"}
 var ValidContentLinkNames = []string{"content", "d"}
+
+var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	files, err := a.localStore.Files.ListByTarget(hash)
@@ -89,7 +93,7 @@ func (a *Anytype) FileAddWithReader(ctx context.Context, content io.Reader, file
 		return nil, err
 	}
 
-	nodeHash := node.Cid().Hash().B58String()
+	nodeHash := node.Cid().String()
 
 	err = a.indexFileData(ctx, node, nodeHash)
 	if err != nil {
@@ -230,7 +234,7 @@ func checksum(plaintext []byte, wontEncrypt bool) string {
 	}
 	plaintext = append(plaintext, byte(add))
 	sum := sha256.Sum256(plaintext)
-	return base58.FastBase58Encoding(sum[:])
+	return base32.RawHexEncoding.EncodeToString(sum[:])
 }
 
 func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf AddFileConfig) (*lsmodel.FileInfo, error) {
@@ -361,7 +365,7 @@ func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename 
 func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*lsmodel.FileInfo) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(t.ts.GetIpfsLite().DAGService)
-	outer.SetCidBuilder(cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256})
+	outer.SetCidBuilder(cidBuilder)
 
 	var err error
 	for i, file := range files {
@@ -422,7 +426,7 @@ func (t *Anytype) fileNode(ctx context.Context, file *lsmodel.FileInfo, dir uio.
 	}
 
 	pair := uio.NewDirectory(t.ts.GetIpfsLite().DAGService)
-	pair.SetCidBuilder(cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256})
+	pair.SetCidBuilder(cidBuilder)
 
 	_, err = ipfs.AddDataToDirectory(ctx, t.ts.GetIpfsLite(), pair, MetaLinkName, reader)
 	if err != nil {
@@ -463,4 +467,130 @@ func looksLikeFileNode(node ipld.Node) bool {
 		return false
 	}
 	return true
+}
+
+func (a *Anytype) buildDirectory(ctx context.Context, content []byte, filename string, sch *tpb.Node) (*lsmodel.Directory, error) {
+	dir := &lsmodel.Directory{
+		Files: make(map[string]*lsmodel.FileInfo),
+	}
+
+	reader := bytes.NewReader(content)
+	mil, err := schema.GetMill(sch.Mill, sch.Opts)
+	if err != nil {
+		return nil, err
+	}
+	if mil != nil {
+		conf, err := a.getFileConfig(ctx, reader, filename, "", sch.Plaintext)
+		if err != nil {
+			return nil, err
+		}
+
+		added, err := a.addFileIndex(ctx, mil, *conf)
+		if err != nil {
+			return nil, err
+		}
+		dir.Files[tschema.SingleFileTag] = added
+
+	} else if len(sch.Links) > 0 {
+		// determine order
+		steps, err := tschema.Steps(sch.Links)
+		if err != nil {
+			return nil, err
+		}
+
+		// send each link
+		for _, step := range steps {
+			stepMill, err := schema.GetMill(step.Link.Mill, step.Link.Opts)
+			if err != nil {
+				return nil, err
+			}
+			var conf *AddFileConfig
+			if step.Link.Use == tschema.FileTag {
+				conf, err = a.getFileConfig(
+					ctx,
+					reader,
+					filename,
+					"",
+					step.Link.Plaintext,
+				)
+				if err != nil {
+					return nil, err
+				}
+
+			} else {
+				if dir.Files[step.Link.Use] == nil {
+					return nil, fmt.Errorf(step.Link.Use + " not found")
+				}
+
+				conf, err = a.getFileConfig(
+					ctx,
+					nil,
+					filename,
+					dir.Files[step.Link.Use].Hash,
+					step.Link.Plaintext,
+				)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			added, err := a.addFileIndex(ctx, stepMill, *conf)
+			if err != nil {
+				return nil, err
+			}
+			dir.Files[step.Name] = added
+			reader.Seek(0, 0)
+		}
+	} else {
+		return nil, tschema.ErrEmptySchema
+	}
+
+	return dir, nil
+}
+func (t *Anytype) AddNodeFromDirs(ctx context.Context, dirs *lsmodel.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
+	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
+	outer := uio.NewDirectory(t.ts)
+	outer.SetCidBuilder(cidBuilder)
+
+	for i, dir := range dirs.Items {
+		inner := uio.NewDirectory(t.ts)
+		inner.SetCidBuilder(cidBuilder)
+		olink := strconv.Itoa(i)
+
+		var err error
+		for link, file := range dir.Files {
+			err = t.fileNode(ctx, file, inner, link)
+			if err != nil {
+				return nil, nil, err
+			}
+			keys.KeysByPath["/"+olink+"/"+link+"/"] = file.Key
+		}
+
+		node, err := inner.GetNode()
+		if err != nil {
+			return nil, nil, err
+		}
+		// todo: pin?
+		err = t.ts.Add(ctx, node)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		id := node.Cid().String()
+		err = ipfs.AddLinkToDirectory(ctx, t.ts.GetIpfsLite(), outer, olink, id)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	node, err := outer.GetNode()
+	if err != nil {
+		return nil, nil, err
+	}
+	// todo: pin?
+	err = t.ts.Add(ctx, node)
+	if err != nil {
+		return nil, nil, err
+	}
+	return node, keys, nil
 }

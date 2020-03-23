@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/mill"
 	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
+	"github.com/anytypeio/go-anytype-library/schema"
 )
 
 type Image interface {
@@ -69,7 +70,42 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 }
 
 func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
-	return nil, fmt.Errorf("not implemented")
+	dir, err := a.buildDirectory(ctx, content, filename, schema.ImageNode())
+	if err != nil {
+		return nil, err
+	}
+
+	node, keys, err := a.AddNodeFromDirs(ctx, &lsmodel.DirectoryList{Items: []*lsmodel.Directory{dir}})
+	if err != nil {
+		return nil, err
+	}
+
+	nodeHash := node.Cid().String()
+
+	filesKeysCacheMutex.Lock()
+	defer filesKeysCacheMutex.Unlock()
+	filesKeysCache[nodeHash] = keys.KeysByPath
+
+	err = a.indexFileData(ctx, node, nodeHash)
+	if err != nil {
+		return nil, err
+	}
+
+	var variantsByWidth = make(map[int]*lsmodel.FileInfo, len(dir.Files))
+	for _, f := range dir.Files {
+		if f.Mill != "/image/resize" {
+			continue
+		}
+		if v, exists := f.Meta.Fields["width"]; exists {
+			variantsByWidth[int(v.GetNumberValue())] = f
+		}
+	}
+
+	return &image{
+		hash:            nodeHash,
+		variantsByWidth: variantsByWidth,
+		node:            a,
+	}, nil
 }
 
 func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) {
@@ -97,19 +133,19 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 		}
 
 		if width > wantWidth &&
-			(minWidthMatchedImage.Hash == "" || minWidthMatched > width) {
+			(minWidthMatchedImage == nil || minWidthMatched > width) {
 			minWidthMatchedImage = fileIndex
 			minWidthMatched = width
 		}
 	}
 
-	if minWidthMatchedImage.Hash != "" {
+	if minWidthMatchedImage != nil {
 		return &file{
 			hash:  minWidthMatchedImage.Hash,
 			index: minWidthMatchedImage,
 			node:  i.node,
 		}, nil
-	} else if maxWidthImage.Hash != "" {
+	} else if maxWidthImage != nil {
 		return &file{
 			hash:  maxWidthImage.Hash,
 			index: maxWidthImage,

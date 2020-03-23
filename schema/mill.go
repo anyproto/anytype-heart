@@ -3,7 +3,7 @@ package schema
 import (
 	"fmt"
 
-	"github.com/textileio/go-textile/mill"
+	"github.com/anytypeio/go-anytype-library/mill"
 )
 
 func GetMill(id string, opts map[string]string) (mill.Mill, error) {

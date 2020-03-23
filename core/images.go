@@ -74,6 +74,10 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 
 	var variantsByWidth = make(map[int]*lsmodel.FileInfo, len(files))
 	for _, f := range files {
+		if f.Mill != "/image/resize" {
+			continue
+		}
+
 		if v, exists := f.Meta.Fields["width"]; exists {
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}

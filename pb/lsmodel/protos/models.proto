@@ -18,3 +18,11 @@ message FileInfo {
     google.protobuf.Struct meta = 11;
     repeated string targets = 12;
 }
+
+message Directory {
+    map<string, FileInfo> files = 1;
+}
+
+message DirectoryList {
+    repeated Directory items = 1;
+}

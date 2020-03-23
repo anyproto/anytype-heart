@@ -15,7 +15,7 @@ func TestAnytype_FileByHash(t *testing.T) {
 	defer cancel()
 	nf, err := s.FileAddWithBytes(ctx, []byte("123"), "file.txt")
 	require.NoError(t, err)
-	require.Len(t, nf.Hash(), 46)
+	require.Len(t, nf.Hash(), 59)
 
 	f, err := s.FileByHash(ctx, nf.Hash())
 	require.NoError(t, err)
