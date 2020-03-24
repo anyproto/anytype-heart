@@ -11,7 +11,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-var ErrorNoBlockVersionsFound = fmt.Errorf("no block versions found")
+var ErrBlockSnapshotNotFound = fmt.Errorf("block snapshot not found")
 
 func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
 	parts := strings.Split(id, "/")

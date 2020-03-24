@@ -147,7 +147,7 @@ func (block *smartBlock) GetLastSnapshot() (SmartBlockSnapshot, error) {
 		return nil, err
 	}
 	if len(versions) == 0 {
-		return nil, fmt.Errorf("no block versions found")
+		return nil, ErrBlockSnapshotNotFound
 	}
 
 	return versions[0], nil
