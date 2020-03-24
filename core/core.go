@@ -124,7 +124,7 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	a.ts.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
 }
 
-func applyLogLevels() {
+func ApplyLogLevels() {
 	levels := os.Getenv("ANYTYPE_LOG_LEVEL")
 	logLevels := make(map[string]string)
 	if levels != "" {
@@ -156,10 +156,11 @@ func applyLogLevels() {
 }
 
 func init() {
-	applyLogLevels()
+	ApplyLogLevels()
 }
 
 func New(rootPath string, account string) (Service, error) {
+	ApplyLogLevels()
 	repoPath := filepath.Join(rootPath, account)
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("not exists")
