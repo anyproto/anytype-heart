@@ -103,12 +103,11 @@ func (bs *basic) Replace(id string, block *model.Block) (newId string, err error
 	s := bs.NewState()
 
 	new := simple.New(block)
-	s.Add(new)
 	newId = new.Model().Id
-	if err = s.InsertTo(id, model.Block_Bottom, newId); err != nil {
+	s.Add(new)
+	if err = s.InsertTo(id, model.Block_Replace, newId); err != nil {
 		return
 	}
-	s.Remove(id)
 	if err = bs.Apply(s); err != nil {
 		return
 	}
