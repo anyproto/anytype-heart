@@ -191,24 +191,19 @@ func (s *service) CloseBlock(id string) (err error) {
 }
 
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
-	/*
-		archiveId := s.anytype.PredefinedBlocks().Archive
-		sb, release, err := s.pickBlock(archiveId)
-		if err != nil {
-			return
+	archiveId := s.anytype.PredefinedBlocks().Archive
+	return s.Do(archiveId, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(*editor.Archive)
+		if ! ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
-		defer release()
-		if archiveBlock, ok := sb.(*archive); ok {
-			if req.IsArchived {
-				err = archiveBlock.archivePage(req.BlockId)
-			} else {
-				err = archiveBlock.unArchivePage(req.BlockId)
-			}
-			return
+		if req.IsArchived {
+			return archive.UnArchive(req.BlockId)
+		} else {
+			return archive.Archive(req.BlockId)
 		}
-		return fmt.Errorf("unexpected archive block type: %T", sb)
-	*/
-	return
+		return nil
+	})
 }
 
 func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
@@ -535,6 +530,8 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 		sb = editor.NewPage(s)
 	case core.SmartBlockTypeDashboard:
 		sb = editor.NewDashboard()
+	case core.SmartBlockTypeArchive:
+		sb = editor.NewArchive()
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

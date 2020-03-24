@@ -102,7 +102,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
-
+	if len(msgs) == 0 {
+		return
+	}
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
