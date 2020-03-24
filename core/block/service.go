@@ -59,8 +59,8 @@ type Service interface {
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	CreateAndCutTo(request pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error)
-	CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error)
+	//CreateAndCutTo(request pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error)
+	//CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -326,7 +326,7 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 	})
 }
 
-func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
+func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
 	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		// TODO: images
 		images := make(map[string][]byte)
@@ -344,20 +344,16 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err err
 	return
 }
 
-func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		// TODO: images
-		images := make(map[string][]byte)
 		textSlot, htmlSlot, anySlot, err = cb.Cut(req, images)
 		return err
 	})
 	return
 }
 
-func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error) {
 	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		// TODO: images
-		images := make(map[string][]byte)
 		path, err = cb.Export(req, images)
 		return err
 	})

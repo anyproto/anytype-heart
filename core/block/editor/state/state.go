@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -18,7 +17,7 @@ type Doc interface {
 	RootId() string
 	NewState() *State
 	Blocks() []*model.Block
-	GetBlock(id string) (out *model.Block, err error)
+	Pick(id string) (b simple.Block)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -252,15 +251,4 @@ func (s *State) Blocks() []*model.Block {
 		res = append(res, b.Copy().Model())
 	}
 	return res
-}
-
-func (s *State) GetBlock(id string) (out *model.Block, err error) {
-
-	for _, b := range s.blocks {
-		if b.Model().Id == id {
-			return b.Copy().Model(), nil
-		}
-	}
-
-	return out, errors.New("block not found")
 }
