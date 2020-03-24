@@ -30,9 +30,10 @@ func NewSource(a anytype.Service, id string) (s Source, err error) {
 		return
 	}
 	s = &source{
-		id: id,
-		a:  a,
-		sb: sb,
+		id:    id,
+		a:     a,
+		sb:    sb,
+		state: vclock.New(),
 	}
 	return
 }
@@ -59,7 +60,12 @@ func (s *source) Type() core.SmartBlockType {
 func (s *source) ReadVersion() (*core.SmartBlockVersion, error) {
 	v, err := s.sb.GetLastDownloadedVersion()
 	if err != nil {
-		err = fmt.Errorf("anytype.GetLastDownloadedVersion error: %v", err)
+		if err.Error() == "no block versions found" {
+			err = core.ErrorNoBlockVersionsFound
+		}
+		if err != core.ErrorNoBlockVersionsFound {
+			err = fmt.Errorf("anytype.GetLastDownloadedVersion error: %v", err)
+		}
 		return nil, err
 	}
 	s.state = v.State
@@ -67,7 +73,11 @@ func (s *source) ReadVersion() (*core.SmartBlockVersion, error) {
 }
 
 func (s *source) WriteVersion(v Version) (err error) {
-	_, err = s.sb.PushSnapshot(s.state, v.Meta, v.Blocks)
+	sh, err := s.sb.PushSnapshot(s.state, v.Meta, v.Blocks)
+	if err != nil {
+		return
+	}
+	s.state = sh.State()
 	return
 }
 

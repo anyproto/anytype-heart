@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
@@ -52,23 +53,25 @@ func (sb *smartBlock) Id() string {
 	return sb.source.Id()
 }
 
-func (sb *smartBlock) Init(s source.Source) (err error) {
+func (sb *smartBlock) Init(s source.Source) error {
 	ver, err := s.ReadVersion()
-	if err != nil {
-		return
-	}
-	models, err := ver.Snapshot.Blocks()
-	if err != nil {
-		return
+	if err != nil && err != core.ErrorNoBlockVersionsFound {
+		return err
 	}
 	var blocks = make(map[string]simple.Block)
-	for _, m := range models {
-		blocks[m.Id] = simple.New(m)
+	if err == nil {
+		models, e := ver.Snapshot.Blocks()
+		if e != nil {
+			return e
+		}
+		for _, m := range models {
+			blocks[m.Id] = simple.New(m)
+		}
 	}
 	sb.Doc = state.NewDoc(s.Id(), blocks)
 	sb.source = s
 	sb.hist = history.NewHistory(0)
-	return
+	return nil
 }
 
 func (sb *smartBlock) Show() (err error) {

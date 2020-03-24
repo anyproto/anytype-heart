@@ -53,6 +53,6 @@ func (p *Dashboard) checkRootBlock() (err error) {
 	if err = s.InsertTo(p.RootId(), model.Block_Inner, archive.Model().Id); err != nil {
 		return fmt.Errorf("can't insert archive: %v", err)
 	}
-
+	log.Infof("create default structure for dashboard: %v", s.RootId())
 	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
 }
