@@ -59,9 +59,12 @@ type Service interface {
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
-	Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Export(req pb.RpcBlockExportRequest) (html string, err error)
+	CreateAndCutTo(request pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error)
+	CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error)
+
+	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
+	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -324,51 +327,36 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
-	/*sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Copy(req)
-
-	*/
-	return
+	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		// TODO: images
+		images := make(map[string][]byte)
+		return cb.Copy(req, images)
+	})
 }
 
 func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
-	/*sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Paste(req)
-
-	*/
-	return
+	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		// TODO: images
+		images := make(map[string][]byte)
+		return cb.Paste(req, images)
+	})
 }
 
 func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
-	/*	sb, release, err := s.pickBlock(req.ContextId)
-		if err != nil {
-			return
-		}
-		defer release()
-		return sb.Cut(req)
-
-	*/
-	return
+	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		// TODO: images
+		images := make(map[string][]byte)
+		return cb.Cut(req, images)
+	})
 }
 
 func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {
-	/*	sb, release, err := s.pickBlock(req.ContextId)
-		if err != nil {
-			return
-		}
-		defer release()
-		return sb.Export(req)
+	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		// TODO: images
+		images := make(map[string][]byte)
+		return cb.Export(req, images)
+	})
 
-	*/
-	return
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {

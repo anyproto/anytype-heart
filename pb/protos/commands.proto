@@ -275,6 +275,8 @@ message Rpc {
             }
         }
 
+
+
         message Split {
             message Request {
                 string contextId = 1;
@@ -349,6 +351,57 @@ message Rpc {
             }
         }
 
+        message CreateAndCutTo {
+            message Request {
+                string contextId = 1;
+                string targetId = 2; // id of the closest block
+                anytype.model.Block block = 3; // page block
+                anytype.model.Block.Position position = 4;
+                repeated anytype.model.Block blocks = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message CutTo {
+            message Request {
+                string contextId = 1;
+                string targetId = 2;
+                repeated anytype.model.Block blocks = 3;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message Paste {
             message Request {
                 string contextId = 1;
@@ -408,6 +461,7 @@ message Rpc {
         message Export {
             message Request {
                 string contextId = 1;
+                repeated anytype.model.Block blocks = 2;
             }
 
             message Response {
