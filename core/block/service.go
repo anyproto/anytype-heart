@@ -419,7 +419,7 @@ func (s *service) UploadFile(req pb.RpcBlockUploadRequest) (err error) {
 }
 
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
-	return s.DoFile(req.ContextId, func(b file.File) error {
+	return s.DoFileNonLock(req.ContextId, func(b file.File) error {
 		return b.DropFiles(req)
 	})
 }
@@ -594,6 +594,18 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 	if bb, ok := sb.(file.File); ok {
 		sb.Lock()
 		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(file.File); ok {
 		return apply(bb)
 	}
 	return fmt.Errorf("unexpected operation for this block type: %T", sb)
