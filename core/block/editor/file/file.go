@@ -43,6 +43,7 @@ type File interface {
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 	Upload(id string, localPath, url string) (err error)
 	UpdateFile(id string, apply func(b file.Block) error) (err error)
+	dropFilesHandler
 }
 
 type sfile struct {
@@ -109,6 +110,10 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 	for _, entry := range entries {
 		var blockId, pageId string
 		if entry.isDir {
+			if err = sf.Apply(s); err != nil {
+				return
+			}
+			sf.Unlock()
 			blockId, pageId, err = sf.fileSource.CreatePage(pb.RpcBlockCreatePageRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
@@ -127,12 +132,14 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 				},
 				Position: pos,
 			})
+			sf.Lock()
 			if err != nil {
 				return
 			}
 			targetId = blockId
 			pos = model.Block_Bottom
 			blockId = pageId
+			s = sf.NewState()
 		} else {
 			fb := simple.New(&model.Block{Content: &model.BlockContentOfFile{
 				File: &model.BlockContentFile{
@@ -325,12 +332,12 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 	}
 
 	var flatEntries = [][]*dropFileEntry{dp.root.child}
-	var smartBockIds = []string{rootId}
+	var smartBlockIds = []string{rootId}
 	var handleLevel = func(idx int) (isContinue bool, err error) {
-		if idx >= len(smartBockIds) {
+		if idx >= len(smartBlockIds) {
 			return
 		}
-		err = dp.s.DoFile(smartBockIds[idx], func(sb File) error {
+		err = dp.s.DoFile(smartBlockIds[idx], func(sb File) error {
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				isContinue = idx != 0
@@ -343,12 +350,12 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 			}
 			for i, entry := range flatEntries[idx] {
 				if entry.isDir {
-					smartBockIds = append(smartBockIds, blockIds[i])
+					smartBlockIds = append(smartBlockIds, blockIds[i])
 					flatEntries = append(flatEntries, entry.child)
 					atomic.AddInt64(&dp.done, 1)
 				} else {
 					in <- &dropFileInfo{
-						pageId:  smartBockIds[idx],
+						pageId:  smartBlockIds[idx],
 						blockId: blockIds[i],
 						path:    entry.path,
 						name:    entry.name,
@@ -357,8 +364,11 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 			}
 			return nil
 		})
+		if err != nil {
+			return isContinue, err
+		}
 		if atomic.LoadInt32(&dp.canceling) != 0 {
-			return false, nil
+			return false, err
 		}
 		return true, nil
 	}
@@ -405,7 +415,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 				info.err = dp.addFile(info)
 			}
 			if err := dp.apply(info); err != nil {
-				log.Warningf("can't apply file: %v", err)
+				log.Warnf("can't apply file: %v", err)
 			}
 		}
 	}

@@ -29,8 +29,8 @@ github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d h1:UQZhZ2O0vMHr2c
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/anytypeio/go-anytype-library v0.4.1-0.20200324092154-c8caf164dd60 h1:OgpO1tai8O5HzfXrIMsCGNT3foInxBllnhTpZlPL8LM=
-github.com/anytypeio/go-anytype-library v0.4.1-0.20200324092154-c8caf164dd60/go.mod h1:5mBz3SIV5y/EX+3CoXiTvRqXx5I+vYu2ruCWnQjdH/o=
+github.com/anytypeio/go-anytype-library v0.4.1-0.20200324103326-35196e616bca h1:q2180DCGECxcB0BQJQjz/FY2LsgOAPas/hI20K7m2zE=
+github.com/anytypeio/go-anytype-library v0.4.1-0.20200324103326-35196e616bca/go.mod h1:5mBz3SIV5y/EX+3CoXiTvRqXx5I+vYu2ruCWnQjdH/o=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51/go.mod h1:SoKy+W8Mf6v7XBV30xFWkIFMs7UnXwsNGrGV12yVkEs=
 github.com/anytypeio/go-textile v0.7.8-0.20200217213349-f936f40b6472 h1:pNva8yArG2vTPO9wqGQitfjoyAL7w719x5rPSQwSx78=
