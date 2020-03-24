@@ -1,17 +1,18 @@
 package converter_test
 
 import (
+	"testing"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestConverter_ProcessTree(t *testing.T) {
 	t.Run("Tree: trivia", func(t *testing.T) {
 		blocks := []*model.Block{
-			{Id:"1", ChildrenIds:[]string{"2"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
-			{Id:"2", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
+			{Id: "1", ChildrenIds: []string{"2"}, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "111"}}},
+			{Id: "2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "222"}}},
 		}
 
 		conv := converter.New()
@@ -21,14 +22,13 @@ func TestConverter_ProcessTree(t *testing.T) {
 		assert.NotEmpty(t, conv.PrintNode(&newTree))
 	})
 
-
 	t.Run("Tree: trivia 2", func(t *testing.T) {
 		blocks := []*model.Block{
-			{Id:"1", ChildrenIds:[]string{"2", "3"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
-			{Id:"2",  ChildrenIds:[]string{"4", "5"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
-			{Id:"3", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"333"}}},
-			{Id:"4", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"444"}}},
-			{Id:"5", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"555"}}},
+			{Id: "1", ChildrenIds: []string{"2", "3"}, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "111"}}},
+			{Id: "2", ChildrenIds: []string{"4", "5"}, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "222"}}},
+			{Id: "3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "333"}}},
+			{Id: "4", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "444"}}},
+			{Id: "5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "555"}}},
 		}
 
 		conv := converter.New()
@@ -41,14 +41,14 @@ func TestConverter_ProcessTree(t *testing.T) {
 
 	t.Run("Tree: medium", func(t *testing.T) {
 		blocks := []*model.Block{
-			{Id:"1", ChildrenIds:[]string{"2", "3"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"111"}}},
-			{Id:"2", ChildrenIds:[]string{"4", "5"}, Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"222"}}},
-			{Id:"3", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"333"}}},
-			{Id:"4", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"444"}}},
-			{Id:"5", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"555"}}},
-			{Id:"6", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"666"}}},
-			{Id:"7", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"777"}}},
-			{Id:"8", Content:&model.BlockContentOfText{Text: &model.BlockContentText{Text:"888"}}},
+			{Id: "1", ChildrenIds: []string{"2", "3"}, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "111"}}},
+			{Id: "2", ChildrenIds: []string{"4", "5"}, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "222"}}},
+			{Id: "3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "333"}}},
+			{Id: "4", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "444"}}},
+			{Id: "5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "555"}}},
+			{Id: "6", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "666"}}},
+			{Id: "7", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "777"}}},
+			{Id: "8", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "888"}}},
 		}
 
 		conv := converter.New()
@@ -70,7 +70,6 @@ func TestConverter_Convert(t *testing.T) {
 			{Id: "5", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "555"}}},
 		}
 
-
 		conv := converter.New()
 		images := make(map[string][]byte)
 		assert.NotEmpty(t, conv.Convert(blocks, images))
@@ -81,7 +80,6 @@ func TestConverter_Convert(t *testing.T) {
 			{Id: "1", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "111"}}},
 			{Id: "2", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "222"}}},
 		}
-
 
 		conv := converter.New()
 		images := make(map[string][]byte)
