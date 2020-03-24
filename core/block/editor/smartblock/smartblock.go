@@ -12,14 +12,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-type applyFlag int
+type ApplyFlag int
 
 var (
 	ErrSimpleBlockNotFound = errors.New("simple block not found")
 )
 
 const (
-	NoHistory applyFlag = iota
+	NoHistory ApplyFlag = iota
 	NoEvent
 )
 
@@ -32,7 +32,7 @@ type SmartBlock interface {
 	Id() string
 	Show() (err error)
 	SetEventFunc(f func(e *pb.Event))
-	Apply(s *state.State, flags ...applyFlag) error
+	Apply(s *state.State, flags ...ApplyFlag) error
 	History() history.History
 	Anytype() anytype.Service
 	Close() (err error)
@@ -53,8 +53,6 @@ func (sb *smartBlock) Id() string {
 }
 
 func (sb *smartBlock) Init(s source.Source) (err error) {
-	sb.Lock()
-	defer sb.Unlock()
 	ver, err := s.ReadVersion()
 	if err != nil {
 		return
@@ -74,8 +72,6 @@ func (sb *smartBlock) Init(s source.Source) (err error) {
 }
 
 func (sb *smartBlock) Show() (err error) {
-	sb.Lock()
-	defer sb.Unlock()
 	if sb.sendEvent != nil {
 		sb.sendEvent(&pb.Event{
 			Messages: []*pb.EventMessage{
@@ -97,7 +93,7 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 	sb.sendEvent = f
 }
 
-func (sb *smartBlock) Apply(s *state.State, flags ...applyFlag) (err error) {
+func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var sendEvent, addHistory = true, true
 	msgs, act, err := state.ApplyState(s)
 	if err != nil {

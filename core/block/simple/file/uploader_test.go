@@ -41,7 +41,7 @@ func TestUploader_Do(t *testing.T) {
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), gomock.Any(), "test.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")
@@ -73,7 +73,7 @@ func TestUploader_Do(t *testing.T) {
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "http.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), gomock.Any(), "http.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, "", ts.URL+"/http.txt")
@@ -96,13 +96,13 @@ func TestUploader_Do(t *testing.T) {
 		fx := newFixture(t, f)
 		defer fx.ctrl.Finish()
 
-		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), "test.txt").Return(nil, image.ErrFormat)
+		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), gomock.Any(), "test.txt").Return(nil, image.ErrFormat)
 
 		file := testMock.NewMockFile(fx.ctrl)
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), gomock.Any(), "test.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")
@@ -127,7 +127,7 @@ func TestUploader_Do(t *testing.T) {
 		file := testMock.NewMockImage(fx.ctrl)
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 
-		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), gomock.Any(), "test.txt").Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")

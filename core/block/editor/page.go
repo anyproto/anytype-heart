@@ -10,13 +10,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 )
 
-func NewPage() *Page {
+func NewPage(source file.FileSource) *Page {
 	sb := smartblock.New()
 	return &Page{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
 		Text:       stext.NewText(sb),
+		File:       file.NewFile(sb, source),
 	}
 }
 

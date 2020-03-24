@@ -35,7 +35,7 @@ var (
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 )
 
-var log = logging.Logger("anytype-block")
+var log = logging.Logger("anytype-service")
 
 var (
 	blockCacheTTL       = time.Minute
@@ -48,7 +48,7 @@ type Service interface {
 	CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
-	CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error)
+	CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -85,6 +85,7 @@ type Service interface {
 
 	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
 
+	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
 
 	Close() error
@@ -102,6 +103,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		process:      process.NewService(sendEvent),
 	}
 	go s.cleanupTicker()
+	log.Info("block service started")
 	return s
 }
 
@@ -120,6 +122,10 @@ type service struct {
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
 	m            sync.RWMutex
+}
+
+func (s *service) Anytype() anytype.Service {
+	return s.anytype
 }
 
 func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
@@ -142,39 +148,38 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	if err = ob.Show(); err != nil {
 		return
 	}
-	/*
-		for _, bid := range breadcrumbsIds {
-			if b, ok := s.openedBlocks[bid]; ok {
-				if bs, ok := b.smartBlock.(*breadcrumbs); ok {
-					bs.OnSmartOpen(id)
-				} else {
-					log.Warningf("unexpected smart block type %T; wand breadcrumbs", b)
-				}
+
+	for _, bid := range breadcrumbsIds {
+		if b, ok := s.openedBlocks[bid]; ok {
+			if bs, ok := b.SmartBlock.(*editor.Breadcrumbs); ok {
+				bs.OnSmartOpen(id)
 			} else {
-				log.Warningf("breadcrumbs block not found")
+				log.Warnf("unexpected smart block type %T; wand breadcrumbs", b)
 			}
-		}*/
+		} else {
+			log.Warnf("breadcrumbs block not found")
+		}
+	}
 	return nil
 }
 
 func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	/*
-		bs := newBreadcrumbs(s)
-		if err = bs.Open(nil, false); err != nil {
-			return
-		}
-		bs.Init()
-		s.openedBlocks[bs.GetId()] = &openedBlock{
-			smartBlock: bs,
-			lastUsage:  time.Now(),
-			refs:       1,
-		}
-		return bs.GetId(), nil
-
-	*/
-	return
+	bs := editor.NewBreadcrumbs()
+	if err = bs.Init(nil); err != nil {
+		return
+	}
+	bs.SetEventFunc(s.sendEvent)
+	s.openedBlocks[bs.Id()] = &openedBlock{
+		SmartBlock: bs,
+		lastUsage:  time.Now(),
+		refs:       1,
+	}
+	if err = bs.Show(); err != nil {
+		return
+	}
+	return bs.Id(), nil
 }
 
 func (s *service) CloseBlock(id string) (err error) {
@@ -210,19 +215,14 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 }
 
 func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
-	/*
-		sb, release, err := s.pickBlock(req.BreadcrumbsId)
-		if err != nil {
-			return
+	return s.Do(req.BreadcrumbsId, func(b smartblock.SmartBlock) error {
+		if breadcrumbs, ok := b.(*editor.Breadcrumbs); ok {
+			breadcrumbs.ChainCut(int(req.Index))
+		} else {
+			return ErrUnexpectedBlockType
 		}
-		defer release()
-		if bc, ok := sb.(*breadcrumbs); ok {
-			return bc.BreadcrumbsCut(int(req.Index))
-		}
-		return ErrUnexpectedSmartBlockType
-
-	*/
-	return
+		return nil
+	})
 }
 
 func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -233,7 +233,7 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (id string, err erro
 	return
 }
 
-func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (id string, targetId string, err error) {
+func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
 	var bt = core.SmartBlockTypePage
 	var style = model.BlockContentLink_Page
 	switch {
@@ -246,15 +246,15 @@ func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (id string, targe
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
-	targetId = csm.ID()
-	log.Infof("created new smartBlock(%v): %v", bt, targetId)
+	pageId = csm.ID()
+	log.Infof("created new smartBlock(%v): %v", bt, pageId)
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		id, err = b.Create(pb.RpcBlockCreateRequest{
+		linkId, err = b.Create(pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
-						TargetBlockId: targetId,
+						TargetBlockId: pageId,
 						Style:         style,
 					},
 				},
@@ -457,6 +457,10 @@ func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error)
 
 }
 
+func (s *service) ProcessAdd(p process.Process) (err error) {
+	return s.process.Add(p)
+}
+
 func (s *service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
 }
@@ -516,7 +520,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	}
 	switch sc.Type() {
 	case core.SmartBlockTypePage:
-		sb = editor.NewPage()
+		sb = editor.NewPage(s)
 	case core.SmartBlockTypeDashboard:
 		sb = editor.NewDashboard()
 	default:

@@ -16,9 +16,6 @@ type history struct {
 }
 
 func (h *history) Undo() (err error) {
-	h.Lock()
-	defer h.Unlock()
-
 	action, err := h.History().Previous()
 	if err != nil {
 		return
@@ -40,9 +37,6 @@ func (h *history) Undo() (err error) {
 }
 
 func (h *history) Redo() (err error) {
-	h.Lock()
-	defer h.Unlock()
-
 	action, err := h.History().Next()
 	if err != nil {
 		return
