@@ -23,10 +23,10 @@ import (
 type threadDerivedIndex uint32
 
 const (
-	threadDerivedIndexProfilePage      threadDerivedIndex = 0
-	threadDerivedIndexHomeDashboard    threadDerivedIndex = 1
-	threadDerivedIndexArchiveDashboard threadDerivedIndex = 2
-	threadDerivedIndexAccount          threadDerivedIndex = 3
+	threadDerivedIndexProfilePage   threadDerivedIndex = 0
+	threadDerivedIndexHomeDashboard threadDerivedIndex = 1
+	threadDerivedIndexArchive       threadDerivedIndex = 2
+	threadDerivedIndexAccount       threadDerivedIndex = 3
 
 	// AnytypeThreadPathLogKeyFormat is a path format used for Anytype predefined thread log keypair
 	// Use with `fmt.Sprintf` and `DeriveForPath`.
@@ -45,15 +45,15 @@ const (
 )
 
 var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
-	threadDerivedIndexProfilePage:      "profile",
-	threadDerivedIndexHomeDashboard:    "home",
-	threadDerivedIndexArchiveDashboard: "archive",
+	threadDerivedIndexProfilePage:   "profile",
+	threadDerivedIndexHomeDashboard: "home",
+	threadDerivedIndexArchive:       "archive",
 }
 
 var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]SmartBlockType{
-	threadDerivedIndexProfilePage:      SmartBlockTypePage,
-	threadDerivedIndexHomeDashboard:    SmartBlockTypeDashboard,
-	threadDerivedIndexArchiveDashboard: SmartBlockTypeDashboard,
+	threadDerivedIndexProfilePage:   SmartBlockTypePage,
+	threadDerivedIndexHomeDashboard: SmartBlockTypeDashboard,
+	threadDerivedIndexArchive:       SmartBlockTypeArchive,
 }
 
 func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, read *symmetric.Key, log *keypair.Full, err error) {
