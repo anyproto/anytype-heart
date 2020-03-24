@@ -55,7 +55,7 @@ func (sb *smartBlock) Id() string {
 
 func (sb *smartBlock) Init(s source.Source) error {
 	ver, err := s.ReadVersion()
-	if err != nil && err != core.ErrorNoBlockVersionsFound {
+	if err != nil && err != core.ErrBlockSnapshotNotFound {
 		return err
 	}
 	var blocks = make(map[string]simple.Block)

@@ -60,10 +60,7 @@ func (s *source) Type() core.SmartBlockType {
 func (s *source) ReadVersion() (*core.SmartBlockVersion, error) {
 	v, err := s.sb.GetLastDownloadedVersion()
 	if err != nil {
-		if err.Error() == "no block versions found" {
-			err = core.ErrorNoBlockVersionsFound
-		}
-		if err != core.ErrorNoBlockVersionsFound {
+		if err != core.ErrBlockSnapshotNotFound {
 			err = fmt.Errorf("anytype.GetLastDownloadedVersion error: %v", err)
 		}
 		return nil, err
