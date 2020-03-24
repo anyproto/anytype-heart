@@ -3,6 +3,8 @@ package clipboard
 import (
 	"context"
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -286,8 +288,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 						req.SelectedTextRange.From = 0
 						req.SelectedTextRange.To = 0
 
-						// TODO: pasteBlocks
-						// blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
+						blockIds, err = cb.pasteBlocks(req, req.FocusedBlockId)
 						if err != nil {
 							return blockIds, err
 						}
@@ -338,8 +339,8 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	} else if len(req.FocusedBlockId) > 0 && len(req.AnySlot) > 1 {
 
 		if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 {
-			// TODO: pasteBlocks
-			//blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
+
+			blockIds, err = cb.pasteBlocks(req, req.FocusedBlockId)
 			if err != nil {
 				return blockIds, err
 			} else {
@@ -366,8 +367,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		}
 	}
 
-	// TODO: pasteBlocks
-	//blockIds, err = p.pasteBlocks(s, req, targetId)
+	blockIds, err = cb.pasteBlocks(req, targetId)
 	if err != nil {
 		return blockIds, err
 	}
@@ -380,4 +380,58 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	}
 
 	return blockIds, cb.Apply(s)
+}
+
+func (cb *clipboard) pasteBlocks(req pb.RpcBlockPasteRequest, targetId string) (blockIds []string, err error) {
+	s := cb.NewState()
+	parent := s.Get(cb.RootId()).Copy().Model()
+
+	emptyPage := false
+
+	blockIds = []string{}
+
+	if len(parent.ChildrenIds) == 0 {
+		emptyPage = true
+	}
+
+	for i := 0; i < len(req.AnySlot); i++ {
+		copyBlock := simple.New(req.AnySlot[i])
+		s.Add(copyBlock)
+		if err != nil {
+			return blockIds, err
+		}
+
+		copyBlockId := copyBlock.Model().Id
+
+		blockIds = append(blockIds, copyBlockId)
+
+		if file := copyBlock.Model().GetFile(); file != nil  {
+			url := file.Name
+
+			//TODO: f.Upload
+			//f.Upload(p.s.anytype, p, "", url)
+		}
+
+		if err != nil {
+			return blockIds, err
+		}
+		for i, childrenId := range copyBlock.Model().ChildrenIds {
+			// TODO: cb.copy
+			//if copyBlock.Model().ChildrenIds[i], err = cb.copy(s, childrenId); err != nil {
+			//	return blockIds, err
+			//}
+		}
+
+		if emptyPage {
+			parent.ChildrenIds = append(parent.ChildrenIds, copyBlockId)
+		} else {
+			// TODO: cb.insertTo
+			//if err = cb.insertTo(s, targetId, model.Block_Bottom, copyBlockId); err != nil {
+			//	return blockIds, err
+			//}
+			targetId = copyBlockId
+		}
+	}
+
+	return blockIds, nil
 }
