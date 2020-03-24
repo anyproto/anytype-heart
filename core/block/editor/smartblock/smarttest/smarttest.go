@@ -16,8 +16,9 @@ import (
 
 func New(id string) *SmartTest {
 	return &SmartTest{
-		id:  id,
-		Doc: state.NewDoc(id, nil),
+		id:   id,
+		Doc:  state.NewDoc(id, nil),
+		hist: history.NewHistory(0),
 	}
 }
 

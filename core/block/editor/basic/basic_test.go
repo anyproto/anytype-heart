@@ -9,6 +9,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,4 +76,47 @@ func TestBasic_Move(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, sb.NewState().Pick("2").Model().ChildrenIds, 0)
 	assert.Len(t, sb.NewState().Pick("4").Model().ChildrenIds, 1)
+}
+
+func TestBasic_Replace(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+		AddBlock(simple.New(&model.Block{Id: "2"}))
+	b := NewBasic(sb)
+	newId, err := b.Replace("2", &model.Block{})
+	require.NoError(t, err)
+	require.NotEmpty(t, newId)
+}
+
+func TestBasic_SetFields(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+		AddBlock(simple.New(&model.Block{Id: "2"}))
+	b := NewBasic(sb)
+
+	fields := &types.Struct{
+		Fields: map[string]*types.Value{
+			"x": pbtypes.String("x"),
+		},
+	}
+	err := b.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+		BlockId: "2",
+		Fields:  fields,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, fields, sb.NewState().Pick("2").Model().Fields)
+}
+
+func TestBasic_Update(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+		AddBlock(simple.New(&model.Block{Id: "2"}))
+	b := NewBasic(sb)
+
+	err := b.Update(func(b simple.Block) error {
+		b.Model().BackgroundColor = "test"
+		return nil
+	}, "2")
+	require.NoError(t, err)
+	assert.Equal(t, "test", sb.NewState().Pick("2").Model().BackgroundColor)
 }
