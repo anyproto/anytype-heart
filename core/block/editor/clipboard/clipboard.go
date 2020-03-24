@@ -1,7 +1,16 @@
 package clipboard
 
 import (
+	"context"
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/prometheus/common/log"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -18,7 +27,7 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 }
 
-/*
+
 func NewClipboard(sb smartblock.SmartBlock) Clipboard {
 	return &clipboard{sb}
 }
@@ -26,8 +35,6 @@ func NewClipboard(sb smartblock.SmartBlock) Clipboard {
 type clipboard struct {
 	smartblock.SmartBlock
 }
-
-
 
 func (cb *clipboard) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	if len(req.AnySlot) > 0 {
@@ -81,13 +88,9 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 		ids = append(ids, b.Id)
 	}
 
-	// TODO: unlink
-	/*
-	if len(ids) > 0 {
-		if err := p.unlink(s, ids...); err != nil {
-			return textSlot, htmlSlot, anySlot, err
-		}
-	}*/
+	for _, id := range ids {
+		s.Unlink(id)
+	}
 
 	if err != nil {
 		return textSlot, htmlSlot, anySlot, err
@@ -119,7 +122,7 @@ func (cb *clipboard) getImages (blocks map[string]*model.Block) (images map[stri
 	for _, b := range blocks {
 		if file := b.GetFile(); file != nil {
 			if file.Type == model.BlockContentFile_Image {
-				fh, err := cb.Anytype().FileByHash(file.Hash)
+				fh, err := cb.Anytype().FileByHash(context.TODO(), file.Hash)
 				if err != nil {
 					return images, err
 				}
@@ -370,12 +373,11 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 
 	// selected blocks -> remove it
 	if len(req.SelectedBlockIds) > 0 {
-		// TODO: unlink
-		//if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
-		//	return blockIds, err
-		//}
+		for _, id := range req.SelectedBlockIds {
+			s.Unlink(id)
+		}
 	}
 
 	return blockIds, cb.Apply(s)
 }
-*/
+
