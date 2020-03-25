@@ -4,7 +4,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/old"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -51,7 +50,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 
 	if err := mw.blockService.OpenBlock(req.BlockId, req.BreadcrumbsIds...); err != nil {
 		switch err {
-		case old.ErrBlockNotFound:
+		case block.ErrBlockNotFound:
 			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
 		}
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
@@ -72,7 +71,7 @@ func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsReques
 	id, err := mw.blockService.OpenBreadcrumbsBlock()
 	if err != nil {
 		switch err {
-		case old.ErrBlockNotFound:
+		case block.ErrBlockNotFound:
 			return response(pb.RpcBlockOpenBreadcrumbsResponseError_BAD_INPUT, "", err)
 		}
 		return response(pb.RpcBlockOpenBreadcrumbsResponseError_UNKNOWN_ERROR, "", err)
@@ -564,18 +563,6 @@ func (mw *Middleware) BlockSetVideoWidth(req *pb.RpcBlockSetVideoWidthRequest) *
 	}
 	// TODO
 	return response(pb.RpcBlockSetVideoWidthResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockSetIconName(req *pb.RpcBlockSetIconNameRequest) *pb.RpcBlockSetIconNameResponse {
-	response := func(code pb.RpcBlockSetIconNameResponseErrorCode, err error) *pb.RpcBlockSetIconNameResponse {
-		m := &pb.RpcBlockSetIconNameResponse{Error: &pb.RpcBlockSetIconNameResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-	return response(pb.RpcBlockSetIconNameResponseError_NULL, nil)
 }
 
 func (mw *Middleware) switchAccount(accountId string) {

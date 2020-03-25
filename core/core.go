@@ -42,6 +42,10 @@ type Middleware struct {
 	debugGrpcEventSenderMutex sync.Mutex
 }
 
+func (mw *Middleware) BlockSetDetails(*pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
+	panic("implement me")
+}
+
 // Start starts the anytype node and HTTP gateway
 func (mw *Middleware) Start() error {
 	err := mw.Anytype.Start()
