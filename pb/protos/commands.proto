@@ -500,6 +500,31 @@ message Rpc {
                     }
                 }
             }
+            message Details {
+                message Detail {
+                    string key = 1;
+                    google.protobuf.Value value = 2; // NUll - removes key
+                }
+                message Request {
+                    string contextId = 1;
+                    repeated Detail details = 2;
+                }
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
             message Restrictions {
                 message Request {
                     string contextId = 1;
