@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -26,6 +27,15 @@ func Test_smartBlock_GetLastSnapshot(t *testing.T) {
 			},
 		},
 	)
+
+	thrd, err := s.(*Anytype).ts.GetThread(context.Background(), block.(*smartBlock).thread.ID)
+	require.NoError(t, err)
+	require.Len(t, thrd.Logs, 1)
+
+	/*a1 := s.(*Anytype).device.Address()
+	a2 := thrd.Logs[0].ID.String()
+
+	require.Equal(t, a1, a2)*/
 
 	lastSnap, err := block.GetLastSnapshot()
 	require.NoError(t, err)

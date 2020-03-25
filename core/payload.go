@@ -12,6 +12,7 @@ import (
 type signedPbPayload struct {
 	DeviceSig []byte
 	AccSig    []byte
+	AccAddr   string
 	Data      []byte
 }
 
@@ -30,17 +31,22 @@ func newSignedPayload(payload []byte, deviceKey wallet.Keypair, accountKey walle
 		return nil, err
 	}
 
-	return &signedPbPayload{DeviceSig: deviceSig, AccSig: accSig, Data: payload}, nil
+	return &signedPbPayload{DeviceSig: deviceSig, AccAddr: accountKey.Address(), AccSig: accSig, Data: payload}, nil
 }
 
 func (p *signedPbPayload) Unmarshal(out proto.Message) error {
 	return proto.Unmarshal(p.Data, out)
 }
 
-func (p *signedPbPayload) Verify(device crypto.PubKey, account crypto.PubKey) error {
+func (p *signedPbPayload) Verify(device crypto.PubKey) error {
 	ok, err := device.Verify(append(p.Data, p.AccSig...), p.DeviceSig)
 	if !ok || err != nil {
 		return fmt.Errorf("bad device signature")
+	}
+
+	account, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeAccount, p.AccAddr)
+	if err != nil {
+		return fmt.Errorf("incorrect account addr")
 	}
 
 	ok, err = account.Verify(append(p.Data), p.AccSig)

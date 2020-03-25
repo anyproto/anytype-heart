@@ -6,9 +6,7 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/strkey"
-	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	mh "github.com/multiformats/go-multihash"
 )
 
 const (
@@ -58,7 +56,7 @@ func NewKeypairFromPrivKey(t KeypairType, privKey crypto.PrivKey) (Keypair, erro
 		PrivKey: privKey,
 	}
 
-	_, err := kp.address()
+	_, err := getAddress(t, privKey.GetPublic())
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +118,7 @@ func (kp keypair) KeypairType() KeypairType {
 }
 
 func (kp keypair) Address() string {
-	address, err := kp.address()
+	address, err := getAddress(kp.keyType, kp.GetPublic())
 	if err != nil {
 		// shouldn't be a case because we check it on init
 		log.Error(err)
@@ -137,26 +135,6 @@ func (kp keypair) Seed() string {
 	}
 
 	return seed
-}
-
-func (kp keypair) address() (string, error) {
-	b, err := kp.PrivKey.GetPublic().Raw()
-	if err != nil {
-		return "", err
-	}
-
-	if kp.keyType == KeypairTypeAccount {
-		return strkey.Encode(accountAddressVersionByte, b)
-	} else {
-		b, err := kp.PrivKey.Raw()
-		if err != nil {
-			return "", err
-		}
-		hash, _ := mh.Encode(b, mh.SHA2_256)
-		id := cid.NewCidV1(cid.Libp2pKey, hash)
-
-		return id.String(), nil
-	}
 }
 
 func (kp keypair) seed() (string, error) {

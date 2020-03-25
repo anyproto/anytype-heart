@@ -279,7 +279,6 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 		if err != nil {
 			return nil, fmt.Errorf("failed to get event: %w", err)
 		}
-
 		node, err := event.GetBody(context.TODO(), block.node.ts, block.thread.Key.Read())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get record body: %w", err)
@@ -289,7 +288,8 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 		if err != nil {
 			return nil, fmt.Errorf("incorrect record type: %w", err)
 		}
-		err = m.Verify(block.node.device.GetPublic(), block.node.account.GetPublic())
+
+		err = m.Verify(rec.PubKey)
 		if err != nil {
 			return nil, err
 		}

@@ -8,11 +8,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-slip21"
 	"github.com/ipfs/go-cid"
-	"github.com/textileio/go-textile/keypair"
-	twallet "github.com/textileio/go-textile/wallet"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/cbor"
 	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/crypto/symmetric"
@@ -27,11 +25,6 @@ const (
 	threadDerivedIndexHomeDashboard threadDerivedIndex = 1
 	threadDerivedIndexArchive       threadDerivedIndex = 2
 	threadDerivedIndexAccount       threadDerivedIndex = 3
-
-	// AnytypeThreadPathLogKeyFormat is a path format used for Anytype predefined thread log keypair
-	// Use with `fmt.Sprintf` and `DeriveForPath`.
-	// m/44'/607'/<predefined_thread_index>'/%d'
-	AnytypeThreadPathLogKeyFormat = wallet.AnytypeAccountPrefix + "/%d'/%d'/1"
 
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
@@ -56,26 +49,10 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]SmartBlockType{
 	threadDerivedIndexArchive:       SmartBlockTypeArchive,
 }
 
-func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, read *symmetric.Key, log *keypair.Full, err error) {
+func (a *Anytype) deriveKeys(index threadDerivedIndex) (follow *symmetric.Key, read *symmetric.Key, err error) {
 	accountSeed, err2 := a.account.Raw()
 	if err2 != nil {
 		err = err2
-		return
-	}
-
-	master, err2 := twallet.NewMasterKey(accountSeed)
-	if err2 != nil {
-		err = err2
-		return
-	}
-
-	logKey, err2 := master.Derive(uint32(index) + twallet.FirstHardenedIndex)
-	if err2 != nil {
-		err = err2
-		return
-	}
-	log, err = keypair.FromRawSeed(logKey.RawSeed())
-	if err != nil {
 		return
 	}
 
@@ -148,12 +125,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 		return thrd, nil
 	}
 
-	readKey, followKey, logKeypair, err := a.deriveKeys(index)
-	if err != nil {
-		return thread.Info{}, err
-	}
-
-	logKey, err := logKeypair.LibP2PPrivKey()
+	readKey, followKey, err := a.deriveKeys(index)
 	if err != nil {
 		return thread.Info{}, err
 	}
@@ -161,7 +133,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 	thrd, err = a.ts.CreateThread(context.TODO(),
 		id,
 		corenet.ThreadKey(thread.NewKey(followKey, readKey)),
-		corenet.LogKey(logKey))
+		corenet.LogKey(a.device))
 	if err != nil {
 		return thread.Info{}, err
 	}
@@ -179,15 +151,21 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 type RecordWithMetadata struct {
 	corenet.Record
-	Date time.Time
+	Date   time.Time
+	PubKey crypto.PubKey
 }
 
-func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, heads []cid.Cid, before *time.Time, limit int) ([]RecordWithMetadata, error) {
+func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, li thread.LogInfo, before *time.Time, limit int) ([]RecordWithMetadata, error) {
 	var records []RecordWithMetadata
 	// todo: filter by record type
 	var m = make(map[cid.Cid]struct{})
 
-	for _, head := range heads {
+	pubKey, err := li.ID.ExtractPublicKey()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, head := range li.Heads {
 		var recordsPerHead []RecordWithMetadata
 
 		rid := head
@@ -220,7 +198,7 @@ func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, heads [
 				continue
 			}
 
-			recordsPerHead = append(recordsPerHead, RecordWithMetadata{rec, *recordTime})
+			recordsPerHead = append(recordsPerHead, RecordWithMetadata{rec, *recordTime, pubKey})
 			if len(recordsPerHead) == limit {
 				break
 			}
@@ -245,10 +223,11 @@ func (a *Anytype) traverseLogs(ctx context.Context, thrdId thread.ID, before *ti
 	}
 
 	for _, log := range thrd.Logs {
-		records, err := a.traverseFromCid(ctx, thrd, log.Heads, before, limit)
+		records, err := a.traverseFromCid(ctx, thrd, log, before, limit)
 		if err != nil {
 			continue
 		}
+
 		allRecords = append(allRecords, records...)
 	}
 

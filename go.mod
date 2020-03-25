@@ -42,5 +42,3 @@ require (
 replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.7.8-0.20200217213349-f936f40b6472
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
-
-replace github.com/mattbaird/jsonpatch => github.com/requilence/jsonpatch v0.0.0-20190628193028-ccadf8ccb170
