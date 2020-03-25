@@ -70,7 +70,6 @@ service ClientCommands {
     rpc BlockSetImageWidth (anytype.Rpc.Block.Set.Image.Width.Request) returns (anytype.Rpc.Block.Set.Image.Width.Response);
     rpc BlockSetVideoName (anytype.Rpc.Block.Set.Video.Name.Request) returns (anytype.Rpc.Block.Set.Video.Name.Response);
     rpc BlockSetVideoWidth (anytype.Rpc.Block.Set.Video.Width.Request) returns (anytype.Rpc.Block.Set.Video.Width.Response);
-    rpc BlockSetIconName (anytype.Rpc.Block.Set.Icon.Name.Request) returns (anytype.Rpc.Block.Set.Icon.Name.Response);
 
     rpc BlockSetLinkTargetBlockId (anytype.Rpc.Block.Set.Link.TargetBlockId.Request) returns (anytype.Rpc.Block.Set.Link.TargetBlockId.Response);
 

@@ -29,7 +29,6 @@ message Event {
 
             Block.Set.Text blockSetText = 10;
             Block.Set.File blockSetFile = 11;
-            Block.Set.Icon blockSetIcon = 12;
             Block.Set.Link blockSetLink = 13;
             Block.Set.Bookmark blockSetBookmark = 14;
             Block.Set.Align blockSetAlign = 15;
@@ -208,14 +207,6 @@ message Event {
                 }
             }
 
-            message Icon {
-                string id = 1;
-                Name name = 2;
-
-                message Name {
-                    string value = 1;
-                }
-            }
 
             message Link {
                 string id = 1;
