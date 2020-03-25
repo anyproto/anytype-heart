@@ -59,8 +59,8 @@ type Service interface {
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	//CreateAndCutTo(request pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error)
-	//CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error)
+	CreateAndCutTo(request pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error)
+	CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -320,6 +320,95 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 		return b.SetFields(req.BlockFields...)
 	})
 }
+
+
+func (s *service) CreateAndCutTo(req pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error) {
+/*	if req.Block.GetPage() == nil {
+		err = fmt.Errorf("only page blocks can be created")
+		return
+	}
+
+	// 1. get context block
+	sbFrom, releaseFrom, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer releaseFrom()
+
+	// 2. create target block
+	blockId, _, err := sbFrom.CreatePage(pb.RpcBlockCreatePageRequest{
+		ContextId: req.ContextId,
+		TargetId: req.TargetId,
+		Block: req.Block,
+		Position: req.Position,
+	})
+
+	// 3. get target block
+	sbTo, releaseTo, err := s.pickBlock(blockId)
+	if err != nil {
+		return
+	}
+	defer releaseTo()
+
+	// 4. cut from context block
+	_, _, anySlot, err := sbFrom.Cut(pb.RpcBlockCutRequest{
+		ContextId: req.ContextId,
+		Blocks:req.Blocks,
+	}, images)
+	if err != nil {
+		return
+	}
+
+	// 5. paste to new block
+	_, err = sbTo.Paste(pb.RpcBlockPasteRequest{
+		ContextId: blockId,
+		AnySlot: anySlot,
+	})
+	if err != nil {
+		return
+	}*/
+
+	return blockId,nil
+
+
+}
+
+func (s *service) CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error) {
+/*	// 1. get context block
+	sbFrom, releaseFrom, err := s.pickBlock(req.ContextId)
+	if err != nil {
+		return
+	}
+	defer releaseFrom()
+
+	// 2. get target block
+	sbTo, releaseTo, err := s.pickBlock(req.TargetId)
+	if err != nil {
+		return
+	}
+	defer releaseTo()
+
+	// 3. cut from context block
+	_, _, anySlot, err := sbFrom.Cut(pb.RpcBlockCutRequest{
+		ContextId: req.ContextId,
+		Blocks:req.Blocks,
+	}, images)
+	if err != nil {
+		return
+	}
+
+	// 4. paste to new block
+	_, err = sbTo.Paste(pb.RpcBlockPasteRequest{
+		ContextId:req.TargetId,
+		AnySlot: anySlot,
+	})
+	if err != nil {
+		return
+	}*/
+
+	return nil
+}
+
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
 	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
