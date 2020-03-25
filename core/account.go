@@ -152,6 +152,16 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		<-accountSearchFinished
 	}
 
+	var hasAccountLoaded = map[string]struct{}{}
+	for index := 0; index < len(mw.localAccounts); index++ {
+		// in case we returned to the account choose screen we can use cached accounts
+		sendAccountAddEvent(index, mw.localAccounts[index])
+		hasAccountLoaded[mw.localAccounts[index].Id] = struct{}{}
+		if shouldCancel {
+			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
+		}
+	}
+
 	type nonameAccountWithIndex struct {
 		id    string
 		index int
@@ -163,6 +173,11 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		if err != nil {
 			break
 		}
+
+		if _, alreadyLoaded := hasAccountLoaded[account.Address()]; alreadyLoaded {
+			continue
+		}
+
 		if _, err := os.Stat(filepath.Join(mw.rootPath, account.Address())); err == nil {
 			accountsOnDisk = append(accountsOnDisk, nonameAccountWithIndex{
 				id:    account.Address(),
@@ -171,124 +186,24 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 	}
 
-	defer func() {
 		accountSearchFinished <- struct{}{}
 		n := time.Now()
 		mw.localAccountCachedAt = &n
 
 		// this is workaround when we working offline
 		for _, accountOnDisk := range accountsOnDisk {
-			// todo: load account name from the sqlite
+			// todo: load profile name from the details cache in badger
 			if _, exists := sentAccounts[accountOnDisk.id]; !exists {
 				sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
 			}
 		}
-	}()
-
-	for index := 0; index < len(mw.localAccounts); index++ {
-		// in case we returned to the account choose screen we can use cached accounts
-		sendAccountAddEvent(index, mw.localAccounts[index])
-		if shouldCancel {
-			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
-		}
-	}
-
-	if mw.Anytype == nil {
-		// if we have no active account at the moment
-		// let's start the first account to perform cafe contacts search queries
-		account, err := core.WalletAccountAt(mw.mnemonic, 0, "")
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED, err)
-		}
-
-		seedRaw, err := account.Raw()
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED, err)
-		}
-
-		err = core.WalletInitRepo(mw.rootPath, seedRaw)
-		if err != nil && err != core.ErrRepoExists {
-			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
-		}
-
-		err = mw.Stop()
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
-		}
-
-		mw.Anytype, err = core.New(mw.rootPath, account.Address())
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
-		}
-
-		err = mw.Start()
-		if err != nil {
-			if err == core.ErrRepoCorrupted {
-				return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
-			}
-
-			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
-		}
-	}
-
-	if shouldCancel {
-		return response(pb.RpcAccountRecoverResponseError_NULL, nil)
-	}
-
-	/*for {
-		// wait for cafe registration
-		// in order to use cafeAPI instead of pubsub
-		if cs := mw.Anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
-			break
-		}
-
-		time.Sleep(time.Second)
-	}*/
-
 	// todo: reimplement after cafe2.0 will be ready
-	return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("not implemented"))
 
-	/*index := len(mw.localAccounts)
-	for {
-		// todo: add goroutine to query multiple accounts at once
-		account, err := core.WalletAccountAt(mw.mnemonic, index, "")
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_WALLET_RECOVER_NOT_PERFORMED, err)
-		}
+	if len(accountsOnDisk) == 0 && len(mw.localAccounts) == 0 {
+			return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("remote account recovery not implemeted yet"))
+	}
 
-		var ctx context.Context
-		ctx, searchQueryCancel = context.WithCancel(context.Background())
-		contact, err := mw.Anytype.(ctx, account.Address())
-
-		if err != nil || contact == nil {
-			if index == 0 {
-				return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, err)
-			}
-			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
-		}
-
-		if contact.Name == "" {
-			if index == 0 {
-				return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, err)
-			}
-
-			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
-		}
-
-		newAcc := &model.Account{Id: account.Address(), Name: contact.Name}
-
-		if contact.Avatar != "" {
-			newAcc.Avatar = getAvatarFromString(contact.Avatar)
-		}
-
-		sendAccountAddEvent(index, newAcc)
-		mw.localAccounts = append(mw.localAccounts, newAcc)
-
-		if shouldCancel {
-			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
-		}
-		index++
-	}*/
+	return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
