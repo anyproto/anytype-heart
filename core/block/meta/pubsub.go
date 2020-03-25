@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type PubSub interface {
@@ -14,11 +15,10 @@ type PubSub interface {
 
 type Subscriber interface {
 	Subscribe(ids ...string) Subscriber
+	ReSubscribe(ids ...string) Subscriber
 	Unsubscribe(ids ...string) Subscriber
 	Callback(f func(d Meta)) Subscriber
 	Close()
-
-	call(m Meta)
 }
 
 func newPubSub(a anytype.Service) *pubSub {
@@ -59,7 +59,33 @@ func (p *pubSub) add(s Subscriber, ids ...string) {
 			p.subscribers[id] = sm
 		}
 		sm[s] = struct{}{}
-		go s.call(p.collectors[id].GetMeta())
+		go s.(*subscriber).call(p.collectors[id].GetMeta())
+	}
+}
+
+func (p *pubSub) reSubscribe(s Subscriber, ids ...string) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	for _, id := range ids {
+		p.lastUsage[id] = time.Now()
+		sm, ok := p.subscribers[id]
+		if !ok {
+			p.createCollector(id)
+			sm = make(map[Subscriber]struct{})
+			p.subscribers[id] = sm
+		}
+		if _, ok := sm[s]; !ok {
+			go s.(*subscriber).call(p.collectors[id].GetMeta())
+			sm[s] = struct{}{}
+		}
+	}
+	for id, sm := range p.subscribers {
+		if _, ok := sm[s]; ok {
+			if slice.FindPos(ids, id) == -1 {
+				p.lastUsage[id] = time.Now()
+				delete(sm, s)
+			}
+		}
 	}
 }
 
@@ -88,15 +114,13 @@ func (p *pubSub) removeAll(s Subscriber) {
 }
 
 func (p *pubSub) call(d Meta) {
-	p.m.Lock()
-	defer p.m.Unlock()
 	if p.closed {
 		return
 	}
 	ss := p.subscribers[d.BlockId]
 	if ss != nil {
 		for s := range ss {
-			s.call(d)
+			s.(*subscriber).call(d)
 		}
 	}
 }
@@ -174,6 +198,11 @@ func (s *subscriber) call(m Meta) {
 
 func (s *subscriber) Subscribe(ids ...string) Subscriber {
 	s.ps.add(s, ids...)
+	return s
+}
+
+func (s *subscriber) ReSubscribe(ids ...string) Subscriber {
+	s.ps.reSubscribe(s, ids...)
 	return s
 }
 

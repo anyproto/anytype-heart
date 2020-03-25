@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -98,6 +99,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		openedBlocks: make(map[string]*openedBlock),
 		linkPreview:  lp,
 		process:      process.NewService(sendEvent),
+		meta:         meta.NewService(a),
 	}
 	go s.cleanupTicker()
 	log.Info("block service started")
@@ -112,6 +114,7 @@ type openedBlock struct {
 
 type service struct {
 	anytype      anytype.Service
+	meta         meta.Service
 	accountId    string
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
@@ -521,7 +524,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, id)
+	sc, err := source.NewSource(s.anytype, s.meta, id)
 	if err != nil {
 		return
 	}
