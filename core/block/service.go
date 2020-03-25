@@ -197,7 +197,7 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 	archiveId := s.anytype.PredefinedBlocks().Archive
 	return s.Do(archiveId, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(*editor.Archive)
-		if ! ok {
+		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 		if req.IsArchived {
@@ -321,99 +321,74 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 	})
 }
 
-
 func (s *service) CreateAndCutTo(req pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error) {
-/*	if req.Block.GetPage() == nil {
+	if req.Block.GetPage() == nil {
 		err = fmt.Errorf("only page blocks can be created")
 		return
 	}
 
-	// 1. get context block
-	sbFrom, releaseFrom, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer releaseFrom()
-
-	// 2. create target block
-	blockId, _, err := sbFrom.CreatePage(pb.RpcBlockCreatePageRequest{
+	_, blockId, err = s.CreatePage(pb.RpcBlockCreatePageRequest{
 		ContextId: req.ContextId,
-		TargetId: req.TargetId,
-		Block: req.Block,
-		Position: req.Position,
+		TargetId:  req.TargetId,
+		Block:     req.Block,
+		Position:  req.Position,
 	})
 
-	// 3. get target block
-	sbTo, releaseTo, err := s.pickBlock(blockId)
 	if err != nil {
-		return
-	}
-	defer releaseTo()
-
-	// 4. cut from context block
-	_, _, anySlot, err := sbFrom.Cut(pb.RpcBlockCutRequest{
-		ContextId: req.ContextId,
-		Blocks:req.Blocks,
-	}, images)
-	if err != nil {
-		return
+		return blockId, err
 	}
 
-	// 5. paste to new block
-	_, err = sbTo.Paste(pb.RpcBlockPasteRequest{
-		ContextId: blockId,
-		AnySlot: anySlot,
+	s.DoClipboard(blockId, func(cb clipboard.Clipboard) error {
+		_, _, anySlot, err := cb.Cut(pb.RpcBlockCutRequest{
+			ContextId: req.ContextId,
+			Blocks:    req.Blocks,
+		}, images)
+
+		if err != nil {
+			return err
+		}
+
+		s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+			_, err = cb.Paste(pb.RpcBlockPasteRequest{
+				ContextId: blockId,
+				AnySlot:   anySlot,
+			})
+			return err
+		})
+
+		return err
 	})
-	if err != nil {
-		return
-	}*/
 
-	return blockId,nil
-
-
+	return
 }
 
 func (s *service) CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error) {
-/*	// 1. get context block
-	sbFrom, releaseFrom, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer releaseFrom()
+	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		_, _, anySlot, err := cb.Cut(pb.RpcBlockCutRequest{
+			ContextId: req.ContextId,
+			Blocks:    req.Blocks,
+		}, images)
 
-	// 2. get target block
-	sbTo, releaseTo, err := s.pickBlock(req.TargetId)
-	if err != nil {
-		return
-	}
-	defer releaseTo()
+		if err != nil {
+			return err
+		}
 
-	// 3. cut from context block
-	_, _, anySlot, err := sbFrom.Cut(pb.RpcBlockCutRequest{
-		ContextId: req.ContextId,
-		Blocks:req.Blocks,
-	}, images)
-	if err != nil {
-		return
-	}
+		s.DoClipboard(req.TargetId, func(cb clipboard.Clipboard) error {
+			_, err = cb.Paste(pb.RpcBlockPasteRequest{
+				ContextId: req.TargetId,
+				AnySlot:   anySlot,
+			})
+			return err
+		})
 
-	// 4. paste to new block
-	_, err = sbTo.Paste(pb.RpcBlockPasteRequest{
-		ContextId:req.TargetId,
-		AnySlot: anySlot,
+		return err
 	})
-	if err != nil {
-		return
-	}*/
 
-	return nil
+	return
 }
-
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
 	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		// TODO: images
-		images := make(map[string][]byte)
 		html, err = cb.Copy(req, images)
 		return err
 	})
