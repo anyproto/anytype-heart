@@ -59,6 +59,8 @@ type Service interface {
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
+	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
+
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -167,7 +169,7 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs()
-	if err = bs.Init(nil); err != nil {
+	if err = bs.Init(source.NewVirtual(s.anytype, s.meta)); err != nil {
 		return
 	}
 	bs.SetEventFunc(s.sendEvent)
@@ -312,6 +314,12 @@ func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
 			BlockId: req.BlockId,
 			Fields:  req.Fields,
 		})
+	})
+}
+
+func (s *service) SetDetails(req pb.RpcBlockSetDetailsRequest) (err error) {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		return b.SetDetails(req.Details)
 	})
 }
 

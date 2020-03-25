@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
+	"github.com/mohae/deepcopy"
 )
 
 type ApplyFlag int
@@ -41,6 +42,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() history.History
 	Anytype() anytype.Service
+	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -249,6 +251,29 @@ func (sb *smartBlock) Anytype() anytype.Service {
 	return sb.source.Anytype()
 }
 
+func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	var copy = deepcopy.Copy(sb.metaData.Details).(*types.Struct)
+	for _, detail := range details {
+		copy.Fields[detail.Key] = detail.Value
+	}
+	if copy.Equal(sb.metaData) {
+		return
+	}
+	sb.metaData.Details = copy
+	if err = sb.source.WriteVersion(source.Version{
+		Meta: sb.metaData,
+	}); err != nil {
+		return
+	}
+	sb.source.Meta().ReportChange(meta.Meta{
+		BlockId:        sb.Id(),
+		SmartBlockMeta: *sb.metaData,
+	})
+	return
+}
+
 func (sb *smartBlock) Close() (err error) {
+	sb.metaSub.Close()
+	sb.source.Close()
 	return
 }

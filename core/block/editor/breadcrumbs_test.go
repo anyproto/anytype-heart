@@ -3,6 +3,7 @@ package editor
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,30 +11,17 @@ import (
 
 func TestBreadcrumbs_Init(t *testing.T) {
 	b := NewBreadcrumbs()
-	err := b.Init(nil)
+	err := b.Init(source.NewVirtual(nil, nil))
 	require.NoError(t, err)
 	assert.NotEmpty(t, b.Id())
 	assert.NotEmpty(t, b.RootId())
-	assert.NotNil(t, b.Doc)
 	assert.Len(t, b.Blocks(), 1)
-}
-
-func TestBreadcrumbs_Show(t *testing.T) {
-	b := NewBreadcrumbs()
-	err := b.Init(nil)
-	require.NoError(t, err)
-	var events []*pb.Event
-	b.SetEventFunc(func(e *pb.Event) {
-		events = append(events, e)
-	})
-	require.NoError(t, b.Show())
-	assert.Len(t, events, 1)
 }
 
 func TestBreadcrumbs_OnSmartOpen(t *testing.T) {
 	t.Run("add pages", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(nil)
+		err := b.Init(source.NewVirtual(nil, nil))
 		require.NoError(t, err)
 		var events []*pb.Event
 		b.SetEventFunc(func(e *pb.Event) {
@@ -52,7 +40,7 @@ func TestBreadcrumbs_OnSmartOpen(t *testing.T) {
 	})
 	t.Run("add existing page", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(nil)
+		err := b.Init(source.NewVirtual(nil, nil))
 		require.NoError(t, err)
 		var events []*pb.Event
 		b.SetEventFunc(func(e *pb.Event) {
@@ -71,7 +59,7 @@ func TestBreadcrumbs_OnSmartOpen(t *testing.T) {
 func TestBreadcrumbs_ChainCut(t *testing.T) {
 	t.Run("negative index", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(nil)
+		err := b.Init(source.NewVirtual(nil, nil))
 		require.NoError(t, err)
 		b.OnSmartOpen("1")
 		var events []*pb.Event
@@ -83,7 +71,7 @@ func TestBreadcrumbs_ChainCut(t *testing.T) {
 	})
 	t.Run("overflow index", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(nil)
+		err := b.Init(source.NewVirtual(nil, nil))
 		require.NoError(t, err)
 		b.OnSmartOpen("1")
 		var events []*pb.Event
@@ -95,7 +83,7 @@ func TestBreadcrumbs_ChainCut(t *testing.T) {
 	})
 	t.Run("cut", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(nil)
+		err := b.Init(source.NewVirtual(nil, nil))
 		require.NoError(t, err)
 		b.OnSmartOpen("1")
 		b.OnSmartOpen("2")

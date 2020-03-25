@@ -37,6 +37,10 @@ type SmartTest struct {
 	state.Doc
 }
 
+func (st *SmartTest) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	return
+}
+
 func (st *SmartTest) Init(_ source.Source) (err error) {
 	return
 }
