@@ -297,18 +297,16 @@ func (c *collector) listener() {
 	if err != nil {
 		return
 	}
+	defer cancel()
 	for {
 		select {
-		case meta, ok := <-ch:
-			if ! ok {
-				return
-			}
+		case meta := <-ch:
 			c.setMeta(Meta{
 				BlockId:        c.blockId,
 				SmartBlockMeta: meta.SmartBlockMeta,
 			})
 		case <-c.quit:
-			cancel()
+			return
 		}
 	}
 }
