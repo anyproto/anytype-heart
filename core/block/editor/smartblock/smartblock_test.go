@@ -100,6 +100,7 @@ func newFixture(t *testing.T) *fixture {
 	snapshot := testMock.NewMockSmartBlockSnapshot(ctrl)
 	snapshot.EXPECT().Meta().Return(&core.SmartBlockMeta{}, nil)
 	source := mockSource.NewMockSource(ctrl)
+	source.EXPECT().Type().AnyTimes().Return(core.SmartBlockTypePage)
 	metaSubscriber := mockMeta.NewMockSubscriber(ctrl)
 	metaPubSub := mockMeta.NewMockPubSub(ctrl)
 	metaService := mockMeta.NewMockService(ctrl)

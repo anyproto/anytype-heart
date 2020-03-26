@@ -125,7 +125,6 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 	}
 	sb.metaSub = sb.source.Meta().PubSub().NewSubscriber()
 	dependentIds := sb.dependentSmartIds()
-	dependentIds = append(dependentIds, sb.Id())
 	atomic.StoreInt32(&sb.metaFetchMode, 1)
 	defer atomic.StoreInt32(&sb.metaFetchMode, 0)
 	sb.metaSub.Callback(sb.onMetaChange).Subscribe(dependentIds...)
@@ -182,6 +181,9 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		}
 		return true
 	})
+	if sb.source.Type() != 0 && sb.source.Type() != core.SmartBlockTypeDashboard {
+		ids = append(ids, sb.Id())
+	}
 	return
 }
 
