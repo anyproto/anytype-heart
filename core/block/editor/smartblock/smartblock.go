@@ -273,7 +273,9 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 }
 
 func (sb *smartBlock) Close() (err error) {
-	sb.metaSub.Close()
+	if sb.metaSub != nil {
+		sb.metaSub.Close()
+	}
 	sb.source.Close()
 	return
 }
