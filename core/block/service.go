@@ -104,6 +104,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		meta:         meta.NewService(a),
 	}
 	go s.cleanupTicker()
+	s.init()
 	log.Info("block service started")
 	return s
 }
@@ -124,6 +125,12 @@ type service struct {
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
 	m            sync.RWMutex
+}
+
+func (s *service) init() {
+	s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		return nil
+	})
 }
 
 func (s *service) Anytype() anytype.Service {

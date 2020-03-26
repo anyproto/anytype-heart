@@ -5,6 +5,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewArchive() *Archive {
@@ -37,6 +39,12 @@ func (p *Archive) checkRootBlock() (err error) {
 			},
 		},
 	}))
+	if err = p.SmartBlock.SetDetails([]*pb.RpcBlockSetDetailsDetail{
+		{Key: "name", Value: pbtypes.String("Archive")},
+		{Key: "icon", Value: pbtypes.String(":package:")},
+	}); err != nil {
+		return
+	}
 	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
 }
 
