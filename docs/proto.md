@@ -1077,8 +1077,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
 | targetId | [string](#string) |  | id of the closest block |
-| title | [string](#string) |  | page title |
-| icon | [string](#string) |  | icon name |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | page details |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
 

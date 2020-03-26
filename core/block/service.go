@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -239,20 +238,14 @@ func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, p
 	}
 	pageId = csm.ID()
 	log.Infof("created new smartBlock: %v", pageId)
-	var details []*pb.RpcBlockSetDetailsDetail
-	if req.Title != "" {
-		details = append(details, &pb.RpcBlockSetDetailsDetail{
-			Key:   "title",
-			Value: pbtypes.String(req.Title),
-		})
-	}
-	if req.Icon != "" {
-		details = append(details, &pb.RpcBlockSetDetailsDetail{
-			Key:   "icon",
-			Value: pbtypes.String(req.Icon),
-		})
-	}
-	if len(details) > 0 {
+	if req.Details != nil && req.Details.Fields != nil {
+		var details []*pb.RpcBlockSetDetailsDetail
+		for k, v := range req.Details.Fields {
+			details = append(details, &pb.RpcBlockSetDetailsDetail{
+				Key:   k,
+				Value: v,
+			})
+		}
 		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
 			ContextId: pageId,
 			Details:   details,

@@ -16,6 +16,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log"
 )
@@ -116,8 +118,12 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,
-				Title:     entry.name,
-				Icon:      ":file_folder:",
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": pbtypes.String(entry.name),
+						"icon": pbtypes.String(":file_folder:"),
+					},
+				},
 			})
 			sf.Lock()
 			if err != nil {
@@ -157,7 +163,7 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 		return sf.Apply(s, smartblock.NoHistory)
 	}
 	return sf.UpdateFile(info.blockId, func(f file.Block) error {
-		if info.err != nil {
+		if info.err != nil || info.file == nil || info.file.State == model.BlockContentFile_Error {
 			log.Warnf("upload file[%v] error: %v", info.name, info.err)
 			f.SetState(model.BlockContentFile_Error)
 			return nil

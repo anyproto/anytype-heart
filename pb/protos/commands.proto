@@ -1060,8 +1060,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context block
                 string targetId = 2; // id of the closest block
-                string title = 3; // page title
-                string icon = 5; // icon name
+                google.protobuf.Struct details = 3; // page details
                 anytype.model.Block.Position position = 4;
             }
 
