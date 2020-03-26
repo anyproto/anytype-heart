@@ -102,7 +102,6 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 	htmlSlot = conv.Convert(req.Blocks, images)
 	anySlot = req.Blocks
 
-	// TODO: is it OK to Apply in the middle of CutTo Function?
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
 
 }

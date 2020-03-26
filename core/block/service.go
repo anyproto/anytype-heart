@@ -54,13 +54,12 @@ type Service interface {
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
+	MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	CreateAndCutTo(request pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error)
-	CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -298,6 +297,33 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
 	})
 }
 
+func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
+
+	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
+		ContextId: req.ContextId,
+		TargetId: req.DropTargetId,
+		Block: req.Block,
+		Position:  req.Position,
+	})
+
+	if err != nil {
+		return linkId, err
+	}
+
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Move(pb.RpcBlockListMoveRequest{
+			req.ContextId,
+			req.BlockIds,
+			pageId,
+			req.DropTargetId,
+			req.Position,
+		})
+	})
+
+	return
+}
+
+
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		newId, err = b.Replace(req.BlockId, req.Block)
@@ -319,72 +345,6 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.SetFields(req.BlockFields...)
 	})
-}
-
-func (s *service) CreateAndCutTo(req pb.RpcBlockCreateAndCutToRequest, images map[string][]byte) (blockId string, err error) {
-	if req.Block.GetPage() == nil {
-		err = fmt.Errorf("only page blocks can be created")
-		return
-	}
-
-	_, blockId, err = s.CreatePage(pb.RpcBlockCreatePageRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.TargetId,
-		Block:     req.Block,
-		Position:  req.Position,
-	})
-
-	if err != nil {
-		return blockId, err
-	}
-
-	s.DoClipboard(blockId, func(cb clipboard.Clipboard) error {
-		_, _, anySlot, err := cb.Cut(pb.RpcBlockCutRequest{
-			ContextId: req.ContextId,
-			Blocks:    req.Blocks,
-		}, images)
-
-		if err != nil {
-			return err
-		}
-
-		s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-			_, err = cb.Paste(pb.RpcBlockPasteRequest{
-				ContextId: blockId,
-				AnySlot:   anySlot,
-			})
-			return err
-		})
-
-		return err
-	})
-
-	return
-}
-
-func (s *service) CutTo(req pb.RpcBlockCutToRequest, images map[string][]byte) (err error) {
-	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		_, _, anySlot, err := cb.Cut(pb.RpcBlockCutRequest{
-			ContextId: req.ContextId,
-			Blocks:    req.Blocks,
-		}, images)
-
-		if err != nil {
-			return err
-		}
-
-		s.DoClipboard(req.TargetId, func(cb clipboard.Clipboard) error {
-			_, err = cb.Paste(pb.RpcBlockPasteRequest{
-				ContextId: req.TargetId,
-				AnySlot:   anySlot,
-			})
-			return err
-		})
-
-		return err
-	})
-
-	return
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
