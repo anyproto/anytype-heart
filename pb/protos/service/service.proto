@@ -44,7 +44,7 @@ service ClientCommands {
     rpc BlockSetPageIsArchived (anytype.Rpc.Block.Set.Page.IsArchived.Request) returns (anytype.Rpc.Block.Set.Page.IsArchived.Response);
 
     rpc BlockListMove (anytype.Rpc.BlockList.Move.Request) returns (anytype.Rpc.BlockList.Move.Response);
-    rpc MoveToNewPage (anytype.Rpc.BlockList.MoveToNewPage.Request) returns (anytype.Rpc.BlockList.MoveToNewPage.Response);
+    rpc BlockListMoveToNewPage (anytype.Rpc.BlockList.MoveToNewPage.Request) returns (anytype.Rpc.BlockList.MoveToNewPage.Response);
 
     rpc BlockListSetFields (anytype.Rpc.BlockList.Set.Fields.Request) returns (anytype.Rpc.BlockList.Set.Fields.Response);
     rpc BlockListSetTextStyle (anytype.Rpc.BlockList.Set.Text.Style.Request) returns (anytype.Rpc.BlockList.Set.Text.Style.Response);
