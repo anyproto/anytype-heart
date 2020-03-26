@@ -114,7 +114,7 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 	response := func(code pb.RpcBlockCopyResponseErrorCode, html string, err error) *pb.RpcBlockCopyResponse {
 		m := &pb.RpcBlockCopyResponse{
 			Error: &pb.RpcBlockCopyResponseError{Code: code},
-			Html: html,
+			Html:  html,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -129,7 +129,7 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)
 	}
 
-	return response(pb.RpcBlockCopyResponseError_NULL,  html,nil)
+	return response(pb.RpcBlockCopyResponseError_NULL, html, nil)
 }
 
 func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
@@ -137,7 +137,7 @@ func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
 	for _, b := range blocks {
 		if file := b.GetFile(); file != nil {
 			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
-				Hash: file.Hash,
+				Hash:      file.Hash,
 				WantWidth: 1024,
 			}
 			resp := mw.ImageGetBlob(getBlobReq)
@@ -158,7 +158,7 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return m
 	}
 
-	blockIds, err := mw.blockService.Paste(*req);
+	blockIds, err := mw.blockService.Paste(*req)
 	if err != nil {
 		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, err)
 	}
@@ -169,10 +169,10 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
 	response := func(code pb.RpcBlockCutResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCutResponse {
 		m := &pb.RpcBlockCutResponse{
-			Error: &pb.RpcBlockCutResponseError{Code: code},
+			Error:    &pb.RpcBlockCutResponseError{Code: code},
 			TextSlot: textSlot,
 			HtmlSlot: htmlSlot,
-			AnySlot: anySlot,
+			AnySlot:  anySlot,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -195,7 +195,7 @@ func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExp
 	response := func(code pb.RpcBlockExportResponseErrorCode, path string, err error) *pb.RpcBlockExportResponse {
 		m := &pb.RpcBlockExportResponse{
 			Error: &pb.RpcBlockExportResponseError{Code: code},
-			Path: path,
+			Path:  path,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -449,12 +449,12 @@ func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRe
 		}
 		return m
 	}
-	linkId, err := mw.blockService.MoveBlocksToNewPage(*req);
+	linkId, err := mw.blockService.MoveBlocksToNewPage(*req)
 
-	if  err != nil {
+	if err != nil {
 		return response(pb.RpcBlockListMoveToNewPageResponseError_UNKNOWN_ERROR, "", err)
 	}
-	return response(pb.RpcBlockListMoveToNewPageResponseError_NULL, linkId,nil)
+	return response(pb.RpcBlockListMoveToNewPageResponseError_NULL, linkId, nil)
 }
 
 func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse {

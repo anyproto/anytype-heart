@@ -301,8 +301,8 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 
 	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
 		ContextId: req.ContextId,
-		TargetId: req.DropTargetId,
-		Block: req.Block,
+		TargetId:  req.DropTargetId,
+		Block:     req.Block,
 		Position:  req.Position,
 	})
 
@@ -322,7 +322,6 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 
 	return
 }
-
 
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
