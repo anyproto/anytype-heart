@@ -1,12 +1,31 @@
 package meta
 
 import (
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
+	"github.com/prometheus/common/log"
+)
+
+func metaError(e string) *core.SmartBlockMeta {
+	return &core.SmartBlockMeta{Details: &types.Struct{
+		Fields: map[string]*types.Value{
+			"error": pbtypes.String(e),
+		},
+	}}
+}
+
+var (
+	notFoundMeta = metaError("not_found")
+	errNotFound  = errors.New("not found")
+	errEmpty     = errors.New("empty")
 )
 
 type PubSub interface {
@@ -251,8 +270,8 @@ func (c *collector) GetMeta() (d Meta) {
 
 func (c *collector) setMeta(d Meta) {
 	c.m.Lock()
-	var changed bool
-	if changed = !c.lastMeta.Details.Equal(d); changed {
+	var changed = !c.lastMeta.Details.Equal(d)
+	if changed {
 		c.lastMeta = d
 	}
 	c.m.Unlock()
@@ -261,7 +280,7 @@ func (c *collector) setMeta(d Meta) {
 	}
 }
 
-func (c *collector) listener() {
+func (c *collector) fetchInitialMeta() (sb core.SmartBlock, state vclock.VClock, err error) {
 	defer func() {
 		select {
 		case <-c.ready:
@@ -270,43 +289,64 @@ func (c *collector) listener() {
 			close(c.ready)
 		}
 	}()
-	sb, err := c.ps.anytype.GetBlock(c.blockId)
-	if err != nil {
-		return
-	}
-
-	ss, err := sb.GetLastSnapshot()
-	if err != nil {
-		return
-	}
-	meta, err := ss.Meta()
-	if err != nil {
-		return
-	} else {
+	setCurrentMeta := func(meta core.SmartBlockMeta) {
 		c.m.Lock()
 		c.lastMeta = Meta{
 			BlockId:        c.blockId,
-			SmartBlockMeta: *meta,
+			SmartBlockMeta: meta,
 		}
 		c.m.Unlock()
-		close(c.ready)
 	}
-	state := ss.State()
-	var ch = make(chan core.SmartBlockMetaChange)
-	cancel, err := sb.SubscribeForMetaChanges(state, ch)
+	sb, err = c.ps.anytype.GetBlock(c.blockId)
 	if err != nil {
+		log.Infof("metaListener: GetBlock error: %v", err)
+		setCurrentMeta(*notFoundMeta)
+		err = errNotFound
 		return
 	}
-	defer cancel()
+	ss, err := sb.GetLastSnapshot()
+	if err != nil {
+		log.Infof("metaListener: GetLastSnapshot error: %v", err)
+		setCurrentMeta(core.SmartBlockMeta{})
+		err = errEmpty
+		return
+	}
+	m, err := ss.Meta()
+	if err != nil {
+		setCurrentMeta(*metaError(err.Error()))
+		return
+	}
+	if m != nil {
+		setCurrentMeta(*m)
+	} else {
+		setCurrentMeta(core.SmartBlockMeta{})
+	}
+	return sb, ss.State(), nil
+}
+
+func (c *collector) listener() {
 	for {
-		select {
-		case meta := <-ch:
-			c.setMeta(Meta{
-				BlockId:        c.blockId,
-				SmartBlockMeta: meta.SmartBlockMeta,
-			})
-		case <-c.quit:
+		sb, state, err := c.fetchInitialMeta()
+		if err != nil {
+			time.Sleep(time.Second * 5)
+			continue
+		}
+		var ch = make(chan core.SmartBlockMetaChange)
+		cancel, err := sb.SubscribeForMetaChanges(state, ch)
+		if err != nil {
 			return
+		}
+		defer cancel()
+		for {
+			select {
+			case meta := <-ch:
+				c.setMeta(Meta{
+					BlockId:        c.blockId,
+					SmartBlockMeta: meta.SmartBlockMeta,
+				})
+			case <-c.quit:
+				return
+			}
 		}
 	}
 }
