@@ -197,9 +197,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
-	if len(msgs) == 0 {
-		return
-	}
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
@@ -210,9 +207,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	if err = sb.source.WriteVersion(source.Version{
-		Meta:   nil, // TODO: fill meta
+		Meta:   sb.metaData,
 		Blocks: sb.Blocks(),
 	}); err != nil {
+		return
+	}
+
+	if len(msgs) == 0 {
 		return
 	}
 
@@ -271,9 +272,7 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 		return
 	}
 	sb.metaData.Details = copy
-	if err = sb.source.WriteVersion(source.Version{
-		Meta: sb.metaData,
-	}); err != nil {
+	if err = sb.Apply(sb.NewState(), NoHistory, NoEvent); err != nil {
 		return
 	}
 	sb.source.Meta().ReportChange(meta.Meta{
