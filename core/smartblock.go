@@ -310,7 +310,7 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 			details: snapshot.Details,
 			state:   vclock.NewFromMap(snapshot.State),
 			date:    t,
-			user:    "<todo>",
+			user:    m.AccAddr,
 		})
 	}
 
