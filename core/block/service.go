@@ -19,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -231,20 +232,35 @@ func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (id string, err erro
 }
 
 func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
-	var bt = core.SmartBlockTypePage
-	var style = model.BlockContentLink_Page
-	switch {
-	case req.Block.GetDashboard() != nil:
-		bt = core.SmartBlockTypeDashboard
-		style = model.BlockContentLink_Dashboard
-	}
-	csm, err := s.anytype.CreateBlock(bt)
+	csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
 	pageId = csm.ID()
-	log.Infof("created new smartBlock(%v): %v", bt, pageId)
+	log.Infof("created new smartBlock: %v", pageId)
+	var details []*pb.RpcBlockSetDetailsDetail
+	if req.Title != "" {
+		details = append(details, &pb.RpcBlockSetDetailsDetail{
+			Key:   "title",
+			Value: pbtypes.String(req.Title),
+		})
+	}
+	if req.Icon != "" {
+		details = append(details, &pb.RpcBlockSetDetailsDetail{
+			Key:   "icon",
+			Value: pbtypes.String(req.Icon),
+		})
+	}
+	if len(details) > 0 {
+		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
+			ContextId: pageId,
+			Details:   details,
+		}); err != nil {
+			err = fmt.Errorf("can't set details to page: %v", err)
+			return
+		}
+	}
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		linkId, err = b.Create(pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
@@ -252,7 +268,7 @@ func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, p
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
 						TargetBlockId: pageId,
-						Style:         style,
+						Style:         model.BlockContentLink_Page,
 					},
 				},
 			},

@@ -1077,7 +1077,8 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
 | targetId | [string](#string) |  | id of the closest block |
-| block | [model.Block](#anytype.model.Block) |  | page block |
+| title | [string](#string) |  | page title |
+| icon | [string](#string) |  | icon name |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
 

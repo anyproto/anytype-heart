@@ -16,8 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log"
 )
@@ -117,20 +115,9 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 			blockId, pageId, err = sf.fileSource.CreatePage(pb.RpcBlockCreatePageRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
-				Block: &model.Block{
-					Fields: &types.Struct{
-						Fields: map[string]*types.Value{
-							"name": pbtypes.String(entry.name),
-							"icon": pbtypes.String(":file_folder:"),
-						},
-					},
-					Content: &model.BlockContentOfPage{
-						Page: &model.BlockContentPage{
-							Style: model.BlockContentPage_Empty,
-						},
-					},
-				},
-				Position: pos,
+				Position:  pos,
+				Title:     entry.name,
+				Icon:      ":file_folder:",
 			})
 			sf.Lock()
 			if err != nil {
