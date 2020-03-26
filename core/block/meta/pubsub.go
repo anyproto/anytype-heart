@@ -139,7 +139,7 @@ func (p *pubSub) call(d Meta) {
 	ss := p.subscribers[d.BlockId]
 	if ss != nil {
 		for s := range ss {
-			s.(*subscriber).call(d)
+			go s.(*subscriber).call(d)
 		}
 	}
 }
