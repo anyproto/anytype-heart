@@ -442,17 +442,19 @@ func (mw *Middleware) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBloc
 }
 
 func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRequest) *pb.RpcBlockListMoveToNewPageResponse {
-	response := func(code pb.RpcBlockListMoveToNewPageResponseErrorCode, err error) *pb.RpcBlockListMoveToNewPageResponse {
-		m := &pb.RpcBlockListMoveToNewPageResponse{Error: &pb.RpcBlockListMoveToNewPageResponseError{Code: code}}
+	response := func(code pb.RpcBlockListMoveToNewPageResponseErrorCode, linkId string, err error) *pb.RpcBlockListMoveToNewPageResponse {
+		m := &pb.RpcBlockListMoveToNewPageResponse{Error: &pb.RpcBlockListMoveToNewPageResponseError{Code: code}, LinkId: linkId}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
-	if err := mw.blockService.MoveBlocksToNewPage(*req); err != nil {
-		return response(pb.RpcBlockListMoveToNewPageResponseError_UNKNOWN_ERROR, err)
+	linkId, err := mw.blockService.MoveBlocksToNewPage(*req);
+
+	if  err != nil {
+		return response(pb.RpcBlockListMoveToNewPageResponseError_UNKNOWN_ERROR, "", err)
 	}
-	return response(pb.RpcBlockListMoveToNewPageResponseError_NULL, nil)
+	return response(pb.RpcBlockListMoveToNewPageResponseError_NULL, linkId,nil)
 }
 
 func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse {
