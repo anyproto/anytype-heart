@@ -255,6 +255,14 @@ func (sb *smartBlock) Anytype() anytype.Service {
 }
 
 func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	if sb.metaData == nil {
+		sb.metaData = &core.SmartBlockMeta{}
+	}
+	if sb.metaData.Details == nil || sb.metaData.Details.Fields == nil {
+		sb.metaData.Details = &types.Struct{
+			Fields: make(map[string]*types.Value),
+		}
+	}
 	var copy = deepcopy.Copy(sb.metaData.Details).(*types.Struct)
 	for _, detail := range details {
 		copy.Fields[detail.Key] = detail.Value
