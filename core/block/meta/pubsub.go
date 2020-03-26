@@ -328,6 +328,9 @@ func (c *collector) listener() {
 	for {
 		sb, state, err := c.fetchInitialMeta()
 		if err != nil {
+			if err == errNotFound {
+				return
+			}
 			time.Sleep(time.Second * 5)
 			continue
 		}
