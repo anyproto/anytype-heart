@@ -153,19 +153,16 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 	t.Run("Simple: 2 p blocks", func(t *testing.T) {
 		sb := smarttest.New("test")
 
-		blocks := createBlocks([]string{"11111", "22222", "33333", "abcde", "55555"})
+		blocks := createBlocks([]string{"11111", "abcdef"})
 
 		sb.AddBlock(simple.New(&model.Block{
 			Id: "test",
-			ChildrenIds: []string{"1","2","3","4","5"},
+			ChildrenIds: []string{"1","2"},
 		})).
 			AddBlock(simple.New(blocks[0])).
-			AddBlock(simple.New(blocks[1])).
-			AddBlock(simple.New(blocks[2])).
-			AddBlock(simple.New(blocks[3])).
-			AddBlock(simple.New(blocks[4]))
+			AddBlock(simple.New(blocks[1]))
 
-		req := pasteHtmlReq(t, "4", model.Range{From: 2, To: 4}, []string{}, "<p>abcdef</p><p>hello</p>");
+		req := pasteHtmlReq(t, "1", model.Range{From: 2, To: 4}, []string{}, "<p>abcdef</p><p>hello</p>");
 
 		cb := NewClipboard(sb)
 
@@ -184,11 +181,14 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 		cIds := sb.Pick("test").Model().ChildrenIds
 		fmt.Println(">>>:::")
 		blocks = sb.Blocks()
-		fmt.Println("blocks", blocks)
+		//fmt.Println("blocks", blocks)
+		for i, b := range blocks {
+			fmt.Println("i:", i,  b)
+		}
 
 		fmt.Println("cIds", cIds)
-		for _, c := range cIds {
+	/*	for _, c := range cIds {
 			fmt.Println( sb.Pick(c).Model().GetText().Text)
-		}
+		}*/
 	})
 }

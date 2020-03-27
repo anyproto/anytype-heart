@@ -18,6 +18,7 @@ type Doc interface {
 	NewState() *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
+	Append(targetId string, id string) (ok bool)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -122,6 +123,19 @@ func (s *State) Unlink(id string) (ok bool) {
 		}
 		return true
 	})
+	return
+}
+
+func (s *State) Append(targetId string, id string) (ok bool) {
+	//s.Iterate(func(b simple.Block) bool {
+	//	if b.Model().Id == targetId {
+			parent := s.Get(targetId).Model()
+			parent.ChildrenIds = append(parent.ChildrenIds, id)//slice.Remove(parent.ChildrenIds, id)
+			ok = true
+			return ok
+	//	}
+	//	return true
+	//})
 	return
 }
 

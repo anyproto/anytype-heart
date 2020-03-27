@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	logging "github.com/ipfs/go-log"
 	"io/ioutil"
 	"os"
@@ -301,7 +302,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 						req.SelectedTextRange.From = 0
 						req.SelectedTextRange.To = 0
 
-						blockIds, err = cb.pasteBlocks(req.AnySlot, req.FocusedBlockId)
+						blockIds, err = cb.pasteBlocks(req.AnySlot, s, req.FocusedBlockId)
 						if err != nil {
 							return blockIds, err
 						}
@@ -357,7 +358,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		fmt.Println("HERE4", req.AnySlot)
 		if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 {
 			fmt.Println("HERE4", req.AnySlot)
-			blockIds, err = cb.pasteBlocks(req.AnySlot, req.FocusedBlockId)
+			blockIds, err = cb.pasteBlocks(req.AnySlot, s, req.FocusedBlockId)
 
 			fmt.Println(">>> target4", req.AnySlot, req.FocusedBlockId, blockIds, err)
 
@@ -413,7 +414,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		}
 	}
 	fmt.Println("HERE7", req.AnySlot)
-	blockIds, err = cb.pasteBlocks(req.AnySlot, targetId)
+	blockIds, err = cb.pasteBlocks(req.AnySlot, s, targetId)
 	if err != nil {
 		return blockIds, err
 	}
@@ -428,26 +429,42 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	return blockIds, cb.Apply(s)
 }
 
-func (cb *clipboard) pasteBlocks(blocksToPaste []*model.Block, targetId string) (blockIds []string, err error) {
-	s := cb.NewState()
+func (cb *clipboard) pasteBlocks(blocksToPaste []*model.Block, s *state.State, targetId string) (blockIds []string, err error) {
+	//parent := s.Pick(cb.Id()).Model()
+	//s := cb.NewState()
 	parent := s.Get(cb.RootId()).Copy().Model()
 
+	//fmt.Println("TARGET_ID", targetId)
+	//
 	emptyPage := false
+	//b := simple.New(&model.Block{Id: "XXX"})
+	//s.Add(b)
+	//s.InsertTo(targetId, model.Block_Bottom, b.Model().Id)
+	//
+	//s.Append("test", b.Model().Id)
+	//parent.ChildrenIds = append(parent.ChildrenIds, b.Model().Id)
+	//s.Set(parent)
 
+	//
 	blockIds = []string{}
 	blocks := []simple.Block{}
-
+	//
 	if len(parent.ChildrenIds) == 0 {
 		emptyPage = true
 	}
-
+	//
 	for i := 0; i < len(blocksToPaste); i++ {
 		pasteBlock := simple.New(blocksToPaste[i])
-		s.Add(pasteBlock)
+
 
 		pasteBlockId := pasteBlock.Model().Id
 		blockIds = append(blockIds, pasteBlockId)
 		blocks = append(blocks, pasteBlock)
+
+		s.Set(pasteBlock)
+		if err = s.InsertTo(targetId, model.Block_Bottom, pasteBlockId); err != nil {
+			return blockIds, err
+		}
 
 		// if file -> upload
 		// TODO: copy of file? Discuss it
