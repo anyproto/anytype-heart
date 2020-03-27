@@ -210,6 +210,8 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 
 	targetId := req.FocusedBlockId
 
+	//b :=
+	//fmt.Println("b:", b, "cb:", cb, cb.Id(), cb.RootId())
 	children := cb.Blocks()
 
 	reqFiltered := []*model.Block{}
@@ -299,14 +301,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 						req.SelectedTextRange.From = 0
 						req.SelectedTextRange.To = 0
 
-						blocks, err := cb.pasteBlocks(req.AnySlot, req.FocusedBlockId)
-						blockIds := []string{}
-						for i, _ := range blocks {
-							blockIds = append(blockIds, blocks[i].Model().Id)
-							s.Add(blocks[i])
-						}
-
-
+						blockIds, err = cb.pasteBlocks(req.AnySlot, req.FocusedBlockId)
 						if err != nil {
 							return blockIds, err
 						}
@@ -362,12 +357,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		fmt.Println("HERE4", req.AnySlot)
 		if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 {
 			fmt.Println("HERE4", req.AnySlot)
-			blocks, err := cb.pasteBlocks(req.AnySlot, req.FocusedBlockId)
-			blockIds := []string{}
-			for i, _ := range blocks {
-				blockIds = append(blockIds, blocks[i].Model().Id)
-				s.Add(blocks[i])
-			}
+			blockIds, err = cb.pasteBlocks(req.AnySlot, req.FocusedBlockId)
 
 			fmt.Println(">>> target4", req.AnySlot, req.FocusedBlockId, blockIds, err)
 
@@ -405,7 +395,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		sb := simple.New(newBlocks[0].Model())
 		s.Add(sb)
 		fmt.Println(">>>>>>", targetId, model.Block_Bottom, sb.Model().Id)
-		if err = s.InsertTo(targetId, model.Block_Bottom, sb.Model().Id); err != nil { // TODO: req.FocusedBlockId -> targetId
+		if err = s.InsertTo(req.FocusedBlockId, model.Block_Bottom, sb.Model().Id); err != nil { // TODO: req.FocusedBlockId -> targetId
 			fmt.Println("HERE621", req.AnySlot, err)
 			return blockIds, err
 		}
@@ -423,16 +413,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		}
 	}
 	fmt.Println("HERE7", req.AnySlot)
-
-	blocks, err := cb.pasteBlocks(req.AnySlot, targetId)
-	blockIds = []string{}
-	for i, _ := range blocks {
-		blockIds = append(blockIds, blocks[i].Model().Id)
-		s.Set(blocks[i])
-	}
-
-	fmt.Println("BLOCKIDS:", blockIds, blocks, "ERR:", err)
-
+	blockIds, err = cb.pasteBlocks(req.AnySlot, targetId)
 	if err != nil {
 		return blockIds, err
 	}
@@ -447,19 +428,19 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	return blockIds, cb.Apply(s)
 }
 
-func (cb *clipboard) pasteBlocks(blocksToPaste []*model.Block, targetId string) (blocks []simple.Block, err error) {
+func (cb *clipboard) pasteBlocks(blocksToPaste []*model.Block, targetId string) (blockIds []string, err error) {
 	s := cb.NewState()
 	parent := s.Get(cb.RootId()).Copy().Model()
 
 	emptyPage := false
 
-	blocks = []simple.Block{}
+	blockIds = []string{}
+	blocks := []simple.Block{}
 
 	if len(parent.ChildrenIds) == 0 {
 		emptyPage = true
 	}
 
-	blockIds := []string{}
 	for i := 0; i < len(blocksToPaste); i++ {
 		pasteBlock := simple.New(blocksToPaste[i])
 		s.Add(pasteBlock)
@@ -481,7 +462,7 @@ func (cb *clipboard) pasteBlocks(blocksToPaste []*model.Block, targetId string) 
 			s.Add(childBlock)
 
 			if err = s.InsertTo(targetId, model.Block_Bottom, childId); err != nil {
-				return blocks, err
+				return blockIds, err
 			}
 		}
 
@@ -489,11 +470,11 @@ func (cb *clipboard) pasteBlocks(blocksToPaste []*model.Block, targetId string) 
 			parent.ChildrenIds = append(parent.ChildrenIds, pasteBlockId)
 		} else {
 			if err = s.InsertTo(targetId, model.Block_Bottom, pasteBlockId); err != nil {
-				return blocks, err
+				return blockIds, err
 			}
 			targetId = pasteBlockId
 		}
 	}
 
-	return blocks, nil
+	return blockIds, nil
 }

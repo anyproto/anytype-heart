@@ -183,7 +183,8 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 		fmt.Println(":::")
 		cIds := sb.Pick("test").Model().ChildrenIds
 		fmt.Println(">>>:::")
-		///intln("blocks", blocks)
+		blocks = sb.Blocks()
+		fmt.Println("blocks", blocks)
 
 		fmt.Println("cIds", cIds)
 		for _, c := range cIds {
