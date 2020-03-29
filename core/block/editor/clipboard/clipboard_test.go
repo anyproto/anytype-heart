@@ -56,12 +56,12 @@ func createPage(t *testing.T, textArr []string) (sb *smarttest.SmartTest)  {
 
 	sb.AddBlock(simple.New(&model.Block{
 		Id: "test",
-		ChildrenIds: []string{"1", "2", "3", "4", "5"},
-	})).AddBlock(simple.New(blocks[0])).
-		AddBlock(simple.New(blocks[1])).
-		AddBlock(simple.New(blocks[2])).
-		AddBlock(simple.New(blocks[3])).
-		AddBlock(simple.New(blocks[4]))
+		ChildrenIds: cIds,
+	}))
+
+	for i, _ := range blocks {
+		sb.AddBlock(simple.New(blocks[i]))
+	}
 
 	return sb
 }
@@ -77,11 +77,12 @@ func createPageWithMarks(t *testing.T, textArr []string, marksArr [][]*model.Blo
 }
 
 func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string)  {
-	blocks := sb.Blocks()
-	require.Len(t, len(blocks), len(textArr))
+	cIds := sb.Pick("test").Model().ChildrenIds
 
-	for i, b := range blocks {
-		require.Equal(t, textArr[i], b.GetText().Text)
+	require.Equal(t, len(cIds), len(textArr))
+
+	for i, c := range cIds {
+		require.Equal(t, textArr[i], sb.Pick(c).Model().GetText().Text)
 	}
 }
 
@@ -94,6 +95,11 @@ func checkBlockTextDebug(t *testing.T,  sb *smarttest.SmartTest, textArr []strin
 	cIds := sb.Pick("test").Model().ChildrenIds
 	for _, c := range cIds {
 		fmt.Println( sb.Pick(c))
+	}
+	blocks := sb.Blocks()
+	fmt.Println("blocks", blocks)
+	for i, b := range blocks {
+		fmt.Println("i:", i,  b)
 	}
 }
 
@@ -140,6 +146,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	require.NoError(t, err)
 }
 */
+
 func pasteHtmlReq(t *testing.T, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) (req pb.RpcBlockPasteRequest) {
 	req = pb.RpcBlockPasteRequest{}
 	if id != "" { req.FocusedBlockId = id }
@@ -149,46 +156,16 @@ func pasteHtmlReq(t *testing.T, id string, textRange model.Range, selectedBlockI
 	return req
 }
 
+func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
+	cb := NewClipboard(sb)
+	_, err  := cb.Paste(pasteHtmlReq(t, id, textRange, selectedBlockIds, htmlSlot))
+	require.NoError(t, err)
+}
+
 func TestCommonSmart_splitMarks(t *testing.T) {
 	t.Run("Simple: 2 p blocks", func(t *testing.T) {
-		sb := smarttest.New("test")
-
-		blocks := createBlocks([]string{"11111", "abcdef"})
-
-		sb.AddBlock(simple.New(&model.Block{
-			Id: "test",
-			ChildrenIds: []string{"1","2"},
-		})).
-			AddBlock(simple.New(blocks[0])).
-			AddBlock(simple.New(blocks[1]))
-
-		req := pasteHtmlReq(t, "1", model.Range{From: 2, To: 4}, []string{}, "<p>abcdef</p><p>hello</p>");
-
-		cb := NewClipboard(sb)
-
-		fmt.Println("req:", req)
-		blockIds, err  := cb.Paste(req)
-
-		fmt.Println("blockIds:", blockIds, "err:", err)
-
-		textCheck := []string{"11111", "22222", "33333", "ab", "abcdef", "hello", "e", "55555"}
-		for i, _ := range textCheck {
-			fmt.Println( textCheck[i])
-		}
-
-		//s := sb.NewState()
-		fmt.Println(":::")
-		cIds := sb.Pick("test").Model().ChildrenIds
-		fmt.Println(">>>:::")
-		blocks = sb.Blocks()
-		//fmt.Println("blocks", blocks)
-		for i, b := range blocks {
-			fmt.Println("i:", i,  b)
-		}
-
-		fmt.Println("cIds", cIds)
-	/*	for _, c := range cIds {
-			fmt.Println( sb.Pick(c).Model().GetText().Text)
-		}*/
+		sb := createPage(t, []string{"11111","22222", "33333", "abcde", "55555"})
+		pasteHtml(t, sb,"4", model.Range{From: 2, To: 4}, []string{}, "<p>lkjhg</p><p>hello</p>")
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "ab", "lkjhg", "hello", "e", "55555"})
 	})
 }

@@ -207,13 +207,17 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	oldMarks := &model.BlockContentTextMarks{}
 	r := model.Range{From: from, To: to}
 	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
-	// TODO:
+
+	style := t.content.Style
+	if style == model.BlockContentText_Title {
+		style = model.BlockContentText_Header2
+	}
 
 	t.content.Marks = oldMarks
 	newBlock := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:    string(runes[to:]),
-			Style:   t.content.Style,
+			Style:   style,
 			Marks:   newMarks,
 			Checked: t.content.Checked,
 		}},
