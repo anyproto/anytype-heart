@@ -649,7 +649,7 @@ func (mw *Middleware) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *
 
 func (mw *Middleware) UploadFile(req *pb.RpcUploadFileRequest) *pb.RpcUploadFileResponse {
 	response := func(hash string, code pb.RpcUploadFileResponseErrorCode, err error) *pb.RpcUploadFileResponse {
-		m := &pb.RpcUploadFileResponse{Error: &pb.RpcUploadFileResponseError{Code: code}}
+		m := &pb.RpcUploadFileResponse{Error: &pb.RpcUploadFileResponseError{Code: code}, Hash: hash}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
