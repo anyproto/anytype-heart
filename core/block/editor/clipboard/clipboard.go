@@ -3,6 +3,7 @@ package clipboard
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	logging "github.com/ipfs/go-log"
 	"io/ioutil"
@@ -93,7 +94,7 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 	}
 
 	for _, id := range ids {
-		s.Unlink(id)
+		s.Remove(id)
 	}
 
 	if err != nil {
@@ -199,7 +200,7 @@ func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, 
 	log.Debug("BLOCKS text:", req.AnySlot)
 
 	blockIds, err = cb.pasteAny(req)
-	log.Error("ERROR pasteAny:", err)
+	fmt.Println("ERROR pasteAny:", err)
 	return blockIds, err
 
 }
@@ -221,7 +222,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
 	isMultipleBlocksToPaste := len(req.AnySlot) > 1
 	firstPasteBlockText := req.AnySlot[0].GetText()
-
 
 	if req.SelectedTextRange == nil {
 		req.SelectedTextRange = &model.Range{From: 0, To: 0}
@@ -249,7 +249,9 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	focusedBlock :=  cb.Pick(targetId)
 	focusedBlockText, ok := focusedBlock.(text.Block)
 
-	isEmptyPage := !ok && len(req.SelectedBlockIds) == 0
+	cIds := cb.Pick(cb.Id()).Model().ChildrenIds
+
+	isEmptyPage := len(cIds) == 0
 	if isEmptyPage {
 		root := cb.Pick(cb.Id())
 		if root != nil && root.Model() != nil && len(root.Model().ChildrenIds) > 0 {
@@ -265,6 +267,9 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 				s.Set(root)
 
 				targetId = newBlock.Model().Id
+				focusedBlock =  cb.Pick(targetId)
+				focusedBlockText, ok = focusedBlock.(text.Block)
+
 
 				for _, childId := range b.ChildrenIds {
 					childBlock := s.Get(childId)
@@ -279,7 +284,19 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		}
 	}
 
+/*	fmt.Println("HERE1:", targetId, focusedBlock, focusedBlockText,  isFocusedText,  isSelectedBlocks)
+	if targetId == "" && len(req.SelectedBlockIds) == 0 {
+
+		cIds := cb.Pick(cb.Id()).Model().ChildrenIds
+		targetId = cb.Pick(cIds[len(cIds) - 1]).Model().Id
+		focusedBlock =  cb.Pick(targetId)
+		focusedBlockText, ok = focusedBlock.(text.Block)
+
+		fmt.Println("HERE2:", targetId)
+	}*/
+
 	if ok && focusedBlock != nil && focusedBlockText != nil && !isSelectedBlocks {
+		fmt.Println("HERE3:", targetId)
 		focusedContent, isFocusedText = focusedBlock.Model().Content.(*model.BlockContentOfText)
 		isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
 
@@ -289,14 +306,28 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		isPasteWithSplit = !isPasteInstead && !isPasteBottom && !isPasteTop
 	}
 
+	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
 	pasteSingleTextInFocusedTitle := isFocusedTitle && !isMultipleBlocksToPaste
 	pasteMultipleBlocksInFocusedTitle := isFocusedTitle && isMultipleBlocksToPaste
 	pasteSingleTextInFocusedText := isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste
 	pasteMultipleBlocksInFocusedText := isFocusedText && isMultipleBlocksToPaste
 	pasteMultipleBlocksOnSelectedBlocks := isSelectedBlocks
 
+	fmt.Println("HERE4:", targetId, focusedBlock, focusedBlockText,  isFocusedText,  isSelectedBlocks)
+
 	switch true {
+
+	case pasteToTheEnd:
+		targetId = cb.Pick(cIds[len(cIds) - 1]).Model().Id
+		blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
+		if err != nil {
+			return blockIds, err
+		}
+
+		break
+
 	case pasteSingleTextInFocusedTitle:
+		fmt.Println("@pasteSingleTextInFocusedTitle")
 		firstPasteBlockText.Text = strings.Replace(firstPasteBlockText.Text, "\n", " ", -1)
 		firstPasteBlockText.Marks = &model.BlockContentTextMarks{}
 
@@ -307,6 +338,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		break
 
 	case pasteSingleTextInFocusedText:
+		fmt.Println("@pasteSingleTextInFocusedText")
 		err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, firstPasteBlockText.Text, firstPasteBlockText.Marks.Marks)
 		if err != nil {
 			return blockIds, err
@@ -314,6 +346,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		break
 
 	case pasteMultipleBlocksInFocusedText:
+		fmt.Println("@pasteMultipleBlocksInFocusedText")
 		if isPasteTop {
 			log.Debug("@isPasteTop")
 			blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
@@ -322,7 +355,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 			}
 
 			if len(focusedContent.Text.Text) == 0 {
-				s.Unlink(focusedBlock.Model().Id)
+				s.Remove(focusedBlock.Model().Id)
 			}
 
 		} else if isPasteBottom {
@@ -376,21 +409,17 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 			if err != nil {
 				return blockIds, err
 			}
-
-/*
-			if len(txt) == 0 && !pasteMultipleBlocksInFocusedTitle {
-				s.Unlink(targetId)
-			}*/
 		}
 		break
 
 	case pasteMultipleBlocksOnSelectedBlocks:
+		fmt.Println("@pasteMultipleBlocksOnSelectedBlocks")
 		blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
 		if err != nil {
 			return blockIds, err
 		}
 		for _, selectedBlockId := range req.SelectedBlockIds {
-			s.Unlink(selectedBlockId)
+			s.Remove(selectedBlockId)
 		}
 
 		break
