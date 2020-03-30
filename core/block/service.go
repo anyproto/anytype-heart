@@ -206,16 +206,15 @@ func (s *service) CloseBlock(id string) (err error) {
 }
 
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
-	archiveId := s.anytype.PredefinedBlocks().Archive
-	return s.Do(archiveId, func(b smartblock.SmartBlock) error {
+	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(*editor.Archive)
 		if ! ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 		if req.IsArchived {
-			return archive.UnArchive(req.BlockId)
-		} else {
 			return archive.Archive(req.BlockId)
+		} else {
+			return archive.UnArchive(req.BlockId)
 		}
 		return nil
 	})
