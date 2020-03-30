@@ -26,6 +26,18 @@ func createBlocks(textArr []string) ([]*model.Block) {
 	return blocks
 }
 
+func createBlocksWithId(textArr []string, idsArr []string) ([]*model.Block) {
+	blocks := []*model.Block{}
+	for i := 0; i < len(textArr); i++  {
+		blocks = append(blocks, &model.Block{Id: idsArr[i],
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{ Text: textArr[i] },
+			},
+		})
+	}
+	return blocks
+}
+
 func createBlocksWithMarks(textArr []string, marksArr [][]*model.BlockContentTextMark) ([]*model.Block) {
 	blocks := []*model.Block{}
 	for i := 0; i < len(textArr); i++  {
@@ -94,13 +106,13 @@ func checkBlockTextDebug(t *testing.T,  sb *smarttest.SmartTest, textArr []strin
 	fmt.Println("--------")
 	cIds := sb.Pick("test").Model().ChildrenIds
 	for _, c := range cIds {
-		fmt.Println( sb.Pick(c))
+		fmt.Println( sb.Pick(c).Model().GetText())
 	}
-	blocks := sb.Blocks()
+/*	blocks := sb.Blocks()
 	fmt.Println("blocks", blocks)
 	for i, b := range blocks {
-		fmt.Println("i:", i,  b)
-	}
+		fmt.Println("i:", i,  b.GetText())
+	}*/
 }
 
 func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark)  {
@@ -125,18 +137,19 @@ func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.
 	}
 }
 
-/*func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
+func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
+	cb := NewClipboard(sb)
 	req := pb.RpcBlockPasteRequest{}
 	if id != "" { req.FocusedBlockId = id }
 	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
-	req.SelectedTextRange = &textRange
 	req.AnySlot = blocks
-	_, err := sb.pasteAny(req)
+	req.SelectedTextRange = &textRange
 
+	_, err  := cb.Paste(req)
 	require.NoError(t, err)
 }
 
-func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
+/*func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
 	req := pb.RpcBlockPasteRequest{}
 	if id != "" { req.FocusedBlockId = id }
 	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
@@ -144,21 +157,18 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	req.SelectedTextRange = &textRange
 	_, err := fx.pasteText(req)
 	require.NoError(t, err)
-}
-*/
+}*/
 
-func pasteHtmlReq(t *testing.T, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) (req pb.RpcBlockPasteRequest) {
-	req = pb.RpcBlockPasteRequest{}
+
+func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
+	cb := NewClipboard(sb)
+	req := pb.RpcBlockPasteRequest{}
 	if id != "" { req.FocusedBlockId = id }
 	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
 	req.HtmlSlot = htmlSlot
 	req.SelectedTextRange = &textRange
-	return req
-}
 
-func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
-	cb := NewClipboard(sb)
-	_, err  := cb.Paste(pasteHtmlReq(t, id, textRange, selectedBlockIds, htmlSlot))
+	_, err  := cb.Paste(req)
 	require.NoError(t, err)
 }
 
@@ -227,5 +237,49 @@ func TestCommonSmart_pasteHtml(t *testing.T) {
 		sb := createPage(t, []string{})
 		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n");
 		checkBlockText(t, sb, []string{"Foo", "bar\nbaz"});
+	})
+}
+
+func TestCommonSmart_pasteAny(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
+		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
+		pasteAny(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555"});
+	})
+
+	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
+		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
+		pasteAny(t, sb, "4", model.Range{From: 2, To: 2}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "erty", "55555"});
+	})
+
+	t.Run("3. Cursor: end, range == 0. Expected behaviour: insert after block", func(t *testing.T) {
+		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
+		pasteAny(t, sb, "4", model.Range{From: 6, To: 6}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb", "55555"});
+	})
+
+	t.Run("4. Cursor: from 1/4 to 3/4, range == 1/2. Expected behaviour: split block top + bottom, remove Range, insert in a middle", func(t *testing.T) {
+		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
+		pasteAny(t, sb, "4", model.Range{From: 2, To: 4}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "ty", "55555"});
+	})
+
+	t.Run("5. Cursor: from start to middle, range == 1/2. Expected Behavior: top insert, range removal", func(t *testing.T) {
+		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
+		pasteAny(t, sb, "4", model.Range{From: 0, To: 3}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "rty", "55555"});
+	})
+
+	t.Run("6. Cursor: middle to end, range == 1/2. Expected Behavior: bottom insert, range removal", func(t *testing.T) {
+		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
+		pasteAny(t, sb, "4", model.Range{From: 3, To: 6}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qwe", "aaaaa", "bbbbb", "55555"});
+	})
+
+	t.Run("7. Cursor from start to end, range == 1. Expected behavior: bottom / top insert, block deletion", func(t *testing.T) {
+		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
+		pasteAny(t, sb, "4", model.Range{From: 0, To: 6}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "55555"});
 	})
 }

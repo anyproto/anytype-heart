@@ -317,11 +317,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	case pasteMultipleBlocksInFocusedText:
 		if isPasteTop {
 			fmt.Println("@isPasteTop")
-			pos := model.Block_Top
-			if isFocusedTitle {
-				pos = model.Block_Bottom
-			}
-			blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, pos, true)
+			blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
 			if err != nil {
 				return blockIds, err
 			}
@@ -355,7 +351,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 				return blockIds, err
 			}
 
-			blockIds, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
+			blockIds, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
 			if err != nil {
 				return blockIds, err
 			}
