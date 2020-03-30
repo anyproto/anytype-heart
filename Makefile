@@ -24,13 +24,10 @@ lint:
 	golint `go list ./... | grep -v /vendor/`
 
 test:
-	go test github.com/anytypeio/go-anytype-middleware/...
+	go test -cover github.com/anytypeio/go-anytype-middleware/...
 
 test-race:
 	go test -race github.com/anytypeio/go-anytype-middleware/...
-
-fast-test:
-	go test github.com/anytypeio/go-anytype-middleware/core/block/... github.com/anytypeio/go-anytype-middleware/util/... -cover
 
 test-deps:
 	go install github.com/golang/mock/mockgen
