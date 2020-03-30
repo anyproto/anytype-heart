@@ -205,7 +205,7 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 		}
 		return m
 	}
-	if err := mw.blockService.UploadFile(*req); err != nil {
+	if err := mw.blockService.UploadBlockFile(*req); err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockUploadResponseError_NULL, nil)
@@ -645,4 +645,20 @@ func (mw *Middleware) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *
 		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockBookmarkFetchResponseError_NULL, nil)
+}
+
+func (mw *Middleware) UploadFile(req *pb.RpcUploadFileRequest) *pb.RpcUploadFileResponse {
+	response := func(hash string, code pb.RpcUploadFileResponseErrorCode, err error) *pb.RpcUploadFileResponse {
+		m := &pb.RpcUploadFileResponse{Error: &pb.RpcUploadFileResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	hash, err := mw.blockService.UploadFile(*req)
+	if err != nil {
+		return response("", pb.RpcUploadFileResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(hash, pb.RpcUploadFileResponseError_NULL, nil)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	logging "github.com/ipfs/go-log"
@@ -75,7 +76,8 @@ type Service interface {
 	SetBackgroundColor(contextId string, color string, blockIds ...string) error
 	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
-	UploadFile(req pb.RpcBlockUploadRequest) error
+	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
+	UploadBlockFile(req pb.RpcBlockUploadRequest) error
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
 	Undo(req pb.RpcBlockUndoRequest) error
@@ -446,10 +448,25 @@ func (s *service) SetAlign(contextId string, align model.BlockAlign, blockIds ..
 	})
 }
 
-func (s *service) UploadFile(req pb.RpcBlockUploadRequest) (err error) {
+func (s *service) UploadBlockFile(req pb.RpcBlockUploadRequest) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		return b.Upload(req.BlockId, req.FilePath, req.Url)
 	})
+}
+
+func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
+	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
+	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
+		f(tempFile)
+	})
+	if err = u.DoType(req.LocalPath, req.Url, req.Type); err != nil {
+		return
+	}
+	result := tempFile.Model().GetFile()
+	if result.State != model.BlockContentFile_Done {
+		return "", fmt.Errorf("unexpected upload error")
+	}
+	return result.Hash, nil
 }
 
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {

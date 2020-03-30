@@ -26,6 +26,7 @@ func NewUploader(a anytype.Service, fn func(f func(file Block))) Uploader {
 
 type Uploader interface {
 	DoAuto(localPath string)
+	DoType(localPath, url string, fType model.BlockContentFileType) (err error)
 }
 
 type uploader struct {
@@ -41,6 +42,11 @@ func (u *uploader) DoAuto(localPath string) {
 	} else {
 		u.Do(localPath, "")
 	}
+}
+
+func (u *uploader) DoType(localPath, url string, fType model.BlockContentFileType) (err error) {
+	u.isImage = fType == model.BlockContentFile_Image
+	return u.do(localPath, url)
 }
 
 func (u *uploader) DoImage(localPath, url string) {
@@ -61,7 +67,7 @@ func (u *uploader) DoImage(localPath, url string) {
 
 func (u *uploader) Do(localPath, url string) {
 	if err := u.do(localPath, url); err != nil {
-		log.Warningf("upload file error: %v", err)
+		log.Warnf("upload file error: %v", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})

@@ -42,8 +42,6 @@ type Middleware struct {
 	debugGrpcEventSenderMutex sync.Mutex
 }
 
-
-
 // Start starts the anytype node and HTTP gateway
 func (mw *Middleware) Start() error {
 	err := mw.Anytype.Start()
