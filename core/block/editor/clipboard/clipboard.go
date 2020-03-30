@@ -3,7 +3,6 @@ package clipboard
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	logging "github.com/ipfs/go-log"
 	"io/ioutil"
@@ -158,8 +157,8 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("filepath.Join(dir, fileName)", filepath.Join(dir, fileName), dir, fileName)
-	fmt.Println(html)
+	log.Debug("filepath.Join(dir, fileName)", filepath.Join(dir, fileName), dir, fileName)
+	log.Debug(html)
 
 	return filePath, nil
 }
@@ -167,7 +166,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 func (cb *clipboard) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
-	fmt.Println("HERE1", req.HtmlSlot, blocks)
+	log.Debug("HERE1", req.HtmlSlot, blocks)
 	req.AnySlot = blocks
 	return cb.pasteAny(req)
 }
@@ -197,7 +196,7 @@ func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, 
 		})
 	}
 
-	fmt.Println("BLOCKS text:", req.AnySlot)
+	log.Debug("BLOCKS text:", req.AnySlot)
 
 	blockIds, err = cb.pasteAny(req)
 	log.Error("ERROR pasteAny:", err)
@@ -316,7 +315,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 
 	case pasteMultipleBlocksInFocusedText:
 		if isPasteTop {
-			fmt.Println("@isPasteTop")
+			log.Debug("@isPasteTop")
 			blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
 			if err != nil {
 				return blockIds, err
@@ -327,14 +326,14 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 			}
 
 		} else if isPasteBottom {
-			fmt.Println("@isPasteBottom")
+			log.Debug("@isPasteBottom")
 			blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
 			if err != nil {
 				return blockIds, err
 			}
 
 		} else if isPasteInstead {
-			fmt.Println("@isPasteInstead")
+			log.Debug("@isPasteInstead")
 			blockIds, txt, err := cb.insertBlocks(s, req.FocusedBlockId, req.AnySlot, model.Block_Bottom, false)
 			if err != nil {
 				return blockIds, err
@@ -349,7 +348,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 			}
 
 		} else if isPasteWithSplit {
-			fmt.Println("@isPasteWithSplit")
+			log.Debug("@isPasteWithSplit")
 
 			newBlocks, _, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
 			if err != nil {
