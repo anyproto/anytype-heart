@@ -162,10 +162,70 @@ func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	require.NoError(t, err)
 }
 
-func TestCommonSmart_splitMarks(t *testing.T) {
+func TestCommonSmart_pasteHtml(t *testing.T) {
 	t.Run("Simple: 2 p blocks", func(t *testing.T) {
 		sb := createPage(t, []string{"11111","22222", "33333", "abcde", "55555"})
 		pasteHtml(t, sb,"4", model.Range{From: 2, To: 4}, []string{}, "<p>lkjhg</p><p>hello</p>")
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "ab", "lkjhg", "hello", "e", "55555"})
+	})
+
+	t.Run("Simple: 1 p 1 h2", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<h2>lorem</h2><p>ipsum</p>");
+		checkBlockText(t, sb, []string{"lorem", "ipsum"});
+	})
+
+	t.Run("Simple: 1 p with markup", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<p>i<b>p</b>s <i>um</i> ololo</p>");
+		checkBlockText(t, sb, []string{"ips um ololo"});
+	})
+
+	t.Run("Markup in header", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<h1>foo <em>bar</em> baz</h1>\n");
+		checkBlockText(t, sb, []string{"foo bar baz"});
+	})
+
+	t.Run("Different headers", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<h3>foo</h3>\n<h2>foo</h2>\n<h1>foo</h1>\n");
+		checkBlockText(t, sb, []string{"foo", "foo", "foo"});
+	})
+
+	t.Run("Code block -> header", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<pre><code># foo\n</code></pre>\n",);
+		checkBlockText(t, sb, []string{"# foo\n\n"});
+	})
+
+	t.Run("Link markup, auto paragraph", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<div><a href=\"bar\">foo</a></div>\n");
+		checkBlockText(t, sb, []string{"foo"});
+	})
+
+	t.Run("", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<table><tr><td>\nfoo\n</td></tr></table>\n");
+		checkBlockText(t, sb, []string{"foo"});
+	})
+
+	t.Run("Link in paragraph", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<p><a href=\"url\">foo</a></p>\n");
+		checkBlockText(t, sb, []string{"foo"});
+	})
+
+	t.Run("Nested tags: p inside quote && header with markup", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<h1><a href=\"/url\">Foo</a></h1>\n<blockquote>\n<p>bar</p>\n</blockquote>\n");
+		checkBlockText(t, sb, []string{"Foo", "bar"});
+	})
+
+	t.Run("Nested tags: h1 && p inside quote", func(t *testing.T) {
+		sb := createPage(t, []string{})
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n");
+		checkBlockText(t, sb, []string{"Foo", "bar\nbaz"});
 	})
 }
