@@ -106,7 +106,7 @@ func checkBlockTextDebug(t *testing.T,  sb *smarttest.SmartTest, textArr []strin
 	fmt.Println("--------")
 	cIds := sb.Pick("test").Model().ChildrenIds
 	for _, c := range cIds {
-		fmt.Println( sb.Pick(c).Model().GetText())
+		fmt.Println( sb.Pick(c).Model().Id, sb.Pick(c).Model().GetText())
 	}
 /*	blocks := sb.Blocks()
 	fmt.Println("blocks", blocks)
@@ -268,7 +268,7 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 	t.Run("5. Cursor: from start to middle, range == 1/2. Expected Behavior: top insert, range removal", func(t *testing.T) {
 		sb := createPage(t, []string{"11111", "22222", "33333", "qwerty", "55555"})
 		pasteAny(t, sb, "4", model.Range{From: 0, To: 3}, []string{}, createBlocksWithId([]string{"aaaaa", "bbbbb"}, []string{"new1", "new2"}));
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "rty", "55555"});
+		checkBlockTextDebug(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "rty", "55555"});
 	})
 
 	t.Run("6. Cursor: middle to end, range == 1/2. Expected Behavior: bottom insert, range removal", func(t *testing.T) {

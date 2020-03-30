@@ -232,6 +232,7 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 		newBlocks = append(newBlocks, newBlock)
 	}
 
+
 	return newBlocks, t.content.Text, nil
 }
 

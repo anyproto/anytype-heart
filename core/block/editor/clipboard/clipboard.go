@@ -335,26 +335,27 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 
 		} else if isPasteInstead {
 			fmt.Println("@isPasteInstead")
-			blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, false)
+			blockIds, txt, err := cb.insertBlocks(s, req.FocusedBlockId, req.AnySlot, model.Block_Bottom, false)
 			if err != nil {
 				return blockIds, err
 			}
 
 			if !pasteMultipleBlocksInFocusedTitle {
-				s.Unlink(targetId)
+				s.Remove(req.FocusedBlockId)
+			}
+
+			if len(txt) == 0 {
+				s.Remove(req.FocusedBlockId)
 			}
 
 		} else if isPasteWithSplit {
 			fmt.Println("@isPasteWithSplit")
-			newBlocks, txt, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
+
+			newBlocks, _, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
 			if err != nil {
 				return blockIds, err
 			}
 
-			blockIds, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
-			if err != nil {
-				return blockIds, err
-			}
 
 			if len(newBlocks) > 0 {
 				newBlock := newBlocks[0]
@@ -366,9 +367,21 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 				blockIds = append(blockIds, newBlock.Model().Id)
 			}
 
+			pos := model.Block_Bottom
+			isReversed := false
+			if req.SelectedTextRange.From == 0 {
+				pos = model.Block_Top
+				isReversed = true
+			}
+			blockIds, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, pos, isReversed)
+			if err != nil {
+				return blockIds, err
+			}
+
+/*
 			if len(txt) == 0 && !pasteMultipleBlocksInFocusedTitle {
 				s.Unlink(targetId)
-			}
+			}*/
 		}
 		break
 
