@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var filesKeysCache = make(map[string]map[string]string)
@@ -20,7 +20,7 @@ type File interface {
 
 type file struct {
 	hash  string
-	index *lsmodel.FileInfo
+	index *storage.FileInfo
 	node  *Anytype
 }
 

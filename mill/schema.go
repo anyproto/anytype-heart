@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/textileio/go-textile/pb"
-	"github.com/textileio/go-textile/schema"
 	"github.com/xeipuuv/gojsonschema"
+
+	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/schema"
 )
 
 var pbMarshaler = jsonpb.Marshaler{
@@ -37,7 +39,7 @@ func (m *Schema) Options(add map[string]interface{}) (string, error) {
 }
 
 func (m *Schema) Mill(input []byte, name string) (*Result, error) {
-	var node pb.Node
+	var node storage.Node
 	if err := jsonpb.Unmarshal(bytes.NewReader(input), &node); err != nil {
 		return nil, err
 	}

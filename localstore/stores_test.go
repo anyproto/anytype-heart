@@ -5,15 +5,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
+	badger "github.com/ipfs/go-ds-badger"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_AddIndex(t *testing.T) {
-	ds, err := ipfslite.BadgerDatastore(filepath.Join(os.TempDir(), "anytypetestds"))
+	ds2, err := badger.NewDatastore(filepath.Join(os.TempDir(), "anytypetestds"), &badger.DefaultOptions)
 	require.NoError(t, err)
 
+	ds := datastore.Batching(ds2)
 	type Item struct {
 		PrimKey string
 		Field1  string

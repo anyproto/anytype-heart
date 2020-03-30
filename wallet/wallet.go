@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/anytypeio/go-slip10"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/textileio/go-textile/wallet"
 	"github.com/tyler-smith/go-bip39"
 )
 
@@ -106,16 +106,17 @@ func (w *Wallet) AccountAt(index int, passphrase string) (Keypair, error) {
 		}
 		return nil, err
 	}
-	masterKey, err := wallet.DeriveForPath(AnytypeAccountPrefix, seed)
+	masterKey, err := slip10.DeriveForPath(AnytypeAccountPrefix, seed)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := masterKey.Derive(wallet.FirstHardenedIndex + uint32(index))
+	key, err := masterKey.Derive(slip10.FirstHardenedIndex + uint32(index))
 	if err != nil {
 		return nil, err
 	}
-	reader := bytes.NewReader(key.Key)
+
+	reader := bytes.NewReader(key.RawSeed())
 	privKey, _, err := crypto.GenerateEd25519Key(reader)
 
 	return NewKeypairFromPrivKey(KeypairTypeAccount, privKey)

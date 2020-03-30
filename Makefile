@@ -19,4 +19,3 @@ protos:
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pb/ pb/model/protos/*.proto; mv pb/github.com/anytypeio/go-anytype-library/pb/model/*.go pb/model/; rm -rf pb/github.com
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pb/ pb/storage/protos/*.proto; mv pb/github.com/anytypeio/go-anytype-library/pb/storage/*.go pb/storage/; rm -rf pb/github.com
-	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pb/ pb/lsmodel/protos/*.proto; mv pb/github.com/anytypeio/go-anytype-library/pb/lsmodel/*.go pb/lsmodel/; rm -rf pb/github.com

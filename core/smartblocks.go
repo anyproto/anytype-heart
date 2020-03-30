@@ -6,9 +6,8 @@ import (
 	"strings"
 
 	"github.com/textileio/go-threads/core/net"
-	"github.com/textileio/go-threads/crypto/symmetric"
-
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/crypto/symmetric"
 )
 
 var ErrBlockSnapshotNotFound = fmt.Errorf("block snapshot not found")
@@ -96,7 +95,7 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 		return thread.Info{}, err
 	}
 
-	return a.ts.CreateThread(context.TODO(), thrdId, net.ThreadKey(thread.NewKey(followKey, readKey)), net.LogKey(a.device))
+	return a.t.CreateThread(context.TODO(), thrdId, net.ThreadKey(thread.NewKey(followKey, readKey)), net.LogKey(a.device))
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
@@ -107,7 +106,7 @@ func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
 			return nil, err
 		}
 
-		thrd, err = a.ts.GetThread(context.TODO(), tid)
+		thrd, err = a.t.GetThread(context.TODO(), tid)
 		if err != nil {
 			return nil, err
 		}

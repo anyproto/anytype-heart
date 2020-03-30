@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log"
 	"github.com/multiformats/go-base32"
+
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var ErrDuplicateKey = fmt.Errorf("duplicate key")
@@ -28,13 +29,13 @@ type LocalStore struct {
 
 type FileStore interface {
 	Indexable
-	Add(file *lsmodel.FileInfo) error
-	GetByHash(hash string) (*lsmodel.FileInfo, error)
-	GetBySource(mill string, source string, opts string) (*lsmodel.FileInfo, error)
-	GetByChecksum(mill string, checksum string) (*lsmodel.FileInfo, error)
+	Add(file *storage.FileInfo) error
+	GetByHash(hash string) (*storage.FileInfo, error)
+	GetBySource(mill string, source string, opts string) (*storage.FileInfo, error)
+	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
 	AddTarget(hash string, target string) error
 	RemoveTarget(hash string, target string) error
-	ListByTarget(target string) ([]*lsmodel.FileInfo, error)
+	ListByTarget(target string) ([]*storage.FileInfo, error)
 	Count() (int, error)
 	DeleteByHash(hash string) error
 }
@@ -50,11 +51,11 @@ type Indexable interface {
 }
 
 type Index struct {
-	Prefix  string
-	Name    string
-	Keys    func(val interface{}) []IndexKeyParts
-	Unique  bool
-	Hash    bool
+	Prefix string
+	Name   string
+	Keys   func(val interface{}) []IndexKeyParts
+	Unique bool
+	Hash   bool
 }
 
 type IndexKeyParts []string

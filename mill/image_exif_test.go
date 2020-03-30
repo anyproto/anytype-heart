@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/textileio/go-textile/mill/testdata"
+	"github.com/anytypeio/go-anytype-library/mill/testdata"
 )
 
 func TestImageExif_Mill(t *testing.T) {

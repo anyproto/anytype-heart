@@ -8,8 +8,8 @@ import (
 	"math"
 
 	"github.com/anytypeio/go-anytype-library/mill"
-	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
-	"github.com/anytypeio/go-anytype-library/schema"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/schema/anytype"
 )
 
 type Image interface {
@@ -21,7 +21,7 @@ type Image interface {
 
 type image struct {
 	hash            string // directory hash
-	variantsByWidth map[int]*lsmodel.FileInfo
+	variantsByWidth map[int]*storage.FileInfo
 	node            *Anytype
 }
 
@@ -70,12 +70,12 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 }
 
 func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
-	dir, err := a.buildDirectory(ctx, content, filename, schema.ImageNode())
+	dir, err := a.buildDirectory(ctx, content, filename, anytype.ImageNode())
 	if err != nil {
 		return nil, err
 	}
 
-	node, keys, err := a.AddNodeFromDirs(ctx, &lsmodel.DirectoryList{Items: []*lsmodel.Directory{dir}})
+	node, keys, err := a.AddNodeFromDirs(ctx, &storage.DirectoryList{Items: []*storage.Directory{dir}})
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filenam
 		return nil, err
 	}
 
-	var variantsByWidth = make(map[int]*lsmodel.FileInfo, len(dir.Files))
+	var variantsByWidth = make(map[int]*storage.FileInfo, len(dir.Files))
 	for _, f := range dir.Files {
 		if f.Mill != "/image/resize" {
 			continue
@@ -121,10 +121,10 @@ func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, fil
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	var maxWidth int
-	var maxWidthImage *lsmodel.FileInfo
+	var maxWidthImage *storage.FileInfo
 
 	var minWidthMatched int
-	var minWidthMatchedImage *lsmodel.FileInfo
+	var minWidthMatchedImage *storage.FileInfo
 
 	for width, fileIndex := range i.variantsByWidth {
 		if width >= maxWidth {

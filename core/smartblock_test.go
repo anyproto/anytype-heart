@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/anytypeio/go-anytype-library/vclock"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_smartBlock_GetLastSnapshot(t *testing.T) {
@@ -28,7 +29,7 @@ func Test_smartBlock_GetLastSnapshot(t *testing.T) {
 		},
 	)
 
-	thrd, err := s.(*Anytype).ts.GetThread(context.Background(), block.(*smartBlock).thread.ID)
+	thrd, err := s.(*Anytype).t.GetThread(context.Background(), block.(*smartBlock).thread.ID)
 	require.NoError(t, err)
 	require.Len(t, thrd.Logs, 1)
 

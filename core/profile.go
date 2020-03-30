@@ -1,16 +1,15 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"regexp"
+
+	"github.com/gogo/protobuf/types"
+	mh "github.com/multiformats/go-multihash"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/anytypeio/go-anytype-library/vclock"
-	"github.com/gogo/protobuf/types"
-	mh "github.com/multiformats/go-multihash"
-	tpb "github.com/textileio/go-textile/pb"
 )
 
 func (a *Anytype) AccountSetNameAndAvatar(name string, avatarFilePath, color string) error {
@@ -53,6 +52,6 @@ func (a *Anytype) AccountSetAvatar(localPath string) (hash mh.Multihash, err err
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Anytype) AccountRequestStoredContact(ctx context.Context, accountId string) (contact *tpb.Contact, err error) {
+/*func (a *Anytype) AccountRequestStoredContact(ctx context.Context, accountId string) (contact *tpb.Contact, err error) {
 	return nil, fmt.Errorf("not implemented")
-}
+}*/

@@ -32,7 +32,7 @@ func TestAnytype_ImageByHash(t *testing.T) {
 
 	fb, err := ioutil.ReadAll(flargestr)
 	require.NoError(t, err)
-	require.True(t, len(fb)>100)
+	require.True(t, len(fb) > 100)
 
 	require.NotNil(t, flargest.Meta())
 	require.Equal(t, "image.jpeg", flargest.Meta().Name)

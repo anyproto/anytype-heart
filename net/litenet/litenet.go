@@ -1,4 +1,4 @@
-package service
+package litenet
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 	"time"
 
 	ipfslite "github.com/hsanjuan/ipfs-lite"
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
-	libp2p "github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -24,6 +24,10 @@ import (
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	"github.com/textileio/go-threads/net"
 	"google.golang.org/grpc"
+
+	"github.com/anytypeio/go-anytype-library/ipfs"
+	"github.com/anytypeio/go-anytype-library/ipfs/ipfsliteinterface"
+	net2 "github.com/anytypeio/go-anytype-library/net"
 )
 
 const (
@@ -31,14 +35,7 @@ const (
 	defaultLogstorePath = "logstore"
 )
 
-type NetBoostrapper interface {
-	corenet.Net
-	GetIpfsLite() *ipfslite.Peer
-	Bootstrap(addrs []peer.AddrInfo)
-	Datastore() datastore.Batching
-}
-
-func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []byte, opts ...NetOption) (NetBoostrapper, error) {
+func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []byte, opts ...NetOption) (net2.NetBoostrapper, error) {
 	config := &NetConfig{}
 	for _, opt := range opts {
 		if err := opt(config); err != nil {
@@ -58,7 +55,7 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 	if err := os.MkdirAll(ipfsLitePath, os.ModePerm); err != nil {
 		return nil, err
 	}
-	litestore, err := ipfslite.BadgerDatastore(ipfsLitePath)
+	litestore, err := badger.NewDatastore(ipfsLitePath, &badger.DefaultOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -75,14 +72,17 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 		privKey,
 		privateNetworkSecret,
 		[]ma.Multiaddr{config.HostAddr},
+		litestore,
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),
 		libp2p.Peerstore(pstore),
 	)
+
 	if err != nil {
 		cancel()
 		litestore.Close()
 		return nil, err
 	}
+
 	lite, err := ipfslite.New(ctx, litestore, h, d, nil)
 	if err != nil {
 		cancel()
@@ -126,7 +126,7 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 	return &netBoostrapper{
 		cancel:    cancel,
 		Net:       api,
-		litepeer:  lite,
+		ipfs:      ipfsliteinterface.New(lite),
 		pstore:    pstore,
 		logstore:  logstore,
 		litestore: litestore,
@@ -167,30 +167,26 @@ func WithNetGRPCOptions(opts ...grpc.ServerOption) NetOption {
 type netBoostrapper struct {
 	cancel context.CancelFunc
 	corenet.Net
-	litepeer  *ipfslite.Peer
+	ipfs      ipfs.IPFS
 	pstore    peerstore.Peerstore
-	logstore  datastore.Datastore
+	logstore  datastore.Batching
 	litestore datastore.Batching
 	host      host.Host
 	dht       *dht.IpfsDHT
 }
 
-var _ NetBoostrapper = (*netBoostrapper)(nil)
+var _ net2.NetBoostrapper = (*netBoostrapper)(nil)
 
 func (tsb *netBoostrapper) Datastore() datastore.Batching {
-	return tsb.litestore
-}
-
-func (tsb *netBoostrapper) Identity() datastore.Batching {
-	return tsb.litestore
+	return tsb.logstore
 }
 
 func (tsb *netBoostrapper) Bootstrap(addrs []peer.AddrInfo) {
-	tsb.litepeer.Bootstrap(addrs)
+	tsb.ipfs.Bootstrap(addrs)
 }
 
-func (tsb *netBoostrapper) GetIpfsLite() *ipfslite.Peer {
-	return tsb.litepeer
+func (tsb *netBoostrapper) GetIpfs() ipfs.IPFS {
+	return tsb.ipfs
 }
 
 func (tsb *netBoostrapper) Close() error {

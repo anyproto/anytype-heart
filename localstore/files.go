@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
 
-	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var (
@@ -21,7 +21,7 @@ var (
 		Prefix: filesPrefix,
 		Name:   "mill_source_opts",
 		Keys: func(val interface{}) []IndexKeyParts {
-			if v, ok := val.(*lsmodel.FileInfo); ok {
+			if v, ok := val.(*storage.FileInfo); ok {
 				return []IndexKeyParts{[]string{v.Mill, v.Source, v.Opts}}
 			}
 			return nil
@@ -33,7 +33,7 @@ var (
 		Prefix: filesPrefix,
 		Name:   "targets",
 		Keys: func(val interface{}) []IndexKeyParts {
-			if v, ok := val.(*lsmodel.FileInfo); ok {
+			if v, ok := val.(*storage.FileInfo); ok {
 				var keys []IndexKeyParts
 				for _, target := range v.Targets {
 					keys = append(keys, []string{target})
@@ -50,7 +50,7 @@ var (
 		Prefix: filesPrefix,
 		Name:   "mill_checksum",
 		Keys: func(val interface{}) []IndexKeyParts {
-			if v, ok := val.(*lsmodel.FileInfo); ok {
+			if v, ok := val.(*storage.FileInfo); ok {
 				return []IndexKeyParts{[]string{v.Mill, v.Checksum}}
 			}
 			return nil
@@ -82,7 +82,7 @@ func (m *dsFileStore) Indexes() []Index {
 	}
 }
 
-func (m *dsFileStore) Add(file *lsmodel.FileInfo) error {
+func (m *dsFileStore) Add(file *storage.FileInfo) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error when creating txn in datastore: %w", err)
@@ -181,7 +181,7 @@ func (m *dsFileStore) RemoveTarget(hash string, target string) error {
 	return m.ds.Put(fileInfoKey, b)
 }
 
-func (m *dsFileStore) GetByHash(hash string) (*lsmodel.FileInfo, error) {
+func (m *dsFileStore) GetByHash(hash string) (*storage.FileInfo, error) {
 	fileInfoKey := filesInfoBase.ChildString(hash)
 	b, err := m.ds.Get(fileInfoKey)
 	if err != nil {
@@ -190,7 +190,7 @@ func (m *dsFileStore) GetByHash(hash string) (*lsmodel.FileInfo, error) {
 		}
 		return nil, err
 	}
-	file := lsmodel.FileInfo{}
+	file := storage.FileInfo{}
 	err = proto.Unmarshal(b, &file)
 	if err != nil {
 		return nil, err
@@ -199,8 +199,8 @@ func (m *dsFileStore) GetByHash(hash string) (*lsmodel.FileInfo, error) {
 	return &file, nil
 }
 
-func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*lsmodel.FileInfo, error) {
-	key, err := GetKeyByIndex(indexMillChecksum, m.ds, &lsmodel.FileInfo{Mill: mill, Checksum: checksum})
+func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*storage.FileInfo, error) {
+	key, err := GetKeyByIndex(indexMillChecksum, m.ds, &storage.FileInfo{Mill: mill, Checksum: checksum})
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*lsmodel.File
 		return nil, err
 	}
 
-	file := lsmodel.FileInfo{}
+	file := storage.FileInfo{}
 	err = proto.Unmarshal(val, &file)
 	if err != nil {
 		return nil, err
@@ -219,8 +219,8 @@ func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*lsmodel.File
 	return &file, nil
 }
 
-func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*lsmodel.FileInfo, error) {
-	key, err := GetKeyByIndex(indexMillSourceOpts, m.ds, &lsmodel.FileInfo{Mill: mill, Source: source, Opts: opts})
+func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*storage.FileInfo, error) {
+	key, err := GetKeyByIndex(indexMillSourceOpts, m.ds, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*lsm
 		return nil, err
 	}
 
-	file := lsmodel.FileInfo{}
+	file := storage.FileInfo{}
 	err = proto.Unmarshal(val, &file)
 	if err != nil {
 		return nil, err
@@ -239,7 +239,7 @@ func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*lsm
 	return &file, nil
 }
 
-func (m *dsFileStore) ListByTarget(target string) ([]*lsmodel.FileInfo, error) {
+func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
 	results, err := GetKeysByIndexParts(m.ds, indexTargets.Prefix, indexTargets.Name, []string{target}, indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
@@ -250,14 +250,14 @@ func (m *dsFileStore) ListByTarget(target string) ([]*lsmodel.FileInfo, error) {
 		return nil, err
 	}
 
-	var files []*lsmodel.FileInfo
+	var files []*storage.FileInfo
 	for _, key := range keys {
 		val, err := m.ds.Get(filesInfoBase.ChildString(key))
 		if err != nil {
 			return nil, err
 		}
 
-		file := lsmodel.FileInfo{}
+		file := storage.FileInfo{}
 		err = proto.Unmarshal(val, &file)
 		if err != nil {
 			return nil, err

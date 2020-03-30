@@ -6,9 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
@@ -17,6 +14,10 @@ import (
 	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
+
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/vclock"
 )
 
 type SmartBlockType uint64
@@ -163,7 +164,7 @@ func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnaps
 }
 
 func (block *smartBlock) getSnapshotTime(event net.Event) (*types.Timestamp, error) {
-	header, err := event.GetHeader(context.TODO(), block.node.ts, block.thread.Key.Read())
+	header, err := event.GetHeader(context.TODO(), block.node.t, block.thread.Key.Read())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get headers: %w", err)
 	}
@@ -187,7 +188,7 @@ func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) 
 		return nil, err
 	}
 
-	rec, err := block.node.ts.GetRecord(context.TODO(), block.thread.ID, vid)
+	rec, err := block.node.t.GetRecord(context.TODO(), block.thread.ID, vid)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +196,7 @@ func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) 
 	if block.thread.Key.Read() == nil {
 		return nil, fmt.Errorf("no read key")
 	}
-	event, err := cbor.EventFromRecord(context.TODO(), block.node.ts, rec)
+	event, err := cbor.EventFromRecord(context.TODO(), block.node.t, rec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event: %w", err)
 
@@ -210,7 +211,7 @@ func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) 
 		return nil, err
 	}
 
-	node, err := event.GetBody(context.TODO(), block.node.ts, block.thread.ReadKey)
+	node, err := event.GetBody(context.TODO(), block.node.t, block.thread.ReadKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record body: %w", err)
 	}
@@ -245,19 +246,19 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 		if err != nil {
 			return nil, err
 		}
-		rec, err2 := block.node.ts.GetRecord(context.TODO(), block.thread.ID, head)
+		rec, err2 := block.node.t.GetRecord(context.TODO(), block.thread.ID, head)
 		if err2 != nil {
 			err = err2
 			return nil, err
 		}
 
-		event, err2 := cbor.EventFromRecord(context.TODO(), block.node.ts, rec)
+		event, err2 := cbor.EventFromRecord(context.TODO(), block.node.t, rec)
 		if err2 != nil {
 			err = err2
 			return
 		}
 
-		header, err2 := event.GetHeader(context.TODO(), block.node.ts, block.thread.Key.Read())
+		header, err2 := event.GetHeader(context.TODO(), block.node.t, block.thread.Key.Read())
 		if err2 != nil {
 			err = err2
 			return
@@ -275,11 +276,11 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 	}
 
 	for _, rec := range records {
-		event, err := cbor.EventFromRecord(context.TODO(), block.node.ts, rec.Record)
+		event, err := cbor.EventFromRecord(context.TODO(), block.node.t, rec.Record)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get event: %w", err)
 		}
-		node, err := event.GetBody(context.TODO(), block.node.ts, block.thread.Key.Read())
+		node, err := event.GetBody(context.TODO(), block.node.t, block.thread.Key.Read())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get record body: %w", err)
 		}
@@ -362,19 +363,19 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	rec, err2 := block.node.ts.CreateRecord(context.TODO(), block.thread.ID, body)
+	rec, err2 := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
 	if err2 != nil {
 		err = err2
 		return
 	}
 
-	event, err2 := cbor.EventFromRecord(context.TODO(), block.node.ts, rec.Value())
+	event, err2 := cbor.EventFromRecord(context.TODO(), block.node.t, rec.Value())
 	if err2 != nil {
 		err = err2
 		return
 	}
 
-	header, err2 := event.GetHeader(context.TODO(), block.node.ts, block.thread.Key.Read())
+	header, err2 := event.GetHeader(context.TODO(), block.node.t, block.thread.Key.Read())
 	if err2 != nil {
 		err = err2
 		return

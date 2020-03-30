@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	ipfslite "github.com/hsanjuan/ipfs-lite"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
@@ -19,8 +18,10 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/util"
 
+	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
-	"github.com/anytypeio/go-anytype-library/service"
+	"github.com/anytypeio/go-anytype-library/net"
+	"github.com/anytypeio/go-anytype-library/net/litenet"
 	"github.com/anytypeio/go-anytype-library/wallet"
 )
 
@@ -48,7 +49,7 @@ type PredefinedBlockIds struct {
 
 type Anytype struct {
 	repoPath           string
-	ts                 service.NetBoostrapper
+	t                  net.NetBoostrapper
 	mdns               discovery.Service
 	account            wallet.Keypair
 	device             wallet.Keypair
@@ -85,12 +86,12 @@ func (a *Anytype) Account() string {
 	return a.account.Address()
 }
 
-func (a *Anytype) ipfs() *ipfslite.Peer {
-	return a.ts.GetIpfsLite()
+func (a *Anytype) Ipfs() ipfs.IPFS {
+	return a.t.GetIpfs()
 }
 
 func (a *Anytype) IsStarted() bool {
-	return a.ts != nil && a.ts.GetIpfsLite() != nil
+	return a.t != nil && a.t.GetIpfs() != nil
 }
 
 func (a *Anytype) BecameOnline(ch chan<- error) {
@@ -121,7 +122,7 @@ func (a *Anytype) PredefinedBlocks() PredefinedBlockIds {
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
-	a.ts.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
+	a.t.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
 }
 
 func ApplyLogLevels() {
@@ -230,12 +231,12 @@ func (a *Anytype) Start() error {
 		return err
 	}
 
-	ts, err := service.DefaultNetwork(
+	ts, err := litenet.DefaultNetwork(
 		a.repoPath,
 		a.device,
 		[]byte(ipfsPrivateNetworkKey),
-		service.WithNetHostAddr(hostAddr),
-		service.WithNetDebug(true))
+		litenet.WithNetHostAddr(hostAddr),
+		litenet.WithNetDebug(true))
 	if err != nil {
 		return err
 	}
@@ -246,17 +247,18 @@ func (a *Anytype) Start() error {
 	}()
 
 	// ctx := context.Background()
-	/*mdns, err := discovery.NewMdnsService(ctx, ts.Host(), time.Second, "")
+	/*mdns, err := discovery.NewMdnsService(ctx, t.Host(), time.Second, "")
 	if err != nil {
 		log.Fatal(err)
 	}*/
 
 	// todo: use the datastore from go-threads to save resources on the second instance
-	//ds,= ts.Datastore()
+	//ds,= t.Datastore()
 
 	a.done = make(chan struct{})
-	a.ts = ts
-	a.localStore = localstore.NewLocalStore(a.ts.Datastore())
+	a.t = ts
+
+	a.localStore = localstore.NewLocalStore(a.t.Datastore())
 	//	a.ds = ds
 	//a.mdns = mdns
 	//mdns.RegisterNotifee(a)
@@ -275,7 +277,7 @@ func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
 }
 
 func (a *Anytype) Stop() error {
-	fmt.Printf("stopping the node %p\n", a.ts)
+	fmt.Printf("stopping the node %p\n", a.t)
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -291,8 +293,8 @@ func (a *Anytype) Stop() error {
 		}
 	}
 
-	if a.ts != nil {
-		err := a.ts.Close()
+	if a.t != nil {
+		err := a.t.Close()
 		if err != nil {
 			return err
 		}

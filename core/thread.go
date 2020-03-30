@@ -13,9 +13,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/textileio/go-threads/cbor"
 	corenet "github.com/textileio/go-threads/core/net"
-	"github.com/textileio/go-threads/crypto/symmetric"
-
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/crypto/symmetric"
 )
 
 type threadDerivedIndex uint32
@@ -111,7 +110,7 @@ func (a *Anytype) predefinedThreadWithIndex(index threadDerivedIndex) (thread.In
 		return thread.Info{}, err
 	}
 
-	return a.ts.GetThread(context.TODO(), id)
+	return a.t.GetThread(context.TODO(), id)
 }
 
 func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshotIfNotExist bool) (thread.Info, error) {
@@ -120,7 +119,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 		return thread.Info{}, err
 	}
 
-	thrd, err := a.ts.GetThread(context.TODO(), id)
+	thrd, err := a.t.GetThread(context.TODO(), id)
 	if err == nil && thrd.Key.Service() != nil {
 		return thrd, nil
 	}
@@ -130,7 +129,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 		return thread.Info{}, err
 	}
 
-	thrd, err = a.ts.CreateThread(context.TODO(),
+	thrd, err = a.t.CreateThread(context.TODO(),
 		id,
 		corenet.ThreadKey(thread.NewKey(followKey, readKey)),
 		corenet.LogKey(a.device))
@@ -139,8 +138,8 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 	}
 
 	if mustSyncSnapshotIfNotExist {
-		fmt.Printf("pull thread %s %p\n", id, a.ts)
-		err := a.ts.PullThread(context.TODO(), id)
+		fmt.Printf("pull thread %s %p\n", id, a.t)
+		err := a.t.PullThread(context.TODO(), id)
 		if err != nil {
 			return thread.Info{}, fmt.Errorf("failed to pull thread: %w", err)
 		}
@@ -174,17 +173,17 @@ func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, li thre
 				break
 			}
 			m[rid] = struct{}{}
-			rec, err := a.ts.GetRecord(ctx, thrd.ID, rid)
+			rec, err := a.t.GetRecord(ctx, thrd.ID, rid)
 			if err != nil {
 				return nil, err
 			}
 
-			event, err := cbor.EventFromRecord(ctx, a.ts, rec)
+			event, err := cbor.EventFromRecord(ctx, a.t, rec)
 			if err != nil {
 				return nil, err
 			}
 
-			header, err := event.GetHeader(ctx, a.ts, thrd.Key.Read())
+			header, err := event.GetHeader(ctx, a.t, thrd.Key.Read())
 			if err != nil {
 				return nil, err
 			}
@@ -217,7 +216,7 @@ func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, li thre
 
 func (a *Anytype) traverseLogs(ctx context.Context, thrdId thread.ID, before *time.Time, limit int) ([]RecordWithMetadata, error) {
 	var allRecords []RecordWithMetadata
-	thrd, err := a.ts.GetThread(context.Background(), thrdId)
+	thrd, err := a.t.GetThread(context.Background(), thrdId)
 	if err != nil {
 		return nil, err
 	}

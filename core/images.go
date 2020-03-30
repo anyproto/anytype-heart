@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/ipfs"
-	"github.com/anytypeio/go-anytype-library/pb/lsmodel"
+	"github.com/anytypeio/go-anytype-library/ipfs/helpers"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
 
-func (a *Anytype) getFileIndexes(ctx context.Context, hash string) ([]lsmodel.FileInfo, error) {
-	links, err := ipfs.LinksAtPath(ctx, a.ts.GetIpfsLite(), hash)
+func (a *Anytype) getFileIndexes(ctx context.Context, hash string) ([]storage.FileInfo, error) {
+	links, err := helpers.LinksAtPath(ctx, a.Ipfs(), hash)
 	if err != nil {
 		return nil, err
 	}
@@ -21,9 +21,9 @@ func (a *Anytype) getFileIndexes(ctx context.Context, hash string) ([]lsmodel.Fi
 
 	filesKeys, filesKeysExists := filesKeysCache[hash]
 
-	var files []lsmodel.FileInfo
+	var files []storage.FileInfo
 	for _, index := range links {
-		node, err := ipfs.NodeAtLink(ctx, a.ipfs(), index)
+		node, err := helpers.NodeAtLink(ctx, a.Ipfs(), index)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		}
 	}*/
 
-	var variantsByWidth = make(map[int]*lsmodel.FileInfo, len(files))
+	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
 	for _, f := range files {
 		if f.Mill != "/image/resize" {
 			continue

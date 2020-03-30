@@ -1,4 +1,4 @@
-package schema
+package anytype
 
 var Dashboard = `{
   "name": "dashboard",
