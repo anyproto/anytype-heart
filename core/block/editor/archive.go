@@ -9,13 +9,19 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewArchive() *Archive {
+func NewArchive(ctrl ArchiveCtrl) *Archive {
 	return &Archive{
+		ctrl:       ctrl,
 		SmartBlock: smartblock.New(),
 	}
 }
 
+type ArchiveCtrl interface {
+	MarkArchived(id string, archived bool) (err error)
+}
+
 type Archive struct {
+	ctrl ArchiveCtrl
 	smartblock.SmartBlock
 }
 
@@ -62,6 +68,9 @@ func (p *Archive) Archive(id string) (err error) {
 		log.Infof("page %s already archived", id)
 		return
 	}
+	if err = p.ctrl.MarkArchived(id, true); err != nil {
+		return
+	}
 	link := simple.New(&model.Block{
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
@@ -97,6 +106,9 @@ func (p *Archive) UnArchive(id string) (err error) {
 	})
 	if !found {
 		log.Infof("page %s not archived", id)
+		return
+	}
+	if err = p.ctrl.MarkArchived(id, false); err != nil {
 		return
 	}
 	s.Remove(linkId)

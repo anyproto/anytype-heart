@@ -20,6 +20,7 @@ import (
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -217,6 +218,17 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 			return archive.Archive(req.BlockId)
 		}
 		return nil
+	})
+}
+
+func (s *service) MarkArchived(id string, archived bool) (err error) {
+	return s.Do(id, func(b smartblock.SmartBlock) error {
+		return b.SetDetails([]*pb.RpcBlockSetDetailsDetail{
+			{
+				Key:   "isArchived",
+				Value: pbtypes.Bool(archived),
+			},
+		})
 	})
 }
 
@@ -575,7 +587,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	case core.SmartBlockTypeDashboard:
 		sb = editor.NewDashboard()
 	case core.SmartBlockTypeArchive:
-		sb = editor.NewArchive()
+		sb = editor.NewArchive(s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

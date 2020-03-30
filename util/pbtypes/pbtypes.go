@@ -13,3 +13,9 @@ func String(v string) *types.Value {
 		Kind: &types.Value_StringValue{StringValue: v},
 	}
 }
+
+func Bool(v bool) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_BoolValue{BoolValue: v},
+	}
+}
