@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log"
 	"io/ioutil"
 	"os"
@@ -43,6 +44,7 @@ type clipboard struct {
 }
 
 func (cb *clipboard) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+	fmt.Println("@MARK4:", req)
 	if len(req.AnySlot) > 0 {
 		return cb.pasteAny(req)
 	} else if len(req.HtmlSlot) > 0 {
@@ -215,10 +217,20 @@ func (cb *clipboard) filterFromLayouts (anySlot []*model.Block) (anySlotFiltered
 	return anySlotFiltered
 }
 
+func (cb *clipboard) repaceIds (anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
+	for _, b := range anySlot {
+		b.Id = uuid.New().String()
+		anySlotreplacedIds = append(anySlotreplacedIds, b)
+	}
+
+	return anySlotreplacedIds
+}
+
 func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+	fmt.Println("@MARK pasteAny:", req)
 	s := cb.NewState()
 	targetId := req.FocusedBlockId
-
+	req.AnySlot = cb.repaceIds(req.AnySlot)
 	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
 	isMultipleBlocksToPaste := len(req.AnySlot) > 1
 	firstPasteBlockText := req.AnySlot[0].GetText()
@@ -227,7 +239,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		req.SelectedTextRange = &model.Range{From: 0, To: 0}
 	}
 
-	if firstPasteBlockText.Marks == nil {
+	if firstPasteBlockText != nil && firstPasteBlockText.Marks == nil {
 		firstPasteBlockText.Marks = &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{}}
 	}
 
@@ -283,17 +295,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 			}
 		}
 	}
-
-/*	fmt.Println("HERE1:", targetId, focusedBlock, focusedBlockText,  isFocusedText,  isSelectedBlocks)
-	if targetId == "" && len(req.SelectedBlockIds) == 0 {
-
-		cIds := cb.Pick(cb.Id()).Model().ChildrenIds
-		targetId = cb.Pick(cIds[len(cIds) - 1]).Model().Id
-		focusedBlock =  cb.Pick(targetId)
-		focusedBlockText, ok = focusedBlock.(text.Block)
-
-		fmt.Println("HERE2:", targetId)
-	}*/
 
 	if ok && focusedBlock != nil && focusedBlockText != nil && !isSelectedBlocks {
 		fmt.Println("HERE3:", targetId)
