@@ -373,7 +373,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" }, emptyMarks))
 		pasteAny(t, sb, "4", model.Range{From:0, To:0}, []string{}, createBlocks([]string{"new1", "new2"}, []string{ "aaaaa",  "bbbbb" }, emptyMarks))
-		checkBlockText(t, sb, []string{ "11111", "22222", "33333", "qwerty", "aaaaa", "bbbbb",  "55555" })
+		checkBlockText(t, sb, []string{ "11111", "22222", "33333",  "aaaaa", "bbbbb", "qwerty", "55555" })
 	})
 
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
@@ -417,7 +417,7 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" }, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From:0, To:0}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{ "11111", "22222", "33333",  "qwerty", "aaaaa", "bbbbb", "55555" })
+		checkBlockTextDebug(t, sb, []string{ "11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555" })
 	})
 
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
