@@ -412,7 +412,7 @@ func (s *service) SetTextStyle(contextId string, style model.BlockContentTextSty
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks([]string{req.ContextId}, true, func(t text.Block) error {
+		return b.UpdateTextBlocks([]string{req.BlockId}, true, func(t text.Block) error {
 			t.SetChecked(req.Checked)
 			return nil
 		})
