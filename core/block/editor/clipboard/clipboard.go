@@ -24,9 +24,10 @@ import (
 )
 
 var (
-	ErrAllSlotsEmpty = errors.New("All slots are empty")
-	ErrOutOfRange    = errors.New("out of range")
-	log              = logging.Logger("anytype-clipboard")
+	ErrAllSlotsEmpty        = errors.New("all slots are empty")
+	ErrTitlePasteRestricted = errors.New("paste to title restricted")
+	ErrOutOfRange           = errors.New("out of range")
+	log                     = logging.Logger("anytype-clipboard")
 )
 
 type Clipboard interface {
@@ -306,9 +307,11 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		isPasteWithSplit = !isPasteInstead && !isPasteBottom && !isPasteTop
 	}
 
+	if isFocusedTitle {
+		return blockIds, uploadArr, ErrTitlePasteRestricted
+	}
+
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
-	pasteSingleTextInFocusedTitle := isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
-	pasteMultipleBlocksInFocusedTitle := isFocusedTitle && isMultipleBlocksToPaste
 	pasteSingleTextInFocusedText := isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
 	pasteMultipleBlocksInFocusedText := isFocusedText && isMultipleBlocksToPaste
 	pasteMultipleBlocksOnSelectedBlocks := isSelectedBlocks
@@ -324,19 +327,8 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 
 		break
 
-	case pasteSingleTextInFocusedTitle:
-		log.Debug("@pasteSingleTextInFocusedTitle")
-		firstPasteBlockText.Text = strings.Replace(firstPasteBlockText.Text, "\n", " ", -1)
-		firstPasteBlockText.Marks = &model.BlockContentTextMarks{}
-
-		err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, firstPasteBlockText.Text, firstPasteBlockText.Marks.Marks)
-		if err != nil {
-			return blockIds, uploadArr, err
-		}
-		break
-
 	case pasteSingleTextInFocusedText:
-		log.Debug("@pasteSingleTextInFocusedText")
+		log.Debug("pasteSingleTextInFocusedText")
 		err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, firstPasteBlockText.Text, firstPasteBlockText.Marks.Marks)
 		if err != nil {
 			return blockIds, uploadArr, err
@@ -344,9 +336,9 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		break
 
 	case pasteMultipleBlocksInFocusedText:
-		log.Debug("@pasteMultipleBlocksInFocusedText")
+		log.Debug("pasteMultipleBlocksInFocusedText")
 		if isPasteTop {
-			log.Debug("@isPasteTop")
+			log.Debug("isPasteTop")
 			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
 			if err != nil {
 				return blockIds, uploadArr, err
@@ -357,29 +349,21 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 			}
 
 		} else if isPasteBottom {
-			log.Debug("@isPasteBottom")
+			log.Debug("isPasteBottom")
 			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
 			if err != nil {
 				return blockIds, uploadArr, err
 			}
 
 		} else if isPasteInstead {
-			log.Debug("@isPasteInstead")
+			log.Debug("isPasteInstead")
 			blockIds, uploadArr, _, err := cb.insertBlocks(s, req.FocusedBlockId, req.AnySlot, model.Block_Bottom, false)
 			if err != nil {
 				return blockIds, uploadArr, err
 			}
 
-			if !pasteMultipleBlocksInFocusedTitle {
-				s.Remove(req.FocusedBlockId)
-			}
-
-			/*			if len(txt) == 0 {
-						s.Remove(req.FocusedBlockId)
-					}*/
-
 		} else if isPasteWithSplit {
-			log.Debug("@isPasteWithSplit")
+			log.Debug("isPasteWithSplit")
 
 			oldBlock, newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
 			if err != nil {
@@ -424,7 +408,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		break
 
 	case pasteMultipleBlocksOnSelectedBlocks:
-		log.Debug("@pasteMultipleBlocksOnSelectedBlocks")
+		log.Debug("pasteMultipleBlocksOnSelectedBlocks")
 		blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
 		if err != nil {
 			return blockIds, uploadArr, err
