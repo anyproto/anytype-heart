@@ -8,8 +8,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/gogo/protobuf/proto"
-	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("anytype-mw")
