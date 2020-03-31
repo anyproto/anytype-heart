@@ -158,7 +158,14 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return m
 	}
 
-	blockIds, err := mw.blockService.Paste(*req)
+	blockIds, uploadArr, err := mw.blockService.Paste(*req)
+
+	for _, r := range uploadArr {
+		if err := mw.blockService.UploadFile(r); err != nil {
+			return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, err)
+		}
+	}
+
 	if err != nil {
 		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, err)
 	}

@@ -59,7 +59,7 @@ type Service interface {
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
-	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
+	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -354,12 +354,13 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (ht
 	return html, err
 }
 
-func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
 	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		blockIds, err = cb.Paste(req)
+		blockIds, uploadArr, err = cb.Paste(req)
+
 		return err
 	})
-	return blockIds, err
+	return blockIds, uploadArr, err
 }
 
 func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {

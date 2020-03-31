@@ -129,7 +129,7 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 	req.AnySlot = blocks
 	req.SelectedTextRange = &textRange
 
-	_, err  := cb.Paste(req)
+	_, _, err  := cb.Paste(req)
 	require.NoError(t, err)
 }
 
@@ -141,7 +141,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	req.TextSlot = textSlot
 	req.SelectedTextRange = &textRange
 
-	_, err  := cb.Paste(req)
+	_, _, err  := cb.Paste(req)
 	require.NoError(t, err)
 }
 
@@ -153,7 +153,7 @@ func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	req.HtmlSlot = htmlSlot
 	req.SelectedTextRange = &textRange
 
-	_, err  := cb.Paste(req)
+	_, _, err  := cb.Paste(req)
 	require.NoError(t, err)
 }
 
