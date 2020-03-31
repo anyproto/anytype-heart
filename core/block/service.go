@@ -6,15 +6,25 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -28,7 +38,7 @@ var (
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-service")
 
 var (
 	blockCacheTTL       = time.Minute
@@ -41,7 +51,7 @@ type Service interface {
 	CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
-	CreatePage(req pb.RpcBlockCreatePageRequest) (string, string, error)
+	CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -50,6 +60,8 @@ type Service interface {
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
+
+	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
 	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
 	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
@@ -65,10 +77,9 @@ type Service interface {
 	SetBackgroundColor(contextId string, color string, blockIds ...string) error
 	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
-	UploadFile(req pb.RpcBlockUploadRequest) error
+	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
+	UploadBlockFile(req pb.RpcBlockUploadRequest) error
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
-
-	SetIconName(req pb.RpcBlockSetIconNameRequest) error
 
 	Undo(req pb.RpcBlockUndoRequest) error
 	Redo(req pb.RpcBlockRedoRequest) error
@@ -77,13 +88,13 @@ type Service interface {
 
 	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
 
+	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
 
 	Close() error
-
 }
 
-func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
+func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
 	s := &service{
 		accountId: accountId,
 		anytype:   a,
@@ -91,61 +102,74 @@ func NewService(accountId string, a anytype.Anytype, lp linkpreview.LinkPreview,
 			sendEvent(event)
 		},
 		openedBlocks: make(map[string]*openedBlock),
-		ls:           newLinkSubscriptions(a),
 		linkPreview:  lp,
 		process:      process.NewService(sendEvent),
+		meta:         meta.NewService(a),
 	}
 	go s.cleanupTicker()
+	s.init()
+	log.Info("block service started")
 	return s
 }
 
 type openedBlock struct {
-	smartBlock
+	smartblock.SmartBlock
 	lastUsage time.Time
 	refs      int32
 }
 
 type service struct {
-	anytype      anytype.Anytype
+	anytype      anytype.Service
+	meta         meta.Service
 	accountId    string
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
 	closed       bool
 	linkPreview  linkpreview.LinkPreview
-	ls           *linkSubscriptions
 	process      process.Service
 	m            sync.RWMutex
+}
+
+func (s *service) init() {
+	s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		return nil
+	})
+}
+
+func (s *service) Anytype() anytype.Service {
+	return s.anytype
 }
 
 func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	sb, ok := s.openedBlocks[id]
-	if ok {
-		sb.Active(true)
-		if err = sb.Show(); err != nil {
-			return
-		}
-	} else {
-		sb, e := openSmartBlock(s, id, true)
+	ob, ok := s.openedBlocks[id]
+	if !ok {
+		sb, e := s.createSmartBlock(id)
 		if e != nil {
 			return e
 		}
-		s.openedBlocks[id] = &openedBlock{
-			smartBlock: sb,
+		ob = &openedBlock{
+			SmartBlock: sb,
 			lastUsage:  time.Now(),
 			refs:       1,
 		}
+		s.openedBlocks[id] = ob
 	}
+	ob.SetEventFunc(s.sendEvent)
+	if err = ob.Show(); err != nil {
+		return
+	}
+
 	for _, bid := range breadcrumbsIds {
 		if b, ok := s.openedBlocks[bid]; ok {
-			if bs, ok := b.smartBlock.(*breadcrumbs); ok {
+			if bs, ok := b.SmartBlock.(*editor.Breadcrumbs); ok {
 				bs.OnSmartOpen(id)
 			} else {
-				log.Warningf("unexpected smart block type %T; wand breadcrumbs", b)
+				log.Warnf("unexpected smart block type %T; wand breadcrumbs", b)
 			}
 		} else {
-			log.Warningf("breadcrumbs block not found")
+			log.Warnf("breadcrumbs block not found")
 		}
 	}
 	return nil
@@ -154,25 +178,27 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-
-	bs := newBreadcrumbs(s)
-	if err = bs.Open(nil, false); err != nil {
+	bs := editor.NewBreadcrumbs()
+	if err = bs.Init(source.NewVirtual(s.anytype, s.meta)); err != nil {
 		return
 	}
-	bs.Init()
-	s.openedBlocks[bs.GetId()] = &openedBlock{
-		smartBlock: bs,
+	bs.SetEventFunc(s.sendEvent)
+	s.openedBlocks[bs.Id()] = &openedBlock{
+		SmartBlock: bs,
 		lastUsage:  time.Now(),
 		refs:       1,
 	}
-	return bs.GetId(), nil
+	if err = bs.Show(); err != nil {
+		return
+	}
+	return bs.Id(), nil
 }
 
 func (s *service) CloseBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if ob, ok := s.openedBlocks[id]; ok {
-		ob.Active(false)
+		ob.SetEventFunc(nil)
 		ob.refs--
 		return
 	}
@@ -180,288 +206,321 @@ func (s *service) CloseBlock(id string) (err error) {
 }
 
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
-	archiveId := s.anytype.PredefinedBlockIds().Archive
-	sb, release, err := s.pickBlock(archiveId)
-	if err != nil {
-		return
-	}
-	defer release()
-	if archiveBlock, ok := sb.(*archive); ok {
-		if req.IsArchived {
-			err = archiveBlock.archivePage(req.BlockId)
-		} else {
-			err = archiveBlock.unArchivePage(req.BlockId)
+	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(*editor.Archive)
+		if ! ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
-		return
-	}
-	return fmt.Errorf("unexpected archive block type: %T", sb)
+		if req.IsArchived {
+			return archive.Archive(req.BlockId)
+		} else {
+			return archive.UnArchive(req.BlockId)
+		}
+		return nil
+	})
+}
+
+func (s *service) MarkArchived(id string, archived bool) (err error) {
+	return s.Do(id, func(b smartblock.SmartBlock) error {
+		return b.SetDetails([]*pb.RpcBlockSetDetailsDetail{
+			{
+				Key:   "isArchived",
+				Value: pbtypes.Bool(archived),
+			},
+		})
+	})
 }
 
 func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
-	sb, release, err := s.pickBlock(req.BreadcrumbsId)
-	if err != nil {
-		return
-	}
-	defer release()
-	if bc, ok := sb.(*breadcrumbs); ok {
-		return bc.BreadcrumbsCut(int(req.Index))
-	}
-	return ErrUnexpectedSmartBlockType
+	return s.Do(req.BreadcrumbsId, func(b smartblock.SmartBlock) error {
+		if breadcrumbs, ok := b.(*editor.Breadcrumbs); ok {
+			breadcrumbs.ChainCut(int(req.Index))
+		} else {
+			return ErrUnexpectedBlockType
+		}
+		return nil
+	})
 }
 
 func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (id string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Create(req)
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		id, err = b.Create(req)
+		return err
+	})
+	return
 }
 
-func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (id string, targetId string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
+func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+	csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
 	if err != nil {
+		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
-	defer release()
-	return sb.CreatePage(req)
+	pageId = csm.ID()
+	log.Infof("created new smartBlock: %v", pageId)
+	if req.Details != nil && req.Details.Fields != nil {
+		var details []*pb.RpcBlockSetDetailsDetail
+		for k, v := range req.Details.Fields {
+			details = append(details, &pb.RpcBlockSetDetailsDetail{
+				Key:   k,
+				Value: v,
+			})
+		}
+		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
+			ContextId: pageId,
+			Details:   details,
+		}); err != nil {
+			err = fmt.Errorf("can't set details to page: %v", err)
+			return
+		}
+	}
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		linkId, err = b.Create(pb.RpcBlockCreateRequest{
+			TargetId: req.TargetId,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: pageId,
+						Style:         model.BlockContentLink_Page,
+					},
+				},
+			},
+			Position: req.Position,
+		})
+		if err != nil {
+			err = fmt.Errorf("link create error: %v", err)
+		}
+		return err
+	})
+	return
 }
 
 func (s *service) DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Duplicate(req)
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		newIds, err = b.Duplicate(req)
+		return err
+	})
+	return
 }
 
 func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Unlink(req.BlockIds...)
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Unlink(req.BlockIds...)
+	})
 }
 
 func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Split(req.BlockId, req.CursorPosition)
+	err = s.DoText(req.ContextId, func(b stext.Text) error {
+		blockId, err = b.Split(req.BlockId, req.CursorPosition)
+		return err
+	})
+	return
 }
 
 func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Merge(req.FirstBlockId, req.SecondBlockId)
+	return s.DoText(req.ContextId, func(b stext.Text) error {
+		return b.Merge(req.FirstBlockId, req.SecondBlockId)
+	})
 }
 
 func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Move(req)
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Move(req)
+	})
 }
 
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Replace(req.BlockId, req.Block)
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		newId, err = b.Replace(req.BlockId, req.Block)
+		return err
+	})
+	return
 }
 
 func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
-		BlockId: req.BlockId,
-		Fields:  req.Fields,
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+			BlockId: req.BlockId,
+			Fields:  req.Fields,
+		})
+	})
+}
+
+func (s *service) SetDetails(req pb.RpcBlockSetDetailsRequest) (err error) {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		return b.SetDetails(req.Details)
 	})
 }
 
 func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.SetFields(req.BlockFields...)
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.SetFields(req.BlockFields...)
+	})
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
+	/*sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return
 	}
 	defer release()
 	return sb.Copy(req)
+
+	*/
+	return
 }
 
 func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
+	/*sb, release, err := s.pickBlock(req.ContextId)
 	if err != nil {
 		return
 	}
 	defer release()
 	return sb.Paste(req)
+
+	*/
+	return
 }
 
 func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Cut(req)
+	/*	sb, release, err := s.pickBlock(req.ContextId)
+		if err != nil {
+			return
+		}
+		defer release()
+		return sb.Cut(req)
+
+	*/
+	return
 }
 
 func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Export(req)
+	/*	sb, release, err := s.pickBlock(req.ContextId)
+		if err != nil {
+			return
+		}
+		defer release()
+		return sb.Export(req)
+
+	*/
+	return
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, false, func(b text.Block) error {
-		return b.SetText(req.Text, req.Marks)
+	return s.DoText(req.ContextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks([]string{req.BlockId}, false, func(t text.Block) error {
+			return t.SetText(req.Text, req.Marks)
+		})
 	})
 }
 
 func (s *service) SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
-		b.SetStyle(style)
-		return nil
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(blockIds, true, func(t text.Block) error {
+			t.SetStyle(style)
+			return nil
+		})
 	})
 }
 
 func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
-	return s.updateTextBlock(req.ContextId, []string{req.BlockId}, true, func(b text.Block) error {
-		b.SetChecked(req.Checked)
-		return nil
+	return s.DoText(req.ContextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks([]string{req.BlockId}, true, func(t text.Block) error {
+			t.SetChecked(req.Checked)
+			return nil
+		})
 	})
 }
 
 func (s *service) SetTextColor(contextId, color string, blockIds ...string) error {
-	return s.updateTextBlock(contextId, blockIds, true, func(b text.Block) error {
-		b.SetTextColor(color)
-		return nil
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(blockIds, true, func(t text.Block) error {
+			t.SetTextColor(color)
+			return nil
+		})
 	})
 }
 
 func (s *service) SetBackgroundColor(contextId, color string, blockIds ...string) (err error) {
-	sb, release, err := s.pickBlock(contextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.UpdateBlock(blockIds, true, func(b simple.Block) error {
-		b.Model().BackgroundColor = color
-		return nil
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.Update(func(b simple.Block) error {
+			b.Model().BackgroundColor = color
+			return nil
+		}, blockIds...)
 	})
 }
 
 func (s *service) SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error) {
-	sb, release, err := s.pickBlock(contextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.UpdateBlock(blockIds, true, func(b simple.Block) error {
-		b.Model().Align = align
-		return nil
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.Update(func(b simple.Block) error {
+			b.Model().Align = align
+			return nil
+		}, blockIds...)
 	})
 }
 
-func (s *service) updateTextBlock(contextId string, blockIds []string, event bool, apply func(b text.Block) error) (err error) {
-	sb, release, err := s.pickBlock(contextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.UpdateTextBlocks(blockIds, event, apply)
-}
-
-func (s *service) SetIconName(req pb.RpcBlockSetIconNameRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.UpdateIconBlock(req.BlockId, func(t base.IconBlock) error {
-		return t.SetIconName(req.Name)
+func (s *service) UploadBlockFile(req pb.RpcBlockUploadRequest) (err error) {
+	return s.DoFile(req.ContextId, func(b file.File) error {
+		return b.Upload(req.BlockId, req.FilePath, req.Url)
 	})
 }
 
-func (s *service) UploadFile(req pb.RpcBlockUploadRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
+func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
+	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
+	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
+		f(tempFile)
+	})
+	if err = u.DoType(req.LocalPath, req.Url, req.Type); err != nil {
 		return
 	}
-	defer release()
-	return sb.Upload(req.BlockId, req.FilePath, req.Url)
+	result := tempFile.Model().GetFile()
+	if result.State != model.BlockContentFile_Done {
+		return "", fmt.Errorf("unexpected upload error")
+	}
+	return result.Hash, nil
 }
 
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.DropFiles(req)
+	return s.DoFileNonLock(req.ContextId, func(b file.File) error {
+		return b.DropFiles(req)
+	})
 }
 
 func (s *service) Undo(req pb.RpcBlockUndoRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Undo()
+	return s.DoHistory(req.ContextId, func(b basic.IHistory) error {
+		return b.Undo()
+	})
 }
 
 func (s *service) Redo(req pb.RpcBlockRedoRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Redo()
+	return s.DoHistory(req.ContextId, func(b basic.IHistory) error {
+		return b.Redo()
+	})
 }
 
 func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error) {
-	sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.UpdateBlock([]string{req.BlockId}, true, func(b simple.Block) error {
-		if bm, ok := b.(bookmark.Block); ok {
-			return bm.Fetch(bookmark.FetchParams{
-				Url:         req.Url,
-				Anytype:     s.anytype,
-				Updater:     sb,
-				LinkPreview: s.linkPreview,
-			})
-		}
-		return ErrUnexpectedBlockType
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Update(func(b simple.Block) error {
+			if bm, ok := b.(bookmark.Block); ok {
+				return bm.Fetch(bookmark.FetchParams{
+					Url:     req.Url,
+					Anytype: s.anytype,
+					Updater: func(ids []string, hist bool, apply func(b simple.Block) error) (err error) {
+						return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+							return b.Update(apply, ids...)
+						})
+					},
+					LinkPreview: s.linkPreview,
+				})
+			}
+			return ErrUnexpectedBlockType
+		}, req.BlockId)
 	})
+
+}
+
+func (s *service) ProcessAdd(p process.Process) (err error) {
+	return s.process.Add(p)
 }
 
 func (s *service) ProcessCancel(id string) (err error) {
@@ -481,7 +540,7 @@ func (s *service) Close() error {
 	s.closed = true
 	for _, sb := range s.openedBlocks {
 		if err := sb.Close(); err != nil {
-			log.Errorf("block[%s] close error: %v", sb.GetId(), err)
+			log.Errorf("block[%s] close error: %v", sb.Id(), err)
 		}
 	}
 	log.Infof("block service closed")
@@ -489,7 +548,7 @@ func (s *service) Close() error {
 }
 
 // pickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *service) pickBlock(id string) (sb smartBlock, release func(), err error) {
+func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func(), err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if s.closed {
@@ -498,22 +557,44 @@ func (s *service) pickBlock(id string) (sb smartBlock, release func(), err error
 	}
 	ob, ok := s.openedBlocks[id]
 	if !ok {
-		sb, err = openSmartBlock(s, id, false)
+		sb, err = s.createSmartBlock(id)
 		if err != nil {
 			return
 		}
 		ob = &openedBlock{
-			smartBlock: sb,
+			SmartBlock: sb,
 		}
 		s.openedBlocks[id] = ob
 	}
 	ob.refs++
 	ob.lastUsage = time.Now()
-	return ob.smartBlock, func() {
+	return ob.SmartBlock, func() {
 		s.m.Lock()
 		defer s.m.Unlock()
 		ob.refs--
 	}, nil
+}
+
+func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err error) {
+	sc, err := source.NewSource(s.anytype, s.meta, id)
+	if err != nil {
+		return
+	}
+	switch sc.Type() {
+	case core.SmartBlockTypePage:
+		sb = editor.NewPage(s)
+	case core.SmartBlockTypeDashboard:
+		sb = editor.NewDashboard()
+	case core.SmartBlockTypeArchive:
+		sb = editor.NewArchive(s)
+	default:
+		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
+	}
+
+	if err = sb.Init(sc); err != nil {
+		return
+	}
+	return
 }
 
 func (s *service) cleanupTicker() {
@@ -526,6 +607,99 @@ func (s *service) cleanupTicker() {
 	}
 }
 
+func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(basic.Basic); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(clipboard.Clipboard); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoText(id string, apply func(b stext.Text) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(stext.Text); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoFile(id string, apply func(b file.File) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(file.File); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(file.File); ok {
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(basic.IHistory); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(sb)
+}
+
 func (s *service) cleanupBlocks() (closed bool) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -533,7 +707,7 @@ func (s *service) cleanupBlocks() (closed bool) {
 	for id, ob := range s.openedBlocks {
 		if ob.refs == 0 && time.Now().After(ob.lastUsage.Add(blockCacheTTL)) {
 			if err := ob.Close(); err != nil {
-				log.Warningf("error while close block[%s]: %v", id, err)
+				log.Warnf("error while close block[%s]: %v", id, err)
 			}
 			delete(s.openedBlocks, id)
 			closedCount++

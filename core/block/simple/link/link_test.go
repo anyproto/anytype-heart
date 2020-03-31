@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,13 +43,6 @@ func TestLink_Diff(t *testing.T) {
 	t.Run("content diff", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.Fields = &types.Struct{
-			Fields: map[string]*types.Value{
-				"t": &types.Value{
-					Kind: &types.Value_StringValue{StringValue: "x"},
-				},
-			},
-		}
 		b2.content.Style = model.BlockContentLink_Dataview
 		b2.content.TargetBlockId = "42"
 
@@ -59,7 +51,6 @@ func TestLink_Diff(t *testing.T) {
 		require.Len(t, diff, 1)
 		change := diff[0].Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink
 		assert.NotNil(t, change.TargetBlockId)
-		assert.NotNil(t, change.Fields)
 		assert.NotNil(t, change.Style)
 	})
 }

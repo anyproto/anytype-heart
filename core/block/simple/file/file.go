@@ -29,7 +29,7 @@ func NewFile(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error)
+	Upload(stor anytype.Service, updater Updater, localPath, url string) (err error)
 	SetFileData(hash string, meta core.FileMeta)
 	SetImage(hash, name string)
 	SetState(state model.BlockContentFileState)
@@ -44,7 +44,7 @@ type File struct {
 	content *model.BlockContentFile
 }
 
-func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error) {
+func (f *File) Upload(stor anytype.Service, updater Updater, localPath, url string) (err error) {
 	if f.content.State != model.BlockContentFile_Empty && f.content.State != model.BlockContentFile_Error {
 		return fmt.Errorf("block is not empty")
 	}
@@ -53,7 +53,7 @@ func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url stri
 	up := &uploader{
 		updateFile: func(apply func(file Block)) {
 			if e := updater.UpdateFileBlock(id, apply); e != nil {
-				log.Warningf("can't update file block: %v", e)
+				log.Warnf("can't update file block: %v", e)
 			}
 		},
 		storage: stor,

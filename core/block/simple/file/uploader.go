@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"image"
 	"io"
 	"net/http"
@@ -16,7 +17,7 @@ import (
 
 var log = logging.Logger("anytype-mw")
 
-func NewUploader(a anytype.Anytype, fn func(f func(file Block))) Uploader {
+func NewUploader(a anytype.Service, fn func(f func(file Block))) Uploader {
 	return &uploader{
 		updateFile: fn,
 		storage:    a,
@@ -25,11 +26,12 @@ func NewUploader(a anytype.Anytype, fn func(f func(file Block))) Uploader {
 
 type Uploader interface {
 	DoAuto(localPath string)
+	DoType(localPath, url string, fType model.BlockContentFileType) (err error)
 }
 
 type uploader struct {
 	updateFile func(f func(file Block))
-	storage    anytype.Anytype
+	storage    anytype.Service
 	isImage    bool
 }
 
@@ -40,6 +42,11 @@ func (u *uploader) DoAuto(localPath string) {
 	} else {
 		u.Do(localPath, "")
 	}
+}
+
+func (u *uploader) DoType(localPath, url string, fType model.BlockContentFileType) (err error) {
+	u.isImage = fType == model.BlockContentFile_Image
+	return u.do(localPath, url)
 }
 
 func (u *uploader) DoImage(localPath, url string) {
@@ -60,7 +67,7 @@ func (u *uploader) DoImage(localPath, url string) {
 
 func (u *uploader) Do(localPath, url string) {
 	if err := u.do(localPath, url); err != nil {
-		log.Warningf("upload file error: %v", err)
+		log.Warnf("upload file error: %v", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})
@@ -102,7 +109,7 @@ func (u *uploader) upload(rd io.ReadCloser, name string) (err error) {
 }
 
 func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
-	image, err := u.storage.ImageAddWithReader(rd, name)
+	image, err := u.storage.ImageAddWithReader(context.TODO(), rd, name)
 	if err != nil {
 		return
 	}
@@ -113,7 +120,7 @@ func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
 }
 
 func (u *uploader) uploadFile(rd io.Reader, name string) (err error) {
-	cf, err := u.storage.FileAddWithReader(rd, name)
+	cf, err := u.storage.FileAddWithReader(context.TODO(), rd, name)
 	if err != nil {
 		return
 	}

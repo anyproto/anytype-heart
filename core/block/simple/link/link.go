@@ -3,7 +3,6 @@ package link
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -27,7 +26,6 @@ func NewLink(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	SetMeta(meta core.BlockVersionMeta)
 }
 
 type Link struct {
@@ -60,10 +58,6 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.Style = &pb.EventBlockSetLinkStyle{Value: link.content.Style}
 	}
-	if !l.content.Fields.Equal(link.content.Fields) {
-		hasChanges = true
-		changes.Fields = &pb.EventBlockSetLinkFields{Value: link.content.Fields}
-	}
 	if l.content.TargetBlockId != link.content.TargetBlockId {
 		hasChanges = true
 		changes.TargetBlockId = &pb.EventBlockSetLinkTargetBlockId{Value: link.content.TargetBlockId}
@@ -73,8 +67,4 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes}})
 	}
 	return
-}
-
-func (l *Link) SetMeta(meta core.BlockVersionMeta) {
-	l.content.Fields = meta.ExternalFields()
 }

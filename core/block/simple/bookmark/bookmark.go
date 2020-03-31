@@ -40,14 +40,12 @@ type Block interface {
 
 type FetchParams struct {
 	Url         string
-	Anytype     anytype.Anytype
+	Anytype     anytype.Service
 	Updater     Updater
 	LinkPreview linkpreview.LinkPreview
 }
 
-type Updater interface {
-	UpdateBlock(ids []string, hist bool, apply func(b simple.Block) error) (err error)
-}
+type Updater func(ids []string, hist bool, apply func(b simple.Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
@@ -143,7 +141,7 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load image url:", data.ImageUrl, err)
 				return
 			}
-			err = params.Updater.UpdateBlock([]string{id}, false, func(b simple.Block) error {
+			err = params.Updater([]string{id}, false, func(b simple.Block) error {
 				if bm, ok := b.(Block); ok {
 					bm.SetImageHash(hash)
 					return nil
@@ -163,7 +161,7 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
 				return
 			}
-			err = params.Updater.UpdateBlock([]string{id}, false, func(b simple.Block) error {
+			err = params.Updater([]string{id}, false, func(b simple.Block) error {
 				if bm, ok := b.(Block); ok {
 					bm.SetFaviconHash(hash)
 					return nil
@@ -177,7 +175,7 @@ func fetcher(id string, params FetchParams) {
 		}()
 	}
 
-	err = params.Updater.UpdateBlock([]string{id}, false, func(b simple.Block) error {
+	err = params.Updater([]string{id}, false, func(b simple.Block) error {
 		if bm, ok := b.(Block); ok {
 			bm.SetLinkPreview(data)
 			return nil
@@ -190,7 +188,7 @@ func fetcher(id string, params FetchParams) {
 	}
 }
 
-func loadImage(stor anytype.Anytype, url string) (hash string, err error) {
+func loadImage(stor anytype.Service, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -203,12 +201,12 @@ func loadImage(stor anytype.Anytype, url string) (hash string, err error) {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	im, err := stor.ImageAddWithReader(resp.Body, filepath.Base(url))
+	im, err := stor.ImageAddWithReader(context.TODO(), resp.Body, filepath.Base(url))
 	if err != nil {
 		return
 	}

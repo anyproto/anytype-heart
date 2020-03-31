@@ -29,10 +29,10 @@ message Event {
 
             Block.Set.Text blockSetText = 10;
             Block.Set.File blockSetFile = 11;
-            Block.Set.Icon blockSetIcon = 12;
             Block.Set.Link blockSetLink = 13;
             Block.Set.Bookmark blockSetBookmark = 14;
             Block.Set.Align blockSetAlign = 15;
+            Block.Set.Details blockSetDetails = 16;
 
             Block.Show blockShow = 20;
             User.Block.Join userBlockJoin = 21;
@@ -81,6 +81,7 @@ message Event {
         message Show {
             string rootId = 1; // Root block id
             repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
+            repeated Block.Set.Details details = 3; // details for current and dependent smart blocks
         }
 
         /**
@@ -92,7 +93,6 @@ message Event {
         message FilesUpload {
             string blockId = 1; // if empty => create new blocks
             repeated string filePath = 2; // filepaths to the files
-
         }
 
         /*
@@ -107,6 +107,11 @@ message Event {
         }
 
         message Set {
+
+            message Details {
+                string id = 1;
+                google.protobuf.Struct details = 2;
+            }
 
             message Fields {
                 string id = 1;
@@ -202,14 +207,6 @@ message Event {
                 }
             }
 
-            message Icon {
-                string id = 1;
-                Name name = 2;
-
-                message Name {
-                    string value = 1;
-                }
-            }
 
             message Link {
                 string id = 1;
