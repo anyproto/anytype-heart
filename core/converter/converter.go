@@ -2,49 +2,50 @@ package converter
 
 import (
 	"encoding/base64"
+	"strconv"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
 	logging "github.com/ipfs/go-log"
 	"github.com/yosssi/gohtml"
-	"strconv"
 )
 
 var log = logging.Logger("anytype-converter")
 
 type Node struct {
-	Id     string
-	model  *model.Block
+	Id       string
+	model    *model.Block
 	children []*Node
 }
 
 type converter struct {
-	nodeTable map[string]*Node
-	rootNode *Node
+	nodeTable    map[string]*Node
+	rootNode     *Node
 	remainBlocks []*model.Block
 }
 
 type Converter interface {
-	CreateTree (blocks []*model.Block) Node
-	ProcessTree (node *Node, images map[string][]byte) (out string)
-	PrintNode (node *Node) (out string)
-	Convert (blocks []*model.Block, images map[string][]byte) (out string)
-	Export (blocks []*model.Block, images map[string][]byte) (out string)
+	CreateTree(blocks []*model.Block) Node
+	ProcessTree(node *Node, images map[string][]byte) (out string)
+	PrintNode(node *Node) (out string)
+	Convert(blocks []*model.Block, images map[string][]byte) (out string)
+	Export(blocks []*model.Block, images map[string][]byte) (out string)
 
-	nextTreeLayer (node *Node) (processedNode *Node)
-	filterById (blocks []*model.Block, id string) (out []*model.Block)
+	nextTreeLayer(node *Node) (processedNode *Node)
+	filterById(blocks []*model.Block, id string) (out []*model.Block)
 }
 
 func New() Converter {
 	c := &converter{
-		rootNode: &Node{Id: "root"},
-		nodeTable: make(map[string]*Node),
+		rootNode:     &Node{Id: "root"},
+		nodeTable:    make(map[string]*Node),
 		remainBlocks: []*model.Block{},
 	}
 
 	return c
 }
 
-func (c *converter) filterById (blocks []*model.Block, Id string) (out []*model.Block) {
+func (c *converter) filterById(blocks []*model.Block, Id string) (out []*model.Block) {
 	for _, b := range blocks {
 		if b.Id != Id {
 			out = append(out, b)
@@ -53,21 +54,23 @@ func (c *converter) filterById (blocks []*model.Block, Id string) (out []*model.
 	return out
 }
 
-func (c *converter) filterLayout (blocks []*model.Block) (out []*model.Block) {
+func (c *converter) filterLayout(blocks []*model.Block) (out []*model.Block) {
 	for _, b := range blocks {
 		switch b.Content.(type) {
-			case *model.BlockContentOfDashboard: continue
-			default: out = append(out, b)
+		case *model.BlockContentOfDashboard:
+			continue
+		default:
+			out = append(out, b)
 		}
 	}
 	return out
 }
 
-func (c *converter) CreateTree (blocks []*model.Block) Node {
+func (c *converter) CreateTree(blocks []*model.Block) Node {
 	blocks = c.filterLayout(blocks)
 	// 1. Create map
 	for _, b := range blocks {
-		c.nodeTable[b.Id] = &Node{b.Id, b,[]*Node{} }
+		c.nodeTable[b.Id] = &Node{b.Id, b, []*Node{}}
 		log.Debug("c.nodeTable", b.Id, c.nodeTable[b.Id])
 	}
 
@@ -90,7 +93,7 @@ func (c *converter) CreateTree (blocks []*model.Block) Node {
 	log.Debug("ROOT LEVEL:", blocksRootLvl)
 
 	// 4. Create root
-	c.rootNode.model = &model.Block{ChildrenIds:[]string{}}
+	c.rootNode.model = &model.Block{ChildrenIds: []string{}}
 
 	c.remainBlocks = blocks
 
@@ -114,8 +117,8 @@ func contains(s []*Node, e *Node) bool {
 	}
 
 	if len(s) > 0 {
-		for i:= 0; i < len(s); i++ {
-			log.Debug( i, "len(s)", len(s), s[i])
+		for i := 0; i < len(s); i++ {
+			log.Debug(i, "len(s)", len(s), s[i])
 			if s[i] != nil && s[i].Id == e.Id {
 				return true
 			}
@@ -125,14 +128,14 @@ func contains(s []*Node, e *Node) bool {
 	return false
 }
 
-func (c *converter) nextTreeLayer (node *Node) *Node {
+func (c *converter) nextTreeLayer(node *Node) *Node {
 	c.remainBlocks = c.filterById(c.remainBlocks, node.Id)
 
 	for _, childId := range node.model.ChildrenIds {
 		c.remainBlocks = c.filterById(c.remainBlocks, childId)
 
-		if  c.nodeTable[childId] != nil &&
-			c.nodeTable[childId].model !=nil &&
+		if c.nodeTable[childId] != nil &&
+			c.nodeTable[childId].model != nil &&
 			c.nodeTable[childId].model.ChildrenIds != nil &&
 			len(c.nodeTable[childId].model.ChildrenIds) > 0 {
 			c.nodeTable[childId] = c.nextTreeLayer(c.nodeTable[childId])
@@ -149,7 +152,7 @@ func (c *converter) nextTreeLayer (node *Node) *Node {
 }
 
 // For test purposes
-func (c *converter) PrintNode (node *Node) (out string) {
+func (c *converter) PrintNode(node *Node) (out string) {
 	for _, child := range node.children {
 		out += "<node>" + child.Id
 		if len(child.children) > 0 {
@@ -162,7 +165,7 @@ func (c *converter) PrintNode (node *Node) (out string) {
 	return "\n" + gohtml.Format(out)
 }
 
-func (c *converter) ProcessTree (node *Node, images map[string][]byte) (out string) {
+func (c *converter) ProcessTree(node *Node, images map[string][]byte) (out string) {
 	for _, child := range node.children {
 		if child != nil && child.model != nil && child.model.Content != nil {
 			switch cont := child.model.Content.(type) {
@@ -179,13 +182,13 @@ func (c *converter) ProcessTree (node *Node, images map[string][]byte) (out stri
 			case *model.BlockContentOfLayout:
 				out += renderLayout(true, cont, child.model)
 			case *model.BlockContentOfDashboard:
-				break;
+				break
 			case *model.BlockContentOfPage:
-				break;
+				break
 			case *model.BlockContentOfDataview:
-				break;
+				break
 			case *model.BlockContentOfLink:
-				out += renderLink(true, cont);
+				out += renderLink(true, cont)
 			}
 		}
 
@@ -208,13 +211,13 @@ func (c *converter) ProcessTree (node *Node, images map[string][]byte) (out stri
 			case *model.BlockContentOfLayout:
 				out += renderLayout(false, cont, child.model)
 			case *model.BlockContentOfDashboard:
-				break;
+				break
 			case *model.BlockContentOfPage:
-				break;
+				break
 			case *model.BlockContentOfDataview:
-				break;
+				break
 			case *model.BlockContentOfLink:
-				out += renderLink(false, cont);
+				out += renderLink(false, cont)
 			}
 		}
 	}
@@ -222,42 +225,65 @@ func (c *converter) ProcessTree (node *Node, images map[string][]byte) (out stri
 	return out
 }
 
-func colorMapping (color string, isText bool) (out string) {
+func colorMapping(color string, isText bool) (out string) {
 	if isText {
 		switch color {
-		case "grey":  out = "#aca996"
-		case "yellow":  out = "#ecd91b"
-		case "orange":  out = "#ffb522"
-		case "red":  out = "#f55522"
-		case "pink":  out = "#e51ca0"
-		case "purple":  out = "#ab50cc"
-		case "blue":  out = "#3e58"
-		case "ice":  out = "#2aa7ee"
-		case "teal":  out = "#0fc8ba"
-		case "lime":  out = "#5dd400"
-		case "black": out = "#2c2b27"
-		default: out = color
+		case "grey":
+			out = "#aca996"
+		case "yellow":
+			out = "#ecd91b"
+		case "orange":
+			out = "#ffb522"
+		case "red":
+			out = "#f55522"
+		case "pink":
+			out = "#e51ca0"
+		case "purple":
+			out = "#ab50cc"
+		case "blue":
+			out = "#3e58"
+		case "ice":
+			out = "#2aa7ee"
+		case "teal":
+			out = "#0fc8ba"
+		case "lime":
+			out = "#5dd400"
+		case "black":
+			out = "#2c2b27"
+		default:
+			out = color
 		}
 	} else {
 		switch color {
-		case "grey":  out = "#f3f2ec"
-		case "yellow":  out = "#fef9cc"
-		case "orange":  out = "#fef3c5"
-		case "red":  out = "#ffebe5"
-		case "pink":  out = "#fee3f5"
-		case "purple":  out = "#f4e3fa"
-		case "blue":  out = "#f4e3fa"
-		case "ice":  out = "#d6effd"
-		case "teal":  out = "#d6f5f3"
-		case "lime":  out = "#e3f7d0"
-		default: out = color
+		case "grey":
+			out = "#f3f2ec"
+		case "yellow":
+			out = "#fef9cc"
+		case "orange":
+			out = "#fef3c5"
+		case "red":
+			out = "#ffebe5"
+		case "pink":
+			out = "#fee3f5"
+		case "purple":
+			out = "#f4e3fa"
+		case "blue":
+			out = "#f4e3fa"
+		case "ice":
+			out = "#d6effd"
+		case "teal":
+			out = "#d6f5f3"
+		case "lime":
+			out = "#e3f7d0"
+		default:
+			out = color
 		}
 	}
 
 	return out
 }
 
-func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
+func applyMarks(text string, marks *model.BlockContentTextMarks) (out string) {
 	if len(text) == 0 ||
 		marks == nil ||
 		marks.Marks == nil ||
@@ -282,7 +308,7 @@ func applyMarks (text string, marks *model.BlockContentTextMarks) (out string) {
 	style_b := ""
 
 	for i := 0; i < len(marks.Marks); i++ {
-		if len(symbols) > int(marks.Marks[i].Range.From) && len(symbols) > int(marks.Marks[i].Range.To - 1) {
+		if len(symbols) > int(marks.Marks[i].Range.From) && len(symbols) > int(marks.Marks[i].Range.To-1) {
 
 			switch marks.Marks[i].Type {
 			case model.BlockContentTextMark_Strikethrough:
@@ -335,33 +361,57 @@ func renderText(isOpened bool, child *model.BlockContentOfText) (out string) {
 	if isOpened {
 		switch child.Text.Style {
 		// TODO: renderText -> c.renderText; ul li, ul li -> ul li li
-		case model.BlockContentText_Paragraph: out += `<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Header1:   out += `<h1 style="` + styleHeader1 + `">` + child.Text.Text
-		case model.BlockContentText_Header2:   out += `<h2 style="` + styleHeader2 + `">` + child.Text.Text
-		case model.BlockContentText_Header3:   out += `<h3 style="` + styleHeader3 + `">` + child.Text.Text
-		case model.BlockContentText_Header4:   out += `<h4 style="` + styleHeader4 + `">` + child.Text.Text
-		case model.BlockContentText_Quote:     out += `<quote style="` + styleQuote + `">` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Code:      out += `<code style="` + styleCode + `">` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Title:     out += `<h1 style="` + styleTitle + `">` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Checkbox:  out += `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Marked:    out += `<ul style="` + styleMarked + `"><li>` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Numbered:  out += `<ol style="` + styleNumbered + `"><li>` + applyMarks(child.Text.Text, child.Text.Marks)
-		case model.BlockContentText_Toggle:    out += `<div style="` + styleToggle + `" class="toggle">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Paragraph:
+			out += `<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Header1:
+			out += `<h1 style="` + styleHeader1 + `">` + child.Text.Text
+		case model.BlockContentText_Header2:
+			out += `<h2 style="` + styleHeader2 + `">` + child.Text.Text
+		case model.BlockContentText_Header3:
+			out += `<h3 style="` + styleHeader3 + `">` + child.Text.Text
+		case model.BlockContentText_Header4:
+			out += `<h4 style="` + styleHeader4 + `">` + child.Text.Text
+		case model.BlockContentText_Quote:
+			out += `<quote style="` + styleQuote + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Code:
+			out += `<code style="` + styleCode + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Title:
+			out += `<h1 style="` + styleTitle + `">` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Checkbox:
+			out += `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Marked:
+			out += `<ul style="` + styleMarked + `"><li>` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Numbered:
+			out += `<ol style="` + styleNumbered + `"><li>` + applyMarks(child.Text.Text, child.Text.Marks)
+		case model.BlockContentText_Toggle:
+			out += `<div style="` + styleToggle + `" class="toggle">` + applyMarks(child.Text.Text, child.Text.Marks)
 		}
 	} else {
 		switch child.Text.Style {
-		case model.BlockContentText_Paragraph: out += "</div>"
-		case model.BlockContentText_Header1:   out += "</h1>"
-		case model.BlockContentText_Header2:   out += "</h2>"
-		case model.BlockContentText_Header3:   out += "</h3>"
-		case model.BlockContentText_Header4:   out += "</h4>"
-		case model.BlockContentText_Quote:     out += "</quote>"
-		case model.BlockContentText_Code:      out += "</code>"
-		case model.BlockContentText_Title:     out += "</h1>"
-		case model.BlockContentText_Checkbox:  out += `</div>`
-		case model.BlockContentText_Marked:    out += "</li></ul>"
-		case model.BlockContentText_Numbered:  out += "</li></ol>"
-		case model.BlockContentText_Toggle:    out += `</div>`
+		case model.BlockContentText_Paragraph:
+			out += "</div>"
+		case model.BlockContentText_Header1:
+			out += "</h1>"
+		case model.BlockContentText_Header2:
+			out += "</h2>"
+		case model.BlockContentText_Header3:
+			out += "</h3>"
+		case model.BlockContentText_Header4:
+			out += "</h4>"
+		case model.BlockContentText_Quote:
+			out += "</quote>"
+		case model.BlockContentText_Code:
+			out += "</code>"
+		case model.BlockContentText_Title:
+			out += "</h1>"
+		case model.BlockContentText_Checkbox:
+			out += `</div>`
+		case model.BlockContentText_Marked:
+			out += "</li></ul>"
+		case model.BlockContentText_Numbered:
+			out += "</li></ol>"
+		case model.BlockContentText_Toggle:
+			out += `</div>`
 		}
 	}
 
@@ -400,12 +450,11 @@ func renderFile(isOpened bool, child *model.BlockContentOfFile, images map[strin
 			// TODO: child.File.Size_
 			// TODO: child.File.Mime
 			img := images[child.File.Hash]
-			log.Debug("IMAGES MAP:", "HASH:", child.File.Hash,  "|||", images)
+			log.Debug("IMAGES MAP:", "HASH:", child.File.Hash, "|||", images)
 			if img != nil {
 				encodedImg := base64.StdEncoding.EncodeToString(img)
 				out = `<img src="data:image/png;base64, ` + encodedImg + `" alt="` + child.File.Name + `" />`
 			}
-
 
 		case model.BlockContentFile_Video:
 			out = `<div class="video">
@@ -414,18 +463,21 @@ func renderFile(isOpened bool, child *model.BlockContentOfFile, images map[strin
 		}
 	} else {
 		switch child.File.Type {
-		case model.BlockContentFile_File: out = `</div>`
-		case model.BlockContentFile_Image: out = `</div>`
-		case model.BlockContentFile_Video: out = `</div>`
+		case model.BlockContentFile_File:
+			out = `</div>`
+		case model.BlockContentFile_Image:
+			out = `</div>`
+		case model.BlockContentFile_Video:
+			out = `</div>`
 		}
 	}
 	return out
 }
 
 func renderBookmark(isOpened bool, child *model.BlockContentOfBookmark) (out string) {
-/*
-	TODO: ImageHash   string
-	TODO: FaviconHash string
+	/*
+		TODO: ImageHash   string
+		TODO: FaviconHash string
 	*/
 	if isOpened {
 		href := child.Bookmark.Url
@@ -442,8 +494,10 @@ func renderBookmark(isOpened bool, child *model.BlockContentOfBookmark) (out str
 func renderDiv(isOpened bool, child *model.BlockContentOfDiv) (out string) {
 	if isOpened {
 		switch child.Div.Style {
-		case model.BlockContentDiv_Dots: out = `<hr class="dots">`
-		case model.BlockContentDiv_Line: out = `<hr class="line">`
+		case model.BlockContentDiv_Dots:
+			out = `<hr class="dots">`
+		case model.BlockContentDiv_Line:
+			out = `<hr class="line">`
 		}
 	}
 
@@ -480,12 +534,13 @@ func renderLayout(isOpened bool, child *model.BlockContentOfLayout, block *model
 			if fields != nil && fields.Fields != nil && fields.Fields["width"] != nil {
 				width, _ := fieldsGetFloat(fields, "width")
 				if width > 0 {
-					style = `style="width: ` + strconv.Itoa(int(width * 100)) + `%">`
+					style = `style="width: ` + strconv.Itoa(int(width*100)) + `%">`
 				}
 			}
 			out = `<div class="column" ` + style + `>`
 
-		case model.BlockContentLayout_Row: out = `<div class="row" style="display: flex">`
+		case model.BlockContentLayout_Row:
+			out = `<div class="row" style="display: flex">`
 		}
 	} else {
 		out = "</div>"
@@ -494,8 +549,8 @@ func renderLayout(isOpened bool, child *model.BlockContentOfLayout, block *model
 	return out
 }
 
-func wrapExportHtml (innerHtml string) string {
-	title := "" // TODO: add title
+func wrapExportHtml(innerHtml string) string {
+	title := ""  // TODO: add title
 	styles := "" // TODO: add styles
 	output := `
 		<!DOCTYPE html>
@@ -516,7 +571,7 @@ func wrapExportHtml (innerHtml string) string {
 	return output
 }
 
-func wrapCopyHtml (innerHtml string) string {
+func wrapCopyHtml(innerHtml string) string {
 
 	output := `<html>
 		<head>
@@ -542,14 +597,14 @@ func wrapCopyHtml (innerHtml string) string {
 	return output
 }
 
-func (c *converter) Export (blocks []*model.Block, images map[string][]byte) (out string) {
+func (c *converter) Export(blocks []*model.Block, images map[string][]byte) (out string) {
 	tree := c.CreateTree(blocks)
 	html := c.ProcessTree(&tree, images)
 
 	return wrapExportHtml(gohtml.Format(html))
 }
 
-func (c *converter) Convert (blocks []*model.Block, images map[string][]byte) (out string) {
+func (c *converter) Convert(blocks []*model.Block, images map[string][]byte) (out string) {
 	tree := c.CreateTree(blocks)
 	html := c.ProcessTree(&tree, images)
 

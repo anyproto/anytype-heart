@@ -1,7 +1,22 @@
 package clipboard
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/google/uuid"
+	logging "github.com/ipfs/go-log"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/converter"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -9,16 +24,17 @@ import (
 
 var (
 	ErrAllSlotsEmpty = errors.New("All slots are empty")
+	ErrOutOfRange    = errors.New("out of range")
+	log = logging.Logger("anytype-clipboard")
 )
 
 type Clipboard interface {
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
+	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error)
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 }
 
-/*
 func NewClipboard(sb smartblock.SmartBlock) Clipboard {
 	return &clipboard{sb}
 }
@@ -27,24 +43,23 @@ type clipboard struct {
 	smartblock.SmartBlock
 }
 
-
-
-func (cb *clipboard) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+func (cb *clipboard) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
+	log.Debug("Paste req:", req)
 	if len(req.AnySlot) > 0 {
 		return cb.pasteAny(req)
 	} else if len(req.HtmlSlot) > 0 {
-		blockIds, err = cb.pasteHtml(req)
+		blockIds, uploadArr, err = cb.pasteHtml(req)
 
 		if err != nil {
 			return cb.pasteText(req)
 		} else {
-			return blockIds, err
+			return blockIds, uploadArr, err
 		}
 
 	} else if len(req.TextSlot) > 0 {
 		return cb.pasteText(req)
 	} else {
-		return nil, ErrAllSlotsEmpty
+		return nil, nil, ErrAllSlotsEmpty
 	}
 }
 
@@ -64,9 +79,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 }
 
 func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
-	p.m.Lock()
-
-	s := p.newState()
+	s := cb.NewState()
 
 	blocksMap := make(map[string]*model.Block)
 	textSlot = ""
@@ -82,14 +95,9 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 		ids = append(ids, b.Id)
 	}
 
-	if len(ids) > 0 {
-		if err := p.unlink(s, ids...); err != nil {
-			p.m.Unlock()
-			return textSlot, htmlSlot, anySlot, err
-		}
+	for _, id := range ids {
+		s.Remove(id)
 	}
-
-	p.m.Unlock()
 
 	if err != nil {
 		return textSlot, htmlSlot, anySlot, err
@@ -99,29 +107,28 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 	htmlSlot = conv.Convert(req.Blocks, images)
 	anySlot = req.Blocks
 
-	return textSlot, htmlSlot, anySlot, p.applyAndSendEvent(s)
+	return textSlot, htmlSlot, anySlot, cb.Apply(s)
+
 }
 
-func (cb *clipboard) blocksTreeToMap (blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block) {
+func (cb *clipboard) blocksTreeToMap(blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block) {
 	blocksMapOut = blocksMapIn
+	blocks := cb.Blocks()
 
-	for _, id := range ids {
-		b := p.versions[id].Copy().Model()
-
-		blocksMapOut[id] = b
-
-		if len(b.ChildrenIds) > 0 {
-			blocksMapOut = p.blocksTreeToMap(blocksMapOut, b.ChildrenIds)
+	for i, id := range ids {
+		blocksMapOut[id] = blocks[i]
+		if len(blocks[i].ChildrenIds) > 0 {
+			blocksMapOut = cb.blocksTreeToMap(blocksMapOut, blocks[i].ChildrenIds)
 		}
 	}
 	return blocksMapOut
 }
 
-func (cb *clipboard) getImages (blocks map[string]*model.Block) (images map[string][]byte, err error) {
+func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[string][]byte, err error) {
 	for _, b := range blocks {
 		if file := b.GetFile(); file != nil {
 			if file.Type == model.BlockContentFile_Image {
-				fh, err := p.s.anytype.FileByHash(file.Hash)
+				fh, err := cb.Anytype().FileByHash(context.TODO(), file.Hash)
 				if err != nil {
 					return images, err
 				}
@@ -146,12 +153,11 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 	html := conv.Export(blocks, images)
 
 	dir := os.TempDir()
-	fileName := "export-" + p.GetId() + ".html"
+	fileName := "export-" + cb.Id() + ".html"
 	filePath := filepath.Join(dir, fileName)
-	err = ioutil.WriteFile(filePath, []byte(html),0644)
+	err = ioutil.WriteFile(filePath, []byte(html), 0644)
 
 	if err != nil {
-		log.Warning(err)
 		return "", err
 	}
 	log.Debug("filepath.Join(dir, fileName)", filepath.Join(dir, fileName), dir, fileName)
@@ -160,26 +166,25 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 	return filePath, nil
 }
 
-func (cb *clipboard) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+func (cb *clipboard) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
 	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
-
+	log.Debug("HERE1", req.HtmlSlot, blocks)
 	req.AnySlot = blocks
 	return cb.pasteAny(req)
 }
 
-func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string,  uploadArr []pb.RpcBlockUploadRequest, err error) {
 	if len(req.TextSlot) == 0 {
-		return blockIds, nil
+		return blockIds, uploadArr, nil
 	}
 
 	textArr := strings.Split(req.TextSlot, "\n")
 
 	if len(req.FocusedBlockId) > 0 {
-		block := p.versions[req.FocusedBlockId].Model()
-		switch block.Content.(type) {
-		case *model.BlockContentOfText:
-			if block.GetText().Style == model.BlockContentText_Code {
+		block := cb.Pick(req.FocusedBlockId)
+		if block != nil {
+			if b := block.Model().GetText(); b != nil && b.Style == model.BlockContentText_Code {
 				textArr = []string{req.TextSlot}
 			}
 		}
@@ -194,177 +199,278 @@ func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, 
 		})
 	}
 
-	log.Debug("BLOCKS text:", req.AnySlot)
-
-	blockIds, err = p.pasteAny(req)
-	log.Error("ERROR pasteAny:", err)
-	return blockIds, err
+	return cb.pasteAny(req)
 
 }
 
-func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
-
-	var (
-		targetId string
-	)
-
-	s := p.newState()
-
-	cIds := p.versions[p.GetId()].Model().ChildrenIds
-
-	reqFiltered := []*model.Block{}
-	for i:=0; i < len(req.AnySlot); i++ {
-		switch req.AnySlot[i].Content.(type) {
-		case *model.BlockContentOfLayout: continue
-		default: reqFiltered = append(reqFiltered, req.AnySlot[i])
+func (cb *clipboard) filterFromLayouts (anySlot []*model.Block) (anySlotFiltered []*model.Block) {
+	for _, b := range anySlot {
+		if b.GetLayout() == nil {
+			anySlotFiltered = append(anySlotFiltered, b)
 		}
 	}
 
-	req.AnySlot = reqFiltered
+	return anySlotFiltered
+}
 
-	var getPrevBlockId = func(id string) string {
-		var out string
-		var prev string
-		cIds = p.versions[p.GetId()].Model().ChildrenIds
-		for _, i := range cIds {
-			out = prev
-			if i == id {
-				return out
-			}
-			prev = i
-		}
-		return out
+func (cb *clipboard) repaceIds (anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
+	for _, b := range anySlot {
+		b.Id = uuid.New().String()
+		anySlotreplacedIds = append(anySlotreplacedIds, b)
 	}
 
-	// ---- SPECIAL CASE: paste in title ----
-	titlePasted := false
-	if len(req.FocusedBlockId) > 0 && p.versions[req.FocusedBlockId] != nil {
-		if contentTitle, ok := p.versions[req.FocusedBlockId].Model().Content.(*model.BlockContentOfText); ok &&
-			len(req.AnySlot) > 0 {
-			if contentPaste, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok {
-				if contentTitle.Text.Style == model.BlockContentText_Title {
+	return anySlotreplacedIds
+}
 
-					contentPaste.Text.Text = strings.Replace(contentPaste.Text.Text, "\n", " ", -1)
-					contentPaste.Text.Marks = &model.BlockContentTextMarks{}
-					err = p.rangeTextPaste(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To, contentPaste.Text.Text, contentPaste.Text.Marks.Marks)
-					if err != nil {
-						return blockIds, err
-					}
+func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
+	s := cb.NewState()
+	targetId := req.FocusedBlockId
+	req.AnySlot = cb.repaceIds(req.AnySlot)
+	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
+	isMultipleBlocksToPaste := len(req.AnySlot) > 1
+	firstPasteBlockText := req.AnySlot[0].GetText()
 
-					titlePasted = true
+	if req.SelectedTextRange == nil {
+		req.SelectedTextRange = &model.Range{From: 0, To: 0}
+	}
 
-					if len(req.AnySlot) == 1 {
-						return blockIds, p.applyAndSendEvent(s)
-					} else {
-						req.AnySlot = req.AnySlot[1:]
+	if firstPasteBlockText != nil && firstPasteBlockText.Marks == nil {
+		firstPasteBlockText.Marks = &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{}}
+	}
 
-						var getNextBlockId = func(id string) string {
-							var out string
-							var isNext = false
-							cIds = p.versions[p.GetId()].Model().ChildrenIds
-							for _, i := range cIds {
-								if isNext {
-									out = i
-									isNext = false
-								}
+	isSelectedBlocks := len(req.SelectedBlockIds) > 0
+	if isSelectedBlocks {
+		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
+	}
 
-								if i == id {
-									isNext = true
-								}
-							}
-							return out
-						}
+	var focusedContent *model.BlockContentOfText
 
-						log.Debug("NEXT:", getNextBlockId(req.FocusedBlockId))
-						req.SelectedTextRange.From = 0
-						req.SelectedTextRange.To = 0
-						blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
-						if err != nil {
-							return blockIds, err
-						}
+	isFocusedText := false
+	isFocusedTitle := false
 
-						return blockIds, p.applyAndSendEvent(s)
+	isPasteTop := false
+	isPasteBottom := false
+	isPasteInstead := false
+	isPasteWithSplit := false
+
+	focusedBlock :=  cb.Pick(targetId)
+	focusedBlockText, ok := focusedBlock.(text.Block)
+
+	cIds := cb.Pick(cb.Id()).Model().ChildrenIds
+
+	isEmptyPage := len(cIds) == 0
+	if isEmptyPage {
+		root := cb.Pick(cb.Id())
+		if root != nil && root.Model() != nil && len(root.Model().ChildrenIds) > 0 {
+			targetId = root.Model().ChildrenIds[0]
+		} else {
+			root := cb.Pick(cb.Id())
+			children := []string{}
+			for _, b := range req.AnySlot {
+				newBlock := simple.New(b)
+				s.Add(newBlock)
+				children = append(children, newBlock.Model().Id)
+				root.Model().ChildrenIds = children
+				s.Set(root)
+
+				targetId = newBlock.Model().Id
+				focusedBlock =  cb.Pick(targetId)
+				focusedBlockText, ok = focusedBlock.(text.Block)
+
+
+				for _, childId := range b.ChildrenIds {
+					childBlock := s.Get(childId)
+					s.Add(childBlock)
+
+					if err = s.InsertTo(b.Id, model.Block_Bottom, childId); err != nil {
+						return blockIds, uploadArr, err
 					}
 				}
+
 			}
 		}
 	}
 
-	// ---- SPECIAL CASE: paste text without new blocks creation ----
-	// If there is 1 block and it is a text =>
-	// if there is a focused block => Do not create new blocks
-	// If selectedBlocks => ignore it, it is an error
-	if  content, ok := req.AnySlot[0].Content.(*model.BlockContentOfText); ok &&
-		len(req.AnySlot) == 1 &&
-		len(req.FocusedBlockId) > 0 && p.versions[req.FocusedBlockId] != nil &&
-		!titlePasted {
+	if ok && focusedBlock != nil && focusedBlockText != nil && !isSelectedBlocks {
+		focusedContent, isFocusedText = focusedBlock.Model().Content.(*model.BlockContentOfText)
+		isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
 
-		if req.SelectedTextRange == nil {
-			req.SelectedTextRange = &model.Range{From:0, To:0}
-		}
-
-		if content.Text.Marks == nil {
-			content.Text.Marks = &model.BlockContentTextMarks{Marks:[]*model.BlockContentTextMark{}}
-		}
-
-		err = p.rangeTextPaste(s,
-			req.FocusedBlockId,
-			req.SelectedTextRange.From,
-			req.SelectedTextRange.To,
-			content.Text.Text,
-			content.Text.Marks.Marks)
-		if err != nil {
-			return blockIds, err
-		}
-
-		return blockIds, p.applyAndSendEvent(s)
+		isPasteTop = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && len(focusedContent.Text.Text) != 0
+		isPasteBottom = req.SelectedTextRange.From == int32(len(focusedContent.Text.Text)) && req.SelectedTextRange.To == int32(len(focusedContent.Text.Text)) && req.SelectedTextRange.To != 0
+		isPasteInstead = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(len(focusedContent.Text.Text))
+		isPasteWithSplit = !isPasteInstead && !isPasteBottom && !isPasteTop
 	}
 
-	if len(req.SelectedBlockIds) > 0 {
-		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
+	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
+	pasteSingleTextInFocusedTitle := isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
+	pasteMultipleBlocksInFocusedTitle := isFocusedTitle && isMultipleBlocksToPaste
+	pasteSingleTextInFocusedText := isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
+	pasteMultipleBlocksInFocusedText := isFocusedText && isMultipleBlocksToPaste
+	pasteMultipleBlocksOnSelectedBlocks := isSelectedBlocks
 
-		// selected text -> remove it and split the block
-	} else if len(req.FocusedBlockId) > 0 && len(req.AnySlot) > 1 {
+	switch true {
 
-		if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 {
-			blockIds, err = p.pasteBlocks(s, req, req.FocusedBlockId)
+	case pasteToTheEnd:
+		targetId = cb.Pick(cIds[len(cIds) - 1]).Model().Id
+		blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
+		if err != nil {
+			return blockIds, uploadArr, err
+		}
+
+		break
+
+	case pasteSingleTextInFocusedTitle:
+		log.Debug("@pasteSingleTextInFocusedTitle")
+		firstPasteBlockText.Text = strings.Replace(firstPasteBlockText.Text, "\n", " ", -1)
+		firstPasteBlockText.Marks = &model.BlockContentTextMarks{}
+
+		err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, firstPasteBlockText.Text, firstPasteBlockText.Marks.Marks)
+		if err != nil {
+			return blockIds, uploadArr, err
+		}
+		break
+
+	case pasteSingleTextInFocusedText:
+		log.Debug("@pasteSingleTextInFocusedText")
+		err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, firstPasteBlockText.Text, firstPasteBlockText.Marks.Marks)
+		if err != nil {
+			return blockIds, uploadArr, err
+		}
+		break
+
+	case pasteMultipleBlocksInFocusedText:
+		log.Debug("@pasteMultipleBlocksInFocusedText")
+		if isPasteTop {
+			log.Debug("@isPasteTop")
+			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
 			if err != nil {
-				return blockIds, err
-			} else {
-				return blockIds, p.applyAndSendEvent(s)
+				return blockIds, uploadArr, err
+			}
+
+			if len(focusedContent.Text.Text) == 0 {
+				s.Remove(focusedBlock.Model().Id)
+			}
+
+		} else if isPasteBottom {
+			log.Debug("@isPasteBottom")
+			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
+			if err != nil {
+				return blockIds, uploadArr, err
+			}
+
+		} else if isPasteInstead {
+			log.Debug("@isPasteInstead")
+			blockIds, uploadArr, _, err := cb.insertBlocks(s, req.FocusedBlockId, req.AnySlot, model.Block_Bottom, false)
+			if err != nil {
+				return blockIds, uploadArr, err
+			}
+
+			if !pasteMultipleBlocksInFocusedTitle {
+				s.Remove(req.FocusedBlockId)
+			}
+
+/*			if len(txt) == 0 {
+				s.Remove(req.FocusedBlockId)
+			}*/
+
+		} else if isPasteWithSplit {
+			log.Debug("@isPasteWithSplit")
+
+			oldBlock, newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
+			if err != nil {
+				return blockIds, uploadArr, err
+			}
+			// insert first part of the old block
+			fId := targetId
+			if len(oldBlock.Model().GetText().Text) > 0 {
+				s.Add(oldBlock)
+				err = s.InsertTo(targetId, model.Block_Bottom, oldBlock.Model().Id)
+				if err != nil {
+					return blockIds, uploadArr, err
+				}
+				blockIds = append(blockIds, oldBlock.Model().Id)
+				targetId = oldBlock.Model().Id
+			}
+
+			// insert last part of the old block
+			if len(newBlock.Model().GetText().Text) > 0 {
+				s.Add(newBlock)
+				err = s.InsertTo(targetId, model.Block_Bottom, newBlock.Model().Id)
+				if err != nil {
+					return blockIds, uploadArr, err
+				}
+				blockIds = append(blockIds, newBlock.Model().Id)
+			}
+
+			// insert new blocks
+			pos := model.Block_Bottom
+			isReversed := false
+			if req.SelectedTextRange.From == 0 {
+				pos = model.Block_Top
+				isReversed = true
+			}
+			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, pos, isReversed)
+			if err != nil {
+				return blockIds, uploadArr, err
+			}
+
+
+			s.Remove(fId)
+		}
+		break
+
+	case pasteMultipleBlocksOnSelectedBlocks:
+		log.Debug("@pasteMultipleBlocksOnSelectedBlocks")
+		blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
+		if err != nil {
+			return blockIds, uploadArr, err
+		}
+		for _, selectedBlockId := range req.SelectedBlockIds {
+			s.Remove(selectedBlockId)
+		}
+
+		break
+	}
+
+	return blockIds, uploadArr, cb.Apply(s)
+}
+
+func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*model.Block, pos model.BlockPosition, isReversed bool) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, targetIdOut string, err error) {
+	for i, _ := range blocks {
+		index := i
+		if isReversed {
+			index = len(blocks) - i - 1
+		}
+		newBlock := simple.New(blocks[index])
+		s.Add(newBlock)
+		blockIds = append(blockIds, newBlock.Model().Id)
+		err = s.InsertTo(targetId, pos, newBlock.Model().Id)
+		if err != nil {
+			return blockIds, uploadArr, targetId, err
+		}
+
+		if f := newBlock.Model().GetFile(); f != nil {
+			uploadArr = append(uploadArr,
+				pb.RpcBlockUploadRequest{
+					BlockId: newBlock.Model().Id,
+					Url: f.Name,
+				})
+		}
+
+		fmt.Println("uploadArr:", uploadArr)
+
+		targetId = newBlock.Model().Id
+
+		for _, childId := range blocks[i].ChildrenIds {
+			childBlock := s.Get(childId)
+			s.Add(childBlock)
+
+			if err = s.InsertTo(blocks[i].Id, model.Block_Bottom, childId); err != nil {
+				return blockIds, uploadArr, targetId, err
 			}
 		}
 
-		// split block
-		_, err := p.rangeSplit(s, req.FocusedBlockId, req.SelectedTextRange.From, req.SelectedTextRange.To)
-		if err != nil {
-			return blockIds, err
-		}
-		targetId = req.FocusedBlockId
-
-		// if cursor at (0,0) – paste top
-		if req.SelectedTextRange.From == 0 {
-			targetId = getPrevBlockId(req.FocusedBlockId)
-		}
-
-	} else {
-		if len(cIds) > 0 {
-			targetId = cIds[len(cIds)-1]
-		}
 	}
 
-	blockIds, err = p.pasteBlocks(s, req, targetId)
-	if err != nil {
-		return blockIds, err
-	}
-
-	// selected blocks -> remove it
-	if len(req.SelectedBlockIds) > 0 {
-		if err := p.unlink(s, req.SelectedBlockIds...); err != nil {
-			return blockIds, err
-		}
-	}
-
-	return blockIds, p.applyAndSendEvent(s)
+	return blockIds, uploadArr, targetId, nil
 }
-*/
