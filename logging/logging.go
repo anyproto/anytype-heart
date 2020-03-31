@@ -40,6 +40,7 @@ func ApplyLevelsFromEnv() {
 				subsystemPattern, err = glob.Compile(parts[0])
 				if err != nil {
 					log.Errorf("failed to parse glob pattern '%s': %w", parts[1], err)
+					continue
 				}
 				level = parts[1]
 			}
