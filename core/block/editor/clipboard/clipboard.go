@@ -361,9 +361,12 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 			if err != nil {
 				return blockIds, uploadArr, err
 			}
+			s.Remove(req.FocusedBlockId)
+
+			break
 
 		} else if isPasteWithSplit {
-			log.Debug("isPasteWithSplit")
+			fmt.Println("isPasteWithSplit")
 
 			oldBlock, newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
 			if err != nil {
@@ -371,6 +374,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 			}
 			// insert first part of the old block
 			fId := targetId
+			fmt.Println("fID0:", fId)
 			if len(oldBlock.Model().GetText().Text) > 0 {
 				s.Add(oldBlock)
 				err = s.InsertTo(targetId, model.Block_Bottom, oldBlock.Model().Id)
@@ -402,7 +406,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 			if err != nil {
 				return blockIds, uploadArr, err
 			}
-
+			fmt.Println("fID:", fId)
 			s.Remove(fId)
 		}
 		break
