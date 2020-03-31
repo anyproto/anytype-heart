@@ -3,6 +3,7 @@ package clipboard
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log"
@@ -451,11 +452,12 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 		if f := newBlock.Model().GetFile(); f != nil {
 			uploadArr = append(uploadArr,
 				pb.RpcBlockUploadRequest{
-					ContextId: s.RootId(),
 					BlockId: newBlock.Model().Id,
 					Url: f.Name,
 				})
 		}
+
+		fmt.Println("uploadArr:", uploadArr)
 
 		targetId = newBlock.Model().Id
 

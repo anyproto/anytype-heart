@@ -159,8 +159,9 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 	}
 
 	blockIds, uploadArr, err := mw.blockService.Paste(*req)
-
+	log.Debug("Images to upload:", uploadArr)
 	for _, r := range uploadArr {
+		r.ContextId = req.ContextId
 		if err := mw.blockService.UploadFile(r); err != nil {
 			return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, err)
 		}
