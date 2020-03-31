@@ -2,29 +2,31 @@ package clipboard
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/require"
-	"strconv"
+
+	"testing"
 
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
-	"testing"
 )
 
 var emptyMarks [][]*model.BlockContentTextMark
 
-func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockContentTextMark) ([]*model.Block) {
+func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockContentTextMark) []*model.Block {
 	blocks := []*model.Block{}
-	for i := 0; i < len(textArr); i++  {
+	for i := 0; i < len(textArr); i++ {
 		marks := []*model.BlockContentTextMark{}
 		if len(marksArr) > 0 && len(marksArr) > i {
 			marks = marksArr[i]
 		}
 
 		id := strconv.Itoa(i + 1)
-		if  len(idsArr) > 0 && len(idsArr) >= i {
+		if len(idsArr) > 0 && len(idsArr) >= i {
 			id = idsArr[i]
 		}
 
@@ -36,14 +38,13 @@ func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockCo
 						Marks: marks,
 					},
 				},
-
 			},
 		})
 	}
 	return blocks
 }
 
-func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest)  {
+func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest) {
 	sb = smarttest.New("test")
 
 	cIds := []string{}
@@ -52,7 +53,7 @@ func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest)  
 	}
 
 	sb.AddBlock(simple.New(&model.Block{
-		Id: "test",
+		Id:          "test",
 		ChildrenIds: cIds,
 	}))
 
@@ -63,7 +64,7 @@ func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest)  
 	return sb
 }
 
-func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string)  {
+func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	cIds := sb.Pick("test").Model().ChildrenIds
 
 	require.Equal(t, len(cIds), len(textArr))
@@ -73,19 +74,19 @@ func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string)  {
 	}
 }
 
-func checkBlockTextDebug(t *testing.T,  sb *smarttest.SmartTest, textArr []string)  {
+func checkBlockTextDebug(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	for i, _ := range textArr {
-		fmt.Println( textArr[i])
+		fmt.Println(textArr[i])
 	}
 
 	fmt.Println("--------")
 	cIds := sb.Pick("test").Model().ChildrenIds
 	for _, c := range cIds {
-		fmt.Println( "ID:", sb.Pick(c).Model().Id, "cId:", c, "Text:", sb.Pick(c).Model().GetText())
+		fmt.Println("ID:", sb.Pick(c).Model().Id, "cId:", c, "Text:", sb.Pick(c).Model().GetText())
 	}
 }
 
-func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark)  {
+func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark) {
 	cIds := sb.Pick("test").Model().ChildrenIds
 	require.Equal(t, len(cIds), len(marksArr))
 
@@ -108,52 +109,63 @@ func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.
 	}
 }
 
-func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark)  {
+func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark) {
 	for i, _ := range marksArr {
-		fmt.Println( marksArr[i])
+		fmt.Println(marksArr[i])
 	}
 
 	cIds := sb.Pick("test").Model().ChildrenIds
 	fmt.Println("--------", len(cIds), len(marksArr))
 
 	for _, c := range cIds {
-		fmt.Println( sb.Pick(c).Model().Id, sb.Pick(c).Model().GetText())
+		fmt.Println(sb.Pick(c).Model().Id, sb.Pick(c).Model().GetText())
 	}
 }
 
 func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
 	cb := NewClipboard(sb)
 	req := pb.RpcBlockPasteRequest{}
-	if id != "" { req.FocusedBlockId = id }
-	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
+	if id != "" {
+		req.FocusedBlockId = id
+	}
+	if len(selectedBlockIds) > 0 {
+		req.SelectedBlockIds = selectedBlockIds
+	}
 	req.AnySlot = blocks
 	req.SelectedTextRange = &textRange
 
-	_, _, err  := cb.Paste(req)
+	_, _, err := cb.Paste(req)
 	require.NoError(t, err)
 }
 
 func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
 	cb := NewClipboard(sb)
 	req := pb.RpcBlockPasteRequest{}
-	if id != "" { req.FocusedBlockId = id }
-	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
+	if id != "" {
+		req.FocusedBlockId = id
+	}
+	if len(selectedBlockIds) > 0 {
+		req.SelectedBlockIds = selectedBlockIds
+	}
 	req.TextSlot = textSlot
 	req.SelectedTextRange = &textRange
 
-	_, _, err  := cb.Paste(req)
+	_, _, err := cb.Paste(req)
 	require.NoError(t, err)
 }
 
 func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
 	cb := NewClipboard(sb)
 	req := pb.RpcBlockPasteRequest{}
-	if id != "" { req.FocusedBlockId = id }
-	if len(selectedBlockIds) > 0 { req.SelectedBlockIds = selectedBlockIds }
+	if id != "" {
+		req.FocusedBlockId = id
+	}
+	if len(selectedBlockIds) > 0 {
+		req.SelectedBlockIds = selectedBlockIds
+	}
 	req.HtmlSlot = htmlSlot
 	req.SelectedTextRange = &textRange
 
-	_, _, err  := cb.Paste(req)
+	_, _, err := cb.Paste(req)
 	require.NoError(t, err)
 }
-
