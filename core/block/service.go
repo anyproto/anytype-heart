@@ -355,12 +355,8 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (ht
 }
 
 func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
-	fmt.Println("@MARK1:", req.TextSlot, req.AnySlot, req.ContextId, req.FocusedBlockId, req.SelectedBlockIds)
-
 	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		fmt.Println("@MARK2")
 		blockIds, err = cb.Paste(req)
-		fmt.Println("@MARK3:", blockIds, err)
 		return err
 	})
 	return blockIds, err

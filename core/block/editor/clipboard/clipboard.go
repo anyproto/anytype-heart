@@ -421,7 +421,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		break
 
 	case pasteMultipleBlocksOnSelectedBlocks:
-		fmt.Println("@pasteMultipleBlocksOnSelectedBlocks")
+		log.Debug("@pasteMultipleBlocksOnSelectedBlocks")
 		blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
 		if err != nil {
 			return blockIds, err
@@ -457,7 +457,6 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 			s.Add(childBlock)
 
 			if err = s.InsertTo(blocks[i].Id, model.Block_Bottom, childId); err != nil {
-				fmt.Println("@ERR2:", err)
 				return blockIds, targetId, err
 			}
 		}
