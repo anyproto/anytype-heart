@@ -456,22 +456,6 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 					Url: f.Name,
 				})
 		}
-		//if ok := newBlock.(file.File); ok {
-		//
-		//}
-		//b.Upload(req.BlockId, req.FilePath, req.Url)
-
-		//if f := newBlock.Model().GetFile(); f != nil {
-		//	b := s.Pick(newBlock.Model().Id)
-		//	//f.(file.File).
-		//
-		//
-		//}
-
-		//sb := s.Pick(newBlock.Model().Id)
-		//if bb, ok := sb.(file.File); ok {
-		//	bb.Upload(newBlock.Model().GetFile().Name)
-		//}
 
 		targetId = newBlock.Model().Id
 
