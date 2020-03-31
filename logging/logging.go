@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gobwas/glob"
 	logging "github.com/ipfs/go-log"
 	log2 "github.com/ipfs/go-log/v2"
 )
@@ -29,16 +30,24 @@ func ApplyLevelsFromEnv() {
 	if levels != "" {
 		for _, level := range strings.Split(levels, ";") {
 			parts := strings.Split(level, "=")
+			var subsystemPattern glob.Glob
+			var level string
 			if len(parts) == 1 {
-				// set all anytype-* subsystems when have a simple level like:
-				// ANYTYPE_LOG_LEVEL=DEBUG
-				for _, subsystem := range logging.GetSubsystems() {
-					if strings.HasPrefix(subsystem, "anytype-") {
-						logLevels[subsystem] = parts[0]
-					}
-				}
+				subsystemPattern = glob.MustCompile("anytype-*")
+				level = parts[0]
 			} else if len(parts) == 2 {
-				logLevels[parts[0]] = parts[1]
+				var err error
+				subsystemPattern, err = glob.Compile(parts[0])
+				if err != nil {
+					log.Errorf("failed to parse glob pattern '%s': %w", parts[1], err)
+				}
+				level = parts[1]
+			}
+
+			for _, subsystem := range logging.GetSubsystems() {
+				if subsystemPattern.Match(subsystem) {
+					logLevels[subsystem] = level
+				}
 			}
 		}
 	}
