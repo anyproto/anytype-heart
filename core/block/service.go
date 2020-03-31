@@ -395,11 +395,11 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (ht
 }
 
 func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
-	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		blockIds, uploadArr, err = cb.Paste(req)
-
 		return err
 	})
+
 	return blockIds, uploadArr, err
 }
 
@@ -474,7 +474,8 @@ func (s *service) SetAlign(contextId string, align model.BlockAlign, blockIds ..
 
 func (s *service) UploadBlockFile(req pb.RpcBlockUploadRequest) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		return b.Upload(req.BlockId, req.FilePath, req.Url)
+		err = b.Upload(req.BlockId, req.FilePath, req.Url)
+		return err
 	})
 }
 

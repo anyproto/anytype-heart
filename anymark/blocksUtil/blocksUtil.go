@@ -127,9 +127,10 @@ func (rw *rWriter) AddTextToBuffer(text string) {
 func (rw *rWriter) AddImageBlock(url string) {
 	newBlock := model.Block{
 		Content: &model.BlockContentOfFile{
+
 			File: &model.BlockContentFile{
 				Name:  url,
-				State: model.BlockContentFile_Uploading,
+				State: model.BlockContentFile_Empty,
 				Type:  model.BlockContentFile_Image,
 			}},
 	}
