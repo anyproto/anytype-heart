@@ -43,36 +43,6 @@ func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockCo
 	return blocks
 }
 
-func createBlocksWithId(textArr []string, idsArr []string) ([]*model.Block) {
-	blocks := []*model.Block{}
-	for i := 0; i < len(textArr); i++  {
-		blocks = append(blocks, &model.Block{Id: idsArr[i],
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{ Text: textArr[i] },
-			},
-		})
-	}
-	return blocks
-}
-
-func createBlocksWithMarks(textArr []string, marksArr [][]*model.BlockContentTextMark) ([]*model.Block) {
-	blocks := []*model.Block{}
-	for i := 0; i < len(textArr); i++  {
-		blocks = append(blocks, &model.Block{Id: strconv.Itoa(i + 1),
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{
-					Text: textArr[i],
-					Marks: &model.BlockContentTextMarks{
-						Marks: marksArr[i],
-					},
-				},
-
-			},
-		})
-	}
-	return blocks
-}
-
 func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest)  {
 	sb = smarttest.New("test")
 
@@ -92,48 +62,6 @@ func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest)  
 
 	return sb
 }
-/*
-func createPageWithBlocks(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest)  {
-	sb = smarttest.New("test")
-
-	cIds := []string{}
-	for _, b := range blocks {
-		cIds = append(cIds, b.Id)
-	}
-
-	sb.AddBlock(simple.New(&model.Block{
-		Id: "test",
-		ChildrenIds: cIds,
-	}))
-
-	for i, _ := range blocks {
-		sb.AddBlock(simple.New(blocks[i]))
-	}
-
-	return sb
-}*/
-/*
-func createPageWithMarks(t *testing.T, textArr []string, marksArr [][]*model.BlockContentTextMark) (sb *smarttest.SmartTest) {
-	sb = smarttest.New("test")
-	blocks := createBlocksWithMarks(textArr, marksArr)
-
-	cIds := []string{}
-	for _, b := range blocks {
-		cIds = append(cIds, b.Id)
-	}
-
-	sb.AddBlock(simple.New(&model.Block{
-		Id: "test",
-		ChildrenIds: cIds,
-	}))
-
-	for i, _ := range blocks {
-		sb.AddBlock(simple.New(blocks[i]))
-	}
-
-	return sb
-}
-*/
 
 func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string)  {
 	cIds := sb.Pick("test").Model().ChildrenIds
@@ -192,7 +120,6 @@ func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*m
 		fmt.Println( sb.Pick(c).Model().Id, sb.Pick(c).Model().GetText())
 	}
 }
-
 
 func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
 	cb := NewClipboard(sb)

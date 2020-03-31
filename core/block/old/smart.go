@@ -548,7 +548,7 @@ func (p *commonSmart) find(id string, sources ...map[string]simple.Block) simple
 }
 
 func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blockId string, err error) {
-	t, err := s.getText(id)
+/*	t, err := s.getText(id)
 	if err != nil {
 		return "", err
 	}
@@ -574,6 +574,7 @@ func (p *commonSmart) rangeSplit(s *state, id string, from int32, to int32) (blo
 		return "", err
 	}
 
+	return*/
 	return
 }
 

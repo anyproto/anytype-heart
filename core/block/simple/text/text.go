@@ -2,6 +2,7 @@ package text
 
 import (
 	"fmt"
+	"github.com/prometheus/common/log"
 	"sort"
 	"unicode/utf8"
 
@@ -39,7 +40,7 @@ type Block interface {
 	SetChecked(v bool)
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
-	RangeSplit(from int32, to int32) ([]simple.Block, string, error)
+	RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error)
 	RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error
 	Merge(b simple.Block) error
 }
@@ -181,24 +182,25 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 }
 
 // TODO: should be 100% tested @enkogu
-func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) {
+func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
-		return nil, "", ErrOutOfRange
+		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
+		return nil, nil, ErrOutOfRange
 	}
 	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
-		return nil, "", ErrOutOfRange
+		return nil, nil, ErrOutOfRange
 	}
 	if from > to {
-		return nil, "", ErrOutOfRange // Maybe different error? @enkogu
+		return nil, nil, ErrOutOfRange
 	}
-	var newBlocks []simple.Block
+	//var newBlocks []simple.Block
 	// special cases
-	if from == 0 && to == 0 {
-		return newBlocks, t.content.Text, nil
-	}
+	//if from == 0 && to == 0 {
+	//	return oldBlock, newBlock, nil
+	//}
 
 	runes := []rune(t.content.Text)
-	t.content.Text = string(runes[:from])
+	//t.content.Text = string(runes[:from])
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
 	}
@@ -213,8 +215,8 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 		style = model.BlockContentText_Header2
 	}
 
-	t.content.Marks = oldMarks
-	newBlock := simple.New(&model.Block{
+	//t.content.Marks = oldMarks
+	newBlock = simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:    string(runes[to:]),
 			Style:   style,
@@ -223,17 +225,27 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 		}},
 	})
 
+	oldBlock = simple.New(&model.Block{
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text:    string(runes[:from]),
+			Style:   t.content.Style,
+			Marks:   oldMarks,
+			Checked: t.content.Checked,
+		}},
+	})
+
+
 	// if oldBlock is empty and newBlock is non empty -> replace content
-	if len(string(runes[:from])) == 0 {
-		t.content.Text = string(runes[to:])
+	//if len(string(runes[:from])) == 0 {
+	//	t.content.Text = string(runes[to:])
+	//
+	//	// if newBlock is empty -> don't push it
+	//} else if len(string(runes[to:])) > 0 {
+	//	newBlocks = append(newBlocks, newBlock)
+	//}
 
-		// if newBlock is empty -> don't push it
-	} else if len(string(runes[to:])) > 0 {
-		newBlocks = append(newBlocks, newBlock)
-	}
 
-
-	return newBlocks, t.content.Text, nil
+	return oldBlock, newBlock, nil
 }
 
 func Abs(x int32) int32 {

@@ -127,16 +127,9 @@ func (s *State) Unlink(id string) (ok bool) {
 }
 
 func (s *State) Append(targetId string, id string) (ok bool) {
-	//s.Iterate(func(b simple.Block) bool {
-	//	if b.Model().Id == targetId {
-			parent := s.Get(targetId).Model()
-			parent.ChildrenIds = append(parent.ChildrenIds, id)//slice.Remove(parent.ChildrenIds, id)
-			ok = true
-			return ok
-	//	}
-	//	return true
-	//})
-	return
+	parent := s.Get(targetId).Model()
+	parent.ChildrenIds = append(parent.ChildrenIds, id)
+	return true
 }
 
 func (s *State) GetParentOf(id string) (res simple.Block) {

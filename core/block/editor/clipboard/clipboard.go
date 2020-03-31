@@ -44,7 +44,7 @@ type clipboard struct {
 }
 
 func (cb *clipboard) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
-	fmt.Println("@MARK4:", req)
+	log.Debug("Paste req:", req)
 	if len(req.AnySlot) > 0 {
 		return cb.pasteAny(req)
 	} else if len(req.HtmlSlot) > 0 {
@@ -199,10 +199,7 @@ func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, 
 		})
 	}
 
-	log.Debug("BLOCKS text:", req.AnySlot)
-
 	blockIds, err = cb.pasteAny(req)
-	fmt.Println("ERROR pasteAny:", err)
 	return blockIds, err
 
 }
@@ -227,7 +224,6 @@ func (cb *clipboard) repaceIds (anySlot []*model.Block) (anySlotreplacedIds []*m
 }
 
 func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
-	fmt.Println("@MARK pasteAny:", req)
 	s := cb.NewState()
 	targetId := req.FocusedBlockId
 	req.AnySlot = cb.repaceIds(req.AnySlot)
@@ -297,7 +293,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	}
 
 	if ok && focusedBlock != nil && focusedBlockText != nil && !isSelectedBlocks {
-		fmt.Println("HERE3:", targetId)
 		focusedContent, isFocusedText = focusedBlock.Model().Content.(*model.BlockContentOfText)
 		isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
 
@@ -314,8 +309,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	pasteMultipleBlocksInFocusedText := isFocusedText && isMultipleBlocksToPaste
 	pasteMultipleBlocksOnSelectedBlocks := isSelectedBlocks
 
-	fmt.Println("HERE4:", targetId, focusedBlock, focusedBlockText,  isFocusedText,  isSelectedBlocks)
-
 	switch true {
 
 	case pasteToTheEnd:
@@ -328,7 +321,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		break
 
 	case pasteSingleTextInFocusedTitle:
-		fmt.Println("@pasteSingleTextInFocusedTitle")
+		log.Debug("@pasteSingleTextInFocusedTitle")
 		firstPasteBlockText.Text = strings.Replace(firstPasteBlockText.Text, "\n", " ", -1)
 		firstPasteBlockText.Marks = &model.BlockContentTextMarks{}
 
@@ -339,7 +332,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		break
 
 	case pasteSingleTextInFocusedText:
-		fmt.Println("@pasteSingleTextInFocusedText")
+		log.Debug("@pasteSingleTextInFocusedText")
 		err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, firstPasteBlockText.Text, firstPasteBlockText.Marks.Marks)
 		if err != nil {
 			return blockIds, err
@@ -347,7 +340,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		break
 
 	case pasteMultipleBlocksInFocusedText:
-		fmt.Println("@pasteMultipleBlocksInFocusedText")
+		log.Debug("@pasteMultipleBlocksInFocusedText")
 		if isPasteTop {
 			log.Debug("@isPasteTop")
 			blockIds, _, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
@@ -384,14 +377,24 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 		} else if isPasteWithSplit {
 			log.Debug("@isPasteWithSplit")
 
-			newBlocks, _, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
+			oldBlock, newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
 			if err != nil {
 				return blockIds, err
 			}
+			// insert first part of the old block
+			fId := targetId
+			if len(oldBlock.Model().GetText().Text) > 0 {
+				s.Add(oldBlock)
+				err = s.InsertTo(targetId, model.Block_Bottom, oldBlock.Model().Id)
+				if err != nil {
+					return blockIds, err
+				}
+				blockIds = append(blockIds, oldBlock.Model().Id)
+				targetId = oldBlock.Model().Id
+			}
 
-
-			if len(newBlocks) > 0 {
-				newBlock := newBlocks[0]
+			// insert last part of the old block
+			if len(newBlock.Model().GetText().Text) > 0 {
 				s.Add(newBlock)
 				err = s.InsertTo(targetId, model.Block_Bottom, newBlock.Model().Id)
 				if err != nil {
@@ -400,6 +403,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 				blockIds = append(blockIds, newBlock.Model().Id)
 			}
 
+			// insert new blocks
 			pos := model.Block_Bottom
 			isReversed := false
 			if req.SelectedTextRange.From == 0 {
@@ -410,6 +414,9 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 			if err != nil {
 				return blockIds, err
 			}
+
+
+			s.Remove(fId)
 		}
 		break
 
@@ -440,7 +447,7 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 		blockIds = append(blockIds, newBlock.Model().Id)
 		err = s.InsertTo(targetId, pos, newBlock.Model().Id)
 		if err != nil {
-			return blockIds, targetId, nil
+			return blockIds, targetId, err
 		}
 
 		targetId = newBlock.Model().Id
@@ -450,6 +457,7 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 			s.Add(childBlock)
 
 			if err = s.InsertTo(blocks[i].Id, model.Block_Bottom, childId); err != nil {
+				fmt.Println("@ERR2:", err)
 				return blockIds, targetId, err
 			}
 		}

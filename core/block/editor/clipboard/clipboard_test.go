@@ -440,8 +440,8 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 
 	t.Run("5. Cursor from stast to middle, range == 1/2. Expected behaviour: insert top, remove Range", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" }, emptyMarks))
-		pasteText(t, sb, "4", model.Range{From:0, To:3}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{ "11111",  "22222",  "33333", "aaaaa", "bbbbb", "rty", "55555" })
+		pasteText(t, sb, "4", model.Range{From:0, To:3}, []string{}, "eeeee\naaaaa\nbbbbb\nccccc")
+		checkBlockText(t, sb, []string{ "11111",  "22222",  "33333", "eeeee", "aaaaa", "bbbbb", "ccccc", "rty", "55555" })
 	})
 
 	t.Run("6. Cursor: middle to end, range == 1/2. Expected Behavior: bottom insert, range removal", func(t *testing.T) {
@@ -454,6 +454,24 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{ "11111",  "22222",  "33333",  "qwerty",  "55555" }, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From:0, To:6}, []string{}, "aaaaa\nbbbbb")
 		checkBlockText(t, sb, []string{ "11111",  "22222",  "33333", "aaaaa",  "bbbbb",  "55555" })
+	})
+
+	t.Run("8. Cursor in the middle. Paste two blocks", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{ "123456789" }, emptyMarks))
+		pasteAny(t, sb, "1", model.Range{From:1, To:1}, []string{}, createBlocks([]string{"new1", "new2"}, []string{ "abc",  "def" }, emptyMarks))
+		checkBlockText(t, sb, []string{ "1", "abc", "def",  "23456789"})
+	})
+
+	t.Run("9. Cursor at the pre-end. Paste two blocks", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{ "123456789" }, emptyMarks))
+		pasteAny(t, sb, "1", model.Range{From:8, To:8}, []string{}, createBlocks([]string{"new1", "new2"}, []string{ "abc",  "def" }, emptyMarks))
+		checkBlockText(t, sb, []string{ "12345678", "abc", "def", "9"})
+	})
+
+	t.Run("10. Cursor at the end. Paste two blocks", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{ "123456789" }, emptyMarks))
+		pasteAny(t, sb, "1", model.Range{From:9, To:9}, []string{}, createBlocks([]string{"new1", "new2"}, []string{ "abc",  "def" }, emptyMarks))
+		checkBlockText(t, sb, []string{ "123456789", "abc", "def"})
 	})
 }
 
