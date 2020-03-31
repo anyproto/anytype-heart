@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
-	logging "github.com/ipfs/go-log"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 const defaultGatewayAddr = "127.0.0.1:47800"

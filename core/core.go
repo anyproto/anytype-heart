@@ -7,11 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -20,6 +18,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/net"
 	"github.com/anytypeio/go-anytype-library/net/litenet"
 	"github.com/anytypeio/go-anytype-library/wallet"
@@ -125,43 +124,12 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	a.t.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
 }
 
-func ApplyLogLevels() {
-	levels := os.Getenv("ANYTYPE_LOG_LEVEL")
-	logLevels := make(map[string]string)
-	if levels != "" {
-		for _, level := range strings.Split(levels, ";") {
-			parts := strings.Split(level, "=")
-			if len(parts) == 1 {
-				for _, subsystem := range logging.GetSubsystems() {
-					if strings.HasPrefix(subsystem, "anytype-") {
-						logLevels[subsystem] = parts[0]
-					}
-				}
-			} else if len(parts) == 2 {
-				logLevels[parts[0]] = parts[1]
-			}
-		}
-	}
-
-	if len(logLevels) == 0 {
-		logging.SetAllLoggers(logging.LevelDebug)
-		return
-	}
-
-	for subsystem, level := range logLevels {
-		err := logging.SetLogLevel(subsystem, level)
-		if err != nil {
-			log.Fatalf("incorrect log level for %s: %s", subsystem, level)
-		}
-	}
-}
-
 func init() {
-	ApplyLogLevels()
+	// apply log levels in go-threads and go-ipfs deps
+	logging.ApplyLevelsFromEnv()
 }
 
 func New(rootPath string, account string) (Service, error) {
-	ApplyLogLevels()
 	repoPath := filepath.Join(rootPath, account)
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("not exists")

@@ -5,9 +5,10 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-slip10"
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/tyler-smith/go-bip39"
+
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 var log = logging.Logger("anytype-core-wallet")

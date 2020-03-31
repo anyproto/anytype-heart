@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/gogo/protobuf/jsonpb"
-	logging "github.com/ipfs/go-log"
 
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/mill"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 )

@@ -6,16 +6,17 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
 	ipfspath "github.com/ipfs/go-path"
 	uio "github.com/ipfs/go-unixfs/io"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	mh "github.com/multiformats/go-multihash"
+
+	"github.com/anytypeio/go-anytype-library/ipfs"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 var log = logging.Logger("anytype-ipfs")

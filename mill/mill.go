@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	logging "github.com/ipfs/go-log"
 	"github.com/mr-tron/base58/base58"
+
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 var log = logging.Logger("tex-mill")
