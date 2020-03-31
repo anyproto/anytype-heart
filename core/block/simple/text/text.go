@@ -2,9 +2,10 @@ package text
 
 import (
 	"fmt"
-	"github.com/prometheus/common/log"
 	"sort"
 	"unicode/utf8"
+
+	"github.com/prometheus/common/log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -74,7 +75,7 @@ func (t *Text) Copy() simple.Block {
 
 func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	text, ok := b.(*Text)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = t.Base.Diff(text); err != nil {
@@ -181,7 +182,6 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
-// TODO: should be 100% tested @enkogu
 func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
 		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
@@ -193,14 +193,8 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 	if from > to {
 		return nil, nil, ErrOutOfRange
 	}
-	//var newBlocks []simple.Block
-	// special cases
-	//if from == 0 && to == 0 {
-	//	return oldBlock, newBlock, nil
-	//}
 
 	runes := []rune(t.content.Text)
-	//t.content.Text = string(runes[:from])
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
 	}
@@ -215,7 +209,6 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 		style = model.BlockContentText_Header2
 	}
 
-	//t.content.Marks = oldMarks
 	newBlock = simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:    string(runes[to:]),
@@ -233,17 +226,6 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 			Checked: t.content.Checked,
 		}},
 	})
-
-
-	// if oldBlock is empty and newBlock is non empty -> replace content
-	//if len(string(runes[:from])) == 0 {
-	//	t.content.Text = string(runes[to:])
-	//
-	//	// if newBlock is empty -> don't push it
-	//} else if len(string(runes[to:])) > 0 {
-	//	newBlocks = append(newBlocks, newBlock)
-	//}
-
 
 	return oldBlock, newBlock, nil
 }
@@ -368,7 +350,7 @@ func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*
 
 func (t *Text) Merge(b simple.Block) error {
 	text, ok := b.(*Text)
-	if ! ok {
+	if !ok {
 		return fmt.Errorf("unexpected block type for merge: %T", b)
 	}
 	curLen := int32(utf8.RuneCountInString(t.content.Text))

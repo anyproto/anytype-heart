@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/google/uuid"
-	logging "github.com/ipfs/go-log"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/google/uuid"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -25,7 +26,7 @@ import (
 var (
 	ErrAllSlotsEmpty = errors.New("All slots are empty")
 	ErrOutOfRange    = errors.New("out of range")
-	log = logging.Logger("anytype-clipboard")
+	log              = logging.Logger("anytype-clipboard")
 )
 
 type Clipboard interface {
@@ -174,7 +175,7 @@ func (cb *clipboard) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, 
 	return cb.pasteAny(req)
 }
 
-func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string,  uploadArr []pb.RpcBlockUploadRequest, err error) {
+func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
 	if len(req.TextSlot) == 0 {
 		return blockIds, uploadArr, nil
 	}
@@ -203,7 +204,7 @@ func (cb *clipboard) pasteText(req pb.RpcBlockPasteRequest) (blockIds []string, 
 
 }
 
-func (cb *clipboard) filterFromLayouts (anySlot []*model.Block) (anySlotFiltered []*model.Block) {
+func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered []*model.Block) {
 	for _, b := range anySlot {
 		if b.GetLayout() == nil {
 			anySlotFiltered = append(anySlotFiltered, b)
@@ -213,7 +214,7 @@ func (cb *clipboard) filterFromLayouts (anySlot []*model.Block) (anySlotFiltered
 	return anySlotFiltered
 }
 
-func (cb *clipboard) repaceIds (anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
+func (cb *clipboard) repaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
 	for _, b := range anySlot {
 		b.Id = uuid.New().String()
 		anySlotreplacedIds = append(anySlotreplacedIds, b)
@@ -228,7 +229,12 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 	req.AnySlot = cb.repaceIds(req.AnySlot)
 	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
 	isMultipleBlocksToPaste := len(req.AnySlot) > 1
-	firstPasteBlockText := req.AnySlot[0].GetText()
+
+	firstPasteBlockText := &model.BlockContentText{}
+	firstPasteBlockText = nil
+	if len(req.AnySlot) > 0 {
+		firstPasteBlockText = req.AnySlot[0].GetText()
+	}
 
 	if req.SelectedTextRange == nil {
 		req.SelectedTextRange = &model.Range{From: 0, To: 0}
@@ -253,7 +259,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 	isPasteInstead := false
 	isPasteWithSplit := false
 
-	focusedBlock :=  cb.Pick(targetId)
+	focusedBlock := cb.Pick(targetId)
 	focusedBlockText, ok := focusedBlock.(text.Block)
 
 	cIds := cb.Pick(cb.Id()).Model().ChildrenIds
@@ -274,9 +280,8 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 				s.Set(root)
 
 				targetId = newBlock.Model().Id
-				focusedBlock =  cb.Pick(targetId)
+				focusedBlock = cb.Pick(targetId)
 				focusedBlockText, ok = focusedBlock.(text.Block)
-
 
 				for _, childId := range b.ChildrenIds {
 					childBlock := s.Get(childId)
@@ -311,7 +316,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 	switch true {
 
 	case pasteToTheEnd:
-		targetId = cb.Pick(cIds[len(cIds) - 1]).Model().Id
+		targetId = cb.Pick(cIds[len(cIds)-1]).Model().Id
 		blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Bottom, false)
 		if err != nil {
 			return blockIds, uploadArr, err
@@ -369,9 +374,9 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 				s.Remove(req.FocusedBlockId)
 			}
 
-/*			if len(txt) == 0 {
-				s.Remove(req.FocusedBlockId)
-			}*/
+			/*			if len(txt) == 0 {
+						s.Remove(req.FocusedBlockId)
+					}*/
 
 		} else if isPasteWithSplit {
 			log.Debug("@isPasteWithSplit")
@@ -414,7 +419,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 				return blockIds, uploadArr, err
 			}
 
-
 			s.Remove(fId)
 		}
 		break
@@ -453,7 +457,7 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 			uploadArr = append(uploadArr,
 				pb.RpcBlockUploadRequest{
 					BlockId: newBlock.Model().Id,
-					Url: f.Name,
+					Url:     f.Name,
 				})
 		}
 
