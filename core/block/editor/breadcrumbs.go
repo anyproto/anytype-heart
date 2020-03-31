@@ -5,10 +5,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	logging "github.com/ipfs/go-log"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
-var log = logging.Logger("anytype-editor")
+var log = logging.Logger("anytype-mw-editor")
 
 func NewBreadcrumbs() *Breadcrumbs {
 	return &Breadcrumbs{

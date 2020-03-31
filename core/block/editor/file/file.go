@@ -19,14 +19,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	logging "github.com/ipfs/go-log"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 const (
 	addFileWorkersCount = 4
 )
 
-var log = logging.Logger("anytype-file")
+var log = logging.Logger("anytype-mw-smartfile")
 
 func NewFile(sb smartblock.SmartBlock, source FileSource) File {
 	return &sfile{SmartBlock: sb, fileSource: source}

@@ -6,13 +6,16 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/prometheus/common/log"
+	"github.com/mohae/deepcopy"
 )
+
+var log = logging.Logger("anytype-mw-service")
 
 func metaError(e string) *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{Details: &types.Struct{
@@ -101,7 +104,6 @@ func (p *pubSub) reSubscribe(s Subscriber, ids ...string) {
 	for id, sm := range p.subscribers {
 		if _, ok := sm[s]; ok {
 			if slice.FindPos(ids, id) == -1 {
-				p.lastUsage[id] = time.Now()
 				delete(sm, s)
 			}
 		}
@@ -112,7 +114,6 @@ func (p *pubSub) remove(s Subscriber, ids ...string) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	for _, id := range ids {
-		p.lastUsage[id] = time.Now()
 		sm, ok := p.subscribers[id]
 		if !ok {
 			continue
@@ -124,9 +125,8 @@ func (p *pubSub) remove(s Subscriber, ids ...string) {
 func (p *pubSub) removeAll(s Subscriber) {
 	p.m.Lock()
 	defer p.m.Unlock()
-	for id, sm := range p.subscribers {
+	for _, sm := range p.subscribers {
 		if _, ok := sm[s]; ok {
-			p.lastUsage[id] = time.Now()
 			delete(sm, s)
 		}
 	}
@@ -136,6 +136,7 @@ func (p *pubSub) call(d Meta) {
 	if p.closed {
 		return
 	}
+	d = deepcopy.Copy(d).(Meta)
 	ss := p.subscribers[d.BlockId]
 	if ss != nil {
 		for s := range ss {
@@ -160,9 +161,11 @@ func (p *pubSub) cleanup(now time.Time) bool {
 	if p.closed {
 		return false
 	}
-	var deadLine = now.Add(-5 * time.Minute)
+	var total, removed int
+	var deadLine = now.Add(-2 * time.Minute)
 	for id, lastUsage := range p.lastUsage {
-		if p.subscribers[id] != nil && len(p.subscribers[id]) > 0 {
+		total++
+		if p.subscribers[id] == nil || len(p.subscribers[id]) > 0 {
 			continue
 		}
 		if lastUsage.Before(deadLine) {
@@ -170,8 +173,10 @@ func (p *pubSub) cleanup(now time.Time) bool {
 			delete(p.collectors, id)
 			delete(p.lastUsage, id)
 			delete(p.subscribers, id)
+			removed++
 		}
 	}
+	log.Infof("meta pubsub cleanup: %d removed (from %d)", removed, total)
 	return true
 }
 
@@ -248,6 +253,7 @@ func newCollector(ps *pubSub, id string) *collector {
 		quit:    make(chan struct{}),
 	}
 	go c.listener()
+	log.Infof("metaListener started: %v", id)
 	return c
 }
 
@@ -270,13 +276,10 @@ func (c *collector) GetMeta() (d Meta) {
 
 func (c *collector) setMeta(d Meta) {
 	c.m.Lock()
-	var changed = !c.lastMeta.Details.Equal(d)
-	if changed {
-		c.lastMeta = d
-	}
-	c.m.Unlock()
-	if changed {
+	defer c.m.Unlock()
+	if !c.lastMeta.Details.Equal(d.Details) {
 		c.ps.call(d)
+		c.lastMeta = d
 	}
 }
 

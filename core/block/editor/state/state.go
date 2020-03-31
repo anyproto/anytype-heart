@@ -8,10 +8,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	logging "github.com/ipfs/go-log"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
-var log = logging.Logger("anytype-state")
+var log = logging.Logger("anytype-mw-state")
 
 type Doc interface {
 	RootId() string

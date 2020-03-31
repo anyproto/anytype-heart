@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
@@ -17,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 	"github.com/mohae/deepcopy"
-	"github.com/prometheus/common/log"
 )
 
 type ApplyFlag int
@@ -30,6 +30,8 @@ const (
 	NoHistory ApplyFlag = iota
 	NoEvent
 )
+
+var log = logging.Logger("anytype-mw-smartblock")
 
 func New() SmartBlock {
 	return &smartBlock{}
@@ -151,12 +153,10 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	if atomic.LoadInt32(&sb.metaFetchMode) == 1 {
 		sb.metaFetchResults <- d
-		log.Infof("%s: detailsSend 1: %v", sb.Id(), d)
 	} else {
 		sb.Lock()
 		defer sb.Unlock()
 		if sb.sendEvent != nil {
-			log.Infof("%s: detailsSend 0: %v", sb.Id(), d)
 			sb.sendEvent(&pb.Event{
 				Messages: []*pb.EventMessage{
 					{
@@ -289,5 +289,6 @@ func (sb *smartBlock) Close() (err error) {
 		sb.metaSub.Close()
 	}
 	sb.source.Close()
+	log.Debugf("close smartblock %v", sb.Id())
 	return
 }
