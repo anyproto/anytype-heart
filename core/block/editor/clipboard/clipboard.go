@@ -3,7 +3,6 @@ package clipboard
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log"
@@ -303,9 +302,9 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, e
 	}
 
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
-	pasteSingleTextInFocusedTitle := isFocusedTitle && !isMultipleBlocksToPaste
+	pasteSingleTextInFocusedTitle := isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
 	pasteMultipleBlocksInFocusedTitle := isFocusedTitle && isMultipleBlocksToPaste
-	pasteSingleTextInFocusedText := isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste
+	pasteSingleTextInFocusedText := isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
 	pasteMultipleBlocksInFocusedText := isFocusedText && isMultipleBlocksToPaste
 	pasteMultipleBlocksOnSelectedBlocks := isSelectedBlocks
 
