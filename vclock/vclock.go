@@ -14,8 +14,8 @@ import (
 // and may be ORed together when being provided to the Compare method.
 type Condition int
 
-//Constants define compairison conditions between pairs of vector
-//clocks
+// Constants define compairison conditions between pairs of vector
+// clocks
 const (
 	Equal Condition = 1 << iota
 	Ancestor

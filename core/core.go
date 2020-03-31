@@ -236,7 +236,7 @@ func (a *Anytype) Start() error {
 		a.device,
 		[]byte(ipfsPrivateNetworkKey),
 		litenet.WithNetHostAddr(hostAddr),
-		litenet.WithNetDebug(true))
+		litenet.WithNetDebug(false))
 	if err != nil {
 		return err
 	}
