@@ -1,6 +1,8 @@
 package state
 
 import (
+	"bytes"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -51,7 +53,9 @@ func (s *State) Add(b simple.Block) (ok bool) {
 	id := b.Model().Id
 	if s.Pick(id) == nil {
 		s.blocks[id] = b
-		s.newIds = append(s.newIds, id)
+		if s.parent != nil {
+			s.newIds = append(s.newIds, id)
+		}
 		return true
 	}
 	return false
@@ -108,6 +112,9 @@ func (s *State) Remove(id string) (ok bool) {
 		}
 		s.toRemove = append(s.toRemove, id)
 		s.Unlink(id)
+		if slice.FindPos(s.newIds, id) != -1 {
+			s.newIds = slice.Remove(s.newIds, id)
+		}
 		return true
 	}
 	return
@@ -183,15 +190,20 @@ func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err e
 
 func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
 	st := time.Now()
-	s.normalize()
-	var toSave []*model.Block
-	var newBlocks []*model.Block
 	for id, b := range s.blocks {
 		if slice.FindPos(s.toRemove, id) != -1 {
 			continue
 		}
 		if err := s.validateBlock(b); err != nil {
 			return nil, history.Action{}, err
+		}
+	}
+	s.normalize()
+	var toSave []*model.Block
+	var newBlocks []*model.Block
+	for id, b := range s.blocks {
+		if slice.FindPos(s.toRemove, id) != -1 {
+			continue
 		}
 		orig := s.PickOrigin(id)
 		if orig == nil {
@@ -258,4 +270,19 @@ func (s *State) Blocks() []*model.Block {
 		res = append(res, b.Copy().Model())
 	}
 	return res
+}
+
+func (s *State) String() (res string) {
+	buf := bytes.NewBuffer(nil)
+	s.writeString(buf, 0, s.RootId())
+	return buf.String()
+}
+
+func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
+	buf.WriteString(strings.Repeat("\t", l))
+	buf.WriteString(id)
+	buf.WriteString("\n")
+	for _, cid := range s.Pick(id).Model().ChildrenIds {
+		s.writeString(buf, l+1, cid)
+	}
 }

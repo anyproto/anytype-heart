@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -10,6 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	maxChildrenThreshold = 10
+}
 
 func TestState_Normalize(t *testing.T) {
 	var (
@@ -122,6 +127,21 @@ func TestState_Normalize(t *testing.T) {
 		assert.Nil(t, r.Pick("c2"))
 		assert.Equal(t, float64(0), r.Pick("c1").Model().Fields.Fields["width"].GetNumberValue())
 		assert.Equal(t, float64(0), r.Pick("c3").Model().Fields.Fields["width"].GetNumberValue())
+	})
+
+	t.Run("normalize tree", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+
+		var rootIds []string
+		for i := 0; i < 16; i++ {
+			rootIds = append(rootIds, fmt.Sprint(i))
+			r.Add(simple.New(&model.Block{Id: fmt.Sprint(i)}))
+		}
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: rootIds}))
+		t.Log(r.String())
+		s := r.NewState()
+		s.normalizeTree()
+		t.Log(s.String())
 	})
 
 }

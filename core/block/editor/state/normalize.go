@@ -2,11 +2,17 @@ package state
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+)
+
+var (
+	maxChildrenThreshold = 10
 )
 
 func (s *State) normalize() {
@@ -30,6 +36,7 @@ func (s *State) normalize() {
 			s.normalizeLayoutRow(b)
 		}
 	}
+	s.normalizeTree()
 	return
 }
 
@@ -116,4 +123,93 @@ func (s *State) validateBlock(b simple.Block) (err error) {
 		parentIds = append(parentIds, id)
 	}
 	return fmt.Errorf("block '%s' has not the page in parents", id)
+}
+
+func divId(id int32) string {
+	return fmt.Sprintf("div-%d", id)
+}
+
+func isDivLayout(m *model.Block) bool {
+	if layout := m.GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Div {
+		return true
+	}
+	return false
+}
+
+func (s *State) normalizeTree() {
+	var seq int32
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if isDivLayout(b.Model()) {
+			id := b.Model().Id
+			if strings.HasPrefix(id, "div-") {
+				res, _ := strconv.Atoi(id[len("div-"):])
+				if int32(res) > seq {
+					seq = int32(res)
+				}
+			}
+		}
+		return true
+	})
+	s.normalizeTreeBranch(s.RootId(), &seq)
+}
+
+func (s *State) normalizeTreeBranch(id string, seq *int32) {
+	if id == "" {
+		return
+	}
+	parentB := s.Pick(id)
+	if parentB == nil {
+		return
+	}
+	parent := parentB.Model()
+	if len(parent.ChildrenIds) > maxChildrenThreshold {
+		nextId := s.wrapChildrenToDiv(id, seq)
+		s.normalizeTreeBranch(nextId, seq)
+		return
+	}
+	for _, chId := range parent.ChildrenIds {
+		s.normalizeTreeBranch(chId, seq)
+	}
+}
+
+func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
+	parent := s.Get(id).Model()
+	var (
+		moveIds   []string
+		targetId  string
+		targetPos model.BlockPosition
+	)
+
+	if isDivLayout(parent) { // div overflow - move outer and rescan parent
+		moveIds = parent.ChildrenIds[maxChildrenThreshold:]
+		targetId = parent.Id
+		targetPos = model.Block_Bottom
+		if pp := s.GetParentOf(parent.Id); pp != nil {
+			nextId = pp.Model().Id
+			for _, mId := range moveIds {
+				s.Unlink(mId)
+			}
+			if err := s.InsertTo(targetId, targetPos, moveIds...); err != nil {
+				log.Warnf("normalize: wrapChildrenToDiv: insertTo error: %v", err)
+			}
+		}
+		return
+	}
+
+	for len(parent.ChildrenIds) > maxChildrenThreshold {
+		*seq++
+		moveIds = make([]string, maxChildrenThreshold)
+		copy(moveIds, parent.ChildrenIds[:maxChildrenThreshold])
+		divId := fmt.Sprintf("div-%d", *seq)
+		parent.ChildrenIds = append([]string{divId}, parent.ChildrenIds[maxChildrenThreshold:]...)
+		div := simple.New(&model.Block{
+			Id: divId,
+			Content: &model.BlockContentOfLayout{
+				Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Div},
+			},
+			ChildrenIds: moveIds,
+		})
+		s.Add(div)
+	}
+	return
 }
