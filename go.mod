@@ -20,7 +20,7 @@ require (
 	github.com/yuin/goldmark v1.1.24
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.27.1
+	google.golang.org/grpc v1.28.0
 )
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
