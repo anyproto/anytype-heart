@@ -50,3 +50,27 @@ func TestTextImpl_Split(t *testing.T) {
 	assert.Equal(t, []string{newId, "1"}, r.Pick(r.RootId()).Model().ChildrenIds)
 	assert.Equal(t, model.BlockContentText_Checkbox, r.Pick("1").Model().GetText().Style)
 }
+
+func TestTextImpl_Merge(t *testing.T) {
+	sb := smarttest.New("test")
+	tb1 := newTextBlock("1", "one")
+	tb1.Model().ChildrenIds = []string{"ch1"}
+	tb2 := newTextBlock("2", "two")
+	tb2.Model().ChildrenIds = []string{"ch2"}
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+		AddBlock(tb1).
+		AddBlock(tb2).
+		AddBlock(simple.New(&model.Block{Id: "ch1"})).
+		AddBlock(simple.New(&model.Block{Id: "ch2"}))
+	tb := NewText(sb)
+
+	err := tb.Merge("1", "2")
+	require.NoError(t, err)
+
+	r := sb.NewState()
+	assert.False(t, r.Exists("2"))
+	require.True(t, r.Exists("1"))
+
+	assert.Equal(t, "onetwo", r.Pick("1").Model().GetText().Text)
+	assert.Equal(t, []string{"ch1", "ch2"}, r.Pick("1").Model().ChildrenIds)
+}

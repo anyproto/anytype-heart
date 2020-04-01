@@ -76,6 +76,7 @@ func (t *textImpl) Merge(firstId, secondId string) (err error) {
 		return
 	}
 	s.Remove(second.Model().Id)
+	first.Model().ChildrenIds = append(first.Model().ChildrenIds, second.Model().ChildrenIds...)
 	return t.Apply(s)
 }
 
