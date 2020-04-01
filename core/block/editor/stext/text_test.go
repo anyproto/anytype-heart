@@ -43,9 +43,10 @@ func TestTextImpl_Split(t *testing.T) {
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
 		AddBlock(newTextBlock("1", "onetwo"))
 	tb := NewText(sb)
-	newId, err := tb.Split("1", 3)
+	newId, err := tb.Split("1", 3, model.BlockContentText_Checkbox)
 	require.NoError(t, err)
 	require.NotEmpty(t, newId)
 	r := sb.NewState()
 	assert.Equal(t, []string{newId, "1"}, r.Pick(r.RootId()).Model().ChildrenIds)
+	assert.Equal(t, model.BlockContentText_Checkbox, r.Pick(newId).Model().GetText().Style)
 }

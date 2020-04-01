@@ -2707,6 +2707,7 @@ Image/Video/File blocks then:
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | cursorPosition | [int32](#int32) |  |  |
+| style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 
 
 

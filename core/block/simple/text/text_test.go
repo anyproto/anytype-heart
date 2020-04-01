@@ -114,8 +114,18 @@ func TestText_Split(t *testing.T) {
 	})
 	t.Run("out of range", func(t *testing.T) {
 		b := testBlock()
-		_, err := b.Split(15)
+		_, err := b.Split(11)
 		require.Equal(t, ErrOutOfRange, err)
+	})
+	t.Run("start pos", func(t *testing.T) {
+		b := testBlock()
+		_, err := b.Split(0)
+		require.NoError(t, err)
+	})
+	t.Run("end pos", func(t *testing.T) {
+		b := testBlock()
+		_, err := b.Split(10)
+		require.NoError(t, err)
 	})
 }
 
