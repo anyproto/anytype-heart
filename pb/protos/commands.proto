@@ -243,6 +243,32 @@ message Rpc {
                     }
                 }
             }
+            message Div {
+                message Style {
+                    message Request {
+                        string contextId = 1;
+                        repeated string blockIds = 2;
+                        anytype.model.Block.Content.Div.Style style = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+            }
+
         }
     }
 
@@ -544,32 +570,6 @@ message Rpc {
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
                             // ...
-                        }
-                    }
-                }
-            }
-
-            message Div {
-                message Style {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2;
-                        anytype.model.Block.Content.Div.Style style = 3;
-                    }
-
-                    message Response {
-                        Error error = 1;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
                         }
                     }
                 }

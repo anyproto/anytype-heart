@@ -1,10 +1,13 @@
 package basic
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -16,6 +19,7 @@ type Basic interface {
 	Replace(id string, block *model.Block) (newId string, err error)
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(apply func(b simple.Block) error, blockIds ...string) (err error)
+	SetDivStyle(style model.BlockContentDivStyle, ids ...string) (err error)
 }
 
 func NewBasic(sb smartblock.SmartBlock) Basic {
@@ -133,6 +137,22 @@ func (bs *basic) Update(apply func(b simple.Block) error, blockIds ...string) (e
 			}
 		} else {
 			return smartblock.ErrSimpleBlockNotFound
+		}
+	}
+	return bs.Apply(s)
+}
+
+func (bs *basic) SetDivStyle(style model.BlockContentDivStyle, ids ...string) (err error) {
+	s := bs.NewState()
+	for _, id := range ids {
+		b := s.Get(id)
+		if b == nil {
+			return smartblock.ErrSimpleBlockNotFound
+		}
+		if div, ok := b.(base.DivBlock); ok {
+			div.SetDivStyle(style)
+		} else {
+			return fmt.Errorf("unexpected block type: %T (want Div)", b)
 		}
 	}
 	return bs.Apply(s)

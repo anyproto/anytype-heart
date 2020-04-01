@@ -42,7 +42,6 @@ service ClientCommands {
     rpc BlockSetFields (anytype.Rpc.Block.Set.Fields.Request) returns (anytype.Rpc.Block.Set.Fields.Response);
     rpc BlockSetRestrictions (anytype.Rpc.Block.Set.Restrictions.Request) returns (anytype.Rpc.Block.Set.Restrictions.Response);
     rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);
-    rpc BlockSetDivStyle (anytype.Rpc.Block.Set.Div.Style.Request) returns (anytype.Rpc.Block.Set.Div.Style.Response);
 
     rpc BlockSetPageIsArchived (anytype.Rpc.Block.Set.Page.IsArchived.Request) returns (anytype.Rpc.Block.Set.Page.IsArchived.Response);
 
@@ -52,6 +51,7 @@ service ClientCommands {
     rpc BlockListDuplicate (anytype.Rpc.BlockList.Duplicate.Request) returns (anytype.Rpc.BlockList.Duplicate.Response);
     rpc BlockListSetBackgroundColor (anytype.Rpc.BlockList.Set.BackgroundColor.Request) returns (anytype.Rpc.BlockList.Set.BackgroundColor.Response);
     rpc BlockListSetAlign (anytype.Rpc.BlockList.Set.Align.Request) returns (anytype.Rpc.BlockList.Set.Align.Response);
+    rpc BlockListSetDivStyle (anytype.Rpc.BlockList.Set.Div.Style.Request) returns (anytype.Rpc.BlockList.Set.Div.Style.Response);
 
     rpc BlockSetTextText (anytype.Rpc.Block.Set.Text.Text.Request) returns (anytype.Rpc.Block.Set.Text.Text.Response);
     rpc BlockSetTextColor (anytype.Rpc.Block.Set.Text.Color.Request) returns (anytype.Rpc.Block.Set.Text.Color.Response);
