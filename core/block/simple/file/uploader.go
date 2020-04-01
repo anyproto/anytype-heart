@@ -12,10 +12,10 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/h2non/filetype"
-	logging "github.com/ipfs/go-log"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-mw-file")
 
 func NewUploader(a anytype.Service, fn func(f func(file Block))) Uploader {
 	return &uploader{

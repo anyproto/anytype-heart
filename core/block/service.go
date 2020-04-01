@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -17,19 +20,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
-	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	logging "github.com/ipfs/go-log"
-
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 var (
@@ -38,7 +37,7 @@ var (
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
 )
 
-var log = logging.Logger("anytype-service")
+var log = logging.Logger("anytype-mw-service")
 
 var (
 	blockCacheTTL       = time.Minute
@@ -117,6 +116,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 type openedBlock struct {
 	smartblock.SmartBlock
 	lastUsage time.Time
+	locked    bool
 	refs      int32
 }
 
@@ -154,10 +154,10 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 		ob = &openedBlock{
 			SmartBlock: sb,
 			lastUsage:  time.Now(),
-			refs:       1,
 		}
 		s.openedBlocks[id] = ob
 	}
+	ob.locked = true
 	ob.SetEventFunc(s.sendEvent)
 	if err = ob.Show(); err != nil {
 		return
@@ -201,7 +201,7 @@ func (s *service) CloseBlock(id string) (err error) {
 	defer s.m.Unlock()
 	if ob, ok := s.openedBlocks[id]; ok {
 		ob.SetEventFunc(nil)
-		ob.refs--
+		ob.locked = false
 		return
 	}
 	return ErrBlockNotFound
@@ -717,16 +717,17 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 func (s *service) cleanupBlocks() (closed bool) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	var closedCount int
+	var closedCount, total int
 	for id, ob := range s.openedBlocks {
-		if ob.refs == 0 && time.Now().After(ob.lastUsage.Add(blockCacheTTL)) {
+		if !ob.locked && ob.refs == 0 && time.Now().After(ob.lastUsage.Add(blockCacheTTL)) {
 			if err := ob.Close(); err != nil {
 				log.Warnf("error while close block[%s]: %v", id, err)
 			}
 			delete(s.openedBlocks, id)
 			closedCount++
 		}
+		total++
 	}
-	log.Infof("cleanup: block closed %d", closedCount)
+	log.Infof("cleanup: block closed %d (total %v)", closedCount, total)
 	return s.closed
 }

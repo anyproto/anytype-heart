@@ -113,23 +113,6 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 
 }
 
-func (cb *clipboard) blocksTreeToMap(blocksMapIn map[string]*model.Block, ids []string) (blocksMapOut map[string]*model.Block) {
-	blocksMapOut = blocksMapIn
-
-	for _, id := range ids {
-		b := cb.Pick(id)
-
-		if b != nil {
-			blocksMapOut[id] = b.Model()
-			if len(b.Model().ChildrenIds) > 0 {
-				blocksMapOut = cb.blocksTreeToMap(blocksMapOut, b.Model().ChildrenIds)
-			}
-		}
-
-	}
-	return blocksMapOut
-}
-
 func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[string][]byte, err error) {
 	for _, b := range blocks {
 		if file := b.GetFile(); file != nil {

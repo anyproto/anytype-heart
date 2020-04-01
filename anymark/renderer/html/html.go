@@ -2,13 +2,14 @@ package html
 
 import (
 	"bytes"
+	"unicode/utf8"
+
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
-	logging "github.com/ipfs/go-log"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/util"
-	"unicode/utf8"
 )
 
 var log = logging.Logger("anytype-anymark")

@@ -3,15 +3,15 @@ package state
 import (
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("anytype-state")
+var log = logging.Logger("anytype-mw-state")
 
 type Doc interface {
 	RootId() string
@@ -152,13 +152,13 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) {
 	for _, newId := range s.newIds {
-		if ! f(s.blocks[newId]) {
+		if !f(s.blocks[newId]) {
 			return
 		}
 	}
 	if s.parent == nil {
 		for _, b := range s.blocks {
-			if ! f(b) {
+			if !f(b) {
 				return
 			}
 		}
