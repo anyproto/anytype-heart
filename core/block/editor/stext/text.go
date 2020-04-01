@@ -52,7 +52,7 @@ func (t *textImpl) Split(id string, pos int32) (newId string, err error) {
 	}
 	s.Add(new)
 	newId = new.Model().Id
-	if err = s.InsertTo(id, model.Block_Bottom, newId); err != nil {
+	if err = s.InsertTo(id, model.Block_Top, newId); err != nil {
 		return
 	}
 	if err = t.Apply(s); err != nil {

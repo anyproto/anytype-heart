@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,4 +36,16 @@ func TestTextImpl_UpdateTextBlocks(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
+}
+
+func TestTextImpl_Split(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+		AddBlock(newTextBlock("1", "onetwo"))
+	tb := NewText(sb)
+	newId, err := tb.Split("1", 3)
+	require.NoError(t, err)
+	require.NotEmpty(t, newId)
+	r := sb.NewState()
+	assert.Equal(t, []string{newId, "1"}, r.Pick(r.RootId()).Model().ChildrenIds)
 }

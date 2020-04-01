@@ -141,7 +141,7 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 		return nil, ErrOutOfRange
 	}
 	runes := []rune(t.content.Text)
-	t.content.Text = string(runes[:pos])
+	t.content.Text = string(runes[pos:])
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
 	}
@@ -168,12 +168,12 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 			oldMarks.Marks = append(oldMarks.Marks, mark)
 		}
 	}
-	t.content.Marks = oldMarks
+	t.content.Marks = newMarks
 	newBlock := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:    string(runes[pos:]),
+			Text:    string(runes[:pos]),
 			Style:   t.content.Style,
-			Marks:   newMarks,
+			Marks:   oldMarks,
 			Checked: t.content.Checked,
 		}},
 	})
