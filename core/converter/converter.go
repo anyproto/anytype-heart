@@ -71,7 +71,6 @@ func (c *converter) CreateTree(blocks []*model.Block) Node {
 	// 1. Create map
 	for _, b := range blocks {
 		c.nodeTable[b.Id] = &Node{b.Id, b, []*Node{}}
-		log.Debug("c.nodeTable", b.Id, c.nodeTable[b.Id])
 	}
 
 	// 2. Fill children field
@@ -90,8 +89,6 @@ func (c *converter) CreateTree(blocks []*model.Block) Node {
 		}
 	}
 
-	log.Debug("ROOT LEVEL:", blocksRootLvl)
-
 	// 4. Create root
 	c.rootNode.model = &model.Block{ChildrenIds: []string{}}
 
@@ -103,10 +100,7 @@ func (c *converter) CreateTree(blocks []*model.Block) Node {
 		c.remainBlocks = c.filterById(c.remainBlocks, br.Id)
 	}
 
-	log.Debug("ROOT NODE BEFORE:", c.rootNode)
 	c.rootNode = c.nextTreeLayer(c.rootNode)
-
-	log.Debug("ROOT NODE AFTER:", c.rootNode)
 
 	return *c.rootNode
 }
@@ -118,7 +112,6 @@ func contains(s []*Node, e *Node) bool {
 
 	if len(s) > 0 {
 		for i := 0; i < len(s); i++ {
-			log.Debug(i, "len(s)", len(s), s[i])
 			if s[i] != nil && s[i].Id == e.Id {
 				return true
 			}
@@ -446,10 +439,7 @@ func renderFile(isOpened bool, child *model.BlockContentOfFile, images map[strin
 				goToAnytypeMsg
 
 		case model.BlockContentFile_Image:
-			// TODO: child.File.Size_
-			// TODO: child.File.Mime
 			img := images[child.File.Hash]
-			log.Debug("IMAGES MAP:", "HASH:", child.File.Hash, "|||", images)
 			if img != nil {
 				encodedImg := base64.StdEncoding.EncodeToString(img)
 				out = `<img src="data:image/png;base64, ` + encodedImg + `" alt="` + child.File.Name + `" />`

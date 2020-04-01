@@ -149,8 +149,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 	if err != nil {
 		return "", err
 	}
-	log.Debug("filepath.Join(dir, fileName)", filepath.Join(dir, fileName), dir, fileName)
-	log.Debug(html)
+	log.Debug("Export output. filepath:", filepath.Join(dir, fileName))
 
 	return filePath, nil
 }
@@ -158,7 +157,6 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 func (cb *clipboard) pasteHtml(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
 	mdToBlocksConverter := anymark.New()
 	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
-	log.Debug("HERE1", req.HtmlSlot, blocks)
 	req.AnySlot = blocks
 	return cb.pasteAny(req)
 }
