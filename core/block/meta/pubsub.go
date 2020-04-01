@@ -5,13 +5,18 @@ import (
 	"sync"
 	"time"
 
+	logging "github.com/ipfs/go-log"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/prometheus/common/log"
+)
+
+var (
+	log = logging.Logger("anytype-pubsub")
 )
 
 func metaError(e string) *core.SmartBlockMeta {

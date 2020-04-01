@@ -5,7 +5,7 @@ import (
 	"sort"
 	"unicode/utf8"
 
-	"github.com/prometheus/common/log"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -16,6 +16,7 @@ import (
 
 var (
 	ErrOutOfRange = fmt.Errorf("out of range")
+	log           = logging.Logger("anytype-text")
 )
 
 func init() {

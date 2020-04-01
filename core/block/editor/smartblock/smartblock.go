@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	logging "github.com/ipfs/go-log"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -17,13 +19,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 	"github.com/mohae/deepcopy"
-	"github.com/prometheus/common/log"
 )
 
 type ApplyFlag int
 
 var (
 	ErrSimpleBlockNotFound = errors.New("simple block not found")
+	log                    = logging.Logger("anytype-smartblock")
 )
 
 const (

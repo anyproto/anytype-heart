@@ -387,7 +387,7 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
-	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		html, err = cb.Copy(req, images)
 		return err
 	})
@@ -404,7 +404,7 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadA
 }
 
 func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
-	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		textSlot, htmlSlot, anySlot, err = cb.Cut(req, images)
 		return err
 	})
@@ -412,7 +412,7 @@ func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (text
 }
 
 func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error) {
-	s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		path, err = cb.Export(req, images)
 		return err
 	})

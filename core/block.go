@@ -134,7 +134,7 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
 	images := make(map[string][]byte)
 	for _, b := range blocks {
-		if file := b.GetFile(); file != nil {
+		if file := b.GetFile(); file != nil && file.State == model.BlockContentFile_Done {
 			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
 				Hash:      file.Hash,
 				WantWidth: 1024,
