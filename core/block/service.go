@@ -56,16 +56,18 @@ type Service interface {
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
+	MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
-	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error)
-	Copy(req pb.RpcBlockCopyRequest) (html string, err error)
-	Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Export(req pb.RpcBlockExportRequest) (html string, err error)
+	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error)
+
+	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
+	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 
 	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(req pb.RpcBlockMergeRequest) error
@@ -208,7 +210,7 @@ func (s *service) CloseBlock(id string) (err error) {
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(*editor.Archive)
-		if ! ok {
+		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 		if req.IsArchived {
@@ -329,6 +331,32 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
 	})
 }
 
+func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
+
+	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.DropTargetId,
+		//Block:     req.Block,
+		Position: req.Position,
+	})
+
+	if err != nil {
+		return linkId, err
+	}
+
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Move(pb.RpcBlockListMoveRequest{
+			req.ContextId,
+			req.BlockIds,
+			pageId,
+			req.DropTargetId,
+			req.Position,
+		})
+	})
+
+	return
+}
+
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		newId, err = b.Replace(req.BlockId, req.Block)
@@ -358,52 +386,37 @@ func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error)
 	})
 }
 
-func (s *service) Copy(req pb.RpcBlockCopyRequest) (html string, err error) {
-	/*sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Copy(req)
-
-	*/
-	return
+func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		html, err = cb.Copy(req, images)
+		return err
+	})
+	return html, err
 }
 
-func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
-	/*sb, release, err := s.pickBlock(req.ContextId)
-	if err != nil {
-		return
-	}
-	defer release()
-	return sb.Paste(req)
+func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		blockIds, uploadArr, err = cb.Paste(req)
+		return err
+	})
 
-	*/
-	return
+	return blockIds, uploadArr, err
 }
 
-func (s *service) Cut(req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
-	/*	sb, release, err := s.pickBlock(req.ContextId)
-		if err != nil {
-			return
-		}
-		defer release()
-		return sb.Cut(req)
-
-	*/
-	return
+func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		textSlot, htmlSlot, anySlot, err = cb.Cut(req, images)
+		return err
+	})
+	return textSlot, htmlSlot, anySlot, err
 }
 
-func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {
-	/*	sb, release, err := s.pickBlock(req.ContextId)
-		if err != nil {
-			return
-		}
-		defer release()
-		return sb.Export(req)
-
-	*/
-	return
+func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error) {
+	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
+		path, err = cb.Export(req, images)
+		return err
+	})
+	return path, err
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
@@ -461,7 +474,8 @@ func (s *service) SetAlign(contextId string, align model.BlockAlign, blockIds ..
 
 func (s *service) UploadBlockFile(req pb.RpcBlockUploadRequest) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		return b.Upload(req.BlockId, req.FilePath, req.Url)
+		err = b.Upload(req.BlockId, req.FilePath, req.Url)
+		return err
 	})
 }
 

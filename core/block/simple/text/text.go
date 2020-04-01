@@ -5,6 +5,8 @@ import (
 	"sort"
 	"unicode/utf8"
 
+	"github.com/anytypeio/go-anytype-library/logging"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -14,6 +16,7 @@ import (
 
 var (
 	ErrOutOfRange = fmt.Errorf("out of range")
+	log           = logging.Logger("anytype-text")
 )
 
 func init() {
@@ -39,9 +42,9 @@ type Block interface {
 	SetChecked(v bool)
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
-	RangeSplit(from int32, to int32) ([]simple.Block, string, error)
-	RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error
+	RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error)
 	Merge(b simple.Block) error
+	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
 
 type Text struct {
@@ -73,7 +76,7 @@ func (t *Text) Copy() simple.Block {
 
 func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	text, ok := b.(*Text)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = t.Base.Diff(text); err != nil {
@@ -157,7 +160,7 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 		} else {
 			newMark := &model.BlockContentTextMark{
 				Range: &model.Range{
-					From: 0, // Sure? @enkogu
+					From: 0,
 					To:   mark.Range.To - pos,
 				},
 				Type:  mark.Type,
@@ -180,25 +183,19 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
-// TODO: should be 100% tested @enkogu
-func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) {
+func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
-		return nil, "", ErrOutOfRange
+		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
+		return nil, nil, ErrOutOfRange
 	}
 	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
-		return nil, "", ErrOutOfRange
+		return nil, nil, ErrOutOfRange
 	}
 	if from > to {
-		return nil, "", ErrOutOfRange // Maybe different error? @enkogu
-	}
-	var newBlocks []simple.Block
-	// special cases
-	if from == 0 && to == 0 {
-		return newBlocks, t.content.Text, nil
+		return nil, nil, ErrOutOfRange
 	}
 
 	runes := []rune(t.content.Text)
-	t.content.Text = string(runes[:from])
 	if t.content.Marks == nil {
 		t.content.Marks = &model.BlockContentTextMarks{}
 	}
@@ -207,28 +204,36 @@ func (t *Text) RangeSplit(from int32, to int32) ([]simple.Block, string, error) 
 	oldMarks := &model.BlockContentTextMarks{}
 	r := model.Range{From: from, To: to}
 	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
-	// TODO:
 
-	t.content.Marks = oldMarks
-	newBlock := simple.New(&model.Block{
+	for i, _ := range oldMarks.Marks {
+		newMarks.Marks[i].Range.From = newMarks.Marks[i].Range.From - to
+		newMarks.Marks[i].Range.To = newMarks.Marks[i].Range.To - to
+	}
+
+	style := t.content.Style
+	if style == model.BlockContentText_Title {
+		style = model.BlockContentText_Header2
+	}
+
+	newBlock = simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:    string(runes[to:]),
-			Style:   t.content.Style,
+			Style:   style,
 			Marks:   newMarks,
 			Checked: t.content.Checked,
 		}},
 	})
 
-	// if oldBlock is empty and newBlock is non empty -> replace content
-	if len(string(runes[:from])) == 0 {
-		t.content.Text = string(runes[to:])
+	oldBlock = simple.New(&model.Block{
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text:    string(runes[:from]),
+			Style:   t.content.Style,
+			Marks:   oldMarks,
+			Checked: t.content.Checked,
+		}},
+	})
 
-		// if newBlock is empty -> don't push it
-	} else if len(string(runes[to:])) > 0 {
-		newBlocks = append(newBlocks, newBlock)
-	}
-
-	return newBlocks, t.content.Text, nil
+	return oldBlock, newBlock, nil
 }
 
 func Abs(x int32) int32 {
@@ -308,50 +313,31 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, t
 	return topMarks, botMarks
 }
 
-func (t *Text) RangeTextPaste(from int32, to int32, newText string, newMarks []*model.BlockContentTextMark) error {
-	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
-		return ErrOutOfRange
-	}
-	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
-		return ErrOutOfRange
-	}
-	if from > to {
-		return ErrOutOfRange // Maybe different error? @enkogu
-	}
-
-	var combinedMarks []*model.BlockContentTextMark
-
+func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark) {
 	addLen := int32(utf8.RuneCountInString(newText))
+	leftMarks, rightMarks := t.splitMarks(t.content.Marks.Marks, textRange, addLen)
 
 	for _, mark := range newMarks {
-		mark.Range.From = mark.Range.From + from
-		mark.Range.To = mark.Range.To + from
+		mark.Range.From = mark.Range.From + textRange.From
+		mark.Range.To = mark.Range.To + textRange.From
 
 		combinedMarks = append(combinedMarks, mark)
 	}
 
-	leftMarks := &model.BlockContentTextMarks{}
-	rightMarks := &model.BlockContentTextMarks{}
-	r := model.Range{From: from, To: to}
-	leftMarks.Marks, rightMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, addLen)
-	//....
-	for _, mark := range leftMarks.Marks {
+	for _, mark := range leftMarks {
 		combinedMarks = append(combinedMarks, mark)
 	}
 
-	for _, mark := range rightMarks.Marks {
+	for _, mark := range rightMarks {
 		combinedMarks = append(combinedMarks, mark)
 	}
 
-	runes := []rune(t.content.Text)
-	t.content.Text = string(runes[:from]) + newText + string(runes[to:])
-	t.content.Marks = &model.BlockContentTextMarks{Marks: combinedMarks}
-	return nil
+	return combinedMarks
 }
 
 func (t *Text) Merge(b simple.Block) error {
 	text, ok := b.(*Text)
-	if ! ok {
+	if !ok {
 		return fmt.Errorf("unexpected block type for merge: %T", b)
 	}
 	curLen := int32(utf8.RuneCountInString(t.content.Text))

@@ -3,12 +3,12 @@ package state
 import (
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 var log = logging.Logger("anytype-mw-state")
@@ -17,6 +17,8 @@ type Doc interface {
 	RootId() string
 	NewState() *State
 	Blocks() []*model.Block
+	Pick(id string) (b simple.Block)
+	Append(targetId string, id string) (ok bool)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -124,6 +126,12 @@ func (s *State) Unlink(id string) (ok bool) {
 	return
 }
 
+func (s *State) Append(targetId string, id string) (ok bool) {
+	parent := s.Get(targetId).Model()
+	parent.ChildrenIds = append(parent.ChildrenIds, id)
+	return true
+}
+
 func (s *State) GetParentOf(id string) (res simple.Block) {
 	if parent := s.PickParentOf(id); parent != nil {
 		return s.Get(parent.Model().Id)
@@ -144,13 +152,13 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) {
 	for _, newId := range s.newIds {
-		if ! f(s.blocks[newId]) {
+		if !f(s.blocks[newId]) {
 			return
 		}
 	}
 	if s.parent == nil {
 		for _, b := range s.blocks {
-			if ! f(b) {
+			if !f(b) {
 				return
 			}
 		}

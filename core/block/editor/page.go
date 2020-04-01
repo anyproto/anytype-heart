@@ -3,6 +3,7 @@ package editor
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
@@ -18,6 +19,7 @@ func NewPage(source file.FileSource) *Page {
 		IHistory:   basic.NewHistory(sb),
 		Text:       stext.NewText(sb),
 		File:       file.NewFile(sb, source),
+		Clipboard:  clipboard.NewClipboard(sb),
 	}
 }
 
@@ -27,6 +29,7 @@ type Page struct {
 	basic.IHistory
 	file.File
 	stext.Text
+	clipboard.Clipboard
 }
 
 func (p *Page) Init(s source.Source) (err error) {
