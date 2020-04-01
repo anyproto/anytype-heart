@@ -48,5 +48,5 @@ func TestTextImpl_Split(t *testing.T) {
 	require.NotEmpty(t, newId)
 	r := sb.NewState()
 	assert.Equal(t, []string{newId, "1"}, r.Pick(r.RootId()).Model().ChildrenIds)
-	assert.Equal(t, model.BlockContentText_Checkbox, r.Pick(newId).Model().GetText().Style)
+	assert.Equal(t, model.BlockContentText_Checkbox, r.Pick("1").Model().GetText().Style)
 }

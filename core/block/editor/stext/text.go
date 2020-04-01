@@ -50,7 +50,7 @@ func (t *textImpl) Split(id string, pos int32, style model.BlockContentTextStyle
 	if err != nil {
 		return
 	}
-	new.Model().GetText().Style = style
+	tb.SetStyle(style)
 	s.Add(new)
 	newId = new.Model().Id
 	if err = s.InsertTo(id, model.Block_Top, newId); err != nil {
