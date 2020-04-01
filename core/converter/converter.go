@@ -308,8 +308,7 @@ func applyMarks(text string, marks *model.BlockContentTextMarks) (out string) {
 	style_b := ""
 
 	for i := 0; i < len(marks.Marks); i++ {
-		if len(symbols) > int(marks.Marks[i].Range.From) && len(symbols) > int(marks.Marks[i].Range.To-1) {
-
+		if len(symbols) > int(marks.Marks[i].Range.From) && len(symbols) > int(marks.Marks[i].Range.To-1) && marks.Marks[i].Range.To > 0 {
 			switch marks.Marks[i].Type {
 			case model.BlockContentTextMark_Strikethrough:
 				symbols[marks.Marks[i].Range.From] = ` <s style="` + style_s + `">` + symbols[marks.Marks[i].Range.From]
