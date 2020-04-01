@@ -329,10 +329,26 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 
 	case pasteSingleTextInFocusedText:
 		log.Debug("pasteSingleTextInFocusedText")
-		err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, firstPasteBlockText.Text, firstPasteBlockText.Marks.Marks)
+
+		txt := focusedBlock.Model().GetText()
+		runes := []rune(txt.Text)
+		marks := focusedBlockText.SplitMarks(req.SelectedTextRange, firstPasteBlockText.Marks.Marks, firstPasteBlockText.Text)
+
+		newBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:    string(runes[:req.SelectedTextRange.From]) + firstPasteBlockText.Text + string(runes[req.SelectedTextRange.To:]),
+				Style:   txt.Style,
+				Marks:   &model.BlockContentTextMarks{Marks: marks},
+				Checked: txt.Checked,
+			}},
+		})
+
+		s.Add(newBlock)
+		err = s.InsertTo(targetId, model.Block_Replace, newBlock.Model().Id)
 		if err != nil {
 			return blockIds, uploadArr, err
 		}
+
 		break
 
 	case pasteMultipleBlocksInFocusedText:

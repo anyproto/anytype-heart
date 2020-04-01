@@ -8,6 +8,12 @@ import (
 )
 
 func TestCommonSmart_pasteHtml(t *testing.T) {
+	t.Run("Simple: single p block", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "abcde", "55555"}, emptyMarks))
+		pasteHtml(t, sb, "4", model.Range{From: 2, To: 4}, []string{}, "<p>000</p>")
+		checkBlockTextDebug(t, sb, []string{"11111", "22222", "33333", "ab000e", "55555"})
+	})
+
 	t.Run("Simple: 2 p blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "abcde", "55555"}, emptyMarks))
 		pasteHtml(t, sb, "4", model.Range{From: 2, To: 4}, []string{}, "<p>lkjhg</p><p>hello</p>")
