@@ -4,12 +4,12 @@ import (
 	"encoding/base64"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
-	logging "github.com/ipfs/go-log"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/yosssi/gohtml"
 	"strconv"
 )
 
-var log = logging.Logger("anytype-converter")
+var log = logging.Logger("anytype-mw-converter")
 
 type Node struct {
 	Id     string

@@ -11,10 +11,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	logging "github.com/ipfs/go-log"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
-var log = logging.Logger("anytype-mw")
+var log = logging.Logger("anytype-mw-api")
 
 type MiddlewareState struct {
 	// client-state: blocks range, text range, focus, screen position, etc

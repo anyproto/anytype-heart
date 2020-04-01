@@ -2,6 +2,7 @@ package meta
 
 import (
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/vclock"
@@ -31,6 +32,11 @@ func TestSubscriber_Subscribe(t *testing.T) {
 		mch <- m
 	}
 	s.Callback(f).Subscribe(blockId)
+	select {
+	case <-time.After(time.Second):
+		t.Errorf("timeout")
+	case <-mch:
+	}
 }
 
 func newFixture(t *testing.T) (fx *fixture) {
