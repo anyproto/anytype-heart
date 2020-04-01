@@ -2,10 +2,11 @@ package anymark_test
 
 import (
 	"encoding/json"
-	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
+
+	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/stretchr/testify/assert"
 )
 
 var (

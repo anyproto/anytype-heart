@@ -3,8 +3,9 @@ package anymark_test
 import (
 	"bufio"
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 
