@@ -42,7 +42,7 @@ func TestDiv_Diff(t *testing.T) {
 	t.Run("content diff", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.Style = model.BlockContentDiv_Dots
+		b2.SetStyle(model.BlockContentDiv_Dots)
 
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)

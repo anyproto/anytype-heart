@@ -18,7 +18,7 @@ func NewDiv(m *model.Block) simple.Block {
 
 type DivBlock interface {
 	simple.Block
-	SetDivStyle(style model.BlockContentDivStyle)
+	SetStyle(style model.BlockContentDivStyle)
 }
 
 type Div struct {
@@ -53,6 +53,6 @@ func (b *Div) Copy() simple.Block {
 	return NewDiv(deepcopy.Copy(b.Model()).(*model.Block))
 }
 
-func (b *Div) SetDivStyle(style model.BlockContentDivStyle) {
+func (b *Div) SetStyle(style model.BlockContentDivStyle) {
 	b.content.Style = style
 }

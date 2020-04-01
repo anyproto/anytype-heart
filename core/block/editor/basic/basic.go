@@ -150,7 +150,7 @@ func (bs *basic) SetDivStyle(style model.BlockContentDivStyle, ids ...string) (e
 			return smartblock.ErrSimpleBlockNotFound
 		}
 		if div, ok := b.(base.DivBlock); ok {
-			div.SetDivStyle(style)
+			div.SetStyle(style)
 		} else {
 			return fmt.Errorf("unexpected block type: %T (want Div)", b)
 		}
