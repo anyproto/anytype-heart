@@ -3,85 +3,103 @@ package core
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
-	"github.com/golang/protobuf/jsonpb"
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/gogo/protobuf/proto"
 	"github.com/h2non/filetype"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
-	"github.com/mr-tron/base58"
-	"github.com/textileio/go-textile/core"
-	"github.com/textileio/go-textile/crypto"
-	"github.com/textileio/go-textile/ipfs"
-	ipfsutil "github.com/textileio/go-textile/ipfs"
-	"github.com/textileio/go-textile/mill"
-	tpb "github.com/textileio/go-textile/pb"
-	"github.com/textileio/go-textile/repo/db"
-	tschema "github.com/textileio/go-textile/schema"
-	tutil "github.com/textileio/go-textile/util"
+	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/multiformats/go-base32"
+	mh "github.com/multiformats/go-multihash"
+	"github.com/textileio/go-threads/crypto/symmetric"
 
+	helpers "github.com/anytypeio/go-anytype-library/ipfs/helpers"
+	m "github.com/anytypeio/go-anytype-library/mill"
+	"github.com/anytypeio/go-anytype-library/pb"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/anytypeio/go-anytype-library/schema"
+	"github.com/anytypeio/go-anytype-library/schema/anytype"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
+var ErrMissingMetaLink = fmt.Errorf("meta link not in node")
+var ErrMissingContentLink = fmt.Errorf("content link not in node")
 
-func (a *Anytype) FileByHash(hash string) (File, error) {
-	files, err := a.getFileIndexByTarget(hash)
+const MetaLinkName = "meta"
+const ContentLinkName = "content"
+
+var ValidMetaLinkNames = []string{"meta", "f"}
+var ValidContentLinkNames = []string{"content", "d"}
+
+var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
+
+func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
+	files, err := a.localStore.Files.ListByTarget(hash)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(files) == 0 {
-		files, err = a.getFileIndexes(hash)
+		return nil, ErrFileNotFound
+	}
+
+	/*if len(files) == 0 {
+		files, err = a.getFileIndexes(ctx, hash)
 		if err != nil {
-			log.Errorf("fImageByHash: failed to retrieve from IPFS: %s", err.Error())
+			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
 		}
-	}
+	}*/
 
 	fileIndex := files[0]
 	return &file{
 		hash:  hash,
-		index: &fileIndex,
+		index: fileIndex,
 		node:  a,
 	}, nil
 }
 
-func (a *Anytype) FileAddWithBytes(content []byte, filename string) (File, error) {
-	return a.FileAddWithReader(bytes.NewReader(content), filename)
+func (a *Anytype) FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error) {
+	return a.FileAddWithReader(ctx, bytes.NewReader(content), filename)
 }
 
-func (a *Anytype) FileAddWithReader(content io.Reader, filename string) (File, error) {
-	fileConfig, err := a.getFileConfig(content, filename, "", false)
+func (a *Anytype) FileAddWithReader(ctx context.Context, content io.Reader, filename string) (File, error) {
+	fileConfig, err := a.getFileConfig(ctx, content, filename, "", false)
 	if err != nil {
 		return nil, err
 	}
 
 	// todo: PR textile to be able to use reader instead of bytes
-	fileIndex, err := a.Textile.Node().AddFileIndex(&mill.Blob{}, *fileConfig)
+	fileIndex, err := a.addFileIndex(ctx, &m.Blob{}, *fileConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	node, keys, err := a.Textile.Node().AddNodeFromFiles([]*tpb.FileIndex{fileIndex})
+	node, keys, err := a.AddNodeFromFiles(ctx, []*storage.FileInfo{fileIndex})
 	if err != nil {
 		return nil, err
 	}
 
-	nodeHash := node.Cid().Hash().B58String()
+	nodeHash := node.Cid().String()
 
-	err = a.indexFileData(node, nodeHash)
+	err = a.indexFileData(ctx, node, nodeHash)
 	if err != nil {
 		return nil, err
 	}
 
 	filesKeysCacheMutex.Lock()
 	defer filesKeysCacheMutex.Unlock()
-	filesKeysCache[nodeHash] = keys.Files
+	filesKeysCache[nodeHash] = keys.KeysByPath
 
 	return &file{
 		hash:  nodeHash,
@@ -90,59 +108,205 @@ func (a *Anytype) FileAddWithReader(content io.Reader, filename string) (File, e
 	}, nil
 }
 
-func (a *Anytype) getFileIndexByTarget(target string) ([]tpb.FileIndex, error) {
-	var list []tpb.FileIndex
-	rows, err := a.Textile.Node().Datastore().Files().PrepareAndExecuteQuery("SELECT * FROM files WHERE targets=?", target)
+func (a *Anytype) getFileIndexForPath(pth string) (*storage.FileInfo, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+// IndexFileData walks a file data node, indexing file links
+func (a *Anytype) indexFileData(ctx context.Context, inode ipld.Node, data string) error {
+	for _, link := range inode.Links() {
+		nd, err := helpers.NodeAtLink(ctx, a.Ipfs(), link)
+		if err != nil {
+			return err
+		}
+		err = a.indexFileNode(ctx, nd, data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// indexFileNode walks a file node, indexing file links
+func (a *Anytype) indexFileNode(ctx context.Context, inode ipld.Node, data string) error {
+	links := inode.Links()
+
+	if looksLikeFileNode(inode) {
+		return a.indexFileLink(ctx, inode, data)
+	}
+
+	for _, link := range links {
+		n, err := helpers.NodeAtLink(ctx, a.Ipfs(), link)
+		if err != nil {
+			return err
+		}
+
+		err = a.indexFileLink(ctx, n, data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// indexFileLink indexes a file link
+func (a *Anytype) indexFileLink(ctx context.Context, inode ipld.Node, data string) error {
+	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
+	if dlink == nil {
+		return ErrMissingContentLink
+	}
+
+	return a.localStore.Files.AddTarget(dlink.Cid.String(), data)
+}
+
+func (a *Anytype) addFileIndexFromPath(target string, path string, key string) (*storage.FileInfo, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (t *Anytype) fileMeta(hash string) (*storage.FileInfo, error) {
+	file, err := t.localStore.Files.GetByHash(hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the file meta content for hash %s with error: %w", hash, err)
+	}
+	return file, nil
+}
+
+func (t *Anytype) fileContent(ctx context.Context, hash string) (io.ReadSeeker, *storage.FileInfo, error) {
+	var err error
+	var file *storage.FileInfo
+	var reader io.ReadSeeker
+	file, err = t.fileMeta(hash)
+	if err != nil {
+		return nil, nil, err
+	}
+	reader, err = t.fileIndexContent(ctx, file)
+	return reader, file, err
+}
+
+func (t *Anytype) fileIndexContent(ctx context.Context, file *storage.FileInfo) (io.ReadSeeker, error) {
+	fileCid, err := cid.Parse(file.Hash)
+	if err != nil {
+		return nil, err
+	}
+	fd, err := t.Ipfs().GetFile(ctx, fileCid)
 	if err != nil {
 		return nil, err
 	}
 
-	for rows.Next() {
-		var mill_, checksum, source, opts, hash, key, media, name string
-		var size int64
-		var addedInt int64
-		var metab []byte
-		var targets *string
-
-		if err := rows.Scan(&mill_, &checksum, &source, &opts, &hash, &key, &media, &name, &size, &addedInt, &metab, &targets); err != nil {
-			log.Errorf("error in db scan: %s", err)
-			continue
+	var plaintext []byte
+	if file.Key != "" {
+		key, err := symmetric.FromString(file.Key)
+		if err != nil {
+			return nil, err
 		}
-
-		meta := &structpb.Struct{}
-		if metab != nil {
-			if err := jsonpb.Unmarshal(bytes.NewReader(metab), meta); err != nil {
-				log.Errorf("failed to unmarshal file meta: %s", err)
-				continue
-			}
+		defer fd.Close()
+		b, err := ioutil.ReadAll(fd)
+		if err != nil {
+			return nil, err
 		}
-
-		tlist := make([]string, 0)
-		if targets != nil {
-			tlist = tutil.SplitString(*targets, ",")
+		plaintext, err = key.Decrypt(b)
+		if err != nil {
+			return nil, err
 		}
-
-		list = append(list, tpb.FileIndex{
-			Mill:     mill_,
-			Checksum: checksum,
-			Source:   source,
-			Opts:     opts,
-			Hash:     hash,
-			Key:      key,
-			Media:    media,
-			Name:     name,
-			Size:     size,
-			Added:    tutil.ProtoTs(addedInt),
-			Meta:     meta,
-			Targets:  tlist,
-		})
+		return bytes.NewReader(plaintext), nil
 	}
 
-	return list, nil
+	return fd, nil
 }
 
-func (a *Anytype) getFileConfig(reader io.Reader, filename string, use string, plaintext bool) (*core.AddFileConfig, error) {
-	conf := &core.AddFileConfig{}
+type AddFileConfig struct {
+	Input     []byte `json:"input"`
+	Use       string `json:"use"`
+	Media     string `json:"media"`
+	Name      string `json:"name"`
+	Plaintext bool   `json:"plaintext"`
+}
+
+func checksum(plaintext []byte, wontEncrypt bool) string {
+	var add int
+	if wontEncrypt {
+		add = 1
+	}
+	plaintext = append(plaintext, byte(add))
+	sum := sha256.Sum256(plaintext)
+	return base32.RawHexEncoding.EncodeToString(sum[:])
+}
+
+func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf AddFileConfig) (*storage.FileInfo, error) {
+	var source string
+	if conf.Use != "" {
+		source = conf.Use
+	} else {
+		source = checksum(conf.Input, conf.Plaintext)
+	}
+
+	opts, err := mill.Options(map[string]interface{}{
+		"plaintext": conf.Plaintext,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if efile, _ := t.localStore.Files.GetBySource(mill.ID(), source, opts); efile != nil {
+		return efile, nil
+	}
+
+	res, err := mill.Mill(conf.Input, conf.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	check := checksum(res.File, conf.Plaintext)
+	if efile, _ := t.localStore.Files.GetByChecksum(mill.ID(), check); efile != nil {
+		return efile, nil
+	}
+
+	model := &storage.FileInfo{
+		Mill:     mill.ID(),
+		Checksum: check,
+		Source:   source,
+		Opts:     opts,
+		Media:    conf.Media,
+		Name:     conf.Name,
+		Size_:    int64(len(res.File)),
+		Added:    time.Now().Unix(),
+		Meta:     pb.ToStruct(res.Meta),
+	}
+
+	var reader *bytes.Reader
+	if mill.Encrypt() && !conf.Plaintext {
+		key, err := symmetric.NewRandom()
+		if err != nil {
+			return nil, err
+		}
+		ciphertext, err := key.Encrypt(res.File)
+		if err != nil {
+			return nil, err
+		}
+		model.Key = key.String()
+		reader = bytes.NewReader(ciphertext)
+	} else {
+		reader = bytes.NewReader(res.File)
+	}
+
+	node, err := t.Ipfs().AddFile(ctx, reader, nil)
+	if err != nil {
+		return nil, err
+	}
+	model.Hash = node.Cid().String()
+
+	err = t.localStore.Files.Add(model)
+	if err != nil {
+		return nil, err
+	}
+
+	return model, nil
+}
+
+func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename string, use string, plaintext bool) (*AddFileConfig, error) {
+	conf := &AddFileConfig{}
 
 	if use == "" {
 		conf.Name = filename
@@ -153,20 +317,20 @@ func (a *Anytype) getFileConfig(reader io.Reader, filename string, use string, p
 		}
 		parts := strings.Split(ref.String(), "/")
 		hash := parts[len(parts)-1]
-		var file *tpb.FileIndex
-		reader, file, err = a.textile().FileContent(hash)
+		var file *storage.FileInfo
+		reader, file, err = a.fileContent(ctx, hash)
 		if err != nil {
-			if err == core.ErrFileNotFound {
+			/*if err == localstore.ErrNotFound{
 				// just cat the data from ipfs
-				b, err := ipfsutil.DataAtPath(a.ipfs(), ref.String())
+				b, err := ipfsutil.DataAtPath(a.Ipfs(), ref.String())
 				if err != nil {
 					return nil, err
 				}
 				reader = bytes.NewReader(b)
 				conf.Use = ref.String()
-			} else {
-				return nil, err
-			}
+			} else {*/
+			return nil, err
+			//}
 		} else {
 			conf.Use = file.Checksum
 		}
@@ -195,44 +359,152 @@ func (a *Anytype) getFileConfig(reader io.Reader, filename string, use string, p
 	return conf, nil
 }
 
-func (a *Anytype) buildDirectory(content []byte, filename string, sch *tpb.Node) (*tpb.Directory, error) {
-	dir := &tpb.Directory{
-		Files: make(map[string]*tpb.FileIndex),
+func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
+	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
+	outer := uio.NewDirectory(t.Ipfs())
+	outer.SetCidBuilder(cidBuilder)
+
+	var err error
+	for i, file := range files {
+		link := strconv.Itoa(i)
+		err = t.fileNode(ctx, file, outer, link)
+		if err != nil {
+			return nil, nil, err
+		}
+		keys.KeysByPath["/"+link+"/"] = file.Key
+	}
+
+	node, err := outer.GetNode()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = t.Ipfs().Add(ctx, node)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	/*err = helpers.PinNode(t.node, node, false)
+	if err != nil {
+		return nil, nil, err
+	}*/
+	return node, keys, nil
+}
+
+func (t *Anytype) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
+	file, err := t.localStore.Files.GetByHash(file.Hash)
+	if err != nil {
+		return err
+	}
+
+	// remove locally indexed targets
+	file.Targets = nil
+
+	plaintext, err := proto.Marshal(file)
+	if err != nil {
+		return err
+	}
+
+	var reader io.Reader
+	if file.Key != "" {
+		key, err := symmetric.FromString(file.Key)
+		if err != nil {
+			return err
+		}
+
+		ciphertext, err := key.Encrypt(plaintext)
+		if err != nil {
+			return err
+		}
+
+		reader = bytes.NewReader(ciphertext)
+	} else {
+		reader = bytes.NewReader(plaintext)
+	}
+
+	pair := uio.NewDirectory(t.Ipfs())
+	pair.SetCidBuilder(cidBuilder)
+
+	_, err = helpers.AddDataToDirectory(ctx, t.Ipfs(), pair, MetaLinkName, reader)
+	if err != nil {
+		return err
+	}
+
+	err = helpers.AddLinkToDirectory(ctx, t.Ipfs(), pair, ContentLinkName, file.Hash)
+	if err != nil {
+		return err
+	}
+
+	node, err := pair.GetNode()
+	if err != nil {
+		return err
+	}
+	err = t.Ipfs().Add(ctx, node)
+	if err != nil {
+		return err
+	}
+
+	/*err = helpers.PinNode(t.node, node, false)
+	if err != nil {
+		return err
+	}*/
+
+	return helpers.AddLinkToDirectory(ctx, t.Ipfs(), dir, link, node.Cid().String())
+}
+
+// looksLikeFileNode returns whether or not a node appears to
+// be a textile node. It doesn't inspect the actual data.
+func looksLikeFileNode(node ipld.Node) bool {
+	links := node.Links()
+	if len(links) != 2 {
+		return false
+	}
+	if schema.LinkByName(links, ValidMetaLinkNames) == nil ||
+		schema.LinkByName(links, ValidContentLinkNames) == nil {
+		return false
+	}
+	return true
+}
+
+func (a *Anytype) buildDirectory(ctx context.Context, content []byte, filename string, sch *storage.Node) (*storage.Directory, error) {
+	dir := &storage.Directory{
+		Files: make(map[string]*storage.FileInfo),
 	}
 
 	reader := bytes.NewReader(content)
-	mil, err := schema.GetMill(sch.Mill, sch.Opts)
+	mil, err := anytype.GetMill(sch.Mill, sch.Opts)
 	if err != nil {
 		return nil, err
 	}
 	if mil != nil {
-		conf, err := a.getFileConfig(reader, filename, "", sch.Plaintext)
+		conf, err := a.getFileConfig(ctx, reader, filename, "", sch.Plaintext)
 		if err != nil {
 			return nil, err
 		}
 
-		added, err := a.textile().AddFileIndex(mil, *conf)
+		added, err := a.addFileIndex(ctx, mil, *conf)
 		if err != nil {
 			return nil, err
 		}
-		dir.Files[tschema.SingleFileTag] = added
+		dir.Files[schema.SingleFileTag] = added
 
 	} else if len(sch.Links) > 0 {
 		// determine order
-		steps, err := tschema.Steps(sch.Links)
+		steps, err := schema.Steps(sch.Links)
 		if err != nil {
 			return nil, err
 		}
 
 		// send each link
 		for _, step := range steps {
-			stepMill, err := schema.GetMill(step.Link.Mill, step.Link.Opts)
+			stepMill, err := anytype.GetMill(step.Link.Mill, step.Link.Opts)
 			if err != nil {
 				return nil, err
 			}
-			var conf *core.AddFileConfig
-			if step.Link.Use == tschema.FileTag {
+			var conf *AddFileConfig
+			if step.Link.Use == schema.FileTag {
 				conf, err = a.getFileConfig(
+					ctx,
 					reader,
 					filename,
 					"",
@@ -247,7 +519,9 @@ func (a *Anytype) buildDirectory(content []byte, filename string, sch *tpb.Node)
 					return nil, fmt.Errorf(step.Link.Use + " not found")
 				}
 
-				conf, err = a.getFileConfig(nil,
+				conf, err = a.getFileConfig(
+					ctx,
+					nil,
 					filename,
 					dir.Files[step.Link.Use].Hash,
 					step.Link.Plaintext,
@@ -257,7 +531,7 @@ func (a *Anytype) buildDirectory(content []byte, filename string, sch *tpb.Node)
 				}
 			}
 
-			added, err := a.textile().AddFileIndex(stepMill, *conf)
+			added, err := a.addFileIndex(ctx, stepMill, *conf)
 			if err != nil {
 				return nil, err
 			}
@@ -265,126 +539,55 @@ func (a *Anytype) buildDirectory(content []byte, filename string, sch *tpb.Node)
 			reader.Seek(0, 0)
 		}
 	} else {
-		return nil, tschema.ErrEmptySchema
+		return nil, schema.ErrEmptySchema
 	}
 
 	return dir, nil
 }
+func (t *Anytype) AddNodeFromDirs(ctx context.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
+	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
+	outer := uio.NewDirectory(t.t)
+	outer.SetCidBuilder(cidBuilder)
 
-func (a *Anytype) getFileIndexForPath(pth string) (*tpb.FileIndex, error) {
-	plaintext, err := ipfs.DataAtPath(a.Textile.Node().Ipfs(), pth+core.MetaLinkName)
+	for i, dir := range dirs.Items {
+		inner := uio.NewDirectory(t.t)
+		inner.SetCidBuilder(cidBuilder)
+		olink := strconv.Itoa(i)
+
+		var err error
+		for link, file := range dir.Files {
+			err = t.fileNode(ctx, file, inner, link)
+			if err != nil {
+				return nil, nil, err
+			}
+			keys.KeysByPath["/"+olink+"/"+link+"/"] = file.Key
+		}
+
+		node, err := inner.GetNode()
+		if err != nil {
+			return nil, nil, err
+		}
+		// todo: pin?
+		err = t.t.Add(ctx, node)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		id := node.Cid().String()
+		err = helpers.AddLinkToDirectory(ctx, t.Ipfs(), outer, olink, id)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	node, err := outer.GetNode()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	var file tpb.FileIndex
-	err = jsonpb.Unmarshal(bytes.NewReader(plaintext), &file)
+	// todo: pin?
+	err = t.t.Add(ctx, node)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	return &file, nil
-}
-
-// IndexFileData walks a file data node, indexing file links
-func (a *Anytype) indexFileData(inode ipld.Node, data string) error {
-	for _, link := range inode.Links() {
-		nd, err := ipfs.NodeAtLink(a.ipfs(), link)
-		if err != nil {
-			return err
-		}
-		err = a.indexFileNode(nd, data)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// indexFileNode walks a file node, indexing file links
-func (a *Anytype) indexFileNode(inode ipld.Node, data string) error {
-	links := inode.Links()
-
-	if looksLikeFileNode(inode) {
-		return a.indexFileLink(inode, data)
-	}
-
-	for _, link := range links {
-		n, err := ipfs.NodeAtLink(a.ipfs(), link)
-		if err != nil {
-			return err
-		}
-
-		err = a.indexFileLink(n, data)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// indexFileLink indexes a file link
-func (a *Anytype) indexFileLink(inode ipld.Node, data string) error {
-	dlink := tschema.LinkByName(inode.Links(), core.ValidContentLinkNames)
-	if dlink == nil {
-		return core.ErrMissingContentLink
-	}
-
-	return a.Textile.Node().Datastore().Files().AddTarget(dlink.Cid.Hash().B58String(), data)
-}
-
-func (a *Anytype) addFileIndexFromPath(target string, path string, key string) (*tpb.FileIndex, error) {
-	fd, err := ipfs.DataAtPath(a.ipfs(), path+"/"+core.MetaLinkName)
-	if err != nil {
-		return nil, err
-	}
-
-	var plaintext []byte
-	if key != "" {
-		keyb, err := base58.Decode(key)
-		if err != nil {
-			return nil, err
-		}
-		plaintext, err = crypto.DecryptAES(fd, keyb)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		plaintext = fd
-	}
-
-	var file tpb.FileIndex
-	err = jsonpb.Unmarshal(bytes.NewReader(plaintext), &file)
-	if err != nil {
-		// todo: get a fixed error if trying to unmarshal an encrypted file
-		return nil, err
-	}
-
-	log.Debugf("addFileIndexFromPath got file: %s", file.Hash)
-
-	file.Targets = []string{target}
-	err = a.textile().Datastore().Files().Add(&file)
-	if err != nil {
-		if !db.ConflictError(err) {
-			return nil, err
-		}
-		log.Debugf("file exists: %s", file.Hash)
-	}
-	return &file, nil
-}
-
-// looksLikeFileNode returns whether or not a node appears to
-// be a textile node. It doesn't inspect the actual data.
-func looksLikeFileNode(node ipld.Node) bool {
-	links := node.Links()
-	if len(links) != 2 {
-		return false
-	}
-	if tschema.LinkByName(links, core.ValidMetaLinkNames) == nil ||
-		tschema.LinkByName(links, core.ValidContentLinkNames) == nil {
-		return false
-	}
-	return true
+	return node, keys, nil
 }

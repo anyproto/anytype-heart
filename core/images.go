@@ -1,16 +1,17 @@
 package core
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/textileio/go-textile/ipfs"
-	tpb "github.com/textileio/go-textile/pb"
+	"github.com/anytypeio/go-anytype-library/ipfs/helpers"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
 
-func (a *Anytype) getFileIndexes(hash string) ([]tpb.FileIndex, error) {
-	links, err := ipfs.LinksAtPath(a.ipfs(), hash)
+func (a *Anytype) getFileIndexes(ctx context.Context, hash string) ([]storage.FileInfo, error) {
+	links, err := helpers.LinksAtPath(ctx, a.Ipfs(), hash)
 	if err != nil {
 		return nil, err
 	}
@@ -20,10 +21,9 @@ func (a *Anytype) getFileIndexes(hash string) ([]tpb.FileIndex, error) {
 
 	filesKeys, filesKeysExists := filesKeysCache[hash]
 
-	var files []tpb.FileIndex
-
+	var files []storage.FileInfo
 	for _, index := range links {
-		node, err := ipfs.NodeAtLink(a.ipfs(), index)
+		node, err := helpers.NodeAtLink(ctx, a.Ipfs(), index)
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +51,6 @@ func (a *Anytype) getFileIndexes(hash string) ([]tpb.FileIndex, error) {
 					return nil, fmt.Errorf("addFileIndexFromPath error: %s", err.Error())
 				}
 				files = append(files, *fileIndex)
-
 			}
 		}
 	}
@@ -59,22 +58,26 @@ func (a *Anytype) getFileIndexes(hash string) ([]tpb.FileIndex, error) {
 	return files, nil
 }
 
-func (a *Anytype) ImageByHash(hash string) (*image, error) {
-	files, err := a.getFileIndexByTarget(hash)
+func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
+	files, err := a.localStore.Files.ListByTarget(hash)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(files) == 0 {
-		files, err = a.getFileIndexes(hash)
+	/*if len(files) == 0 {
+		files, err = a.getFileIndexes(ctx, hash)
 		if err != nil {
 			log.Errorf("fImageByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrImageNotFound
 		}
-	}
+	}*/
 
-	var variantsByWidth = make(map[int]tpb.FileIndex, len(files))
+	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
 	for _, f := range files {
+		if f.Mill != "/image/resize" {
+			continue
+		}
+
 		if v, exists := f.Meta.Fields["width"]; exists {
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}

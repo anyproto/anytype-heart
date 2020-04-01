@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
-	logging "github.com/ipfs/go-log"
-	tcore "github.com/textileio/go-textile/core"
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 const defaultGatewayAddr = "127.0.0.1:47800"
@@ -24,7 +23,7 @@ var Host *Gateway
 
 // Gateway is a HTTP API for getting files and links from IPFS
 type Gateway struct {
-	Node   *core.Anytype
+	Node   core.Service
 	server *http.Server
 }
 
@@ -84,7 +83,6 @@ func (g *Gateway) Start(addr string) error {
 		}
 	}()
 
-
 	log.Infof("gateway listening at %s", g.server.Addr)
 	return nil
 }
@@ -110,9 +108,11 @@ func enableCors(w http.ResponseWriter) {
 func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	fileHash := r.URL.Path[len("/file/"):]
 	enableCors(w)
-	file, err := g.Node.FileByHash(fileHash)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	file, err := g.Node.FileByHash(ctx, fileHash)
 	if err != nil {
-		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
 			return
 		}
@@ -142,9 +142,11 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	enableCors(w)
-	image, err := g.Node.ImageByHash(imageHash)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	image, err := g.Node.ImageByHash(ctx, imageHash)
 	if err != nil {
-		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
 			return
 		}
@@ -154,7 +156,7 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	var file core.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
-		file, err = image.GetFileForLargestWidth()
+		file, err = image.GetFileForLargestWidth(ctx)
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
 		if err != nil {
@@ -162,11 +164,11 @@ func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		file, err = image.GetFileForWidth(wantWidth)
+		file, err = image.GetFileForWidth(ctx, wantWidth)
 	}
 
 	if err != nil {
-		if strings.Contains(err.Error(), tcore.ErrFileNotFound.Error()) {
+		if strings.Contains(err.Error(), "file not found") {
 			http.NotFound(w, r)
 			return
 		}

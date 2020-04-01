@@ -1,30 +1,31 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
 
-	"github.com/anytypeio/go-anytype-library/schema"
-	"github.com/textileio/go-textile/mill"
-	tpb "github.com/textileio/go-textile/pb"
+	"github.com/anytypeio/go-anytype-library/mill"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/schema/anytype"
 )
 
 type Image interface {
 	Exif() (*mill.ImageExifSchema, error)
 	Hash() string
-	GetFileForWidth(wantWidth int) (File, error)
-	GetFileForLargestWidth() (File, error)
+	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
+	GetFileForLargestWidth(ctx context.Context) (File, error)
 }
 
 type image struct {
 	hash            string // directory hash
-	variantsByWidth map[int]tpb.FileIndex
+	variantsByWidth map[int]*storage.FileInfo
 	node            *Anytype
 }
 
-func (i *image) GetFileForWidth(wantWidth int) (File, error) {
+func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(wantWidth)
 	}
@@ -42,7 +43,7 @@ func (i *image) GetFileForWidth(wantWidth int) (File, error) {
 	}, nil
 }
 
-func (i *image) GetFileForLargestWidth() (File, error) {
+func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(math.MaxInt32)
 	}
@@ -68,32 +69,35 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (a *Anytype) ImageAddWithBytes(content []byte, filename string) (Image, error) {
-	dir, err := a.buildDirectory(content, filename, schema.ImageNode())
+func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
+	dir, err := a.buildDirectory(ctx, content, filename, anytype.ImageNode())
 	if err != nil {
 		return nil, err
 	}
 
-	node, keys, err := a.textile().AddNodeFromDirs(&tpb.DirectoryList{Items: []*tpb.Directory{dir}})
+	node, keys, err := a.AddNodeFromDirs(ctx, &storage.DirectoryList{Items: []*storage.Directory{dir}})
 	if err != nil {
 		return nil, err
 	}
 
-	nodeHash := node.Cid().Hash().B58String()
+	nodeHash := node.Cid().String()
 
 	filesKeysCacheMutex.Lock()
 	defer filesKeysCacheMutex.Unlock()
-	filesKeysCache[nodeHash] = keys.Files
+	filesKeysCache[nodeHash] = keys.KeysByPath
 
-	err = a.indexFileData(node, nodeHash)
+	err = a.indexFileData(ctx, node, nodeHash)
 	if err != nil {
 		return nil, err
 	}
 
-	var variantsByWidth = make(map[int]tpb.FileIndex, len(dir.Files))
+	var variantsByWidth = make(map[int]*storage.FileInfo, len(dir.Files))
 	for _, f := range dir.Files {
+		if f.Mill != "/image/resize" {
+			continue
+		}
 		if v, exists := f.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = *f
+			variantsByWidth[int(v.GetNumberValue())] = f
 		}
 	}
 
@@ -104,7 +108,7 @@ func (a *Anytype) ImageAddWithBytes(content []byte, filename string) (Image, err
 	}, nil
 }
 
-func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image, error) {
+func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) {
 	b, err := ioutil.ReadAll(content)
 	if err != nil {
 		return nil, err
@@ -112,15 +116,15 @@ func (a *Anytype) ImageAddWithReader(content io.Reader, filename string) (Image,
 
 	// use ImageAddWithBytes because we need seeker underlying
 	// todo: rewrite when all stack including mill and aes will use reader
-	return a.ImageAddWithBytes(b, filename)
+	return a.ImageAddWithBytes(ctx, b, filename)
 }
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	var maxWidth int
-	var maxWidthImage tpb.FileIndex
+	var maxWidthImage *storage.FileInfo
 
 	var minWidthMatched int
-	var minWidthMatchedImage tpb.FileIndex
+	var minWidthMatchedImage *storage.FileInfo
 
 	for width, fileIndex := range i.variantsByWidth {
 		if width >= maxWidth {
@@ -129,22 +133,22 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 		}
 
 		if width > wantWidth &&
-			(minWidthMatchedImage.Hash == "" || minWidthMatched > width) {
+			(minWidthMatchedImage == nil || minWidthMatched > width) {
 			minWidthMatchedImage = fileIndex
 			minWidthMatched = width
 		}
 	}
 
-	if minWidthMatchedImage.Hash != "" {
+	if minWidthMatchedImage != nil {
 		return &file{
 			hash:  minWidthMatchedImage.Hash,
-			index: &minWidthMatchedImage,
+			index: minWidthMatchedImage,
 			node:  i.node,
 		}, nil
-	} else if maxWidthImage.Hash != "" {
+	} else if maxWidthImage != nil {
 		return &file{
 			hash:  maxWidthImage.Hash,
-			index: &maxWidthImage,
+			index: maxWidthImage,
 			node:  i.node,
 		}, nil
 	}

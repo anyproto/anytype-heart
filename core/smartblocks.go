@@ -1,79 +1,116 @@
 package core
 
 import (
-	"crypto/rand"
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/gogo/protobuf/types"
-	libp2pc "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/segmentio/ksuid"
-	tcore "github.com/textileio/go-textile/core"
-	tpb "github.com/textileio/go-textile/pb"
+	"github.com/textileio/go-threads/core/net"
+	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/crypto/symmetric"
 )
 
-var ErrorNoBlockVersionsFound = fmt.Errorf("no block versions found")
+var ErrBlockSnapshotNotFound = fmt.Errorf("block snapshot not found")
 
-func (a *Anytype) newBlockThread(schema string) (*tcore.Thread, error) {
-	config := tpb.AddThreadConfig{
-		Name: schema,
-		Key:  ksuid.New().String(),
-		Schema: &tpb.AddThreadConfig_Schema{
-			Json: schema,
-		},
-		Sharing: tpb.Thread_SHARED,
-		Type:    tpb.Thread_OPEN,
+func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
+	parts := strings.Split(id, "/")
+
+	_, err := thread.Decode(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("incorrect block id: %w", err)
 	}
-
-	// make a new secret
-	sk, _, err := libp2pc.GenerateEd25519Key(rand.Reader)
+	smartBlock, err := a.GetSmartBlock(parts[0])
 	if err != nil {
 		return nil, err
 	}
 
-	return a.Textile.Node().AddThread(config, sk, a.Textile.Node().Account().Address(), true, true)
+	return smartBlock, nil
 }
 
-func (a *Anytype) GetSmartBlock(id string) (*SmartBlock, error) {
-	thrd, _ := a.predefinedThreadByName(id)
-	if thrd == nil {
-		thrd = a.Textile.Node().Thread(id)
-	}
-
-	tv, err := a.Textile.Node().ThreadView(id)
-	if err != nil {
-		return nil, err
-	}
-
-	switch strings.ToLower(tv.SchemaNode.Name) {
-	case "dashboard", "page", "dataview":
-		return &SmartBlock{thread: thrd, node: a}, nil
+/*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, user string, date *types.Timestamp) BlockVersion {
+	switch block.Content.(type) {
+	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
+		return &smartBlockSnapshot{
+			model: &storage.SmartBlockWithMeta{
+				Block: block,
+			},
+			versionId: versionId,
+			user:      user,
+			date:      date,
+			node:      a,
+		}
 	default:
-		return nil, fmt.Errorf("unknown schema name: %s", tv.SchemaNode.Name)
+		return &SimpleBlockVersion{
+			model:                   block,
+			parentSmartBlockVersion: parentSmartBlockVersion,
+			node:                    a,
+		}
 	}
+}*/
+
+func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) error {
+	// account
+	account, err := a.predefinedThreadAdd(threadDerivedIndexAccount, syncSnapshotIfNotExist)
+	if err != nil {
+		return err
+	}
+	a.predefinedBlockIds.Account = account.ID.String()
+
+	// profile
+	profile, err := a.predefinedThreadAdd(threadDerivedIndexProfilePage, syncSnapshotIfNotExist)
+	if err != nil {
+		return err
+	}
+	a.predefinedBlockIds.Profile = profile.ID.String()
+
+	// archive
+	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchive, syncSnapshotIfNotExist)
+	if err != nil {
+		return err
+	}
+	a.predefinedBlockIds.Archive = thread.ID.String()
+
+	// home
+	thread, err = a.predefinedThreadAdd(threadDerivedIndexHomeDashboard, syncSnapshotIfNotExist)
+	if err != nil {
+		return err
+	}
+	a.predefinedBlockIds.Home = thread.ID.String()
+
+	return nil
 }
 
-func (a *Anytype) smartBlockVersionWithFullRestrictions(id string) *SmartBlockVersion {
-	return &SmartBlockVersion{
-		node: a,
-		model: &storage.BlockWithMeta{
-			Block: &model.Block{
-				Id: id,
-				Fields: &types.Struct{Fields: map[string]*types.Value{
-					"name": {Kind: &types.Value_StringValue{StringValue: "Inaccessible block"}},
-					"icon": {Kind: &types.Value_StringValue{StringValue: ":no_entry_sign:"}},
-				}},
-				Restrictions: &model.BlockRestrictions{
-					Read:   true,
-					Edit:   true,
-					Remove: true,
-					Drag:   true,
-					DropOn: true,
-				},
-				// we don't know the block type for sure, lets set a page
-				Content: &model.BlockContentOfPage{Page: &model.BlockContentPage{}},
-			}},
+func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) {
+	thrdId, err := newThreadID(thread.AccessControlled, blockType)
+	if err != nil {
+		return thread.Info{}, err
 	}
+	followKey, err := symmetric.NewRandom()
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	readKey, err := symmetric.NewRandom()
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	return a.t.CreateThread(context.TODO(), thrdId, net.ThreadKey(thread.NewKey(followKey, readKey)), net.LogKey(a.device))
+}
+
+func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
+	thrd, _ := a.predefinedThreadByName(id)
+	if thrd.ID == thread.Undef {
+		tid, err := thread.Decode(id)
+		if err != nil {
+			return nil, err
+		}
+
+		thrd, err = a.t.GetThread(context.TODO(), tid)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &smartBlock{thread: thrd, node: a}, nil
 }
