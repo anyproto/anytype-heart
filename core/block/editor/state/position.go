@@ -9,7 +9,6 @@ import (
 )
 
 func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...string) (err error) {
-	log.Debugf("insert new block to: target=%v; pos=%v", targetId, reqPos)
 	var (
 		target        simple.Block
 		targetParentM *model.Block
@@ -68,6 +67,9 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 		target.Model().ChildrenIds = append(target.Model().ChildrenIds, ids...)
 	case model.Block_Replace:
 		pos = targetPos + 1
+		if len(ids) > 0 && len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
+			s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
+		}
 		insertPos()
 		s.Remove(target.Model().Id)
 	default:

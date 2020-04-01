@@ -271,7 +271,6 @@ func (r *Renderer) renderBlockquote(w blocksUtil.RWriter, source []byte, n ast.N
 }
 
 func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	log.Debug("renderCodeBlock")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
@@ -284,25 +283,9 @@ func (r *Renderer) renderFencedCodeBlock(w blocksUtil.RWriter, source []byte, no
 	n := node.(*ast.FencedCodeBlock)
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
-		// TODO: language?
-		/*language := n.Language(source)
-		if language != nil {
-			_, _ = w.WriteString(" class=\"language-")
-			r.Writer.Write(w, language)
-			_, _ = w.WriteString("\"")
-		}*/
 		r.writeLines(w, source, n)
 	} else {
 		w.CloseTextBlock(model.BlockContentText_Code)
-	}
-	return ast.WalkContinue, nil
-
-	log.Debug("renderFencedCodeBlock")
-
-	if entering {
-		w.OpenNewTextBlock(model.BlockContentText_Code)
-	} else {
-		w.ForceCloseTextBlock()
 	}
 	return ast.WalkContinue, nil
 }
@@ -409,8 +392,6 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 	w.SetMarkStart()
 
 	start := int32(utf8.RuneCountInString(w.GetText()))
-	log.Debug("DEBUG:", "\n     text:", "\n     ", w.GetText(), "\n     length:", start, int32(len(w.GetText())))
-
 	labelLength := int32(utf8.RuneCount(label))
 	w.AddMark(model.BlockContentTextMark{
 		Range: &model.Range{From: start, To: start + labelLength},
@@ -426,8 +407,6 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 var CodeAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	log.Debug("renderCodeSpan")
-
 	if entering {
 		w.SetMarkStart()
 

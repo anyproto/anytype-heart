@@ -83,7 +83,8 @@ func TestState_InsertTo(t *testing.T) {
 	t.Run("replace", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
-		r.Add(simple.New(&model.Block{Id: "target"}))
+		r.Add(simple.New(&model.Block{Id: "target", ChildrenIds: []string{"child"}}))
+		r.Add(simple.New(&model.Block{Id: "child"}))
 
 		s := r.NewState()
 		s.Add(simple.New(&model.Block{Id: "first"}))
@@ -97,6 +98,7 @@ func TestState_InsertTo(t *testing.T) {
 		assert.Len(t, hist.Add, 2)
 		assert.Len(t, hist.Change, 1)
 		assert.Equal(t, []string{"first", "second"}, r.Pick("root").Model().ChildrenIds)
+		assert.Equal(t, []string{"child"}, r.Pick("first").Model().ChildrenIds)
 	})
 
 	moveFromSide := func(t *testing.T, pos model.BlockPosition) (r *State, c1, c2 simple.Block) {

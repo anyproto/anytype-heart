@@ -92,6 +92,33 @@ message Rpc {
             }
         }
 
+        message MoveToNewPage {
+            message Request {
+                string contextId = 1;
+                repeated string blockIds = 2;
+                anytype.model.Block block = 3;
+                string dropTargetId = 4; // id of the block in Page(contextId) to create a link near that block
+                anytype.model.Block.Position position = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                string linkId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         /*
          * Makes blocks copy by given ids and paste it to shown place
         */
@@ -275,11 +302,14 @@ message Rpc {
             }
         }
 
+
+
         message Split {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
                 int32 cursorPosition = 3;
+                anytype.model.Block.Content.Text.Style style = 4;
             }
 
             message Response {
@@ -408,6 +438,7 @@ message Rpc {
         message Export {
             message Request {
                 string contextId = 1;
+                repeated anytype.model.Block blocks = 2;
             }
 
             message Response {
