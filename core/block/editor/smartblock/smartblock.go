@@ -7,8 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	logging "github.com/ipfs/go-log"
-
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -26,7 +24,6 @@ type ApplyFlag int
 
 var (
 	ErrSimpleBlockNotFound = errors.New("simple block not found")
-	log                    = logging.Logger("anytype-smartblock")
 )
 
 const (
