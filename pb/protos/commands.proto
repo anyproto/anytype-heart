@@ -309,6 +309,7 @@ message Rpc {
                 string contextId = 1;
                 string blockId = 2;
                 int32 cursorPosition = 3;
+                anytype.model.Block.Content.Text.Style style = 4;
             }
 
             message Response {

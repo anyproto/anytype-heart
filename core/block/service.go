@@ -313,7 +313,7 @@ func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) (err error) {
 
 func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error) {
 	err = s.DoText(req.ContextId, func(b stext.Text) error {
-		blockId, err = b.Split(req.BlockId, req.CursorPosition)
+		blockId, err = b.Split(req.BlockId, req.CursorPosition, req.Style)
 		return err
 	})
 	return

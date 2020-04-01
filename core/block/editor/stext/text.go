@@ -11,7 +11,7 @@ import (
 
 type Text interface {
 	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
-	Split(id string, pos int32) (blockId string, err error)
+	Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error)
 	Merge(firstId, secondId string) (err error)
 }
 
@@ -40,7 +40,7 @@ func (t *textImpl) UpdateTextBlocks(ids []string, showEvent bool, apply func(t t
 	return t.Apply(s, smartblock.NoEvent)
 }
 
-func (t *textImpl) Split(id string, pos int32) (newId string, err error) {
+func (t *textImpl) Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error) {
 	s := t.NewState()
 	tb, err := getText(s, id)
 	if err != nil {
@@ -50,9 +50,10 @@ func (t *textImpl) Split(id string, pos int32) (newId string, err error) {
 	if err != nil {
 		return
 	}
+	tb.SetStyle(style)
 	s.Add(new)
 	newId = new.Model().Id
-	if err = s.InsertTo(id, model.Block_Bottom, newId); err != nil {
+	if err = s.InsertTo(id, model.Block_Top, newId); err != nil {
 		return
 	}
 	if err = t.Apply(s); err != nil {
@@ -75,6 +76,7 @@ func (t *textImpl) Merge(firstId, secondId string) (err error) {
 		return
 	}
 	s.Remove(second.Model().Id)
+	first.Model().ChildrenIds = append(first.Model().ChildrenIds, second.Model().ChildrenIds...)
 	return t.Apply(s)
 }
 
