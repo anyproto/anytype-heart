@@ -4,6 +4,7 @@ package anymark
 import (
 	"bufio"
 	"bytes"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 
@@ -155,8 +156,6 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	reWikiCode := regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
-
-
 	strikethrough := htmlConverter.Rule{
 		Filter: []string{"span"},
 		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
@@ -187,7 +186,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 		Filter: []string{"br"},
 		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
 			content = strings.TrimSpace(content)
-			return htmlConverter.String( "\n" + content)
+			return htmlConverter.String("\n" + content)
 		},
 	}
 

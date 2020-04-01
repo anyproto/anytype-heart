@@ -7,7 +7,7 @@ require (
 	github.com/anytypeio/go-anytype-library v0.4.1-0.20200331122537-eb9425dab568
 	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/mock v1.4.1
+	github.com/golang/mock v1.4.3
 	github.com/google/uuid v1.1.1
 	github.com/h2non/filetype v1.0.12
 	github.com/hashicorp/golang-lru v0.5.4
@@ -20,7 +20,7 @@ require (
 	github.com/yuin/goldmark v1.1.24
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.27.1
+	google.golang.org/grpc v1.28.0
 )
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
