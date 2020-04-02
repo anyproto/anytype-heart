@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -56,7 +58,9 @@ type Service interface {
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
+	MoveBlocksToPage(req pb.RpcBlockListMoveRequest) (err error)
 	MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
+	ConvertBlockToPage(req pb.RpcBlockConvertToPageRequest) (linkId string, err error)
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
@@ -331,30 +335,147 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
 	})
 }
 
-func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
+func (s *service) MoveBlocksToPage(req pb.RpcBlockListMoveRequest) (err error) {
+	return s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
+		return s.Do(req.TargetContextId, func(targetBlock smartblock.SmartBlock) error {
+			contextState := contextBlock.NewState()
+			targetState := targetBlock.NewState()
 
-	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.DropTargetId,
-		//Block:     req.Block,
-		Position: req.Position,
-	})
+			for _, bId := range req.BlockIds {
+				b := contextBlock.Pick(bId)
+				if b != nil {
+					targetState.Add(b)
+					err = targetState.InsertTo("", model.Block_Inner, b.Model().Id)
+					if err != nil {
+						return err
+					}
 
-	if err != nil {
-		return linkId, err
-	}
+					contextState.Remove(b.Model().Id)
+				}
+			}
 
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Move(pb.RpcBlockListMoveRequest{
-			req.ContextId,
-			req.BlockIds,
-			pageId,
-			req.DropTargetId,
-			req.Position,
+			err = targetBlock.Apply(targetState)
+			if err != nil {
+				return err
+			}
+			err = contextBlock.Apply(contextState)
+			if err != nil {
+				return err
+			}
+
+			return err
 		})
 	})
+}
 
-	return
+func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
+	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
+		contextState := contextBlock.NewState()
+
+		// 1. Create new page, link
+		pageId := ""
+		pageId, linkId, err = s.CreatePage(pb.RpcBlockCreatePageRequest{
+			ContextId: req.ContextId,
+			TargetId:  req.BlockIds[0],
+			Details: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String("New page"),
+					"icon": pbtypes.String(":file_folder:"),
+				},
+			},
+			Position: model.Block_Bottom,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		// 2. Move blocks to new page
+		err = s.MoveBlocksToPage(pb.RpcBlockListMoveRequest{
+			ContextId:       req.ContextId,
+			BlockIds:        req.BlockIds,
+			TargetContextId: pageId,
+			DropTargetId:    "",
+			Position:        0,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		return contextBlock.Apply(contextState)
+	})
+
+	return linkId, err
+}
+
+func (s *service) ConvertBlockToPage(req pb.RpcBlockConvertToPageRequest) (linkId string, err error) {
+	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
+		contextState := contextBlock.NewState()
+
+		// 1. Get blocks
+		block := contextState.Pick(req.BlockId)
+		blocks := []simple.Block{}
+		cIds := block.Model().ChildrenIds
+
+		for _, cId := range cIds {
+			b := contextState.Pick(cId)
+			if b != nil {
+				blocks = append(blocks, b)
+			}
+		}
+
+		// 2. Get name
+		convertedBlock := contextState.Pick(req.BlockId)
+
+		if convertedBlock == nil {
+			return fmt.Errorf("block not found")
+		}
+
+		text := convertedBlock.Model().GetText()
+		name := ""
+
+		if text != nil {
+			name = convertedBlock.Model().GetText().Text
+		}
+
+		// 3. Create new page, link
+		pageId := ""
+		pageId, linkId, err = s.CreatePage(pb.RpcBlockCreatePageRequest{
+			ContextId: req.ContextId,
+			TargetId:  req.BlockId,
+			Details: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String(name),
+					"icon": pbtypes.String(":file_folder:"),
+				},
+			},
+			Position: model.Block_Top,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		// 4. Move blocks to new page
+		err = s.MoveBlocksToPage(pb.RpcBlockListMoveRequest{
+			ContextId:       req.ContextId,
+			BlockIds:        cIds,
+			TargetContextId: pageId,
+			DropTargetId:    "",
+			Position:        0,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		// 5. Remove original block
+		contextState.Remove(req.BlockId)
+		return contextBlock.Apply(contextState)
+	})
+
+	return linkId, err
 }
 
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {

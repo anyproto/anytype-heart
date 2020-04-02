@@ -457,7 +457,7 @@ func (mw *Middleware) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBloc
 		}
 		return m
 	}
-	if err := mw.blockService.MoveBlocks(*req); err != nil {
+	if err := mw.blockService.MoveBlocksToPage(*req); err != nil {
 		return response(pb.RpcBlockListMoveResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListMoveResponseError_NULL, nil)
@@ -477,6 +477,22 @@ func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRe
 		return response(pb.RpcBlockListMoveToNewPageResponseError_UNKNOWN_ERROR, "", err)
 	}
 	return response(pb.RpcBlockListMoveToNewPageResponseError_NULL, linkId, nil)
+}
+
+func (mw *Middleware) BlockConvertToPage(req *pb.RpcBlockConvertToPageRequest) *pb.RpcBlockConvertToPageResponse {
+	response := func(code pb.RpcBlockConvertToPageResponseErrorCode, linkId string, err error) *pb.RpcBlockConvertToPageResponse {
+		m := &pb.RpcBlockConvertToPageResponse{Error: &pb.RpcBlockConvertToPageResponseError{Code: code}, LinkId: linkId}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	linkId, err := mw.blockService.ConvertBlockToPage(*req)
+
+	if err != nil {
+		return response(pb.RpcBlockConvertToPageResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockConvertToPageResponseError_NULL, linkId, nil)
 }
 
 func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse {

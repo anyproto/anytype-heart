@@ -40,6 +40,10 @@
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
     - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
     - [Rpc.Block.Close.Response.Error](#anytype.Rpc.Block.Close.Response.Error)
+    - [Rpc.Block.ConvertToPage](#anytype.Rpc.Block.ConvertToPage)
+    - [Rpc.Block.ConvertToPage.Request](#anytype.Rpc.Block.ConvertToPage.Request)
+    - [Rpc.Block.ConvertToPage.Response](#anytype.Rpc.Block.ConvertToPage.Response)
+    - [Rpc.Block.ConvertToPage.Response.Error](#anytype.Rpc.Block.ConvertToPage.Response.Error)
     - [Rpc.Block.Copy](#anytype.Rpc.Block.Copy)
     - [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request)
     - [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response)
@@ -286,6 +290,7 @@
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
+    - [Rpc.Block.ConvertToPage.Response.Error.Code](#anytype.Rpc.Block.ConvertToPage.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
@@ -506,6 +511,7 @@
 | BlockSetPageIsArchived | [Rpc.Block.Set.Page.IsArchived.Request](#anytype.Rpc.Block.Set.Page.IsArchived.Request) | [Rpc.Block.Set.Page.IsArchived.Response](#anytype.Rpc.Block.Set.Page.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListMoveToNewPage | [Rpc.BlockList.MoveToNewPage.Request](#anytype.Rpc.BlockList.MoveToNewPage.Request) | [Rpc.BlockList.MoveToNewPage.Response](#anytype.Rpc.BlockList.MoveToNewPage.Response) |  |
+| BlockConvertToPage | [Rpc.Block.ConvertToPage.Request](#anytype.Rpc.Block.ConvertToPage.Request) | [Rpc.Block.ConvertToPage.Response](#anytype.Rpc.Block.ConvertToPage.Response) |  |
 | BlockListSetFields | [Rpc.BlockList.Set.Fields.Request](#anytype.Rpc.BlockList.Set.Fields.Request) | [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response) |  |
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockListDuplicate | [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request) | [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response) |  |
@@ -932,6 +938,64 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ConvertToPage"></a>
+
+### Rpc.Block.ConvertToPage
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ConvertToPage.Request"></a>
+
+### Rpc.Block.ConvertToPage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ConvertToPage.Response"></a>
+
+### Rpc.Block.ConvertToPage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.ConvertToPage.Response.Error](#anytype.Rpc.Block.ConvertToPage.Response.Error) |  |  |
+| linkId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ConvertToPage.Response.Error"></a>
+
+### Rpc.Block.ConvertToPage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.ConvertToPage.Response.Error.Code](#anytype.Rpc.Block.ConvertToPage.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -3075,9 +3139,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
-| block | [model.Block](#anytype.model.Block) |  |  |
-| dropTargetId | [string](#string) |  | id of the block in Page(contextId) to create a link near that block |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | page details |
 
 
 
@@ -4434,6 +4496,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Close.Response.Error.Code"></a>
 
 ### Rpc.Block.Close.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.ConvertToPage.Response.Error.Code"></a>
+
+### Rpc.Block.ConvertToPage.Response.Error.Code
 
 
 | Name | Number | Description |
