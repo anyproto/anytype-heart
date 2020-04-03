@@ -3,6 +3,7 @@ package clipboard
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -319,10 +320,15 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		break
 
 	case pasteSingleTextInFocusedText:
-		newBlock, err := focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.From, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0].GetText())
+		newB, err := focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.From, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0].GetText())
+		if err != nil {
+			fmt.Println("pasteSingleTextInFocusedText ERR:", err)
+		}
 
-		s.Add(newBlock)
-		err = s.InsertTo(targetId, model.Block_Replace, newBlock.Model().Id)
+		fmt.Println("OUT::::", newB, err)
+
+		s.Add(newB)
+		err = s.InsertTo(targetId, model.Block_Replace, newB.Model().Id)
 		if err != nil {
 			return blockIds, uploadArr, err
 		}

@@ -219,8 +219,16 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	outputText := outputBlock.Model().GetText()
 	botText := newBlock.Copy().Model().GetText()
 
-	outputText.Text = outputText.Text + copiedText.Text + botText.Text
-	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text)
+	outputText.Text = outputText.Text + copiedText.Text[copyFrom:copyTo] + botText.Text
+
+	// 1. cut marks from 0 to TO
+	copiedText.Marks.Marks, _ = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyTo, To: copyTo}, int32(len(copiedText.Text)))
+
+	// 2. cut marks from FROM to TO
+	_, copiedText.Marks.Marks = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyTo, To: copyTo}, int32(len(copiedText.Text[0:copyTo])))
+
+	// 3. combine
+	combinedMarks := t.SplitMarks(&model.Range{From: copyFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text[copyFrom:copyTo])
 	outputText.Marks.Marks = t.normalizeMarksPure(combinedMarks)
 
 	return outputBlock, nil
