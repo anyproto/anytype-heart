@@ -92,33 +92,30 @@ func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.
 
 	for i, c := range cIds {
 		b := sb.Pick(c).Model()
-		if marksArr[i] != nil {
-			//require.True(t, b.GetText().Marks.Marks != nil)
-			//require.True(t, len(b.GetText().Marks.Marks) > 0)
-		}
 
 		if b.GetText().Marks != nil &&
 			len(b.GetText().Marks.Marks) > 0 &&
 			marksArr[i] != nil {
-
 			require.Equal(t, len(marksArr[i]), len(b.GetText().Marks.Marks))
 			for j := 0; j < len(marksArr[i]); j++ {
-				require.Equal(t, marksArr[i][j], b.GetText().Marks.Marks[j])
+				require.Equal(t, marksArr[i][j].Range.From, b.GetText().Marks.Marks[j].Range.From)
+				require.Equal(t, marksArr[i][j].Range.To, b.GetText().Marks.Marks[j].Range.To)
+				require.Equal(t, marksArr[i][j].Param, b.GetText().Marks.Marks[j].Param)
+
 			}
 		}
 	}
 }
 
 func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark) {
-	for i, _ := range marksArr {
-		fmt.Println(marksArr[i])
-	}
-
 	cIds := sb.Pick("test").Model().ChildrenIds
-	fmt.Println("--------", len(cIds), len(marksArr))
+	fmt.Println("LENGTH cIds:", len(cIds), "marksARR:", len(marksArr))
 
-	for _, c := range cIds {
-		fmt.Println(sb.Pick(c).Model().Id, sb.Pick(c).Model().GetText())
+	for i, c := range cIds {
+		b := sb.Pick(c).Model()
+
+		fmt.Println("MARKS REAL:", b.GetText().Marks.Marks)
+		fmt.Println("MARKS SHOULD BE:", marksArr[i])
 	}
 }
 

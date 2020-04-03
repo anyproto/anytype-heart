@@ -179,7 +179,12 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 			Style:   t.content.Style,
 			Marks:   oldMarks,
 			Checked: t.content.Checked,
+			Color:   t.content.Color,
 		}},
+		BackgroundColor: t.BackgroundColor,
+		Align:           t.Align,
+		Fields:          t.Fields,
+		Restrictions:    t.Restrictions,
 	})
 	return newBlock, nil
 }
@@ -205,38 +210,16 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 		return nil, ErrOutOfRange
 	}
 
-	copiedRunes := []rune(copiedText.Text)
-
 	oldBlock, newBlock, err := t.RangeSplit(rangeFrom, rangeTo)
-
-	outputText := oldBlock.Copy().Model().GetText()
+	outputBlock = simple.New(oldBlock.Copy().Model())
+	outputText := outputBlock.Model().GetText()
 	botText := newBlock.Copy().Model().GetText()
 
 	outputText.Text = outputText.Text + copiedText.Text + botText.Text
+	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text)
+	outputText.Marks.Marks = t.normalizeMarksPure(combinedMarks)
 
-	for _, m := range copiedText.Marks.Marks {
-		outputText.Marks.Marks = append(outputText.Marks.Marks, &model.BlockContentTextMark{
-			Range: &model.Range{
-				From: m.Range.From + rangeFrom,
-				To:   m.Range.To + rangeFrom,
-			},
-			Type:  m.Type,
-			Param: m.Param,
-		})
-	}
-
-	for _, m := range botText.Marks.Marks {
-		outputText.Marks.Marks = append(outputText.Marks.Marks, &model.BlockContentTextMark{
-			Range: &model.Range{
-				From: m.Range.From + rangeFrom + int32(len(copiedRunes)),
-				To:   m.Range.To + rangeFrom + int32(len(copiedRunes)),
-			},
-			Type:  m.Type,
-			Param: m.Param,
-		})
-	}
-
-	return oldBlock, nil
+	return outputBlock, nil
 }
 
 func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error) {
@@ -259,12 +242,10 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 	newMarks := &model.BlockContentTextMarks{}
 	oldMarks := &model.BlockContentTextMarks{}
 	r := model.Range{From: from, To: to}
-	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
+	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, int32(len(t.content.Text)))
 
-	for i, _ := range oldMarks.Marks {
-		newMarks.Marks[i].Range.From = newMarks.Marks[i].Range.From - to
-		newMarks.Marks[i].Range.To = newMarks.Marks[i].Range.To - to
-	}
+	oldMarks.Marks = t.normalizeMarksPure(oldMarks.Marks)
+	newMarks.Marks = t.normalizeMarksPure(newMarks.Marks)
 
 	style := t.content.Style
 	if style == model.BlockContentText_Title {
@@ -295,6 +276,9 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 			Color:   t.content.Color,
 		}},
 		BackgroundColor: t.BackgroundColor,
+		Align:           t.Align,
+		Fields:          t.Fields,
+		Restrictions:    t.Restrictions,
 	})
 
 	return oldBlock, newBlock, nil
@@ -421,18 +405,25 @@ func (t *Text) Merge(b simple.Block) error {
 }
 
 func (t *Text) normalizeMarks() {
-	sort.Sort(sortedMarks(t.content.Marks.Marks))
-	for i := 0; i < len(t.content.Marks.Marks); i++ {
-		if i+1 == len(t.content.Marks.Marks) {
+	t.content.Marks.Marks = t.normalizeMarksPure(t.content.Marks.Marks)
+}
+
+func (t *Text) normalizeMarksPure(marks []*model.BlockContentTextMark) (outputMarks []*model.BlockContentTextMark) {
+	outputMarks = marks
+	sort.Sort(sortedMarks(outputMarks))
+	for i := 0; i < len(outputMarks); i++ {
+		if i+1 == len(outputMarks) {
 			break
 		}
-		m := t.content.Marks.Marks[i]
-		sm := t.content.Marks.Marks[i+1]
+		m := outputMarks[i]
+		sm := outputMarks[i+1]
 		if m.Type == sm.Type && m.Param == sm.Param && m.Range.To >= sm.Range.From {
 			m.Range.To = sm.Range.To
-			t.content.Marks.Marks[i+1] = nil
-			t.content.Marks.Marks = append(t.content.Marks.Marks[:i+1], t.content.Marks.Marks[i+2:]...)
+			outputMarks[i+1] = nil
+			outputMarks = append(outputMarks[:i+1], outputMarks[i+2:]...)
 			i = -1
 		}
 	}
+
+	return outputMarks
 }

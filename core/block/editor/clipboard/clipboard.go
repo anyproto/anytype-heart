@@ -215,7 +215,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 	req.AnySlot = cb.replaceIds(req.AnySlot)
 	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
 	isMultipleBlocksToPaste := len(req.AnySlot) > 1
-
 	firstPasteBlockText := &model.BlockContentText{}
 	firstPasteBlockText = nil
 	if len(req.AnySlot) > 0 {
@@ -247,7 +246,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 
 	focusedBlock := cb.Pick(targetId)
 	focusedBlockText, ok := focusedBlock.(text.Block)
-
 	cIds := cb.Pick(cb.Id()).Model().ChildrenIds
 
 	isEmptyPage := len(cIds) == 0
@@ -296,6 +294,14 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		return blockIds, uploadArr, ErrTitlePasteRestricted
 	}
 
+	if req.CopyTextRange == nil {
+		req.CopyTextRange = &model.Range{From: 0, To: 0}
+	}
+
+	if req.CopyTextRange.To == 0 {
+		req.CopyTextRange.To = int32(len([]rune(firstPasteBlockText.Text)))
+	}
+
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
 	pasteSingleTextInFocusedText := isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
 	pasteMultipleBlocksInFocusedText := isFocusedText && isMultipleBlocksToPaste
@@ -313,18 +319,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		break
 
 	case pasteSingleTextInFocusedText:
-		txt := focusedBlock.Model().GetText()
-		runes := []rune(txt.Text)
-		marks := focusedBlockText.SplitMarks(req.SelectedTextRange, firstPasteBlockText.Marks.Marks, firstPasteBlockText.Text)
-
-		newBlock := simple.New(&model.Block{
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-				Text:    string(runes[:req.SelectedTextRange.From]) + firstPasteBlockText.Text + string(runes[req.SelectedTextRange.To:]),
-				Style:   txt.Style,
-				Marks:   &model.BlockContentTextMarks{Marks: marks},
-				Checked: txt.Checked,
-			}},
-		})
+		newBlock, err := focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.From, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0].GetText())
 
 		s.Add(newBlock)
 		err = s.InsertTo(targetId, model.Block_Replace, newBlock.Model().Id)
