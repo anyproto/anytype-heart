@@ -385,10 +385,11 @@ message Rpc {
                 string focusedBlockId = 2;
                 anytype.model.Range selectedTextRange = 3;
                 repeated string selectedBlockIds = 4;
+                anytype.model.Range copyTextRange = 5;
 
-                string textSlot = 5;
-                string htmlSlot = 6;
-                repeated anytype.model.Block anySlot = 7;
+                string textSlot = 6;
+                string htmlSlot = 7;
+                repeated anytype.model.Block anySlot = 8;
             }
 
             message Response {
