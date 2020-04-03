@@ -43,6 +43,7 @@ type Block interface {
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error)
+	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
@@ -183,6 +184,61 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
+func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, err error) {
+	if copyFrom < 0 || int(copyFrom) > utf8.RuneCountInString(copiedText.Text) {
+		return nil, ErrOutOfRange
+	}
+	if copyTo < 0 || int(copyTo) > utf8.RuneCountInString(copiedText.Text) {
+		return nil, ErrOutOfRange
+	}
+	if copyFrom > copyTo {
+		return nil, ErrOutOfRange
+	}
+
+	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
+		return nil, ErrOutOfRange
+	}
+	if rangeTo < 0 || int(rangeTo) > utf8.RuneCountInString(t.content.Text) {
+		return nil, ErrOutOfRange
+	}
+	if rangeFrom > rangeTo {
+		return nil, ErrOutOfRange
+	}
+
+	copiedRunes := []rune(copiedText.Text)
+
+	oldBlock, newBlock, err := t.RangeSplit(rangeFrom, rangeTo)
+
+	outputText := oldBlock.Copy().Model().GetText()
+	botText := newBlock.Copy().Model().GetText()
+
+	outputText.Text = outputText.Text + copiedText.Text + botText.Text
+
+	for _, m := range copiedText.Marks.Marks {
+		outputText.Marks.Marks = append(outputText.Marks.Marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: m.Range.From + rangeFrom,
+				To:   m.Range.To + rangeFrom,
+			},
+			Type:  m.Type,
+			Param: m.Param,
+		})
+	}
+
+	for _, m := range botText.Marks.Marks {
+		outputText.Marks.Marks = append(outputText.Marks.Marks, &model.BlockContentTextMark{
+			Range: &model.Range{
+				From: m.Range.From + rangeFrom + int32(len(copiedRunes)),
+				To:   m.Range.To + rangeFrom + int32(len(copiedRunes)),
+			},
+			Type:  m.Type,
+			Param: m.Param,
+		})
+	}
+
+	return oldBlock, nil
+}
+
 func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
 		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
@@ -221,7 +277,13 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 			Style:   style,
 			Marks:   newMarks,
 			Checked: t.content.Checked,
+			Color:   t.content.Color,
 		}},
+		BackgroundColor: t.BackgroundColor,
+		ChildrenIds:     t.ChildrenIds,
+		Align:           t.Align,
+		Fields:          t.Fields,
+		Restrictions:    t.Restrictions,
 	})
 
 	oldBlock = simple.New(&model.Block{
@@ -230,7 +292,9 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 			Style:   t.content.Style,
 			Marks:   oldMarks,
 			Checked: t.content.Checked,
+			Color:   t.content.Color,
 		}},
+		BackgroundColor: t.BackgroundColor,
 	})
 
 	return oldBlock, newBlock, nil
