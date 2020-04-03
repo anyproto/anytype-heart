@@ -2,7 +2,10 @@ package state
 
 import (
 	"fmt"
+	"os"
+	"runtime/pprof"
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -11,10 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	maxChildrenThreshold = 10
-}
 
 func TestState_Normalize(t *testing.T) {
 	var (
@@ -131,9 +130,8 @@ func TestState_Normalize(t *testing.T) {
 
 	t.Run("normalize tree", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
-
 		var rootIds []string
-		for i := 0; i < 16; i++ {
+		for i := 0; i < 17; i++ {
 			rootIds = append(rootIds, fmt.Sprint(i))
 			r.Add(simple.New(&model.Block{Id: fmt.Sprint(i)}))
 		}
@@ -142,6 +140,76 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.normalizeTree()
 		t.Log(s.String())
+	})
+
+	t.Run("div balance", func(t *testing.T) {
+		genIds := func(length, start int) []string {
+			res := make([]string, length)
+			for i := range res {
+				res[i] = fmt.Sprint(start)
+				start++
+			}
+			return res
+		}
+		t.Run("0-0", func(t *testing.T) {
+			d1 := &model.Block{}
+			d2 := &model.Block{}
+			require.False(t, divBalance(d1, d2))
+			assert.Len(t, d1.ChildrenIds, 0)
+			assert.Len(t, d2.ChildrenIds, 0)
+		})
+		t.Run("1-0", func(t *testing.T) {
+			d1 := &model.Block{ChildrenIds: genIds(1, 1)}
+			d2 := &model.Block{}
+			require.False(t, divBalance(d1, d2))
+			assert.Len(t, d1.ChildrenIds, 0)
+			assert.Len(t, d2.ChildrenIds, 1)
+		})
+		t.Run("4-2", func(t *testing.T) {
+			d1 := &model.Block{ChildrenIds: genIds(4, 1)}
+			d2 := &model.Block{ChildrenIds: genIds(2, 5)}
+			require.False(t, divBalance(d1, d2))
+			assert.Equal(t, []string{"1", "2", "3"}, d1.ChildrenIds)
+			assert.Equal(t, []string{"4", "5", "6"}, d2.ChildrenIds)
+		})
+		t.Run("overflow", func(t *testing.T) {
+			d1 := &model.Block{ChildrenIds: genIds(maxChildrenThreshold, 1)}
+			d2 := &model.Block{ChildrenIds: genIds(maxChildrenThreshold+1, maxChildrenThreshold+10)}
+			require.True(t, divBalance(d1, d2))
+			assert.Len(t, d1.ChildrenIds, divSize)
+			assert.Len(t, d2.ChildrenIds, maxChildrenThreshold-divSize+maxChildrenThreshold+1)
+		})
+	})
+	t.Run("normalize tree", func(t *testing.T) {
+		go func() {
+			time.Sleep(time.Second * 5)
+			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		}()
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root"}))
+		targetId := "root"
+		targetPos := model.Block_Inner
+		for i := 0; i < 100; i++ {
+			s := r.NewState()
+			id := fmt.Sprint(i)
+			s.Add(simple.New(&model.Block{Id: id}))
+			s.InsertTo(targetId, targetPos, id)
+			msgs, _, err := ApplyState(s)
+			require.NoError(t, err)
+			for _, msg := range msgs {
+				if add := msg.GetBlockAdd(); add != nil {
+					for _, nb := range add.Blocks {
+						for _, nbch := range nb.ChildrenIds {
+							require.NotEmpty(t, nbch)
+						}
+					}
+				}
+			}
+			targetId = id
+			targetPos = model.Block_Top
+		}
+
+		t.Log(r.String())
 	})
 
 }

@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	maxChildrenThreshold = 10
+	maxChildrenThreshold = 20
+	divSize              = maxChildrenThreshold / 2
 )
 
 func (s *State) normalize() {
@@ -174,42 +175,86 @@ func (s *State) normalizeTreeBranch(id string, seq *int32) {
 
 func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
 	parent := s.Get(id).Model()
-	var (
-		moveIds   []string
-		targetId  string
-		targetPos model.BlockPosition
-	)
-
-	if isDivLayout(parent) { // div overflow - move outer and rescan parent
-		moveIds = parent.ChildrenIds[maxChildrenThreshold:]
-		targetId = parent.Id
-		targetPos = model.Block_Bottom
-		if pp := s.GetParentOf(parent.Id); pp != nil {
-			nextId = pp.Model().Id
-			for _, mId := range moveIds {
-				s.Unlink(mId)
-			}
-			if err := s.InsertTo(targetId, targetPos, moveIds...); err != nil {
-				log.Warnf("normalize: wrapChildrenToDiv: insertTo error: %v", err)
+	overflow := maxChildrenThreshold - len(parent.ChildrenIds)
+	if isDivLayout(parent) {
+		nextDiv := s.getNextDiv(id)
+		if nextDiv == nil || len(nextDiv.Model().ChildrenIds)+overflow > maxChildrenThreshold {
+			nextDiv = s.newDiv(seq)
+			s.Add(nextDiv)
+			s.InsertTo(parent.Id, model.Block_Bottom, nextDiv.Model().Id)
+		}
+		for divBalance(parent, nextDiv.Model()) {
+			parent = nextDiv.Model()
+			nextDiv = s.getNextDiv(parent.Id)
+			overflow = maxChildrenThreshold - len(parent.ChildrenIds)
+			if nextDiv == nil || len(nextDiv.Model().ChildrenIds)+overflow > maxChildrenThreshold {
+				nextDiv = s.newDiv(seq)
+				s.Add(nextDiv)
+				s.InsertTo(parent.Id, model.Block_Bottom, nextDiv.Model().Id)
 			}
 		}
-		return
+		return s.PickParentOf(parent.Id).Model().Id
 	}
-
-	for len(parent.ChildrenIds) > maxChildrenThreshold {
-		*seq++
-		moveIds = make([]string, maxChildrenThreshold)
-		copy(moveIds, parent.ChildrenIds[:maxChildrenThreshold])
-		divId := fmt.Sprintf("div-%d", *seq)
-		parent.ChildrenIds = append([]string{divId}, parent.ChildrenIds[maxChildrenThreshold:]...)
-		div := simple.New(&model.Block{
-			Id: divId,
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Div},
-			},
-			ChildrenIds: moveIds,
-		})
+	var divIds []string
+	for len(parent.ChildrenIds) > 0 {
+		var moveIds []string
+		if len(parent.ChildrenIds) > divSize {
+			moveIds = make([]string, divSize)
+			copy(moveIds, parent.ChildrenIds[:divSize])
+			parent.ChildrenIds = parent.ChildrenIds[divSize:]
+		} else {
+			moveIds = make([]string, len(parent.ChildrenIds))
+			copy(moveIds, parent.ChildrenIds)
+			parent.ChildrenIds = parent.ChildrenIds[:0]
+		}
+		div := s.newDiv(seq)
+		div.Model().ChildrenIds = moveIds
 		s.Add(div)
+		divIds = append(divIds, div.Model().Id)
 	}
+	parent.ChildrenIds = divIds
+	return parent.Id
+}
+
+func divBalance(d1, d2 *model.Block) (overflow bool) {
+	d1.ChildrenIds = append(d1.ChildrenIds, d2.ChildrenIds...)
+	sum := len(d1.ChildrenIds)
+	var overflowIds []string
+	if sum > maxChildrenThreshold*2 {
+		overflow = true
+		overflowIds = d1.ChildrenIds[maxChildrenThreshold:]
+		d1.ChildrenIds = d1.ChildrenIds[:maxChildrenThreshold]
+		sum = maxChildrenThreshold
+	}
+	div := sum / 2
+	d2.ChildrenIds = make([]string, sum-div)
+	copy(d2.ChildrenIds, d1.ChildrenIds[div:])
+	d1.ChildrenIds = d1.ChildrenIds[:div]
+	d2.ChildrenIds = append(d2.ChildrenIds, overflowIds...)
 	return
+}
+
+func (s *State) newDiv(seq *int32) simple.Block {
+	*seq++
+	divId := fmt.Sprintf("div-%d", *seq)
+	return simple.New(&model.Block{
+		Id: divId,
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Div},
+		},
+	})
+}
+
+func (s *State) getNextDiv(id string) simple.Block {
+	parent := s.PickParentOf(id)
+	if parent != nil {
+		pm := parent.Model()
+		pos := slice.FindPos(pm.ChildrenIds, id)
+		if pos != -1 && pos < len(pm.ChildrenIds)-1 {
+			if isDivLayout(s.Pick(pm.ChildrenIds[pos+1]).Model()) {
+				return s.Get(pm.ChildrenIds[pos+1])
+			}
+		}
+	}
+	return nil
 }
