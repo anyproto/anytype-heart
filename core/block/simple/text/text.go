@@ -211,6 +211,10 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	}
 
 	oldBlock, newBlock, err := t.RangeSplit(rangeFrom, rangeTo)
+	if err != nil {
+		return outputBlock, err
+	}
+
 	outputBlock = simple.New(oldBlock.Copy().Model())
 	outputText := outputBlock.Model().GetText()
 	botText := newBlock.Copy().Model().GetText()
