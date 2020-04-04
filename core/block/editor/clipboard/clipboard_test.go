@@ -3,9 +3,32 @@ package clipboard
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 )
+
+func TestCommonSmart_copyRange(t *testing.T) {
+	t.Run("Simple: single p block", func(t *testing.T) {
+		copyRangeScenario(t,
+			page(
+				block("1", "123456789", mark(bold, 1, 3), mark(italic, 2, 5)),
+				block("2", "abcdefghi", mark(bold, 1, 3), mark(italic, 2, 5)),
+			),
+			paste(
+				block("new1", "123456789", mark(bold, 1, 3), mark(italic, 2, 5)),
+			),
+			"2",
+			&model.Range{From: 2, To: 4},
+			&model.Range{From: 2, To: 4},
+			[]*simple.Block{
+				block("1", "123456789", mark(bold, 1, 3), mark(italic, 2, 5)),
+				block("2", "abcdefghi", mark(bold, 1, 3), mark(italic, 2, 5)),
+			},
+		)
+	})
+}
 
 func TestCommonSmart_pasteHtml(t *testing.T) {
 	t.Run("Simple: single p block", func(t *testing.T) {

@@ -17,6 +17,80 @@ import (
 
 var emptyMarks [][]*model.BlockContentTextMark
 
+var bold = model.BlockContentTextMark_Bold
+var italic = model.BlockContentTextMark_Italic
+var fontRed = model.BlockContentTextMark_TextColor
+
+func copyRangeScenario(t *testing.T, sb *smarttest.SmartTest, anySlot []*simple.Block, targetId string, focusRange *model.Range, copyRange *model.Range, shouldBe []*simple.Block) {
+
+}
+
+func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
+	sb = smarttest.New("test")
+
+	cIds := []string{}
+	for _, b := range blocks {
+		cIds = append(cIds, b.Id)
+	}
+
+	sb.AddBlock(simple.New(&model.Block{
+		Id:          "test",
+		ChildrenIds: cIds,
+	}))
+
+	for i, _ := range blocks {
+		sb.AddBlock(simple.New(blocks[i]))
+	}
+
+	return sb
+}
+
+func paste(blocks ...*model.Block) (anySlot []*model.Block) {
+	return blocks
+}
+
+func block(id string, txt string, marks ...*model.BlockContentTextMark) (b *model.Block) {
+	newBlock := &model.Block{Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: txt,
+				Marks: &model.BlockContentTextMarks{
+					Marks: marks,
+				},
+			},
+		},
+	}
+
+	return newBlock
+}
+
+func mark(markType model.BlockContentTextMarkType, from int32, to int32) (m *model.BlockContentTextMark) {
+	param := ""
+	if markType == model.BlockContentTextMark_TextColor {
+		param = "red"
+	}
+	return &model.BlockContentTextMark{
+		Range: &model.Range{
+			From: from,
+			To:   to,
+		},
+		Type:  markType,
+		Param: param,
+	}
+}
+
+func shouldBe(bs ...simple.Block) {
+
+}
+
+func focusRange(from int32, to int32) *model.Range {
+
+}
+
+func copyRange(from int32, to int32) *model.Range {
+
+}
+
 func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockContentTextMark) []*model.Block {
 	blocks := []*model.Block{}
 	for i := 0; i < len(textArr); i++ {
