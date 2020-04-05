@@ -43,7 +43,7 @@ type Block interface {
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error)
-	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, err error)
+	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, caretPosition int32, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
@@ -189,30 +189,32 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
-func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, err error) {
+func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, caretPosition int32, err error) {
+	caretPosition = -1
+
 	if copyFrom < 0 || int(copyFrom) > utf8.RuneCountInString(copiedText.Text) {
-		return nil, ErrOutOfRange
+		return nil, caretPosition, ErrOutOfRange
 	}
 	if copyTo < 0 || int(copyTo) > utf8.RuneCountInString(copiedText.Text) {
-		return nil, ErrOutOfRange
+		return nil, caretPosition, ErrOutOfRange
 	}
 	if copyFrom > copyTo {
-		return nil, ErrOutOfRange
+		return nil, caretPosition, ErrOutOfRange
 	}
 
 	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
-		return nil, ErrOutOfRange
+		return nil, caretPosition, ErrOutOfRange
 	}
 	if rangeTo < 0 || int(rangeTo) > utf8.RuneCountInString(t.content.Text) {
-		return nil, ErrOutOfRange
+		return nil, caretPosition, ErrOutOfRange
 	}
 	if rangeFrom > rangeTo {
-		return nil, ErrOutOfRange
+		return nil, caretPosition, ErrOutOfRange
 	}
 
 	oldBlock, newBlock, err := t.RangeSplit(rangeFrom, rangeTo)
 	if err != nil {
-		return outputBlock, err
+		return outputBlock, caretPosition, err
 	}
 
 	outputBlock = simple.New(oldBlock.Copy().Model())
@@ -239,7 +241,7 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text[copyFrom:copyTo])
 	outputText.Marks.Marks = t.normalizeMarksPure(combinedMarks)
 
-	return outputBlock, nil
+	return outputBlock, caretPosition, nil
 }
 
 func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error) {

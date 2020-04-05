@@ -325,7 +325,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		break
 
 	case pasteSingleTextInFocusedText:
-		newB, err := focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0].GetText())
+		newB, caretPosition, err := focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0].GetText())
 		if err != nil {
 			fmt.Println("pasteSingleTextInFocusedText ERR:", err)
 		}
