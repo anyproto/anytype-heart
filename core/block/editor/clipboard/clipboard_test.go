@@ -3,29 +3,168 @@ package clipboard
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 )
 
-func TestCommonSmart_copyRange(t *testing.T) {
-	t.Run("Simple: single p block", func(t *testing.T) {
-		copyRangeScenario(t,
-			page(
-				block("1", "123456789", mark(bold, 1, 3), mark(italic, 2, 5)),
-				block("2", "abcdefghi", mark(bold, 1, 3), mark(italic, 2, 5)),
-			),
-			paste(
-				block("new1", "123456789", mark(bold, 1, 3), mark(italic, 2, 5)),
-			),
-			"2",
-			&model.Range{From: 2, To: 4},
-			&model.Range{From: 2, To: 4},
-			[]*simple.Block{
-				block("1", "123456789", mark(bold, 1, 3), mark(italic, 2, 5)),
-				block("2", "abcdefghi", mark(bold, 1, 3), mark(italic, 2, 5)),
-			},
+func TestCommonSmart_copyRangeNoMarks(t *testing.T) {
+	t.Run("No marks, paste middleCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 4), rng(3, 6), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "12def56789"))
+	})
+
+	t.Run("No marks, paste fullCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 4), rng(0, 9), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "12abcdefghi56789"))
+	})
+
+	t.Run("No marks, paste zeroCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 4), rng(5, 5), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "1256789"))
+	})
+
+	t.Run("No marks, paste middleToEndCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 5), rng(0, 3), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "12abc6789"))
+	})
+
+	t.Run("No marks, paste fullCut to the full", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(0, 9), rng(0, 9), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "abcdefghi"))
+	})
+
+	t.Run("No marks, paste zeroCut to the full", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(0, 9), rng(3, 3), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", ""))
+	})
+}
+
+func TestCommonSmart_copyRangeOnePageMark(t *testing.T) {
+	t.Run("One mark in page: one fullRange mark in page, middleCut to middle", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 0, 9)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 6},
+			block("n1", "abcdefghi"),
+		)
+		shouldBeDebug(sb, t,
+			block("1", "12def56789", mark(bold, 0, 2), mark(bold, 5, 10)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in page, middleCut to to the end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 0, 9)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 9, To: 9}, &model.Range{From: 3, To: 6},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "123456789def", mark(bold, 0, 9)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in page, middleCut to to the start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 0, 9)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 0, To: 0}, &model.Range{From: 3, To: 6},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "def123456789", mark(bold, 3, 12)),
+		)
+	})
+}
+
+func TestCommonSmart_copyRangeOnePasteMark(t *testing.T) {
+	t.Run("One mark in page: one fullRange mark in paste, middleCut to end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 0, 9)),
+		)
+		shouldBe(sb, t,
+			block("1", "12defgh56789", mark(bold, 2, 7)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in paste, middleCut to the end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 9, To: 9}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 0, 9)),
+		)
+		shouldBe(sb, t,
+			block("1", "123456789defgh", mark(bold, 9, 14)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in paste, middleCut to the start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 0, To: 0}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 0, 9)),
+		)
+		shouldBe(sb, t,
+			block("1", "defgh123456789", mark(bold, 0, 5)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the middle", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 6, 7)),
+		)
+		shouldBe(sb, t,
+			block("1", "12defgh56789", mark(bold, 5, 6)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 0, To: 0}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 6, 7)),
+		)
+		shouldBe(sb, t,
+			block("1", "defgh123456789", mark(bold, 3, 4)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 9, To: 9}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 6, 7)),
+		)
+		shouldBe(sb, t,
+			block("1", "123456789defgh", mark(bold, 12, 13)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the middle, mark is out of range", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 1, 2)),
+		)
+		shouldBe(sb, t,
+			block("1", "12defgh56789"),
 		)
 	})
 }

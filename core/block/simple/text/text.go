@@ -219,16 +219,24 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	outputText := outputBlock.Model().GetText()
 	botText := newBlock.Copy().Model().GetText()
 
+	fmt.Println("copiedText.Text[copyFrom:copyTo]", copiedText.Text[copyFrom:copyTo], copiedText.Text, copyFrom, copyTo)
 	outputText.Text = outputText.Text + copiedText.Text[copyFrom:copyTo] + botText.Text
 
+	fmt.Println("1. copiedText.Marks.Marks", copiedText.Marks.Marks)
 	// 1. cut marks from 0 to TO
-	copiedText.Marks.Marks, _ = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyTo, To: copyTo}, int32(len(copiedText.Text)))
 
+	copiedText.Marks.Marks, _ = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyTo, To: copyTo}, 0)
+	fmt.Println("2. copiedText.Marks.Marks", copiedText.Marks.Marks)
 	// 2. cut marks from FROM to TO
-	_, copiedText.Marks.Marks = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyTo, To: copyTo}, int32(len(copiedText.Text[0:copyTo])))
-
+	_, copiedText.Marks.Marks = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyFrom, To: copyFrom}, 0)
+	fmt.Println("3. copiedText.Marks.Marks", copiedText.Marks.Marks)
+	for _, m := range copiedText.Marks.Marks {
+		m.Range.From = m.Range.From - copyFrom
+		m.Range.To = m.Range.To - copyFrom
+	}
+	fmt.Println("4. copiedText.Marks.Marks", copiedText.Marks.Marks)
 	// 3. combine
-	combinedMarks := t.SplitMarks(&model.Range{From: copyFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text[copyFrom:copyTo])
+	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text[copyFrom:copyTo])
 	outputText.Marks.Marks = t.normalizeMarksPure(combinedMarks)
 
 	return outputBlock, nil
