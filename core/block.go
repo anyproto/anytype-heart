@@ -162,12 +162,12 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 	for _, r := range uploadArr {
 		r.ContextId = req.ContextId
 		if err := mw.blockService.UploadBlockFile(r); err != nil {
-			return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, err)
+			return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, err)
 		}
 	}
 
 	if err != nil {
-		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, err)
+		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, err)
 	}
 
 	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, caretPosition, nil)

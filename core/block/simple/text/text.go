@@ -241,6 +241,7 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text[copyFrom:copyTo])
 	outputText.Marks.Marks = t.normalizeMarksPure(combinedMarks)
 
+	caretPosition = rangeFrom + (copyTo - copyFrom)
 	return outputBlock, caretPosition, nil
 }
 

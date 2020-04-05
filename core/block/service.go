@@ -400,7 +400,7 @@ func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadA
 		return err
 	})
 
-	return blockIds, uploadArr, err
+	return blockIds, uploadArr, caretPosition, err
 }
 
 func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
