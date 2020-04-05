@@ -1659,6 +1659,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error) |  |  |
 | blockIds | [string](#string) | repeated |  |
+| caretPosition | [int32](#int32) |  |  |
 
 
 

@@ -148,8 +148,8 @@ func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
 }
 
 func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
-	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, err error) *pb.RpcBlockPasteResponse {
-		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds}
+	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, caretPosition int32, err error) *pb.RpcBlockPasteResponse {
+		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds, CaretPosition: caretPosition}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -157,7 +157,7 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return m
 	}
 
-	blockIds, uploadArr, err := mw.blockService.Paste(*req)
+	blockIds, uploadArr, caretPosition, err := mw.blockService.Paste(*req)
 	log.Debug("Image requests to upload after paste:", uploadArr)
 	for _, r := range uploadArr {
 		r.ContextId = req.ContextId
@@ -170,7 +170,7 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, nil)
+	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, caretPosition, nil)
 }
 
 func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
