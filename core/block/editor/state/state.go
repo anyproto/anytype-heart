@@ -265,11 +265,15 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 }
 
 func (s *State) Blocks() []*model.Block {
-	res := make([]*model.Block, 0, len(s.blocks))
-	for _, b := range s.blocks {
-		res = append(res, b.Copy().Model())
+	return s.fillSlice(s.RootId(), make([]*model.Block, 0, len(s.blocks)))
+}
+
+func (s *State) fillSlice(id string, blocks []*model.Block) []*model.Block {
+	blocks = append(blocks, s.blocks[id].Copy().Model())
+	for _, chId := range s.blocks[id].Model().ChildrenIds {
+		blocks = s.fillSlice(chId, blocks)
 	}
-	return res
+	return blocks
 }
 
 func (s *State) String() (res string) {
