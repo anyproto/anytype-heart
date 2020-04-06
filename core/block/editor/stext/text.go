@@ -47,20 +47,15 @@ func (t *textImpl) RangeSplit(id string, rangeFrom int32, rangeTo int32, style m
 	if err != nil {
 		return
 	}
-	oldBlock, newBlock, err := tb.RangeSplit(rangeFrom, rangeTo)
+	newBlock, err := tb.RangeSplit(rangeFrom, rangeTo)
 	if err != nil {
 		return
 	}
 	tb.SetStyle(style)
-	s.Add(oldBlock)
 	s.Add(newBlock)
-	if err = s.InsertTo(id, model.Block_Bottom, oldBlock.Model().Id); err != nil {
+	if err = s.InsertTo(id, model.Block_Bottom, newBlock.Model().Id); err != nil {
 		return
 	}
-	if err = s.InsertTo(oldBlock.Model().Id, model.Block_Bottom, newBlock.Model().Id); err != nil {
-		return
-	}
-	s.Remove(id)
 	if err = t.Apply(s); err != nil {
 		return
 	}

@@ -409,37 +409,17 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 	})
 
 	t.Run("(*********) <b>lorem lorem</b>  :--->   __PASTE__ <b>lorem lorem</b>  (m.Range.From > r.To)", func(t *testing.T) {
-		initialText := []string{"abcdef"}
-		initialMarks := [][]*model.BlockContentTextMark{
-			{{
-				Range: &model.Range{From: 3, To: 4},
-				Type:  model.BlockContentTextMark_Bold,
-			}},
-		}
+		sb := page(
+			block("1", "abcdef", mark(bold, 3, 5)),
+		)
+		rangePaste(sb, t, "1", rng(1, 2), rng(0, 6),
+			block("n1", "123456", mark(bold, 1, 4)),
+		)
+		shouldBe(sb, t,
+			block("1", "a123456cdef", mark(bold, 2, 5), mark(bold, 8, 10)),
+		)
 
-		pasteText := []string{"123456"}
-		pasteMarks := [][]*model.BlockContentTextMark{
-			{{
-				Range: &model.Range{From: 3, To: 4},
-				Type:  model.BlockContentTextMark_Italic,
-			}},
-		}
-
-		sb := createPage(t, createBlocks([]string{}, initialText, initialMarks))
-
-		pasteAny(t, sb, "1", model.Range{From: 1, To: 2}, []string{}, createBlocks([]string{"new1"}, pasteText, pasteMarks)) // @marks
-
-		checkBlockMarks(t, sb, [][]*model.BlockContentTextMark{
-			{{
-				Range: &model.Range{From: 4, To: 5},
-				Type:  model.BlockContentTextMark_Italic,
-			}, {
-				Range: &model.Range{From: 8, To: 9},
-				Type:  model.BlockContentTextMark_Bold,
-			}},
-		})
 	})
-
 }
 
 func TestCommonSmart_pasteAny_marks(t *testing.T) {
@@ -551,7 +531,7 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 2, To: 2}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "erty", "55555"})
+		checkBlockTextDebug(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "erty", "55555"})
 	})
 
 	t.Run("3. Cursor: end, range == 0. Expected behaviour: insert after block", func(t *testing.T) {

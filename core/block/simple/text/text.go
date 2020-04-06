@@ -42,8 +42,8 @@ type Block interface {
 	SetChecked(v bool)
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
-	RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error)
-	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, caretPosition int32, err error)
+	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
+	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (caretPosition int32, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
@@ -187,72 +187,57 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
-func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (outputBlock simple.Block, caretPosition int32, err error) {
+func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (caretPosition int32, err error) {
 	caretPosition = -1
-
 	if copyFrom < 0 || int(copyFrom) > utf8.RuneCountInString(copiedText.Text) {
-		return nil, caretPosition, ErrOutOfRange
+		return caretPosition, ErrOutOfRange
 	}
 	if copyTo < 0 || int(copyTo) > utf8.RuneCountInString(copiedText.Text) {
-		return nil, caretPosition, ErrOutOfRange
+		return caretPosition, ErrOutOfRange
 	}
 	if copyFrom > copyTo {
-		return nil, caretPosition, ErrOutOfRange
+		return caretPosition, ErrOutOfRange
 	}
 
 	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
-		return nil, caretPosition, ErrOutOfRange
+		return caretPosition, ErrOutOfRange
 	}
 	if rangeTo < 0 || int(rangeTo) > utf8.RuneCountInString(t.content.Text) {
-		return nil, caretPosition, ErrOutOfRange
+		return caretPosition, ErrOutOfRange
 	}
 	if rangeFrom > rangeTo {
-		return nil, caretPosition, ErrOutOfRange
+		return caretPosition, ErrOutOfRange
 	}
 
-	oldBlock, newBlock, err := t.RangeSplit(rangeFrom, rangeTo)
-	if err != nil {
-		return outputBlock, caretPosition, err
-	}
-
-	outputBlock = simple.New(oldBlock.Copy().Model())
-	outputText := outputBlock.Model().GetText()
-	botText := newBlock.Copy().Model().GetText()
-
-	fmt.Println("copiedText.Text[copyFrom:copyTo]", copiedText.Text[copyFrom:copyTo], copiedText.Text, copyFrom, copyTo)
-	outputText.Text = outputText.Text + copiedText.Text[copyFrom:copyTo] + botText.Text
-
-	fmt.Println("1. copiedText.Marks.Marks", copiedText.Marks.Marks)
 	// 1. cut marks from 0 to TO
-
 	copiedText.Marks.Marks, _ = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyTo, To: copyTo}, 0)
-	fmt.Println("2. copiedText.Marks.Marks", copiedText.Marks.Marks)
+
 	// 2. cut marks from FROM to TO
 	_, copiedText.Marks.Marks = t.splitMarks(copiedText.Marks.Marks, &model.Range{From: copyFrom, To: copyFrom}, 0)
-	fmt.Println("3. copiedText.Marks.Marks", copiedText.Marks.Marks)
 	for _, m := range copiedText.Marks.Marks {
 		m.Range.From = m.Range.From - copyFrom
 		m.Range.To = m.Range.To - copyFrom
 	}
-	fmt.Println("4. copiedText.Marks.Marks", copiedText.Marks.Marks)
+
 	// 3. combine
 	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text[copyFrom:copyTo])
-	outputText.Marks.Marks = t.normalizeMarksPure(combinedMarks)
+	t.content.Marks.Marks = t.normalizeMarksPure(combinedMarks)
+	t.content.Text = t.content.Text[:rangeFrom] + copiedText.Text[copyFrom:copyTo] + t.content.Text[rangeTo:]
 
 	caretPosition = rangeFrom + (copyTo - copyFrom)
-	return outputBlock, caretPosition, nil
+	return caretPosition, nil
 }
 
-func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock simple.Block, err error) {
+func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
 		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
-		return nil, nil, ErrOutOfRange
+		return nil, ErrOutOfRange
 	}
 	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
-		return nil, nil, ErrOutOfRange
+		return nil, ErrOutOfRange
 	}
 	if from > to {
-		return nil, nil, ErrOutOfRange
+		return nil, ErrOutOfRange
 	}
 
 	runes := []rune(t.content.Text)
@@ -263,11 +248,14 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 	newMarks := &model.BlockContentTextMarks{}
 	oldMarks := &model.BlockContentTextMarks{}
 	r := model.Range{From: from, To: to}
-	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, int32(len(t.content.Text)))
-
+	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
 	oldMarks.Marks = t.normalizeMarksPure(oldMarks.Marks)
 	newMarks.Marks = t.normalizeMarksPure(newMarks.Marks)
 
+	for _, m := range newMarks.Marks {
+		m.Range.From = m.Range.From - r.From
+		m.Range.To = m.Range.To - r.From
+	}
 	style := t.content.Style
 	if style == model.BlockContentText_Title {
 		style = model.BlockContentText_Header2
@@ -284,8 +272,9 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 		BackgroundColor: t.BackgroundColor,
 		Align:           t.Align,
 	})
-
-	oldBlock = simple.New(&model.Block{
+	t.content.Text = string(runes[:from])
+	t.content.Marks = oldMarks
+	/*	oldBlock = simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:    string(runes[:from]),
 			Style:   t.content.Style,
@@ -298,9 +287,9 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 		Align:           t.Align,
 		Fields:          t.Fields,
 		Restrictions:    t.Restrictions,
-	})
+	})*/
 
-	return oldBlock, newBlock, nil
+	return newBlock, nil
 }
 
 func Abs(x int32) int32 {
@@ -382,6 +371,7 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, n
 
 func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark) {
 	addLen := int32(utf8.RuneCountInString(newText))
+
 	leftMarks, rightMarks := t.splitMarks(t.content.Marks.Marks, textRange, addLen)
 
 	for _, mark := range newMarks {
