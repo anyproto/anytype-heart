@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	maxChildrenThreshold = 20
+	maxChildrenThreshold = 50
 	divSize              = maxChildrenThreshold / 2
 )
 
