@@ -48,7 +48,7 @@ service ClientCommands {
 
     rpc BlockListMove (anytype.Rpc.BlockList.Move.Request) returns (anytype.Rpc.BlockList.Move.Response);
     rpc BlockListMoveToNewPage (anytype.Rpc.BlockList.MoveToNewPage.Request) returns (anytype.Rpc.BlockList.MoveToNewPage.Response);
-    rpc BlockConvertToPage (anytype.Rpc.Block.ConvertToPage.Request) returns (anytype.Rpc.Block.ConvertToPage.Response);
+    rpc BlockListConvertChildrenToPages (anytype.Rpc.BlockList.ConvertChildrenToPages.Request) returns (anytype.Rpc.BlockList.ConvertChildrenToPages.Response);
 
     rpc BlockListSetFields (anytype.Rpc.BlockList.Set.Fields.Request) returns (anytype.Rpc.BlockList.Set.Fields.Response);
     rpc BlockListSetTextStyle (anytype.Rpc.BlockList.Set.Text.Style.Request) returns (anytype.Rpc.BlockList.Set.Text.Style.Response);
@@ -67,8 +67,6 @@ service ClientCommands {
 
     rpc BlockCopy (anytype.Rpc.Block.Copy.Request) returns (anytype.Rpc.Block.Copy.Response);
     rpc BlockPaste (anytype.Rpc.Block.Paste.Request) returns (anytype.Rpc.Block.Paste.Response);
-//    rpc BlockCreateAndCutTo (anytype.Rpc.Block.CreateAndCutTo.Request) returns (anytype.Rpc.Block.CreateAndCutTo.Response);
-//    rpc BlockCutTo (anytype.Rpc.Block.CutTo.Request) returns (anytype.Rpc.Block.CutTo.Response);
 
     rpc BlockCut (anytype.Rpc.Block.Cut.Request) returns (anytype.Rpc.Block.Cut.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);

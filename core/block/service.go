@@ -58,9 +58,8 @@ type Service interface {
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
-	MoveBlocksToPage(req pb.RpcBlockListMoveRequest) (err error)
 	MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
-	ConvertBlockToPage(req pb.RpcBlockConvertToPageRequest) (linkId string, err error)
+	ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
@@ -330,12 +329,12 @@ func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) (err error) {
 }
 
 func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Move(req)
-	})
-}
+	if req.ContextId == req.TargetContextId {
+		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+			return b.Move(req)
+		})
+	}
 
-func (s *service) MoveBlocksToPage(req pb.RpcBlockListMoveRequest) (err error) {
 	return s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
 		return s.Do(req.TargetContextId, func(targetBlock smartblock.SmartBlock) error {
 			contextState := contextBlock.NewState()
@@ -391,7 +390,7 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 		}
 
 		// 2. Move blocks to new page
-		err = s.MoveBlocksToPage(pb.RpcBlockListMoveRequest{
+		err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
 			ContextId:       req.ContextId,
 			BlockIds:        req.BlockIds,
 			TargetContextId: pageId,
@@ -409,8 +408,8 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 	return linkId, err
 }
 
-func (s *service) ConvertBlockToPage(req pb.RpcBlockConvertToPageRequest) (linkId string, err error) {
-	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
+func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+	/*err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
 		contextState := contextBlock.NewState()
 
 		// 1. Get blocks
@@ -458,7 +457,7 @@ func (s *service) ConvertBlockToPage(req pb.RpcBlockConvertToPageRequest) (linkI
 		}
 
 		// 4. Move blocks to new page
-		err = s.MoveBlocksToPage(pb.RpcBlockListMoveRequest{
+		err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
 			ContextId:       req.ContextId,
 			BlockIds:        cIds,
 			TargetContextId: pageId,
@@ -474,7 +473,7 @@ func (s *service) ConvertBlockToPage(req pb.RpcBlockConvertToPageRequest) (linkI
 		contextState.Remove(req.BlockId)
 		return contextBlock.Apply(contextState)
 	})
-
+	*/
 	return linkId, err
 }
 

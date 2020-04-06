@@ -40,10 +40,6 @@
     - [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request)
     - [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response)
     - [Rpc.Block.Close.Response.Error](#anytype.Rpc.Block.Close.Response.Error)
-    - [Rpc.Block.ConvertToPage](#anytype.Rpc.Block.ConvertToPage)
-    - [Rpc.Block.ConvertToPage.Request](#anytype.Rpc.Block.ConvertToPage.Request)
-    - [Rpc.Block.ConvertToPage.Response](#anytype.Rpc.Block.ConvertToPage.Response)
-    - [Rpc.Block.ConvertToPage.Response.Error](#anytype.Rpc.Block.ConvertToPage.Response.Error)
     - [Rpc.Block.Copy](#anytype.Rpc.Block.Copy)
     - [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request)
     - [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response)
@@ -182,6 +178,10 @@
     - [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response)
     - [Rpc.Block.Upload.Response.Error](#anytype.Rpc.Block.Upload.Response.Error)
     - [Rpc.BlockList](#anytype.Rpc.BlockList)
+    - [Rpc.BlockList.ConvertChildrenToPages](#anytype.Rpc.BlockList.ConvertChildrenToPages)
+    - [Rpc.BlockList.ConvertChildrenToPages.Request](#anytype.Rpc.BlockList.ConvertChildrenToPages.Request)
+    - [Rpc.BlockList.ConvertChildrenToPages.Response](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response)
+    - [Rpc.BlockList.ConvertChildrenToPages.Response.Error](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error)
     - [Rpc.BlockList.Duplicate](#anytype.Rpc.BlockList.Duplicate)
     - [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request)
     - [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response)
@@ -290,7 +290,6 @@
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
-    - [Rpc.Block.ConvertToPage.Response.Error.Code](#anytype.Rpc.Block.ConvertToPage.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
@@ -323,6 +322,7 @@
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
+    - [Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code)
     - [Rpc.BlockList.Duplicate.Response.Error.Code](#anytype.Rpc.BlockList.Duplicate.Response.Error.Code)
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
     - [Rpc.BlockList.MoveToNewPage.Response.Error.Code](#anytype.Rpc.BlockList.MoveToNewPage.Response.Error.Code)
@@ -511,7 +511,7 @@
 | BlockSetPageIsArchived | [Rpc.Block.Set.Page.IsArchived.Request](#anytype.Rpc.Block.Set.Page.IsArchived.Request) | [Rpc.Block.Set.Page.IsArchived.Response](#anytype.Rpc.Block.Set.Page.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListMoveToNewPage | [Rpc.BlockList.MoveToNewPage.Request](#anytype.Rpc.BlockList.MoveToNewPage.Request) | [Rpc.BlockList.MoveToNewPage.Response](#anytype.Rpc.BlockList.MoveToNewPage.Response) |  |
-| BlockConvertToPage | [Rpc.Block.ConvertToPage.Request](#anytype.Rpc.Block.ConvertToPage.Request) | [Rpc.Block.ConvertToPage.Response](#anytype.Rpc.Block.ConvertToPage.Response) |  |
+| BlockListConvertChildrenToPages | [Rpc.BlockList.ConvertChildrenToPages.Request](#anytype.Rpc.BlockList.ConvertChildrenToPages.Request) | [Rpc.BlockList.ConvertChildrenToPages.Response](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response) |  |
 | BlockListSetFields | [Rpc.BlockList.Set.Fields.Request](#anytype.Rpc.BlockList.Set.Fields.Request) | [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response) |  |
 | BlockListSetTextStyle | [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request) | [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response) |  |
 | BlockListDuplicate | [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request) | [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response) |  |
@@ -525,7 +525,7 @@
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
-| BlockPaste | [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request) | [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response) | rpc BlockCreateAndCutTo (anytype.Rpc.Block.CreateAndCutTo.Request) returns (anytype.Rpc.Block.CreateAndCutTo.Response); rpc BlockCutTo (anytype.Rpc.Block.CutTo.Request) returns (anytype.Rpc.Block.CutTo.Response); |
+| BlockPaste | [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request) | [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response) |  |
 | BlockCut | [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request) | [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response) |  |
 | BlockExport | [Rpc.Block.Export.Request](#anytype.Rpc.Block.Export.Request) | [Rpc.Block.Export.Response](#anytype.Rpc.Block.Export.Response) |  |
 | BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
@@ -938,64 +938,6 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ConvertToPage"></a>
-
-### Rpc.Block.ConvertToPage
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ConvertToPage.Request"></a>
-
-### Rpc.Block.ConvertToPage.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ConvertToPage.Response"></a>
-
-### Rpc.Block.ConvertToPage.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.ConvertToPage.Response.Error](#anytype.Rpc.Block.ConvertToPage.Response.Error) |  |  |
-| linkId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ConvertToPage.Response.Error"></a>
-
-### Rpc.Block.ConvertToPage.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.ConvertToPage.Response.Error.Code](#anytype.Rpc.Block.ConvertToPage.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2999,6 +2941,64 @@ Remove blocks from the childrenIds of its parents
 
 
 
+<a name="anytype.Rpc.BlockList.ConvertChildrenToPages"></a>
+
+### Rpc.BlockList.ConvertChildrenToPages
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.ConvertChildrenToPages.Request"></a>
+
+### Rpc.BlockList.ConvertChildrenToPages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.ConvertChildrenToPages.Response"></a>
+
+### Rpc.BlockList.ConvertChildrenToPages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.ConvertChildrenToPages.Response.Error](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error) |  |  |
+| linkId | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error"></a>
+
+### Rpc.BlockList.ConvertChildrenToPages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Duplicate"></a>
 
 ### Rpc.BlockList.Duplicate
@@ -4506,19 +4506,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.ConvertToPage.Response.Error.Code"></a>
-
-### Rpc.Block.ConvertToPage.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.Block.Copy.Response.Error.Code"></a>
 
 ### Rpc.Block.Copy.Response.Error.Code
@@ -4927,6 +4914,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Upload.Response.Error.Code"></a>
 
 ### Rpc.Block.Upload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code"></a>
+
+### Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code
 
 
 | Name | Number | Description |

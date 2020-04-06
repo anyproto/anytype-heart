@@ -457,7 +457,7 @@ func (mw *Middleware) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBloc
 		}
 		return m
 	}
-	if err := mw.blockService.MoveBlocksToPage(*req); err != nil {
+	if err := mw.blockService.MoveBlocks(*req); err != nil {
 		return response(pb.RpcBlockListMoveResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListMoveResponseError_NULL, nil)
@@ -479,20 +479,20 @@ func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRe
 	return response(pb.RpcBlockListMoveToNewPageResponseError_NULL, linkId, nil)
 }
 
-func (mw *Middleware) BlockConvertToPage(req *pb.RpcBlockConvertToPageRequest) *pb.RpcBlockConvertToPageResponse {
-	response := func(code pb.RpcBlockConvertToPageResponseErrorCode, linkId string, err error) *pb.RpcBlockConvertToPageResponse {
-		m := &pb.RpcBlockConvertToPageResponse{Error: &pb.RpcBlockConvertToPageResponseError{Code: code}, LinkId: linkId}
+func (mw *Middleware) BlockListConvertChildrenToPages(req *pb.RpcBlockListConvertChildrenToPagesRequest) *pb.RpcBlockListConvertChildrenToPagesResponse {
+	response := func(code pb.RpcBlockListConvertChildrenToPagesResponseErrorCode, linkIds []string, err error) *pb.RpcBlockListConvertChildrenToPagesResponse {
+		m := &pb.RpcBlockListConvertChildrenToPagesResponse{Error: &pb.RpcBlockListConvertChildrenToPagesResponseError{Code: code}, LinkId: linkId}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
-	linkId, err := mw.blockService.ConvertBlockToPage(*req)
+	linkIds, err := mw.blockService.ConvertChildrenToPages(*req)
 
 	if err != nil {
-		return response(pb.RpcBlockConvertToPageResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcBlockListConvertChildrenToPagesResponseError_UNKNOWN_ERROR, []string{}, err)
 	}
-	return response(pb.RpcBlockConvertToPageResponseError_NULL, linkId, nil)
+	return response(pb.RpcBlockListConvertChildrenToPagesResponseError_NULL, linkIds, nil)
 }
 
 func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse {
