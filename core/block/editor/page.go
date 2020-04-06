@@ -3,15 +3,17 @@ package editor
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
-func NewPage(source file.FileSource) *Page {
+func NewPage(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview) *Page {
 	sb := smartblock.New()
 	return &Page{
 		SmartBlock: sb,
@@ -20,6 +22,7 @@ func NewPage(source file.FileSource) *Page {
 		Text:       stext.NewText(sb),
 		File:       file.NewFile(sb, source),
 		Clipboard:  clipboard.NewClipboard(sb),
+		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
 	}
 }
 
@@ -30,6 +33,7 @@ type Page struct {
 	file.File
 	stext.Text
 	clipboard.Clipboard
+	bookmark.Bookmark
 }
 
 func (p *Page) Init(s source.Source) (err error) {
