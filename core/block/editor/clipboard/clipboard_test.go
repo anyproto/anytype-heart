@@ -45,6 +45,32 @@ func TestCommonSmart_copyRangeNoMarks(t *testing.T) {
 	})
 }
 
+func TestCommonSmart_copyRangeOnePageMarkPartlyInRange(t *testing.T) {
+	t.Run("One mark in page: one middleRange mark in page, fullCut to middle, cut mark at start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 3, 8)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 0, To: 9},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "12abcdefghi56789", mark(bold, 11, 15)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in page, fullCut to middle, cut mark at end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 3, 7)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 6, To: 8}, &model.Range{From: 0, To: 9},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "123456abcdefghi9", mark(bold, 3, 6)),
+		)
+	})
+}
+
 func TestCommonSmart_copyRangeOnePageMark(t *testing.T) {
 	t.Run("One mark in page: one fullRange mark in page, middleCut to middle", func(t *testing.T) {
 		sb := page(
