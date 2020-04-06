@@ -2,10 +2,7 @@ package state
 
 import (
 	"fmt"
-	"os"
-	"runtime/pprof"
 	"testing"
-	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -131,15 +128,30 @@ func TestState_Normalize(t *testing.T) {
 	t.Run("normalize tree", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
 		var rootIds []string
-		for i := 0; i < 17; i++ {
+		for i := 0; i < 200; i++ {
 			rootIds = append(rootIds, fmt.Sprint(i))
 			r.Add(simple.New(&model.Block{Id: fmt.Sprint(i)}))
 		}
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: rootIds}))
-		t.Log(r.String())
+
 		s := r.NewState()
 		s.normalizeTree()
-		t.Log(s.String())
+		ApplyState(s)
+		blocks := r.Blocks()
+		result := []string{}
+		divs := []string{}
+		for _, m := range blocks {
+			if m.Id == r.RootId() {
+				continue
+			}
+			if m.GetLayout() != nil {
+				divs = append(divs, m.Id)
+			} else {
+				result = append(result, m.Id)
+			}
+		}
+		assert.Len(t, result, 200)
+		assert.True(t, len(divs) > 0)
 	})
 
 	t.Run("div balance", func(t *testing.T) {
@@ -180,11 +192,7 @@ func TestState_Normalize(t *testing.T) {
 			assert.Len(t, d2.ChildrenIds, maxChildrenThreshold-divSize+maxChildrenThreshold+1)
 		})
 	})
-	t.Run("normalize tree", func(t *testing.T) {
-		go func() {
-			time.Sleep(time.Second * 5)
-			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
-		}()
+	t.Run("normalize on insert", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root"}))
 		targetId := "root"
@@ -209,7 +217,21 @@ func TestState_Normalize(t *testing.T) {
 			targetPos = model.Block_Top
 		}
 
-		t.Log(r.String())
+		blocks := r.Blocks()
+		result := []string{}
+		divs := []string{}
+		for _, m := range blocks {
+			if m.Id == r.RootId() {
+				continue
+			}
+			if m.GetLayout() != nil {
+				divs = append(divs, m.Id)
+			} else {
+				result = append(result, m.Id)
+			}
+		}
+		assert.Len(t, result, 100)
+		assert.True(t, len(divs) > 0)
 	})
 
 }
