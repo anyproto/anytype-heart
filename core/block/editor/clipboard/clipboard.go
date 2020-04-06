@@ -306,6 +306,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 	if req.CopyTextRange.To == 0 {
 		if firstPasteBlockText != nil && firstPasteBlockText.Text != "" {
 			req.CopyTextRange.To = int32(len([]rune(firstPasteBlockText.Text)))
+
 		}
 	}
 
@@ -365,25 +366,21 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 				return blockIds, uploadArr, caretPosition, err
 			}
 
+			// insert new blocks
+			pos := model.Block_Top
+			isReversed := true
+			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, pos, isReversed)
+			if err != nil {
+				return blockIds, uploadArr, caretPosition, err
+			}
+
 			if len(newBlock.Model().GetText().Text) > 0 {
 				s.Add(newBlock)
-				err = s.InsertTo(targetId, model.Block_Bottom, newBlock.Model().Id)
+				err = s.InsertTo(targetId, model.Block_Top, newBlock.Model().Id)
 				if err != nil {
 					return blockIds, uploadArr, caretPosition, err
 				}
 				blockIds = append(blockIds, newBlock.Model().Id)
-			}
-
-			// insert new blocks
-			pos := model.Block_Bottom
-			isReversed := false
-			if req.SelectedTextRange.From == 0 {
-				pos = model.Block_Top
-				isReversed = true
-			}
-			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, pos, isReversed)
-			if err != nil {
-				return blockIds, uploadArr, caretPosition, err
 			}
 
 			if len(focusedBlock.Model().GetText().Text) == 0 {
