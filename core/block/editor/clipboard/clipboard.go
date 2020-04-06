@@ -304,7 +304,9 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 	}
 
 	if req.CopyTextRange.To == 0 {
-		req.CopyTextRange.To = int32(len([]rune(firstPasteBlockText.Text)))
+		if firstPasteBlockText != nil && firstPasteBlockText.Text != "" {
+			req.CopyTextRange.To = int32(len([]rune(firstPasteBlockText.Text)))
+		}
 	}
 
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0

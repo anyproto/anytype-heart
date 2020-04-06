@@ -53,7 +53,7 @@ func (t *textImpl) RangeSplit(id string, rangeFrom int32, rangeTo int32, style m
 	}
 	tb.SetStyle(style)
 	s.Add(newBlock)
-	if err = s.InsertTo(id, model.Block_Bottom, newBlock.Model().Id); err != nil {
+	if err = s.InsertTo(id, model.Block_Top, newBlock.Model().Id); err != nil {
 		return
 	}
 	if err = t.Apply(s); err != nil {

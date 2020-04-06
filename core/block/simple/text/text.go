@@ -261,16 +261,12 @@ func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err erro
 		m.Range.From = m.Range.From - r.From
 		m.Range.To = m.Range.To - r.From
 	}
-	style := t.content.Style
-	if style == model.BlockContentText_Title {
-		style = model.BlockContentText_Header2
-	}
 
 	newBlock = simple.New(&model.Block{
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:    string(runes[to:]),
-			Style:   style,
-			Marks:   newMarks,
+			Text:    string(runes[:from]),
+			Style:   t.content.Style,
+			Marks:   oldMarks,
 			Checked: t.content.Checked,
 			Color:   t.content.Color,
 		}},
@@ -278,8 +274,8 @@ func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err erro
 		Align:           t.Align,
 	})
 
-	t.content.Text = string(runes[:from])
-	t.content.Marks = oldMarks
+	t.content.Text = string(runes[to:])
+	t.content.Marks = newMarks
 
 	return newBlock, nil
 }
