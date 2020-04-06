@@ -53,7 +53,7 @@ func TestCommonSmart_copyRangeOnePageMark(t *testing.T) {
 		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 6},
 			block("n1", "abcdefghi"),
 		)
-		shouldBeDebug(sb, t,
+		shouldBe(sb, t,
 			block("1", "12def56789", mark(bold, 0, 2), mark(bold, 5, 10)),
 		)
 	})
@@ -531,7 +531,7 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 2, To: 2}, []string{}, "aaaaa\nbbbbb")
-		checkBlockTextDebug(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "erty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "qw", "aaaaa", "bbbbb", "erty", "55555"})
 	})
 
 	t.Run("3. Cursor: end, range == 0. Expected behaviour: insert after block", func(t *testing.T) {

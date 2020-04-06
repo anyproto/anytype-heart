@@ -182,6 +182,8 @@ func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	require.Equal(t, len(cIds), len(textArr))
 
 	for i, c := range cIds {
+		b := sb.Pick(c)
+		require.NotNil(t, b)
 		require.Equal(t, textArr[i], sb.Pick(c).Model().GetText().Text)
 	}
 }

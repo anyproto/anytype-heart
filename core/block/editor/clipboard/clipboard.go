@@ -249,7 +249,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 	isPasteInstead := false
 	isPasteWithSplit := false
 
-	focusedBlock := cb.Pick(targetId)
+	focusedBlock := s.Get(targetId)
 	focusedBlockText, ok := focusedBlock.(text.Block)
 	cIds := cb.Pick(cb.Id()).Model().ChildrenIds
 
@@ -363,10 +363,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 				return blockIds, uploadArr, caretPosition, err
 			}
 
-			// insert first part of the old block
-			//fId := targetId
-
-			// insert last part of the old block
 			if len(newBlock.Model().GetText().Text) > 0 {
 				s.Add(newBlock)
 				err = s.InsertTo(targetId, model.Block_Bottom, newBlock.Model().Id)
@@ -391,7 +387,6 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 			if len(focusedBlock.Model().GetText().Text) == 0 {
 				s.Remove(focusedBlock.Model().Id)
 			}
-			//s.Remove(fId)
 		}
 		break
 

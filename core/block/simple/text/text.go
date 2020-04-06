@@ -220,9 +220,14 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	}
 
 	// 3. combine
-	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, copiedText.Text[copyFrom:copyTo])
+	runesFirst := []rune(t.content.Text)[:rangeFrom]
+	runesMiddle := []rune(copiedText.Text)[copyFrom:copyTo]
+	runesLast := []rune(t.content.Text)[rangeTo:]
+
+	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, string(runesMiddle))
 	t.content.Marks.Marks = t.normalizeMarksPure(combinedMarks)
-	t.content.Text = t.content.Text[:rangeFrom] + copiedText.Text[copyFrom:copyTo] + t.content.Text[rangeTo:]
+
+	t.content.Text = string(runesFirst) + string(runesMiddle) + string(runesLast)
 
 	caretPosition = rangeFrom + (copyTo - copyFrom)
 	return caretPosition, nil
@@ -272,22 +277,9 @@ func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err erro
 		BackgroundColor: t.BackgroundColor,
 		Align:           t.Align,
 	})
+
 	t.content.Text = string(runes[:from])
 	t.content.Marks = oldMarks
-	/*	oldBlock = simple.New(&model.Block{
-		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:    string(runes[:from]),
-			Style:   t.content.Style,
-			Marks:   oldMarks,
-			Checked: t.content.Checked,
-			Color:   t.content.Color,
-		}},
-		ChildrenIds:     t.ChildrenIds,
-		BackgroundColor: t.BackgroundColor,
-		Align:           t.Align,
-		Fields:          t.Fields,
-		Restrictions:    t.Restrictions,
-	})*/
 
 	return newBlock, nil
 }
