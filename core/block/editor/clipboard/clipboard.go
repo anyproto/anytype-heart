@@ -312,7 +312,7 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
 	pasteSingleTextInFocusedText := focusedBlockText != nil && isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
-	pasteMultipleBlocksInFocusedText := isFocusedText && isMultipleBlocksToPaste
+	pasteMultipleBlocksInFocusedText := isFocusedText && (isMultipleBlocksToPaste || firstPasteBlockText == nil)
 	pasteMultipleBlocksOnSelectedBlocks := isSelectedBlocks
 
 	switch true {
