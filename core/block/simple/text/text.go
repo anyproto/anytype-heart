@@ -183,8 +183,6 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 		}},
 		BackgroundColor: t.BackgroundColor,
 		Align:           t.Align,
-		Fields:          t.Fields,
-		Restrictions:    t.Restrictions,
 	})
 	return newBlock, nil
 }
@@ -284,10 +282,7 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 			Color:   t.content.Color,
 		}},
 		BackgroundColor: t.BackgroundColor,
-		ChildrenIds:     t.ChildrenIds,
 		Align:           t.Align,
-		Fields:          t.Fields,
-		Restrictions:    t.Restrictions,
 	})
 
 	oldBlock = simple.New(&model.Block{
@@ -298,6 +293,7 @@ func (t *Text) RangeSplit(from int32, to int32) (oldBlock simple.Block, newBlock
 			Checked: t.content.Checked,
 			Color:   t.content.Color,
 		}},
+		ChildrenIds:     t.ChildrenIds,
 		BackgroundColor: t.BackgroundColor,
 		Align:           t.Align,
 		Fields:          t.Fields,
