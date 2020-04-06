@@ -419,11 +419,13 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 		}
 
 		if f := newBlock.Model().GetFile(); f != nil {
-			uploadArr = append(uploadArr,
-				pb.RpcBlockUploadRequest{
-					BlockId: newBlock.Model().Id,
-					Url:     f.Name,
-				})
+			if f.State != model.BlockContentFile_Done {
+				uploadArr = append(uploadArr,
+					pb.RpcBlockUploadRequest{
+						BlockId: newBlock.Model().Id,
+						Url:     f.Name,
+					})
+			}
 		}
 
 		targetId = newBlock.Model().Id
