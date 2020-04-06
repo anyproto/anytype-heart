@@ -2976,7 +2976,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.ConvertChildrenToPages.Response.Error](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error) |  |  |
-| linkId | [string](#string) | repeated |  |
+| linkIds | [string](#string) | repeated |  |
 
 
 
