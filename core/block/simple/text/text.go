@@ -310,7 +310,7 @@ func Abs(x int32) int32 {
 	return x
 }
 
-func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, textLength int32) (topMarks []*model.BlockContentTextMark, botMarks []*model.BlockContentTextMark) {
+func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, newTextLen int32) (topMarks []*model.BlockContentTextMark, botMarks []*model.BlockContentTextMark) {
 	for i := 0; i < len(marks); i++ {
 		m := marks[i]
 
@@ -357,8 +357,8 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, t
 
 			botMarks = append(botMarks, &model.BlockContentTextMark{
 				Range: &model.Range{
-					From: r.From + textLength,
-					To:   m.Range.To - (r.To - r.From) + textLength,
+					From: r.From + newTextLen,
+					To:   m.Range.To - (r.To - r.From) + newTextLen,
 				},
 				Type:  m.Type,
 				Param: m.Param,
@@ -369,8 +369,8 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, t
 		if m.Range.From >= r.To {
 			botMarks = append(botMarks, &model.BlockContentTextMark{
 				Range: &model.Range{
-					From: m.Range.From - (r.To - r.From) + textLength,
-					To:   m.Range.To - (r.To - r.From) + textLength,
+					From: m.Range.From - (r.To - r.From) + newTextLen,
+					To:   m.Range.To - (r.To - r.From) + newTextLen,
 				},
 				Type:  m.Type,
 				Param: m.Param,
