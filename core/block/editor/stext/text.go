@@ -12,6 +12,7 @@ import (
 type Text interface {
 	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
 	Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error)
+	RangeSplit(id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error)
 	Merge(firstId, secondId string) (err error)
 }
 
@@ -38,6 +39,32 @@ func (t *textImpl) UpdateTextBlocks(ids []string, showEvent bool, apply func(t t
 		return t.Apply(s)
 	}
 	return t.Apply(s, smartblock.NoEvent)
+}
+
+func (t *textImpl) RangeSplit(id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error) {
+	s := t.NewState()
+	tb, err := getText(s, id)
+	if err != nil {
+		return
+	}
+	oldBlock, newBlock, err := tb.RangeSplit(rangeFrom, rangeTo)
+	if err != nil {
+		return
+	}
+	tb.SetStyle(style)
+	s.Add(oldBlock)
+	s.Add(newBlock)
+	if err = s.InsertTo(id, model.Block_Bottom, oldBlock.Model().Id); err != nil {
+		return
+	}
+	if err = s.InsertTo(oldBlock.Model().Id, model.Block_Bottom, newBlock.Model().Id); err != nil {
+		return
+	}
+	s.Remove(id)
+	if err = t.Apply(s); err != nil {
+		return
+	}
+	return newBlock.Model().Id, nil
 }
 
 func (t *textImpl) Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error) {
