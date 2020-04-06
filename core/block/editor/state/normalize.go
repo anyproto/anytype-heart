@@ -126,10 +126,6 @@ func (s *State) validateBlock(b simple.Block) (err error) {
 	return fmt.Errorf("block '%s' has not the page in parents", id)
 }
 
-func divId(id int32) string {
-	return fmt.Sprintf("div-%d", id)
-}
-
 func isDivLayout(m *model.Block) bool {
 	if layout := m.GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Div {
 		return true
