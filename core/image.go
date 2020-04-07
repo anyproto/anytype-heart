@@ -159,7 +159,7 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 var imageWidthByName = map[string]int{
 	"thumb": 100,
 	"small": 320,
-	"large": 1280,
+	"large": 1920,
 }
 
 func getSizeForWidth(wantWidth int) string {
