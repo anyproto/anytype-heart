@@ -56,10 +56,6 @@
     - [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request)
     - [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response)
     - [Rpc.Block.Cut.Response.Error](#anytype.Rpc.Block.Cut.Response.Error)
-    - [Rpc.Block.CutBreadcrumbs](#anytype.Rpc.Block.CutBreadcrumbs)
-    - [Rpc.Block.CutBreadcrumbs.Request](#anytype.Rpc.Block.CutBreadcrumbs.Request)
-    - [Rpc.Block.CutBreadcrumbs.Response](#anytype.Rpc.Block.CutBreadcrumbs.Response)
-    - [Rpc.Block.CutBreadcrumbs.Response.Error](#anytype.Rpc.Block.CutBreadcrumbs.Response.Error)
     - [Rpc.Block.Download](#anytype.Rpc.Block.Download)
     - [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request)
     - [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response)
@@ -161,6 +157,10 @@
     - [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request)
     - [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response)
     - [Rpc.Block.Set.Video.Width.Response.Error](#anytype.Rpc.Block.Set.Video.Width.Response.Error)
+    - [Rpc.Block.SetBreadcrumbs](#anytype.Rpc.Block.SetBreadcrumbs)
+    - [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request)
+    - [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response)
+    - [Rpc.Block.SetBreadcrumbs.Response.Error](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error)
     - [Rpc.Block.Split](#anytype.Rpc.Block.Split)
     - [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request)
     - [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response)
@@ -290,7 +290,6 @@
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
     - [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code)
-    - [Rpc.Block.CutBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.CutBreadcrumbs.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
@@ -314,6 +313,7 @@
     - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
+    - [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code)
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
@@ -491,7 +491,7 @@
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockOpenBreadcrumbs | [Rpc.Block.OpenBreadcrumbs.Request](#anytype.Rpc.Block.OpenBreadcrumbs.Request) | [Rpc.Block.OpenBreadcrumbs.Response](#anytype.Rpc.Block.OpenBreadcrumbs.Response) |  |
-| BlockCutBreadcrumbs | [Rpc.Block.CutBreadcrumbs.Request](#anytype.Rpc.Block.CutBreadcrumbs.Request) | [Rpc.Block.CutBreadcrumbs.Response](#anytype.Rpc.Block.CutBreadcrumbs.Response) |  |
+| BlockSetBreadcrumbs | [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request) | [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockCreatePage | [Rpc.Block.CreatePage.Request](#anytype.Rpc.Block.CreatePage.Request) | [Rpc.Block.CreatePage.Response](#anytype.Rpc.Block.CreatePage.Response) |  |
 | BlockUnlink | [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request) | [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response) |  |
@@ -1190,63 +1190,6 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 
 
-<a name="anytype.Rpc.Block.CutBreadcrumbs"></a>
-
-### Rpc.Block.CutBreadcrumbs
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.CutBreadcrumbs.Request"></a>
-
-### Rpc.Block.CutBreadcrumbs.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| breadcrumbsId | [string](#string) |  |  |
-| index | [int32](#int32) |  | 0 - for full reset |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.CutBreadcrumbs.Response"></a>
-
-### Rpc.Block.CutBreadcrumbs.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.CutBreadcrumbs.Response.Error](#anytype.Rpc.Block.CutBreadcrumbs.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.CutBreadcrumbs.Response.Error"></a>
-
-### Rpc.Block.CutBreadcrumbs.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.CutBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.CutBreadcrumbs.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Block.Download"></a>
 
 ### Rpc.Block.Download
@@ -1522,7 +1465,6 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context blo1k |
 | blockId | [string](#string) |  |  |
-| breadcrumbsIds | [string](#string) | repeated | optional ids of breadcrubms blocks |
 
 
 
@@ -2688,6 +2630,63 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.SetBreadcrumbs"></a>
+
+### Rpc.Block.SetBreadcrumbs
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.SetBreadcrumbs.Request"></a>
+
+### Rpc.Block.SetBreadcrumbs.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| breadcrumbsId | [string](#string) |  |  |
+| ids | [string](#string) | repeated | page ids |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.SetBreadcrumbs.Response"></a>
+
+### Rpc.Block.SetBreadcrumbs.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.SetBreadcrumbs.Response.Error](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.SetBreadcrumbs.Response.Error"></a>
+
+### Rpc.Block.SetBreadcrumbs.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4498,19 +4497,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.CutBreadcrumbs.Response.Error.Code"></a>
-
-### Rpc.Block.CutBreadcrumbs.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.Block.Download.Response.Error.Code"></a>
 
 ### Rpc.Block.Download.Response.Error.Code
@@ -4801,6 +4787,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Set.Video.Width.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Video.Width.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code"></a>
+
+### Rpc.Block.SetBreadcrumbs.Response.Error.Code
 
 
 | Name | Number | Description |
