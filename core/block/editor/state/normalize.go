@@ -162,6 +162,7 @@ func (s *State) checkDividedLists(id string) {
 			nextDivM := nextDiv.Model()
 			if len(parent.ChildrenIds) > 0 && len(nextDivM.ChildrenIds) > 0 {
 				if !s.canDivide(parent.ChildrenIds[len(parent.ChildrenIds)-1]) && !s.canDivide(nextDivM.ChildrenIds[0]) {
+					parent = s.Get(id).Model()
 					parent.ChildrenIds = append(parent.ChildrenIds, nextDivM.ChildrenIds...)
 					s.Remove(nextDivM.Id)
 					s.checkDividedLists(id)
