@@ -63,7 +63,7 @@ type Service interface {
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
-	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error)
+	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -321,7 +321,7 @@ func (s *service) SetDivStyle(contextId string, style model.BlockContentDivStyle
 
 func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error) {
 	err = s.DoText(req.ContextId, func(b stext.Text) error {
-		blockId, err = b.Split(req.BlockId, req.CursorPosition, req.Style)
+		blockId, err = b.RangeSplit(req.BlockId, req.Range.From, req.Range.To, req.Style)
 		return err
 	})
 	return
@@ -402,13 +402,13 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (ht
 	return html, err
 }
 
-func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, err error) {
+func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		blockIds, uploadArr, err = cb.Paste(req)
+		blockIds, uploadArr, caretPosition, err = cb.Paste(req)
 		return err
 	})
 
-	return blockIds, uploadArr, err
+	return blockIds, uploadArr, caretPosition, err
 }
 
 func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
