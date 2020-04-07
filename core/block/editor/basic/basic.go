@@ -121,7 +121,7 @@ func (bs *basic) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField)
 			b.Model().Fields = fr.Fields
 		}
 	}
-	return bs.Apply(s)
+	return bs.Apply(s, smartblock.NoHistory)
 }
 
 func (bs *basic) Update(apply func(b simple.Block) error, blockIds ...string) (err error) {
