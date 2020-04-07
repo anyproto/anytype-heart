@@ -121,6 +121,8 @@ message Rpc {
                 string contextId = 1;
                 repeated string blockIds = 2;
                 google.protobuf.Struct details = 3; // page details
+                string dropTargetId = 4;
+                anytype.model.Block.Position position = 5;
             }
 
             message Response {

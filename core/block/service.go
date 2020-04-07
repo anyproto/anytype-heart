@@ -394,7 +394,7 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 			ContextId:       req.ContextId,
 			BlockIds:        req.BlockIds,
 			TargetContextId: pageId,
-			DropTargetId:    "",
+			DropTargetId:    req.DropTargetId,
 			Position:        0,
 		})
 
