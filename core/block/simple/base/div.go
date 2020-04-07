@@ -1,0 +1,58 @@
+package base
+
+import (
+	"fmt"
+
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/mohae/deepcopy"
+)
+
+func NewDiv(m *model.Block) simple.Block {
+	return &Div{
+		Base:    NewBase(m).(*Base),
+		content: m.GetDiv(),
+	}
+}
+
+type DivBlock interface {
+	simple.Block
+	SetStyle(style model.BlockContentDivStyle)
+}
+
+type Div struct {
+	*Base
+	content *model.BlockContentDiv
+}
+
+func (b *Div) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
+	div, ok := block.(*Div)
+	if ! ok {
+		return nil, fmt.Errorf("can't make diff with different block type")
+	}
+	if msgs, err = b.Base.Diff(div); err != nil {
+		return
+	}
+	changes := &pb.EventBlockSetDiv{
+		Id: div.Id,
+	}
+	hasChanges := false
+
+	if b.content.Style != div.content.Style {
+		hasChanges = true
+		changes.Style = &pb.EventBlockSetDivStyle{Value: div.content.Style}
+	}
+	if hasChanges {
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDiv{BlockSetDiv: changes}})
+	}
+	return
+}
+
+func (b *Div) Copy() simple.Block {
+	return NewDiv(deepcopy.Copy(b.Model()).(*model.Block))
+}
+
+func (b *Div) SetStyle(style model.BlockContentDivStyle) {
+	b.content.Style = style
+}

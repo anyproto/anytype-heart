@@ -120,3 +120,15 @@ func TestBasic_Update(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "test", sb.NewState().Pick("2").Model().BackgroundColor)
 }
+
+func TestBasic_SetDivStyle(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+		AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}))
+	b := NewBasic(sb)
+
+	err := b.SetDivStyle(model.BlockContentDiv_Dots, "2")
+	require.NoError(t, err)
+	r := sb.NewState()
+	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
+}
