@@ -1784,6 +1784,7 @@ Image/Video/File blocks then:
 | focusedBlockId | [string](#string) |  |  |
 | selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 | selectedBlockIds | [string](#string) | repeated |  |
+| copyTextRange | [model.Range](#anytype.model.Range) |  |  |
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype.model.Block) | repeated |  |
@@ -1803,6 +1804,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error) |  |  |
 | blockIds | [string](#string) | repeated |  |
+| caretPosition | [int32](#int32) |  |  |
 
 
 
@@ -2858,7 +2860,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| cursorPosition | [int32](#int32) |  |  |
+| range | [model.Range](#anytype.model.Range) |  |  |
 | style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
 
 
