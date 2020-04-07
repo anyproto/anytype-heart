@@ -405,6 +405,13 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 }
 
 func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*model.Block, pos model.BlockPosition, isReversed bool) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, targetIdOut string, err error) {
+	idToIsChild := make(map[string]bool)
+	for _, b := range blocks {
+		for _, cId := range b.ChildrenIds {
+			idToIsChild[cId] = true
+		}
+	}
+
 	for i, _ := range blocks {
 		index := i
 		if isReversed {
@@ -413,9 +420,12 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 		newBlock := simple.New(blocks[index])
 		s.Add(newBlock)
 		blockIds = append(blockIds, newBlock.Model().Id)
-		err = s.InsertTo(targetId, pos, newBlock.Model().Id)
-		if err != nil {
-			return blockIds, uploadArr, targetId, err
+
+		if idToIsChild[blocks[index].Id] != true {
+			err = s.InsertTo(targetId, pos, newBlock.Model().Id)
+			if err != nil {
+				return blockIds, uploadArr, targetId, err
+			}
 		}
 
 		if f := newBlock.Model().GetFile(); f != nil {
@@ -430,14 +440,14 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 
 		targetId = newBlock.Model().Id
 
-		for _, childId := range blocks[i].ChildrenIds {
-			childBlock := s.Get(childId)
-			s.Add(childBlock)
+		/*		for _, childId := range blocks[i].ChildrenIds {
+				childBlock := s.Get(childId)
+				s.Add(childBlock)
 
-			if err = s.InsertTo(blocks[i].Id, model.Block_Bottom, childId); err != nil {
-				return blockIds, uploadArr, targetId, err
-			}
-		}
+				if err = s.InsertTo(blocks[i].Id, model.Block_Bottom, childId); err != nil {
+					return blockIds, uploadArr, targetId, err
+				}
+			}*/
 
 	}
 

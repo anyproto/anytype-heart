@@ -340,16 +340,27 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
 			contextState := contextBlock.NewState()
 			targetState := targetBlock.NewState()
 
+			idToIsChild := make(map[string]bool)
+			for _, bId := range req.BlockIds {
+				block := contextState.Pick(bId)
+				if block != nil {
+					for _, cId := range block.Model().ChildrenIds {
+						idToIsChild[cId] = true
+					}
+				}
+			}
+
 			for _, bId := range req.BlockIds {
 				b := contextBlock.Pick(bId)
 				if b != nil {
 					targetState.Add(b)
-					err = targetState.InsertTo("", model.Block_Inner, b.Model().Id)
-					if err != nil {
-						return err
+					if idToIsChild[bId] != true {
+						err = targetState.InsertTo("", model.Block_Inner, b.Model().Id)
+						if err != nil {
+							return err
+						}
+						contextState.Remove(b.Model().Id)
 					}
-
-					contextState.Remove(b.Model().Id)
 				}
 			}
 
