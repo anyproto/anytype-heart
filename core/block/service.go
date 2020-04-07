@@ -375,14 +375,14 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 		pageId := ""
 		pageId, linkId, err = s.CreatePage(pb.RpcBlockCreatePageRequest{
 			ContextId: req.ContextId,
-			TargetId:  req.BlockIds[0],
+			TargetId:  req.DropTargetId,
+			Position:  req.Position,
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name": pbtypes.String("New page"),
 					"icon": pbtypes.String(":file_folder:"),
 				},
 			},
-			Position: model.Block_Bottom,
 		})
 
 		if err != nil {
@@ -394,7 +394,7 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 			ContextId:       req.ContextId,
 			BlockIds:        req.BlockIds,
 			TargetContextId: pageId,
-			DropTargetId:    req.DropTargetId,
+			DropTargetId:    "",
 			Position:        0,
 		})
 
