@@ -144,10 +144,11 @@ func (block *smartBlock) ID() string {
 }
 
 func (block *smartBlock) GetLastSnapshot() (SmartBlockSnapshot, error) {
-	versions, err := block.GetSnapshots("", 1, false)
+	versions, err := block.GetSnapshots(vclock.Undef, 1, false)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(versions) == 0 {
 		return nil, ErrBlockSnapshotNotFound
 	}
@@ -160,26 +161,16 @@ func (block *smartBlock) GetChangesBetween(since vclock.VClock, until vclock.VCl
 }
 
 func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnapshot, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-func (block *smartBlock) getSnapshotTime(event net.Event) (*types.Timestamp, error) {
-	header, err := event.GetHeader(context.TODO(), block.node.t, block.thread.Key.Read())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get headers: %w", err)
-	}
-
-	versionTime, err := header.Time()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get record time from headers: %w", err)
-	}
-
-	versionTimePB, err := types.TimestampProto(*versionTime)
+	versions, err := block.GetSnapshots(state, 1, false)
 	if err != nil {
 		return nil, err
 	}
 
-	return versionTimePB, nil
+	if len(versions) == 0 {
+		return nil, ErrBlockSnapshotNotFound
+	}
+
+	return versions[0], nil
 }
 
 func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) {
@@ -232,86 +223,23 @@ func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) 
 	}
 
 	// todo: how to get creator peer id?
-	version := &smartBlockSnapshotMeta{model: model, date: time, user: "<todo>"}
+	version := &smartBlockSnapshotMeta{model: model, date: time, creator: "<todo>"}
 
 	return version, nil
 }*/
 
-func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (snapshots []smartBlockSnapshot, err error) {
-	var head cid.Cid
-
-	var offsetTime *time.Time
-	if offset != "" {
-		head, err = cid.Decode(offset)
-		if err != nil {
-			return nil, err
-		}
-		rec, err2 := block.node.t.GetRecord(context.TODO(), block.thread.ID, head)
-		if err2 != nil {
-			err = err2
-			return nil, err
-		}
-
-		event, err2 := cbor.EventFromRecord(context.TODO(), block.node.t, rec)
-		if err2 != nil {
-			err = err2
-			return
-		}
-
-		header, err2 := event.GetHeader(context.TODO(), block.node.t, block.thread.Key.Read())
-		if err2 != nil {
-			err = err2
-			return
-		}
-
-		offsetTime, err = header.Time()
-		if err != nil {
-			return
-		}
-	}
-
-	records, err := block.node.traverseLogs(context.TODO(), block.thread.ID, offsetTime, limit)
+func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly bool) (snapshots []smartBlockSnapshot, err error) {
+	snapshotsPB, err := block.node.traverseLogs(context.TODO(), block.thread.ID, offset, limit)
 	if err != nil {
 		return
 	}
 
-	for _, rec := range records {
-		event, err := cbor.EventFromRecord(context.TODO(), block.node.t, rec.Record)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get event: %w", err)
-		}
-		node, err := event.GetBody(context.TODO(), block.node.t, block.thread.Key.Read())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get record body: %w", err)
-		}
-		m := new(signedPbPayload)
-		err = cbornode.DecodeInto(node.RawData(), m)
-		if err != nil {
-			return nil, fmt.Errorf("incorrect record type: %w", err)
-		}
-
-		err = m.Verify(rec.PubKey)
-		if err != nil {
-			return nil, err
-		}
-
-		var snapshot = &storage.SmartBlockSnapshot{}
-		err = m.Unmarshal(snapshot)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode pb block snapshot: %w", err)
-		}
-
-		t, err := types.TimestampProto(rec.Date)
-		if err != nil {
-			return nil, fmt.Errorf("can't convert tme to pb: %w", err)
-		}
-
+	for _, snapshot := range snapshotsPB {
 		snapshots = append(snapshots, smartBlockSnapshot{
 			blocks:  snapshot.Blocks,
 			details: snapshot.Details,
 			state:   vclock.NewFromMap(snapshot.State),
-			date:    t,
-			user:    m.AccAddr,
+			creator: snapshot.Creator,
 		})
 	}
 
@@ -319,7 +247,10 @@ func (block *smartBlock) GetSnapshots(offset string, limit int, metaOnly bool) (
 }
 
 func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
-	model := &storage.SmartBlockSnapshot{State: state.Map()}
+	// todo: we don't need to increment here
+	// temporally increment the vclock until we don't have changes implemented
+	state.Increment(block.thread.GetOwnLog().ID.String())
+	model := &storage.SmartBlockSnapshot{State: state.Map(), ClientTime: time.Now().Unix()}
 	if meta != nil && meta.Details != nil {
 		model.Details = meta.Details
 	}
@@ -335,11 +266,11 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	}
 
 	return &smartBlockSnapshot{
-		blocks: model.Blocks,
-		user:   user,
-		date:   date,
-		state:  state,
-		node:   block.node,
+		blocks:  model.Blocks,
+		creator: user,
+		date:    date,
+		state:   state,
+		node:    block.node,
 	}, nil
 }
 
@@ -369,31 +300,8 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	event, err2 := cbor.EventFromRecord(context.TODO(), block.node.t, rec.Value())
-	if err2 != nil {
-		err = err2
-		return
-	}
-
-	header, err2 := event.GetHeader(context.TODO(), block.node.t, block.thread.Key.Read())
-	if err2 != nil {
-		err = err2
-		return
-	}
-
-	msgTime, err2 := header.Time()
-	if err2 != nil {
-		err = err2
-		return
-	}
-
 	versionId = rec.Value().Cid().String()
 	log.Debugf("SmartBlock.addSnapshot: blockId = %s newSnapshotId = %s", block.ID(), versionId)
-	user = block.node.account.Address()
-	date, err = types.TimestampProto(*msgTime)
-	if err != nil {
-		return
-	}
 
 	return
 }

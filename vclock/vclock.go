@@ -40,6 +40,10 @@ func NewFromMap(m map[string]uint64) VClock {
 	return VClock{mutex: &sync.RWMutex{}, m: m}
 }
 
+func (vc VClock) IsNil() bool {
+	return vc.m == nil
+}
+
 //Merge takes the max of all clock values in other and updates the
 //values of the callee
 func (vc VClock) Merge(other VClock) {
@@ -82,7 +86,7 @@ func (vc VClock) String() string {
 	vc.mutex.RLock()
 	defer vc.mutex.RUnlock()
 
-	ids := make([]string, 0, len(vc.m))
+	ids := make([]string, len(vc.m))
 	i := 0
 	for id := range vc.m {
 		ids[i] = id
@@ -172,6 +176,13 @@ func (vc VClock) Copy() VClock {
 		cp[key] = value
 	}
 	return VClock{mutex: &sync.RWMutex{}, m: cp}
+}
+
+func (vc VClock) Increment(s string) {
+	vc.mutex.RLock()
+	defer vc.mutex.RUnlock()
+
+	vc.m[s] = vc.m[s] + 1
 }
 
 func (vc VClock) Map() map[string]uint64 {

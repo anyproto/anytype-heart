@@ -36,7 +36,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/stretchr/testify v1.5.1
-	github.com/textileio/go-threads v0.1.12
+	github.com/textileio/go-threads v0.1.13
 	github.com/tyler-smith/go-bip39 v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	google.golang.org/grpc v1.25.1

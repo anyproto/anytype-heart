@@ -24,9 +24,9 @@ type smartBlockSnapshot struct {
 	keysByHash map[string]*storage.FileKeys `protobuf:"bytes,4,rep,name=keysByHash,proto3" json:"keysByHash,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	state      vclock.VClock
 
-	user string
-	date *types.Timestamp
-	node *Anytype
+	creator string
+	date    *types.Timestamp
+	node    *Anytype
 }
 
 func (snapshot smartBlockSnapshot) State() vclock.VClock {
@@ -34,7 +34,7 @@ func (snapshot smartBlockSnapshot) State() vclock.VClock {
 }
 
 func (snapshot smartBlockSnapshot) Creator() (string, error) {
-	return snapshot.user, nil
+	return snapshot.creator, nil
 }
 
 func (snapshot smartBlockSnapshot) CreatedDate() *time.Time {
