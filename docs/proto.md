@@ -203,6 +203,11 @@
     - [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request)
     - [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response)
     - [Rpc.BlockList.Set.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error)
+    - [Rpc.BlockList.Set.Div](#anytype.Rpc.BlockList.Set.Div)
+    - [Rpc.BlockList.Set.Div.Style](#anytype.Rpc.BlockList.Set.Div.Style)
+    - [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request)
+    - [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response)
+    - [Rpc.BlockList.Set.Div.Style.Response.Error](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error)
     - [Rpc.BlockList.Set.Fields](#anytype.Rpc.BlockList.Set.Fields)
     - [Rpc.BlockList.Set.Fields.Request](#anytype.Rpc.BlockList.Set.Fields.Request)
     - [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField)
@@ -328,6 +333,7 @@
     - [Rpc.BlockList.MoveToNewPage.Response.Error.Code](#anytype.Rpc.BlockList.MoveToNewPage.Response.Error.Code)
     - [Rpc.BlockList.Set.Align.Response.Error.Code](#anytype.Rpc.BlockList.Set.Align.Response.Error.Code)
     - [Rpc.BlockList.Set.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code)
+    - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
@@ -371,6 +377,8 @@
     - [Event.Block.Set.Bookmark.Url](#anytype.Event.Block.Set.Bookmark.Url)
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
     - [Event.Block.Set.Details](#anytype.Event.Block.Set.Details)
+    - [Event.Block.Set.Div](#anytype.Event.Block.Set.Div)
+    - [Event.Block.Set.Div.Style](#anytype.Event.Block.Set.Div.Style)
     - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
     - [Event.Block.Set.File](#anytype.Event.Block.Set.File)
     - [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash)
@@ -517,6 +525,7 @@
 | BlockListDuplicate | [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request) | [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response) |  |
 | BlockListSetBackgroundColor | [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request) | [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response) |  |
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
+| BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
 | BlockListSetTextColor | [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request) | [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response) |  |
@@ -3308,6 +3317,74 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Div"></a>
+
+### Rpc.BlockList.Set.Div
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Div.Style"></a>
+
+### Rpc.BlockList.Set.Div.Style
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Div.Style.Request"></a>
+
+### Rpc.BlockList.Set.Div.Style.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| style | [model.Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Div.Style.Response"></a>
+
+### Rpc.BlockList.Set.Div.Style.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Div.Style.Response.Error](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Div.Style.Response.Error"></a>
+
+### Rpc.BlockList.Set.Div.Style.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Fields"></a>
 
 ### Rpc.BlockList.Set.Fields
@@ -5006,6 +5083,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Div.Style.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Fields.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Fields.Response.Error.Code
@@ -5584,6 +5674,37 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.Div"></a>
+
+### Event.Block.Set.Div
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| style | [Event.Block.Set.Div.Style](#anytype.Event.Block.Set.Div.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Div.Style"></a>
+
+### Event.Block.Set.Div.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.Fields"></a>
 
 ### Event.Block.Set.Fields
@@ -5941,6 +6062,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetBookmark | [Event.Block.Set.Bookmark](#anytype.Event.Block.Set.Bookmark) |  |  |
 | blockSetAlign | [Event.Block.Set.Align](#anytype.Event.Block.Set.Align) |  |  |
 | blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  |  |
+| blockSetDiv | [Event.Block.Set.Div](#anytype.Event.Block.Set.Div) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
