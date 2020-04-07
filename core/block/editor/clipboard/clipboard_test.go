@@ -7,6 +7,194 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 )
 
+func TestCommonSmart_copyRangeNoMarks(t *testing.T) {
+	t.Run("No marks, paste middleCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 4), rng(3, 6), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "12def56789"))
+	})
+
+	t.Run("No marks, paste fullCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 4), rng(0, 9), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "12abcdefghi56789"))
+	})
+
+	t.Run("No marks, paste zeroCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 4), rng(5, 5), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "1256789"))
+	})
+
+	t.Run("No marks, paste middleToEndCut to the middle", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(2, 5), rng(0, 3), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "12abc6789"))
+	})
+
+	t.Run("No marks, paste fullCut to the full", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(0, 9), rng(0, 9), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", "abcdefghi"))
+	})
+
+	t.Run("No marks, paste zeroCut to the full", func(t *testing.T) {
+		sb := page(block("1", "123456789"))
+		rangePaste(sb, t, "1", rng(0, 9), rng(3, 3), block("n1", "abcdefghi"))
+		shouldBe(sb, t, block("1", ""))
+	})
+}
+
+func TestCommonSmart_copyRangeOnePageMarkPartlyInRange(t *testing.T) {
+	t.Run("One mark in page: one middleRange mark in page, fullCut to middle, cut mark at start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 3, 8)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 0, To: 9},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "12abcdefghi56789", mark(bold, 11, 15)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in page, fullCut to middle, cut mark at end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 3, 7)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 6, To: 8}, &model.Range{From: 0, To: 9},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "123456abcdefghi9", mark(bold, 3, 6)),
+		)
+	})
+}
+
+func TestCommonSmart_copyRangeOnePageMark(t *testing.T) {
+	t.Run("One mark in page: one fullRange mark in page, middleCut to middle", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 0, 9)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 6},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "12def56789", mark(bold, 0, 2), mark(bold, 5, 10)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in page, middleCut to to the end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 0, 9)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 9, To: 9}, &model.Range{From: 3, To: 6},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "123456789def", mark(bold, 0, 9)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in page, middleCut to to the start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789", mark(bold, 0, 9)),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 0, To: 0}, &model.Range{From: 3, To: 6},
+			block("n1", "abcdefghi"),
+		)
+		shouldBe(sb, t,
+			block("1", "def123456789", mark(bold, 3, 12)),
+		)
+	})
+}
+
+func TestCommonSmart_copyRangeOnePasteMark(t *testing.T) {
+	t.Run("One mark in page: one fullRange mark in paste, middleCut to end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 0, 9)),
+		)
+		shouldBe(sb, t,
+			block("1", "12defgh56789", mark(bold, 2, 7)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in paste, middleCut to the end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 9, To: 9}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 0, 9)),
+		)
+		shouldBe(sb, t,
+			block("1", "123456789defgh", mark(bold, 9, 14)),
+		)
+	})
+
+	t.Run("One mark in page: one fullRange mark in paste, middleCut to the start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 0, To: 0}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 0, 9)),
+		)
+		shouldBe(sb, t,
+			block("1", "defgh123456789", mark(bold, 0, 5)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the middle", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 6, 7)),
+		)
+		shouldBe(sb, t,
+			block("1", "12defgh56789", mark(bold, 5, 6)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the start", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 0, To: 0}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 6, 7)),
+		)
+		shouldBe(sb, t,
+			block("1", "defgh123456789", mark(bold, 3, 4)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the end", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 9, To: 9}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 6, 7)),
+		)
+		shouldBe(sb, t,
+			block("1", "123456789defgh", mark(bold, 12, 13)),
+		)
+	})
+
+	t.Run("One mark in page: one middleRange mark in paste, middleCut to the middle, mark is out of range", func(t *testing.T) {
+		sb := page(
+			block("1", "123456789"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 2, To: 4}, &model.Range{From: 3, To: 8},
+			block("n1", "abcdefghi", mark(bold, 1, 2)),
+		)
+		shouldBe(sb, t,
+			block("1", "12defgh56789"),
+		)
+	})
+}
+
 func TestCommonSmart_pasteHtml(t *testing.T) {
 	t.Run("Simple: single p block", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "abcde", "55555"}, emptyMarks))
@@ -147,10 +335,10 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 		pasteAny(t, sb, "1", model.Range{From: 5, To: 5}, []string{}, createBlocks([]string{"new1"}, pasteText, pasteMarks)) // @marks
 		checkBlockMarks(t, sb, [][]*model.BlockContentTextMark{
 			{{
-				Range: &model.Range{From: 0 + 5, To: 4 + 5},
+				Range: &model.Range{From: 1, To: 3},
 				Type:  model.BlockContentTextMark_Bold,
 			}, {
-				Range: &model.Range{From: 1, To: 3},
+				Range: &model.Range{From: 0 + 5, To: 4 + 5},
 				Type:  model.BlockContentTextMark_Bold,
 			}},
 		})
@@ -177,10 +365,7 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 		pasteAny(t, sb, "1", model.Range{From: 2, To: 5}, []string{}, createBlocks([]string{"new1"}, pasteText, pasteMarks)) // @marks
 		checkBlockMarks(t, sb, [][]*model.BlockContentTextMark{
 			{{
-				Range: &model.Range{From: 0 + 5 - 3, To: 4 + 5 - 3},
-				Type:  model.BlockContentTextMark_Bold,
-			}, {
-				Range: &model.Range{From: 1, To: 2},
+				Range: &model.Range{From: 1, To: 6},
 				Type:  model.BlockContentTextMark_Bold,
 			}},
 		})
@@ -250,35 +435,16 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 	})
 
 	t.Run("(*********) <b>lorem lorem</b>  :--->   __PASTE__ <b>lorem lorem</b>  (m.Range.From > r.To)", func(t *testing.T) {
-		initialText := []string{"abcdef"}
-		initialMarks := [][]*model.BlockContentTextMark{
-			{{
-				Range: &model.Range{From: 3, To: 4},
-				Type:  model.BlockContentTextMark_Bold,
-			}},
-		}
+		sb := page(
+			block("1", "abcdef", mark(bold, 3, 5)),
+		)
+		rangePaste(sb, t, "1", rng(1, 2), rng(0, 6),
+			block("n1", "123456", mark(bold, 1, 4)),
+		)
+		shouldBe(sb, t,
+			block("1", "a123456cdef", mark(bold, 2, 5), mark(bold, 8, 10)),
+		)
 
-		pasteText := []string{"123456"}
-		pasteMarks := [][]*model.BlockContentTextMark{
-			{{
-				Range: &model.Range{From: 3, To: 4},
-				Type:  model.BlockContentTextMark_Italic,
-			}},
-		}
-
-		sb := createPage(t, createBlocks([]string{}, initialText, initialMarks))
-
-		pasteAny(t, sb, "1", model.Range{From: 1, To: 2}, []string{}, createBlocks([]string{"new1"}, pasteText, pasteMarks)) // @marks
-
-		checkBlockMarks(t, sb, [][]*model.BlockContentTextMark{
-			{{
-				Range: &model.Range{From: 4, To: 5},
-				Type:  model.BlockContentTextMark_Italic,
-			}, {
-				Range: &model.Range{From: 8, To: 9},
-				Type:  model.BlockContentTextMark_Bold,
-			}},
-		})
 	})
 }
 
@@ -385,7 +551,7 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, "aaaaa\nbbbbb")
-		checkBlockTextDebug(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555"})
 	})
 
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
@@ -424,16 +590,28 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "55555"})
 	})
 
-	t.Run("8. Cursor in the middle. Paste two blocks", func(t *testing.T) {
+	t.Run("8.0 Cursor in the middle. Paste two blocks", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
+		pasteAny(t, sb, "1", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
+		checkBlockText(t, sb, []string{"abc", "def", "123456789"})
+	})
+
+	t.Run("8.1 Cursor in the middle. Paste two blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
 		pasteAny(t, sb, "1", model.Range{From: 1, To: 1}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
 		checkBlockText(t, sb, []string{"1", "abc", "def", "23456789"})
 	})
 
+	t.Run("8.2 Cursor in the middle. Paste two blocks", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
+		pasteAny(t, sb, "1", model.Range{From: 2, To: 2}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
+		checkBlockText(t, sb, []string{"12", "abc", "def", "3456789"})
+	})
+
 	t.Run("9. Cursor at the pre-end. Paste two blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
-		pasteAny(t, sb, "1", model.Range{From: 8, To: 8}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
-		checkBlockText(t, sb, []string{"12345678", "abc", "def", "9"})
+		pasteAny(t, sb, "1", model.Range{From: 4, To: 4}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
+		checkBlockText(t, sb, []string{"1234", "abc", "def", "56789"})
 	})
 
 	t.Run("10. Cursor at the end. Paste two blocks", func(t *testing.T) {
