@@ -78,6 +78,8 @@ type Service interface {
 	SetBackgroundColor(contextId string, color string, blockIds ...string) error
 	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
+	SetDivStyle(contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
+
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(req pb.RpcBlockUploadRequest) error
 	CreateAndUploadFile(req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
@@ -310,6 +312,12 @@ func (s *service) DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) (newIds [
 func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) (err error) {
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.Unlink(req.BlockIds...)
+	})
+}
+
+func (s *service) SetDivStyle(contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.SetDivStyle(style, ids...)
 	})
 }
 
