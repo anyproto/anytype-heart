@@ -154,42 +154,103 @@ func TestState_Normalize(t *testing.T) {
 		assert.True(t, len(divs) > 0)
 	})
 
-	t.Run("div balance", func(t *testing.T) {
-		genIds := func(length, start int) []string {
-			res := make([]string, length)
-			for i := range res {
-				res[i] = fmt.Sprint(start)
-				start++
-			}
-			return res
+	t.Run("normalize tree with numeric list", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		var rootIds []string
+		for i := 0; i < maxChildrenThreshold+1; i++ {
+			rootIds = append(rootIds, fmt.Sprint(i))
+			r.Add(simple.New(&model.Block{Id: fmt.Sprint(i)}))
 		}
+		for i := 0; i < maxChildrenThreshold+1; i++ {
+			rootIds = append(rootIds, fmt.Sprint("n", i))
+			r.Add(simple.New(&model.Block{
+				Id: fmt.Sprint("n", i),
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Style: model.BlockContentText_Numbered,
+					},
+				},
+			}))
+		}
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: rootIds}))
+
+		s := r.NewState()
+		s.normalizeTree()
+		ApplyState(s)
+		t.Log(r.String())
+	})
+
+	genIds := func(s *State, length, start int, isList ...bool) []string {
+		res := make([]string, length)
+		for i := range res {
+			res[i] = fmt.Sprint(start)
+			b := simple.New(&model.Block{Id: res[i]})
+			if len(isList) > 0 {
+				b = simple.New(&model.Block{
+					Id: res[i],
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Style: model.BlockContentText_Numbered,
+						},
+					},
+				})
+			}
+			s.Add(b)
+			start++
+		}
+		return res
+	}
+
+	t.Run("div balance", func(t *testing.T) {
 		t.Run("0-0", func(t *testing.T) {
+			s := NewDoc("root", nil).(*State)
 			d1 := &model.Block{}
 			d2 := &model.Block{}
-			require.False(t, divBalance(d1, d2))
+			require.False(t, s.divBalance(d1, d2))
 			assert.Len(t, d1.ChildrenIds, 0)
 			assert.Len(t, d2.ChildrenIds, 0)
 		})
 		t.Run("1-0", func(t *testing.T) {
-			d1 := &model.Block{ChildrenIds: genIds(1, 1)}
+			s := NewDoc("root", nil).(*State)
+			d1 := &model.Block{ChildrenIds: genIds(s, 1, 1)}
 			d2 := &model.Block{}
-			require.False(t, divBalance(d1, d2))
+			require.False(t, s.divBalance(d1, d2))
 			assert.Len(t, d1.ChildrenIds, 0)
 			assert.Len(t, d2.ChildrenIds, 1)
 		})
 		t.Run("4-2", func(t *testing.T) {
-			d1 := &model.Block{ChildrenIds: genIds(4, 1)}
-			d2 := &model.Block{ChildrenIds: genIds(2, 5)}
-			require.False(t, divBalance(d1, d2))
+			s := NewDoc("root", nil).(*State)
+			d1 := &model.Block{ChildrenIds: genIds(s, 4, 1)}
+			d2 := &model.Block{ChildrenIds: genIds(s, 2, 5)}
+			require.False(t, s.divBalance(d1, d2))
 			assert.Equal(t, []string{"1", "2", "3"}, d1.ChildrenIds)
 			assert.Equal(t, []string{"4", "5", "6"}, d2.ChildrenIds)
 		})
 		t.Run("overflow", func(t *testing.T) {
-			d1 := &model.Block{ChildrenIds: genIds(maxChildrenThreshold, 1)}
-			d2 := &model.Block{ChildrenIds: genIds(maxChildrenThreshold+1, maxChildrenThreshold+10)}
-			require.True(t, divBalance(d1, d2))
+			s := NewDoc("root", nil).(*State)
+			d1 := &model.Block{ChildrenIds: genIds(s, maxChildrenThreshold, 1)}
+			d2 := &model.Block{ChildrenIds: genIds(s, maxChildrenThreshold+1, maxChildrenThreshold+10)}
+			require.True(t, s.divBalance(d1, d2))
 			assert.Len(t, d1.ChildrenIds, divSize)
 			assert.Len(t, d2.ChildrenIds, maxChildrenThreshold-divSize+maxChildrenThreshold+1)
+		})
+		t.Run("not divide 4-0", func(t *testing.T) {
+			s := NewDoc("root", nil).(*State)
+			d1 := &model.Block{ChildrenIds: genIds(s, 4, 1, true)}
+			d2 := &model.Block{ChildrenIds: []string{}}
+
+			require.False(t, s.divBalance(d1, d2))
+			assert.Len(t, d1.ChildrenIds, 4)
+			assert.Len(t, d2.ChildrenIds, 0)
+		})
+		t.Run("not divide 4-2", func(t *testing.T) {
+			s := NewDoc("root", nil).(*State)
+			d1 := &model.Block{ChildrenIds: append(genIds(s, 4, 1, true), genIds(s, 2, 5)...)}
+			d2 := &model.Block{ChildrenIds: []string{}}
+
+			require.False(t, s.divBalance(d1, d2))
+			assert.Len(t, d1.ChildrenIds, 4)
+			assert.Len(t, d2.ChildrenIds, 2)
 		})
 	})
 	t.Run("normalize on insert", func(t *testing.T) {
@@ -233,5 +294,21 @@ func TestState_Normalize(t *testing.T) {
 		assert.Len(t, result, 100)
 		assert.True(t, len(divs) > 0)
 	})
+	t.Run("merge divided list", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		var seq int32
+		div1 := r.newDiv(&seq)
+		div2 := r.newDiv(&seq)
+		div1.Model().ChildrenIds = genIds(r, 5, 1, true)
+		div2.Model().ChildrenIds = genIds(r, 5, 6, true)
+		r.Add(div1)
+		r.Add(div2)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{div1.Model().Id, div2.Model().Id}}))
 
+		s := r.NewState()
+		_, _, err := ApplyState(s)
+		require.NoError(t, err)
+		require.Equal(t, []string{"div-1"}, r.Pick(r.RootId()).Model().ChildrenIds)
+		assert.Len(t, r.Pick("div-1").Model().ChildrenIds, 10)
+	})
 }

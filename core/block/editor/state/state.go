@@ -107,11 +107,11 @@ func (s *State) Remove(id string) (ok bool) {
 		return false
 	}
 	if s.Pick(id) != nil {
+		s.Unlink(id)
 		if _, ok = s.blocks[id]; ok {
 			delete(s.blocks, id)
 		}
 		s.toRemove = append(s.toRemove, id)
-		s.Unlink(id)
 		if slice.FindPos(s.newIds, id) != -1 {
 			s.newIds = slice.Remove(s.newIds, id)
 		}
