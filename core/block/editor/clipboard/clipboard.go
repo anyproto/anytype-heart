@@ -439,16 +439,6 @@ func (cb *clipboard) insertBlocks(s *state.State, targetId string, blocks []*mod
 		}
 
 		targetId = newBlock.Model().Id
-
-		/*		for _, childId := range blocks[i].ChildrenIds {
-				childBlock := s.Get(childId)
-				s.Add(childBlock)
-
-				if err = s.InsertTo(blocks[i].Id, model.Block_Bottom, childId); err != nil {
-					return blockIds, uploadArr, targetId, err
-				}
-			}*/
-
 	}
 
 	return blockIds, uploadArr, targetId, nil
