@@ -368,42 +368,30 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
 }
 
 func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
-	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
-		contextState := contextBlock.NewState()
-
-		// 1. Create new page, link
-		pageId := ""
-		pageId, linkId, err = s.CreatePage(pb.RpcBlockCreatePageRequest{
-			ContextId: req.ContextId,
-			TargetId:  req.DropTargetId,
-			Position:  req.Position,
-			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					"name": pbtypes.String("New page"),
-					"icon": pbtypes.String(":file_folder:"),
-				},
-			},
-		})
-
-		if err != nil {
-			return err
-		}
-
-		// 2. Move blocks to new page
-		err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
-			ContextId:       req.ContextId,
-			BlockIds:        req.BlockIds,
-			TargetContextId: pageId,
-			DropTargetId:    "",
-			Position:        0,
-		})
-
-		if err != nil {
-			return err
-		}
-
-		return contextBlock.Apply(contextState)
+	// 1. Create new page, link
+	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.DropTargetId,
+		Position:  req.Position,
+		Details:   req.Details,
 	})
+
+	if err != nil {
+		return linkId, err
+	}
+
+	// 2. Move blocks to new page
+	err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
+		ContextId:       req.ContextId,
+		BlockIds:        req.BlockIds,
+		TargetContextId: pageId,
+		DropTargetId:    "",
+		Position:        0,
+	})
+
+	if err != nil {
+		return linkId, err
+	}
 
 	return linkId, err
 }
