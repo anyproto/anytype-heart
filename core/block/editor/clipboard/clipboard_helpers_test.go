@@ -17,6 +17,118 @@ import (
 
 var emptyMarks [][]*model.BlockContentTextMark
 
+var bold = model.BlockContentTextMark_Bold
+var italic = model.BlockContentTextMark_Italic
+var fontRed = model.BlockContentTextMark_TextColor
+
+func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
+	sb = smarttest.New("test")
+
+	cIds := []string{}
+	for _, b := range blocks {
+		cIds = append(cIds, b.Id)
+	}
+
+	sb.AddBlock(simple.New(&model.Block{
+		Id:          "test",
+		ChildrenIds: cIds,
+	}))
+
+	for i, _ := range blocks {
+		sb.AddBlock(simple.New(blocks[i]))
+	}
+
+	return sb
+}
+
+func rangePaste(sb *smarttest.SmartTest, t *testing.T, focusId string, focusRange *model.Range, copyRange *model.Range, blocks ...*model.Block) {
+	cb := NewClipboard(sb)
+	req := pb.RpcBlockPasteRequest{
+		ContextId:         sb.Id(),
+		FocusedBlockId:    focusId,
+		SelectedTextRange: focusRange,
+		CopyTextRange:     copyRange,
+		AnySlot:           blocks,
+	}
+	_, _, _, err := cb.Paste(req)
+	require.NoError(t, err)
+}
+
+func block(id string, txt string, marks ...*model.BlockContentTextMark) (b *model.Block) {
+	newBlock := &model.Block{Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: txt,
+				Marks: &model.BlockContentTextMarks{
+					Marks: marks,
+				},
+			},
+		},
+	}
+
+	return newBlock
+}
+
+func mark(markType model.BlockContentTextMarkType, from int32, to int32) (m *model.BlockContentTextMark) {
+	param := ""
+	if markType == model.BlockContentTextMark_TextColor {
+		param = "red"
+	}
+	return &model.BlockContentTextMark{
+		Range: &model.Range{
+			From: from,
+			To:   to,
+		},
+		Type:  markType,
+		Param: param,
+	}
+}
+
+func rng(from int32, to int32) *model.Range {
+	return &model.Range{From: from, To: to}
+}
+
+func shouldBe(sb *smarttest.SmartTest, t *testing.T, shouldBeBLocks ...*model.Block) {
+	realBlocks := []*model.Block{}
+	cIds := sb.Pick("test").Model().ChildrenIds
+	for _, cId := range cIds {
+		realBlocks = append(realBlocks, sb.Pick(cId).Model())
+	}
+
+	require.Equal(t, len(realBlocks), len(shouldBeBLocks))
+
+	for i, realBlock := range realBlocks {
+		require.Equal(t, realBlock.GetText().Text, shouldBeBLocks[i].GetText().Text)
+		require.Equal(t, len(realBlock.GetText().Marks.Marks), len(shouldBeBLocks[i].GetText().Marks.Marks))
+
+		for j, realMark := range realBlock.GetText().Marks.Marks {
+			shouldBeMark := shouldBeBLocks[i].GetText().Marks.Marks[j]
+
+			require.Equal(t, realMark.Range.From, shouldBeMark.Range.From)
+			require.Equal(t, realMark.Range.To, shouldBeMark.Range.To)
+			require.Equal(t, realMark.Type, shouldBeMark.Type)
+			require.Equal(t, realMark.Param, shouldBeMark.Param)
+		}
+	}
+}
+
+func shouldBeDebug(sb *smarttest.SmartTest, t *testing.T, shouldBeBLocks ...*model.Block) {
+	realBlocks := []*model.Block{}
+	cIds := sb.Pick("test").Model().ChildrenIds
+	for _, cId := range cIds {
+		realBlocks = append(realBlocks, sb.Pick(cId).Model())
+	}
+	fmt.Println(len(realBlocks), len(shouldBeBLocks))
+
+	for i, realBlock := range realBlocks {
+		fmt.Println("Real ", i, realBlock)
+	}
+
+	for i, b := range shouldBeBLocks {
+		fmt.Println("Should ", i, b)
+	}
+}
+
 func createBlocks(idsArr []string, textArr []string, marksArr [][]*model.BlockContentTextMark) []*model.Block {
 	blocks := []*model.Block{}
 	for i := 0; i < len(textArr); i++ {
@@ -70,6 +182,8 @@ func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	require.Equal(t, len(cIds), len(textArr))
 
 	for i, c := range cIds {
+		b := sb.Pick(c)
+		require.NotNil(t, b)
 		require.Equal(t, textArr[i], sb.Pick(c).Model().GetText().Text)
 	}
 }
@@ -92,33 +206,30 @@ func checkBlockMarks(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.
 
 	for i, c := range cIds {
 		b := sb.Pick(c).Model()
-		if marksArr[i] != nil {
-			//require.True(t, b.GetText().Marks.Marks != nil)
-			//require.True(t, len(b.GetText().Marks.Marks) > 0)
-		}
 
 		if b.GetText().Marks != nil &&
 			len(b.GetText().Marks.Marks) > 0 &&
 			marksArr[i] != nil {
-
 			require.Equal(t, len(marksArr[i]), len(b.GetText().Marks.Marks))
 			for j := 0; j < len(marksArr[i]); j++ {
-				require.Equal(t, marksArr[i][j], b.GetText().Marks.Marks[j])
+				require.Equal(t, marksArr[i][j].Range.From, b.GetText().Marks.Marks[j].Range.From)
+				require.Equal(t, marksArr[i][j].Range.To, b.GetText().Marks.Marks[j].Range.To)
+				require.Equal(t, marksArr[i][j].Param, b.GetText().Marks.Marks[j].Param)
+
 			}
 		}
 	}
 }
 
 func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*model.BlockContentTextMark) {
-	for i, _ := range marksArr {
-		fmt.Println(marksArr[i])
-	}
-
 	cIds := sb.Pick("test").Model().ChildrenIds
-	fmt.Println("--------", len(cIds), len(marksArr))
+	fmt.Println("LENGTH cIds:", len(cIds), "marksARR:", len(marksArr))
 
-	for _, c := range cIds {
-		fmt.Println(sb.Pick(c).Model().Id, sb.Pick(c).Model().GetText())
+	for i, c := range cIds {
+		b := sb.Pick(c).Model()
+
+		fmt.Println("MARKS REAL:", b.GetText().Marks.Marks)
+		fmt.Println("MARKS SHOULD BE:", marksArr[i])
 	}
 }
 
@@ -134,7 +245,7 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 	req.AnySlot = blocks
 	req.SelectedTextRange = &textRange
 
-	_, _, err := cb.Paste(req)
+	_, _, _, err := cb.Paste(req)
 	require.NoError(t, err)
 }
 
@@ -150,7 +261,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	req.TextSlot = textSlot
 	req.SelectedTextRange = &textRange
 
-	_, _, err := cb.Paste(req)
+	_, _, _, err := cb.Paste(req)
 	require.NoError(t, err)
 }
 
@@ -166,6 +277,6 @@ func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	req.HtmlSlot = htmlSlot
 	req.SelectedTextRange = &textRange
 
-	_, _, err := cb.Paste(req)
+	_, _, _, err := cb.Paste(req)
 	require.NoError(t, err)
 }

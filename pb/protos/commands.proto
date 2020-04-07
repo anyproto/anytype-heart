@@ -302,13 +302,11 @@ message Rpc {
             }
         }
 
-
-
         message Split {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                int32 cursorPosition = 3;
+                anytype.model.Range range = 3;
                 anytype.model.Block.Content.Text.Style style = 4;
             }
 
@@ -385,15 +383,17 @@ message Rpc {
                 string focusedBlockId = 2;
                 anytype.model.Range selectedTextRange = 3;
                 repeated string selectedBlockIds = 4;
+                anytype.model.Range copyTextRange = 5;
 
-                string textSlot = 5;
-                string htmlSlot = 6;
-                repeated anytype.model.Block anySlot = 7;
+                string textSlot = 6;
+                string htmlSlot = 7;
+                repeated anytype.model.Block anySlot = 8;
             }
 
             message Response {
                 Error error = 1;
                 repeated string blockIds = 2;
+                int32 caretPosition = 3;
 
                 message Error {
                     Code code = 1;
