@@ -344,48 +344,27 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
 			return b.Move(req)
 		})
 	}
+	var blocks []simple.Block
 
-	return s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
-		return s.Do(req.TargetContextId, func(targetBlock smartblock.SmartBlock) error {
-			contextState := contextBlock.NewState()
-			targetState := targetBlock.NewState()
-
-			idToIsChild := make(map[string]bool)
-			for _, bId := range req.BlockIds {
-				block := contextState.Pick(bId)
-				if block != nil {
-					for _, cId := range block.Model().ChildrenIds {
-						idToIsChild[cId] = true
-					}
-				}
-			}
-
-			for _, bId := range req.BlockIds {
-				b := contextBlock.Pick(bId)
-				if b != nil {
-					targetState.Add(b)
-					if idToIsChild[bId] != true {
-						err = targetState.InsertTo("", model.Block_Inner, b.Model().Id)
-						if err != nil {
-							return err
-						}
-						contextState.Remove(b.Model().Id)
-					}
-				}
-			}
-
-			err = targetBlock.Apply(targetState)
-			if err != nil {
-				return err
-			}
-			err = contextBlock.Apply(contextState)
-			if err != nil {
-				return err
-			}
-
-			return err
-		})
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		blocks, err = b.InternalCut(req)
+		return err
 	})
+
+	if err != nil {
+		return err
+	}
+
+	err = s.DoBasic(req.TargetContextId, func(b basic.Basic) error {
+		return b.InternalPaste(blocks)
+	})
+
+	if err != nil {
+		// TODO: undo b.InternalCut(req)
+		return err
+	}
+
+	return err
 }
 
 func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
@@ -437,7 +416,6 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 		}
 
 		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
-		fmt.Println("@AllDescendantIds", children)
 		linkId, err := s.MoveBlocksToNewPage(pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,

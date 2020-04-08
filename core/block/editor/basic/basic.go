@@ -20,6 +20,53 @@ type Basic interface {
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(apply func(b simple.Block) error, blockIds ...string) (err error)
 	SetDivStyle(style model.BlockContentDivStyle, ids ...string) (err error)
+	InternalCut(req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
+	InternalPaste(blocks []simple.Block) (err error)
+}
+
+func (bs *basic) InternalCut(req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
+	contextState := bs.NewState()
+
+	for _, bId := range req.BlockIds {
+		b := contextState.Pick(bId)
+		if b != nil {
+			descendants := bs.getAllDescendants(b, []simple.Block{})
+			blocks = append(blocks, descendants...)
+			contextState.Remove(b.Model().Id)
+		}
+	}
+
+	err = bs.Apply(contextState)
+	if err != nil {
+		return blocks, err
+	}
+
+	return blocks, err
+}
+
+func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
+	targetState := bs.NewState()
+	idToIsChild := make(map[string]bool)
+	for _, b := range blocks {
+		for _, cId := range b.Model().ChildrenIds {
+			idToIsChild[cId] = true
+		}
+	}
+
+	for _, b := range blocks {
+		targetState.Add(b)
+		if idToIsChild[b.Model().Id] != true {
+			err := targetState.InsertTo("", model.Block_Inner, b.Model().Id)
+			if err != nil {
+				return err
+			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return bs.Apply(targetState)
 }
 
 func NewBasic(sb smartblock.SmartBlock) Basic {
@@ -85,7 +132,7 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 func (bs *basic) Unlink(ids ...string) (err error) {
 	s := bs.NewState()
 	for _, id := range ids {
-		if ! s.Remove(id) {
+		if !s.Remove(id) {
 			return smartblock.ErrSimpleBlockNotFound
 		}
 	}
@@ -156,4 +203,13 @@ func (bs *basic) SetDivStyle(style model.BlockContentDivStyle, ids ...string) (e
 		}
 	}
 	return bs.Apply(s)
+}
+
+func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []simple.Block {
+	blocks = append(blocks, block)
+	for _, cId := range block.Model().ChildrenIds {
+		blocks = bs.getAllDescendants(bs.Pick(cId), blocks)
+	}
+
+	return blocks
 }
