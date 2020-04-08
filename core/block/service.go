@@ -416,73 +416,42 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 }
 
 func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+	blocks := make(map[string]*model.Block)
+
 	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
 		contextState := contextBlock.NewState()
-
-		for _, blockId := range req.BlockIds {
-			// 1. Get blocks
-			linkId := ""
-			convertedBlock := contextState.Pick(blockId)
-			if convertedBlock == nil {
-				return fmt.Errorf("block not found")
-			}
-
-			blocks := []simple.Block{}
-			cIds := convertedBlock.Model().ChildrenIds
-
-			for _, cId := range cIds {
-				b := contextState.Pick(cId)
-				if b != nil {
-					blocks = append(blocks, b)
-				}
-			}
-
-			// 2. Get name
-
-			text := convertedBlock.Model().GetText()
-			name := ""
-
-			if text != nil {
-				name = convertedBlock.Model().GetText().Text
-			}
-
-			// 3. Create new page, link
-			pageId := ""
-			pageId, linkId, err = s.CreatePage(pb.RpcBlockCreatePageRequest{
-				ContextId: req.ContextId,
-				TargetId:  blockId,
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						"name": pbtypes.String(name),
-						"icon": pbtypes.String(":file_folder:"),
-					},
-				},
-				Position: model.Block_Top,
-			})
-
-			if err != nil {
-				return err
-			}
-
-			// 4. Move blocks to new page
-			err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
-				ContextId:       req.ContextId,
-				BlockIds:        cIds,
-				TargetContextId: pageId,
-				DropTargetId:    "",
-				Position:        0,
-			})
-
-			if err != nil {
-				return err
-			}
-
-			// 5. Remove original block
-			contextState.Remove(blockId)
-			linkIds = append(linkIds, linkId)
+		for _, b := range contextState.Blocks() {
+			blocks[b.Id] = b
 		}
-		return contextBlock.Apply(contextState)
+		return nil
 	})
+
+	if err != nil {
+		return linkIds, err
+	}
+
+	for _, blockId := range req.BlockIds {
+		if blocks[blockId] == nil || blocks[blockId].GetText() == nil {
+			continue
+		}
+
+		linkId, err := s.MoveBlocksToNewPage(pb.RpcBlockListMoveToNewPageRequest{
+			ContextId: req.ContextId,
+			BlockIds:  blocks[blockId].ChildrenIds,
+			Details: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String(blocks[blockId].GetText().Text),
+					"icon": pbtypes.String(":file_folder:"),
+				},
+			},
+			DropTargetId: blockId,
+			Position:     model.Block_Replace,
+		})
+		linkIds = append(linkIds, linkId)
+		if err != nil {
+			return linkIds, err
+		}
+	}
 
 	return linkIds, err
 }
