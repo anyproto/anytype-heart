@@ -45,7 +45,7 @@ type FetchParams struct {
 	LinkPreview linkpreview.LinkPreview
 }
 
-type Updater func(ids []string, hist bool, apply func(b simple.Block) error) (err error)
+type Updater func(id string, apply func(b Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
@@ -134,6 +134,15 @@ func fetcher(id string, params FetchParams) {
 		return
 	}
 
+	err = params.Updater(id, func(bm Block) error {
+		bm.SetLinkPreview(data)
+		return nil
+	})
+	if err != nil {
+		fmt.Println("can't set linkpreview data:", id, err)
+		return
+	}
+
 	if data.ImageUrl != "" {
 		go func() {
 			hash, err := loadImage(params.Anytype, data.ImageUrl)
@@ -141,12 +150,9 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load image url:", data.ImageUrl, err)
 				return
 			}
-			err = params.Updater([]string{id}, false, func(b simple.Block) error {
-				if bm, ok := b.(Block); ok {
-					bm.SetImageHash(hash)
-					return nil
-				}
-				return fmt.Errorf("unexpected block type (want bookmark, have %T)", b)
+			err = params.Updater(id, func(bm Block) error {
+				bm.SetImageHash(hash)
+				return nil
 			})
 			if err != nil {
 				fmt.Println("can't set image hash:", id, err)
@@ -161,30 +167,15 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
 				return
 			}
-			err = params.Updater([]string{id}, false, func(b simple.Block) error {
-				if bm, ok := b.(Block); ok {
-					bm.SetFaviconHash(hash)
-					return nil
-				}
-				return fmt.Errorf("unexpected block type (want bookmark, have %T)", b)
+			err = params.Updater(id, func(bm Block) error {
+				bm.SetFaviconHash(hash)
+				return nil
 			})
 			if err != nil {
 				fmt.Println("can't set favicon hash:", id, err)
 				return
 			}
 		}()
-	}
-
-	err = params.Updater([]string{id}, false, func(b simple.Block) error {
-		if bm, ok := b.(Block); ok {
-			bm.SetLinkPreview(data)
-			return nil
-		}
-		return fmt.Errorf("unexpected block type (want bookmark, have %T)", b)
-	})
-	if err != nil {
-		fmt.Println("can't set linkpreview data:", id, err)
-		return
 	}
 }
 

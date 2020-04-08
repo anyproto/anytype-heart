@@ -9,9 +9,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -19,7 +21,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 const (
@@ -43,6 +44,8 @@ type File interface {
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 	Upload(id string, localPath, url string) (err error)
 	UpdateFile(id string, apply func(b file.Block) error) (err error)
+	CreateAndUpload(req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
+
 	dropFilesHandler
 }
 
@@ -53,6 +56,36 @@ type sfile struct {
 
 func (sf *sfile) Upload(id string, localPath, url string) (err error) {
 	s := sf.NewState()
+	if err = sf.upload(s, id, localPath, url); err != nil {
+		return
+	}
+	return sf.Apply(s)
+}
+
+func (sf *sfile) CreateAndUpload(req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
+	s := sf.NewState()
+	nb := simple.New(&model.Block{
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Type: req.FileType,
+			},
+		},
+	})
+	s.Add(nb)
+	newId = nb.Model().Id
+	if err = s.InsertTo(req.TargetId, req.Position, newId); err != nil {
+		return
+	}
+	if err = sf.upload(s, newId, req.LocalPath, req.Url); err != nil {
+		return
+	}
+	if err = sf.Apply(s); err != nil {
+		return
+	}
+	return
+}
+
+func (sf *sfile) upload(s *state.State, id, localPath, url string) (err error) {
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if ! ok {
@@ -64,7 +97,7 @@ func (sf *sfile) Upload(id string, localPath, url string) (err error) {
 	}, localPath, url); err != nil {
 		return
 	}
-	return sf.Apply(s)
+	return
 }
 
 func (sf *sfile) UpdateFile(id string, apply func(b file.Block) error) (err error) {
