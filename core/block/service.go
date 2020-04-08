@@ -419,8 +419,7 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 	blocks := make(map[string]*model.Block)
 
 	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
-		contextState := contextBlock.NewState()
-		for _, b := range contextState.Blocks() {
+		for _, b := range contextBlock.Blocks() {
 			blocks[b.Id] = b
 		}
 		return nil
