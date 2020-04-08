@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -21,7 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -85,6 +85,7 @@ type Service interface {
 
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(req pb.RpcBlockUploadRequest) error
+	CreateAndUploadFile(req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
 	Undo(req pb.RpcBlockUndoRequest) error
@@ -93,6 +94,7 @@ type Service interface {
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 
 	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
+	BookmarkCreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
@@ -579,6 +581,14 @@ func (s *service) UploadBlockFile(req pb.RpcBlockUploadRequest) (err error) {
 	})
 }
 
+func (s *service) CreateAndUploadFile(req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error) {
+	err = s.DoFile(req.ContextId, func(b file.File) error {
+		id, err = b.CreateAndUpload(req)
+		return err
+	})
+	return
+}
+
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
 	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
 	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
@@ -613,24 +623,17 @@ func (s *service) Redo(req pb.RpcBlockRedoRequest) (err error) {
 }
 
 func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Update(func(b simple.Block) error {
-			if bm, ok := b.(bookmark.Block); ok {
-				return bm.Fetch(bookmark.FetchParams{
-					Url:     req.Url,
-					Anytype: s.anytype,
-					Updater: func(ids []string, hist bool, apply func(b simple.Block) error) (err error) {
-						return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-							return b.Update(apply, ids...)
-						})
-					},
-					LinkPreview: s.linkPreview,
-				})
-			}
-			return ErrUnexpectedBlockType
-		}, req.BlockId)
+	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
+		return b.Fetch(req.BlockId, req.Url)
 	})
+}
 
+func (s *service) BookmarkCreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error) {
+	err = s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
+		id, err = b.CreateAndFetch(req)
+		return err
+	})
+	return
 }
 
 func (s *service) ProcessAdd(p process.Process) (err error) {
@@ -696,7 +699,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	}
 	switch sc.Type() {
 	case core.SmartBlockTypePage:
-		sb = editor.NewPage(s)
+		sb = editor.NewPage(s, s, s.linkPreview)
 	case core.SmartBlockTypeDashboard:
 		sb = editor.NewDashboard()
 	case core.SmartBlockTypeArchive:
@@ -770,6 +773,20 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 	}
 	defer release()
 	if bb, ok := sb.(file.File); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(bookmark.Bookmark); ok {
 		sb.Lock()
 		defer sb.Unlock()
 		return apply(bb)

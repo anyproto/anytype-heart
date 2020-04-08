@@ -32,6 +32,10 @@
     - [Rpc.Account.Stop.Response.Error](#anytype.Rpc.Account.Stop.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
     - [Rpc.Block.Bookmark](#anytype.Rpc.Block.Bookmark)
+    - [Rpc.Block.Bookmark.CreateAndFetch](#anytype.Rpc.Block.Bookmark.CreateAndFetch)
+    - [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request)
+    - [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response)
+    - [Rpc.Block.Bookmark.CreateAndFetch.Response.Error](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error)
     - [Rpc.Block.Bookmark.Fetch](#anytype.Rpc.Block.Bookmark.Fetch)
     - [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request)
     - [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response)
@@ -68,6 +72,11 @@
     - [Rpc.Block.Export.Request](#anytype.Rpc.Block.Export.Request)
     - [Rpc.Block.Export.Response](#anytype.Rpc.Block.Export.Response)
     - [Rpc.Block.Export.Response.Error](#anytype.Rpc.Block.Export.Response.Error)
+    - [Rpc.Block.File](#anytype.Rpc.Block.File)
+    - [Rpc.Block.File.CreateAndUpload](#anytype.Rpc.Block.File.CreateAndUpload)
+    - [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request)
+    - [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response)
+    - [Rpc.Block.File.CreateAndUpload.Response.Error](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error)
     - [Rpc.Block.Get](#anytype.Rpc.Block.Get)
     - [Rpc.Block.Get.Marks](#anytype.Rpc.Block.Get.Marks)
     - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
@@ -293,6 +302,7 @@
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
+    - [Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code)
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
@@ -302,6 +312,7 @@
     - [Rpc.Block.CutBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.CutBreadcrumbs.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
+    - [Rpc.Block.File.CreateAndUpload.Response.Error.Code](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype.Rpc.Block.Merge.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
@@ -544,6 +555,8 @@
 | BlockSetVideoWidth | [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request) | [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response) |  |
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
+| BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
+| BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
@@ -832,6 +845,66 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 
 ### Rpc.Block.Bookmark
 
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.CreateAndFetch"></a>
+
+### Rpc.Block.Bookmark.CreateAndFetch
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.CreateAndFetch.Request"></a>
+
+### Rpc.Block.Bookmark.CreateAndFetch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.CreateAndFetch.Response"></a>
+
+### Rpc.Block.Bookmark.CreateAndFetch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Bookmark.CreateAndFetch.Response.Error](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error) |  |  |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error"></a>
+
+### Rpc.Block.Bookmark.CreateAndFetch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -1370,6 +1443,78 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.File"></a>
+
+### Rpc.Block.File
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.File.CreateAndUpload"></a>
+
+### Rpc.Block.File.CreateAndUpload
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.File.CreateAndUpload.Request"></a>
+
+### Rpc.Block.File.CreateAndUpload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| url | [string](#string) |  |  |
+| localPath | [string](#string) |  |  |
+| fileType | [model.Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.File.CreateAndUpload.Response"></a>
+
+### Rpc.Block.File.CreateAndUpload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.File.CreateAndUpload.Response.Error](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error) |  |  |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.File.CreateAndUpload.Response.Error"></a>
+
+### Rpc.Block.File.CreateAndUpload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.File.CreateAndUpload.Response.Error.Code](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4561,6 +4706,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code"></a>
+
+### Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code"></a>
 
 ### Rpc.Block.Bookmark.Fetch.Response.Error.Code
@@ -4675,6 +4833,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.File.CreateAndUpload.Response.Error.Code"></a>
+
+### Rpc.Block.File.CreateAndUpload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
