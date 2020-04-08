@@ -11,8 +11,8 @@ var Image = `
       "plaintext": false,
       "mill": "/image/resize",
       "opts": {
-        "width": "1920",
-        "quality": "85"
+        "width": "1280",
+        "quality": "80"
       }
     },
     "small": {
@@ -22,7 +22,7 @@ var Image = `
       "mill": "/image/resize",
       "opts": {
         "width": "320",
-        "quality": "85"
+        "quality": "80"
       }
     },
     "thumb": {
@@ -32,7 +32,7 @@ var Image = `
       "mill": "/image/resize",
       "opts": {
         "width": "100",
-        "quality": "85"
+        "quality": "80"
       }
     },
     "exif": {

@@ -2,6 +2,7 @@ package logging
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -13,22 +14,38 @@ import (
 var log = logging.Logger("anytype-logger")
 
 var DefaultLogLevel = logging.LevelError
+var logLevelsStr string
+
 var m = sync.Mutex{}
 
 func Logger(system string) *logging.ZapEventLogger {
 	logger := logging.Logger(system)
-	ApplyLevelsFromEnv()
+	setSubsystemLevels()
 
 	return logger
 }
 
+func SetLoggingFilepath(logPath string) {
+	_ = os.Setenv("GOLOG_LOG_FMT", "color")
+	_ = os.Setenv("GOLOG_FILE", filepath.Join(logPath, "anytype.log"))
+	logging.SetupLogging()
+}
+
+func ApplyLevels(str string) {
+	logLevelsStr = str
+	setSubsystemLevels()
+}
+
 func ApplyLevelsFromEnv() {
+	ApplyLevels(os.Getenv("ANYTYPE_LOG_LEVEL"))
+}
+
+func setSubsystemLevels() {
 	m.Lock()
 	defer m.Unlock()
-	levels := os.Getenv("ANYTYPE_LOG_LEVEL")
 	logLevels := make(map[string]string)
-	if levels != "" {
-		for _, level := range strings.Split(levels, ";") {
+	if logLevelsStr != "" {
+		for _, level := range strings.Split(logLevelsStr, ";") {
 			parts := strings.Split(level, "=")
 			var subsystemPattern glob.Glob
 			var level string

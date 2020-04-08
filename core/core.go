@@ -10,18 +10,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	pstore "github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/discovery"
-	ma "github.com/multiformats/go-multiaddr"
-	"github.com/textileio/go-threads/util"
-
+	"github.com/anytypeio/go-anytype-library/cafeclient"
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/net"
 	"github.com/anytypeio/go-anytype-library/net/litenet"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/libp2p/go-libp2p-core/peer"
+	pstore "github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/discovery"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/go-threads/util"
 )
 
 var log = logging.Logger("anytype-core")
@@ -35,8 +35,15 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 	keyFileDevice  = "device.key"
 )
 
+var (
+	CafeNodeP2P  = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+	CafeNodeGRPC = "/ip4/134.122.78.144/tcp/3006"
+)
+
 var BootstrapNodes = []string{
-	"/ip4/68.183.2.167/tcp/4001/ipfs/12D3KooWB2Ya2GkLLRSR322Z13ZDZ9LP4fDJxauscYwUMKLFCqaD",
+	"/ip4/161.35.18.3/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",            // fra1
+	"/dns4/bootstrap2.anytype.io/tcp/4001/p2p/QmSxuiczQTjgj5agSoNtp4esSsj64RisDyKt2MCZQsKZUx", // sfo1
+	"/dns4/bootstrap3.anytype.io/tcp/4001/p2p/QmUdDTWzgdcf4cM4aHeihoYSUfQJJbLVLTZFZvm1b46NNT", // sgp1
 }
 
 type PredefinedBlockIds struct {
@@ -49,6 +56,7 @@ type PredefinedBlockIds struct {
 type Anytype struct {
 	repoPath           string
 	t                  net.NetBoostrapper
+	cafe               cafeclient.Client
 	mdns               discovery.Service
 	account            wallet.Keypair
 	device             wallet.Keypair
@@ -56,6 +64,7 @@ type Anytype struct {
 	predefinedBlockIds PredefinedBlockIds
 	logLevels          map[string]string
 	lock               sync.Mutex
+	replicationWG      sync.WaitGroup
 	done               chan struct{}
 	online             bool
 }
@@ -135,9 +144,8 @@ func New(rootPath string, account string) (Service, error) {
 		return nil, fmt.Errorf("not exists")
 	}
 
-	a := Anytype{repoPath: repoPath}
+	a := Anytype{repoPath: repoPath, replicationWG: sync.WaitGroup{}}
 	var err error
-
 	b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read account keyfile: %w", err)
@@ -161,6 +169,11 @@ func New(rootPath string, account string) (Service, error) {
 	}
 	if a.device.KeypairType() != wallet.KeypairTypeDevice {
 		return nil, fmt.Errorf("got %s key type instead of %s", a.device.KeypairType(), wallet.KeypairTypeDevice)
+	}
+
+	a.cafe, err = cafeclient.NewClient(CafeNodeGRPC, a.device, a.account)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get grpc client: %w", err)
 	}
 
 	return &a, nil
@@ -249,6 +262,7 @@ func (a *Anytype) Stop() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
+	a.replicationWG.Wait()
 	if a.done != nil {
 		close(a.done)
 		a.done = nil

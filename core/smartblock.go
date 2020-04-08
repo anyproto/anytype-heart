@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/net"
@@ -294,10 +295,29 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
+	ownLog := block.thread.GetOwnLog()
 	rec, err2 := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
 	if err2 != nil {
 		err = err2
 		return
+	}
+
+	if ownLog == nil || ownLog.Head == cid.Undef {
+		block.node.replicationWG.Add(1)
+		go func() {
+			addr, err2 := ma.NewMultiaddr(CafeNodeP2P)
+			if err2 != nil {
+				err = err2
+				return
+			}
+			p, err := block.node.t.AddReplicator(context.TODO(), block.thread.ID, addr)
+			if err != nil {
+				log.Errorf("failed to add log replicator: %s", err.Error())
+			}
+
+			block.node.replicationWG.Done()
+			log.With("thread", block.thread.ID.String()).Infof("added log replicator: %s", p.String())
+		}()
 	}
 
 	versionId = rec.Value().Cid().String()

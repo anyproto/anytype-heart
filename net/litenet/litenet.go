@@ -75,7 +75,6 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 		return nil, err
 	}
 
-	pnet = nil
 	h, d, err := ipfslite.SetupLibp2p(
 		ctx,
 		privKey,
