@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -57,6 +59,7 @@ type Service interface {
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
+	ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
@@ -336,35 +339,101 @@ func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) (err error) {
 }
 
 func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Move(req)
+	if req.ContextId == req.TargetContextId {
+		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+			return b.Move(req)
+		})
+	}
+	var blocks []simple.Block
+
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		blocks, err = b.InternalCut(req)
+		return err
 	})
+
+	if err != nil {
+		return err
+	}
+
+	err = s.DoBasic(req.TargetContextId, func(b basic.Basic) error {
+		return b.InternalPaste(blocks)
+	})
+
+	if err != nil {
+		// TODO: undo b.InternalCut(req)
+		return err
+	}
+
+	return err
 }
 
 func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
-
+	// 1. Create new page, link
 	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
-		//Block:     req.Block,
-		Position: req.Position,
+		Position:  req.Position,
+		Details:   req.Details,
 	})
 
 	if err != nil {
 		return linkId, err
 	}
 
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Move(pb.RpcBlockListMoveRequest{
-			req.ContextId,
-			req.BlockIds,
-			pageId,
-			req.DropTargetId,
-			req.Position,
-		})
+	// 2. Move blocks to new page
+	err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
+		ContextId:       req.ContextId,
+		BlockIds:        req.BlockIds,
+		TargetContextId: pageId,
+		DropTargetId:    "",
+		Position:        0,
 	})
 
-	return
+	if err != nil {
+		return linkId, err
+	}
+
+	return linkId, err
+}
+
+func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+	blocks := make(map[string]*model.Block)
+
+	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
+		for _, b := range contextBlock.Blocks() {
+			blocks[b.Id] = b
+		}
+		return nil
+	})
+
+	if err != nil {
+		return linkIds, err
+	}
+
+	for _, blockId := range req.BlockIds {
+		if blocks[blockId] == nil || blocks[blockId].GetText() == nil {
+			continue
+		}
+
+		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
+		linkId, err := s.MoveBlocksToNewPage(pb.RpcBlockListMoveToNewPageRequest{
+			ContextId: req.ContextId,
+			BlockIds:  children,
+			Details: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String(blocks[blockId].GetText().Text),
+				},
+			},
+			DropTargetId: blockId,
+			Position:     model.Block_Replace,
+		})
+		linkIds = append(linkIds, linkId)
+		if err != nil {
+			return linkIds, err
+		}
+	}
+
+	return linkIds, err
 }
 
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
@@ -755,4 +824,20 @@ func (s *service) cleanupBlocks() (closed bool) {
 	}
 	log.Infof("cleanup: block closed %d (total %v)", closedCount, total)
 	return s.closed
+}
+
+func (s *service) fillSlice(id string, ids []string, allBlocks map[string]*model.Block) []string {
+	ids = append(ids, id)
+	for _, chId := range allBlocks[id].ChildrenIds {
+		ids = s.fillSlice(chId, ids, allBlocks)
+	}
+	return ids
+}
+
+func (s *service) AllDescendantIds(targetBlockIds []string, allBlocks map[string]*model.Block) (outputIds []string) {
+	for _, tId := range targetBlockIds {
+		outputIds = s.fillSlice(tId, outputIds, allBlocks)
+	}
+
+	return outputIds
 }

@@ -66,6 +66,30 @@ message Rpc {
 
     message BlockList {
 
+        message ConvertChildrenToPages {
+            message Request {
+                string contextId = 1;
+                repeated string blockIds = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated string linkIds = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message Move {
             message Request {
                 string contextId = 1;
@@ -96,8 +120,8 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 repeated string blockIds = 2;
-                anytype.model.Block block = 3;
-                string dropTargetId = 4; // id of the block in Page(contextId) to create a link near that block
+                google.protobuf.Struct details = 3; // page details
+                string dropTargetId = 4;
                 anytype.model.Block.Position position = 5;
             }
 
