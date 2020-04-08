@@ -495,6 +495,21 @@ func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequ
 	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockListSetDivStyle(req *pb.RpcBlockListSetDivStyleRequest) *pb.RpcBlockListSetDivStyleResponse {
+	response := func(code pb.RpcBlockListSetDivStyleResponseErrorCode, err error) *pb.RpcBlockListSetDivStyleResponse {
+		m := &pb.RpcBlockListSetDivStyleResponse{Error: &pb.RpcBlockListSetDivStyleResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	if err := mw.blockService.SetDivStyle(req.ContextId, req.Style, req.BlockIds...); err != nil {
+		return response(pb.RpcBlockListSetDivStyleResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetDivStyleResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse {
 	response := func(code pb.RpcBlockListSetTextColorResponseErrorCode, err error) *pb.RpcBlockListSetTextColorResponse {
 		m := &pb.RpcBlockListSetTextColorResponse{Error: &pb.RpcBlockListSetTextColorResponseError{Code: code}}
@@ -701,4 +716,36 @@ func (mw *Middleware) UploadFile(req *pb.RpcUploadFileRequest) *pb.RpcUploadFile
 		return response("", pb.RpcUploadFileResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(hash, pb.RpcUploadFileResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
+	response := func(code pb.RpcBlockBookmarkCreateAndFetchResponseErrorCode, id string, err error) *pb.RpcBlockBookmarkCreateAndFetchResponse {
+		m := &pb.RpcBlockBookmarkCreateAndFetchResponse{Error: &pb.RpcBlockBookmarkCreateAndFetchResponseError{Code: code}, BlockId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	id, err := mw.blockService.BookmarkCreateAndFetch(*req)
+	if err != nil {
+		return response(pb.RpcBlockBookmarkCreateAndFetchResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockBookmarkCreateAndFetchResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
+	response := func(code pb.RpcBlockFileCreateAndUploadResponseErrorCode, id string, err error) *pb.RpcBlockFileCreateAndUploadResponse {
+		m := &pb.RpcBlockFileCreateAndUploadResponse{Error: &pb.RpcBlockFileCreateAndUploadResponseError{Code: code}, BlockId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	id, err := mw.blockService.CreateAndUploadFile(*req)
+	if err != nil {
+		return response(pb.RpcBlockFileCreateAndUploadResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockFileCreateAndUploadResponseError_NULL, id, nil)
 }

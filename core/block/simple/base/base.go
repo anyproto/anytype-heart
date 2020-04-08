@@ -15,6 +15,12 @@ func init() {
 		}
 		return nil
 	})
+	simple.RegisterCreator(func(m *model.Block) simple.Block {
+		if m.GetDiv() != nil {
+			return NewDiv(m)
+		}
+		return nil
+	})
 	simple.RegisterFallback(func(m *model.Block) simple.Block {
 		return NewBase(m)
 	})
@@ -26,10 +32,6 @@ func NewBase(block *model.Block) simple.Block {
 
 type Base struct {
 	*model.Block
-}
-
-func (s *Base) Virtual() bool {
-	return false
 }
 
 func (s *Base) Model() *model.Block {
