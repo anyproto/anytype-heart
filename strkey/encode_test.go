@@ -44,8 +44,4 @@ func TestEncode(t *testing.T) {
 			assert.Equal(t, kase.Expected, actual, "Output mismatch in case %s", kase.Name)
 		}
 	}
-
-	// test bad version byte
-	_, err := Encode(VersionByte(2), cases[0].Payload)
-	assert.Error(t, err)
 }
