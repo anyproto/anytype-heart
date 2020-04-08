@@ -434,9 +434,11 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 			continue
 		}
 
+		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
+
 		linkId, err := s.MoveBlocksToNewPage(pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
-			BlockIds:  blocks[blockId].ChildrenIds,
+			BlockIds:  children,
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name": pbtypes.String(blocks[blockId].GetText().Text),
@@ -828,4 +830,20 @@ func (s *service) cleanupBlocks() (closed bool) {
 	}
 	log.Infof("cleanup: block closed %d (total %v)", closedCount, total)
 	return s.closed
+}
+
+func (s *service) fillSlice(id string, ids []string, allBlocks map[string]*model.Block) []string {
+	ids = append(ids, allBlocks[id].Id)
+	for _, chId := range allBlocks[id].ChildrenIds {
+		ids = s.fillSlice(chId, ids, allBlocks)
+	}
+	return ids
+}
+
+func (s *service) AllDescendantIds(targetBlockIds []string, allBlocks map[string]*model.Block) (outputIds []string) {
+	for _, tId := range targetBlockIds {
+		outputIds = append(outputIds, s.fillSlice(tId, outputIds, allBlocks)...)
+	}
+
+	return outputIds
 }
