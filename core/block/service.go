@@ -437,14 +437,13 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 		}
 
 		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
-
+		fmt.Println("@AllDescendantIds", children)
 		linkId, err := s.MoveBlocksToNewPage(pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name": pbtypes.String(blocks[blockId].GetText().Text),
-					"icon": pbtypes.String(":file_folder:"),
 				},
 			},
 			DropTargetId: blockId,
@@ -850,7 +849,7 @@ func (s *service) cleanupBlocks() (closed bool) {
 }
 
 func (s *service) fillSlice(id string, ids []string, allBlocks map[string]*model.Block) []string {
-	ids = append(ids, allBlocks[id].Id)
+	ids = append(ids, id)
 	for _, chId := range allBlocks[id].ChildrenIds {
 		ids = s.fillSlice(chId, ids, allBlocks)
 	}
@@ -859,7 +858,7 @@ func (s *service) fillSlice(id string, ids []string, allBlocks map[string]*model
 
 func (s *service) AllDescendantIds(targetBlockIds []string, allBlocks map[string]*model.Block) (outputIds []string) {
 	for _, tId := range targetBlockIds {
-		outputIds = append(outputIds, s.fillSlice(tId, outputIds, allBlocks)...)
+		outputIds = s.fillSlice(tId, outputIds, allBlocks)
 	}
 
 	return outputIds
