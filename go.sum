@@ -18,8 +18,8 @@ github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2 h1:swGeCLPiU
 github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2/go.mod h1:Juc2PrI3wtNfUwptSvAIeNx+HrETwHQs6nf+TkOJlOA=
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/anytypeio/go-anytype-library v0.5.0 h1:BCRYNPZhsenZ8MX1srJXCm3DEP4GQpISNVXqw5Yfsfc=
-github.com/anytypeio/go-anytype-library v0.5.0/go.mod h1:jH44NThzGxHx24tfoSjHM5c7L8+ZXwG9OUiBLT36Af8=
+github.com/anytypeio/go-anytype-library v0.5.1-0.20200408170925-3aaacf558e8f h1:cdCg1WfSuOG886cIrELiNFiEkjhvThFi1SxE5b+6xAs=
+github.com/anytypeio/go-anytype-library v0.5.1-0.20200408170925-3aaacf558e8f/go.mod h1:jH44NThzGxHx24tfoSjHM5c7L8+ZXwG9OUiBLT36Af8=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW52i65PtLFBr5Q5k6RskIY8L70pgnBcnWo=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
