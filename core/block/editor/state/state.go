@@ -2,7 +2,6 @@ package state
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"time"
 
@@ -63,7 +62,11 @@ func (s *State) Add(b simple.Block) (ok bool) {
 }
 
 func (s *State) Set(b simple.Block) {
-	s.blocks[b.Model().Id] = b
+	if !s.Exists(b.Model().Id) {
+		s.Add(b)
+	} else {
+		s.blocks[b.Model().Id] = b
+	}
 }
 
 func (s *State) Get(id string) (b simple.Block) {
@@ -191,7 +194,6 @@ func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err e
 
 func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
 	st := time.Now()
-	fmt.Println(s.String())
 	for id, b := range s.blocks {
 		if slice.FindPos(s.toRemove, id) != -1 {
 			continue
