@@ -164,6 +164,8 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 		}
 		s.openedBlocks[id] = ob
 	}
+	ob.Lock()
+	defer ob.Unlock()
 	ob.locked = true
 	ob.SetEventFunc(s.sendEvent)
 	if err = ob.Show(); err != nil {
@@ -191,6 +193,8 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	if err = bs.Init(source.NewVirtual(s.anytype, s.meta)); err != nil {
 		return
 	}
+	bs.Lock()
+	defer bs.Unlock()
 	bs.SetEventFunc(s.sendEvent)
 	s.openedBlocks[bs.Id()] = &openedBlock{
 		SmartBlock: bs,
@@ -207,6 +211,8 @@ func (s *service) CloseBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if ob, ok := s.openedBlocks[id]; ok {
+		ob.Lock()
+		defer ob.Unlock()
 		ob.SetEventFunc(nil)
 		ob.locked = false
 		return
