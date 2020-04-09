@@ -27,10 +27,10 @@ func (h *history) Undo() (err error) {
 		s.Remove(b.Model().Id)
 	}
 	for _, b := range action.Remove {
-		s.Set(b)
+		s.Set(b.Copy())
 	}
 	for _, b := range action.Change {
-		s.Set(b.Before)
+		s.Set(b.Before.Copy())
 	}
 
 	return h.Apply(s, smartblock.NoHistory)
@@ -45,13 +45,13 @@ func (h *history) Redo() (err error) {
 	s := h.NewState()
 
 	for _, b := range action.Add {
-		s.Set(b)
+		s.Set(b.Copy())
 	}
 	for _, b := range action.Remove {
 		s.Remove(b.Model().Id)
 	}
 	for _, b := range action.Change {
-		s.Set(b.After)
+		s.Set(b.After.Copy())
 	}
 	return h.Apply(s, smartblock.NoHistory)
 }

@@ -62,7 +62,11 @@ func (s *State) Add(b simple.Block) (ok bool) {
 }
 
 func (s *State) Set(b simple.Block) {
-	s.blocks[b.Model().Id] = b
+	if !s.Exists(b.Model().Id) {
+		s.Add(b)
+	} else {
+		s.blocks[b.Model().Id] = b
+	}
 }
 
 func (s *State) Get(id string) (b simple.Block) {
@@ -209,7 +213,7 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 		if orig == nil {
 			newBlocks = append(newBlocks, b.Model())
 			toSave = append(toSave, b.Model())
-			action.Add = append(action.Add, b)
+			action.Add = append(action.Add, b.Copy())
 			continue
 		}
 
@@ -226,8 +230,8 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 				}
 			}
 			action.Change = append(action.Change, history.Change{
-				Before: orig,
-				After:  b,
+				Before: orig.Copy(),
+				After:  b.Copy(),
 			})
 		}
 	}
@@ -254,7 +258,7 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 	}
 	for _, id := range s.toRemove {
 		if old := s.PickOrigin(id); old != nil {
-			action.Remove = append(action.Remove, old)
+			action.Remove = append(action.Remove, old.Copy())
 		}
 		if s.parent != nil {
 			delete(s.parent.blocks, id)
@@ -286,10 +290,16 @@ func (s *State) String() (res string) {
 }
 
 func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
+	b := s.Pick(id)
 	buf.WriteString(strings.Repeat("\t", l))
 	buf.WriteString(id)
+	if b == nil {
+		buf.WriteString(" MISSING")
+	}
 	buf.WriteString("\n")
-	for _, cid := range s.Pick(id).Model().ChildrenIds {
-		s.writeString(buf, l+1, cid)
+	if b != nil {
+		for _, cid := range b.Model().ChildrenIds {
+			s.writeString(buf, l+1, cid)
+		}
 	}
 }
