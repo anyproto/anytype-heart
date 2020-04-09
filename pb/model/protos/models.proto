@@ -74,6 +74,7 @@ message Block {
             enum Style {
                 Row = 0;
                 Column = 1;
+                Div = 2;
             }
         }
 

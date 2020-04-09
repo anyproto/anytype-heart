@@ -14,7 +14,8 @@ func TestAnytype_ImageByHash(t *testing.T) {
 	s := getRunningService(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	fd, err := os.Open("mill/testdata/image.jpeg")
+	fd, err := os.Open("../mill/testdata/image.jpeg")
+	require.NoError(t, err)
 
 	nf, err := s.ImageAddWithReader(ctx, fd, "image.jpeg")
 	require.NoError(t, err)
@@ -36,5 +37,5 @@ func TestAnytype_ImageByHash(t *testing.T) {
 
 	require.NotNil(t, flargest.Meta())
 	require.Equal(t, "image.jpeg", flargest.Meta().Name)
-	require.Equal(t, int64(63098), flargest.Meta().Size)
+	require.Equal(t, int64(68648), flargest.Meta().Size)
 }

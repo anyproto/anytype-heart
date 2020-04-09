@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/golang/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/xeipuuv/gojsonschema"
 
 	"github.com/anytypeio/go-anytype-library/pb"
