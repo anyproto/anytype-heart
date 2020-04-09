@@ -179,7 +179,6 @@ func TestState_InsertTo(t *testing.T) {
 	})
 
 	t.Run("cycle ref error", func(t *testing.T) {
-		return
 		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root"}))
 
