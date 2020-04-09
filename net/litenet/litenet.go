@@ -1,6 +1,7 @@
 package litenet
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -17,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/pnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	ma "github.com/multiformats/go-multiaddr"
@@ -67,10 +69,17 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 		cancel()
 		return nil, err
 	}
+	r := bytes.NewReader(privateNetworkSecret)
+	pnet, err := pnet.DecodeV1PSK(r)
+	if err != nil {
+		return nil, err
+	}
+
+	pnet = nil
 	h, d, err := ipfslite.SetupLibp2p(
 		ctx,
 		privKey,
-		privateNetworkSecret,
+		pnet,
 		[]ma.Multiaddr{config.HostAddr},
 		litestore,
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),

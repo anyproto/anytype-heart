@@ -6,11 +6,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"sort"
-	"time"
 
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-slip21"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/textileio/go-threads/cbor"
 	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
@@ -131,8 +132,8 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 	thrd, err = a.t.CreateThread(context.TODO(),
 		id,
-		corenet.ThreadKey(thread.NewKey(followKey, readKey)),
-		corenet.LogKey(a.device))
+		corenet.WithThreadKey(thread.NewKey(followKey, readKey)),
+		corenet.WithLogKey(a.device))
 	if err != nil {
 		return thread.Info{}, err
 	}
@@ -148,14 +149,13 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 	return thrd, nil
 }
 
-type RecordWithMetadata struct {
-	corenet.Record
-	Date   time.Time
-	PubKey crypto.PubKey
+type SnapshotWithMetadata struct {
+	storage.SmartBlockSnapshot
+	Creator string
 }
 
-func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, li thread.LogInfo, before *time.Time, limit int) ([]RecordWithMetadata, error) {
-	var records []RecordWithMetadata
+func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, li thread.LogInfo, before vclock.VClock, limit int) ([]SnapshotWithMetadata, error) {
+	var snapshots []SnapshotWithMetadata
 	// todo: filter by record type
 	var m = make(map[cid.Cid]struct{})
 
@@ -163,82 +163,101 @@ func (a *Anytype) traverseFromCid(ctx context.Context, thrd thread.Info, li thre
 	if err != nil {
 		return nil, err
 	}
-
-	for _, head := range li.Heads {
-		var recordsPerHead []RecordWithMetadata
-
-		rid := head
-		for {
-			if _, exists := m[rid]; exists {
-				break
-			}
-			m[rid] = struct{}{}
-			rec, err := a.t.GetRecord(ctx, thrd.ID, rid)
-			if err != nil {
-				return nil, err
-			}
-
-			event, err := cbor.EventFromRecord(ctx, a.t, rec)
-			if err != nil {
-				return nil, err
-			}
-
-			header, err := event.GetHeader(ctx, a.t, thrd.Key.Read())
-			if err != nil {
-				return nil, err
-			}
-
-			recordTime, err := header.Time()
-			if err != nil {
-				return nil, err
-			}
-
-			if before != nil && recordTime.After(*before) {
-				continue
-			}
-
-			recordsPerHead = append(recordsPerHead, RecordWithMetadata{rec, *recordTime, pubKey})
-			if len(recordsPerHead) == limit {
-				break
-			}
-
-			if !rec.PrevID().Defined() {
-				break
-			}
-
-			rid = rec.PrevID()
+	rid := li.Head
+	for {
+		if _, exists := m[rid]; exists {
+			break
+		}
+		m[rid] = struct{}{}
+		rec, err := a.t.GetRecord(ctx, thrd.ID, rid)
+		if err != nil {
+			return nil, err
 		}
 
-		records = append(records, recordsPerHead...)
+		event, err := cbor.EventFromRecord(ctx, a.t, rec)
+		if err != nil {
+			return nil, err
+		}
+
+		node, err := event.GetBody(context.TODO(), a.t, thrd.Key.Read())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get record body: %w", err)
+		}
+		m := new(signedPbPayload)
+		err = cbornode.DecodeInto(node.RawData(), m)
+		if err != nil {
+			return nil, fmt.Errorf("incorrect record type: %w", err)
+		}
+
+		err = m.Verify(pubKey)
+		if err != nil {
+			return nil, err
+		}
+
+		var snapshot = storage.SmartBlockSnapshot{}
+		err = m.Unmarshal(&snapshot)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode pb block snapshot: %w", err)
+		}
+
+		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Descendant) {
+			log.Debugf("traverseFromCid skip Descendant: %+v > %+v", snapshot.State, before)
+			continue
+		}
+
+		snapshots = append(snapshots, SnapshotWithMetadata{snapshot, m.AccAddr})
+		if len(snapshots) == limit {
+			break
+		}
+
+		if !rec.PrevID().Defined() {
+			break
+		}
+
+		rid = rec.PrevID()
 	}
-	return records, nil
+
+	return snapshots, nil
 }
 
-func (a *Anytype) traverseLogs(ctx context.Context, thrdId thread.ID, before *time.Time, limit int) ([]RecordWithMetadata, error) {
-	var allRecords []RecordWithMetadata
+func (a *Anytype) traverseLogs(ctx context.Context, thrdId thread.ID, before vclock.VClock, limit int) ([]SnapshotWithMetadata, error) {
+	var allSnapshots []SnapshotWithMetadata
 	thrd, err := a.t.GetThread(context.Background(), thrdId)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, log := range thrd.Logs {
-		records, err := a.traverseFromCid(ctx, thrd, log, before, limit)
+		snapshots, err := a.traverseFromCid(ctx, thrd, log, before, limit)
 		if err != nil {
 			continue
 		}
 
-		allRecords = append(allRecords, records...)
+		allSnapshots = append(allSnapshots, snapshots...)
 	}
 
-	sort.Slice(allRecords, func(i, j int) bool {
-		return allRecords[i].Date.After(allRecords[j].Date)
+	sort.Slice(allSnapshots, func(i, j int) bool {
+		// sort from the newest to the oldest snapshot
+		stateI := vclock.NewFromMap(allSnapshots[i].State)
+		stateJ := vclock.NewFromMap(allSnapshots[j].State)
+		anc := stateI.Compare(stateJ, vclock.Ancestor)
+		if anc {
+			return true
+		}
+
+		if stateI.Compare(stateJ, vclock.Descendant) {
+			return false
+		}
+
+		// in case of concurrent changes choose the hash with greater hash first
+		return stateI.Hash() > stateJ.Hash()
 	})
 
-	if len(allRecords) < limit {
-		limit = len(allRecords)
+	if len(allSnapshots) < limit {
+		limit = len(allSnapshots)
 	}
 
-	return allRecords[0:limit], nil
+	return allSnapshots[0:limit], nil
 }
 
 func threadIDFromRandom(variant thread.Variant, blockType SmartBlockType, rnd []byte) (thread.ID, error) {

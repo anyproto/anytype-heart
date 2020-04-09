@@ -27,7 +27,7 @@ func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
 	return smartBlock, nil
 }
 
-/*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, user string, date *types.Timestamp) BlockVersion {
+/*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, creator string, date *types.Timestamp) BlockVersion {
 	switch block.Content.(type) {
 	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:
 		return &smartBlockSnapshot{
@@ -35,7 +35,7 @@ func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
 				Block: block,
 			},
 			versionId: versionId,
-			user:      user,
+			creator:      creator,
 			date:      date,
 			node:      a,
 		}
@@ -95,7 +95,7 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 		return thread.Info{}, err
 	}
 
-	return a.t.CreateThread(context.TODO(), thrdId, net.ThreadKey(thread.NewKey(followKey, readKey)), net.LogKey(a.device))
+	return a.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(thread.NewKey(followKey, readKey)), net.WithLogKey(a.device))
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
