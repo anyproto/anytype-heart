@@ -53,12 +53,12 @@ func (s *State) normalizeChildren(b simple.Block) {
 }
 
 func (s *State) normalizeLayoutRow(b simple.Block) {
-	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
-		return
-	}
-	// remove empty row
+	// remove empty layout
 	if len(b.Model().ChildrenIds) == 0 {
 		s.Remove(b.Model().Id)
+		return
+	}
+	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
 		return
 	}
 	// one column - remove row
@@ -123,7 +123,14 @@ func (s *State) validateBlock(b simple.Block) (err error) {
 		id = parent.Model().Id
 		parentIds = append(parentIds, id)
 	}
-	return fmt.Errorf("block '%s' has not the page in parents", id)
+	s.Iterate(func(b simple.Block) bool {
+		fmt.Println(b.Model().Id, b.Model().ChildrenIds)
+		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
+			return false
+		}
+		return true
+	})
+	return fmt.Errorf("block '%s' has not the page in parents: %v", id, parentIds)
 }
 
 func isDivLayout(m *model.Block) bool {
