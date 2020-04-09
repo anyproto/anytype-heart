@@ -265,6 +265,9 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 }
 
 func (s *State) Blocks() []*model.Block {
+	if s.Pick(s.RootId()) == nil {
+		return nil
+	}
 	return s.fillSlice(s.RootId(), make([]*model.Block, 0, len(s.blocks)))
 }
 
