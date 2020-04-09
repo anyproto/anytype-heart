@@ -22,6 +22,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.0.4
 	github.com/ipfs/go-merkledag v0.3.1
 	github.com/ipfs/go-path v0.0.7
+	github.com/ipfs/go-todocounter v0.0.2 // indirect
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.6
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e

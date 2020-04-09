@@ -23,40 +23,6 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type SmartBlockType int32
-
-const (
-	SmartBlock_Dashboard   SmartBlockType = 0
-	SmartBlock_Page        SmartBlockType = 1
-	SmartBlock_Archive     SmartBlockType = 2
-	SmartBlock_Breadcrumbs SmartBlockType = 3
-	SmartBlock_Dataview    SmartBlockType = 4
-)
-
-var SmartBlockType_name = map[int32]string{
-	0: "Dashboard",
-	1: "Page",
-	2: "Archive",
-	3: "Breadcrumbs",
-	4: "Dataview",
-}
-
-var SmartBlockType_value = map[string]int32{
-	"Dashboard":   0,
-	"Page":        1,
-	"Archive":     2,
-	"Breadcrumbs": 3,
-	"Dataview":    4,
-}
-
-func (x SmartBlockType) String() string {
-	return proto.EnumName(SmartBlockType_name, int32(x))
-}
-
-func (SmartBlockType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0, 0}
-}
-
 type BlockPosition int32
 
 const (
@@ -94,7 +60,7 @@ func (x BlockPosition) String() string {
 }
 
 func (BlockPosition) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 0}
 }
 
 type BlockAlign int32
@@ -122,7 +88,7 @@ func (x BlockAlign) String() string {
 }
 
 func (BlockAlign) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1}
 }
 
 type BlockContentLayoutStyle int32
@@ -150,7 +116,7 @@ func (x BlockContentLayoutStyle) String() string {
 }
 
 func (BlockContentLayoutStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 0, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 0, 0}
 }
 
 type BlockContentLinkStyle int32
@@ -181,7 +147,7 @@ func (x BlockContentLinkStyle) String() string {
 }
 
 func (BlockContentLinkStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 1, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 1, 0}
 }
 
 type BlockContentDivStyle int32
@@ -206,32 +172,7 @@ func (x BlockContentDivStyle) String() string {
 }
 
 func (BlockContentDivStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 2, 0}
-}
-
-type BlockContentDashboardStyle int32
-
-const (
-	BlockContentDashboard_MainScreen BlockContentDashboardStyle = 0
-	BlockContentDashboard_Archive    BlockContentDashboardStyle = 1
-)
-
-var BlockContentDashboardStyle_name = map[int32]string{
-	0: "MainScreen",
-	1: "Archive",
-}
-
-var BlockContentDashboardStyle_value = map[string]int32{
-	"MainScreen": 0,
-	"Archive":    1,
-}
-
-func (x BlockContentDashboardStyle) String() string {
-	return proto.EnumName(BlockContentDashboardStyle_name, int32(x))
-}
-
-func (BlockContentDashboardStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 5, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 2, 0}
 }
 
 type BlockContentTextStyle int32
@@ -286,7 +227,7 @@ func (x BlockContentTextStyle) String() string {
 }
 
 func (BlockContentTextStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 7, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 5, 0}
 }
 
 type BlockContentTextMarkType int32
@@ -329,7 +270,7 @@ func (x BlockContentTextMarkType) String() string {
 }
 
 func (BlockContentTextMarkType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 7, 1, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 5, 1, 0}
 }
 
 type BlockContentFileType int32
@@ -360,7 +301,7 @@ func (x BlockContentFileType) String() string {
 }
 
 func (BlockContentFileType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 8, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6, 0}
 }
 
 type BlockContentFileState int32
@@ -391,41 +332,7 @@ func (x BlockContentFileState) String() string {
 }
 
 func (BlockContentFileState) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 8, 1}
-}
-
-type BlockContentPageStyle int32
-
-const (
-	BlockContentPage_Empty       BlockContentPageStyle = 0
-	BlockContentPage_Task        BlockContentPageStyle = 1
-	BlockContentPage_Set         BlockContentPageStyle = 2
-	BlockContentPage_Profile     BlockContentPageStyle = 3
-	BlockContentPage_Breadcrumbs BlockContentPageStyle = 101
-)
-
-var BlockContentPageStyle_name = map[int32]string{
-	0:   "Empty",
-	1:   "Task",
-	2:   "Set",
-	3:   "Profile",
-	101: "Breadcrumbs",
-}
-
-var BlockContentPageStyle_value = map[string]int32{
-	"Empty":       0,
-	"Task":        1,
-	"Set":         2,
-	"Profile":     3,
-	"Breadcrumbs": 101,
-}
-
-func (x BlockContentPageStyle) String() string {
-	return proto.EnumName(BlockContentPageStyle_name, int32(x))
-}
-
-func (BlockContentPageStyle) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 9, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6, 1}
 }
 
 type LinkPreviewType int32
@@ -456,111 +363,7 @@ func (x LinkPreviewType) String() string {
 }
 
 func (LinkPreviewType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{6, 0}
-}
-
-type SmartBlock struct {
-	Id   string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type SmartBlockType `protobuf:"varint,2,opt,name=type,proto3,enum=anytype.model.SmartBlockType" json:"type,omitempty"`
-}
-
-func (m *SmartBlock) Reset()         { *m = SmartBlock{} }
-func (m *SmartBlock) String() string { return proto.CompactTextString(m) }
-func (*SmartBlock) ProtoMessage()    {}
-func (*SmartBlock) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{0}
-}
-func (m *SmartBlock) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SmartBlock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_SmartBlock.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *SmartBlock) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SmartBlock.Merge(m, src)
-}
-func (m *SmartBlock) XXX_Size() int {
-	return m.Size()
-}
-func (m *SmartBlock) XXX_DiscardUnknown() {
-	xxx_messageInfo_SmartBlock.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SmartBlock proto.InternalMessageInfo
-
-func (m *SmartBlock) GetId() string {
-	if m != nil {
-		return m.Id
-	}
-	return ""
-}
-
-func (m *SmartBlock) GetType() SmartBlockType {
-	if m != nil {
-		return m.Type
-	}
-	return SmartBlock_Dashboard
-}
-
-type SmartBlockSnapshotBase struct {
-	Blocks  []*Block      `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
-	Details *types.Struct `protobuf:"bytes,2,opt,name=details,proto3" json:"details,omitempty"`
-}
-
-func (m *SmartBlockSnapshotBase) Reset()         { *m = SmartBlockSnapshotBase{} }
-func (m *SmartBlockSnapshotBase) String() string { return proto.CompactTextString(m) }
-func (*SmartBlockSnapshotBase) ProtoMessage()    {}
-func (*SmartBlockSnapshotBase) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{1}
-}
-func (m *SmartBlockSnapshotBase) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SmartBlockSnapshotBase) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_SmartBlockSnapshotBase.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *SmartBlockSnapshotBase) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SmartBlockSnapshotBase.Merge(m, src)
-}
-func (m *SmartBlockSnapshotBase) XXX_Size() int {
-	return m.Size()
-}
-func (m *SmartBlockSnapshotBase) XXX_DiscardUnknown() {
-	xxx_messageInfo_SmartBlockSnapshotBase.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SmartBlockSnapshotBase proto.InternalMessageInfo
-
-func (m *SmartBlockSnapshotBase) GetBlocks() []*Block {
-	if m != nil {
-		return m.Blocks
-	}
-	return nil
-}
-
-func (m *SmartBlockSnapshotBase) GetDetails() *types.Struct {
-	if m != nil {
-		return m.Details
-	}
-	return nil
+	return fileDescriptor_47d1277a02da26d7, []int{4, 0}
 }
 
 type Block struct {
@@ -571,9 +374,7 @@ type Block struct {
 	BackgroundColor string             `protobuf:"bytes,5,opt,name=backgroundColor,proto3" json:"backgroundColor,omitempty"`
 	Align           BlockAlign         `protobuf:"varint,6,opt,name=align,proto3,enum=anytype.model.BlockAlign" json:"align,omitempty"`
 	// Types that are valid to be assigned to Content:
-	//	*BlockContentOfDashboard
-	//	*BlockContentOfPage
-	//	*BlockContentOfDataview
+	//	*BlockContentOfSmartblock
 	//	*BlockContentOfText
 	//	*BlockContentOfFile
 	//	*BlockContentOfLayout
@@ -588,7 +389,7 @@ func (m *Block) Reset()         { *m = Block{} }
 func (m *Block) String() string { return proto.CompactTextString(m) }
 func (*Block) ProtoMessage()    {}
 func (*Block) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2}
+	return fileDescriptor_47d1277a02da26d7, []int{0}
 }
 func (m *Block) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -623,14 +424,8 @@ type IsBlockContent interface {
 	Size() int
 }
 
-type BlockContentOfDashboard struct {
-	Dashboard *BlockContentDashboard `protobuf:"bytes,11,opt,name=dashboard,proto3,oneof" json:"dashboard,omitempty"`
-}
-type BlockContentOfPage struct {
-	Page *BlockContentPage `protobuf:"bytes,12,opt,name=page,proto3,oneof" json:"page,omitempty"`
-}
-type BlockContentOfDataview struct {
-	Dataview *BlockContentDataview `protobuf:"bytes,13,opt,name=dataview,proto3,oneof" json:"dataview,omitempty"`
+type BlockContentOfSmartblock struct {
+	Smartblock *BlockContentSmartblock `protobuf:"bytes,11,opt,name=smartblock,proto3,oneof" json:"smartblock,omitempty"`
 }
 type BlockContentOfText struct {
 	Text *BlockContentText `protobuf:"bytes,14,opt,name=text,proto3,oneof" json:"text,omitempty"`
@@ -654,16 +449,14 @@ type BlockContentOfLink struct {
 	Link *BlockContentLink `protobuf:"bytes,20,opt,name=link,proto3,oneof" json:"link,omitempty"`
 }
 
-func (*BlockContentOfDashboard) IsBlockContent() {}
-func (*BlockContentOfPage) IsBlockContent()      {}
-func (*BlockContentOfDataview) IsBlockContent()  {}
-func (*BlockContentOfText) IsBlockContent()      {}
-func (*BlockContentOfFile) IsBlockContent()      {}
-func (*BlockContentOfLayout) IsBlockContent()    {}
-func (*BlockContentOfDiv) IsBlockContent()       {}
-func (*BlockContentOfBookmark) IsBlockContent()  {}
-func (*BlockContentOfIcon) IsBlockContent()      {}
-func (*BlockContentOfLink) IsBlockContent()      {}
+func (*BlockContentOfSmartblock) IsBlockContent() {}
+func (*BlockContentOfText) IsBlockContent()       {}
+func (*BlockContentOfFile) IsBlockContent()       {}
+func (*BlockContentOfLayout) IsBlockContent()     {}
+func (*BlockContentOfDiv) IsBlockContent()        {}
+func (*BlockContentOfBookmark) IsBlockContent()   {}
+func (*BlockContentOfIcon) IsBlockContent()       {}
+func (*BlockContentOfLink) IsBlockContent()       {}
 
 func (m *Block) GetContent() IsBlockContent {
 	if m != nil {
@@ -714,23 +507,9 @@ func (m *Block) GetAlign() BlockAlign {
 	return Block_AlignLeft
 }
 
-func (m *Block) GetDashboard() *BlockContentDashboard {
-	if x, ok := m.GetContent().(*BlockContentOfDashboard); ok {
-		return x.Dashboard
-	}
-	return nil
-}
-
-func (m *Block) GetPage() *BlockContentPage {
-	if x, ok := m.GetContent().(*BlockContentOfPage); ok {
-		return x.Page
-	}
-	return nil
-}
-
-func (m *Block) GetDataview() *BlockContentDataview {
-	if x, ok := m.GetContent().(*BlockContentOfDataview); ok {
-		return x.Dataview
+func (m *Block) GetSmartblock() *BlockContentSmartblock {
+	if x, ok := m.GetContent().(*BlockContentOfSmartblock); ok {
+		return x.Smartblock
 	}
 	return nil
 }
@@ -787,9 +566,7 @@ func (m *Block) GetLink() *BlockContentLink {
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*Block) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*BlockContentOfDashboard)(nil),
-		(*BlockContentOfPage)(nil),
-		(*BlockContentOfDataview)(nil),
+		(*BlockContentOfSmartblock)(nil),
 		(*BlockContentOfText)(nil),
 		(*BlockContentOfFile)(nil),
 		(*BlockContentOfLayout)(nil),
@@ -812,7 +589,7 @@ func (m *BlockRestrictions) Reset()         { *m = BlockRestrictions{} }
 func (m *BlockRestrictions) String() string { return proto.CompactTextString(m) }
 func (*BlockRestrictions) ProtoMessage()    {}
 func (*BlockRestrictions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 0}
 }
 func (m *BlockRestrictions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -883,7 +660,7 @@ func (m *BlockContent) Reset()         { *m = BlockContent{} }
 func (m *BlockContent) String() string { return proto.CompactTextString(m) }
 func (*BlockContent) ProtoMessage()    {}
 func (*BlockContent) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1}
 }
 func (m *BlockContent) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -923,7 +700,7 @@ func (m *BlockContentLayout) Reset()         { *m = BlockContentLayout{} }
 func (m *BlockContentLayout) String() string { return proto.CompactTextString(m) }
 func (*BlockContentLayout) ProtoMessage()    {}
 func (*BlockContentLayout) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 0}
 }
 func (m *BlockContentLayout) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -971,7 +748,7 @@ func (m *BlockContentLink) Reset()         { *m = BlockContentLink{} }
 func (m *BlockContentLink) String() string { return proto.CompactTextString(m) }
 func (*BlockContentLink) ProtoMessage()    {}
 func (*BlockContentLink) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 1}
 }
 func (m *BlockContentLink) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1031,7 +808,7 @@ func (m *BlockContentDiv) Reset()         { *m = BlockContentDiv{} }
 func (m *BlockContentDiv) String() string { return proto.CompactTextString(m) }
 func (*BlockContentDiv) ProtoMessage()    {}
 func (*BlockContentDiv) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 2}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 2}
 }
 func (m *BlockContentDiv) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1082,7 +859,7 @@ func (m *BlockContentBookmark) Reset()         { *m = BlockContentBookmark{} }
 func (m *BlockContentBookmark) String() string { return proto.CompactTextString(m) }
 func (*BlockContentBookmark) ProtoMessage()    {}
 func (*BlockContentBookmark) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 3}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 3}
 }
 func (m *BlockContentBookmark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1161,7 +938,7 @@ func (m *BlockContentIcon) Reset()         { *m = BlockContentIcon{} }
 func (m *BlockContentIcon) String() string { return proto.CompactTextString(m) }
 func (*BlockContentIcon) ProtoMessage()    {}
 func (*BlockContentIcon) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 4}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 4}
 }
 func (m *BlockContentIcon) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1197,89 +974,6 @@ func (m *BlockContentIcon) GetName() string {
 	return ""
 }
 
-//
-// Block type to organize pages on the main screen (main purpose)
-// It also can be mounted on a page.
-type BlockContentDashboard struct {
-	Style BlockContentDashboardStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.model.BlockContentDashboardStyle" json:"style,omitempty"`
-}
-
-func (m *BlockContentDashboard) Reset()         { *m = BlockContentDashboard{} }
-func (m *BlockContentDashboard) String() string { return proto.CompactTextString(m) }
-func (*BlockContentDashboard) ProtoMessage()    {}
-func (*BlockContentDashboard) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 5}
-}
-func (m *BlockContentDashboard) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockContentDashboard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockContentDashboard.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockContentDashboard) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockContentDashboard.Merge(m, src)
-}
-func (m *BlockContentDashboard) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockContentDashboard) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockContentDashboard.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockContentDashboard proto.InternalMessageInfo
-
-func (m *BlockContentDashboard) GetStyle() BlockContentDashboardStyle {
-	if m != nil {
-		return m.Style
-	}
-	return BlockContentDashboard_MainScreen
-}
-
-type BlockContentDataview struct {
-}
-
-func (m *BlockContentDataview) Reset()         { *m = BlockContentDataview{} }
-func (m *BlockContentDataview) String() string { return proto.CompactTextString(m) }
-func (*BlockContentDataview) ProtoMessage()    {}
-func (*BlockContentDataview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 6}
-}
-func (m *BlockContentDataview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *BlockContentDataview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_BlockContentDataview.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *BlockContentDataview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockContentDataview.Merge(m, src)
-}
-func (m *BlockContentDataview) XXX_Size() int {
-	return m.Size()
-}
-func (m *BlockContentDataview) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockContentDataview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BlockContentDataview proto.InternalMessageInfo
-
 type BlockContentText struct {
 	Text    string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
 	Style   BlockContentTextStyle  `protobuf:"varint,2,opt,name=style,proto3,enum=anytype.model.BlockContentTextStyle" json:"style,omitempty"`
@@ -1292,7 +986,7 @@ func (m *BlockContentText) Reset()         { *m = BlockContentText{} }
 func (m *BlockContentText) String() string { return proto.CompactTextString(m) }
 func (*BlockContentText) ProtoMessage()    {}
 func (*BlockContentText) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 7}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 5}
 }
 func (m *BlockContentText) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1364,7 +1058,7 @@ func (m *BlockContentTextMarks) Reset()         { *m = BlockContentTextMarks{} }
 func (m *BlockContentTextMarks) String() string { return proto.CompactTextString(m) }
 func (*BlockContentTextMarks) ProtoMessage()    {}
 func (*BlockContentTextMarks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 7, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 5, 0}
 }
 func (m *BlockContentTextMarks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1410,7 +1104,7 @@ func (m *BlockContentTextMark) Reset()         { *m = BlockContentTextMark{} }
 func (m *BlockContentTextMark) String() string { return proto.CompactTextString(m) }
 func (*BlockContentTextMark) ProtoMessage()    {}
 func (*BlockContentTextMark) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 7, 1}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 5, 1}
 }
 func (m *BlockContentTextMark) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1474,7 +1168,7 @@ func (m *BlockContentFile) Reset()         { *m = BlockContentFile{} }
 func (m *BlockContentFile) String() string { return proto.CompactTextString(m) }
 func (*BlockContentFile) ProtoMessage()    {}
 func (*BlockContentFile) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 8}
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 6}
 }
 func (m *BlockContentFile) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1552,22 +1246,21 @@ func (m *BlockContentFile) GetState() BlockContentFileState {
 	return BlockContentFile_Empty
 }
 
-type BlockContentPage struct {
-	Style BlockContentPageStyle `protobuf:"varint,1,opt,name=style,proto3,enum=anytype.model.BlockContentPageStyle" json:"style,omitempty"`
+type BlockContentSmartblock struct {
 }
 
-func (m *BlockContentPage) Reset()         { *m = BlockContentPage{} }
-func (m *BlockContentPage) String() string { return proto.CompactTextString(m) }
-func (*BlockContentPage) ProtoMessage()    {}
-func (*BlockContentPage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{2, 1, 9}
+func (m *BlockContentSmartblock) Reset()         { *m = BlockContentSmartblock{} }
+func (m *BlockContentSmartblock) String() string { return proto.CompactTextString(m) }
+func (*BlockContentSmartblock) ProtoMessage()    {}
+func (*BlockContentSmartblock) Descriptor() ([]byte, []int) {
+	return fileDescriptor_47d1277a02da26d7, []int{0, 1, 7}
 }
-func (m *BlockContentPage) XXX_Unmarshal(b []byte) error {
+func (m *BlockContentSmartblock) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *BlockContentPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *BlockContentSmartblock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_BlockContentPage.Marshal(b, m, deterministic)
+		return xxx_messageInfo_BlockContentSmartblock.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1577,24 +1270,17 @@ func (m *BlockContentPage) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return b[:n], nil
 	}
 }
-func (m *BlockContentPage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BlockContentPage.Merge(m, src)
+func (m *BlockContentSmartblock) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockContentSmartblock.Merge(m, src)
 }
-func (m *BlockContentPage) XXX_Size() int {
+func (m *BlockContentSmartblock) XXX_Size() int {
 	return m.Size()
 }
-func (m *BlockContentPage) XXX_DiscardUnknown() {
-	xxx_messageInfo_BlockContentPage.DiscardUnknown(m)
+func (m *BlockContentSmartblock) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockContentSmartblock.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BlockContentPage proto.InternalMessageInfo
-
-func (m *BlockContentPage) GetStyle() BlockContentPageStyle {
-	if m != nil {
-		return m.Style
-	}
-	return BlockContentPage_Empty
-}
+var xxx_messageInfo_BlockContentSmartblock proto.InternalMessageInfo
 
 //
 // Used to decode block meta only, without the content itself
@@ -1607,7 +1293,7 @@ func (m *BlockMetaOnly) Reset()         { *m = BlockMetaOnly{} }
 func (m *BlockMetaOnly) String() string { return proto.CompactTextString(m) }
 func (*BlockMetaOnly) ProtoMessage()    {}
 func (*BlockMetaOnly) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{3}
+	return fileDescriptor_47d1277a02da26d7, []int{1}
 }
 func (m *BlockMetaOnly) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1661,7 +1347,7 @@ func (m *Range) Reset()         { *m = Range{} }
 func (m *Range) String() string { return proto.CompactTextString(m) }
 func (*Range) ProtoMessage()    {}
 func (*Range) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{4}
+	return fileDescriptor_47d1277a02da26d7, []int{2}
 }
 func (m *Range) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1716,7 +1402,7 @@ func (m *Account) Reset()         { *m = Account{} }
 func (m *Account) String() string { return proto.CompactTextString(m) }
 func (*Account) ProtoMessage()    {}
 func (*Account) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{5}
+	return fileDescriptor_47d1277a02da26d7, []int{3}
 }
 func (m *Account) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1779,7 +1465,7 @@ func (m *AccountAvatar) Reset()         { *m = AccountAvatar{} }
 func (m *AccountAvatar) String() string { return proto.CompactTextString(m) }
 func (*AccountAvatar) ProtoMessage()    {}
 func (*AccountAvatar) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{5, 0}
+	return fileDescriptor_47d1277a02da26d7, []int{3, 0}
 }
 func (m *AccountAvatar) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1866,7 +1552,7 @@ func (m *LinkPreview) Reset()         { *m = LinkPreview{} }
 func (m *LinkPreview) String() string { return proto.CompactTextString(m) }
 func (*LinkPreview) ProtoMessage()    {}
 func (*LinkPreview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_47d1277a02da26d7, []int{6}
+	return fileDescriptor_47d1277a02da26d7, []int{4}
 }
 func (m *LinkPreview) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1938,21 +1624,16 @@ func (m *LinkPreview) GetType() LinkPreviewType {
 }
 
 func init() {
-	proto.RegisterEnum("anytype.model.SmartBlockType", SmartBlockType_name, SmartBlockType_value)
 	proto.RegisterEnum("anytype.model.BlockPosition", BlockPosition_name, BlockPosition_value)
 	proto.RegisterEnum("anytype.model.BlockAlign", BlockAlign_name, BlockAlign_value)
 	proto.RegisterEnum("anytype.model.BlockContentLayoutStyle", BlockContentLayoutStyle_name, BlockContentLayoutStyle_value)
 	proto.RegisterEnum("anytype.model.BlockContentLinkStyle", BlockContentLinkStyle_name, BlockContentLinkStyle_value)
 	proto.RegisterEnum("anytype.model.BlockContentDivStyle", BlockContentDivStyle_name, BlockContentDivStyle_value)
-	proto.RegisterEnum("anytype.model.BlockContentDashboardStyle", BlockContentDashboardStyle_name, BlockContentDashboardStyle_value)
 	proto.RegisterEnum("anytype.model.BlockContentTextStyle", BlockContentTextStyle_name, BlockContentTextStyle_value)
 	proto.RegisterEnum("anytype.model.BlockContentTextMarkType", BlockContentTextMarkType_name, BlockContentTextMarkType_value)
 	proto.RegisterEnum("anytype.model.BlockContentFileType", BlockContentFileType_name, BlockContentFileType_value)
 	proto.RegisterEnum("anytype.model.BlockContentFileState", BlockContentFileState_name, BlockContentFileState_value)
-	proto.RegisterEnum("anytype.model.BlockContentPageStyle", BlockContentPageStyle_name, BlockContentPageStyle_value)
 	proto.RegisterEnum("anytype.model.LinkPreviewType", LinkPreviewType_name, LinkPreviewType_value)
-	proto.RegisterType((*SmartBlock)(nil), "anytype.model.SmartBlock")
-	proto.RegisterType((*SmartBlockSnapshotBase)(nil), "anytype.model.SmartBlockSnapshotBase")
 	proto.RegisterType((*Block)(nil), "anytype.model.Block")
 	proto.RegisterType((*BlockRestrictions)(nil), "anytype.model.Block.Restrictions")
 	proto.RegisterType((*BlockContent)(nil), "anytype.model.Block.Content")
@@ -1961,13 +1642,11 @@ func init() {
 	proto.RegisterType((*BlockContentDiv)(nil), "anytype.model.Block.Content.Div")
 	proto.RegisterType((*BlockContentBookmark)(nil), "anytype.model.Block.Content.Bookmark")
 	proto.RegisterType((*BlockContentIcon)(nil), "anytype.model.Block.Content.Icon")
-	proto.RegisterType((*BlockContentDashboard)(nil), "anytype.model.Block.Content.Dashboard")
-	proto.RegisterType((*BlockContentDataview)(nil), "anytype.model.Block.Content.Dataview")
 	proto.RegisterType((*BlockContentText)(nil), "anytype.model.Block.Content.Text")
 	proto.RegisterType((*BlockContentTextMarks)(nil), "anytype.model.Block.Content.Text.Marks")
 	proto.RegisterType((*BlockContentTextMark)(nil), "anytype.model.Block.Content.Text.Mark")
 	proto.RegisterType((*BlockContentFile)(nil), "anytype.model.Block.Content.File")
-	proto.RegisterType((*BlockContentPage)(nil), "anytype.model.Block.Content.Page")
+	proto.RegisterType((*BlockContentSmartblock)(nil), "anytype.model.Block.Content.Smartblock")
 	proto.RegisterType((*BlockMetaOnly)(nil), "anytype.model.BlockMetaOnly")
 	proto.RegisterType((*Range)(nil), "anytype.model.Range")
 	proto.RegisterType((*Account)(nil), "anytype.model.Account")
@@ -1978,198 +1657,102 @@ func init() {
 func init() { proto.RegisterFile("pb/model/protos/models.proto", fileDescriptor_47d1277a02da26d7) }
 
 var fileDescriptor_47d1277a02da26d7 = []byte{
-	// 1701 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x58, 0xdd, 0x8e, 0x1c, 0x47,
-	0x15, 0x9e, 0x9e, 0xee, 0x9e, 0x9f, 0x33, 0x5e, 0x6f, 0xa5, 0x62, 0x99, 0x56, 0x63, 0x96, 0xa5,
-	0x49, 0xcc, 0x42, 0x92, 0x59, 0x67, 0x1d, 0x88, 0xf8, 0xb1, 0xa2, 0x9d, 0xb5, 0xa3, 0x5d, 0x62,
-	0x27, 0x4b, 0xef, 0x3a, 0x17, 0x5c, 0x51, 0xd3, 0x5d, 0xdb, 0x53, 0x9a, 0x9e, 0xae, 0x51, 0x75,
-	0xcd, 0xda, 0x13, 0x71, 0x8f, 0xc4, 0x15, 0x2f, 0x00, 0x0f, 0xc2, 0x03, 0x20, 0x10, 0x37, 0x11,
-	0x12, 0x12, 0xdc, 0x21, 0xfb, 0x35, 0xb8, 0x40, 0xa7, 0xaa, 0xdb, 0xd3, 0xe3, 0xac, 0xec, 0x01,
-	0x72, 0x57, 0xa7, 0xfa, 0x7c, 0x55, 0xa7, 0xce, 0xf9, 0xce, 0x57, 0x35, 0x03, 0xb7, 0xe6, 0xe3,
-	0xfd, 0x99, 0x4c, 0x79, 0xbe, 0x3f, 0x57, 0x52, 0xcb, 0xd2, 0x1a, 0xe5, 0xd0, 0x58, 0x74, 0x8b,
-	0x15, 0x4b, 0xbd, 0x9c, 0xf3, 0xa1, 0x99, 0x0d, 0x6f, 0x65, 0x52, 0x66, 0x39, 0xb7, 0xae, 0xe3,
-	0xc5, 0xc5, 0x7e, 0xa9, 0xd5, 0x22, 0xd1, 0xd6, 0x39, 0xfa, 0xbd, 0x03, 0x70, 0x36, 0x63, 0x4a,
-	0x8f, 0x72, 0x99, 0x4c, 0xe9, 0x75, 0x68, 0x8b, 0x34, 0x70, 0x76, 0x9d, 0xbd, 0x7e, 0xdc, 0x16,
-	0x29, 0x3d, 0x00, 0x0f, 0x97, 0x0a, 0xda, 0xbb, 0xce, 0xde, 0xf5, 0x83, 0x9d, 0xe1, 0xda, 0xd2,
-	0xc3, 0x15, 0x70, 0x78, 0xbe, 0x9c, 0xf3, 0xd8, 0xf8, 0x46, 0x9f, 0x80, 0x87, 0x16, 0xdd, 0x82,
-	0xfe, 0x7d, 0x56, 0x4e, 0xc6, 0x92, 0xa9, 0x94, 0xb4, 0x68, 0x0f, 0xbc, 0x53, 0x96, 0x71, 0xe2,
-	0xd0, 0x01, 0x74, 0x0f, 0x55, 0x32, 0x11, 0x97, 0x9c, 0xb4, 0xe9, 0x36, 0x0c, 0x46, 0x8a, 0xb3,
-	0x34, 0x51, 0x8b, 0xd9, 0xb8, 0x24, 0x2e, 0xbd, 0x06, 0xbd, 0xfb, 0x4c, 0xb3, 0x4b, 0xc1, 0x9f,
-	0x10, 0x2f, 0x5a, 0xc2, 0xcd, 0xd5, 0x2e, 0x67, 0x05, 0x9b, 0x97, 0x13, 0xa9, 0x47, 0xac, 0xe4,
-	0xf4, 0x5d, 0xe8, 0x8c, 0x71, 0xb2, 0x0c, 0x9c, 0x5d, 0x77, 0x6f, 0x70, 0x70, 0xe3, 0xa5, 0xe0,
-	0x0c, 0x22, 0xae, 0x7c, 0xe8, 0xfb, 0xd0, 0x4d, 0xb9, 0x66, 0x22, 0x2f, 0xcd, 0x59, 0x06, 0x07,
-	0xdf, 0x18, 0xda, 0xbc, 0x0c, 0xeb, 0xbc, 0x0c, 0xcf, 0x4c, 0x5e, 0xe2, 0xda, 0x2f, 0xfa, 0x5b,
-	0x00, 0xfe, 0xd5, 0x59, 0xd9, 0x87, 0xce, 0x85, 0xe0, 0x79, 0xfa, 0xda, 0xb5, 0x2a, 0x37, 0xfa,
-	0x00, 0xae, 0x29, 0x5e, 0x6a, 0x25, 0x12, 0x2d, 0x64, 0x51, 0x06, 0xae, 0x81, 0x7d, 0xe7, 0xaa,
-	0x88, 0x87, 0x71, 0xc3, 0x31, 0x5e, 0x83, 0xd1, 0x5d, 0x18, 0x24, 0x13, 0x91, 0xa7, 0x8a, 0x17,
-	0x27, 0x69, 0x19, 0x78, 0xbb, 0xee, 0x5e, 0x3f, 0x6e, 0x4e, 0xd1, 0x3d, 0xd8, 0x1e, 0xb3, 0x64,
-	0x9a, 0x29, 0xb9, 0x28, 0xd2, 0x23, 0x99, 0x4b, 0x15, 0xf8, 0x26, 0xec, 0x97, 0xa7, 0xe9, 0x1d,
-	0xf0, 0x59, 0x2e, 0xb2, 0x22, 0xe8, 0x98, 0xd2, 0x86, 0x57, 0xc6, 0x72, 0x88, 0x1e, 0xb1, 0x75,
-	0xa4, 0x1f, 0x43, 0x3f, 0xad, 0xeb, 0x19, 0x0c, 0xcc, 0x09, 0x6e, 0x5f, 0x89, 0x3a, 0x92, 0x85,
-	0xe6, 0x85, 0x1e, 0xbe, 0xa8, 0xfe, 0x71, 0x2b, 0x5e, 0x41, 0xe9, 0x87, 0xe0, 0xcd, 0x59, 0xc6,
-	0x83, 0x6b, 0xaf, 0x48, 0x42, 0xbd, 0x04, 0x32, 0xe6, 0xb8, 0x15, 0x1b, 0x00, 0x3d, 0x82, 0x5e,
-	0x5a, 0x31, 0x23, 0xd8, 0x32, 0xe0, 0xb7, 0x5f, 0xb3, 0xbf, 0x75, 0x3e, 0x6e, 0xc5, 0x2f, 0x80,
-	0xb8, 0xbb, 0xe6, 0x4f, 0x75, 0x70, 0x7d, 0x83, 0xdd, 0xcf, 0xf9, 0x53, 0x8d, 0xbb, 0x23, 0x00,
-	0x81, 0x17, 0x22, 0xe7, 0xc1, 0xf6, 0x06, 0xc0, 0x8f, 0x45, 0x6e, 0xc2, 0x46, 0x00, 0xbd, 0x07,
-	0x9d, 0x9c, 0x2d, 0xe5, 0x42, 0x07, 0xc4, 0x40, 0xbf, 0xfb, 0x4a, 0xe8, 0x43, 0xe3, 0x7a, 0xdc,
-	0x8a, 0x2b, 0x10, 0xfd, 0x00, 0xdc, 0x54, 0x5c, 0x06, 0x6f, 0x18, 0xec, 0xee, 0xab, 0x0f, 0x2c,
-	0x2e, 0x8f, 0x5b, 0x31, 0xba, 0x63, 0xae, 0xc6, 0x52, 0x4e, 0x67, 0x4c, 0x4d, 0x03, 0xba, 0x41,
-	0xae, 0x46, 0x95, 0x33, 0xe6, 0xaa, 0x06, 0xe2, 0x91, 0x45, 0x22, 0x8b, 0xe0, 0xcd, 0x0d, 0x8e,
-	0x7c, 0x92, 0xc8, 0x02, 0x8f, 0x8c, 0x00, 0x04, 0xe6, 0xa2, 0x98, 0x06, 0x37, 0x36, 0x00, 0x3e,
-	0x14, 0x05, 0xee, 0x6a, 0x00, 0xe1, 0x17, 0x70, 0xad, 0xc9, 0x7f, 0x4a, 0xc1, 0x43, 0x71, 0x30,
-	0xbd, 0xd7, 0x8b, 0xcd, 0x18, 0xe7, 0x78, 0x2a, 0xb4, 0xe9, 0xbd, 0x5e, 0x6c, 0xc6, 0xf4, 0x26,
-	0x74, 0x14, 0x9f, 0xc9, 0x4b, 0x6e, 0x5a, 0xab, 0x17, 0x57, 0x16, 0xfa, 0xa6, 0x8a, 0x65, 0x81,
-	0x67, 0x7d, 0x71, 0x8c, 0xbe, 0xa9, 0x92, 0xf3, 0xcf, 0x0a, 0xd3, 0x1a, 0xbd, 0xb8, 0xb2, 0xc2,
-	0x3f, 0x6d, 0x43, 0xb7, 0x0a, 0x2a, 0x9c, 0x43, 0xc7, 0x16, 0x82, 0x7e, 0x04, 0x7e, 0xa9, 0x97,
-	0x39, 0x37, 0x21, 0x5c, 0x3f, 0xf8, 0xfe, 0x06, 0xc5, 0x1b, 0x9e, 0x21, 0x20, 0xb6, 0xb8, 0xe8,
-	0x6d, 0xf0, 0x8d, 0x4d, 0xbb, 0xe0, 0xc6, 0xf2, 0x09, 0x69, 0x51, 0x80, 0xce, 0x91, 0xcc, 0x17,
-	0xb3, 0x82, 0x38, 0x38, 0x79, 0x5f, 0x5c, 0x92, 0x76, 0xf8, 0x4f, 0x07, 0x3c, 0x4c, 0x05, 0x7d,
-	0x0b, 0xb6, 0x34, 0x53, 0x19, 0xb7, 0x92, 0x77, 0x52, 0xeb, 0xce, 0xfa, 0x24, 0xbd, 0x57, 0x87,
-	0x65, 0x95, 0xf9, 0x7b, 0xaf, 0x4d, 0xf1, 0x5a, 0x50, 0x0d, 0x05, 0x73, 0x37, 0x52, 0xb0, 0xe8,
-	0xa7, 0xf5, 0x29, 0x6a, 0x19, 0x6f, 0xad, 0x09, 0xb5, 0xb3, 0xae, 0xf6, 0xed, 0xa6, 0xc6, 0xbb,
-	0xe1, 0xaf, 0xcc, 0x21, 0xe9, 0xcf, 0xd6, 0x53, 0x79, 0xfb, 0x75, 0x5c, 0x5e, 0xcf, 0xe3, 0x37,
-	0x1b, 0x11, 0x3c, 0x14, 0x05, 0xb7, 0x57, 0xca, 0x7d, 0xa9, 0x4b, 0xe2, 0x84, 0x7f, 0x71, 0xa0,
-	0x57, 0x53, 0x98, 0x12, 0x70, 0x17, 0x2a, 0xaf, 0xf2, 0x86, 0x43, 0x7a, 0x03, 0x7c, 0x2d, 0x74,
-	0x95, 0xad, 0x7e, 0x6c, 0x0d, 0x94, 0xd3, 0x94, 0x97, 0x89, 0x12, 0x73, 0x24, 0x9b, 0xc9, 0x44,
-	0x3f, 0x6e, 0x4e, 0xd1, 0x5b, 0xd0, 0x17, 0x33, 0x94, 0x20, 0x56, 0x4e, 0x0c, 0x87, 0xfa, 0xf1,
-	0x6a, 0x02, 0xf1, 0x17, 0xec, 0x12, 0x09, 0x6f, 0xbe, 0x5b, 0xa1, 0x6d, 0x4e, 0xd1, 0xbb, 0xd5,
-	0xf5, 0x69, 0x35, 0xf6, 0xdb, 0x2f, 0x1d, 0x18, 0xcb, 0x72, 0xaa, 0x38, 0x26, 0xb0, 0x71, 0x7f,
-	0x86, 0x21, 0x78, 0xd8, 0x4c, 0xc8, 0xdd, 0x82, 0xcd, 0x78, 0x75, 0x0e, 0x33, 0x0e, 0x17, 0x8d,
-	0x2c, 0xd3, 0xd1, 0x7a, 0x3e, 0xdf, 0xdd, 0x4c, 0x8c, 0xd7, 0xb3, 0xfa, 0x56, 0x9d, 0xd5, 0xeb,
-	0x00, 0x8f, 0x98, 0x28, 0xce, 0x12, 0xc5, 0x79, 0x41, 0x5a, 0xcd, 0x02, 0x3a, 0x21, 0xac, 0x4a,
-	0x1d, 0xfe, 0xd1, 0x07, 0x0f, 0x85, 0x11, 0xe3, 0x33, 0x4a, 0x5a, 0xc5, 0x67, 0x44, 0xf2, 0xbf,
-	0xa2, 0x25, 0xae, 0xb2, 0x4e, 0xcb, 0x7b, 0xe0, 0x63, 0x05, 0x6b, 0x56, 0x6e, 0x00, 0x7f, 0x84,
-	0xee, 0xb1, 0x45, 0xd1, 0x00, 0xba, 0xc9, 0x84, 0x27, 0x53, 0x9e, 0x56, 0x0d, 0x5f, 0x9b, 0x48,
-	0x80, 0xa4, 0x71, 0x1b, 0x5a, 0x23, 0x7c, 0x00, 0xbe, 0xc1, 0x23, 0x33, 0xed, 0xbe, 0xf6, 0x29,
-	0x71, 0x7b, 0xb3, 0x7d, 0xab, 0x6d, 0xc3, 0xdf, 0xb4, 0xc1, 0x43, 0x9b, 0xfe, 0x00, 0x7c, 0xc5,
-	0x8a, 0xcc, 0x16, 0xe4, 0xab, 0x2f, 0x92, 0x18, 0xbf, 0xc5, 0xd6, 0x85, 0x7e, 0xb4, 0xf6, 0xb2,
-	0x7a, 0x67, 0xb3, 0x1d, 0x1b, 0x34, 0xc1, 0x23, 0xcd, 0x99, 0x62, 0xb3, 0x8a, 0xb7, 0xd6, 0x88,
-	0x7e, 0x5d, 0x3d, 0xbe, 0xde, 0x80, 0xad, 0x33, 0xad, 0xc4, 0x94, 0xeb, 0x89, 0x92, 0x8b, 0x6c,
-	0x62, 0xfb, 0xf5, 0x13, 0xbe, 0xb4, 0x0d, 0xea, 0xa0, 0x08, 0x9d, 0x68, 0x96, 0x8b, 0x84, 0xb4,
-	0xb1, 0x8f, 0x46, 0x32, 0x4f, 0x89, 0x8b, 0xaf, 0xb1, 0xc7, 0x45, 0xca, 0x55, 0x99, 0x48, 0xc5,
-	0x53, 0xe2, 0x55, 0xcd, 0x36, 0x25, 0x3e, 0x36, 0x38, 0xc6, 0x61, 0x5e, 0x0f, 0xa4, 0x43, 0xdf,
-	0x84, 0xed, 0xd1, 0xfa, 0x93, 0x82, 0x74, 0xa3, 0x3f, 0x38, 0x35, 0x9d, 0xb6, 0xa0, 0x7f, 0xca,
-	0x14, 0xcb, 0x14, 0x9b, 0x4f, 0x2c, 0x9b, 0x8e, 0x39, 0x4b, 0xb9, 0x7a, 0xdf, 0xbe, 0xff, 0xac,
-	0x71, 0x60, 0x85, 0xc2, 0x1a, 0x77, 0x89, 0xbb, 0x32, 0x3e, 0x20, 0x1e, 0xed, 0x83, 0xff, 0x8b,
-	0x85, 0xd4, 0x9c, 0xf8, 0x18, 0xc5, 0x91, 0x4c, 0x39, 0xe9, 0xe0, 0xe4, 0x39, 0x36, 0x2f, 0xe9,
-	0xe2, 0x79, 0x8e, 0xb0, 0xbc, 0x63, 0xf9, 0x94, 0xf4, 0xf0, 0x3c, 0x98, 0x21, 0x9e, 0x92, 0x3e,
-	0x7e, 0xf9, 0x74, 0x31, 0x1b, 0x73, 0x3c, 0x02, 0xe0, 0x97, 0x73, 0x99, 0x65, 0x39, 0x27, 0x83,
-	0xf0, 0xef, 0x6d, 0xf0, 0xf0, 0x72, 0x46, 0xf2, 0x4e, 0xb0, 0x69, 0x2b, 0xf2, 0xe2, 0xf8, 0x45,
-	0xc3, 0xb5, 0x57, 0x0d, 0x47, 0x7f, 0x52, 0x95, 0xc9, 0xdd, 0x40, 0xb2, 0x70, 0xe1, 0x66, 0x85,
-	0x28, 0x78, 0x33, 0x31, 0xe3, 0x95, 0x70, 0x98, 0x31, 0xce, 0x95, 0xe2, 0x0b, 0x6e, 0x78, 0xe8,
-	0xc6, 0x66, 0x8c, 0xb4, 0x65, 0x69, 0xca, 0xd3, 0x43, 0x6d, 0x84, 0xc2, 0x8d, 0x6b, 0xd3, 0xb6,
-	0x13, 0xd3, 0x3c, 0xe8, 0x6e, 0xd0, 0x4e, 0x66, 0xfb, 0x33, 0x74, 0x8f, 0x2d, 0x2a, 0xba, 0x53,
-	0x91, 0xa1, 0x07, 0xde, 0xa7, 0xb2, 0x56, 0x4c, 0x74, 0x23, 0x0e, 0x26, 0xf2, 0x04, 0x95, 0x8c,
-	0xb4, 0x71, 0xf8, 0xb9, 0x48, 0xb9, 0x24, 0x6e, 0xf4, 0x23, 0xac, 0x1f, 0xd3, 0x1c, 0xe7, 0x1e,
-	0xcc, 0xe6, 0x7a, 0x49, 0x5a, 0x58, 0xca, 0xc7, 0xf3, 0x5c, 0xb2, 0x54, 0x14, 0x19, 0x71, 0xac,
-	0xe8, 0x16, 0x15, 0xee, 0x81, 0x52, 0x52, 0x11, 0x37, 0xfc, 0xad, 0x63, 0xaf, 0x85, 0x95, 0x00,
-	0x38, 0x1b, 0x44, 0x8c, 0x88, 0x75, 0x39, 0x3a, 0xaa, 0xf9, 0xd3, 0xd8, 0xbf, 0x07, 0xde, 0x39,
-	0x2b, 0xa7, 0xf6, 0xb2, 0x3c, 0xe3, 0xda, 0x92, 0xe6, 0x54, 0x49, 0x7c, 0x5d, 0x59, 0xce, 0x36,
-	0x7f, 0x41, 0xf0, 0xe8, 0x73, 0xe8, 0x9d, 0xca, 0x52, 0x18, 0x05, 0x5f, 0x1d, 0xbd, 0x0b, 0xee,
-	0xb9, 0x9c, 0x5b, 0xe6, 0x8f, 0xa4, 0xd6, 0x72, 0x66, 0x99, 0xff, 0x90, 0x5f, 0x68, 0xe2, 0xe2,
-	0x86, 0xb1, 0xc8, 0x26, 0xda, 0x12, 0xef, 0xa4, 0x28, 0xb8, 0x22, 0x3e, 0x6e, 0x14, 0xf3, 0x79,
-	0xce, 0x12, 0x4e, 0x3a, 0xd1, 0x87, 0xe0, 0x9b, 0x07, 0x31, 0x66, 0xc4, 0x0c, 0x0c, 0xb4, 0x85,
-	0x01, 0x18, 0xf3, 0x88, 0x17, 0x9a, 0x2b, 0xe2, 0xa0, 0x96, 0xda, 0x97, 0xb3, 0x59, 0xb0, 0x3d,
-	0xea, 0x43, 0x37, 0xb1, 0x47, 0x8e, 0x4e, 0x61, 0xcb, 0xe4, 0xe0, 0x11, 0xd7, 0xec, 0xb3, 0x22,
-	0x5f, 0xfe, 0xdf, 0xbf, 0x2d, 0xa2, 0x77, 0xc0, 0x37, 0xc2, 0x82, 0xd4, 0xba, 0x50, 0x72, 0x66,
-	0xd6, 0xf2, 0x63, 0x33, 0xc6, 0xd5, 0xb5, 0x34, 0x2b, 0xf9, 0x71, 0x5b, 0xcb, 0xe8, 0xaf, 0x0e,
-	0x74, 0x0f, 0x93, 0x44, 0x2e, 0x0a, 0xfd, 0x95, 0x9d, 0xaf, 0xa2, 0xff, 0x0f, 0xa1, 0xc3, 0x2e,
-	0x99, 0x66, 0xaa, 0x52, 0xe4, 0x6f, 0xbd, 0x54, 0xcf, 0x6a, 0xad, 0xe1, 0xa1, 0x71, 0x8a, 0x2b,
-	0xe7, 0x90, 0x43, 0xc7, 0xce, 0xd0, 0x1f, 0x83, 0x6f, 0x2e, 0xcc, 0x4a, 0x12, 0x37, 0x7a, 0x36,
-	0x5b, 0x04, 0xbd, 0x59, 0x6b, 0xb6, 0x09, 0x08, 0xe7, 0x8d, 0x39, 0xea, 0xd5, 0x31, 0x45, 0xff,
-	0x76, 0x60, 0xd0, 0xb8, 0x44, 0xbf, 0xc6, 0x8b, 0x3f, 0x84, 0x9e, 0x09, 0xe2, 0xb1, 0xca, 0xab,
-	0xf6, 0x7d, 0x61, 0xd3, 0x1d, 0x80, 0xea, 0x8e, 0xc7, 0xaf, 0xf6, 0x42, 0x69, 0xcc, 0xfc, 0x4f,
-	0x97, 0x7e, 0x74, 0x50, 0xb5, 0xea, 0x00, 0xba, 0x8f, 0x8b, 0x69, 0x21, 0x9f, 0x14, 0x6b, 0x3f,
-	0x99, 0x1b, 0xdd, 0xda, 0xb3, 0xd7, 0x2f, 0x71, 0x47, 0x3f, 0xff, 0xf3, 0xb3, 0x1d, 0xe7, 0xcb,
-	0x67, 0x3b, 0xce, 0xbf, 0x9e, 0xed, 0x38, 0xbf, 0x7b, 0xbe, 0xd3, 0xfa, 0xf2, 0xf9, 0x4e, 0xeb,
-	0x1f, 0xcf, 0x77, 0x5a, 0xbf, 0xbc, 0x93, 0x09, 0x3d, 0x59, 0x8c, 0x87, 0x89, 0x9c, 0xed, 0x57,
-	0xdb, 0x0b, 0xb9, 0x9f, 0xc9, 0xf7, 0x2a, 0xe3, 0xbd, 0x5c, 0x8c, 0x15, 0x53, 0xcb, 0xfd, 0xfa,
-	0x8f, 0x84, 0x71, 0xc7, 0xd0, 0xeb, 0xee, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0x61, 0x01, 0x57,
-	0xc9, 0x5b, 0x10, 0x00, 0x00,
-}
-
-func (m *SmartBlock) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *SmartBlock) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *SmartBlock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Type != 0 {
-		i = encodeVarintModels(dAtA, i, uint64(m.Type))
-		i--
-		dAtA[i] = 0x10
-	}
-	if len(m.Id) > 0 {
-		i -= len(m.Id)
-		copy(dAtA[i:], m.Id)
-		i = encodeVarintModels(dAtA, i, uint64(len(m.Id)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *SmartBlockSnapshotBase) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *SmartBlockSnapshotBase) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *SmartBlockSnapshotBase) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Details != nil {
-		{
-			size, err := m.Details.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Blocks) > 0 {
-		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Blocks[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintModels(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0xa
-		}
-	}
-	return len(dAtA) - i, nil
+	// 1511 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x57, 0xcd, 0x72, 0x23, 0x49,
+	0x11, 0x56, 0xab, 0xbb, 0xf5, 0x93, 0x1a, 0xdb, 0xb5, 0xb5, 0xc3, 0xd2, 0xd1, 0x0c, 0xc6, 0x08,
+	0x96, 0x35, 0x6c, 0xac, 0x3c, 0x78, 0x16, 0x36, 0xf8, 0x99, 0xd8, 0xb0, 0x6c, 0x13, 0x36, 0x78,
+	0x77, 0x4d, 0xd9, 0xde, 0x03, 0x27, 0x4a, 0xdd, 0xe5, 0x56, 0x85, 0x5a, 0x5d, 0x8a, 0xea, 0x92,
+	0x66, 0xb4, 0xc1, 0x9d, 0x2b, 0x4f, 0xc0, 0x83, 0x70, 0xe6, 0x00, 0xc1, 0x65, 0x2f, 0x13, 0x01,
+	0x37, 0x62, 0xe6, 0x35, 0x38, 0x10, 0x59, 0xd5, 0xb2, 0x25, 0x33, 0xe1, 0x11, 0xb0, 0xb7, 0xca,
+	0xac, 0xfc, 0xb2, 0x32, 0xb3, 0xbe, 0xcc, 0xea, 0x86, 0x47, 0x93, 0xc1, 0xde, 0x58, 0xa5, 0x22,
+	0xdf, 0x9b, 0x68, 0x65, 0x54, 0xe9, 0x84, 0xb2, 0x67, 0x25, 0xba, 0xc1, 0x8b, 0xb9, 0x99, 0x4f,
+	0x44, 0xcf, 0x6a, 0xe3, 0x47, 0x99, 0x52, 0x59, 0x2e, 0x9c, 0xe9, 0x60, 0x7a, 0xbd, 0x57, 0x1a,
+	0x3d, 0x4d, 0x8c, 0x33, 0xee, 0xbe, 0xf8, 0x1a, 0x84, 0xfd, 0x5c, 0x25, 0x23, 0xba, 0x09, 0x75,
+	0x99, 0x46, 0xde, 0x8e, 0xb7, 0xdb, 0x66, 0x75, 0x99, 0xd2, 0x3d, 0x68, 0x5c, 0x4b, 0x91, 0xa7,
+	0x65, 0x54, 0xdf, 0xf1, 0x76, 0x3b, 0xfb, 0x5f, 0xef, 0x39, 0x47, 0xbd, 0x85, 0xa3, 0xde, 0x85,
+	0x75, 0xc4, 0x2a, 0x33, 0x7a, 0x0c, 0x0f, 0xb4, 0x28, 0x8d, 0x96, 0x89, 0x91, 0xaa, 0x28, 0x23,
+	0xdf, 0xc2, 0xbe, 0xdd, 0x5b, 0x09, 0xa7, 0x67, 0x0f, 0xeb, 0xb1, 0x25, 0x43, 0xb6, 0x02, 0xa3,
+	0x3b, 0xd0, 0x49, 0x86, 0x32, 0x4f, 0xb5, 0x28, 0x4e, 0xd3, 0x32, 0x0a, 0x76, 0xfc, 0xdd, 0x36,
+	0x5b, 0x56, 0xd1, 0x5d, 0xd8, 0x1a, 0xf0, 0x64, 0x94, 0x69, 0x35, 0x2d, 0xd2, 0x43, 0x95, 0x2b,
+	0x1d, 0x85, 0x36, 0xec, 0xbb, 0x6a, 0xfa, 0x18, 0x42, 0x9e, 0xcb, 0xac, 0x88, 0x1a, 0x3b, 0xde,
+	0xee, 0xe6, 0x7e, 0xfc, 0xda, 0x58, 0x0e, 0xd0, 0x82, 0x39, 0x43, 0x7a, 0x0a, 0x50, 0x8e, 0xb9,
+	0x36, 0x03, 0xdc, 0x8a, 0x3a, 0x36, 0x85, 0xf7, 0x5e, 0x0b, 0x3b, 0x54, 0x85, 0x11, 0x85, 0xe9,
+	0x5d, 0xdc, 0x98, 0x9f, 0xd4, 0xd8, 0x12, 0x98, 0x7e, 0x04, 0x81, 0x11, 0xcf, 0x4d, 0xb4, 0x79,
+	0x4f, 0x1d, 0x16, 0x4e, 0x2e, 0xc5, 0x73, 0x73, 0x52, 0x63, 0x16, 0x80, 0xc0, 0x6b, 0x99, 0x8b,
+	0x68, 0x6b, 0x0d, 0xe0, 0x2f, 0x64, 0x2e, 0x10, 0x88, 0x00, 0xfa, 0x14, 0x1a, 0x39, 0x9f, 0xab,
+	0xa9, 0x89, 0x88, 0x85, 0x7e, 0xe7, 0x5e, 0xe8, 0x99, 0x35, 0x3d, 0xa9, 0xb1, 0x0a, 0x44, 0x3f,
+	0x04, 0x3f, 0x95, 0xb3, 0xe8, 0x2d, 0x8b, 0xdd, 0xb9, 0x17, 0x7b, 0x24, 0x67, 0x27, 0x35, 0x86,
+	0xe6, 0xf4, 0x10, 0x5a, 0x03, 0xa5, 0x46, 0x63, 0xae, 0x47, 0x11, 0xb5, 0xd0, 0x77, 0xef, 0x85,
+	0xf6, 0x2b, 0xe3, 0x93, 0x1a, 0xbb, 0x01, 0x62, 0xca, 0x32, 0x51, 0x45, 0xf4, 0xf6, 0x1a, 0x29,
+	0x9f, 0x26, 0xaa, 0xc0, 0x94, 0x11, 0x80, 0xc0, 0x5c, 0x16, 0xa3, 0xe8, 0xe1, 0x1a, 0xc0, 0x33,
+	0x59, 0xe0, 0xa9, 0x16, 0x10, 0x7f, 0x01, 0x0f, 0x96, 0x49, 0x48, 0x29, 0x04, 0x5a, 0x70, 0xd7,
+	0x00, 0x2d, 0x66, 0xd7, 0xa8, 0x13, 0xa9, 0x34, 0xb6, 0x01, 0x5a, 0xcc, 0xae, 0xe9, 0x3b, 0xd0,
+	0xd0, 0x62, 0xac, 0x66, 0xc2, 0xf2, 0xbb, 0xc5, 0x2a, 0x09, 0x6d, 0x53, 0xcd, 0xb3, 0x28, 0x70,
+	0xb6, 0xb8, 0x46, 0xdb, 0x54, 0xab, 0xc9, 0x67, 0x85, 0xe5, 0x67, 0x8b, 0x55, 0x52, 0xfc, 0xe7,
+	0x0d, 0x68, 0x56, 0x41, 0xc5, 0x13, 0x68, 0xb8, 0x8b, 0xa0, 0x1f, 0x43, 0x58, 0x9a, 0x79, 0x2e,
+	0x6c, 0x08, 0x9b, 0xfb, 0xdf, 0x5f, 0xe3, 0xf2, 0x7a, 0x17, 0x08, 0x60, 0x0e, 0xd7, 0x7d, 0x17,
+	0x42, 0x2b, 0xd3, 0x26, 0xf8, 0x4c, 0x3d, 0x23, 0x35, 0x0a, 0xd0, 0x38, 0x54, 0xf9, 0x74, 0x5c,
+	0x10, 0x0f, 0x95, 0x47, 0x72, 0x46, 0xea, 0xf1, 0x3f, 0x3c, 0x08, 0xb0, 0x14, 0xf4, 0xbb, 0xb0,
+	0x61, 0xb8, 0xce, 0x84, 0xb1, 0xae, 0x4f, 0x17, 0xcd, 0xbf, 0xaa, 0xa4, 0x4f, 0x17, 0x61, 0xd5,
+	0x6d, 0x58, 0xef, 0xbd, 0xb1, 0xc4, 0x2b, 0x41, 0x2d, 0x8d, 0x11, 0x7f, 0xad, 0x31, 0xd2, 0xfd,
+	0xd9, 0x22, 0x8b, 0x16, 0x04, 0xe7, 0x3c, 0x13, 0xa4, 0x46, 0x1f, 0x40, 0xeb, 0x88, 0x1b, 0x3e,
+	0x93, 0xe2, 0x19, 0xf1, 0xe8, 0x06, 0xb4, 0x8f, 0x78, 0x39, 0x1c, 0x28, 0xae, 0x53, 0x52, 0xa7,
+	0x1d, 0x68, 0x1e, 0xe8, 0x64, 0x28, 0x67, 0x82, 0xf8, 0xf1, 0x6f, 0x6d, 0x92, 0xf4, 0xe7, 0xab,
+	0xa5, 0xfc, 0xde, 0x9b, 0xb8, 0xbc, 0x5a, 0xc7, 0x6f, 0x2c, 0x45, 0x70, 0x26, 0x0b, 0x8c, 0xa0,
+	0x05, 0xc1, 0x91, 0x32, 0x25, 0xf1, 0xe2, 0xbf, 0x7a, 0xd0, 0x5a, 0x50, 0x98, 0x12, 0xf0, 0xa7,
+	0x3a, 0xaf, 0xea, 0x86, 0x4b, 0xfa, 0x10, 0x42, 0x23, 0x4d, 0x55, 0xad, 0x36, 0x73, 0x02, 0xce,
+	0xb4, 0x54, 0x94, 0x89, 0x96, 0x13, 0x24, 0x9b, 0xad, 0x44, 0x9b, 0x2d, 0xab, 0xe8, 0x23, 0x68,
+	0xcb, 0x31, 0xcf, 0xc4, 0x09, 0x2f, 0x87, 0x96, 0x43, 0x6d, 0x76, 0xab, 0x40, 0xfc, 0x35, 0x9f,
+	0x21, 0xe1, 0xed, 0xbe, 0x9b, 0x76, 0xcb, 0x2a, 0xfa, 0x04, 0x02, 0x4c, 0xb0, 0x1a, 0x74, 0xdf,
+	0xba, 0x93, 0x30, 0x5e, 0xcb, 0xb9, 0x16, 0x58, 0xc0, 0xde, 0xe5, 0x7c, 0x22, 0x98, 0x35, 0x8e,
+	0x63, 0x08, 0xb0, 0x99, 0x90, 0xbb, 0x05, 0x1f, 0x8b, 0x2a, 0x0f, 0xbb, 0x8e, 0xff, 0x14, 0x42,
+	0x80, 0x53, 0x09, 0x37, 0xed, 0x18, 0xab, 0x36, 0xed, 0x84, 0xfa, 0xaf, 0x38, 0x81, 0x5e, 0x56,
+	0x39, 0xf1, 0x14, 0x42, 0x2c, 0xdf, 0x82, 0x12, 0x6b, 0xc0, 0x3f, 0x41, 0x73, 0xe6, 0x50, 0x34,
+	0x82, 0x66, 0x32, 0x14, 0xc9, 0x48, 0xa4, 0x55, 0xb7, 0x2d, 0x44, 0xac, 0x7e, 0xb2, 0xf4, 0x1e,
+	0x38, 0x21, 0x3e, 0x86, 0xd0, 0xe2, 0x91, 0x16, 0xee, 0x5c, 0x6f, 0xc7, 0xdf, 0xed, 0xbc, 0x81,
+	0x16, 0x37, 0xe7, 0x56, 0xc7, 0xc6, 0xbf, 0xaf, 0x43, 0x80, 0x32, 0xfd, 0x01, 0x84, 0x9a, 0x17,
+	0x99, 0xab, 0x57, 0x67, 0xff, 0xe1, 0x1d, 0x37, 0x0c, 0xf7, 0x98, 0x33, 0xa1, 0x1f, 0x57, 0xf7,
+	0xe2, 0x0a, 0xf5, 0xfe, 0x7a, 0x27, 0x2e, 0xdd, 0x11, 0xa6, 0x34, 0xe1, 0x9a, 0x8f, 0x2b, 0xd2,
+	0x38, 0xa1, 0xfb, 0x3b, 0x08, 0xd0, 0x86, 0xbe, 0x05, 0x1b, 0x17, 0x46, 0xcb, 0x91, 0x30, 0x43,
+	0xad, 0xa6, 0xd9, 0xd0, 0x35, 0xcb, 0xaf, 0xc4, 0xdc, 0x75, 0x87, 0x87, 0x13, 0xe0, 0xd4, 0xf0,
+	0x5c, 0x26, 0xa4, 0x8e, 0x24, 0xee, 0xab, 0x3c, 0x25, 0x3e, 0xdd, 0x82, 0xce, 0x55, 0x91, 0x0a,
+	0x5d, 0x26, 0x4a, 0x8b, 0x94, 0x04, 0x15, 0xd3, 0x47, 0x24, 0xc4, 0xee, 0xc2, 0x38, 0xec, 0xfb,
+	0x49, 0x1a, 0xf4, 0x6d, 0xd8, 0xea, 0xaf, 0x3e, 0xaa, 0xa4, 0xd9, 0xfd, 0xa3, 0xb7, 0xe8, 0x90,
+	0x0d, 0x68, 0x9f, 0x73, 0xcd, 0x33, 0xcd, 0x27, 0x78, 0x76, 0x07, 0x9a, 0x27, 0x82, 0xa7, 0x42,
+	0xff, 0x90, 0x78, 0xb7, 0xc2, 0xbe, 0xeb, 0x52, 0x27, 0x3c, 0x21, 0xfe, 0xad, 0xf0, 0x21, 0x09,
+	0x68, 0x1b, 0xc2, 0x5f, 0x4f, 0x95, 0x11, 0x24, 0xc4, 0x28, 0x0e, 0x55, 0x2a, 0x48, 0x03, 0x95,
+	0x97, 0xd8, 0x39, 0xa4, 0x89, 0xf9, 0x1c, 0xe2, 0xf5, 0x0e, 0xd4, 0x73, 0xd2, 0xc2, 0x7c, 0xb0,
+	0x42, 0x22, 0x25, 0x6d, 0xdc, 0xf9, 0x74, 0x3a, 0x1e, 0x08, 0x4c, 0x01, 0x70, 0xe7, 0x52, 0x65,
+	0x59, 0x2e, 0x48, 0x27, 0x7e, 0x51, 0x87, 0x00, 0x5f, 0x46, 0x24, 0xef, 0x10, 0x3b, 0xa6, 0x22,
+	0x2f, 0xae, 0x6f, 0xd8, 0x5e, 0xbf, 0x65, 0x3b, 0xfd, 0x69, 0x75, 0x4d, 0xfe, 0x1a, 0xf3, 0x02,
+	0x1d, 0x2f, 0xdf, 0x10, 0x85, 0x60, 0x2c, 0xc7, 0xa2, 0xea, 0x5a, 0xbb, 0x46, 0x5d, 0x29, 0xbf,
+	0x10, 0x96, 0x87, 0x3e, 0xb3, 0x6b, 0xa4, 0x2d, 0x4f, 0x53, 0x91, 0x1e, 0x18, 0xdb, 0xa5, 0x3e,
+	0x5b, 0x88, 0xae, 0x9d, 0xb8, 0x11, 0x51, 0x73, 0x8d, 0x76, 0xb2, 0xc7, 0x5f, 0xa0, 0x39, 0x73,
+	0xa8, 0xee, 0xe3, 0x8a, 0x0c, 0x2d, 0x08, 0x3e, 0x55, 0x8b, 0x71, 0x85, 0x66, 0xc4, 0xc3, 0x42,
+	0x9e, 0xe2, 0x18, 0x21, 0x75, 0x5c, 0x7e, 0x2e, 0x53, 0xa1, 0x88, 0xdf, 0xfd, 0x31, 0xde, 0x1f,
+	0x37, 0x02, 0x75, 0xc7, 0xe3, 0x89, 0x99, 0x93, 0x1a, 0x5e, 0xe5, 0xd5, 0x24, 0x57, 0x3c, 0x95,
+	0x45, 0x46, 0x3c, 0x37, 0xf1, 0x8a, 0x0a, 0x77, 0xac, 0xb5, 0xd2, 0xc4, 0x8f, 0x1f, 0x00, 0xdc,
+	0x7e, 0xee, 0x74, 0x3f, 0x87, 0xd6, 0xb9, 0x2a, 0xa5, 0x9d, 0x5f, 0xb7, 0x67, 0x37, 0xc1, 0xbf,
+	0x54, 0x13, 0x47, 0xbd, 0xbe, 0x32, 0x46, 0x8d, 0x1d, 0xf5, 0xce, 0xc4, 0xb5, 0x21, 0x3e, 0x7a,
+	0x63, 0x32, 0x1b, 0x1a, 0x77, 0xf3, 0xa7, 0x45, 0x21, 0x34, 0x09, 0x91, 0x11, 0x4c, 0x4c, 0x72,
+	0x9e, 0x08, 0xd2, 0xe8, 0x7e, 0x04, 0xa1, 0xfd, 0x26, 0xc3, 0x90, 0xec, 0xc2, 0x42, 0x6b, 0xc8,
+	0x5a, 0x2b, 0x1e, 0x8a, 0xc2, 0x08, 0x4d, 0x3c, 0xba, 0x09, 0xe0, 0x3e, 0xde, 0xac, 0xc3, 0x7a,
+	0xbf, 0x0d, 0xcd, 0xc4, 0x55, 0xa9, 0x7b, 0x0e, 0x1b, 0xb6, 0x6c, 0x9f, 0x08, 0xc3, 0x3f, 0x2b,
+	0xf2, 0xf9, 0xff, 0xfd, 0x79, 0xdb, 0x7d, 0x1f, 0x42, 0xdb, 0xd9, 0x78, 0xb7, 0xd7, 0x5a, 0x8d,
+	0xad, 0xaf, 0x90, 0xd9, 0x35, 0x7a, 0x37, 0xca, 0x7a, 0x0a, 0x59, 0xdd, 0xa8, 0xee, 0xdf, 0x3c,
+	0x68, 0x1e, 0x24, 0x89, 0x9a, 0x16, 0xe6, 0x3f, 0x4e, 0x7e, 0x1d, 0xff, 0x7e, 0x04, 0x0d, 0x3e,
+	0xe3, 0x86, 0xeb, 0x6a, 0x24, 0x7e, 0xf3, 0x0e, 0x05, 0x2a, 0x5f, 0xbd, 0x03, 0x6b, 0xc4, 0x2a,
+	0xe3, 0x58, 0x40, 0xc3, 0x69, 0xe8, 0x4f, 0x20, 0xb4, 0xcf, 0x45, 0x35, 0x93, 0xd6, 0xfa, 0x68,
+	0x74, 0x08, 0xfa, 0xce, 0x62, 0x68, 0xda, 0x80, 0x50, 0x6f, 0xc5, 0x7e, 0x6b, 0x11, 0x53, 0xf7,
+	0x5f, 0x1e, 0x74, 0x96, 0x9e, 0x90, 0xaf, 0xf0, 0xd9, 0x8b, 0xa1, 0x65, 0x83, 0xb8, 0xd2, 0x79,
+	0xd5, 0x3f, 0x37, 0x32, 0xdd, 0x06, 0xa8, 0x5e, 0x38, 0xdc, 0x75, 0x13, 0x7d, 0x49, 0xf3, 0x3f,
+	0x3d, 0x79, 0xdd, 0xfd, 0xaa, 0x57, 0x3a, 0xd0, 0xbc, 0x2a, 0x46, 0x85, 0x7a, 0x56, 0xb8, 0x76,
+	0xb1, 0x5f, 0x1a, 0x2b, 0xed, 0xd2, 0x72, 0xef, 0x1f, 0xf1, 0xfb, 0xbf, 0xfc, 0xcb, 0xcb, 0x6d,
+	0xef, 0xcb, 0x97, 0xdb, 0xde, 0x3f, 0x5f, 0x6e, 0x7b, 0x7f, 0x78, 0xb5, 0x5d, 0xfb, 0xf2, 0xd5,
+	0x76, 0xed, 0xef, 0xaf, 0xb6, 0x6b, 0xbf, 0x79, 0x9c, 0x49, 0x33, 0x9c, 0x0e, 0x7a, 0x89, 0x1a,
+	0xef, 0x55, 0xc7, 0x4b, 0xb5, 0x97, 0xa9, 0x0f, 0x2a, 0xe1, 0x83, 0x5c, 0x0e, 0x34, 0xd7, 0xf3,
+	0xbd, 0xc5, 0x0f, 0xdb, 0xa0, 0x61, 0xe9, 0xf5, 0xe4, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0xd9,
+	0x05, 0xf9, 0x8b, 0xc3, 0x0d, 0x00, 0x00,
 }
 
 func (m *Block) Marshal() (dAtA []byte, err error) {
@@ -2256,16 +1839,16 @@ func (m *Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockContentOfDashboard) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentOfSmartblock) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockContentOfDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentOfSmartblock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.Dashboard != nil {
+	if m.Smartblock != nil {
 		{
-			size, err := m.Dashboard.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Smartblock.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -2274,48 +1857,6 @@ func (m *BlockContentOfDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error)
 		}
 		i--
 		dAtA[i] = 0x5a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfPage) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Page != nil {
-		{
-			size, err := m.Page.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x62
-	}
-	return len(dAtA) - i, nil
-}
-func (m *BlockContentOfDataview) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentOfDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Dataview != nil {
-		{
-			size, err := m.Dataview.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintModels(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x6a
 	}
 	return len(dAtA) - i, nil
 }
@@ -2768,57 +2309,6 @@ func (m *BlockContentIcon) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockContentDashboard) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockContentDashboard) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentDashboard) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Style != 0 {
-		i = encodeVarintModels(dAtA, i, uint64(m.Style))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *BlockContentDataview) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *BlockContentDataview) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *BlockContentDataview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	return len(dAtA) - i, nil
-}
-
 func (m *BlockContentText) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -3031,7 +2521,7 @@ func (m *BlockContentFile) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *BlockContentPage) Marshal() (dAtA []byte, err error) {
+func (m *BlockContentSmartblock) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -3041,21 +2531,16 @@ func (m *BlockContentPage) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *BlockContentPage) MarshalTo(dAtA []byte) (int, error) {
+func (m *BlockContentSmartblock) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *BlockContentPage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *BlockContentSmartblock) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Style != 0 {
-		i = encodeVarintModels(dAtA, i, uint64(m.Style))
-		i--
-		dAtA[i] = 0x8
-	}
 	return len(dAtA) - i, nil
 }
 
@@ -3324,41 +2809,6 @@ func encodeVarintModels(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *SmartBlock) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Id)
-	if l > 0 {
-		n += 1 + l + sovModels(uint64(l))
-	}
-	if m.Type != 0 {
-		n += 1 + sovModels(uint64(m.Type))
-	}
-	return n
-}
-
-func (m *SmartBlockSnapshotBase) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if len(m.Blocks) > 0 {
-		for _, e := range m.Blocks {
-			l = e.Size()
-			n += 1 + l + sovModels(uint64(l))
-		}
-	}
-	if m.Details != nil {
-		l = m.Details.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-
 func (m *Block) Size() (n int) {
 	if m == nil {
 		return 0
@@ -3396,38 +2846,14 @@ func (m *Block) Size() (n int) {
 	return n
 }
 
-func (m *BlockContentOfDashboard) Size() (n int) {
+func (m *BlockContentOfSmartblock) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Dashboard != nil {
-		l = m.Dashboard.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfPage) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Page != nil {
-		l = m.Page.Size()
-		n += 1 + l + sovModels(uint64(l))
-	}
-	return n
-}
-func (m *BlockContentOfDataview) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Dataview != nil {
-		l = m.Dataview.Size()
+	if m.Smartblock != nil {
+		l = m.Smartblock.Size()
 		n += 1 + l + sovModels(uint64(l))
 	}
 	return n
@@ -3638,27 +3064,6 @@ func (m *BlockContentIcon) Size() (n int) {
 	return n
 }
 
-func (m *BlockContentDashboard) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Style != 0 {
-		n += 1 + sovModels(uint64(m.Style))
-	}
-	return n
-}
-
-func (m *BlockContentDataview) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	return n
-}
-
 func (m *BlockContentText) Size() (n int) {
 	if m == nil {
 		return 0
@@ -3754,15 +3159,12 @@ func (m *BlockContentFile) Size() (n int) {
 	return n
 }
 
-func (m *BlockContentPage) Size() (n int) {
+func (m *BlockContentSmartblock) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Style != 0 {
-		n += 1 + sovModels(uint64(m.Style))
-	}
 	return n
 }
 
@@ -3890,233 +3292,6 @@ func sovModels(x uint64) (n int) {
 }
 func sozModels(x uint64) (n int) {
 	return sovModels(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *SmartBlock) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowModels
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: SmartBlock: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SmartBlock: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Id = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
-			}
-			m.Type = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Type |= SmartBlockType(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipModels(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *SmartBlockSnapshotBase) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowModels
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: SmartBlockSnapshotBase: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SmartBlockSnapshotBase: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Blocks = append(m.Blocks, &Block{})
-			if err := m.Blocks[len(m.Blocks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Details", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Details == nil {
-				m.Details = &types.Struct{}
-			}
-			if err := m.Details.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipModels(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *Block) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
@@ -4336,7 +3511,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			}
 		case 11:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Dashboard", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Smartblock", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4363,81 +3538,11 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &BlockContentDashboard{}
+			v := &BlockContentSmartblock{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Content = &BlockContentOfDashboard{v}
-			iNdEx = postIndex
-		case 12:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Page", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentPage{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfPage{v}
-			iNdEx = postIndex
-		case 13:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Dataview", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthModels
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthModels
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &BlockContentDataview{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &BlockContentOfDataview{v}
+			m.Content = &BlockContentOfSmartblock{v}
 			iNdEx = postIndex
 		case 14:
 			if wireType != 2 {
@@ -5515,131 +4620,6 @@ func (m *BlockContentIcon) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockContentDashboard) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowModels
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Dashboard: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Dashboard: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Style", wireType)
-			}
-			m.Style = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Style |= BlockContentDashboardStyle(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipModels(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *BlockContentDataview) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowModels
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Dataview: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Dataview: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		default:
-			iNdEx = preIndex
-			skippy, err := skipModels(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *BlockContentText) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -6284,7 +5264,7 @@ func (m *BlockContentFile) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *BlockContentPage) Unmarshal(dAtA []byte) error {
+func (m *BlockContentSmartblock) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6307,31 +5287,12 @@ func (m *BlockContentPage) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Page: wiretype end group for non-group")
+			return fmt.Errorf("proto: Smartblock: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Page: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Smartblock: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Style", wireType)
-			}
-			m.Style = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowModels
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Style |= BlockContentPageStyle(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipModels(dAtA[iNdEx:])

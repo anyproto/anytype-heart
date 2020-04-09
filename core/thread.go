@@ -35,14 +35,14 @@ const (
 )
 
 var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
-	threadDerivedIndexProfilePage:   "profile",
-	threadDerivedIndexHomeDashboard: "home",
-	threadDerivedIndexArchive:       "archive",
+	threadDerivedIndexProfilePage: "profile",
+	threadDerivedIndexHome:        "home",
+	threadDerivedIndexArchive:     "archive",
 }
 var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]SmartBlockType{
-	threadDerivedIndexProfilePage:   SmartBlockTypePage,
-	threadDerivedIndexHomeDashboard: SmartBlockTypeDashboard,
-	threadDerivedIndexArchive:       SmartBlockTypeArchive,
+	threadDerivedIndexProfilePage: SmartBlockTypeProfilePage,
+	threadDerivedIndexHome:        SmartBlockTypeHome,
+	threadDerivedIndexArchive:     SmartBlockTypeArchive,
 }
 
 func ProfileThreadIDFromAccountPublicKey(pubk crypto.PubKey) (thread.ID, error) {

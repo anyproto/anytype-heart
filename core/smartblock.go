@@ -22,9 +22,10 @@ import (
 type SmartBlockType uint64
 
 const (
-	SmartBlockTypePage      SmartBlockType = 0x10
-	SmartBlockTypeDashboard SmartBlockType = 0x20
-	SmartBlockTypeArchive   SmartBlockType = 0x30
+	SmartBlockTypePage        SmartBlockType = 0x10
+	SmartBlockTypeProfilePage SmartBlockType = 0x11
+	SmartBlockTypeHome        SmartBlockType = 0x20
+	SmartBlockTypeArchive     SmartBlockType = 0x30
 )
 
 // ShouldCreateSnapshot informs if you need to make a snapshot based on deterministic alg

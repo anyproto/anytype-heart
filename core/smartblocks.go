@@ -71,7 +71,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 	a.predefinedBlockIds.Archive = thread.ID.String()
 
 	// home
-	thread, err = a.predefinedThreadAdd(threadDerivedIndexHomeDashboard, syncSnapshotIfNotExist)
+	thread, err = a.predefinedThreadAdd(threadDerivedIndexHome, syncSnapshotIfNotExist)
 	if err != nil {
 		return err
 	}
