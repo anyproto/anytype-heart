@@ -82,7 +82,7 @@ func (vc VClock) String() string {
 	vc.mutex.RLock()
 	defer vc.mutex.RUnlock()
 
-	ids := make([]string, 0, len(vc.m))
+	ids := make([]string, len(vc.m))
 	i := 0
 	for id := range vc.m {
 		ids[i] = id
