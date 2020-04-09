@@ -10,7 +10,7 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/h2non/filetype v1.0.12
-	github.com/hsanjuan/ipfs-lite v1.1.2
+	github.com/hsanjuan/ipfs-lite v1.1.6
 	github.com/ipfs/go-cid v0.0.5
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger v0.2.2
