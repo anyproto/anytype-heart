@@ -76,6 +76,10 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		return nil, err
 	}
 	rid := li.Head
+	if rid == cid.Undef {
+		return []SnapshotWithMetadata{}, nil
+	}
+
 	for {
 		if _, exists := m[rid]; exists {
 			break
