@@ -81,7 +81,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 }
 
 func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) {
-	thrdId, err := newThreadID(thread.AccessControlled, blockType)
+	thrdId, err := threadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
 	}

@@ -230,7 +230,7 @@ func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) 
 }*/
 
 func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly bool) (snapshots []smartBlockSnapshot, err error) {
-	snapshotsPB, err := block.node.traverseLogs(context.TODO(), block.thread.ID, offset, limit)
+	snapshotsPB, err := block.node.snapshotTraverseLogs(context.TODO(), block.thread.ID, offset, limit)
 	if err != nil {
 		return
 	}
