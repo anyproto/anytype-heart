@@ -20,7 +20,6 @@ require (
 	github.com/yuin/goldmark v1.1.24
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.2
-	golang.org/x/tools v0.0.0-20191216052735-49a3e744a425
 	google.golang.org/grpc v1.28.1
 )
 
