@@ -5,10 +5,9 @@ package lib
 
 import (
 	fmt "fmt"
-	math "math"
-
 	pb "github.com/anytypeio/go-anytype-middleware/pb"
 	proto "github.com/gogo/protobuf/proto"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

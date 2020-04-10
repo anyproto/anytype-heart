@@ -1,8 +1,13 @@
 package core
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +18,82 @@ import (
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
+
+const cafeUrl = "https://cafe1.anytype.io"
+const cafePeerId = "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+
+type AlphaInviteRequest struct {
+	Code    string `json:"code"`
+	Account string `json:"account"`
+}
+
+type AlphaInviteResponse struct {
+	Signature string `json:"signature"`
+}
+
+type AlphaInviteErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func checkInviteCode(code string, account string) error {
+	if code == "" {
+		return fmt.Errorf("invite code is empty")
+	}
+
+	jsonStr, err := json.Marshal(AlphaInviteRequest{
+		Code:    code,
+		Account: account,
+	})
+
+	req, err := http.NewRequest("POST", cafeUrl+"/alpha-invite", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to access cafe server: %s", err.Error())
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %s", err.Error())
+	}
+
+	if resp.StatusCode != 200 {
+		respJson := AlphaInviteErrorResponse{}
+		err = json.Unmarshal(body, &respJson)
+		return fmt.Errorf(respJson.Error)
+	}
+
+	respJson := AlphaInviteResponse{}
+	err = json.Unmarshal(body, &respJson)
+	if err != nil {
+		return fmt.Errorf("failed to decode response json: %s", err.Error())
+	}
+
+	pubk, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeDevice, cafePeerId)
+	if err != nil {
+		return fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
+	}
+
+	signature, err := base64.RawStdEncoding.DecodeString(respJson.Signature)
+	if err != nil {
+		return fmt.Errorf("failed to decode cafe signature: %s", err.Error())
+	}
+
+	valid, err := pubk.Verify([]byte(code+account), signature)
+	if err != nil {
+		return fmt.Errorf("failed to verify cafe signature: %s", err.Error())
+	}
+
+	if !valid {
+		return fmt.Errorf("invalid signature")
+	}
+
+	return nil
+}
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
@@ -58,6 +139,11 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		log.Warnf("Account already exists locally, but doesn't exist in the localAccounts list")
 		index++
 		continue
+	}
+
+	err := checkInviteCode(req.AlphaInviteCode, account.Address())
+	if err != nil {
+		return response(nil, pb.RpcAccountCreateResponseError_BAD_INVITE_CODE, err)
 	}
 
 	seedRaw, err := account.Raw()
@@ -186,21 +272,21 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 	}
 
-		accountSearchFinished <- struct{}{}
-		n := time.Now()
-		mw.localAccountCachedAt = &n
+	accountSearchFinished <- struct{}{}
+	n := time.Now()
+	mw.localAccountCachedAt = &n
 
-		// this is workaround when we working offline
-		for _, accountOnDisk := range accountsOnDisk {
-			// todo: load profile name from the details cache in badger
-			if _, exists := sentAccounts[accountOnDisk.id]; !exists {
-				sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
-			}
+	// this is workaround when we working offline
+	for _, accountOnDisk := range accountsOnDisk {
+		// todo: load profile name from the details cache in badger
+		if _, exists := sentAccounts[accountOnDisk.id]; !exists {
+			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
 		}
+	}
 	// todo: reimplement after cafe2.0 will be ready
 
 	if len(accountsOnDisk) == 0 && len(mw.localAccounts) == 0 {
-			return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("remote account recovery not implemeted yet"))
+		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("remote account recovery not implemeted yet"))
 	}
 
 	return response(pb.RpcAccountRecoverResponseError_NULL, nil)
