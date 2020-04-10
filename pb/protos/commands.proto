@@ -1352,6 +1352,9 @@ message Rpc {
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
                     string avatarColor = 3; // Avatar color as an alternative for avatar image
                 }
+
+
+                string alphaInviteCode = 20;
             }
 
             /**
@@ -1375,6 +1378,7 @@ message Rpc {
                         ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR = 103;
                         FAILED_TO_STOP_RUNNING_NODE = 104;
 
+                        BAD_INVITE_CODE = 900;
                     }
                 }
             }
