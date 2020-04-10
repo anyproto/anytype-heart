@@ -188,8 +188,6 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 }
 
 func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
-	sb.Lock()
-	defer sb.Unlock()
 	sb.sendEvent = f
 }
 

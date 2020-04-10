@@ -34,7 +34,9 @@ func TestState_Normalize(t *testing.T) {
 	)
 
 	t.Run("nothing to change", func(t *testing.T) {
-		s := NewDoc("1", nil).NewState()
+		r := NewDoc("1", nil)
+		r.(*State).Add(simple.New(&model.Block{Id: "1"}))
+		s := r.NewState()
 		msgs, hist, err := s.apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
