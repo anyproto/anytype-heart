@@ -3,7 +3,7 @@ module github.com/anytypeio/go-anytype-library
 go 1.13
 
 require (
-	github.com/anytypeio/go-anytype-cafe v0.0.0-20200410145852-dc3a534a05a5
+	github.com/anytypeio/go-anytype-cafe/api/pb v0.0.0-20200410151455-9d90495496d9
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/disintegration/imaging v1.6.0
