@@ -261,7 +261,7 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	}
 
 	var err error
-	_, user, date, err := block.pushSnapshot(model)
+	user, date, err := block.pushSnapshot(model)
 	if err != nil {
 		return nil, err
 	}
@@ -275,9 +275,8 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	}, nil
 }
 
-func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (versionId string, user string, date *types.Timestamp, err error) {
+func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (user string, date *types.Timestamp, err error) {
 	var newSnapshotB []byte
-
 	newSnapshotB, err = proto.Marshal(newSnapshot)
 	if err != nil {
 		return
@@ -295,16 +294,25 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	ownLog := block.thread.GetOwnLog()
-	rec, err2 := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+	thrd, err2 := block.node.t.GetThread(context.TODO(), block.thread.ID)
 	if err2 != nil {
-		err = err2
+		err = fmt.Errorf("failed to get thread: %s", err2.Error())
 		return
 	}
 
-	if ownLog == nil || ownLog.Head == cid.Undef {
+	ownLog := thrd.GetOwnLog()
+
+	go func() {
 		block.node.replicationWG.Add(1)
-		go func() {
+		defer block.node.replicationWG.Done()
+
+		_, err := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+		if err != nil {
+			log.Errorf("failed to create record")
+			return
+		}
+
+		if ownLog == nil || ownLog.Head == cid.Undef {
 			addr, err2 := ma.NewMultiaddr(CafeNodeP2P)
 			if err2 != nil {
 				err = err2
@@ -315,14 +323,31 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 				log.Errorf("failed to add log replicator: %s", err.Error())
 			}
 
-			block.node.replicationWG.Done()
 			log.With("thread", block.thread.ID.String()).Infof("added log replicator: %s", p.String())
-		}()
+		}
+
+		log.Debugf("SmartBlock.addSnapshot: blockId = %s", block.ID())
+	}()
+
+	for i := 0; i <= 200; i++ {
+		// temp workaround because of https://github.com/textileio/go-threads/issues/309
+		time.Sleep(time.Millisecond * 5)
+		thrd2, err2 := block.node.t.GetThread(context.TODO(), block.thread.ID)
+		if err2 != nil {
+			err = fmt.Errorf("failed to get thread: %s", err2.Error())
+			return
+		}
+
+		ownLog2 := thrd2.GetOwnLog()
+		if ownLog == nil && ownLog2 != nil || ownLog2 != nil && ownLog.Head != ownLog2.Head {
+			break
+		}
+
+		if i == 200 {
+			err = fmt.Errorf("failed to add the snapshot")
+			return
+		}
 	}
-
-	versionId = rec.Value().Cid().String()
-	log.Debugf("SmartBlock.addSnapshot: blockId = %s newSnapshotId = %s", block.ID(), versionId)
-
 	return
 }
 

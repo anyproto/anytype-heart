@@ -11,6 +11,15 @@ import (
 var doOnce sync.Once
 var s Service
 
+func getRunningServiceB(t *testing.B) Service {
+	doOnce.Do(func() {
+		s = createAccount(t)
+		err := s.Start()
+		require.NoError(t, err)
+	})
+	return s
+}
+
 func getRunningService(t *testing.T) Service {
 	doOnce.Do(func() {
 		s = createAccount(t)

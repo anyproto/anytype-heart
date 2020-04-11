@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
@@ -11,6 +12,45 @@ import (
 	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/anytypeio/go-anytype-library/vclock"
 )
+
+func BenchmarkSnapshot(b *testing.B) {
+	b.StopTimer()
+	// run the Fib function b.N times
+	s := getRunningServiceB(b)
+	block, err := s.CreateBlock(SmartBlockTypePage)
+	state := vclock.New()
+	snap, err := block.PushSnapshot(
+		state,
+		&SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{"name": structs.String("name1")}}},
+		[]*model.Block{
+			{
+				Id:      "test_id1",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
+			},
+		},
+	)
+	require.NoError(b, err)
+
+	state = snap.State()
+	block, err = s.GetBlock(block.ID())
+	require.NoError(b, err)
+
+	b.StartTimer()
+	for n := 0; n < b.N; n++ {
+		snap, _ := block.PushSnapshot(
+			state,
+			&SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{"name": structs.String("name1")}}},
+			[]*model.Block{
+				{
+					Id:      "test_id1",
+					Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
+				},
+			},
+		)
+		state = snap.State()
+	}
+	b.StopTimer()
+}
 
 func Test_smartBlock_GetLastSnapshot(t *testing.T) {
 	s := getRunningService(t)
@@ -48,7 +88,7 @@ func Test_smartBlock_GetLastSnapshot(t *testing.T) {
 	a2 := thrd.Logs[0].ID.String()
 
 	require.Equal(t, a1, a2)*/
-
+	time.Sleep(time.Millisecond * 100)
 	lastSnap, err := block.GetLastSnapshot()
 	require.NoError(t, err)
 	require.Equal(t, snap2.State().Hash(), lastSnap.State().Hash())
