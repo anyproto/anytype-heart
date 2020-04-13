@@ -40,11 +40,22 @@ func (b *sbookmark) Fetch(id string, url string) (err error) {
 	return b.Apply(s)
 }
 
+func (b *sbookmark) processUrl(url string) (urlOut string, err error) {
+	// TODO
+	return url, nil
+}
+
 func (b *sbookmark) fetch(s *state.State, id, url string) (err error) {
 	bb := s.Get(id)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
+
+	url, err = b.processUrl(url)
+	if err != nil {
+		return err
+	}
+
 	if bm, ok := bb.(bookmark.Block); ok {
 		return bm.Fetch(bookmark.FetchParams{
 			Url:     url,
