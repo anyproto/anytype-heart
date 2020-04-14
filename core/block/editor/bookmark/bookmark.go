@@ -2,6 +2,7 @@ package bookmark
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -41,8 +42,33 @@ func (b *sbookmark) Fetch(id string, url string) (err error) {
 }
 
 func (b *sbookmark) processUrl(url string) (urlOut string, err error) {
-	// TODO
-	return url, nil
+	// RFC 5322 mail regex
+	noPrefixEmailRegexp := regexp.MustCompile(`^(?:[a-z0-9!#$%&'*+/=?^_` + "`" + `{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_` + "`" + `{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$`)
+
+	// RFC 3966 tel regex
+	noPrefixTelRegexp := regexp.MustCompile(`^((?:\+[\d().-]*\d[\d().-]*|[0-9A-F*#().-]*[0-9A-F*#][0-9A-F*#().-]*(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*;phone-context=(?:\+[\d().-]*\d[\d().-]*|(?:[a-z0-9]\.|[a-z0-9][a-z0-9-]*[a-z0-9]\.)*(?:[a-z]|[a-z][a-z0-9-]*[a-z0-9])))(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*(?:,(?:\+[\d().-]*\d[\d().-]*|[0-9A-F*#().-]*[0-9A-F*#][0-9A-F*#().-]*(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*;phone-context=\+[\d().-]*\d[\d().-]*)(?:;[a-z\d-]+(?:=(?:[a-z\d\[\]\/:&+$_!~*'().-]|%[\dA-F]{2})+)?)*)*)$`)
+
+	noPrefixHttpRegex := regexp.MustCompile(`^[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$`)
+
+	haveUriSchemeRegex := regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
+
+	if len(url) == 0 {
+		return url, fmt.Errorf("url is empty")
+
+	} else if noPrefixEmailRegexp.MatchString(url) {
+		return "mailto:" + url, nil
+
+	} else if noPrefixTelRegexp.MatchString(url) {
+		return "tel:" + url, nil
+
+	} else if noPrefixHttpRegex.MatchString(url) {
+		return "http://" + url, nil
+
+	} else if haveUriSchemeRegex.MatchString(url) {
+		return url, nil
+	}
+
+	return url, fmt.Errorf("not a uri")
 }
 
 func (b *sbookmark) fetch(s *state.State, id, url string) (err error) {
