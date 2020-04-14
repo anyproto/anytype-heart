@@ -13,8 +13,3 @@ message SmartBlockSnapshot {
     map<string, FileKeys> keysByHash = 4;
     int64 clientTime = 5;
 }
-
-message SmartBlockSnapshotCore {
-    repeated anytype.model.Block blocks = 2;
-    google.protobuf.Struct details = 3;
-}
