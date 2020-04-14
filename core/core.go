@@ -48,6 +48,17 @@ type Middleware struct {
 	m                         sync.RWMutex
 }
 
+func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
+	mw.m.Lock()
+	defer mw.m.Unlock()
+	mw.stop()
+	return &pb.RpcShutdownResponse{
+		Error: &pb.RpcShutdownResponseError{
+			Code: pb.RpcShutdownResponseError_NULL,
+		},
+	}
+}
+
 func (mw *Middleware) getBlockService() (bs block.Service, err error) {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
@@ -101,18 +112,20 @@ func (mw *Middleware) stop() error {
 	if gateway.Host != nil {
 		err := gateway.Host.Stop()
 		if err != nil {
-			return err
+			log.Warnf("error while stop gateway: %v", err)
 		}
 	}
 
 	if mw.blockService != nil {
-		mw.blockService.Close()
+		if err := mw.blockService.Close(); err != nil {
+			log.Warnf("error while stop block service: %v", err)
+		}
 	}
 
 	if mw != nil && mw.Anytype != nil {
 		err := mw.Anytype.Stop()
 		if err != nil {
-			return err
+			log.Warnf("error while stop anytype: %v", err)
 		}
 
 		mw.Anytype = nil
