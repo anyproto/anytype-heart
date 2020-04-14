@@ -56,12 +56,10 @@ func (c *converter) filterById(blocks []*model.Block, Id string) (out []*model.B
 
 func (c *converter) filterLayout(blocks []*model.Block) (out []*model.Block) {
 	for _, b := range blocks {
-		switch b.Content.(type) {
-		case *model.BlockContentOfDashboard:
+		if b.Content == nil {
 			continue
-		default:
-			out = append(out, b)
 		}
+		out = append(out, b)
 	}
 	return out
 }
@@ -174,12 +172,6 @@ func (c *converter) ProcessTree(node *Node, images map[string][]byte) (out strin
 				out += renderIcon(true, cont)
 			case *model.BlockContentOfLayout:
 				out += renderLayout(true, cont, child.model)
-			case *model.BlockContentOfDashboard:
-				break
-			case *model.BlockContentOfPage:
-				break
-			case *model.BlockContentOfDataview:
-				break
 			case *model.BlockContentOfLink:
 				out += renderLink(true, cont)
 			}
@@ -203,12 +195,6 @@ func (c *converter) ProcessTree(node *Node, images map[string][]byte) (out strin
 				out += renderIcon(false, cont)
 			case *model.BlockContentOfLayout:
 				out += renderLayout(false, cont, child.model)
-			case *model.BlockContentOfDashboard:
-				break
-			case *model.BlockContentOfPage:
-				break
-			case *model.BlockContentOfDataview:
-				break
 			case *model.BlockContentOfLink:
 				out += renderLink(false, cont)
 			}

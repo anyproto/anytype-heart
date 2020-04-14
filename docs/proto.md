@@ -429,6 +429,7 @@
   
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
+    - [SmartBlockType](#anytype.SmartBlockType)
   
   
   
@@ -439,14 +440,12 @@
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
-    - [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard)
-    - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
     - [Block.Content.Link](#anytype.model.Block.Content.Link)
-    - [Block.Content.Page](#anytype.model.Block.Content.Page)
+    - [Block.Content.Smartblock](#anytype.model.Block.Content.Smartblock)
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
@@ -454,21 +453,17 @@
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
-    - [SmartBlock](#anytype.model.SmartBlock)
   
     - [Block.Align](#anytype.model.Block.Align)
-    - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
     - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
-    - [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
-    - [SmartBlock.Type](#anytype.model.SmartBlock.Type)
   
   
   
@@ -6206,6 +6201,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | details for current and dependent smart blocks |
+| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 
 
 
@@ -6487,6 +6483,21 @@ Precondition: user A and user B opened the same block
 | DropFiles | 0 |  |
 
 
+
+<a name="anytype.SmartBlockType"></a>
+
+### SmartBlockType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Page | 0 |  |
+| Home | 1 |  |
+| ProfilePage | 3 |  |
+| Archive | 4 |  |
+| Breadcrumbs | 5 |  |
+
+
  
 
  
@@ -6549,9 +6560,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | childrenIds | [string](#string) | repeated |  |
 | backgroundColor | [string](#string) |  |  |
 | align | [Block.Align](#anytype.model.Block.Align) |  |  |
-| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
-| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
-| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
+| smartblock | [Block.Content.Smartblock](#anytype.model.Block.Content.Smartblock) |  |  |
 | text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
 | file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
 | layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
@@ -6589,32 +6598,6 @@ Bookmark is to keep a web-link and to preview a content.
 | imageHash | [string](#string) |  |  |
 | faviconHash | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dashboard"></a>
-
-### Block.Content.Dashboard
-Block type to organize pages on the main screen (main purpose)
-It also can be mounted on a page.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dataview"></a>
-
-### Block.Content.Dataview
-
 
 
 
@@ -6705,15 +6688,10 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype.model.Block.Content.Page"></a>
+<a name="anytype.model.Block.Content.Smartblock"></a>
 
-### Block.Content.Page
+### Block.Content.Smartblock
 
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style) |  |  |
 
 
 
@@ -6841,22 +6819,6 @@ General purpose structure, uses in Mark.
 
 
 
-
-<a name="anytype.model.SmartBlock"></a>
-
-### SmartBlock
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [SmartBlock.Type](#anytype.model.SmartBlock.Type) |  |  |
-
-
-
-
-
  
 
 
@@ -6870,18 +6832,6 @@ General purpose structure, uses in Mark.
 | AlignLeft | 0 |  |
 | AlignCenter | 1 |  |
 | AlignRight | 2 |  |
-
-
-
-<a name="anytype.model.Block.Content.Dashboard.Style"></a>
-
-### Block.Content.Dashboard.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| MainScreen | 0 |  |
-| Archive | 1 |  |
 
 
 
@@ -6949,21 +6899,6 @@ General purpose structure, uses in Mark.
 | Dataview | 1 |  |
 | Dashboard | 2 |  |
 | Archive | 3 | ... |
-
-
-
-<a name="anytype.model.Block.Content.Page.Style"></a>
-
-### Block.Content.Page.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Empty | 0 | Ordinary page, without additional fields |
-| Task | 1 | Page with a task fields |
-| Set | 2 | Page, that organize a set of blocks by a specific criterio |
-| Profile | 3 |  |
-| Breadcrumbs | 101 |  |
 
 
 
@@ -7037,21 +6972,6 @@ General purpose structure, uses in Mark.
 | Text | 3 |  |
 
 
-
-<a name="anytype.model.SmartBlock.Type"></a>
-
-### SmartBlock.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Dashboard | 0 |  |
-| Page | 1 |  |
-| Archive | 2 |  |
-| Breadcrumbs | 3 |  |
-| Dataview | 4 |  |
-
-
  
 
  
@@ -7062,21 +6982,21 @@ General purpose structure, uses in Mark.
 
 ## Scalar Value Types
 
-| .proto Type | Notes | C++ Type | Java Type | Python Type |
-| ----------- | ----- | -------- | --------- | ----------- |
-| <a name="double" /> double |  | double | double | float |
-| <a name="float" /> float |  | float | float | float |
-| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int |
-| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long |
-| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long |
-| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long |
-| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int |
-| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long |
-| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int |
-| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long |
-| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int |
-| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long |
-| <a name="bool" /> bool |  | bool | boolean | boolean |
-| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode |
-| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str |
+| .proto Type | Notes | C++ | Java | Python | Go | C# | PHP | Ruby |
+| ----------- | ----- | --- | ---- | ------ | -- | -- | --- | ---- |
+| <a name="double" /> double |  | double | double | float | float64 | double | float | Float |
+| <a name="float" /> float |  | float | float | float | float32 | float | float | Float |
+| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long | uint32 | uint | integer | Bignum or Fixnum (as required) |
+| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum or Fixnum (as required) |
+| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int | uint32 | uint | integer | Bignum or Fixnum (as required) |
+| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum |
+| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
+| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
+| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
 

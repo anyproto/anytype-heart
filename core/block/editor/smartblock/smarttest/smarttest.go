@@ -49,6 +49,10 @@ func (st *SmartTest) Id() string {
 	return st.id
 }
 
+func (st *SmartTest) Type() pb.SmartBlockType {
+	return pb.SmartBlockType_Page
+}
+
 func (st *SmartTest) Show() (err error) {
 	return
 }

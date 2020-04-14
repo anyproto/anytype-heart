@@ -683,10 +683,12 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	switch sc.Type() {
 	case core.SmartBlockTypePage:
 		sb = editor.NewPage(s, s, s.linkPreview)
-	case core.SmartBlockTypeDashboard:
+	case core.SmartBlockTypeHome:
 		sb = editor.NewDashboard()
 	case core.SmartBlockTypeArchive:
 		sb = editor.NewArchive(s)
+	case core.SmartBlockTypeProfilePage:
+		sb = editor.NewProfile(s, s, s.linkPreview)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

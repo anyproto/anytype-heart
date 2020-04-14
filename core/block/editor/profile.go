@@ -13,9 +13,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
-func NewPage(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview) *Page {
+func NewProfile(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview) *Profile {
 	sb := smartblock.New()
-	return &Page{
+	return &Profile{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
@@ -26,7 +26,7 @@ func NewPage(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.L
 	}
 }
 
-type Page struct {
+type Profile struct {
 	smartblock.SmartBlock
 	basic.Basic
 	basic.IHistory
@@ -36,14 +36,14 @@ type Page struct {
 	bookmark.Bookmark
 }
 
-func (p *Page) Init(s source.Source) (err error) {
+func (p *Profile) Init(s source.Source) (err error) {
 	if err = p.SmartBlock.Init(s); err != nil {
 		return
 	}
 	return p.checkRootBlock()
 }
 
-func (p *Page) checkRootBlock() (err error) {
+func (p *Profile) checkRootBlock() (err error) {
 	s := p.NewState()
 	if root := s.Get(p.RootId()); root != nil {
 		return

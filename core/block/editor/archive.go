@@ -39,11 +39,6 @@ func (p *Archive) checkRootBlock() (err error) {
 	}
 	s.Add(simple.New(&model.Block{
 		Id: p.RootId(),
-		Content: &model.BlockContentOfDashboard{
-			Dashboard: &model.BlockContentDashboard{
-				Style: model.BlockContentDashboard_Archive,
-			},
-		},
 	}))
 	if err = p.SmartBlock.SetDetails([]*pb.RpcBlockSetDetailsDetail{
 		{Key: "name", Value: pbtypes.String("Archive")},

@@ -37,9 +37,6 @@ func (p *Dashboard) checkRootBlock() (err error) {
 	}
 	s.Add(simple.New(&model.Block{
 		Id: p.RootId(),
-		Content: &model.BlockContentOfDashboard{
-			Dashboard: &model.BlockContentDashboard{},
-		},
 	}))
 	archive := simple.New(&model.Block{
 		Content: &model.BlockContentOfLink{

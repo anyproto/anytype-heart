@@ -83,6 +83,7 @@ message Event {
             string rootId = 1; // Root block id
             repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
             repeated Block.Set.Details details = 3; // details for current and dependent smart blocks
+            SmartBlockType type = 4;
         }
 
         /**
@@ -340,6 +341,14 @@ message Event {
         }
     }
 
+}
+
+enum SmartBlockType {
+    Page = 0;
+    Home = 1;
+    ProfilePage = 3;
+    Archive = 4;
+    Breadcrumbs = 5;
 }
 
 message Model {
