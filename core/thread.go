@@ -18,10 +18,10 @@ type threadDerivedIndex uint32
 
 const (
 	// profile page is publicly accessible as service/read keys derived from account public key
-	threadDerivedIndexProfilePage   threadDerivedIndex = 0
-	threadDerivedIndexHomeDashboard threadDerivedIndex = 1
-	threadDerivedIndexArchive       threadDerivedIndex = 2
-	threadDerivedIndexAccount       threadDerivedIndex = 3
+	threadDerivedIndexProfilePage threadDerivedIndex = 0
+	threadDerivedIndexHome        threadDerivedIndex = 1
+	threadDerivedIndexArchive     threadDerivedIndex = 2
+	threadDerivedIndexAccount     threadDerivedIndex = 3
 
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
