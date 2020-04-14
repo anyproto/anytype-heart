@@ -4,15 +4,13 @@ go 1.13
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/anytypeio/go-anytype-library v0.5.1-0.20200409184608-2a14674dc9df
+	github.com/anytypeio/go-anytype-library v0.5.1-0.20200414171747-b446405e0d55
 	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.3
 	github.com/google/uuid v1.1.1
 	github.com/h2non/filetype v1.0.12
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/ipfs/go-ipfs-files v0.0.8 // indirect
-	github.com/ipfs/interface-go-ipfs-core v0.2.6 // indirect
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
