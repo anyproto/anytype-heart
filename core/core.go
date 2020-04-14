@@ -30,7 +30,7 @@ type Middleware struct {
 	localAccounts        []*model.Account
 	localAccountCachedAt *time.Time
 	SendEvent            func(event *pb.Event)
-	blockService         block.Service
+	blocksService        block.Service
 	linkPreview          linkpreview.LinkPreview
 
 	Anytype libCore.Service
@@ -54,8 +54,8 @@ func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownRe
 func (mw *Middleware) getBlockService() (bs block.Service, err error) {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
-	if mw.blockService != nil {
-		return mw.blockService, nil
+	if mw.blocksService != nil {
+		return mw.blocksService, nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -69,10 +69,10 @@ func (mw *Middleware) doBlockService(f func(bs block.Service) error) (err error)
 }
 
 func (mw *Middleware) setBlockService(bs block.Service) {
-	if mw.blockService != nil {
-		mw.blockService.Close()
+	if mw.blocksService != nil {
+		mw.blocksService.Close()
 	}
-	mw.blockService = bs
+	mw.blocksService = bs
 }
 
 // Start starts the anytype node and HTTP gateway
@@ -108,8 +108,8 @@ func (mw *Middleware) stop() error {
 		}
 	}
 
-	if mw.blockService != nil {
-		if err := mw.blockService.Close(); err != nil {
+	if mw.blocksService != nil {
+		if err := mw.blocksService.Close(); err != nil {
 			log.Warnf("error while stop block service: %v", err)
 		}
 	}
