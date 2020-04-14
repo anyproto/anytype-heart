@@ -104,8 +104,10 @@ func Test_smartBlock_GetLastSnapshot(t *testing.T) {
 	creator, err := lastSnap.Creator()
 	require.NoError(t, err)
 	require.Equal(t, s.Account(), creator)
-
 	lastSnapMeta, _ := lastSnap.Meta()
+
+	_, err = lastSnap.PublicWebURL()
+	require.NoError(t, err)
 
 	require.Equal(t, &SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{"name": structs.String("name2")}}}, lastSnapMeta)
 }

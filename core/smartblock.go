@@ -12,8 +12,6 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/textileio/go-threads/cbor"
-	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -174,29 +172,6 @@ func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnaps
 	return versions[0], nil
 }
 
-func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) {
-	vid, err := cid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
-
-	rec, err := block.node.t.GetRecord(context.TODO(), block.thread.ID, vid)
-	if err != nil {
-		return nil, err
-	}
-
-	if block.thread.Key.Read() == nil {
-		return nil, fmt.Errorf("no read key")
-	}
-	event, err := cbor.EventFromRecord(context.TODO(), block.node.t, rec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get event: %w", err)
-
-	}
-
-	return event, nil
-}
-
 /*func (block *smartBlock) GetSnapshotMeta(id string) (Sm, error) {
 	event, err := block.getSnapshotSnapshotEvent(id)
 	if err != nil {
@@ -237,10 +212,15 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 
 	for _, snapshot := range snapshotsPB {
 		snapshots = append(snapshots, smartBlockSnapshot{
-			blocks:  snapshot.Blocks,
-			details: snapshot.Details,
-			state:   vclock.NewFromMap(snapshot.State),
-			creator: snapshot.Creator,
+			blocks:   snapshot.Blocks,
+			details:  snapshot.Details,
+			state:    vclock.NewFromMap(snapshot.State),
+			creator:  snapshot.Creator,
+			recordId: snapshot.RecordID,
+			eventId:  snapshot.EventID,
+			key:      block.thread.Key.Read(),
+
+			node: block.node,
 		})
 	}
 
@@ -318,6 +298,7 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 				err = err2
 				return
 			}
+
 			p, err := block.node.t.AddReplicator(context.TODO(), block.thread.ID, addr)
 			if err != nil {
 				log.Errorf("failed to add log replicator: %s", err.Error())

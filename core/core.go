@@ -36,8 +36,9 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 )
 
 var (
-	CafeNodeP2P  = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
-	CafeNodeGRPC = "134.122.78.144:3006"
+	CafeNodeP2P     = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+	CafeNodeGRPC    = "134.122.78.144:3006"
+	CafeGatewayHost = "https://cafe1.anytype.io"
 )
 
 var BootstrapNodes = []string{

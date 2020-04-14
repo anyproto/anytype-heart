@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"sort"
 	"time"
@@ -14,6 +15,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/crypto"
 )
 
 type SmartBlockSnapshot interface {
@@ -23,6 +25,7 @@ type SmartBlockSnapshot interface {
 	ReceivedDate() *time.Time
 	Blocks() ([]*model.Block, error)
 	Meta() (*SmartBlockMeta, error)
+	PublicWebURL() (string, error)
 }
 
 type smartBlockSnapshot struct {
@@ -31,9 +34,12 @@ type smartBlockSnapshot struct {
 	keysByHash map[string]*storage.FileKeys `protobuf:"bytes,4,rep,name=keysByHash,proto3" json:"keysByHash,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	state      vclock.VClock
 
-	creator string
-	date    *types.Timestamp
-	node    *Anytype
+	recordId cid.Cid
+	eventId  cid.Cid
+	key      crypto.DecryptionKey
+	creator  string
+	date     *types.Timestamp
+	node     *Anytype
 }
 
 func (snapshot smartBlockSnapshot) State() vclock.VClock {
@@ -61,9 +67,36 @@ func (snapshot smartBlockSnapshot) Meta() (*SmartBlockMeta, error) {
 	return &SmartBlockMeta{Details: snapshot.details}, nil
 }
 
+func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
+	ipfs := snapshot.node.Ipfs()
+	event, err := cbor.GetEvent(context.Background(), ipfs, snapshot.eventId)
+	if err != nil {
+		return "", fmt.Errorf("failed to get snapshot event: %w", err)
+	}
+
+	header, err := event.GetHeader(context.TODO(), ipfs, snapshot.key)
+	if err != nil {
+		return "", fmt.Errorf("failed to get snapshot event header: %w", err)
+	}
+
+	bodyKey, err := header.Key()
+	if err != nil {
+		return "", fmt.Errorf("failed to get body decryption key: %w", err)
+	}
+
+	bodyKeyBin, err := bodyKey.MarshalBinary()
+	if err != nil {
+		return "", fmt.Errorf("failed to get marshal decryption key: %w", err)
+	}
+
+	return CafeGatewayHost + "/" + event.BodyID().String() + "?key=" + base64.RawURLEncoding.EncodeToString(bodyKeyBin), nil
+}
+
 type SnapshotWithMetadata struct {
 	storage.SmartBlockSnapshot
-	Creator string
+	Creator  string
+	RecordID cid.Cid
+	EventID  cid.Cid
 }
 
 func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info, li thread.LogInfo, before vclock.VClock, limit int) ([]SnapshotWithMetadata, error) {
@@ -121,7 +154,12 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 			continue
 		}
 
-		snapshots = append(snapshots, SnapshotWithMetadata{snapshot, m.AccAddr})
+		snapshots = append(snapshots, SnapshotWithMetadata{
+			SmartBlockSnapshot: snapshot,
+			Creator:            m.AccAddr,
+			RecordID:           rec.Cid(),
+			EventID:            event.Cid(),
+		})
 		if len(snapshots) == limit {
 			break
 		}
