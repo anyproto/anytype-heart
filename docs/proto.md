@@ -3765,7 +3765,8 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error) |  |  |
 | homeBlockId | [string](#string) |  | home dashboard block id |
-| archiveBlockId | [string](#string) |  | home dashboard block id |
+| archiveBlockId | [string](#string) |  | archive block id |
+| profileBlockId | [string](#string) |  | profile block id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 

@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -651,12 +650,11 @@ func (mw *Middleware) BlockSetVideoWidth(req *pb.RpcBlockSetVideoWidthRequest) *
 	return response(pb.RpcBlockSetVideoWidthResponseError_NULL, nil)
 }
 
-func (mw *Middleware) switchAccount(accountId string) {
+func (mw *Middleware) switchAccount(bs block.Service) {
 	if mw.blockService != nil {
 		mw.blockService.Close()
 	}
-
-	mw.blockService = block.NewService(accountId, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	mw.blockService = bs
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {

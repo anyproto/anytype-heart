@@ -16,7 +16,10 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const cafeUrl = "https://cafe1.anytype.io"
@@ -156,12 +159,12 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	anytype, err := core.New(mw.rootPath, account.Address())
+	anytypeService, err := core.New(mw.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	mw.Anytype = anytype
+	mw.Anytype = anytypeService
 	newAcc := &model.Account{Id: account.Address()}
 
 	err = mw.Start()
@@ -174,10 +177,19 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	//err = mw.AccountSetNameAndAvatar(req.Name, req.GetAvatarLocalPath(), req.GetAvatarColor())
-	//if err != nil {
-	//	return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
-	//}
+	bs := block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	err = bs.SetDetails(pb.RpcBlockSetDetailsRequest{
+		ContextId: mw.Anytype.PredefinedBlocks().Profile,
+		Details: []*pb.RpcBlockSetDetailsDetail{
+			{
+				Key:   "accountName",
+				Value: pbtypes.String(req.Name),
+			},
+		},
+	})
+	if err != nil {
+		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+	}
 	newAcc.Name = req.Name
 	/*if req.GetAvatarLocalPath() != "" {
 		_, err := mw.AccountSetAvatar(req.GetAvatarLocalPath())
@@ -198,7 +210,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}*/
 
 	mw.localAccounts = append(mw.localAccounts, newAcc)
-	mw.switchAccount(newAcc.Id)
+	mw.switchAccount(bs)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -400,7 +412,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		acc.Avatar = getAvatarFromString(avatarHashOrColor)
 	}
 	*/
-	mw.switchAccount(acc.Id)
+	mw.switchAccount(block.NewService(acc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent))
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 

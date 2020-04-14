@@ -13,6 +13,7 @@ func (mw *Middleware) ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetRespons
 		Error:          &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NULL, ""},
 		HomeBlockId:    mw.Anytype.PredefinedBlocks().Home,
 		ArchiveBlockId: mw.Anytype.PredefinedBlocks().Archive,
+		ProfileBlockId: mw.Anytype.PredefinedBlocks().Profile,
 		GatewayUrl:     mw.gatewayAddr,
 	}
 }
