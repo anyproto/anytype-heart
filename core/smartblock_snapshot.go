@@ -89,7 +89,7 @@ func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
 		return "", fmt.Errorf("failed to get marshal decryption key: %w", err)
 	}
 
-	return CafeGatewayHost + "/" + event.BodyID().String() + "?key=" + base64.RawURLEncoding.EncodeToString(bodyKeyBin), nil
+	return CafeGatewayHost + "/snapshot/" + event.BodyID().String() + "?key=" + base64.RawURLEncoding.EncodeToString(bodyKeyBin), nil
 }
 
 type SnapshotWithMetadata struct {
