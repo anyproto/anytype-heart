@@ -73,6 +73,33 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockGetPublicWebURL(req *pb.RpcBlockGetPublicWebURLRequest) *pb.RpcBlockGetPublicWebURLResponse {
+	response := func(url string, code pb.RpcBlockGetPublicWebURLResponseErrorCode, err error) *pb.RpcBlockGetPublicWebURLResponse {
+		m := &pb.RpcBlockGetPublicWebURLResponse{Url: url, Error: &pb.RpcBlockGetPublicWebURLResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	b, err := mw.Anytype.GetBlock(req.BlockId)
+	if err != nil {
+		return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
+	}
+
+	snap, err := b.GetLastSnapshot()
+	if err != nil {
+		return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
+	}
+
+	u, err := snap.PublicWebURL()
+	if err != nil {
+		return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(u, pb.RpcBlockGetPublicWebURLResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockOpenBreadcrumbsResponseErrorCode, id string, err error) *pb.RpcBlockOpenBreadcrumbsResponse {
