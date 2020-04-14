@@ -132,7 +132,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		if err != nil {
 			return nil, fmt.Errorf("failed to get record body: %w", err)
 		}
-		m := new(signedPbPayload)
+		m := new(SignedPbPayload)
 		err = cbornode.DecodeInto(node.RawData(), m)
 		if err != nil {
 			return nil, fmt.Errorf("incorrect record type: %w", err)
