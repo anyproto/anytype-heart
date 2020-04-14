@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -16,7 +15,11 @@ func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCre
 
 		return m
 	}
-	id, err := mw.blockService.CreateBlock(*req)
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, err = bs.CreateBlock(*req)
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockCreateResponseError_UNKNOWN_ERROR, "", err)
 	}
@@ -32,7 +35,11 @@ func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.Rpc
 
 		return m
 	}
-	id, targetId, err := mw.blockService.CreatePage(*req)
+	var id, targetId string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, targetId, err = bs.CreatePage(*req)
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockCreatePageResponseError_UNKNOWN_ERROR, "", "", err)
 	}
@@ -48,11 +55,10 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return m
 	}
 
-	if err := mw.blockService.OpenBlock(req.BlockId, req.BreadcrumbsIds...); err != nil {
-		switch err {
-		case block.ErrBlockNotFound:
-			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
-		}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.OpenBlock(req.BlockId, req.BreadcrumbsIds...)
+	})
+	if err != nil {
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
@@ -67,13 +73,12 @@ func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsReques
 		}
 		return m
 	}
-
-	id, err := mw.blockService.OpenBreadcrumbsBlock()
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, err = bs.OpenBreadcrumbsBlock()
+		return
+	})
 	if err != nil {
-		switch err {
-		case block.ErrBlockNotFound:
-			return response(pb.RpcBlockOpenBreadcrumbsResponseError_BAD_INPUT, "", err)
-		}
 		return response(pb.RpcBlockOpenBreadcrumbsResponseError_UNKNOWN_ERROR, "", err)
 	}
 
@@ -88,8 +93,10 @@ func (mw *Middleware) BlockCutBreadcrumbs(req *pb.RpcBlockCutBreadcrumbsRequest)
 		}
 		return m
 	}
-
-	if err := mw.blockService.CutBreadcrumbs(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.CutBreadcrumbs(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockCutBreadcrumbsResponseError_UNKNOWN_ERROR, err)
 	}
 
@@ -104,7 +111,10 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 		}
 		return m
 	}
-	if err := mw.blockService.CloseBlock(req.BlockId); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.CloseBlock(req.BlockId)
+	})
+	if err != nil {
 		return response(pb.RpcBlockCloseResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
@@ -121,9 +131,11 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 
 		return m
 	}
-
-	html, err := mw.blockService.Copy(*req, mw.getImages(req.Blocks))
-
+	var html string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		html, err = bs.Copy(*req, mw.getImages(req.Blocks))
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)
 	}
@@ -156,17 +168,25 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 
 		return m
 	}
-
-	blockIds, uploadArr, caretPosition, err := mw.blockService.Paste(*req)
-	log.Debug("Image requests to upload after paste:", uploadArr)
-	for _, r := range uploadArr {
-		r.ContextId = req.ContextId
-
-		if err := mw.blockService.UploadBlockFile(r); err != nil {
-			return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, blockIds, caretPosition, err)
+	var (
+		blockIds      []string
+		caretPosition int32
+	)
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		var uploadArr []pb.RpcBlockUploadRequest
+		blockIds, uploadArr, caretPosition, err = bs.Paste(*req)
+		if err != nil {
+			return
 		}
-	}
-
+		log.Debug("Image requests to upload after paste:", uploadArr)
+		for _, r := range uploadArr {
+			r.ContextId = req.ContextId
+			if err = bs.UploadBlockFile(r); err != nil {
+				return err
+			}
+		}
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, err)
 	}
@@ -188,9 +208,14 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 
 		return m
 	}
-
-	textSlot, htmlSlot, anySlot, err := mw.blockService.Cut(*req, mw.getImages(req.Blocks))
-
+	var (
+		textSlot, htmlSlot string
+		anySlot            []*model.Block
+	)
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		textSlot, htmlSlot, anySlot, err = bs.Cut(*req, mw.getImages(req.Blocks))
+		return
+	})
 	if err != nil {
 		var emptyAnySlot []*model.Block
 		return response(pb.RpcBlockCutResponseError_UNKNOWN_ERROR, "", "", emptyAnySlot, err)
@@ -211,9 +236,11 @@ func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExp
 
 		return m
 	}
-
-	path, err := mw.blockService.Export(*req, mw.getImages(req.Blocks))
-
+	var path string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		path, err = bs.Export(*req, mw.getImages(req.Blocks))
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockExportResponseError_UNKNOWN_ERROR, path, err)
 	}
@@ -229,7 +256,10 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 		}
 		return m
 	}
-	if err := mw.blockService.UploadBlockFile(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.UploadBlockFile(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockUploadResponseError_NULL, nil)
@@ -243,7 +273,10 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 		}
 		return m
 	}
-	if err := mw.blockService.UnlinkBlock(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.UnlinkBlock(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockUnlinkResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
@@ -257,7 +290,11 @@ func (mw *Middleware) BlockListDuplicate(req *pb.RpcBlockListDuplicateRequest) *
 		}
 		return m
 	}
-	ids, err := mw.blockService.DuplicateBlocks(*req)
+	var ids []string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		ids, err = bs.DuplicateBlocks(*req)
+		return
+	})
 	if err != nil {
 		return response(nil, pb.RpcBlockListDuplicateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -299,7 +336,10 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 
 		return m
 	}
-	if err := mw.blockService.SetFields(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetFields(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockSetFieldsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
@@ -314,7 +354,10 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 
 		return m
 	}
-	if err := mw.blockService.SetDetails(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetDetails(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
@@ -328,7 +371,10 @@ func (mw *Middleware) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *
 		}
 		return m
 	}
-	if err := mw.blockService.SetFieldsList(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetFieldsList(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockListSetFieldsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetFieldsResponseError_NULL, nil)
@@ -356,7 +402,10 @@ func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRe
 
 		return m
 	}
-	if err := mw.blockService.SetPageIsArchived(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetPageIsArchived(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockSetPageIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetPageIsArchivedResponseError_NULL, nil)
@@ -371,7 +420,11 @@ func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockR
 
 		return m
 	}
-	blockId, err := mw.blockService.ReplaceBlock(*req)
+	var blockId string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		blockId, err = bs.ReplaceBlock(*req)
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockReplaceResponseError_UNKNOWN_ERROR, "", err)
 	}
@@ -387,7 +440,10 @@ func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb
 
 		return m
 	}
-	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockId); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextColor(req.ContextId, req.Color, req.BlockId)
+	})
+	if err != nil {
 		return response(pb.RpcBlockSetTextColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextColorResponseError_NULL, nil)
@@ -402,7 +458,10 @@ func (mw *Middleware) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgro
 
 		return m
 	}
-	if err := mw.blockService.SetBackgroundColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetBackgroundColor(req.ContextId, req.Color, req.BlockIds...)
+	})
+	if err != nil {
 		return response(pb.RpcBlockListSetBackgroundColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetBackgroundColorResponseError_NULL, nil)
@@ -417,7 +476,10 @@ func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb
 
 		return m
 	}
-	if err := mw.blockService.SetAlign(req.ContextId, req.Align, req.BlockIds...); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetAlign(req.ContextId, req.Align, req.BlockIds...)
+	})
+	if err != nil {
 		return response(pb.RpcBlockListSetAlignResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetAlignResponseError_NULL, nil)
@@ -431,7 +493,10 @@ func (mw *Middleware) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb
 		}
 		return m
 	}
-	if err := mw.blockService.DropFiles(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.DropFiles(*req)
+	})
+	if err != nil {
 		return response(pb.RpcExternalDropFilesResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcExternalDropFilesResponseError_NULL, nil)
@@ -458,7 +523,10 @@ func (mw *Middleware) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBloc
 		}
 		return m
 	}
-	if err := mw.blockService.MoveBlocks(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.MoveBlocks(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockListMoveResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListMoveResponseError_NULL, nil)
@@ -472,7 +540,12 @@ func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRe
 		}
 		return m
 	}
-	linkId, err := mw.blockService.MoveBlocksToNewPage(*req)
+
+	var linkId string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		linkId, err = bs.MoveBlocksToNewPage(*req)
+		return
+	})
 
 	if err != nil {
 		return response(pb.RpcBlockListMoveToNewPageResponseError_UNKNOWN_ERROR, "", err)
@@ -488,8 +561,11 @@ func (mw *Middleware) BlockListConvertChildrenToPages(req *pb.RpcBlockListConver
 		}
 		return m
 	}
-	linkIds, err := mw.blockService.ConvertChildrenToPages(*req)
-
+	var linkIds []string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		linkIds, err = bs.ConvertChildrenToPages(*req)
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockListConvertChildrenToPagesResponseError_UNKNOWN_ERROR, []string{}, err)
 	}
@@ -505,7 +581,10 @@ func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequ
 
 		return m
 	}
-	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockIds...); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextStyle(req.ContextId, req.Style, req.BlockIds...)
+	})
+	if err != nil {
 		return response(pb.RpcBlockListSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
@@ -520,7 +599,10 @@ func (mw *Middleware) BlockListSetDivStyle(req *pb.RpcBlockListSetDivStyleReques
 
 		return m
 	}
-	if err := mw.blockService.SetDivStyle(req.ContextId, req.Style, req.BlockIds...); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetDivStyle(req.ContextId, req.Style, req.BlockIds...)
+	})
+	if err != nil {
 		return response(pb.RpcBlockListSetDivStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetDivStyleResponseError_NULL, nil)
@@ -535,7 +617,10 @@ func (mw *Middleware) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequ
 
 		return m
 	}
-	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextColor(req.ContextId, req.Color, req.BlockIds...)
+	})
+	if err != nil {
 		return response(pb.RpcBlockListSetTextColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetTextColorResponseError_NULL, nil)
@@ -550,7 +635,10 @@ func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.R
 
 		return m
 	}
-	if err := mw.blockService.SetTextText(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextText(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockSetTextTextResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextTextResponseError_NULL, nil)
@@ -565,7 +653,10 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 
 		return m
 	}
-	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockId); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextStyle(req.ContextId, req.Style, req.BlockId)
+	})
+	if err != nil {
 		return response(pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
@@ -580,7 +671,10 @@ func (mw *Middleware) BlockSetTextChecked(req *pb.RpcBlockSetTextCheckedRequest)
 
 		return m
 	}
-	if err := mw.blockService.SetTextChecked(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextChecked(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockSetTextCheckedResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextCheckedResponseError_NULL, nil)
@@ -651,14 +745,6 @@ func (mw *Middleware) BlockSetVideoWidth(req *pb.RpcBlockSetVideoWidthRequest) *
 	return response(pb.RpcBlockSetVideoWidthResponseError_NULL, nil)
 }
 
-func (mw *Middleware) switchAccount(accountId string) {
-	if mw.blockService != nil {
-		mw.blockService.Close()
-	}
-
-	mw.blockService = block.NewService(accountId, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
-}
-
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
 	response := func(blockId string, code pb.RpcBlockSplitResponseErrorCode, err error) *pb.RpcBlockSplitResponse {
 		m := &pb.RpcBlockSplitResponse{BlockId: blockId, Error: &pb.RpcBlockSplitResponseError{Code: code}}
@@ -668,11 +754,15 @@ func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplit
 
 		return m
 	}
-	blockId, err := mw.blockService.SplitBlock(*req)
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, err = bs.SplitBlock(*req)
+		return
+	})
 	if err != nil {
 		return response("", pb.RpcBlockSplitResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(blockId, pb.RpcBlockSplitResponseError_NULL, nil)
+	return response(id, pb.RpcBlockSplitResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
@@ -684,7 +774,10 @@ func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMerge
 
 		return m
 	}
-	if err := mw.blockService.MergeBlock(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.MergeBlock(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockMergeResponseError_UNKNOWN_ERROR, nil)
 	}
 	return response(pb.RpcBlockMergeResponseError_NULL, nil)
@@ -712,7 +805,10 @@ func (mw *Middleware) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *
 
 		return m
 	}
-	if err := mw.blockService.BookmarkFetch(*req); err != nil {
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.BookmarkFetch(*req)
+	})
+	if err != nil {
 		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockBookmarkFetchResponseError_NULL, nil)
@@ -727,7 +823,11 @@ func (mw *Middleware) UploadFile(req *pb.RpcUploadFileRequest) *pb.RpcUploadFile
 
 		return m
 	}
-	hash, err := mw.blockService.UploadFile(*req)
+	var hash string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		hash, err = bs.UploadFile(*req)
+		return
+	})
 	if err != nil {
 		return response("", pb.RpcUploadFileResponseError_UNKNOWN_ERROR, err)
 	}
@@ -743,7 +843,11 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreate
 
 		return m
 	}
-	id, err := mw.blockService.BookmarkCreateAndFetch(*req)
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, err = bs.BookmarkCreateAndFetch(*req)
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockBookmarkCreateAndFetchResponseError_UNKNOWN_ERROR, "", err)
 	}
@@ -759,7 +863,11 @@ func (mw *Middleware) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUplo
 
 		return m
 	}
-	id, err := mw.blockService.CreateAndUploadFile(*req)
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, err = bs.CreateAndUploadFile(*req)
+		return
+	})
 	if err != nil {
 		return response(pb.RpcBlockFileCreateAndUploadResponseError_UNKNOWN_ERROR, "", err)
 	}
