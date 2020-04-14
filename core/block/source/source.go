@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 type Version struct {
@@ -19,7 +20,7 @@ type Source interface {
 	Id() string
 	Anytype() anytype.Service
 	Meta() meta.Service
-	Type() core.SmartBlockType
+	Type() pb.SmartBlockType
 	ReadVersion() (*core.SmartBlockVersion, error)
 	WriteVersion(v Version) (err error)
 	Close() (err error)
@@ -61,8 +62,8 @@ func (s *source) Meta() meta.Service {
 	return s.meta
 }
 
-func (s *source) Type() core.SmartBlockType {
-	return s.sb.Type()
+func (s *source) Type() pb.SmartBlockType {
+	return anytype.SmartBlockTypeToProto(s.sb.Type())
 }
 
 func (s *source) ReadVersion() (*core.SmartBlockVersion, error) {

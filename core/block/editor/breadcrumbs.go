@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -26,10 +25,6 @@ func (b *Breadcrumbs) Init(s source.Source) (err error) {
 		return
 	}
 	return b.checkRootBlock()
-}
-
-func (b *Breadcrumbs) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_Breadcrumbs
 }
 
 func (b *Breadcrumbs) checkRootBlock() (err error) {

@@ -69,7 +69,7 @@ func (sb *smartBlock) Id() string {
 }
 
 func (sb *smartBlock) Type() pb.SmartBlockType {
-	return anytype.SmartBlockTypeToProto(sb.source.Type())
+	return sb.source.Type()
 }
 
 func (sb *smartBlock) Init(s source.Source) error {
@@ -118,6 +118,7 @@ func (sb *smartBlock) Show() error {
 						RootId:  sb.RootId(),
 						Blocks:  sb.Blocks(),
 						Details: details,
+						Type:    sb.Type(),
 					}}},
 			},
 			ContextId: sb.RootId(),

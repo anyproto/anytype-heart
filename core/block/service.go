@@ -190,7 +190,7 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs()
-	if err = bs.Init(source.NewVirtual(s.anytype, s.meta)); err != nil {
+	if err = bs.Init(source.NewVirtual(s.anytype, s.meta, pb.SmartBlockType_Breadcrumbs)); err != nil {
 		return
 	}
 	bs.Lock()
@@ -681,13 +681,13 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 		return
 	}
 	switch sc.Type() {
-	case core.SmartBlockTypePage:
+	case pb.SmartBlockType_Page:
 		sb = editor.NewPage(s, s, s.linkPreview)
-	case core.SmartBlockTypeHome:
+	case pb.SmartBlockType_Home:
 		sb = editor.NewDashboard()
-	case core.SmartBlockTypeArchive:
+	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
-	case core.SmartBlockTypeProfilePage:
+	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s, s, s.linkPreview)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
