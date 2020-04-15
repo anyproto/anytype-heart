@@ -6494,9 +6494,9 @@ Precondition: user A and user B opened the same block
 | ---- | ------ | ----------- |
 | Page | 0 |  |
 | Home | 1 |  |
-| ProfilePage | 3 |  |
-| Archive | 4 |  |
-| Breadcrumbs | 5 |  |
+| ProfilePage | 2 |  |
+| Archive | 3 |  |
+| Breadcrumbs | 4 |  |
 
 
  
