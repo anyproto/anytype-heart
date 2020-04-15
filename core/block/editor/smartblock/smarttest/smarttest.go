@@ -3,6 +3,7 @@ package smarttest
 import (
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -55,6 +56,10 @@ func (st *SmartTest) Type() pb.SmartBlockType {
 
 func (st *SmartTest) Show() (err error) {
 	return
+}
+
+func (st *SmartTest) Meta() *core.SmartBlockMeta {
+	return nil
 }
 
 func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
