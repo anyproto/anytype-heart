@@ -182,7 +182,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		ContextId: mw.Anytype.PredefinedBlocks().Profile,
 		Details: []*pb.RpcBlockSetDetailsDetail{
 			{
-				Key:   "accountName",
+				Key:   "name",
 				Value: pbtypes.String(req.Name),
 			},
 		},
