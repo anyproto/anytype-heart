@@ -25,7 +25,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-
+                ResponseEvent event = 2;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -76,6 +76,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 repeated string linkIds = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -102,6 +103,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -129,6 +131,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string linkId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -158,6 +161,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 repeated string blockIds = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -184,6 +188,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -207,6 +212,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -232,6 +238,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -255,6 +262,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -281,6 +289,7 @@ message Rpc {
                 }
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -305,6 +314,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -338,6 +348,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -364,6 +375,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -388,6 +400,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -413,6 +426,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string html = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -445,6 +459,7 @@ message Rpc {
                 Error error = 1;
                 repeated string blockIds = 2;
                 int32 caretPosition = 3;
+                ResponseEvent event = 4;
 
                 message Error {
                     Code code = 1;
@@ -471,6 +486,7 @@ message Rpc {
                 string textSlot = 2;
                 string htmlSlot = 3;
                 repeated anytype.model.Block anySlot = 4;
+                ResponseEvent event = 5;
 
                 message Error {
                     Code code = 1;
@@ -495,6 +511,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string path = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -520,6 +537,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -543,6 +561,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -568,6 +587,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -616,6 +636,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -692,6 +713,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -717,6 +739,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -741,6 +764,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -767,6 +791,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -893,6 +918,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -921,6 +947,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -946,6 +973,7 @@ message Rpc {
                 message Response {
                     Error error = 1;
                     string blockId = 2;
+                    ResponseEvent event = 3;
 
                     message Error {
                         Code code = 1;
@@ -975,6 +1003,7 @@ message Rpc {
                 message Response {
                     Error error = 1;
                     string blockId = 2;
+                    ResponseEvent event = 3;
 
                     message Error {
                         Code code = 1;
@@ -1003,6 +1032,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -1026,6 +1056,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1049,6 +1080,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1139,6 +1171,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1180,6 +1213,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -1207,6 +1241,7 @@ message Rpc {
                 Error error = 1;
                 string blockId = 2;
                 string targetId = 3;
+                ResponseEvent event = 4;
 
                 message Error {
                     Code code = 1;
@@ -1233,6 +1268,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
