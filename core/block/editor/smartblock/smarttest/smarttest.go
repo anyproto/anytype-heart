@@ -49,7 +49,7 @@ func (st *SmartTest) Id() string {
 	return st.id
 }
 
-func (st *SmartTest) Show() (err error) {
+func (st *SmartTest) Show(*state.Context) (err error) {
 	return
 }
 

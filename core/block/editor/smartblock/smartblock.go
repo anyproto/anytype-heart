@@ -40,7 +40,7 @@ func New() SmartBlock {
 type SmartBlock interface {
 	Init(s source.Source) (err error)
 	Id() string
-	Show() (err error)
+	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() history.History
@@ -100,22 +100,20 @@ func (sb *smartBlock) Init(s source.Source) error {
 	return nil
 }
 
-func (sb *smartBlock) Show() error {
-	if sb.sendEvent != nil {
+func (sb *smartBlock) Show(ctx *state.Context) error {
+	if ctx != nil {
 		details, err := sb.fetchDetails()
 		if err != nil {
 			return err
 		}
-		sb.sendEvent(&pb.Event{
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-						RootId:  sb.RootId(),
-						Blocks:  sb.Blocks(),
-						Details: details,
-					}}},
+		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
+					RootId:  sb.RootId(),
+					Blocks:  sb.Blocks(),
+					Details: details,
+				}},
 			},
-			ContextId: sb.RootId(),
 		})
 	}
 	return nil
@@ -220,11 +218,15 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if sb.hist != nil && addHistory {
 		sb.hist.Add(act)
 	}
-	if sb.sendEvent != nil && sendEvent {
-		sb.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: sb.RootId(),
-		})
+	if sendEvent {
+		if ctx := s.Context(); ctx != nil {
+			ctx.SetMessages(sb.Id(), msgs)
+		} else if sb.sendEvent != nil {
+			sb.sendEvent(&pb.Event{
+				Messages:  msgs,
+				ContextId: sb.RootId(),
+			})
+		}
 	}
 	for _, add := range act.Add {
 		if add.Model().GetLink() != nil {

@@ -34,6 +34,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
+	ctx      *Context
 	parent   *State
 	blocks   map[string]simple.Block
 	rootId   string
@@ -47,6 +48,14 @@ func (s *State) RootId() string {
 
 func (s *State) NewState() *State {
 	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId}
+}
+
+func (s *State) NewStateCtx(ctx *Context) *State {
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx}
+}
+
+func (s *State) Context() *Context {
+	return s.ctx
 }
 
 func (s *State) Add(b simple.Block) (ok bool) {

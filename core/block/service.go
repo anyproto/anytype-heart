@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-library/core"
@@ -47,7 +48,7 @@ var (
 )
 
 type Service interface {
-	OpenBlock(id string, breadcrumbsIds ...string) error
+	OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...string) error
 	OpenBreadcrumbsBlock() (blockId string, err error)
 	CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
@@ -149,7 +150,7 @@ func (s *service) Anytype() anytype.Service {
 	return s.anytype
 }
 
-func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
+func (s *service) OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	ob, ok := s.openedBlocks[id]
@@ -168,7 +169,7 @@ func (s *service) OpenBlock(id string, breadcrumbsIds ...string) (err error) {
 	defer ob.Unlock()
 	ob.locked = true
 	ob.SetEventFunc(s.sendEvent)
-	if err = ob.Show(); err != nil {
+	if err = ob.Show(ctx); err != nil {
 		return
 	}
 
@@ -201,7 +202,7 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 		lastUsage:  time.Now(),
 		refs:       1,
 	}
-	if err = bs.Show(); err != nil {
+	if err = bs.Show(nil); err != nil {
 		return
 	}
 	return bs.Id(), nil

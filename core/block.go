@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -40,15 +41,18 @@ func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.Rpc
 }
 
 func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockOpenResponseErrorCode, err error) *pb.RpcBlockOpenResponse {
 		m := &pb.RpcBlockOpenResponse{Error: &pb.RpcBlockOpenResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Messages = ctx.GetMessages()
 		}
 		return m
 	}
 
-	if err := mw.blockService.OpenBlock(req.BlockId, req.BreadcrumbsIds...); err != nil {
+	if err := mw.blockService.OpenBlock(ctx, req.BlockId, req.BreadcrumbsIds...); err != nil {
 		switch err {
 		case block.ErrBlockNotFound:
 			return response(pb.RpcBlockOpenResponseError_BAD_INPUT, err)
