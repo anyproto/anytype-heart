@@ -18,6 +18,7 @@ var log = logging.Logger("anytype-mw-state")
 type Doc interface {
 	RootId() string
 	NewState() *State
+	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
 	Append(targetId string, id string) (ok bool)
