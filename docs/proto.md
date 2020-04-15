@@ -1067,7 +1067,6 @@ Precondition: block should be opened.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error) |  |  |
 | html | [string](#string) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 

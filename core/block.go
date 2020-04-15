@@ -177,7 +177,7 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 	for _, r := range uploadArr {
 		r.ContextId = req.ContextId
 
-		if err := mw.blockService.UploadBlockFile(r); err != nil {
+		if err := mw.blockService.UploadBlockFile(nil, r); err != nil {
 			return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, blockIds, caretPosition, err)
 		}
 	}
@@ -206,7 +206,7 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 		return m
 	}
 
-	textSlot, htmlSlot, anySlot, err := mw.blockService.Cut(*req, mw.getImages(req.Blocks))
+	textSlot, htmlSlot, anySlot, err := mw.blockService.Cut(ctx, *req, mw.getImages(req.Blocks))
 
 	if err != nil {
 		var emptyAnySlot []*model.Block
@@ -251,7 +251,7 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 		}
 		return m
 	}
-	if err := mw.blockService.UploadBlockFile(*req); err != nil {
+	if err := mw.blockService.UploadBlockFile(ctx, *req); err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockUploadResponseError_NULL, nil)
@@ -268,7 +268,7 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 		}
 		return m
 	}
-	if err := mw.blockService.UnlinkBlock(*req); err != nil {
+	if err := mw.blockService.UnlinkBlock(ctx, *req); err != nil {
 		return response(pb.RpcBlockUnlinkResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockUnlinkResponseError_NULL, nil)
@@ -285,7 +285,7 @@ func (mw *Middleware) BlockListDuplicate(req *pb.RpcBlockListDuplicateRequest) *
 		}
 		return m
 	}
-	ids, err := mw.blockService.DuplicateBlocks(*req)
+	ids, err := mw.blockService.DuplicateBlocks(ctx, *req)
 	if err != nil {
 		return response(nil, pb.RpcBlockListDuplicateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -329,7 +329,7 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 		}
 		return m
 	}
-	if err := mw.blockService.SetFields(*req); err != nil {
+	if err := mw.blockService.SetFields(ctx, *req); err != nil {
 		return response(pb.RpcBlockSetFieldsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
@@ -360,7 +360,7 @@ func (mw *Middleware) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *
 		}
 		return m
 	}
-	if err := mw.blockService.SetFieldsList(*req); err != nil {
+	if err := mw.blockService.SetFieldsList(ctx, *req); err != nil {
 		return response(pb.RpcBlockListSetFieldsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetFieldsResponseError_NULL, nil)
@@ -404,7 +404,7 @@ func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockR
 		}
 		return m
 	}
-	blockId, err := mw.blockService.ReplaceBlock(*req)
+	blockId, err := mw.blockService.ReplaceBlock(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockReplaceResponseError_UNKNOWN_ERROR, "", err)
 	}
@@ -439,7 +439,7 @@ func (mw *Middleware) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgro
 		}
 		return m
 	}
-	if err := mw.blockService.SetBackgroundColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+	if err := mw.blockService.SetBackgroundColor(ctx, req.ContextId, req.Color, req.BlockIds...); err != nil {
 		return response(pb.RpcBlockListSetBackgroundColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetBackgroundColorResponseError_NULL, nil)
@@ -456,7 +456,7 @@ func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb
 		}
 		return m
 	}
-	if err := mw.blockService.SetAlign(req.ContextId, req.Align, req.BlockIds...); err != nil {
+	if err := mw.blockService.SetAlign(ctx, req.ContextId, req.Align, req.BlockIds...); err != nil {
 		return response(pb.RpcBlockListSetAlignResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetAlignResponseError_NULL, nil)
@@ -776,7 +776,7 @@ func (mw *Middleware) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *
 		}
 		return m
 	}
-	if err := mw.blockService.BookmarkFetch(*req); err != nil {
+	if err := mw.blockService.BookmarkFetch(ctx, *req); err != nil {
 		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockBookmarkFetchResponseError_NULL, nil)
@@ -808,7 +808,7 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreate
 		}
 		return m
 	}
-	id, err := mw.blockService.BookmarkCreateAndFetch(*req)
+	id, err := mw.blockService.BookmarkCreateAndFetch(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockBookmarkCreateAndFetchResponseError_UNKNOWN_ERROR, "", err)
 	}
@@ -826,7 +826,7 @@ func (mw *Middleware) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUplo
 		}
 		return m
 	}
-	id, err := mw.blockService.CreateAndUploadFile(*req)
+	id, err := mw.blockService.CreateAndUploadFile(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockFileCreateAndUploadResponseError_UNKNOWN_ERROR, "", err)
 	}

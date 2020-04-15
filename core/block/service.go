@@ -49,28 +49,28 @@ var (
 
 type Service interface {
 	OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...string) error
-	OpenBreadcrumbsBlock(*state.Context) (blockId string, err error)
+	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	CutBreadcrumbs(ctx *state.Context, req pb.RpcBlockCutBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
-	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
-	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
+	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
+	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
+	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
 	ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
 
-	SetFields(req pb.RpcBlockSetFieldsRequest) error
-	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
+	SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) error
+	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
-	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
@@ -79,14 +79,14 @@ type Service interface {
 	SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error
 	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
-	SetBackgroundColor(contextId string, color string, blockIds ...string) error
-	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
+	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
 
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
-	UploadBlockFile(req pb.RpcBlockUploadRequest) error
-	CreateAndUploadFile(req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
+	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
 	Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) error
@@ -94,8 +94,8 @@ type Service interface {
 
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 
-	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
-	BookmarkCreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
+	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
+	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
@@ -311,17 +311,17 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 	return
 }
 
-func (s *service) DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+func (s *service) DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		newIds, err = b.Duplicate(req)
+		newIds, err = b.Duplicate(ctx, req)
 		return err
 	})
 	return
 }
 
-func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) (err error) {
+func (s *service) UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) (err error) {
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Unlink(req.BlockIds...)
+		return b.Unlink(ctx, req.BlockIds...)
 	})
 }
 
@@ -443,17 +443,17 @@ func (s *service) ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockList
 	return linkIds, err
 }
 
-func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
+func (s *service) ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		newId, err = b.Replace(req.BlockId, req.Block)
+		newId, err = b.Replace(ctx, req.BlockId, req.Block)
 		return err
 	})
 	return
 }
 
-func (s *service) SetFields(req pb.RpcBlockSetFieldsRequest) (err error) {
+func (s *service) SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) (err error) {
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+		return b.SetFields(ctx, &pb.RpcBlockListSetFieldsRequestBlockField{
 			BlockId: req.BlockId,
 			Fields:  req.Fields,
 		})
@@ -466,9 +466,9 @@ func (s *service) SetDetails(req pb.RpcBlockSetDetailsRequest) (err error) {
 	})
 }
 
-func (s *service) SetFieldsList(req pb.RpcBlockListSetFieldsRequest) (err error) {
+func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.SetFields(req.BlockFields...)
+		return b.SetFields(ctx, req.BlockFields...)
 	})
 }
 
@@ -489,9 +489,9 @@ func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockI
 	return blockIds, uploadArr, caretPosition, err
 }
 
-func (s *service) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *service) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		textSlot, htmlSlot, anySlot, err = cb.Cut(req, images)
+		textSlot, htmlSlot, anySlot, err = cb.Cut(ctx, req, images)
 		return err
 	})
 	return textSlot, htmlSlot, anySlot, err
@@ -540,34 +540,34 @@ func (s *service) SetTextColor(ctx *state.Context, contextId string, color strin
 	})
 }
 
-func (s *service) SetBackgroundColor(contextId, color string, blockIds ...string) (err error) {
+func (s *service) SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.Update(func(b simple.Block) error {
+		return b.Update(ctx, func(b simple.Block) error {
 			b.Model().BackgroundColor = color
 			return nil
 		}, blockIds...)
 	})
 }
 
-func (s *service) SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error) {
+func (s *service) SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.Update(func(b simple.Block) error {
+		return b.Update(ctx, func(b simple.Block) error {
 			b.Model().Align = align
 			return nil
 		}, blockIds...)
 	})
 }
 
-func (s *service) UploadBlockFile(req pb.RpcBlockUploadRequest) (err error) {
+func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		err = b.Upload(req.BlockId, req.FilePath, req.Url)
+		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url)
 		return err
 	})
 }
 
-func (s *service) CreateAndUploadFile(req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error) {
+func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error) {
 	err = s.DoFile(req.ContextId, func(b file.File) error {
-		id, err = b.CreateAndUpload(req)
+		id, err = b.CreateAndUpload(ctx, req)
 		return err
 	})
 	return
@@ -606,15 +606,15 @@ func (s *service) Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (err erro
 	})
 }
 
-func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error) {
+func (s *service) BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
 	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(req.BlockId, req.Url)
+		return b.Fetch(ctx, req.BlockId, req.Url)
 	})
 }
 
-func (s *service) BookmarkCreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error) {
+func (s *service) BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error) {
 	err = s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
-		id, err = b.CreateAndFetch(req)
+		id, err = b.CreateAndFetch(ctx, req)
 		return err
 	})
 	return

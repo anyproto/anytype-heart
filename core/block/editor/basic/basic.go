@@ -13,12 +13,12 @@ import (
 
 type Basic interface {
 	Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error)
-	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
-	Unlink(id ...string) (err error)
+	Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
+	Unlink(ctx *state.Context, id ...string) (err error)
 	Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
-	Replace(id string, block *model.Block) (newId string, err error)
-	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
-	Update(apply func(b simple.Block) error, blockIds ...string) (err error)
+	Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error)
+	SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
+	Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
@@ -90,8 +90,8 @@ func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id st
 	return block.Model().Id, nil
 }
 
-func (bs *basic) Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
-	s := bs.NewState()
+func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+	s := bs.NewStateCtx(ctx)
 	pos := req.Position
 	targetId := req.TargetId
 	for _, id := range req.BlockIds {
@@ -129,8 +129,8 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 	return copy.Model().Id, nil
 }
 
-func (bs *basic) Unlink(ids ...string) (err error) {
-	s := bs.NewState()
+func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
+	s := bs.NewStateCtx(ctx)
 	for _, id := range ids {
 		if !s.Remove(id) {
 			return smartblock.ErrSimpleBlockNotFound
@@ -150,8 +150,8 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 	return bs.Apply(s)
 }
 
-func (bs *basic) Replace(id string, block *model.Block) (newId string, err error) {
-	s := bs.NewState()
+func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error) {
+	s := bs.NewStateCtx(ctx)
 
 	new := simple.New(block)
 	newId = new.Model().Id
@@ -165,8 +165,8 @@ func (bs *basic) Replace(id string, block *model.Block) (newId string, err error
 	return
 }
 
-func (bs *basic) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
-	s := bs.NewState()
+func (bs *basic) SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error) {
+	s := bs.NewStateCtx(ctx)
 	for _, fr := range fields {
 		if b := s.Get(fr.BlockId); b != nil {
 			b.Model().Fields = fr.Fields
@@ -175,8 +175,8 @@ func (bs *basic) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField)
 	return bs.Apply(s, smartblock.NoHistory)
 }
 
-func (bs *basic) Update(apply func(b simple.Block) error, blockIds ...string) (err error) {
-	s := bs.NewState()
+func (bs *basic) Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
+	s := bs.NewStateCtx(ctx)
 	for _, id := range blockIds {
 		if b := s.Get(id); b != nil {
 			if err = apply(b); err != nil {

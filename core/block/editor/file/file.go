@@ -42,9 +42,9 @@ type FileSource interface {
 
 type File interface {
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
-	Upload(id string, localPath, url string) (err error)
+	Upload(ctx *state.Context, id, localPath, url string) (err error)
 	UpdateFile(id string, apply func(b file.Block) error) (err error)
-	CreateAndUpload(req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
+	CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 
 	dropFilesHandler
 }
@@ -54,16 +54,16 @@ type sfile struct {
 	fileSource FileSource
 }
 
-func (sf *sfile) Upload(id string, localPath, url string) (err error) {
-	s := sf.NewState()
+func (sf *sfile) Upload(ctx *state.Context, id, localPath, url string) (err error) {
+	s := sf.NewStateCtx(ctx)
 	if err = sf.upload(s, id, localPath, url); err != nil {
 		return
 	}
 	return sf.Apply(s)
 }
 
-func (sf *sfile) CreateAndUpload(req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
-	s := sf.NewState()
+func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
+	s := sf.NewStateCtx(ctx)
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
