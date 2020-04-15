@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -12,7 +13,10 @@ func (mw *Middleware) ProcessCancel(req *pb.RpcProcessCancelRequest) *pb.RpcProc
 		}
 		return m
 	}
-	if err := mw.blockService.ProcessCancel(req.Id); err != nil {
+	err := mw.doBlockService(func(bs block.Service) error {
+		return bs.ProcessCancel(req.Id)
+	})
+	if err != nil {
 		return response(pb.RpcProcessCancelResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcProcessCancelResponseError_NULL, nil)

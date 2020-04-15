@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -96,6 +97,9 @@ func checkInviteCode(code string, account string) error {
 }
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		m := &pb.RpcAccountCreateResponse{Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
@@ -116,7 +120,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	if mw.Anytype != nil {
-		err := mw.Stop()
+		err := mw.stop()
 		if err != nil {
 			response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 		}
@@ -164,7 +168,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	mw.Anytype = anytype
 	newAcc := &model.Account{Id: account.Address()}
 
-	err = mw.Start()
+	err = mw.start()
 	if err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
@@ -198,7 +202,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}*/
 
 	mw.localAccounts = append(mw.localAccounts, newAcc)
-	mw.switchAccount(newAcc.Id)
+	mw.setBlockService(block.NewService(newAcc.Id, mw.Anytype, mw.linkPreview, mw.SendEvent))
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -293,6 +297,9 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 }
 
 func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		m := &pb.RpcAccountSelectResponse{Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
@@ -313,7 +320,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		if mw.Anytype != nil {
 			// user chose account other than the first one
 			// we need to stop the first node that what used to search other accounts and then start the right one
-			err := mw.Stop()
+			err := mw.stop()
 			if err != nil {
 				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
 			}
@@ -351,7 +358,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 
 		mw.Anytype = anytype
 
-		err = mw.Start()
+		err = mw.start()
 		if err != nil {
 			if err == core.ErrRepoCorrupted {
 				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -400,11 +407,14 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		acc.Avatar = getAvatarFromString(avatarHashOrColor)
 	}
 	*/
-	mw.switchAccount(acc.Id)
+	mw.setBlockService(block.NewService(acc.Id, mw.Anytype, mw.linkPreview, mw.SendEvent))
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
 	response := func(code pb.RpcAccountStopResponseErrorCode, err error) *pb.RpcAccountStopResponse {
 		m := &pb.RpcAccountStopResponse{Error: &pb.RpcAccountStopResponseError{Code: code}}
 		if err != nil {
@@ -419,7 +429,7 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	}
 
 	address := mw.Anytype.Account()
-	err := mw.Stop()
+	err := mw.stop()
 	if err != nil {
 		return response(pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE, err)
 	}
