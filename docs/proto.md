@@ -279,6 +279,10 @@
     - [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request)
     - [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response)
     - [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error)
+    - [Rpc.Shutdown](#anytype.Rpc.Shutdown)
+    - [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request)
+    - [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response)
+    - [Rpc.Shutdown.Response.Error](#anytype.Rpc.Shutdown.Response.Error)
     - [Rpc.UploadFile](#anytype.Rpc.UploadFile)
     - [Rpc.UploadFile.Request](#anytype.Rpc.UploadFile.Request)
     - [Rpc.UploadFile.Response](#anytype.Rpc.UploadFile.Response)
@@ -359,6 +363,7 @@
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
+    - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
     - [Rpc.UploadFile.Response.Error.Code](#anytype.Rpc.UploadFile.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
@@ -508,6 +513,7 @@
 | VersionGet | [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request) | [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
+| Shutdown | [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request) | [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response) |  |
 | ExternalDropFiles | [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request) | [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response) |  |
 | ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype.Rpc.LinkPreview.Request) | [Rpc.LinkPreview.Response](#anytype.Rpc.LinkPreview.Response) |  |
@@ -4424,6 +4430,57 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.Shutdown"></a>
+
+### Rpc.Shutdown
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Shutdown.Request"></a>
+
+### Rpc.Shutdown.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Shutdown.Response"></a>
+
+### Rpc.Shutdown.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Shutdown.Response.Error](#anytype.Rpc.Shutdown.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Shutdown.Response.Error"></a>
+
+### Rpc.Shutdown.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.UploadFile"></a>
 
 ### Rpc.UploadFile
@@ -5501,6 +5558,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Shutdown.Response.Error.Code"></a>
+
+### Rpc.Shutdown.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 101 |  |
 
 
 
