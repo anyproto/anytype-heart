@@ -22,7 +22,6 @@ func RegisterFallback(c BlockCreator) {
 }
 
 type Block interface {
-	Virtual() bool
 	Model() *model.Block
 	Diff(block Block) (msgs []*pb.EventMessage, err error)
 	Copy() Block

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -15,7 +16,9 @@ func (mw *Middleware) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoRes
 		return m
 	}
 
-	err := mw.blockService.Undo(*req)
+	err := mw.doBlockService(func(bs block.Service) error {
+		return bs.Undo(*req)
+	})
 	if err != nil {
 		if err == history.ErrNoHistory {
 			return response(pb.RpcBlockUndoResponseError_CAN_NOT_MOVE, err)
@@ -35,7 +38,9 @@ func (mw *Middleware) BlockRedo(req *pb.RpcBlockRedoRequest) *pb.RpcBlockRedoRes
 		return m
 	}
 
-	err := mw.blockService.Redo(*req)
+	err := mw.doBlockService(func(bs block.Service) error {
+		return bs.Redo(*req)
+	})
 	if err != nil {
 		if err == history.ErrNoHistory {
 			return response(pb.RpcBlockRedoResponseError_CAN_NOT_MOVE, err)

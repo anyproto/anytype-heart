@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/anytypeio/go-anytype-library v0.4.1-0.20200331122537-eb9425dab568
+	github.com/anytypeio/go-anytype-library v0.5.1-0.20200411214521-13b3be02cf55
 	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.3
@@ -20,7 +20,7 @@ require (
 	github.com/yuin/goldmark v1.1.24
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.28.0
+	google.golang.org/grpc v1.28.1
 )
 
 replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0

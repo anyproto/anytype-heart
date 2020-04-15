@@ -6,12 +6,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -19,7 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -57,6 +59,7 @@ type Service interface {
 
 	MoveBlocks(req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
+	ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
@@ -78,8 +81,11 @@ type Service interface {
 	SetBackgroundColor(contextId string, color string, blockIds ...string) error
 	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
+	SetDivStyle(contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
+
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(req pb.RpcBlockUploadRequest) error
+	CreateAndUploadFile(req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
 	Undo(req pb.RpcBlockUndoRequest) error
@@ -88,6 +94,7 @@ type Service interface {
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 
 	BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) error
+	BookmarkCreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
@@ -157,6 +164,8 @@ func (s *service) OpenBlock(id string) (err error) {
 		}
 		s.openedBlocks[id] = ob
 	}
+	ob.Lock()
+	defer ob.Unlock()
 	ob.locked = true
 	ob.SetEventFunc(s.sendEvent)
 	if err = ob.Show(); err != nil {
@@ -172,6 +181,8 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 	if err = bs.Init(source.NewVirtual(s.anytype, s.meta)); err != nil {
 		return
 	}
+	bs.Lock()
+	defer bs.Unlock()
 	bs.SetEventFunc(s.sendEvent)
 	s.openedBlocks[bs.Id()] = &openedBlock{
 		SmartBlock: bs,
@@ -188,6 +199,8 @@ func (s *service) CloseBlock(id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if ob, ok := s.openedBlocks[id]; ok {
+		ob.Lock()
+		defer ob.Unlock()
 		ob.SetEventFunc(nil)
 		ob.locked = false
 		return
@@ -299,6 +312,12 @@ func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) (err error) {
 	})
 }
 
+func (s *service) SetDivStyle(contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.SetDivStyle(style, ids...)
+	})
+}
+
 func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error) {
 	err = s.DoText(req.ContextId, func(b stext.Text) error {
 		blockId, err = b.RangeSplit(req.BlockId, req.Range.From, req.Range.To, req.Style)
@@ -314,35 +333,101 @@ func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) (err error) {
 }
 
 func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Move(req)
+	if req.ContextId == req.TargetContextId {
+		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+			return b.Move(req)
+		})
+	}
+	var blocks []simple.Block
+
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		blocks, err = b.InternalCut(req)
+		return err
 	})
+
+	if err != nil {
+		return err
+	}
+
+	err = s.DoBasic(req.TargetContextId, func(b basic.Basic) error {
+		return b.InternalPaste(blocks)
+	})
+
+	if err != nil {
+		// TODO: undo b.InternalCut(req)
+		return err
+	}
+
+	return err
 }
 
 func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
-
+	// 1. Create new page, link
 	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
-		//Block:     req.Block,
-		Position: req.Position,
+		Position:  req.Position,
+		Details:   req.Details,
 	})
 
 	if err != nil {
 		return linkId, err
 	}
 
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Move(pb.RpcBlockListMoveRequest{
-			req.ContextId,
-			req.BlockIds,
-			pageId,
-			req.DropTargetId,
-			req.Position,
-		})
+	// 2. Move blocks to new page
+	err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
+		ContextId:       req.ContextId,
+		BlockIds:        req.BlockIds,
+		TargetContextId: pageId,
+		DropTargetId:    "",
+		Position:        0,
 	})
 
-	return
+	if err != nil {
+		return linkId, err
+	}
+
+	return linkId, err
+}
+
+func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+	blocks := make(map[string]*model.Block)
+
+	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
+		for _, b := range contextBlock.Blocks() {
+			blocks[b.Id] = b
+		}
+		return nil
+	})
+
+	if err != nil {
+		return linkIds, err
+	}
+
+	for _, blockId := range req.BlockIds {
+		if blocks[blockId] == nil || blocks[blockId].GetText() == nil {
+			continue
+		}
+
+		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
+		linkId, err := s.MoveBlocksToNewPage(pb.RpcBlockListMoveToNewPageRequest{
+			ContextId: req.ContextId,
+			BlockIds:  children,
+			Details: &types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String(blocks[blockId].GetText().Text),
+				},
+			},
+			DropTargetId: blockId,
+			Position:     model.Block_Replace,
+		})
+		linkIds = append(linkIds, linkId)
+		if err != nil {
+			return linkIds, err
+		}
+	}
+
+	return linkIds, err
 }
 
 func (s *service) ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error) {
@@ -467,6 +552,14 @@ func (s *service) UploadBlockFile(req pb.RpcBlockUploadRequest) (err error) {
 	})
 }
 
+func (s *service) CreateAndUploadFile(req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error) {
+	err = s.DoFile(req.ContextId, func(b file.File) error {
+		id, err = b.CreateAndUpload(req)
+		return err
+	})
+	return
+}
+
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
 	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
 	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
@@ -501,24 +594,17 @@ func (s *service) Redo(req pb.RpcBlockRedoRequest) (err error) {
 }
 
 func (s *service) BookmarkFetch(req pb.RpcBlockBookmarkFetchRequest) (err error) {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.Update(func(b simple.Block) error {
-			if bm, ok := b.(bookmark.Block); ok {
-				return bm.Fetch(bookmark.FetchParams{
-					Url:     req.Url,
-					Anytype: s.anytype,
-					Updater: func(ids []string, hist bool, apply func(b simple.Block) error) (err error) {
-						return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-							return b.Update(apply, ids...)
-						})
-					},
-					LinkPreview: s.linkPreview,
-				})
-			}
-			return ErrUnexpectedBlockType
-		}, req.BlockId)
+	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
+		return b.Fetch(req.BlockId, req.Url)
 	})
+}
 
+func (s *service) BookmarkCreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error) {
+	err = s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
+		id, err = b.CreateAndFetch(req)
+		return err
+	})
+	return
 }
 
 func (s *service) ProcessAdd(p process.Process) (err error) {
@@ -584,7 +670,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	}
 	switch sc.Type() {
 	case core.SmartBlockTypePage:
-		sb = editor.NewPage(s)
+		sb = editor.NewPage(s, s, s.linkPreview)
 	case core.SmartBlockTypeDashboard:
 		sb = editor.NewDashboard()
 	case core.SmartBlockTypeArchive:
@@ -665,6 +751,20 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 	return fmt.Errorf("unexpected operation for this block type: %T", sb)
 }
 
+func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(bookmark.Bookmark); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
 func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
 	sb, release, err := s.pickBlock(id)
 	if err != nil {
@@ -718,4 +818,20 @@ func (s *service) cleanupBlocks() (closed bool) {
 	}
 	log.Infof("cleanup: block closed %d (total %v)", closedCount, total)
 	return s.closed
+}
+
+func (s *service) fillSlice(id string, ids []string, allBlocks map[string]*model.Block) []string {
+	ids = append(ids, id)
+	for _, chId := range allBlocks[id].ChildrenIds {
+		ids = s.fillSlice(chId, ids, allBlocks)
+	}
+	return ids
+}
+
+func (s *service) AllDescendantIds(targetBlockIds []string, allBlocks map[string]*model.Block) (outputIds []string) {
+	for _, tId := range targetBlockIds {
+		outputIds = s.fillSlice(tId, outputIds, allBlocks)
+	}
+
+	return outputIds
 }

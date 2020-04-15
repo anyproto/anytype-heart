@@ -1,6 +1,8 @@
 package state
 
 import (
+	"bytes"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -51,14 +53,20 @@ func (s *State) Add(b simple.Block) (ok bool) {
 	id := b.Model().Id
 	if s.Pick(id) == nil {
 		s.blocks[id] = b
-		s.newIds = append(s.newIds, id)
+		if s.parent != nil {
+			s.newIds = append(s.newIds, id)
+		}
 		return true
 	}
 	return false
 }
 
 func (s *State) Set(b simple.Block) {
-	s.blocks[b.Model().Id] = b
+	if !s.Exists(b.Model().Id) {
+		s.Add(b)
+	} else {
+		s.blocks[b.Model().Id] = b
+	}
 }
 
 func (s *State) Get(id string) (b simple.Block) {
@@ -103,11 +111,14 @@ func (s *State) Remove(id string) (ok bool) {
 		return false
 	}
 	if s.Pick(id) != nil {
+		s.Unlink(id)
 		if _, ok = s.blocks[id]; ok {
 			delete(s.blocks, id)
 		}
 		s.toRemove = append(s.toRemove, id)
-		s.Unlink(id)
+		if slice.FindPos(s.newIds, id) != -1 {
+			s.newIds = slice.Remove(s.newIds, id)
+		}
 		return true
 	}
 	return
@@ -183,9 +194,6 @@ func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err e
 
 func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
 	st := time.Now()
-	s.normalize()
-	var toSave []*model.Block
-	var newBlocks []*model.Block
 	for id, b := range s.blocks {
 		if slice.FindPos(s.toRemove, id) != -1 {
 			continue
@@ -193,11 +201,19 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 		if err := s.validateBlock(b); err != nil {
 			return nil, history.Action{}, err
 		}
+	}
+	s.normalize()
+	var toSave []*model.Block
+	var newBlocks []*model.Block
+	for id, b := range s.blocks {
+		if slice.FindPos(s.toRemove, id) != -1 {
+			continue
+		}
 		orig := s.PickOrigin(id)
 		if orig == nil {
 			newBlocks = append(newBlocks, b.Model())
 			toSave = append(toSave, b.Model())
-			action.Add = append(action.Add, b)
+			action.Add = append(action.Add, b.Copy())
 			continue
 		}
 
@@ -214,8 +230,8 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 				}
 			}
 			action.Change = append(action.Change, history.Change{
-				Before: orig,
-				After:  b,
+				Before: orig.Copy(),
+				After:  b.Copy(),
 			})
 		}
 	}
@@ -242,7 +258,7 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 	}
 	for _, id := range s.toRemove {
 		if old := s.PickOrigin(id); old != nil {
-			action.Remove = append(action.Remove, old)
+			action.Remove = append(action.Remove, old.Copy())
 		}
 		if s.parent != nil {
 			delete(s.parent.blocks, id)
@@ -253,9 +269,37 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 }
 
 func (s *State) Blocks() []*model.Block {
-	res := make([]*model.Block, 0, len(s.blocks))
-	for _, b := range s.blocks {
-		res = append(res, b.Copy().Model())
+	if s.Pick(s.RootId()) == nil {
+		return nil
 	}
-	return res
+	return s.fillSlice(s.RootId(), make([]*model.Block, 0, len(s.blocks)))
+}
+
+func (s *State) fillSlice(id string, blocks []*model.Block) []*model.Block {
+	blocks = append(blocks, s.blocks[id].Copy().Model())
+	for _, chId := range s.blocks[id].Model().ChildrenIds {
+		blocks = s.fillSlice(chId, blocks)
+	}
+	return blocks
+}
+
+func (s *State) String() (res string) {
+	buf := bytes.NewBuffer(nil)
+	s.writeString(buf, 0, s.RootId())
+	return buf.String()
+}
+
+func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
+	b := s.Pick(id)
+	buf.WriteString(strings.Repeat("\t", l))
+	buf.WriteString(id)
+	if b == nil {
+		buf.WriteString(" MISSING")
+	}
+	buf.WriteString("\n")
+	if b != nil {
+		for _, cid := range b.Model().ChildrenIds {
+			s.writeString(buf, l+1, cid)
+		}
+	}
 }

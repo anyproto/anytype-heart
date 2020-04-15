@@ -1,10 +1,13 @@
 package basic
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -16,6 +19,54 @@ type Basic interface {
 	Replace(id string, block *model.Block) (newId string, err error)
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(apply func(b simple.Block) error, blockIds ...string) (err error)
+	SetDivStyle(style model.BlockContentDivStyle, ids ...string) (err error)
+	InternalCut(req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
+	InternalPaste(blocks []simple.Block) (err error)
+}
+
+func (bs *basic) InternalCut(req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
+	contextState := bs.NewState()
+
+	for _, bId := range req.BlockIds {
+		b := contextState.Pick(bId)
+		if b != nil {
+			descendants := bs.getAllDescendants(b, []simple.Block{})
+			blocks = append(blocks, descendants...)
+			contextState.Remove(b.Model().Id)
+		}
+	}
+
+	err = bs.Apply(contextState)
+	if err != nil {
+		return blocks, err
+	}
+
+	return blocks, err
+}
+
+func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
+	targetState := bs.NewState()
+	idToIsChild := make(map[string]bool)
+	for _, b := range blocks {
+		for _, cId := range b.Model().ChildrenIds {
+			idToIsChild[cId] = true
+		}
+	}
+
+	for _, b := range blocks {
+		targetState.Add(b)
+		if idToIsChild[b.Model().Id] != true {
+			err := targetState.InsertTo("", model.Block_Inner, b.Model().Id)
+			if err != nil {
+				return err
+			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return bs.Apply(targetState)
 }
 
 func NewBasic(sb smartblock.SmartBlock) Basic {
@@ -81,7 +132,7 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 func (bs *basic) Unlink(ids ...string) (err error) {
 	s := bs.NewState()
 	for _, id := range ids {
-		if ! s.Remove(id) {
+		if !s.Remove(id) {
 			return smartblock.ErrSimpleBlockNotFound
 		}
 	}
@@ -121,7 +172,7 @@ func (bs *basic) SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField)
 			b.Model().Fields = fr.Fields
 		}
 	}
-	return bs.Apply(s)
+	return bs.Apply(s, smartblock.NoHistory)
 }
 
 func (bs *basic) Update(apply func(b simple.Block) error, blockIds ...string) (err error) {
@@ -136,4 +187,29 @@ func (bs *basic) Update(apply func(b simple.Block) error, blockIds ...string) (e
 		}
 	}
 	return bs.Apply(s)
+}
+
+func (bs *basic) SetDivStyle(style model.BlockContentDivStyle, ids ...string) (err error) {
+	s := bs.NewState()
+	for _, id := range ids {
+		b := s.Get(id)
+		if b == nil {
+			return smartblock.ErrSimpleBlockNotFound
+		}
+		if div, ok := b.(base.DivBlock); ok {
+			div.SetStyle(style)
+		} else {
+			return fmt.Errorf("unexpected block type: %T (want Div)", b)
+		}
+	}
+	return bs.Apply(s)
+}
+
+func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []simple.Block {
+	blocks = append(blocks, block)
+	for _, cId := range block.Model().ChildrenIds {
+		blocks = bs.getAllDescendants(bs.Pick(cId), blocks)
+	}
+
+	return blocks
 }
