@@ -47,7 +47,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Messages = ctx.GetMessages()
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}

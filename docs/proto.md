@@ -426,6 +426,7 @@
     - [Model](#anytype.Model)
     - [Model.Process](#anytype.Model.Process)
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
+    - [ResponseEvent](#anytype.ResponseEvent)
   
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
@@ -1699,7 +1700,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Open.Response.Error](#anytype.Rpc.Block.Open.Response.Error) |  |  |
-| messages | [Event.Message](#anytype.Event.Message) | repeated |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -6455,6 +6456,22 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | total | [int64](#int64) |  |  |
 | done | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype.ResponseEvent"></a>
+
+### ResponseEvent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messages | [Event.Message](#anytype.Event.Message) | repeated |  |
+| contextId | [string](#string) |  |  |
 
 
 

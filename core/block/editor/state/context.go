@@ -7,11 +7,13 @@ func NewContext(se func(e *pb.Event)) *Context {
 }
 
 type Context struct {
-	messages  []*pb.EventMessage
-	sendEvent func(e *pb.Event)
+	smartBlockId string
+	messages     []*pb.EventMessage
+	sendEvent    func(e *pb.Event)
 }
 
 func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
+	ctx.smartBlockId = smartBlockId
 	ctx.messages = msgs
 	if ctx.sendEvent != nil {
 		ctx.sendEvent(&pb.Event{
@@ -24,4 +26,11 @@ func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
 
 func (ctx *Context) GetMessages() []*pb.EventMessage {
 	return ctx.messages
+}
+
+func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {
+	return &pb.ResponseEvent{
+		Messages:  ctx.messages,
+		ContextId: ctx.smartBlockId,
+	}
 }
