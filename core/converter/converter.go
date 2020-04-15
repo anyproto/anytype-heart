@@ -56,7 +56,7 @@ func (c *converter) filterById(blocks []*model.Block, Id string) (out []*model.B
 
 func (c *converter) filterLayout(blocks []*model.Block) (out []*model.Block) {
 	for _, b := range blocks {
-		if b.Content == nil {
+		if b.GetSmartblock() != nil {
 			continue
 		}
 		out = append(out, b)
@@ -160,6 +160,8 @@ func (c *converter) ProcessTree(node *Node, images map[string][]byte) (out strin
 	for _, child := range node.children {
 		if child != nil && child.model != nil && child.model.Content != nil {
 			switch cont := child.model.Content.(type) {
+			case *model.BlockContentOfSmartblock:
+				break
 			case *model.BlockContentOfText:
 				out += renderText(true, cont)
 			case *model.BlockContentOfFile:
@@ -183,6 +185,8 @@ func (c *converter) ProcessTree(node *Node, images map[string][]byte) (out strin
 
 		if child != nil && child.model != nil && child.model.Content != nil {
 			switch cont := child.model.Content.(type) {
+			case *model.BlockContentOfSmartblock:
+				break
 			case *model.BlockContentOfText:
 				out += renderText(false, cont)
 			case *model.BlockContentOfFile:
