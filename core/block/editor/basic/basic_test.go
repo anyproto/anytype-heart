@@ -19,7 +19,7 @@ func TestBasic_Create(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 	b := NewBasic(sb)
-	id, err := b.Create(pb.RpcBlockCreateRequest{
+	id, err := b.Create(nil, pb.RpcBlockCreateRequest{
 		Block: &model.Block{},
 	})
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestBasic_Move(t *testing.T) {
 
 	b := NewBasic(sb)
 
-	err := b.Move(pb.RpcBlockListMoveRequest{
+	err := b.Move(nil, pb.RpcBlockListMoveRequest{
 		BlockIds:     []string{"3"},
 		DropTargetId: "4",
 		Position:     model.Block_Inner,
@@ -127,7 +127,7 @@ func TestBasic_SetDivStyle(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}))
 	b := NewBasic(sb)
 
-	err := b.SetDivStyle(model.BlockContentDiv_Dots, "2")
+	err := b.SetDivStyle(nil, model.BlockContentDiv_Dots, "2")
 	require.NoError(t, err)
 	r := sb.NewState()
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)

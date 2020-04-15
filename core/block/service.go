@@ -50,39 +50,39 @@ var (
 type Service interface {
 	OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...string) error
 	OpenBreadcrumbsBlock(*state.Context) (blockId string, err error)
-	CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error)
+	CutBreadcrumbs(ctx *state.Context, req pb.RpcBlockCutBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
-	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
-	CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
+	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	DuplicateBlocks(req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(req pb.RpcBlockReplaceRequest) (newId string, err error)
 
-	MoveBlocks(req pb.RpcBlockListMoveRequest) error
-	MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
-	ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
+	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
+	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
+	ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
 
 	SetFields(req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(req pb.RpcBlockListSetFieldsRequest) error
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
-	Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
+	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 
-	SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error)
-	MergeBlock(req pb.RpcBlockMergeRequest) error
+	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
+	MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) error
 	SetTextText(req pb.RpcBlockSetTextTextRequest) error
-	SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error
-	SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error
-	SetTextColor(contextId string, color string, blockIds ...string) error
+	SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error
+	SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error
+	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetBackgroundColor(contextId string, color string, blockIds ...string) error
 	SetAlign(contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
-	SetDivStyle(contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
+	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
 
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(req pb.RpcBlockUploadRequest) error
@@ -247,7 +247,7 @@ func (s *service) MarkArchived(id string, archived bool) (err error) {
 	})
 }
 
-func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
+func (s *service) CutBreadcrumbs(ctx *state.Context, req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
 	return s.Do(req.BreadcrumbsId, func(b smartblock.SmartBlock) error {
 		if breadcrumbs, ok := b.(*editor.Breadcrumbs); ok {
 			breadcrumbs.ChainCut(int(req.Index))
@@ -258,15 +258,15 @@ func (s *service) CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err erro
 	})
 }
 
-func (s *service) CreateBlock(req pb.RpcBlockCreateRequest) (id string, err error) {
+func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		id, err = b.Create(req)
+		id, err = b.Create(ctx, req)
 		return err
 	})
 	return
 }
 
-func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
 	csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -291,7 +291,7 @@ func (s *service) CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, p
 		}
 	}
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		linkId, err = b.Create(pb.RpcBlockCreateRequest{
+		linkId, err = b.Create(ctx, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
@@ -325,36 +325,36 @@ func (s *service) UnlinkBlock(req pb.RpcBlockUnlinkRequest) (err error) {
 	})
 }
 
-func (s *service) SetDivStyle(contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
+func (s *service) SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.SetDivStyle(style, ids...)
+		return b.SetDivStyle(ctx, style, ids...)
 	})
 }
 
-func (s *service) SplitBlock(req pb.RpcBlockSplitRequest) (blockId string, err error) {
+func (s *service) SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error) {
 	err = s.DoText(req.ContextId, func(b stext.Text) error {
-		blockId, err = b.RangeSplit(req.BlockId, req.Range.From, req.Range.To, req.Style)
+		blockId, err = b.RangeSplit(ctx, req.BlockId, req.Range.From, req.Range.To, req.Style)
 		return err
 	})
 	return
 }
 
-func (s *service) MergeBlock(req pb.RpcBlockMergeRequest) (err error) {
+func (s *service) MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) (err error) {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
-		return b.Merge(req.FirstBlockId, req.SecondBlockId)
+		return b.Merge(ctx, req.FirstBlockId, req.SecondBlockId)
 	})
 }
 
-func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
+func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
 	if req.ContextId == req.TargetContextId {
 		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-			return b.Move(req)
+			return b.Move(ctx, req)
 		})
 	}
 	var blocks []simple.Block
 
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		blocks, err = b.InternalCut(req)
+		blocks, err = b.InternalCut(ctx, req)
 		return err
 	})
 
@@ -374,9 +374,9 @@ func (s *service) MoveBlocks(req pb.RpcBlockListMoveRequest) (err error) {
 	return err
 }
 
-func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
+func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
 	// 1. Create new page, link
-	linkId, pageId, err := s.CreatePage(pb.RpcBlockCreatePageRequest{
+	linkId, pageId, err := s.CreatePage(ctx, pb.RpcBlockCreatePageRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
@@ -388,7 +388,7 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 	}
 
 	// 2. Move blocks to new page
-	err = s.MoveBlocks(pb.RpcBlockListMoveRequest{
+	err = s.MoveBlocks(nil, pb.RpcBlockListMoveRequest{
 		ContextId:       req.ContextId,
 		BlockIds:        req.BlockIds,
 		TargetContextId: pageId,
@@ -403,7 +403,7 @@ func (s *service) MoveBlocksToNewPage(req pb.RpcBlockListMoveToNewPageRequest) (
 	return linkId, err
 }
 
-func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+func (s *service) ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
 	blocks := make(map[string]*model.Block)
 
 	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
@@ -423,7 +423,7 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 		}
 
 		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
-		linkId, err := s.MoveBlocksToNewPage(pb.RpcBlockListMoveToNewPageRequest{
+		linkId, err := s.MoveBlocksToNewPage(ctx, pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,
 			Details: &types.Struct{
@@ -480,9 +480,9 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (ht
 	return html, err
 }
 
-func (s *service) Paste(req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
+func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		blockIds, uploadArr, caretPosition, err = cb.Paste(req)
+		blockIds, uploadArr, caretPosition, err = cb.Paste(ctx, req)
 		return err
 	})
 
@@ -507,33 +507,33 @@ func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte)
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks([]string{req.BlockId}, false, func(t text.Block) error {
+		return b.UpdateTextBlocks(nil, []string{req.BlockId}, false, func(t text.Block) error {
 			return t.SetText(req.Text, req.Marks)
 		})
 	})
 }
 
-func (s *service) SetTextStyle(contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
+func (s *service) SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks(blockIds, true, func(t text.Block) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.SetStyle(style)
 			return nil
 		})
 	})
 }
 
-func (s *service) SetTextChecked(req pb.RpcBlockSetTextCheckedRequest) error {
+func (s *service) SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks([]string{req.BlockId}, true, func(t text.Block) error {
+		return b.UpdateTextBlocks(ctx, []string{req.BlockId}, true, func(t text.Block) error {
 			t.SetChecked(req.Checked)
 			return nil
 		})
 	})
 }
 
-func (s *service) SetTextColor(contextId, color string, blockIds ...string) error {
+func (s *service) SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks(blockIds, true, func(t text.Block) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.SetTextColor(color)
 			return nil
 		})

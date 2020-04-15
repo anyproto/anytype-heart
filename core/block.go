@@ -9,15 +9,17 @@ import (
 )
 
 func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockCreateResponseErrorCode, id string, err error) *pb.RpcBlockCreateResponse {
 		m := &pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: code}, BlockId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	id, err := mw.blockService.CreateBlock(*req)
+	id, err := mw.blockService.CreateBlock(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockCreateResponseError_UNKNOWN_ERROR, "", err)
 	}
@@ -25,15 +27,17 @@ func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCre
 }
 
 func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.RpcBlockCreatePageResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockCreatePageResponseErrorCode, id, targetId string, err error) *pb.RpcBlockCreatePageResponse {
 		m := &pb.RpcBlockCreatePageResponse{Error: &pb.RpcBlockCreatePageResponseError{Code: code}, BlockId: id, TargetId: targetId}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	id, targetId, err := mw.blockService.CreatePage(*req)
+	id, targetId, err := mw.blockService.CreatePage(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockCreatePageResponseError_UNKNOWN_ERROR, "", "", err)
 	}
@@ -88,15 +92,18 @@ func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsReques
 }
 
 func (mw *Middleware) BlockCutBreadcrumbs(req *pb.RpcBlockCutBreadcrumbsRequest) *pb.RpcBlockCutBreadcrumbsResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockCutBreadcrumbsResponseErrorCode, err error) *pb.RpcBlockCutBreadcrumbsResponse {
 		m := &pb.RpcBlockCutBreadcrumbsResponse{Error: &pb.RpcBlockCutBreadcrumbsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
 
-	if err := mw.blockService.CutBreadcrumbs(*req); err != nil {
+	if err := mw.blockService.CutBreadcrumbs(ctx, *req); err != nil {
 		return response(pb.RpcBlockCutBreadcrumbsResponseError_UNKNOWN_ERROR, err)
 	}
 
@@ -125,7 +132,6 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 
@@ -155,16 +161,18 @@ func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
 }
 
 func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, caretPosition int32, err error) *pb.RpcBlockPasteResponse {
 		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds, CaretPosition: caretPosition}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 
-	blockIds, uploadArr, caretPosition, err := mw.blockService.Paste(*req)
+	blockIds, uploadArr, caretPosition, err := mw.blockService.Paste(ctx, *req)
 	log.Debug("Image requests to upload after paste:", uploadArr)
 	for _, r := range uploadArr {
 		r.ContextId = req.ContextId
@@ -182,6 +190,7 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 }
 
 func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockCutResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCutResponse {
 		m := &pb.RpcBlockCutResponse{
 			Error:    &pb.RpcBlockCutResponseError{Code: code},
@@ -191,8 +200,9 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 
@@ -207,6 +217,7 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 }
 
 func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockExportResponseErrorCode, path string, err error) *pb.RpcBlockExportResponse {
 		m := &pb.RpcBlockExportResponse{
 			Error: &pb.RpcBlockExportResponseError{Code: code},
@@ -214,8 +225,9 @@ func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExp
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 
@@ -229,10 +241,13 @@ func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExp
 }
 
 func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockUploadResponseErrorCode, err error) *pb.RpcBlockUploadResponse {
 		m := &pb.RpcBlockUploadResponse{Error: &pb.RpcBlockUploadResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
@@ -243,10 +258,13 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 }
 
 func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnlinkResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockUnlinkResponseErrorCode, err error) *pb.RpcBlockUnlinkResponse {
 		m := &pb.RpcBlockUnlinkResponse{Error: &pb.RpcBlockUnlinkResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
@@ -257,10 +275,13 @@ func (mw *Middleware) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnl
 }
 
 func (mw *Middleware) BlockListDuplicate(req *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse {
+	ctx := state.NewContext(nil)
 	response := func(ids []string, code pb.RpcBlockListDuplicateResponseErrorCode, err error) *pb.RpcBlockListDuplicateResponse {
 		m := &pb.RpcBlockListDuplicateResponse{BlockIds: ids, Error: &pb.RpcBlockListDuplicateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
@@ -298,12 +319,14 @@ func (mw *Middleware) BlockGetMarks(req *pb.RpcBlockGetMarksRequest) *pb.RpcBloc
 }
 
 func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockSetFieldsResponseErrorCode, err error) *pb.RpcBlockSetFieldsResponse {
 		m := &pb.RpcBlockSetFieldsResponse{Error: &pb.RpcBlockSetFieldsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 	if err := mw.blockService.SetFields(*req); err != nil {
@@ -318,7 +341,6 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 	if err := mw.blockService.SetDetails(*req); err != nil {
@@ -328,10 +350,13 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 }
 
 func (mw *Middleware) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetFieldsResponseErrorCode, err error) *pb.RpcBlockListSetFieldsResponse {
 		m := &pb.RpcBlockListSetFieldsResponse{Error: &pb.RpcBlockListSetFieldsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
@@ -360,7 +385,6 @@ func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRe
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 	if err := mw.blockService.SetPageIsArchived(*req); err != nil {
@@ -370,12 +394,14 @@ func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRe
 }
 
 func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockReplaceResponseErrorCode, blockId string, err error) *pb.RpcBlockReplaceResponse {
 		m := &pb.RpcBlockReplaceResponse{Error: &pb.RpcBlockReplaceResponseError{Code: code}, BlockId: blockId}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 	blockId, err := mw.blockService.ReplaceBlock(*req)
@@ -386,27 +412,31 @@ func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockR
 }
 
 func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb.RpcBlockSetTextColorResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockSetTextColorResponseErrorCode, err error) *pb.RpcBlockSetTextColorResponse {
 		m := &pb.RpcBlockSetTextColorResponse{Error: &pb.RpcBlockSetTextColorResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockId); err != nil {
+	if err := mw.blockService.SetTextColor(nil, req.ContextId, req.Color, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextColorResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetBackgroundColorResponseErrorCode, err error) *pb.RpcBlockListSetBackgroundColorResponse {
 		m := &pb.RpcBlockListSetBackgroundColorResponse{Error: &pb.RpcBlockListSetBackgroundColorResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 	if err := mw.blockService.SetBackgroundColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
@@ -416,12 +446,14 @@ func (mw *Middleware) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgro
 }
 
 func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetAlignResponseErrorCode, err error) *pb.RpcBlockListSetAlignResponse {
 		m := &pb.RpcBlockListSetAlignResponse{Error: &pb.RpcBlockListSetAlignResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 	if err := mw.blockService.SetAlign(req.ContextId, req.Align, req.BlockIds...); err != nil {
@@ -431,10 +463,13 @@ func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb
 }
 
 func (mw *Middleware) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcExternalDropFilesResponseErrorCode, err error) *pb.RpcExternalDropFilesResponse {
 		m := &pb.RpcExternalDropFilesResponse{Error: &pb.RpcExternalDropFilesResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
@@ -450,7 +485,6 @@ func (mw *Middleware) ExternalDropContent(req *pb.RpcExternalDropContentRequest)
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 	// TODO
@@ -458,28 +492,34 @@ func (mw *Middleware) ExternalDropContent(req *pb.RpcExternalDropContentRequest)
 }
 
 func (mw *Middleware) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBlockListMoveResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListMoveResponseErrorCode, err error) *pb.RpcBlockListMoveResponse {
 		m := &pb.RpcBlockListMoveResponse{Error: &pb.RpcBlockListMoveResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
-	if err := mw.blockService.MoveBlocks(*req); err != nil {
+	if err := mw.blockService.MoveBlocks(ctx, *req); err != nil {
 		return response(pb.RpcBlockListMoveResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListMoveResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRequest) *pb.RpcBlockListMoveToNewPageResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListMoveToNewPageResponseErrorCode, linkId string, err error) *pb.RpcBlockListMoveToNewPageResponse {
 		m := &pb.RpcBlockListMoveToNewPageResponse{Error: &pb.RpcBlockListMoveToNewPageResponseError{Code: code}, LinkId: linkId}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
-	linkId, err := mw.blockService.MoveBlocksToNewPage(*req)
+	linkId, err := mw.blockService.MoveBlocksToNewPage(ctx, *req)
 
 	if err != nil {
 		return response(pb.RpcBlockListMoveToNewPageResponseError_UNKNOWN_ERROR, "", err)
@@ -488,14 +528,17 @@ func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRe
 }
 
 func (mw *Middleware) BlockListConvertChildrenToPages(req *pb.RpcBlockListConvertChildrenToPagesRequest) *pb.RpcBlockListConvertChildrenToPagesResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListConvertChildrenToPagesResponseErrorCode, linkIds []string, err error) *pb.RpcBlockListConvertChildrenToPagesResponse {
 		m := &pb.RpcBlockListConvertChildrenToPagesResponse{Error: &pb.RpcBlockListConvertChildrenToPagesResponseError{Code: code}, LinkIds: linkIds}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
-	linkIds, err := mw.blockService.ConvertChildrenToPages(*req)
+	linkIds, err := mw.blockService.ConvertChildrenToPages(ctx, *req)
 
 	if err != nil {
 		return response(pb.RpcBlockListConvertChildrenToPagesResponseError_UNKNOWN_ERROR, []string{}, err)
@@ -504,45 +547,51 @@ func (mw *Middleware) BlockListConvertChildrenToPages(req *pb.RpcBlockListConver
 }
 
 func (mw *Middleware) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetTextStyleResponseErrorCode, err error) *pb.RpcBlockListSetTextStyleResponse {
 		m := &pb.RpcBlockListSetTextStyleResponse{Error: &pb.RpcBlockListSetTextStyleResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockIds...); err != nil {
+	if err := mw.blockService.SetTextStyle(ctx, req.ContextId, req.Style, req.BlockIds...); err != nil {
 		return response(pb.RpcBlockListSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetTextStyleResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockListSetDivStyle(req *pb.RpcBlockListSetDivStyleRequest) *pb.RpcBlockListSetDivStyleResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetDivStyleResponseErrorCode, err error) *pb.RpcBlockListSetDivStyleResponse {
 		m := &pb.RpcBlockListSetDivStyleResponse{Error: &pb.RpcBlockListSetDivStyleResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	if err := mw.blockService.SetDivStyle(req.ContextId, req.Style, req.BlockIds...); err != nil {
+	if err := mw.blockService.SetDivStyle(ctx, req.ContextId, req.Style, req.BlockIds...); err != nil {
 		return response(pb.RpcBlockListSetDivStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetDivStyleResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetTextColorResponseErrorCode, err error) *pb.RpcBlockListSetTextColorResponse {
 		m := &pb.RpcBlockListSetTextColorResponse{Error: &pb.RpcBlockListSetTextColorResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	if err := mw.blockService.SetTextColor(req.ContextId, req.Color, req.BlockIds...); err != nil {
+	if err := mw.blockService.SetTextColor(ctx, req.ContextId, req.Color, req.BlockIds...); err != nil {
 		return response(pb.RpcBlockListSetTextColorResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockListSetTextColorResponseError_NULL, nil)
@@ -554,7 +603,6 @@ func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.R
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 	if err := mw.blockService.SetTextText(*req); err != nil {
@@ -564,30 +612,34 @@ func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.R
 }
 
 func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockSetTextStyleResponseErrorCode, err error) *pb.RpcBlockSetTextStyleResponse {
 		m := &pb.RpcBlockSetTextStyleResponse{Error: &pb.RpcBlockSetTextStyleResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	if err := mw.blockService.SetTextStyle(req.ContextId, req.Style, req.BlockId); err != nil {
+	if err := mw.blockService.SetTextStyle(ctx, req.ContextId, req.Style, req.BlockId); err != nil {
 		return response(pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetTextChecked(req *pb.RpcBlockSetTextCheckedRequest) *pb.RpcBlockSetTextCheckedResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockSetTextCheckedResponseErrorCode, err error) *pb.RpcBlockSetTextCheckedResponse {
 		m := &pb.RpcBlockSetTextCheckedResponse{Error: &pb.RpcBlockSetTextCheckedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	if err := mw.blockService.SetTextChecked(*req); err != nil {
+	if err := mw.blockService.SetTextChecked(ctx, *req); err != nil {
 		return response(pb.RpcBlockSetTextCheckedResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetTextCheckedResponseError_NULL, nil)
@@ -667,15 +719,17 @@ func (mw *Middleware) switchAccount(accountId string) {
 }
 
 func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
+	ctx := state.NewContext(nil)
 	response := func(blockId string, code pb.RpcBlockSplitResponseErrorCode, err error) *pb.RpcBlockSplitResponse {
 		m := &pb.RpcBlockSplitResponse{BlockId: blockId, Error: &pb.RpcBlockSplitResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	blockId, err := mw.blockService.SplitBlock(*req)
+	blockId, err := mw.blockService.SplitBlock(ctx, *req)
 	if err != nil {
 		return response("", pb.RpcBlockSplitResponseError_UNKNOWN_ERROR, err)
 	}
@@ -683,15 +737,17 @@ func (mw *Middleware) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplit
 }
 
 func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockMergeResponseErrorCode, err error) *pb.RpcBlockMergeResponse {
 		m := &pb.RpcBlockMergeResponse{Error: &pb.RpcBlockMergeResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
-	if err := mw.blockService.MergeBlock(*req); err != nil {
+	if err := mw.blockService.MergeBlock(ctx, *req); err != nil {
 		return response(pb.RpcBlockMergeResponseError_UNKNOWN_ERROR, nil)
 	}
 	return response(pb.RpcBlockMergeResponseError_NULL, nil)
@@ -703,7 +759,6 @@ func (mw *Middleware) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlo
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 	// TODO
@@ -711,12 +766,14 @@ func (mw *Middleware) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlo
 }
 
 func (mw *Middleware) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockBookmarkFetchResponseErrorCode, err error) *pb.RpcBlockBookmarkFetchResponse {
 		m := &pb.RpcBlockBookmarkFetchResponse{Error: &pb.RpcBlockBookmarkFetchResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 	if err := mw.blockService.BookmarkFetch(*req); err != nil {
@@ -731,7 +788,6 @@ func (mw *Middleware) UploadFile(req *pb.RpcUploadFileRequest) *pb.RpcUploadFile
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 	hash, err := mw.blockService.UploadFile(*req)
@@ -742,12 +798,14 @@ func (mw *Middleware) UploadFile(req *pb.RpcUploadFileRequest) *pb.RpcUploadFile
 }
 
 func (mw *Middleware) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockBookmarkCreateAndFetchResponseErrorCode, id string, err error) *pb.RpcBlockBookmarkCreateAndFetchResponse {
 		m := &pb.RpcBlockBookmarkCreateAndFetchResponse{Error: &pb.RpcBlockBookmarkCreateAndFetchResponseError{Code: code}, BlockId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 	id, err := mw.blockService.BookmarkCreateAndFetch(*req)
@@ -758,12 +816,14 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreate
 }
 
 func (mw *Middleware) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockFileCreateAndUploadResponseErrorCode, id string, err error) *pb.RpcBlockFileCreateAndUploadResponse {
 		m := &pb.RpcBlockFileCreateAndUploadResponse{Error: &pb.RpcBlockFileCreateAndUploadResponseError{Code: code}, BlockId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
-
 		return m
 	}
 	id, err := mw.blockService.CreateAndUploadFile(*req)

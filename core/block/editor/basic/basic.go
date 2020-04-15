@@ -12,20 +12,20 @@ import (
 )
 
 type Basic interface {
-	Create(req pb.RpcBlockCreateRequest) (id string, err error)
+	Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error)
 	Duplicate(req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(id ...string) (err error)
-	Move(req pb.RpcBlockListMoveRequest) error
+	Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
 	Replace(id string, block *model.Block) (newId string, err error)
 	SetFields(fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(apply func(b simple.Block) error, blockIds ...string) (err error)
-	SetDivStyle(style model.BlockContentDivStyle, ids ...string) (err error)
-	InternalCut(req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
+	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
+	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
 }
 
-func (bs *basic) InternalCut(req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
-	contextState := bs.NewState()
+func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
+	contextState := bs.NewStateCtx(ctx)
 
 	for _, bId := range req.BlockIds {
 		b := contextState.Pick(bId)
@@ -77,8 +77,8 @@ type basic struct {
 	smartblock.SmartBlock
 }
 
-func (bs *basic) Create(req pb.RpcBlockCreateRequest) (id string, err error) {
-	s := bs.NewState()
+func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
+	s := bs.NewStateCtx(ctx)
 	block := simple.New(req.Block)
 	s.Add(block)
 	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
@@ -139,8 +139,8 @@ func (bs *basic) Unlink(ids ...string) (err error) {
 	return bs.Apply(s)
 }
 
-func (bs *basic) Move(req pb.RpcBlockListMoveRequest) (err error) {
-	s := bs.NewState()
+func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
+	s := bs.NewStateCtx(ctx)
 	for _, id := range req.BlockIds {
 		s.Unlink(id)
 	}
@@ -189,8 +189,8 @@ func (bs *basic) Update(apply func(b simple.Block) error, blockIds ...string) (e
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetDivStyle(style model.BlockContentDivStyle, ids ...string) (err error) {
-	s := bs.NewState()
+func (bs *basic) SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error) {
+	s := bs.NewStateCtx(ctx)
 	for _, id := range ids {
 		b := s.Get(id)
 		if b == nil {

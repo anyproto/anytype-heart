@@ -35,7 +35,7 @@ func NewFile(sb smartblock.SmartBlock, source FileSource) File {
 
 type FileSource interface {
 	DoFile(id string, apply func(f File) error) error
-	CreatePage(req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	ProcessAdd(p process.Process) (err error)
 	Anytype() anytype.Service
 }
@@ -88,7 +88,7 @@ func (sf *sfile) CreateAndUpload(req pb.RpcBlockFileCreateAndUploadRequest) (new
 func (sf *sfile) upload(s *state.State, id, localPath, url string) (err error) {
 	b := s.Get(id)
 	f, ok := b.(file.Block)
-	if ! ok {
+	if !ok {
 		return fmt.Errorf("not a file block")
 	}
 	if err = f.Upload(sf.Anytype(), &updater{
@@ -104,7 +104,7 @@ func (sf *sfile) UpdateFile(id string, apply func(b file.Block) error) (err erro
 	s := sf.NewState()
 	b := s.Get(id)
 	f, ok := b.(file.Block)
-	if ! ok {
+	if !ok {
 		return fmt.Errorf("not a file block")
 	}
 	if err = apply(f); err != nil {
@@ -147,7 +147,7 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.fileSource.CreatePage(pb.RpcBlockCreatePageRequest{
+			blockId, pageId, err = sf.fileSource.CreatePage(nil, pb.RpcBlockCreatePageRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,
@@ -305,7 +305,7 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 		return
 	}
 
-	if ! allowSymlinks && fi.Mode()&os.ModeSymlink == os.ModeSymlink {
+	if !allowSymlinks && fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		return
 	}
 	f, err := os.Open(entry.path)
@@ -414,7 +414,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		if err != nil {
 			log.Warnf("can't create files: %v", err)
 		}
-		if ! ok {
+		if !ok {
 			break
 		}
 		idx++
@@ -432,7 +432,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 		case <-dp.cancel:
 			canceled = true
 		case info, ok := <-in:
-			if ! ok {
+			if !ok {
 				return
 			}
 			if canceled {
