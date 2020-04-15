@@ -39,7 +39,7 @@ var (
 	CafeNodeP2P           = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
 	CafeNodeGRPC          = "134.122.78.144:3006"
 	WebGatewayHost        = "https://anytype.page"
-	WebGatewaySnapshotURI = "/%s/?snapshot=%s#key=%s"
+	WebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
 )
 
 var BootstrapNodes = []string{
