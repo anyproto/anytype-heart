@@ -50,7 +50,8 @@ func (p *Profile) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
 			{
 				Value: &pb.EventMessageValueOfAccountDetails{
 					AccountDetails: &pb.EventAccountDetails{
-						Details: meta.Details,
+						ProfileId: p.Id(),
+						Details:   meta.Details,
 					},
 				},
 			},
