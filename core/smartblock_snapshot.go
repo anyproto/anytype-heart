@@ -29,13 +29,14 @@ type SmartBlockSnapshot interface {
 }
 
 type smartBlockSnapshot struct {
-	blocks     []*model.Block               `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
-	details    *types.Struct                `protobuf:"bytes,3,opt,name=details,proto3" json:"details,omitempty"`
-	keysByHash map[string]*storage.FileKeys `protobuf:"bytes,4,rep,name=keysByHash,proto3" json:"keysByHash,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	blocks     []*model.Block
+	details    *types.Struct
+	keysByHash map[string]*storage.FileKeys
 	state      vclock.VClock
 
-	recordId cid.Cid
-	eventId  cid.Cid
+	threadID thread.ID
+	recordID cid.Cid
+	eventID  cid.Cid
 	key      crypto.DecryptionKey
 	creator  string
 	date     *types.Timestamp
@@ -68,13 +69,21 @@ func (snapshot smartBlockSnapshot) Meta() (*SmartBlockMeta, error) {
 }
 
 func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
 	ipfs := snapshot.node.Ipfs()
-	event, err := cbor.GetEvent(context.Background(), ipfs, snapshot.eventId)
+	if snapshot.eventID == cid.Undef {
+		// todo: extract from recordID?
+		return "", fmt.Errorf("eventID is empty")
+	}
+
+	event, err := cbor.GetEvent(ctx, ipfs, snapshot.eventID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get snapshot event: %w", err)
 	}
 
-	header, err := event.GetHeader(context.TODO(), ipfs, snapshot.key)
+	header, err := event.GetHeader(ctx, ipfs, snapshot.key)
 	if err != nil {
 		return "", fmt.Errorf("failed to get snapshot event header: %w", err)
 	}
@@ -89,7 +98,12 @@ func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
 		return "", fmt.Errorf("failed to get marshal decryption key: %w", err)
 	}
 
-	return CafeGatewayHost + "/snapshot/" + event.BodyID().String() + "?key=" + base64.RawURLEncoding.EncodeToString(bodyKeyBin), nil
+	return fmt.Sprintf(
+		WebGatewayHost+WebGatewaySnapshotURI,
+		snapshot.threadID.String(),
+		event.BodyID().String(),
+		base64.RawURLEncoding.EncodeToString(bodyKeyBin),
+	), nil
 }
 
 type SnapshotWithMetadata struct {

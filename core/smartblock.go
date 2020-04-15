@@ -212,12 +212,14 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 
 	for _, snapshot := range snapshotsPB {
 		snapshots = append(snapshots, smartBlockSnapshot{
-			blocks:   snapshot.Blocks,
-			details:  snapshot.Details,
-			state:    vclock.NewFromMap(snapshot.State),
-			creator:  snapshot.Creator,
-			recordId: snapshot.RecordID,
-			eventId:  snapshot.EventID,
+			blocks:  snapshot.Blocks,
+			details: snapshot.Details,
+			state:   vclock.NewFromMap(snapshot.State),
+			creator: snapshot.Creator,
+
+			threadID: block.thread.ID,
+			recordID: snapshot.RecordID,
+			eventID:  snapshot.EventID,
 			key:      block.thread.Key.Read(),
 
 			node: block.node,
@@ -241,7 +243,7 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	}
 
 	var err error
-	user, date, err := block.pushSnapshot(model)
+	recID, user, date, err := block.pushSnapshot(model)
 	if err != nil {
 		return nil, err
 	}
@@ -251,11 +253,14 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		creator: user,
 		date:    date,
 		state:   state,
-		node:    block.node,
+
+		recordID: recID,
+		threadID: block.thread.ID,
+		node:     block.node,
 	}, nil
 }
 
-func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (user string, date *types.Timestamp, err error) {
+func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (recID cid.Cid, user string, date *types.Timestamp, err error) {
 	var newSnapshotB []byte
 	newSnapshotB, err = proto.Marshal(newSnapshot)
 	if err != nil {
@@ -282,16 +287,18 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 
 	ownLog := thrd.GetOwnLog()
 
+	block.node.replicationWG.Add(1)
+	defer block.node.replicationWG.Done()
+
+	rec, err2 := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+	if err2 != nil {
+		err = err2
+		log.Errorf("failed to create record: %w", err)
+		return
+	}
+
+	recID = rec.Value().Cid()
 	go func() {
-		block.node.replicationWG.Add(1)
-		defer block.node.replicationWG.Done()
-
-		_, err := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
-		if err != nil {
-			log.Errorf("failed to create record")
-			return
-		}
-
 		if ownLog == nil || ownLog.Head == cid.Undef {
 			addr, err2 := ma.NewMultiaddr(CafeNodeP2P)
 			if err2 != nil {
@@ -306,37 +313,19 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 
 			log.With("thread", block.thread.ID.String()).Infof("added log replicator: %s", p.String())
 		}
-
-		log.Debugf("SmartBlock.addSnapshot: blockId = %s", block.ID())
 	}()
 
-	for i := 0; i <= 200; i++ {
-		// temp workaround because of https://github.com/textileio/go-threads/issues/309
-		time.Sleep(time.Millisecond * 5)
-		thrd2, err2 := block.node.t.GetThread(context.TODO(), block.thread.ID)
-		if err2 != nil {
-			err = fmt.Errorf("failed to get thread: %s", err2.Error())
-			return
-		}
+	log.Debugf("SmartBlock.addSnapshot: blockId = %s", block.ID())
 
-		ownLog2 := thrd2.GetOwnLog()
-		if ownLog == nil && ownLog2 != nil || ownLog2 != nil && ownLog.Head != ownLog2.Head {
-			break
-		}
-
-		if i == 200 {
-			err = fmt.Errorf("failed to add the snapshot")
-			return
-		}
-	}
 	return
 }
 
 func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
 	return &smartBlockSnapshot{
-		node:   block.node,
 		blocks: []*model.Block{},
-		// todo: add title and icon blocks
+
+		threadID: block.thread.ID,
+		node:     block.node,
 	}
 }
 
