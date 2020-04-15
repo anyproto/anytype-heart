@@ -16,6 +16,7 @@ message Event {
     message Message {
         oneof value {
             Account.Show accountShow = 1;
+            Account.Details accountDetails = 201;
 
             Block.Add blockAdd = 2;
             Block.Delete blockDelete = 3;
@@ -56,6 +57,11 @@ message Event {
         message Show {
             int32 index = 1; // Number of an account in an all found accounts list
             anytype.model.Account account = 2; // An Account, that has been found for the mnemonic
+        }
+
+        message Details {
+            string profileId = 1;
+            google.protobuf.Struct details = 2;
         }
     }
     message Block {

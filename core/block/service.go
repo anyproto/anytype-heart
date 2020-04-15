@@ -688,7 +688,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case pb.SmartBlockType_ProfilePage:
-		sb = editor.NewProfile(s, s, s.linkPreview)
+		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

@@ -370,6 +370,7 @@
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
+    - [Event.Account.Details](#anytype.Event.Account.Details)
     - [Event.Account.Show](#anytype.Event.Account.Show)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
@@ -5559,6 +5560,22 @@ Event – type of message, that could be sent from a middleware to the correspon
 
 
 
+<a name="anytype.Event.Account.Details"></a>
+
+### Event.Account.Details
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| profileId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Account.Show"></a>
 
 ### Event.Account.Show
@@ -6218,6 +6235,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
+| accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
