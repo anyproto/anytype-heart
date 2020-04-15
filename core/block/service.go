@@ -49,7 +49,7 @@ var (
 
 type Service interface {
 	OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...string) error
-	OpenBreadcrumbsBlock() (blockId string, err error)
+	OpenBreadcrumbsBlock(*state.Context) (blockId string, err error)
 	CutBreadcrumbs(req pb.RpcBlockCutBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(req pb.RpcBlockCreateRequest) (string, error)
@@ -187,7 +187,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...str
 	return nil
 }
 
-func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
+func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs()
@@ -202,7 +202,7 @@ func (s *service) OpenBreadcrumbsBlock() (blockId string, err error) {
 		lastUsage:  time.Now(),
 		refs:       1,
 	}
-	if err = bs.Show(nil); err != nil {
+	if err = bs.Show(ctx); err != nil {
 		return
 	}
 	return bs.Id(), nil

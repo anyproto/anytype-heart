@@ -1758,6 +1758,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.OpenBreadcrumbs.Response.Error](#anytype.Rpc.Block.OpenBreadcrumbs.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 

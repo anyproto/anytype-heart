@@ -64,15 +64,18 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 }
 
 func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockOpenBreadcrumbsResponseErrorCode, id string, err error) *pb.RpcBlockOpenBreadcrumbsResponse {
 		m := &pb.RpcBlockOpenBreadcrumbsResponse{Error: &pb.RpcBlockOpenBreadcrumbsResponseError{Code: code}, BlockId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
 
-	id, err := mw.blockService.OpenBreadcrumbsBlock()
+	id, err := mw.blockService.OpenBreadcrumbsBlock(ctx)
 	if err != nil {
 		switch err {
 		case block.ErrBlockNotFound:
