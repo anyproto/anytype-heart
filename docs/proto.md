@@ -3168,7 +3168,6 @@ Remove blocks from the childrenIds of its parents
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.ConvertChildrenToPages.Response.Error](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error) |  |  |
 | linkIds | [string](#string) | repeated |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 

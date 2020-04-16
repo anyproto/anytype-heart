@@ -601,19 +601,16 @@ func (mw *Middleware) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRe
 }
 
 func (mw *Middleware) BlockListConvertChildrenToPages(req *pb.RpcBlockListConvertChildrenToPagesRequest) *pb.RpcBlockListConvertChildrenToPagesResponse {
-	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListConvertChildrenToPagesResponseErrorCode, linkIds []string, err error) *pb.RpcBlockListConvertChildrenToPagesResponse {
 		m := &pb.RpcBlockListConvertChildrenToPagesResponse{Error: &pb.RpcBlockListConvertChildrenToPagesResponseError{Code: code}, LinkIds: linkIds}
 		if err != nil {
 			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
 	var linkIds []string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		linkIds, err = bs.ConvertChildrenToPages(ctx, *req)
+		linkIds, err = bs.ConvertChildrenToPages(*req)
 		return
 	})
 	if err != nil {

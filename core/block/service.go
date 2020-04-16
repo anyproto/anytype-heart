@@ -60,7 +60,7 @@ type Service interface {
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
-	ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
+	ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
 
 	SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
@@ -403,7 +403,7 @@ func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMov
 	return linkId, err
 }
 
-func (s *service) ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
 	blocks := make(map[string]*model.Block)
 
 	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
@@ -423,7 +423,7 @@ func (s *service) ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockList
 		}
 
 		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
-		linkId, err := s.MoveBlocksToNewPage(ctx, pb.RpcBlockListMoveToNewPageRequest{
+		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,
 			Details: &types.Struct{
