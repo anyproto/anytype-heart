@@ -97,23 +97,18 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 	firstBlock := s.Get(req.Blocks[0].Id)
 
 	// scenario: rangeCut
-	if firstBlockText, isText := firstBlock.(text.Block); isText {
+	if firstBlockText, isText := firstBlock.(text.Block); isText && req.SelectedTextRange != nil {
+		cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
-		if isText && req.SelectedTextRange != nil {
-
-			cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
-
-			if err != nil {
-				return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
-			}
-
-			textSlot = cutBlock.GetText().Text
-
-			anySlot = []*model.Block{cutBlock}
-			htmlSlot = conv.Convert(anySlot, images)
-
-			return textSlot, htmlSlot, anySlot, cb.Apply(s)
+		if err != nil {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
+
+		textSlot = cutBlock.GetText().Text
+		anySlot = []*model.Block{cutBlock}
+		htmlSlot = conv.Convert(anySlot, images)
+
+		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
 
 	// scenario: cutBlocks
@@ -140,7 +135,6 @@ func (cb *clipboard) Cut(req pb.RpcBlockCutRequest, images map[string][]byte) (t
 	anySlot = req.Blocks
 
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
-
 }
 
 func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[string][]byte, err error) {
@@ -351,11 +345,10 @@ func (cb *clipboard) pasteAny(req pb.RpcBlockPasteRequest) (blockIds []string, u
 		if err != nil {
 			return blockIds, uploadArr, caretPosition, err
 		}
-
 		break
 
 	case pasteSingleTextInFocusedText:
-		caretPosition, err = focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0].GetText())
+		caretPosition, err = focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0])
 		if err != nil {
 			return nil, nil, -1, nil
 		}
