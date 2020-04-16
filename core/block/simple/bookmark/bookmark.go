@@ -13,7 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func init() {
@@ -74,7 +74,7 @@ func (f *Bookmark) Fetch(params FetchParams) (err error) {
 }
 
 func (f *Bookmark) Copy() simple.Block {
-	copy := deepcopy.Copy(f.Model()).(*model.Block)
+	copy := pbtypes.CopyBlock(f.Model())
 	return &Bookmark{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetBookmark(),
@@ -83,7 +83,7 @@ func (f *Bookmark) Copy() simple.Block {
 
 func (f *Bookmark) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	bookmark, ok := b.(*Bookmark)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = f.Base.Diff(bookmark); err != nil {

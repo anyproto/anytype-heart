@@ -5,7 +5,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/mohae/deepcopy"
 )
 
 type Meta struct {
@@ -36,7 +35,7 @@ func (s *service) PubSub() PubSub {
 }
 
 func (s *service) ReportChange(m Meta) {
-	s.ps.setMeta(deepcopy.Copy(m).(Meta))
+	s.ps.setMeta(copyMeta(m))
 }
 
 func (s *service) Close() (err error) {

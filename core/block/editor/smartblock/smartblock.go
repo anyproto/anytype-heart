@@ -16,8 +16,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/mohae/deepcopy"
 )
 
 type ApplyFlag int
@@ -266,7 +266,7 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 			Fields: make(map[string]*types.Value),
 		}
 	}
-	var copy = deepcopy.Copy(sb.metaData.Details).(*types.Struct)
+	var copy = pbtypes.CopyStruct(sb.metaData.Details)
 	for _, detail := range details {
 		copy.Fields[detail.Key] = detail.Value
 	}

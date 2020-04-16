@@ -10,7 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func init() {
@@ -67,7 +67,7 @@ func (f *File) Upload(stor anytype.Service, updater Updater, localPath, url stri
 }
 
 func (f *File) Copy() simple.Block {
-	copy := deepcopy.Copy(f.Model()).(*model.Block)
+	copy := pbtypes.CopyBlock(f.Model())
 	return &File{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetFile(),
@@ -101,7 +101,7 @@ func (f *File) SetImage(hash, name string) {
 
 func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	file, ok := b.(*File)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = f.Base.Diff(file); err != nil {
