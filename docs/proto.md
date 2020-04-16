@@ -1245,6 +1245,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype.model.Block) | repeated |  |
+| selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 
 
 
