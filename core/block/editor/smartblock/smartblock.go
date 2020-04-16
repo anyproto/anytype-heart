@@ -267,6 +267,9 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 		}
 	}
 	var copy = pbtypes.CopyStruct(sb.metaData.Details)
+	if copy.Fields == nil {
+		copy.Fields = make(map[string]*types.Value)
+	}
 	for _, detail := range details {
 		copy.Fields[detail.Key] = detail.Value
 	}

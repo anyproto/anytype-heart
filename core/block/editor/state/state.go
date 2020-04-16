@@ -135,15 +135,11 @@ func (s *State) Remove(id string) (ok bool) {
 }
 
 func (s *State) Unlink(id string) (ok bool) {
-	s.Iterate(func(b simple.Block) bool {
-		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
-			parent := s.Get(b.Model().Id).Model()
-			parent.ChildrenIds = slice.Remove(parent.ChildrenIds, id)
-			ok = true
-			return false
-		}
+	if parent := s.GetParentOf(id); parent != nil {
+		parentM := parent.Model()
+		parentM.ChildrenIds = slice.Remove(parentM.ChildrenIds, id)
 		return true
-	})
+	}
 	return
 }
 
