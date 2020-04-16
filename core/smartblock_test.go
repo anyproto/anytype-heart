@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -170,4 +171,66 @@ func Test_smartBlock_GetSnapshots(t *testing.T) {
 	lastSnapMeta, _ := snaps[0].Meta()
 
 	require.Equal(t, &SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{"name": structs.String("name2")}}}, lastSnapMeta)
+}
+
+func Test_smartBlock_SnapshotFileKeys(t *testing.T) {
+	s := getRunningService(t)
+	block, err := s.CreateBlock(SmartBlockTypePage)
+	require.NoError(t, err)
+
+	state := vclock.New()
+	f, err := s.FileAddWithReader(context.Background(), bytes.NewReader([]byte("123")), "test")
+	require.NoError(t, err)
+
+	_, err = block.PushSnapshot(
+		state,
+		&SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{"name": structs.String("name1")}}},
+		[]*model.Block{
+			{
+				Id:      "test_id1",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
+			},
+			{
+				Id: "test_id2",
+				Content: &model.BlockContentOfFile{
+					&model.BlockContentFile{
+						Hash:    f.Hash(),
+						Name:    f.Meta().Name,
+						Type:    model.BlockContentFile_File,
+						Mime:    f.Meta().Media,
+						Size_:   f.Meta().Size,
+						AddedAt: time.Now().Unix(),
+						State:   model.BlockContentFile_Done,
+					}},
+			},
+		},
+	)
+
+	thrd, err := s.(*Anytype).t.GetThread(context.Background(), block.(*smartBlock).thread.ID)
+	require.NoError(t, err)
+	require.Len(t, thrd.Logs, 1)
+
+	files, err := s.(*Anytype).localStore.Files.ListByTarget(f.Hash())
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+
+	// clear cached file info to test recovery from ipfs
+	err = s.(*Anytype).localStore.Files.DeleteByHash(files[0].Hash)
+	require.NoError(t, err)
+
+	fhash := f.Hash()
+	f1, err := s.FileByHash(context.Background(), fhash)
+	require.NoError(t, err)
+	require.NotNil(t, f1)
+
+	// clear file keys cache
+	filesKeysCache = make(map[string]map[string]string)
+
+	snaps, err := block.(*smartBlock).GetSnapshots(vclock.Undef, 10, false)
+	require.NoError(t, err)
+	require.Len(t, snaps, 1)
+	f2, err := s.FileByHash(context.Background(), f.Hash())
+	require.NoError(t, err)
+	require.NotNil(t, f2)
+	require.NotNil(t, filesKeysCache[f.Hash()])
 }

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/gogo/protobuf/proto"
 	"github.com/h2non/filetype"
 	"github.com/ipfs/go-cid"
@@ -43,6 +45,14 @@ var ValidContentLinkNames = []string{"content", "d"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
+type addFileConfig struct {
+	Input     []byte `json:"input"`
+	Use       string `json:"use"`
+	Media     string `json:"media"`
+	Name      string `json:"name"`
+	Plaintext bool   `json:"plaintext"`
+}
+
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	files, err := a.localStore.Files.ListByTarget(hash)
 	if err != nil {
@@ -50,16 +60,12 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	}
 
 	if len(files) == 0 {
-		return nil, ErrFileNotFound
-	}
-
-	/*if len(files) == 0 {
 		files, err = a.getFileIndexes(ctx, hash)
 		if err != nil {
 			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
 		}
-	}*/
+	}
 
 	fileIndex := files[0]
 	return &file{
@@ -79,7 +85,6 @@ func (a *Anytype) FileAddWithReader(ctx context.Context, content io.Reader, file
 		return nil, err
 	}
 
-	// todo: PR textile to be able to use reader instead of bytes
 	fileIndex, err := a.addFileIndex(ctx, &m.Blob{}, *fileConfig)
 	if err != nil {
 		return nil, err
@@ -106,6 +111,86 @@ func (a *Anytype) FileAddWithReader(ctx context.Context, content io.Reader, file
 		index: fileIndex,
 		node:  a,
 	}, nil
+}
+
+func (t *Anytype) AddNodeFromDirs(ctx context.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
+	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
+	outer := uio.NewDirectory(t.t)
+	outer.SetCidBuilder(cidBuilder)
+
+	for i, dir := range dirs.Items {
+		inner := uio.NewDirectory(t.t)
+		inner.SetCidBuilder(cidBuilder)
+		olink := strconv.Itoa(i)
+
+		var err error
+		for link, file := range dir.Files {
+			err = t.fileNode(ctx, file, inner, link)
+			if err != nil {
+				return nil, nil, err
+			}
+			keys.KeysByPath["/"+olink+"/"+link+"/"] = file.Key
+		}
+
+		node, err := inner.GetNode()
+		if err != nil {
+			return nil, nil, err
+		}
+		// todo: pin?
+		err = t.t.Add(ctx, node)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		id := node.Cid().String()
+		err = helpers.AddLinkToDirectory(ctx, t.Ipfs(), outer, olink, id)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	node, err := outer.GetNode()
+	if err != nil {
+		return nil, nil, err
+	}
+	// todo: pin?
+	err = t.t.Add(ctx, node)
+	if err != nil {
+		return nil, nil, err
+	}
+	return node, keys, nil
+}
+
+func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
+	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
+	outer := uio.NewDirectory(t.Ipfs())
+	outer.SetCidBuilder(cidBuilder)
+
+	var err error
+	for i, file := range files {
+		link := strconv.Itoa(i)
+		err = t.fileNode(ctx, file, outer, link)
+		if err != nil {
+			return nil, nil, err
+		}
+		keys.KeysByPath["/"+link+"/"] = file.Key
+	}
+
+	node, err := outer.GetNode()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = t.Ipfs().Add(ctx, node)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	/*err = helpers.PinNode(t.node, node, false)
+	if err != nil {
+		return nil, nil, err
+	}*/
+	return node, keys, nil
 }
 
 func (a *Anytype) getFileIndexForPath(pth string) (*storage.FileInfo, error) {
@@ -162,7 +247,41 @@ func (a *Anytype) indexFileLink(ctx context.Context, inode ipld.Node, data strin
 }
 
 func (a *Anytype) addFileIndexFromPath(target string, path string, key string) (*storage.FileInfo, error) {
-	return nil, fmt.Errorf("not implemented")
+	plaintext, err := helpers.DataAtPath(context.TODO(), a.t.GetIpfs(), path+"/"+MetaLinkName)
+	if err != nil {
+		return nil, err
+	}
+
+	if key != "" {
+		key, err := symmetric.FromString(key)
+		if err != nil {
+			return nil, err
+		}
+		plaintext, err = key.Decrypt(plaintext)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var file storage.FileInfo
+	err = proto.Unmarshal(plaintext, &file)
+	if err != nil {
+		log.Errorf("failed to decode proto: %s", string(plaintext))
+		// todo: get a fixed error if trying to unmarshal an encrypted file
+		return nil, err
+	}
+
+	log.Debugf("addFileIndexFromPath got file: %s", file.Hash)
+
+	file.Targets = []string{target}
+	err = a.localStore.Files.Add(&file)
+	if err != nil {
+		if !errors.Is(err, localstore.ErrDuplicateKey) {
+			return nil, err
+		}
+		log.Debugf("file exists: %s", file.Hash)
+	}
+	return &file, nil
 }
 
 func (t *Anytype) fileMeta(hash string) (*storage.FileInfo, error) {
@@ -216,14 +335,6 @@ func (t *Anytype) fileIndexContent(ctx context.Context, file *storage.FileInfo) 
 	return fd, nil
 }
 
-type AddFileConfig struct {
-	Input     []byte `json:"input"`
-	Use       string `json:"use"`
-	Media     string `json:"media"`
-	Name      string `json:"name"`
-	Plaintext bool   `json:"plaintext"`
-}
-
 func checksum(plaintext []byte, wontEncrypt bool) string {
 	var add int
 	if wontEncrypt {
@@ -234,7 +345,7 @@ func checksum(plaintext []byte, wontEncrypt bool) string {
 	return base32.RawHexEncoding.EncodeToString(sum[:])
 }
 
-func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf AddFileConfig) (*storage.FileInfo, error) {
+func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf addFileConfig) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -305,8 +416,8 @@ func (t *Anytype) addFileIndex(ctx context.Context, mill m.Mill, conf AddFileCon
 	return model, nil
 }
 
-func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename string, use string, plaintext bool) (*AddFileConfig, error) {
-	conf := &AddFileConfig{}
+func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename string, use string, plaintext bool) (*addFileConfig, error) {
+	conf := &addFileConfig{}
 
 	if use == "" {
 		conf.Name = filename
@@ -322,7 +433,7 @@ func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename 
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
 				// just cat the data from ipfs
-				b, err := ipfsutil.DataAtPath(a.Ipfs(), ref.String())
+				b, err := ipfsutil.DataAtCid(a.Ipfs(), ref.String())
 				if err != nil {
 					return nil, err
 				}
@@ -357,38 +468,6 @@ func (a *Anytype) getFileConfig(ctx context.Context, reader io.Reader, filename 
 	conf.Plaintext = plaintext
 
 	return conf, nil
-}
-
-func (t *Anytype) AddNodeFromFiles(ctx context.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
-	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
-	outer := uio.NewDirectory(t.Ipfs())
-	outer.SetCidBuilder(cidBuilder)
-
-	var err error
-	for i, file := range files {
-		link := strconv.Itoa(i)
-		err = t.fileNode(ctx, file, outer, link)
-		if err != nil {
-			return nil, nil, err
-		}
-		keys.KeysByPath["/"+link+"/"] = file.Key
-	}
-
-	node, err := outer.GetNode()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = t.Ipfs().Add(ctx, node)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	/*err = helpers.PinNode(t.node, node, false)
-	if err != nil {
-		return nil, nil, err
-	}*/
-	return node, keys, nil
 }
 
 func (t *Anytype) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
@@ -501,7 +580,7 @@ func (a *Anytype) buildDirectory(ctx context.Context, content []byte, filename s
 			if err != nil {
 				return nil, err
 			}
-			var conf *AddFileConfig
+			var conf *addFileConfig
 			if step.Link.Use == schema.FileTag {
 				conf, err = a.getFileConfig(
 					ctx,
@@ -544,50 +623,51 @@ func (a *Anytype) buildDirectory(ctx context.Context, content []byte, filename s
 
 	return dir, nil
 }
-func (t *Anytype) AddNodeFromDirs(ctx context.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
-	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
-	outer := uio.NewDirectory(t.t)
-	outer.SetCidBuilder(cidBuilder)
 
-	for i, dir := range dirs.Items {
-		inner := uio.NewDirectory(t.t)
-		inner.SetCidBuilder(cidBuilder)
-		olink := strconv.Itoa(i)
+func (a *Anytype) getFileIndexes(ctx context.Context, hash string) ([]*storage.FileInfo, error) {
+	links, err := helpers.LinksAtCid(ctx, a.Ipfs(), hash)
+	if err != nil {
+		return nil, err
+	}
 
-		var err error
-		for link, file := range dir.Files {
-			err = t.fileNode(ctx, file, inner, link)
-			if err != nil {
-				return nil, nil, err
+	filesKeysCacheMutex.RLock()
+	defer filesKeysCacheMutex.RUnlock()
+
+	filesKeys, filesKeysExists := filesKeysCache[hash]
+
+	var files []*storage.FileInfo
+	for _, index := range links {
+		node, err := helpers.NodeAtLink(ctx, a.Ipfs(), index)
+		if err != nil {
+			return nil, err
+		}
+
+		if looksLikeFileNode(node) {
+			var key string
+			if filesKeysExists {
+				key = filesKeys["/"+index.Name+"/"]
 			}
-			keys.KeysByPath["/"+olink+"/"+link+"/"] = file.Key
-		}
 
-		node, err := inner.GetNode()
-		if err != nil {
-			return nil, nil, err
-		}
-		// todo: pin?
-		err = t.t.Add(ctx, node)
-		if err != nil {
-			return nil, nil, err
-		}
+			fileIndex, err := a.addFileIndexFromPath(hash, hash+"/"+index.Name, key)
+			if err != nil {
+				return nil, fmt.Errorf("addFileIndexFromPath error: %s", err.Error())
+			}
+			files = append(files, fileIndex)
+		} else {
+			for _, link := range node.Links() {
+				var key string
+				if filesKeysExists {
+					key = filesKeys["/"+index.Name+"/"+link.Name+"/"]
+				}
 
-		id := node.Cid().String()
-		err = helpers.AddLinkToDirectory(ctx, t.Ipfs(), outer, olink, id)
-		if err != nil {
-			return nil, nil, err
+				fileIndex, err := a.addFileIndexFromPath(hash, hash+"/"+index.Name+"/"+link.Name, key)
+				if err != nil {
+					return nil, fmt.Errorf("addFileIndexFromPath error: %s", err.Error())
+				}
+				files = append(files, fileIndex)
+			}
 		}
 	}
 
-	node, err := outer.GetNode()
-	if err != nil {
-		return nil, nil, err
-	}
-	// todo: pin?
-	err = t.t.Add(ctx, node)
-	if err != nil {
-		return nil, nil, err
-	}
-	return node, keys, nil
+	return files, nil
 }

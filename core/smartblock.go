@@ -27,6 +27,15 @@ const (
 	SmartBlockTypeArchive   SmartBlockType = 0x30
 )
 
+type ProfileThreadEncryptionKeys struct {
+	ServiceKey []byte
+	ReadKey    []byte
+}
+
+func init() {
+	cbornode.RegisterCborType(ProfileThreadEncryptionKeys{})
+}
+
 // ShouldCreateSnapshot informs if you need to make a snapshot based on deterministic alg
 // temporally always returns true
 func (block smartBlock) ShouldCreateSnapshot(state vclock.VClock) bool {
@@ -209,8 +218,13 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 	if err != nil {
 		return
 	}
-
+	filesKeysCacheMutex.Lock()
+	defer filesKeysCacheMutex.Unlock()
 	for _, snapshot := range snapshotsPB {
+		for k, v := range snapshot.KeysByHash {
+			filesKeysCache[k] = v.KeysByPath
+		}
+
 		snapshots = append(snapshots, smartBlockSnapshot{
 			blocks:  snapshot.Blocks,
 			details: snapshot.Details,
@@ -229,11 +243,35 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 	return
 }
 
+func (block *smartBlock) getAllFileKeys(blocks []*model.Block) map[string]*storage.FileKeys {
+	fileKeys := make(map[string]*storage.FileKeys)
+	for _, block := range blocks {
+		if file, ok := block.Content.(*model.BlockContentOfFile); ok {
+			filesKeysCacheMutex.RLock()
+			if keys, exists := filesKeysCache[file.File.Hash]; exists {
+				fileKeys[file.File.Hash] = &storage.FileKeys{keys}
+			} //else if efile := smartBlock.thread.Datastore().Files().Get(file.File.Hash); efile != nil {
+			// todo: extract keys from 'files' table in sqlite
+			//  to provide a shutdown protection
+			//}
+			filesKeysCacheMutex.RUnlock()
+		}
+	}
+
+	return fileKeys
+}
+
 func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
 	// todo: we don't need to increment here
 	// temporally increment the vclock until we don't have changes implemented
 	state.Increment(block.thread.GetOwnLog().ID.String())
-	model := &storage.SmartBlockSnapshot{State: state.Map(), ClientTime: time.Now().Unix()}
+
+	model := &storage.SmartBlockSnapshot{
+		State:      state.Map(),
+		ClientTime: time.Now().Unix(),
+		KeysByHash: block.getAllFileKeys(blocks),
+	}
+
 	if meta != nil && meta.Details != nil {
 		model.Details = meta.Details
 	}

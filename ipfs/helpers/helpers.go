@@ -2,8 +2,10 @@ package helpers
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
+	gopath "path"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -11,8 +13,10 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	ipfspath "github.com/ipfs/go-path"
+	"github.com/ipfs/go-path/resolver"
 	uio "github.com/ipfs/go-unixfs/io"
 	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/interface-go-ipfs-core/path"
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/anytypeio/go-anytype-library/ipfs"
@@ -22,7 +26,23 @@ import (
 var log = logging.Logger("anytype-ipfs")
 
 // DataAtPath return bytes under an ipfs path
-func DataAtPath(ctx context.Context, node ipfs.IPFS, cid cid.Cid) ([]byte, error) {
+func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) ([]byte, error) {
+	resolvedPath, err := ResolvePath(ctx, node, path.New(pth))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
+	}
+
+	f, err := node.GetFile(ctx, resolvedPath.Cid())
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	return ioutil.ReadAll(f)
+}
+
+// DataAtCid return bytes under an ipfs path
+func DataAtCid(ctx context.Context, node ipfs.IPFS, cid cid.Cid) ([]byte, error) {
 	f, err := node.GetFile(ctx, cid)
 	if err != nil {
 		return nil, err
@@ -42,23 +62,13 @@ func DataAtPath(ctx context.Context, node ipfs.IPFS, cid cid.Cid) ([]byte, error
 	return ioutil.ReadAll(file)
 }
 
-func LinksAtPath(ctx context.Context, dag ipld.DAGService, pth string) ([]*ipld.Link, error) {
-	p, err := ipfspath.ParsePath(pth)
+func LinksAtCid(ctx context.Context, dag ipld.DAGService, pathCid string) ([]*ipld.Link, error) {
+	pathCidParsed, err := cid.Parse(pathCid)
 	if err != nil {
 		return nil, err
 	}
 
-	_, pathCidStr, err := p.PopLastSegment()
-	if err != nil {
-		return nil, err
-	}
-
-	pathCid, err := cid.Parse(pathCidStr)
-	if err != nil {
-		return nil, err
-	}
-
-	dagNode, err := dag.Get(ctx, pathCid)
+	dagNode, err := dag.Get(ctx, pathCidParsed)
 	if err != nil {
 		return nil, err
 	}
@@ -73,14 +83,53 @@ func LinksAtPath(ctx context.Context, dag ipld.DAGService, pth string) ([]*ipld.
 	return dir.Links(ctx)
 }
 
+func ResolvePath(ctx context.Context, dag ipld.DAGService, p path.Path) (path.Resolved, error) {
+	if _, ok := p.(path.Resolved); ok {
+		return p.(path.Resolved), nil
+	}
+	if err := p.IsValid(); err != nil {
+		return nil, err
+	}
+
+	ipath := ipfspath.Path(p.String())
+
+	var resolveOnce resolver.ResolveOnce
+
+	switch ipath.Segments()[0] {
+	case "ipfs":
+		resolveOnce = uio.ResolveUnixfsOnce
+	case "ipld":
+		resolveOnce = resolver.ResolveSingle
+	default:
+		return nil, fmt.Errorf("unsupported path namespace: %s", p.Namespace())
+	}
+
+	r := &resolver.Resolver{
+		DAG:         dag,
+		ResolveOnce: resolveOnce,
+	}
+
+	node, rest, err := r.ResolveToLastNode(ctx, ipath)
+	if err != nil {
+		return nil, err
+	}
+
+	root, err := cid.Parse(ipath.Segments()[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return path.NewResolvedPath(ipath, node, root, gopath.Join(rest...)), nil
+}
+
 /*
 func LsFiles(ctx context.Context, node *ipfslite.Peer, p path.Path) {
 	ses := node.Session(ctx)
 node.DAGService.
 
 }
-// LinksAtPath return ipld links under a path
-func LinksAtPath(node *ipfslite.Peer, pth string) ([]*ipld.Link, error) {
+// LinksAtCid return ipld links under a path
+func LinksAtCid(node *ipfslite.Peer, pth string) ([]*ipld.Link, error) {
 	res, err := node.Ls(ctx, path.New(pth))
 	if err != nil {
 		return nil, err

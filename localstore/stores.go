@@ -88,9 +88,47 @@ func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary
 	return nil
 }
 
+func RemoveIndex(index Index, ds ds.TxnDatastore, val interface{}, valPrimary string) error {
+	for _, keyParts := range index.Keys(val) {
+		keyStr := strings.Join(keyParts, "")
+		if index.Hash {
+			keyBytesF := sha256.Sum256([]byte(keyStr))
+			keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
+		}
+
+		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
+		if index.Unique {
+			exists, err := ds.Has(key)
+			if err != nil {
+				return err
+			}
+			if exists {
+				return ErrDuplicateKey
+			}
+		}
+
+		err := ds.Delete(key.ChildString(valPrimary))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func AddIndexes(store Indexable, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
 	for _, index := range store.Indexes() {
 		err := AddIndex(index, ds, newVal, newValPrimary)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func RemoveIndexes(store Indexable, ds ds.TxnDatastore, val interface{}, valPrimary string) error {
+	for _, index := range store.Indexes() {
+		err := RemoveIndex(index, ds, val, valPrimary)
 		if err != nil {
 			return err
 		}

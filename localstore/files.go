@@ -279,6 +279,16 @@ func (m *dsFileStore) Count() (int, error) {
 }
 
 func (m *dsFileStore) DeleteByHash(hash string) error {
+	file, err := m.GetByHash(hash)
+	if err != nil {
+		return fmt.Errorf("failed to find file by hash to remove")
+	}
+
+	err = RemoveIndexes(m, m.ds, file, file.Hash)
+	if err != nil {
+		return err
+	}
+
 	fileInfoKey := filesInfoBase.ChildString(hash)
 	return m.ds.Delete(fileInfoKey)
 }
