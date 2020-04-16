@@ -3,14 +3,11 @@ package core
 import (
 	"context"
 	"io"
-	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
-
-var filesKeysCache = make(map[string]map[string]string)
-var filesKeysCacheMutex = sync.RWMutex{}
 
 type File interface {
 	Meta() *FileMeta
@@ -19,9 +16,9 @@ type File interface {
 }
 
 type file struct {
-	hash  string
-	index *storage.FileInfo
-	node  *Anytype
+	hash string
+	info *storage.FileInfo
+	node *files.Service
 }
 
 type FileMeta struct {
@@ -33,10 +30,10 @@ type FileMeta struct {
 
 func (file *file) Meta() *FileMeta {
 	return &FileMeta{
-		Media: file.index.Media,
-		Name:  file.index.Name,
-		Size:  file.index.Size_,
-		Added: time.Unix(file.index.Added, 0),
+		Media: file.info.Media,
+		Name:  file.info.Name,
+		Size:  file.info.Size_,
+		Added: time.Unix(file.info.Added, 0),
 	}
 }
 
@@ -45,5 +42,5 @@ func (file *file) Hash() string {
 }
 
 func (file *file) Reader() (io.ReadSeeker, error) {
-	return file.node.fileIndexContent(context.Background(), file.index)
+	return file.node.FileContentReader(context.Background(), file.info)
 }

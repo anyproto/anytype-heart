@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -49,6 +50,39 @@ func BenchmarkSnapshot(b *testing.B) {
 			},
 		)
 		state = snap.State()
+	}
+	b.StopTimer()
+}
+
+func BenchmarkGetLastSnapshot(b *testing.B) {
+	b.StopTimer()
+	// run the Fib function b.N times
+	s := getRunningServiceB(b)
+	block, err := s.CreateBlock(SmartBlockTypePage)
+	state := vclock.New()
+	var blocks []*model.Block
+	for i := 0; i <= 1000; i++ {
+		blocks = append(blocks, &model.Block{
+			Id:      fmt.Sprintf("test_id_%d", i),
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
+		})
+	}
+
+	snap, err := block.PushSnapshot(
+		state,
+		&SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{"name": structs.String("name1")}}},
+		blocks,
+	)
+	require.NoError(b, err)
+
+	state = snap.State()
+	block, err = s.GetBlock(block.ID())
+	require.NoError(b, err)
+
+	b.StartTimer()
+	for n := 0; n < b.N; n++ {
+		_, err = block.GetLastSnapshot()
+		require.NoError(b, err)
 	}
 	b.StopTimer()
 }
@@ -214,23 +248,29 @@ func Test_smartBlock_SnapshotFileKeys(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, files, 1)
 
-	// clear cached file info to test recovery from ipfs
-	err = s.(*Anytype).localStore.Files.DeleteByHash(files[0].Hash)
-	require.NoError(t, err)
-
 	fhash := f.Hash()
 	f1, err := s.FileByHash(context.Background(), fhash)
 	require.NoError(t, err)
 	require.NotNil(t, f1)
 
+	// clear cached file info to test recovery from ipfs
+	err = s.(*Anytype).localStore.Files.DeleteByHash(files[0].Hash)
+	require.NoError(t, err)
+
+	f1, err = s.FileByHash(context.Background(), fhash)
+	require.NoError(t, err)
+	require.NotNil(t, f1)
+
 	// clear file keys cache
-	filesKeysCache = make(map[string]map[string]string)
+	s.(*Anytype).files.KeysCache = make(map[string]map[string]string)
+	f2, err := s.FileByHash(context.Background(), f.Hash())
 
 	snaps, err := block.(*smartBlock).GetSnapshots(vclock.Undef, 10, false)
 	require.NoError(t, err)
 	require.Len(t, snaps, 1)
-	f2, err := s.FileByHash(context.Background(), f.Hash())
+	require.NotNil(t, s.(*Anytype).files.KeysCache[f.Hash()], "file keys should be recached from ipfs after getting snapshots")
+
+	f2, err = s.FileByHash(context.Background(), f.Hash())
 	require.NoError(t, err)
 	require.NotNil(t, f2)
-	require.NotNil(t, filesKeysCache[f.Hash()])
 }

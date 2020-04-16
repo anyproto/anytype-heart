@@ -29,10 +29,9 @@ type SmartBlockSnapshot interface {
 }
 
 type smartBlockSnapshot struct {
-	blocks     []*model.Block
-	details    *types.Struct
-	keysByHash map[string]*storage.FileKeys
-	state      vclock.VClock
+	blocks  []*model.Block
+	details *types.Struct
+	state   vclock.VClock
 
 	threadID thread.ID
 	recordID cid.Cid

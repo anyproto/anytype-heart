@@ -218,14 +218,15 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 	if err != nil {
 		return
 	}
-	filesKeysCacheMutex.Lock()
-	defer filesKeysCacheMutex.Unlock()
+	block.node.files.KeysCacheMutex.Lock()
+	defer block.node.files.KeysCacheMutex.Unlock()
 	for _, snapshot := range snapshotsPB {
 		for k, v := range snapshot.KeysByHash {
-			filesKeysCache[k] = v.KeysByPath
+			block.node.files.KeysCache[k] = v.KeysByPath
 		}
 
 		snapshots = append(snapshots, smartBlockSnapshot{
+
 			blocks:  snapshot.Blocks,
 			details: snapshot.Details,
 			state:   vclock.NewFromMap(snapshot.State),
@@ -245,16 +246,21 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 
 func (block *smartBlock) getAllFileKeys(blocks []*model.Block) map[string]*storage.FileKeys {
 	fileKeys := make(map[string]*storage.FileKeys)
-	for _, block := range blocks {
-		if file, ok := block.Content.(*model.BlockContentOfFile); ok {
-			filesKeysCacheMutex.RLock()
-			if keys, exists := filesKeysCache[file.File.Hash]; exists {
+	for _, b := range blocks {
+		if file, ok := b.Content.(*model.BlockContentOfFile); ok {
+			block.node.files.KeysCacheMutex.RLock()
+			if keys, exists := block.node.files.KeysCache[file.File.Hash]; exists {
 				fileKeys[file.File.Hash] = &storage.FileKeys{keys}
-			} //else if efile := smartBlock.thread.Datastore().Files().Get(file.File.Hash); efile != nil {
-			// todo: extract keys from 'files' table in sqlite
-			//  to provide a shutdown protection
-			//}
-			filesKeysCacheMutex.RUnlock()
+			} else {
+				// in case we don't have keys cached fot this file
+				fileKeysRestored, err := block.node.files.FileRestoreKeys(context.TODO(), file.File.Hash)
+				if err != nil {
+					log.Errorf("failed to restore file keys: %w", err)
+				} else {
+					fileKeys[file.File.Hash] = &storage.FileKeys{fileKeysRestored}
+				}
+			}
+			block.node.files.KeysCacheMutex.RUnlock()
 		}
 	}
 
@@ -271,6 +277,7 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		ClientTime: time.Now().Unix(),
 		KeysByHash: block.getAllFileKeys(blocks),
 	}
+	log.Errorf("PushSnapshot keys := %+v", model.KeysByHash)
 
 	if meta != nil && meta.Details != nil {
 		model.Details = meta.Details
@@ -288,13 +295,17 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 
 	return &smartBlockSnapshot{
 		blocks:  model.Blocks,
+		details: model.Details,
+
+		state:    state,
+		threadID: block.thread.ID,
+		recordID: recID,
+
+		eventID: cid.Cid{}, // todo: extract eventId
+		key:     block.thread.Key.Read(),
 		creator: user,
 		date:    date,
-		state:   state,
-
-		recordID: recID,
-		threadID: block.thread.ID,
-		node:     block.node,
+		node:    block.node,
 	}, nil
 }
 

@@ -3,7 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
 
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
@@ -16,7 +18,10 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}
 
 	if len(files) == 0 {
-		files, err = a.getFileIndexes(ctx, hash)
+		a.files.KeysCacheMutex.RLock()
+		defer a.files.KeysCacheMutex.RUnlock()
+		// info from ipfs
+		files, err = a.files.FileIndexInfo(ctx, hash, a.files.KeysCache[hash])
 		if err != nil {
 			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrImageNotFound
@@ -37,6 +42,37 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	return &image{
 		hash:            files[0].Targets[0],
 		variantsByWidth: variantsByWidth,
-		node:            a,
+		node:            a.files,
 	}, nil
+}
+
+func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Image, error) {
+	opts := files.AddOptions{}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	err := a.files.NormalizeOptions(ctx, &opts)
+	if err != nil {
+		return nil, err
+	}
+
+	hash, variants, err := a.files.ImageAdd(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &image{
+		hash:            hash,
+		variantsByWidth: variants,
+		node:            a.files,
+	}, nil
+}
+
+func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
+	return a.ImageAdd(ctx, files.WithBytes(content), files.WithName(filename))
+}
+
+func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) {
+	return a.ImageAdd(ctx, files.WithReader(content), files.WithName(filename))
 }

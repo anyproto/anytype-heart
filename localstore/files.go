@@ -113,6 +113,7 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 		return err
 	}
 
+	log.Errorf("%+v", file)
 	return txn.Commit()
 }
 

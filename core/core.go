@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/cafeclient"
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -69,6 +70,8 @@ type Anytype struct {
 	replicationWG      sync.WaitGroup
 	done               chan struct{}
 	online             bool
+
+	files *files.Service
 }
 
 type Service interface {
@@ -83,13 +86,15 @@ type Service interface {
 	GetBlock(blockId string) (SmartBlock, error)
 	CreateBlock(t SmartBlockType) (SmartBlock, error)
 
-	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)
-	FileAddWithReader(ctx context.Context, content io.Reader, filename string) (File, error)
 	FileByHash(ctx context.Context, hash string) (File, error)
+	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
+	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)     // deprecated
+	FileAddWithReader(ctx context.Context, content io.Reader, filename string) (File, error) // deprecated
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
-	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)
-	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error)
+	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
+	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)     // deprecated
+	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) // deprecated
 }
 
 func (a *Anytype) Account() string {
@@ -146,7 +151,11 @@ func New(rootPath string, account string) (Service, error) {
 		return nil, fmt.Errorf("not exists")
 	}
 
-	a := Anytype{repoPath: repoPath, replicationWG: sync.WaitGroup{}}
+	a := Anytype{
+		repoPath:      repoPath,
+		replicationWG: sync.WaitGroup{},
+	}
+
 	var err error
 	b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
 	if err != nil {
@@ -242,6 +251,7 @@ func (a *Anytype) Start() error {
 	a.t = ts
 
 	a.localStore = localstore.NewLocalStore(a.t.Datastore())
+	a.files = files.New(a.localStore.Files, a.Ipfs())
 	//	a.ds = ds
 	//a.mdns = mdns
 	//mdns.RegisterNotifee(a)

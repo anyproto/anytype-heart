@@ -3,13 +3,11 @@ package core
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math"
 
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/mill"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/schema/anytype"
 )
 
 type Image interface {
@@ -22,7 +20,7 @@ type Image interface {
 type image struct {
 	hash            string // directory hash
 	variantsByWidth map[int]*storage.FileInfo
-	node            *Anytype
+	node            *files.Service
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
@@ -31,15 +29,15 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.node.getFileIndexForPath("/ipfs/" + i.hash + "/" + sizeName)
+	fileIndex, err := i.node.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &file{
-		hash:  fileIndex.Hash,
-		index: fileIndex,
-		node:  i.node,
+		hash: fileIndex.Hash,
+		info: fileIndex,
+		node: i.node,
 	}, nil
 }
 
@@ -49,15 +47,15 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 	}
 
 	sizeName := "large"
-	fileIndex, err := i.node.getFileIndexForPath("/ipfs/" + i.hash + "/" + sizeName)
+	fileIndex, err := i.node.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &file{
-		hash:  fileIndex.Hash,
-		index: fileIndex,
-		node:  i.node,
+		hash: fileIndex.Hash,
+		info: fileIndex,
+		node: i.node,
 	}, nil
 }
 
@@ -67,56 +65,6 @@ func (i *image) Hash() string {
 
 func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	return nil, fmt.Errorf("not implemented")
-}
-
-func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
-	dir, err := a.buildDirectory(ctx, content, filename, anytype.ImageNode())
-	if err != nil {
-		return nil, err
-	}
-
-	node, keys, err := a.AddNodeFromDirs(ctx, &storage.DirectoryList{Items: []*storage.Directory{dir}})
-	if err != nil {
-		return nil, err
-	}
-
-	nodeHash := node.Cid().String()
-
-	filesKeysCacheMutex.Lock()
-	defer filesKeysCacheMutex.Unlock()
-	filesKeysCache[nodeHash] = keys.KeysByPath
-
-	err = a.indexFileData(ctx, node, nodeHash)
-	if err != nil {
-		return nil, err
-	}
-
-	var variantsByWidth = make(map[int]*storage.FileInfo, len(dir.Files))
-	for _, f := range dir.Files {
-		if f.Mill != "/image/resize" {
-			continue
-		}
-		if v, exists := f.Meta.Fields["width"]; exists {
-			variantsByWidth[int(v.GetNumberValue())] = f
-		}
-	}
-
-	return &image{
-		hash:            nodeHash,
-		variantsByWidth: variantsByWidth,
-		node:            a,
-	}, nil
-}
-
-func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) {
-	b, err := ioutil.ReadAll(content)
-	if err != nil {
-		return nil, err
-	}
-
-	// use ImageAddWithBytes because we need seeker underlying
-	// todo: rewrite when all stack including mill and aes will use reader
-	return a.ImageAddWithBytes(ctx, b, filename)
 }
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
@@ -141,19 +89,19 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 
 	if minWidthMatchedImage != nil {
 		return &file{
-			hash:  minWidthMatchedImage.Hash,
-			index: minWidthMatchedImage,
-			node:  i.node,
+			hash: minWidthMatchedImage.Hash,
+			info: minWidthMatchedImage,
+			node: i.node,
 		}, nil
 	} else if maxWidthImage != nil {
 		return &file{
-			hash:  maxWidthImage.Hash,
-			index: maxWidthImage,
-			node:  i.node,
+			hash: maxWidthImage.Hash,
+			info: maxWidthImage,
+			node: i.node,
 		}, nil
 	}
 
-	return nil, ErrFileNotFound
+	return nil, files.ErrFileNotFound
 }
 
 var imageWidthByName = map[string]int{
