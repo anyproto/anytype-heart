@@ -44,6 +44,7 @@ type Block interface {
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
 	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (caretPosition int32, err error)
+	RangeCut(from int32, to int32) (cutBlock *model.Block, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
@@ -231,6 +232,39 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 
 	caretPosition = rangeFrom + (copyTo - copyFrom)
 	return caretPosition, nil
+}
+
+func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, err error) {
+	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
+		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
+		return nil, ErrOutOfRange
+	}
+	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
+		return nil, ErrOutOfRange
+	}
+	if from > to {
+		return nil, ErrOutOfRange
+	}
+
+	runesFirst := []rune(t.content.Text)[:from]
+	runesMiddle := []rune(t.content.Text)[from:to]
+	runesLast := []rune(t.content.Text)[to:]
+
+	// make a copy of the block
+	cutBlock = t.Copy().Model()
+	// set text, marks to the cutBlock
+
+	t.content.Text = string(runesFirst) + string(runesLast)
+	t.content.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, t.content.Marks.Marks, "")
+
+	// 1. cut marks from 0 to TO
+	cutBlock.GetText().Marks.Marks, _ = t.splitMarks(t.content.Marks.Marks, &model.Range{From: to, To: to}, 0)
+	// 2. cut marks from FROM to TO
+	_, cutBlock.GetText().Marks.Marks = t.splitMarks(t.content.Marks.Marks, &model.Range{From: from, To: from}, 0)
+
+	cutBlock.GetText().Text = string(runesMiddle)
+
+	return cutBlock, nil
 }
 
 func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err error) {
