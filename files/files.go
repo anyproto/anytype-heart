@@ -484,7 +484,7 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 	return helpers.AddLinkToDirectory(ctx, s.ipfs, dir, link, node.Cid().String())
 }
 
-func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filename string, sch *storage.Node) (*storage.Directory, error) {
+func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -500,7 +500,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filena
 			Use:       "",
 			Media:     "",
 			Name:      filename,
-			Plaintext: sch.Plaintext,
+			Plaintext: sch.Plaintext || plaintext,
 		}
 		err := s.NormalizeOptions(ctx, &opts)
 		if err != nil {
@@ -533,7 +533,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filena
 					Use:       "",
 					Media:     "",
 					Name:      filename,
-					Plaintext: step.Link.Plaintext,
+					Plaintext: step.Link.Plaintext || plaintext,
 				}
 				err = s.NormalizeOptions(ctx, opts)
 				if err != nil {

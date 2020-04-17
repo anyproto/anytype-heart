@@ -14,7 +14,7 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 		return "", nil, err
 	}
 
-	dir, err := s.fileBuildDirectory(ctx, b, opts.Name, anytype.ImageNode())
+	dir, err := s.fileBuildDirectory(ctx, b, opts.Name, opts.Plaintext, anytype.ImageNode())
 	if err != nil {
 		return "", nil, err
 	}
