@@ -7,7 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func init() {
@@ -34,7 +34,7 @@ type Link struct {
 }
 
 func (l *Link) Copy() simple.Block {
-	copy := deepcopy.Copy(l.Model()).(*model.Block)
+	copy := pbtypes.CopyBlock(l.Model())
 	return &Link{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetLink(),
@@ -43,7 +43,7 @@ func (l *Link) Copy() simple.Block {
 
 func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	link, ok := b.(*Link)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = l.Base.Diff(link); err != nil {

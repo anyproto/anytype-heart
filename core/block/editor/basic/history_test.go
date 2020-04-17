@@ -22,7 +22,7 @@ func TestHistory_Undo(t *testing.T) {
 
 	h := NewHistory(sb)
 
-	err := h.Undo()
+	err := h.Undo(nil)
 	require.NoError(t, err)
 	assert.Len(t, sb.Blocks(), 2)
 }
@@ -39,9 +39,9 @@ func TestHistory_Redo(t *testing.T) {
 
 	h := NewHistory(sb)
 
-	require.NoError(t, h.Undo())
+	require.NoError(t, h.Undo(nil))
 
-	err := h.Redo()
+	err := h.Redo(nil)
 	require.NoError(t, err)
 	assert.Len(t, sb.Blocks(), 1)
 }

@@ -18,6 +18,7 @@ var log = logging.Logger("anytype-mw-state")
 type Doc interface {
 	RootId() string
 	NewState() *State
+	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
 	Append(targetId string, id string) (ok bool)
@@ -34,6 +35,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
+	ctx      *Context
 	parent   *State
 	blocks   map[string]simple.Block
 	rootId   string
@@ -47,6 +49,14 @@ func (s *State) RootId() string {
 
 func (s *State) NewState() *State {
 	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId}
+}
+
+func (s *State) NewStateCtx(ctx *Context) *State {
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx}
+}
+
+func (s *State) Context() *Context {
+	return s.ctx
 }
 
 func (s *State) Add(b simple.Block) (ok bool) {
@@ -125,15 +135,11 @@ func (s *State) Remove(id string) (ok bool) {
 }
 
 func (s *State) Unlink(id string) (ok bool) {
-	s.Iterate(func(b simple.Block) bool {
-		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
-			parent := s.Get(b.Model().Id).Model()
-			parent.ChildrenIds = slice.Remove(parent.ChildrenIds, id)
-			ok = true
-			return false
-		}
+	if parent := s.GetParentOf(id); parent != nil {
+		parentM := parent.Model()
+		parentM.ChildrenIds = slice.Remove(parentM.ChildrenIds, id)
 		return true
-	})
+	}
 	return
 }
 

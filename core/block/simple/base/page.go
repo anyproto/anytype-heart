@@ -4,7 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewPage(m *model.Block) simple.Block {
@@ -26,5 +26,5 @@ func (i *Page) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 }
 
 func (i *Page) Copy() simple.Block {
-	return NewPage(deepcopy.Copy(i.Model()).(*model.Block))
+	return NewPage(pbtypes.CopyBlock(i.Model()))
 }
