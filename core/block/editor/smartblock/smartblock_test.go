@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -30,10 +31,6 @@ func TestSmartBlock_Show(t *testing.T) {
 	fx.init([]*model.Block{{Id: "1", ChildrenIds: []string{"2"}}, {Id: "2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 		TargetBlockId: "22",
 	}}}})
-	var event *pb.Event
-	fx.SetEventFunc(func(e *pb.Event) {
-		event = e
-	})
 
 	fx.metaSubscriber.EXPECT().Callback(gomock.Any()).Return(fx.metaSubscriber)
 	fx.metaSubscriber.EXPECT().Subscribe([]string{"22", "1"})
@@ -51,12 +48,13 @@ func TestSmartBlock_Show(t *testing.T) {
 		})
 	})
 
-	err := fx.Show()
+	ctx := state.NewContext(nil)
+	err := fx.Show(ctx)
 	require.NoError(t, err)
 
-	require.NotNil(t, event)
-	require.Len(t, event.Messages, 1)
-	msg := event.Messages[0].GetBlockShow()
+	msgs := ctx.GetMessages()
+	require.Len(t, msgs, 1)
+	msg := msgs[0].GetBlockShow()
 	require.NotNil(t, msg)
 	assert.Len(t, msg.Blocks, 2)
 	assert.Len(t, msg.Details, 2)

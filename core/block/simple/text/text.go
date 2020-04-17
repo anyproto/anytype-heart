@@ -6,12 +6,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
 )
 
 var (
@@ -73,7 +73,7 @@ func toTextContent(content model.IsBlockContent) (textContent *model.BlockConten
 }
 
 func (t *Text) Copy() simple.Block {
-	return NewText(deepcopy.Copy(t.Model()).(*model.Block))
+	return NewText(pbtypes.CopyBlock(t.Model()))
 }
 
 func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {

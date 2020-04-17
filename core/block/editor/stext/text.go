@@ -10,10 +10,10 @@ import (
 )
 
 type Text interface {
-	UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error
+	UpdateTextBlocks(ctx *state.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
 	Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error)
-	RangeSplit(id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error)
-	Merge(firstId, secondId string) (err error)
+	RangeSplit(ctx *state.Context, id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error)
+	Merge(ctx *state.Context, firstId, secondId string) (err error)
 }
 
 func NewText(sb smartblock.SmartBlock) Text {
@@ -24,8 +24,8 @@ type textImpl struct {
 	smartblock.SmartBlock
 }
 
-func (t *textImpl) UpdateTextBlocks(ids []string, showEvent bool, apply func(t text.Block) error) error {
-	s := t.NewState()
+func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent bool, apply func(t text.Block) error) error {
+	s := t.NewStateCtx(ctx)
 	for _, id := range ids {
 		tb, err := getText(s, id)
 		if err != nil {
@@ -41,8 +41,8 @@ func (t *textImpl) UpdateTextBlocks(ids []string, showEvent bool, apply func(t t
 	return t.Apply(s, smartblock.NoEvent)
 }
 
-func (t *textImpl) RangeSplit(id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error) {
-	s := t.NewState()
+func (t *textImpl) RangeSplit(ctx *state.Context, id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error) {
+	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, id)
 	if err != nil {
 		return
@@ -84,8 +84,8 @@ func (t *textImpl) Split(id string, pos int32, style model.BlockContentTextStyle
 	return
 }
 
-func (t *textImpl) Merge(firstId, secondId string) (err error) {
-	s := t.NewState()
+func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err error) {
+	s := t.NewStateCtx(ctx)
 	first, err := getText(s, firstId)
 	if err != nil {
 		return

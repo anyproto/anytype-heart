@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/mohae/deepcopy"
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -136,7 +135,7 @@ func (p *pubSub) call(d Meta) {
 	if p.closed {
 		return
 	}
-	d = deepcopy.Copy(d).(Meta)
+	d = copyMeta(d)
 	ss := p.subscribers[d.BlockId]
 	if ss != nil {
 		for s := range ss {
@@ -365,4 +364,18 @@ func (c *collector) close() {
 	}
 	close(c.quit)
 	c.closed = true
+}
+
+func copyMeta(m Meta) Meta {
+	d := m.Details
+	if d != nil {
+		d = pbtypes.CopyStruct(m.Details)
+	}
+	return Meta{
+		BlockId:
+		m.BlockId,
+		SmartBlockMeta: core.SmartBlockMeta{
+			Details: d,
+		},
+	}
 }
