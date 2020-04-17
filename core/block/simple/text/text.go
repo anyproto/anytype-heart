@@ -215,6 +215,7 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	if len(t.content.Text) == 0 || (rangeFrom == 0 && rangeTo == int32(len(t.content.Text))) {
 		t.content.Style = copiedText.Style
 		t.content.Color = copiedText.Color
+		t.BackgroundColor = copiedBlock.BackgroundColor
 	}
 
 	// 1. cut marks from 0 to TO
