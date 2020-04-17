@@ -22,8 +22,8 @@ github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5z
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/anytypeio/go-anytype-cafe/api/pb v0.0.0-20200410151455-9d90495496d9 h1:OunF9rH3kU8rzI67HpeV/lHj9/qVmet1ioTtYiMyaqQ=
 github.com/anytypeio/go-anytype-cafe/api/pb v0.0.0-20200410151455-9d90495496d9/go.mod h1:ilx8d1v0hD1m4LX1Iww0OSDcyoKrof6ksqX7rPClM8Q=
-github.com/anytypeio/go-anytype-library v0.5.1-0.20200417112829-732c53f07f2b h1:Prvz2hTudy3Zs3B2WgxpJTIiIztl/VmXyntq01j1jiM=
-github.com/anytypeio/go-anytype-library v0.5.1-0.20200417112829-732c53f07f2b/go.mod h1:1FHLy/xWSF+PVLLeCQnFpNToih4BqWZRqrH3c/ogixs=
+github.com/anytypeio/go-anytype-library v0.5.1-0.20200417123106-44eb3b5c65ed h1:ysBFZjO1A5bCnqUmgF+Ml2/4Eg3ZtuwHb1mS0dx3A2Q=
+github.com/anytypeio/go-anytype-library v0.5.1-0.20200417123106-44eb3b5c65ed/go.mod h1:1FHLy/xWSF+PVLLeCQnFpNToih4BqWZRqrH3c/ogixs=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW52i65PtLFBr5Q5k6RskIY8L70pgnBcnWo=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
