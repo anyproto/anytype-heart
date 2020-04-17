@@ -367,9 +367,9 @@ func (c *collector) close() {
 }
 
 func copyMeta(m Meta) Meta {
-	var d *types.Struct
+	d := m.Details
 	if d != nil {
-		d = pbtypes.CopyStruct(m.SmartBlockMeta.Details)
+		d = pbtypes.CopyStruct(m.Details)
 	}
 	return Meta{
 		BlockId:

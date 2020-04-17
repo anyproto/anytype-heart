@@ -13,11 +13,6 @@ var bytesPool = &sync.Pool{
 	},
 }
 
-type Type interface {
-	Size() int
-	MarshalToSizedBuffer(data []byte) (int, error)
-}
-
 func CopyBlock(in *model.Block) (out *model.Block) {
 	buf := bytesPool.Get().([]byte)
 	size := in.Size()
