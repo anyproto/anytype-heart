@@ -549,7 +549,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filena
 					Use:       dir.Files[step.Link.Use].Hash,
 					Media:     "",
 					Name:      filename,
-					Plaintext: step.Link.Plaintext,
+					Plaintext: step.Link.Plaintext || plaintext,
 				}
 
 				err = s.NormalizeOptions(ctx, opts)
