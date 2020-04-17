@@ -22,6 +22,7 @@ import (
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
+	net2 "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
 )
 
@@ -141,6 +142,7 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 }
 
 func init() {
+	net2.PullInterval = time.Minute * 3
 	// apply log levels in go-threads and go-ipfs deps
 	logging.ApplyLevelsFromEnv()
 }

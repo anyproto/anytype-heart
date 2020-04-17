@@ -49,7 +49,6 @@ func New(store localstore.FileStore, ipfs ipfs.IPFS) *Service {
 	}
 }
 
-var ErrFileNotFound = fmt.Errorf("file not found")
 var ErrMissingMetaLink = fmt.Errorf("meta link not in node")
 var ErrMissingContentLink = fmt.Errorf("content link not in node")
 

@@ -101,7 +101,7 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 		}, nil
 	}
 
-	return nil, files.ErrFileNotFound
+	return nil, ErrFileNotFound
 }
 
 var imageWidthByName = map[string]int{

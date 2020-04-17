@@ -2,10 +2,13 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/anytypeio/go-anytype-library/files"
 )
+
+var ErrFileNotFound = fmt.Errorf("file not found")
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	fileList, err := a.localStore.Files.ListByTarget(hash)
@@ -20,7 +23,7 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 		fileList, err = a.files.FileIndexInfo(ctx, hash, a.files.KeysCache[hash])
 		if err != nil {
 			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
-			return nil, files.ErrFileNotFound
+			return nil, ErrFileNotFound
 		}
 	}
 
