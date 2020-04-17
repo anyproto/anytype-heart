@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func createAccount(t *testing.T) Service {
+func createAccount(t require.TestingT) Service {
 	mnemonic, err := WalletGenerateMnemonic(12)
 	fmt.Printf("mnemonic: %s\n", mnemonic)
 	require.NoError(t, err)

@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 )
 
-type signedPbPayload struct {
+type SignedPbPayload struct {
 	DeviceSig []byte
 	AccSig    []byte
 	AccAddr   string
@@ -17,10 +17,10 @@ type signedPbPayload struct {
 }
 
 func init() {
-	cbornode.RegisterCborType(signedPbPayload{})
+	cbornode.RegisterCborType(SignedPbPayload{})
 }
 
-func newSignedPayload(payload []byte, deviceKey wallet.Keypair, accountKey wallet.Keypair) (*signedPbPayload, error) {
+func newSignedPayload(payload []byte, deviceKey wallet.Keypair, accountKey wallet.Keypair) (*SignedPbPayload, error) {
 	accSig, err := accountKey.Sign(payload)
 	if err != nil {
 		return nil, err
@@ -31,14 +31,14 @@ func newSignedPayload(payload []byte, deviceKey wallet.Keypair, accountKey walle
 		return nil, err
 	}
 
-	return &signedPbPayload{DeviceSig: deviceSig, AccAddr: accountKey.Address(), AccSig: accSig, Data: payload}, nil
+	return &SignedPbPayload{DeviceSig: deviceSig, AccAddr: accountKey.Address(), AccSig: accSig, Data: payload}, nil
 }
 
-func (p *signedPbPayload) Unmarshal(out proto.Message) error {
+func (p *SignedPbPayload) Unmarshal(out proto.Message) error {
 	return proto.Unmarshal(p.Data, out)
 }
 
-func (p *signedPbPayload) Verify(device crypto.PubKey) error {
+func (p *SignedPbPayload) Verify(device crypto.PubKey) error {
 	ok, err := device.Verify(append(p.Data, p.AccSig...), p.DeviceSig)
 	if !ok || err != nil {
 		return fmt.Errorf("bad device signature")

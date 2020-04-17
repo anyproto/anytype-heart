@@ -10,9 +10,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/textileio/go-threads/cbor"
-	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -23,10 +22,20 @@ import (
 type SmartBlockType uint64
 
 const (
-	SmartBlockTypePage      SmartBlockType = 0x10
-	SmartBlockTypeDashboard SmartBlockType = 0x20
-	SmartBlockTypeArchive   SmartBlockType = 0x30
+	SmartBlockTypePage        SmartBlockType = 0x10
+	SmartBlockTypeProfilePage SmartBlockType = 0x11
+	SmartBlockTypeHome        SmartBlockType = 0x20
+	SmartBlockTypeArchive     SmartBlockType = 0x30
 )
+
+type ProfileThreadEncryptionKeys struct {
+	ServiceKey []byte
+	ReadKey    []byte
+}
+
+func init() {
+	cbornode.RegisterCborType(ProfileThreadEncryptionKeys{})
+}
 
 // ShouldCreateSnapshot informs if you need to make a snapshot based on deterministic alg
 // temporally always returns true
@@ -173,29 +182,6 @@ func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnaps
 	return versions[0], nil
 }
 
-func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) {
-	vid, err := cid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
-
-	rec, err := block.node.t.GetRecord(context.TODO(), block.thread.ID, vid)
-	if err != nil {
-		return nil, err
-	}
-
-	if block.thread.Key.Read() == nil {
-		return nil, fmt.Errorf("no read key")
-	}
-	event, err := cbor.EventFromRecord(context.TODO(), block.node.t, rec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get event: %w", err)
-
-	}
-
-	return event, nil
-}
-
 /*func (block *smartBlock) GetSnapshotMeta(id string) (Sm, error) {
 	event, err := block.getSnapshotSnapshotEvent(id)
 	if err != nil {
@@ -229,28 +215,75 @@ func (block *smartBlock) getSnapshotSnapshotEvent(id string) (net.Event, error) 
 }*/
 
 func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly bool) (snapshots []smartBlockSnapshot, err error) {
-	snapshotsPB, err := block.node.traverseLogs(context.TODO(), block.thread.ID, offset, limit)
+	snapshotsPB, err := block.node.snapshotTraverseLogs(context.TODO(), block.thread.ID, offset, limit)
 	if err != nil {
 		return
 	}
-
+	block.node.files.KeysCacheMutex.Lock()
+	defer block.node.files.KeysCacheMutex.Unlock()
 	for _, snapshot := range snapshotsPB {
+		for k, v := range snapshot.KeysByHash {
+			block.node.files.KeysCache[k] = v.KeysByPath
+		}
+
 		snapshots = append(snapshots, smartBlockSnapshot{
+
 			blocks:  snapshot.Blocks,
 			details: snapshot.Details,
 			state:   vclock.NewFromMap(snapshot.State),
 			creator: snapshot.Creator,
+
+			threadID: block.thread.ID,
+			recordID: snapshot.RecordID,
+			eventID:  snapshot.EventID,
+			key:      block.thread.Key.Read(),
+
+			node: block.node,
 		})
 	}
 
 	return
 }
 
+func (block *smartBlock) getAllFileKeys(blocks []*model.Block) map[string]*storage.FileKeys {
+	fileKeys := make(map[string]*storage.FileKeys)
+	block.node.files.KeysCacheMutex.RLock()
+	defer block.node.files.KeysCacheMutex.RUnlock()
+
+	for _, b := range blocks {
+		if file, ok := b.Content.(*model.BlockContentOfFile); ok {
+			if file.File.Hash == "" {
+				continue
+			}
+
+			if keys, exists := block.node.files.KeysCache[file.File.Hash]; exists {
+				fileKeys[file.File.Hash] = &storage.FileKeys{keys}
+			} else {
+				// in case we don't have keys cached fot this file
+				fileKeysRestored, err := block.node.files.FileRestoreKeys(context.TODO(), file.File.Hash)
+				if err != nil {
+					log.Errorf("failed to restore file keys: %w", err)
+				} else {
+					fileKeys[file.File.Hash] = &storage.FileKeys{fileKeysRestored}
+				}
+			}
+		}
+	}
+
+	return fileKeys
+}
+
 func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
 	// todo: we don't need to increment here
 	// temporally increment the vclock until we don't have changes implemented
 	state.Increment(block.thread.GetOwnLog().ID.String())
-	model := &storage.SmartBlockSnapshot{State: state.Map(), ClientTime: time.Now().Unix()}
+
+	model := &storage.SmartBlockSnapshot{
+		State:      state.Map(),
+		ClientTime: time.Now().Unix(),
+		KeysByHash: block.getAllFileKeys(blocks),
+	}
+
 	if meta != nil && meta.Details != nil {
 		model.Details = meta.Details
 	}
@@ -260,23 +293,29 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	}
 
 	var err error
-	_, user, date, err := block.pushSnapshot(model)
+	recID, user, date, err := block.pushSnapshot(model)
 	if err != nil {
 		return nil, err
 	}
 
 	return &smartBlockSnapshot{
 		blocks:  model.Blocks,
+		details: model.Details,
+
+		state:    state,
+		threadID: block.thread.ID,
+		recordID: recID,
+
+		eventID: cid.Cid{}, // todo: extract eventId
+		key:     block.thread.Key.Read(),
 		creator: user,
 		date:    date,
-		state:   state,
 		node:    block.node,
 	}, nil
 }
 
-func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (versionId string, user string, date *types.Timestamp, err error) {
+func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (recID cid.Cid, user string, date *types.Timestamp, err error) {
 	var newSnapshotB []byte
-
 	newSnapshotB, err = proto.Marshal(newSnapshot)
 	if err != nil {
 		return
@@ -294,23 +333,53 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	rec, err2 := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+	thrd, err2 := block.node.t.GetThread(context.TODO(), block.thread.ID)
 	if err2 != nil {
-		err = err2
+		err = fmt.Errorf("failed to get thread: %s", err2.Error())
 		return
 	}
 
-	versionId = rec.Value().Cid().String()
-	log.Debugf("SmartBlock.addSnapshot: blockId = %s newSnapshotId = %s", block.ID(), versionId)
+	ownLog := thrd.GetOwnLog()
+
+	block.node.replicationWG.Add(1)
+	defer block.node.replicationWG.Done()
+
+	rec, err2 := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+	if err2 != nil {
+		err = err2
+		log.Errorf("failed to create record: %w", err)
+		return
+	}
+
+	recID = rec.Value().Cid()
+	go func() {
+		if ownLog == nil || ownLog.Head == cid.Undef {
+			addr, err2 := ma.NewMultiaddr(CafeNodeP2P)
+			if err2 != nil {
+				err = err2
+				return
+			}
+
+			p, err := block.node.t.AddReplicator(context.TODO(), block.thread.ID, addr)
+			if err != nil {
+				log.Errorf("failed to add log replicator: %s", err.Error())
+			}
+
+			log.With("thread", block.thread.ID.String()).Infof("added log replicator: %s", p.String())
+		}
+	}()
+
+	log.Debugf("SmartBlock.addSnapshot: blockId = %s", block.ID())
 
 	return
 }
 
 func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
 	return &smartBlockSnapshot{
-		node:   block.node,
 		blocks: []*model.Block{},
-		// todo: add title and icon blocks
+
+		threadID: block.thread.ID,
+		node:     block.node,
 	}
 }
 

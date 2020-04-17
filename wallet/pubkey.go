@@ -61,7 +61,7 @@ func NewPubKeyFromAddress(t KeypairType, address string) (PubKey, error) {
 			PubKey:  pk,
 		}, nil
 	} else {
-		peerID, err := peer.IDFromString(address)
+		peerID, err := peer.Decode(address)
 		if err != nil {
 			return nil, err
 		}

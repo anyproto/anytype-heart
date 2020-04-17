@@ -22,7 +22,7 @@ var Image = `
       "mill": "/image/resize",
       "opts": {
         "width": "320",
-        "quality": "85"
+        "quality": "80"
       }
     },
     "thumb": {
@@ -32,7 +32,7 @@ var Image = `
       "mill": "/image/resize",
       "opts": {
         "width": "100",
-        "quality": "85"
+        "quality": "80"
       }
     },
     "exif": {

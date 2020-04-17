@@ -3,60 +3,13 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
 
-	"github.com/anytypeio/go-anytype-library/ipfs/helpers"
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
-
-func (a *Anytype) getFileIndexes(ctx context.Context, hash string) ([]storage.FileInfo, error) {
-	links, err := helpers.LinksAtPath(ctx, a.Ipfs(), hash)
-	if err != nil {
-		return nil, err
-	}
-
-	filesKeysCacheMutex.RLock()
-	defer filesKeysCacheMutex.RUnlock()
-
-	filesKeys, filesKeysExists := filesKeysCache[hash]
-
-	var files []storage.FileInfo
-	for _, index := range links {
-		node, err := helpers.NodeAtLink(ctx, a.Ipfs(), index)
-		if err != nil {
-			return nil, err
-		}
-
-		if looksLikeFileNode(node) {
-			var key string
-			if filesKeysExists {
-				key = filesKeys["/"+index.Name+"/"]
-			}
-
-			fileIndex, err := a.addFileIndexFromPath(hash, hash+"/"+index.Name, key)
-			if err != nil {
-				return nil, fmt.Errorf("addFileIndexFromPath error: %s", err.Error())
-			}
-			files = append(files, *fileIndex)
-		} else {
-			for _, link := range node.Links() {
-				var key string
-				if filesKeysExists {
-					key = filesKeys["/"+index.Name+"/"+link.Name+"/"]
-				}
-
-				fileIndex, err := a.addFileIndexFromPath(hash, hash+"/"+index.Name+"/"+link.Name, key)
-				if err != nil {
-					return nil, fmt.Errorf("addFileIndexFromPath error: %s", err.Error())
-				}
-				files = append(files, *fileIndex)
-			}
-		}
-	}
-
-	return files, nil
-}
 
 func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	files, err := a.localStore.Files.ListByTarget(hash)
@@ -64,13 +17,16 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		return nil, err
 	}
 
-	/*if len(files) == 0 {
-		files, err = a.getFileIndexes(ctx, hash)
+	if len(files) == 0 {
+		a.files.KeysCacheMutex.RLock()
+		defer a.files.KeysCacheMutex.RUnlock()
+		// info from ipfs
+		files, err = a.files.FileIndexInfo(ctx, hash, a.files.KeysCache[hash])
 		if err != nil {
-			log.Errorf("fImageByHash: failed to retrieve from IPFS: %s", err.Error())
+			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrImageNotFound
 		}
-	}*/
+	}
 
 	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
 	for _, f := range files {
@@ -86,6 +42,37 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	return &image{
 		hash:            files[0].Targets[0],
 		variantsByWidth: variantsByWidth,
-		node:            a,
+		node:            a.files,
 	}, nil
+}
+
+func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Image, error) {
+	opts := files.AddOptions{}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	err := a.files.NormalizeOptions(ctx, &opts)
+	if err != nil {
+		return nil, err
+	}
+
+	hash, variants, err := a.files.ImageAdd(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &image{
+		hash:            hash,
+		variantsByWidth: variants,
+		node:            a.files,
+	}, nil
+}
+
+func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
+	return a.ImageAdd(ctx, files.WithBytes(content), files.WithName(filename))
+}
+
+func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) {
+	return a.ImageAdd(ctx, files.WithReader(content), files.WithName(filename))
 }
