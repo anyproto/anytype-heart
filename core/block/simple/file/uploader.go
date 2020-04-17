@@ -9,18 +9,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/files"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/h2non/filetype"
-	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 var log = logging.Logger("anytype-mw-file")
 
-func NewUploader(a anytype.Service, fn func(f func(file Block))) Uploader {
+func NewUploader(a anytype.Service, fn func(f func(file Block)), opts ...files.AddOption) Uploader {
 	return &uploader{
 		updateFile: fn,
 		storage:    a,
+		options:    opts,
 	}
 }
 
@@ -33,6 +35,7 @@ type uploader struct {
 	updateFile func(f func(file Block))
 	storage    anytype.Service
 	isImage    bool
+	options    []files.AddOption
 }
 
 func (u *uploader) DoAuto(localPath string) {
@@ -109,7 +112,7 @@ func (u *uploader) upload(rd io.ReadCloser, name string) (err error) {
 }
 
 func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
-	image, err := u.storage.ImageAddWithReader(context.TODO(), rd, name)
+	image, err := u.storage.ImageAdd(context.TODO(), append(u.options, files.WithReader(rd), files.WithName(name))...)
 	if err != nil {
 		return
 	}
@@ -120,7 +123,7 @@ func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
 }
 
 func (u *uploader) uploadFile(rd io.Reader, name string) (err error) {
-	cf, err := u.storage.FileAddWithReader(context.TODO(), rd, name)
+	cf, err := u.storage.FileAdd(context.TODO(), append(u.options, files.WithReader(rd), files.WithName(name))...)
 	if err != nil {
 		return
 	}

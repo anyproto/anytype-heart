@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -197,7 +198,7 @@ func loadImage(stor anytype.Service, url string) (hash string, err error) {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	im, err := stor.ImageAddWithReader(context.TODO(), resp.Body, filepath.Base(url))
+	im, err := stor.ImageAdd(context.TODO(), files.WithReader(resp.Body), files.WithName(filepath.Base(url)))
 	if err != nil {
 		return
 	}
