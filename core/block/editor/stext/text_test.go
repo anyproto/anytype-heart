@@ -29,7 +29,7 @@ func TestTextImpl_UpdateTextBlocks(t *testing.T) {
 		AddBlock(newTextBlock("2", "two"))
 
 	tb := NewText(sb)
-	err := tb.UpdateTextBlocks([]string{"1", "2"}, true, func(tb text.Block) error {
+	err := tb.UpdateTextBlocks(nil, []string{"1", "2"}, true, func(tb text.Block) error {
 		tc := tb.Model().GetText()
 		require.NotNil(t, tc)
 		tc.Checked = true
@@ -64,7 +64,7 @@ func TestTextImpl_Merge(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "ch2"}))
 	tb := NewText(sb)
 
-	err := tb.Merge("1", "2")
+	err := tb.Merge(nil, "1", "2")
 	require.NoError(t, err)
 
 	r := sb.NewState()

@@ -17,8 +17,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/mohae/deepcopy"
 )
 
 type ApplyFlag int
@@ -43,7 +43,7 @@ type SmartBlock interface {
 	Id() string
 	Type() pb.SmartBlockType
 	Meta() *core.SmartBlockMeta
-	Show() (err error)
+	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() history.History
@@ -125,23 +125,21 @@ func (sb *smartBlock) checkRootBlock() (err error) {
 	return sb.Apply(s, NoEvent, NoHistory)
 }
 
-func (sb *smartBlock) Show() error {
-	if sb.sendEvent != nil {
+func (sb *smartBlock) Show(ctx *state.Context) error {
+	if ctx != nil {
 		details, err := sb.fetchDetails()
 		if err != nil {
 			return err
 		}
-		sb.sendEvent(&pb.Event{
-			Messages: []*pb.EventMessage{
+		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
 				{
 					Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
 						RootId:  sb.RootId(),
 						Blocks:  sb.Blocks(),
 						Details: details,
 						Type:    sb.Type(),
-					}}},
+					}},
 			},
-			ContextId: sb.RootId(),
 		})
 	}
 	return nil
@@ -246,11 +244,15 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if sb.hist != nil && addHistory {
 		sb.hist.Add(act)
 	}
-	if sb.sendEvent != nil && sendEvent {
-		sb.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: sb.RootId(),
-		})
+	if sendEvent {
+		if ctx := s.Context(); ctx != nil {
+			ctx.SetMessages(sb.Id(), msgs)
+		} else if sb.sendEvent != nil {
+			sb.sendEvent(&pb.Event{
+				Messages:  msgs,
+				ContextId: sb.RootId(),
+			})
+		}
 	}
 	for _, add := range act.Add {
 		if add.Model().GetLink() != nil {
@@ -290,7 +292,10 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 			Fields: make(map[string]*types.Value),
 		}
 	}
-	var copy = deepcopy.Copy(sb.metaData.Details).(*types.Struct)
+	var copy = pbtypes.CopyStruct(sb.metaData.Details)
+	if copy.Fields == nil {
+		copy.Fields = make(map[string]*types.Value)
+	}
 	for _, detail := range details {
 		copy.Fields[detail.Key] = detail.Value
 	}

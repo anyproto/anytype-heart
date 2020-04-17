@@ -64,7 +64,7 @@ func (st *SmartTest) Type() pb.SmartBlockType {
 	return pb.SmartBlockType_Page
 }
 
-func (st *SmartTest) Show() (err error) {
+func (st *SmartTest) Show(*state.Context) (err error) {
 	return
 }
 

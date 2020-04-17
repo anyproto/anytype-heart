@@ -6,7 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewDiv(m *model.Block) simple.Block {
@@ -28,7 +28,7 @@ type Div struct {
 
 func (b *Div) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 	div, ok := block.(*Div)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = b.Base.Diff(div); err != nil {
@@ -50,7 +50,7 @@ func (b *Div) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 }
 
 func (b *Div) Copy() simple.Block {
-	return NewDiv(deepcopy.Copy(b.Model()).(*model.Block))
+	return NewDiv(pbtypes.CopyBlock(b.Model()))
 }
 
 func (b *Div) SetStyle(style model.BlockContentDivStyle) {

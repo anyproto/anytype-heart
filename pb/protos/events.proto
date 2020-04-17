@@ -357,6 +357,11 @@ enum SmartBlockType {
     Breadcrumbs = 4;
 }
 
+message ResponseEvent {
+    repeated Event.Message messages = 1;
+    string contextId = 2;
+}
+
 message Model {
     message Process {
         string id = 1;

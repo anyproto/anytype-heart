@@ -4,8 +4,8 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/mohae/deepcopy"
 )
 
 func init() {
@@ -81,7 +81,7 @@ func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 }
 
 func (b *Base) Copy() simple.Block {
-	return NewBase(deepcopy.Copy(b.Model()).(*model.Block))
+	return NewBase(pbtypes.CopyBlock(b.Model()))
 }
 
 func stringSlicesEq(s1, s2 []string) bool {
