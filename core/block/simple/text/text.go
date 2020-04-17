@@ -263,7 +263,7 @@ func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, err error)
 	// set text, marks to the cutBlock
 
 	t.content.Text = string(runesFirst) + string(runesLast)
-	t.content.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, t.content.Marks.Marks, "")
+	t.content.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
 
 	// 1. cut marks from 0 to TO
 	cutBlock.GetText().Marks.Marks, _ = t.splitMarks(t.content.Marks.Marks, &model.Range{From: to, To: to}, 0)
