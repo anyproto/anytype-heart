@@ -3,6 +3,7 @@ package clipboard
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -86,9 +87,32 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 	s := cb.NewStateCtx(ctx)
 
 	blocksMap := make(map[string]*model.Block)
+	conv := converter.New()
 	textSlot = ""
-	var ids []string
 
+	if len(req.Blocks) == 0 || req.Blocks[0].Id == "" {
+		return textSlot, htmlSlot, anySlot, errors.New("nothing to cut")
+	}
+
+	firstBlock := s.Get(req.Blocks[0].Id)
+
+	// scenario: rangeCut
+	if firstBlockText, isText := firstBlock.(text.Block); isText && req.SelectedTextRange != nil {
+		cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+
+		if err != nil {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
+		}
+
+		textSlot = cutBlock.GetText().Text
+		anySlot = []*model.Block{cutBlock}
+		htmlSlot = conv.Convert(anySlot, images)
+
+		return textSlot, htmlSlot, anySlot, cb.Apply(s)
+	}
+
+	// scenario: cutBlocks
+	var ids []string
 	for _, b := range req.Blocks {
 		blocksMap[b.Id] = b
 
@@ -107,12 +131,10 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 		return textSlot, htmlSlot, anySlot, err
 	}
 
-	conv := converter.New()
 	htmlSlot = conv.Convert(req.Blocks, images)
 	anySlot = req.Blocks
 
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
-
 }
 
 func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[string][]byte, err error) {
@@ -323,11 +345,10 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 		if err != nil {
 			return blockIds, uploadArr, caretPosition, err
 		}
-
 		break
 
 	case pasteSingleTextInFocusedText:
-		caretPosition, err = focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0].GetText())
+		caretPosition, err = focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0])
 		if err != nil {
 			return nil, nil, -1, nil
 		}
