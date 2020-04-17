@@ -11,7 +11,7 @@ import (
 
 func TestBreadcrumbs_Init(t *testing.T) {
 	b := NewBreadcrumbs()
-	err := b.Init(source.NewVirtual(nil, nil))
+	err := b.Init(source.NewVirtual(nil, nil, pb.SmartBlockType_Breadcrumbs))
 	require.NoError(t, err)
 	assert.NotEmpty(t, b.Id())
 	assert.NotEmpty(t, b.RootId())
@@ -21,7 +21,7 @@ func TestBreadcrumbs_Init(t *testing.T) {
 func TestBreadcrumbs_OnSmartOpen(t *testing.T) {
 	t.Run("add pages", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(source.NewVirtual(nil, nil))
+		err := b.Init(source.NewVirtual(nil, nil, pb.SmartBlockType_Breadcrumbs))
 		require.NoError(t, err)
 		var events []*pb.Event
 		b.SetEventFunc(func(e *pb.Event) {
@@ -40,7 +40,7 @@ func TestBreadcrumbs_OnSmartOpen(t *testing.T) {
 	})
 	t.Run("add existing page", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(source.NewVirtual(nil, nil))
+		err := b.Init(source.NewVirtual(nil, nil, pb.SmartBlockType_Breadcrumbs))
 		require.NoError(t, err)
 		var events []*pb.Event
 		b.SetEventFunc(func(e *pb.Event) {
@@ -59,7 +59,7 @@ func TestBreadcrumbs_OnSmartOpen(t *testing.T) {
 func TestBreadcrumbs_ChainCut(t *testing.T) {
 	t.Run("negative index", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(source.NewVirtual(nil, nil))
+		err := b.Init(source.NewVirtual(nil, nil, pb.SmartBlockType_Breadcrumbs))
 		require.NoError(t, err)
 		b.OnSmartOpen("1")
 		var events []*pb.Event
@@ -71,7 +71,7 @@ func TestBreadcrumbs_ChainCut(t *testing.T) {
 	})
 	t.Run("overflow index", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(source.NewVirtual(nil, nil))
+		err := b.Init(source.NewVirtual(nil, nil, pb.SmartBlockType_Breadcrumbs))
 		require.NoError(t, err)
 		b.OnSmartOpen("1")
 		var events []*pb.Event
@@ -83,7 +83,7 @@ func TestBreadcrumbs_ChainCut(t *testing.T) {
 	})
 	t.Run("cut", func(t *testing.T) {
 		b := NewBreadcrumbs()
-		err := b.Init(source.NewVirtual(nil, nil))
+		err := b.Init(source.NewVirtual(nil, nil, pb.SmartBlockType_Breadcrumbs))
 		require.NoError(t, err)
 		b.OnSmartOpen("1")
 		b.OnSmartOpen("2")

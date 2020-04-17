@@ -1720,7 +1720,8 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string homeBlockId = 2; // home dashboard block id
-                string archiveBlockId = 3; // home dashboard block id
+                string archiveBlockId = 3; // archive block id
+                string profileBlockId = 4; // profile block id
                 string gatewayUrl = 101; // gateway url for fetching static files
                 message Error {
                     Code code = 1;
@@ -1733,7 +1734,6 @@ message Rpc {
                         NODE_NOT_STARTED = 101;
                     }
                 }
-
             }
         }
     }
@@ -1812,6 +1812,7 @@ message Rpc {
             string url = 1;
             string localPath = 2;
             anytype.model.Block.Content.File.Type type = 3;
+            bool disableEncryption = 4;
         }
 
         message Response {

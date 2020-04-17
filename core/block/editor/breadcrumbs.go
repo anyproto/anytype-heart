@@ -1,11 +1,10 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -18,29 +17,6 @@ func NewBreadcrumbs() *Breadcrumbs {
 
 type Breadcrumbs struct {
 	smartblock.SmartBlock
-}
-
-func (b *Breadcrumbs) Init(s source.Source) (err error) {
-	if err = b.SmartBlock.Init(s); err != nil {
-		return
-	}
-	return b.checkRootBlock()
-}
-
-func (b *Breadcrumbs) checkRootBlock() (err error) {
-	s := b.NewState()
-	if root := s.Get(b.RootId()); root != nil {
-		return
-	}
-	s.Add(simple.New(&model.Block{
-		Id: b.RootId(),
-		Content: &model.BlockContentOfPage{
-			Page: &model.BlockContentPage{
-				Style: model.BlockContentPage_Breadcrumbs,
-			},
-		},
-	}))
-	return b.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (b *Breadcrumbs) OnSmartOpen(id string) {

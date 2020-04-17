@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
@@ -40,6 +41,8 @@ func New() SmartBlock {
 type SmartBlock interface {
 	Init(s source.Source) (err error)
 	Id() string
+	Type() pb.SmartBlockType
+	Meta() *core.SmartBlockMeta
 	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
@@ -65,6 +68,14 @@ type smartBlock struct {
 
 func (sb *smartBlock) Id() string {
 	return sb.source.Id()
+}
+
+func (sb *smartBlock) Meta() *core.SmartBlockMeta {
+	return sb.metaData
+}
+
+func (sb *smartBlock) Type() pb.SmartBlockType {
+	return sb.source.Type()
 }
 
 func (sb *smartBlock) Init(s source.Source) error {
@@ -97,7 +108,21 @@ func (sb *smartBlock) Init(s source.Source) error {
 			},
 		}
 	}
-	return nil
+	return sb.checkRootBlock()
+}
+
+func (sb *smartBlock) checkRootBlock() (err error) {
+	s := sb.NewState()
+	if root := s.Get(sb.RootId()); root != nil {
+		return
+	}
+	s.Add(simple.New(&model.Block{
+		Id: sb.RootId(),
+		Content: &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		},
+	}))
+	return sb.Apply(s, NoEvent, NoHistory)
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
@@ -107,12 +132,13 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 			return err
 		}
 		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-					RootId:  sb.RootId(),
-					Blocks:  sb.Blocks(),
-					Details: details,
-				}},
+				{
+					Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
+						RootId:  sb.RootId(),
+						Blocks:  sb.Blocks(),
+						Details: details,
+						Type:    sb.Type(),
+					}},
 			},
 		})
 	}
@@ -179,7 +205,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		}
 		return true
 	})
-	if sb.source.Type() != 0 && sb.source.Type() != core.SmartBlockTypeDashboard {
+	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 	}
 	return

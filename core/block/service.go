@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/gogo/protobuf/types"
 
@@ -191,7 +192,7 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	s.m.Lock()
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs()
-	if err = bs.Init(source.NewVirtual(s.anytype, s.meta)); err != nil {
+	if err = bs.Init(source.NewVirtual(s.anytype, s.meta, pb.SmartBlockType_Breadcrumbs)); err != nil {
 		return
 	}
 	bs.Lock()
@@ -575,9 +576,13 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
 	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
+	var opts []files.AddOption
+	if req.DisableEncryption {
+		opts = append(opts, files.WithPlaintext(true))
+	}
 	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
 		f(tempFile)
-	})
+	}, opts...)
 	if err = u.DoType(req.LocalPath, req.Url, req.Type); err != nil {
 		return
 	}
@@ -682,12 +687,14 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 		return
 	}
 	switch sc.Type() {
-	case core.SmartBlockTypePage:
+	case pb.SmartBlockType_Page:
 		sb = editor.NewPage(s, s, s.linkPreview)
-	case core.SmartBlockTypeDashboard:
+	case pb.SmartBlockType_Home:
 		sb = editor.NewDashboard()
-	case core.SmartBlockTypeArchive:
+	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
+	case pb.SmartBlockType_ProfilePage:
+		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

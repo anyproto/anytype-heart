@@ -29,29 +29,19 @@ func (p *Archive) Init(s source.Source) (err error) {
 	if err = p.SmartBlock.Init(s); err != nil {
 		return
 	}
-	return p.checkRootBlock()
+	return p.init()
 }
 
-func (p *Archive) checkRootBlock() (err error) {
-	s := p.NewState()
-	if root := s.Get(p.RootId()); root != nil {
-		return
+func (p *Archive) init() (err error) {
+	if meta := p.SmartBlock.Meta(); meta != nil {
+		if meta.Details != nil && meta.Details.Fields != nil && len(meta.Details.Fields) > 0 {
+			return
+		}
 	}
-	s.Add(simple.New(&model.Block{
-		Id: p.RootId(),
-		Content: &model.BlockContentOfDashboard{
-			Dashboard: &model.BlockContentDashboard{
-				Style: model.BlockContentDashboard_Archive,
-			},
-		},
-	}))
-	if err = p.SmartBlock.SetDetails([]*pb.RpcBlockSetDetailsDetail{
+	return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
 		{Key: "name", Value: pbtypes.String("Archive")},
 		{Key: "icon", Value: pbtypes.String(":package:")},
-	}); err != nil {
-		return
-	}
-	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
+	})
 }
 
 func (p *Archive) Archive(id string) (err error) {

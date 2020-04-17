@@ -10,12 +10,6 @@ import (
 
 func init() {
 	simple.RegisterCreator(func(m *model.Block) simple.Block {
-		if m.GetPage() != nil {
-			return NewPage(m)
-		}
-		return nil
-	})
-	simple.RegisterCreator(func(m *model.Block) simple.Block {
 		if m.GetDiv() != nil {
 			return NewDiv(m)
 		}

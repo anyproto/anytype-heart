@@ -27,20 +27,16 @@ func (p *Dashboard) Init(s source.Source) (err error) {
 	if err = p.SmartBlock.Init(s); err != nil {
 		return
 	}
-	return p.checkRootBlock()
+	return p.init()
 }
 
-func (p *Dashboard) checkRootBlock() (err error) {
+func (p *Dashboard) init() (err error) {
 	s := p.NewState()
-	if root := s.Get(p.RootId()); root != nil {
+	root := s.Get(p.RootId())
+	if len(root.Model().ChildrenIds) > 0 {
 		return
 	}
-	s.Add(simple.New(&model.Block{
-		Id: p.RootId(),
-		Content: &model.BlockContentOfDashboard{
-			Dashboard: &model.BlockContentDashboard{},
-		},
-	}))
+	// add archive link
 	archive := simple.New(&model.Block{
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
