@@ -247,9 +247,15 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 
 func (block *smartBlock) getAllFileKeys(blocks []*model.Block) map[string]*storage.FileKeys {
 	fileKeys := make(map[string]*storage.FileKeys)
+	block.node.files.KeysCacheMutex.RLock()
+	defer block.node.files.KeysCacheMutex.RUnlock()
+
 	for _, b := range blocks {
 		if file, ok := b.Content.(*model.BlockContentOfFile); ok {
-			block.node.files.KeysCacheMutex.RLock()
+			if file.File.Hash == "" {
+				continue
+			}
+
 			if keys, exists := block.node.files.KeysCache[file.File.Hash]; exists {
 				fileKeys[file.File.Hash] = &storage.FileKeys{keys}
 			} else {
@@ -261,7 +267,6 @@ func (block *smartBlock) getAllFileKeys(blocks []*model.Block) map[string]*stora
 					fileKeys[file.File.Hash] = &storage.FileKeys{fileKeysRestored}
 				}
 			}
-			block.node.files.KeysCacheMutex.RUnlock()
 		}
 	}
 
@@ -278,7 +283,6 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		ClientTime: time.Now().Unix(),
 		KeysByHash: block.getAllFileKeys(blocks),
 	}
-	log.Errorf("PushSnapshot keys := %+v", model.KeysByHash)
 
 	if meta != nil && meta.Details != nil {
 		model.Details = meta.Details
