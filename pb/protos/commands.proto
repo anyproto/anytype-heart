@@ -1811,6 +1811,7 @@ message Rpc {
             string url = 1;
             string localPath = 2;
             anytype.model.Block.Content.File.Type type = 3;
+            bool disableEncryption = 4;
         }
 
         message Response {

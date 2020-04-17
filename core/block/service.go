@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/gogo/protobuf/types"
 
@@ -575,9 +576,13 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
 	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
+	var opts []files.AddOption
+	if req.DisableEncryption {
+		opts = append(opts, files.WithPlaintext(true))
+	}
 	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
 		f(tempFile)
-	})
+	}, opts...)
 	if err = u.DoType(req.LocalPath, req.Url, req.Type); err != nil {
 		return
 	}

@@ -180,38 +180,44 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
+	newAcc.Name = req.Name
+
 	bs := block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	var details []*pb.RpcBlockSetDetailsDetail
+	details = append(details, &pb.RpcBlockSetDetailsDetail{
+		Key:   "name",
+		Value: pbtypes.String(req.Name),
+	})
+
+	if req.GetAvatarLocalPath() != "" {
+		hash, err := bs.UploadFile(pb.RpcUploadFileRequest{
+			LocalPath:         req.GetAvatarLocalPath(),
+			Type:              model.BlockContentFile_Image,
+			DisableEncryption: true,
+		})
+		if err != nil {
+			log.Warnf("can't add avatar: %v", err)
+		} else {
+			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
+			details = append(details, &pb.RpcBlockSetDetailsDetail{
+				Key:   "iconUser",
+				Value: pbtypes.String(hash),
+			})
+		}
+	} else if req.GetAvatarColor() != "" {
+		details = append(details, &pb.RpcBlockSetDetailsDetail{
+			Key:   "iconUser",
+			Value: pbtypes.String(req.GetAvatarColor()),
+		})
+	}
+
 	err = bs.SetDetails(pb.RpcBlockSetDetailsRequest{
 		ContextId: mw.Anytype.PredefinedBlocks().Profile,
-		Details: []*pb.RpcBlockSetDetailsDetail{
-			{
-				Key:   "name",
-				Value: pbtypes.String(req.Name),
-			},
-		},
+		Details:   details,
 	})
 	if err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
-	newAcc.Name = req.Name
-	/*if req.GetAvatarLocalPath() != "" {
-		_, err := mw.AccountSetAvatar(req.GetAvatarLocalPath())
-		if err != nil {
-			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
-		}
-
-		hash, err := mw.Textile.Avatar()
-		if err != nil {
-			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
-		}
-		newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-	} else if req.GetAvatarColor() != "" {
-		err := mw.AccountSetAvatarColor(req.GetAvatarColor())
-		if err != nil {
-			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
-		}
-	}*/
-
 	mw.localAccounts = append(mw.localAccounts, newAcc)
 	mw.setBlockService(bs)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)

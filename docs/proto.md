@@ -4498,6 +4498,7 @@ Usage: send request with topic (Level) and description (message) from client to 
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+| disableEncryption | [bool](#bool) |  |  |
 
 
 
