@@ -4,21 +4,24 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/google/uuid"
 )
 
-func NewVirtual(a anytype.Service, m meta.Service) (s Source) {
+func NewVirtual(a anytype.Service, m meta.Service, t pb.SmartBlockType) (s Source) {
 	return &virtual{
-		id:   uuid.New().String(),
-		a:    a,
-		meta: m,
+		id:     uuid.New().String(),
+		a:      a,
+		meta:   m,
+		sbType: t,
 	}
 }
 
 type virtual struct {
-	id   string
-	a    anytype.Service
-	meta meta.Service
+	id     string
+	a      anytype.Service
+	meta   meta.Service
+	sbType pb.SmartBlockType
 }
 
 func (v *virtual) Id() string {
@@ -33,8 +36,8 @@ func (v *virtual) Meta() meta.Service {
 	return v.meta
 }
 
-func (v *virtual) Type() core.SmartBlockType {
-	return 0
+func (v *virtual) Type() pb.SmartBlockType {
+	return v.sbType
 }
 
 func (v *virtual) ReadVersion() (*core.SmartBlockVersion, error) {

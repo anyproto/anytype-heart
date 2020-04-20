@@ -1,10 +1,13 @@
 package basic
 
-import "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+)
 
 type IHistory interface {
-	Undo() (err error)
-	Redo() (err error)
+	Undo(*state.Context) (err error)
+	Redo(*state.Context) (err error)
 }
 
 func NewHistory(sb smartblock.SmartBlock) IHistory {
@@ -15,13 +18,13 @@ type history struct {
 	smartblock.SmartBlock
 }
 
-func (h *history) Undo() (err error) {
+func (h *history) Undo(ctx *state.Context) (err error) {
 	action, err := h.History().Previous()
 	if err != nil {
 		return
 	}
 
-	s := h.NewState()
+	s := h.NewStateCtx(ctx)
 
 	for _, b := range action.Add {
 		s.Remove(b.Model().Id)
@@ -36,13 +39,13 @@ func (h *history) Undo() (err error) {
 	return h.Apply(s, smartblock.NoHistory)
 }
 
-func (h *history) Redo() (err error) {
+func (h *history) Redo(ctx *state.Context) (err error) {
 	action, err := h.History().Next()
 	if err != nil {
 		return
 	}
 
-	s := h.NewState()
+	s := h.NewStateCtx(ctx)
 
 	for _, b := range action.Add {
 		s.Set(b.Copy())

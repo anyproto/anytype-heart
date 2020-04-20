@@ -3,23 +3,18 @@ package editor
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestArchive_Init(t *testing.T) {
-	a := NewArchive(newCtrl())
-	a.SmartBlock = smarttest.New("root")
-	require.NoError(t, a.Init(nil))
-	assert.Len(t, a.Blocks(), 1)
-}
 
 func TestArchive_Archive(t *testing.T) {
 	t.Run("archive", func(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(c)
-		a.SmartBlock = smarttest.New("root")
+		a.SmartBlock = smarttest.New("root").AddBlock(simple.New(&model.Block{Id: "root"}))
 		require.NoError(t, a.Init(nil))
 
 		require.NoError(t, a.Archive("1"))
@@ -36,7 +31,7 @@ func TestArchive_Archive(t *testing.T) {
 	t.Run("archive archived", func(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(c)
-		a.SmartBlock = smarttest.New("root")
+		a.SmartBlock = smarttest.New("root").AddBlock(simple.New(&model.Block{Id: "root"}))
 		require.NoError(t, a.Init(nil))
 
 		require.NoError(t, a.Archive("1"))
@@ -52,7 +47,7 @@ func TestArchive_UnArchive(t *testing.T) {
 	t.Run("unarchive", func(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(c)
-		a.SmartBlock = smarttest.New("root")
+		a.SmartBlock = smarttest.New("root").AddBlock(simple.New(&model.Block{Id: "root"}))
 		require.NoError(t, a.Init(nil))
 
 		require.NoError(t, a.Archive("1"))
@@ -68,7 +63,7 @@ func TestArchive_UnArchive(t *testing.T) {
 	t.Run("unarchived", func(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(c)
-		a.SmartBlock = smarttest.New("root")
+		a.SmartBlock = smarttest.New("root").AddBlock(simple.New(&model.Block{Id: "root"}))
 		require.NoError(t, a.Init(nil))
 
 		require.NoError(t, a.Archive("1"))

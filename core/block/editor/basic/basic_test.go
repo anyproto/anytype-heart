@@ -19,7 +19,7 @@ func TestBasic_Create(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 	b := NewBasic(sb)
-	id, err := b.Create(pb.RpcBlockCreateRequest{
+	id, err := b.Create(nil, pb.RpcBlockCreateRequest{
 		Block: &model.Block{},
 	})
 	require.NoError(t, err)
@@ -34,7 +34,7 @@ func TestBasic_Duplicate(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "3"}))
 
 	b := NewBasic(sb)
-	newIds, err := b.Duplicate(pb.RpcBlockListDuplicateRequest{
+	newIds, err := b.Duplicate(nil, pb.RpcBlockListDuplicateRequest{
 		BlockIds: []string{"2"},
 	})
 	require.NoError(t, err)
@@ -52,11 +52,11 @@ func TestBasic_Unlink(t *testing.T) {
 
 	b := NewBasic(sb)
 
-	err := b.Unlink("2")
+	err := b.Unlink(nil, "2")
 	require.NoError(t, err)
 	assert.Nil(t, sb.NewState().Pick("2"))
 
-	assert.Equal(t, smartblock.ErrSimpleBlockNotFound, b.Unlink("2"))
+	assert.Equal(t, smartblock.ErrSimpleBlockNotFound, b.Unlink(nil, "2"))
 }
 
 func TestBasic_Move(t *testing.T) {
@@ -68,7 +68,7 @@ func TestBasic_Move(t *testing.T) {
 
 	b := NewBasic(sb)
 
-	err := b.Move(pb.RpcBlockListMoveRequest{
+	err := b.Move(nil, pb.RpcBlockListMoveRequest{
 		BlockIds:     []string{"3"},
 		DropTargetId: "4",
 		Position:     model.Block_Inner,
@@ -83,7 +83,7 @@ func TestBasic_Replace(t *testing.T) {
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
 	b := NewBasic(sb)
-	newId, err := b.Replace("2", &model.Block{})
+	newId, err := b.Replace(nil, "2", &model.Block{})
 	require.NoError(t, err)
 	require.NotEmpty(t, newId)
 }
@@ -99,7 +99,7 @@ func TestBasic_SetFields(t *testing.T) {
 			"x": pbtypes.String("x"),
 		},
 	}
-	err := b.SetFields(&pb.RpcBlockListSetFieldsRequestBlockField{
+	err := b.SetFields(nil, &pb.RpcBlockListSetFieldsRequestBlockField{
 		BlockId: "2",
 		Fields:  fields,
 	})
@@ -113,7 +113,7 @@ func TestBasic_Update(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "2"}))
 	b := NewBasic(sb)
 
-	err := b.Update(func(b simple.Block) error {
+	err := b.Update(nil, func(b simple.Block) error {
 		b.Model().BackgroundColor = "test"
 		return nil
 	}, "2")
@@ -127,7 +127,7 @@ func TestBasic_SetDivStyle(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}))
 	b := NewBasic(sb)
 
-	err := b.SetDivStyle(model.BlockContentDiv_Dots, "2")
+	err := b.SetDivStyle(nil, model.BlockContentDiv_Dots, "2")
 	require.NoError(t, err)
 	r := sb.NewState()
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)

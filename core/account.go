@@ -16,8 +16,10 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const cafeUrl = "https://cafe1.anytype.io"
@@ -160,12 +162,12 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	anytype, err := core.New(mw.rootPath, account.Address())
+	anytypeService, err := core.New(mw.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	mw.Anytype = anytype
+	mw.Anytype = anytypeService
 	newAcc := &model.Account{Id: account.Address()}
 
 	err = mw.start()
@@ -178,31 +180,46 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	//err = mw.AccountSetNameAndAvatar(req.Name, req.GetAvatarLocalPath(), req.GetAvatarColor())
-	//if err != nil {
-	//	return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
-	//}
 	newAcc.Name = req.Name
-	/*if req.GetAvatarLocalPath() != "" {
-		_, err := mw.AccountSetAvatar(req.GetAvatarLocalPath())
-		if err != nil {
-			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
-		}
 
-		hash, err := mw.Textile.Avatar()
+	bs := block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	var details []*pb.RpcBlockSetDetailsDetail
+	details = append(details, &pb.RpcBlockSetDetailsDetail{
+		Key:   "name",
+		Value: pbtypes.String(req.Name),
+	})
+
+	if req.GetAvatarLocalPath() != "" {
+		hash, err := bs.UploadFile(pb.RpcUploadFileRequest{
+			LocalPath:         req.GetAvatarLocalPath(),
+			Type:              model.BlockContentFile_Image,
+			DisableEncryption: true,
+		})
 		if err != nil {
-			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
+			log.Warnf("can't add avatar: %v", err)
+		} else {
+			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
+			details = append(details, &pb.RpcBlockSetDetailsDetail{
+				Key:   "iconUser",
+				Value: pbtypes.String(hash),
+			})
 		}
-		newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
 	} else if req.GetAvatarColor() != "" {
-		err := mw.AccountSetAvatarColor(req.GetAvatarColor())
-		if err != nil {
-			return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR, err)
-		}
-	}*/
+		details = append(details, &pb.RpcBlockSetDetailsDetail{
+			Key:   "iconUser",
+			Value: pbtypes.String(req.GetAvatarColor()),
+		})
+	}
 
+	err = bs.SetDetails(pb.RpcBlockSetDetailsRequest{
+		ContextId: mw.Anytype.PredefinedBlocks().Profile,
+		Details:   details,
+	})
+	if err != nil {
+		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+	}
 	mw.localAccounts = append(mw.localAccounts, newAcc)
-	mw.setBlockService(block.NewService(newAcc.Id, mw.Anytype, mw.linkPreview, mw.SendEvent))
+	mw.setBlockService(bs)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 

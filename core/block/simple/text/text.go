@@ -6,12 +6,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
 )
 
 var (
@@ -43,7 +43,8 @@ type Block interface {
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
-	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (caretPosition int32, err error)
+	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedBlock *model.Block) (caretPosition int32, err error)
+	RangeCut(from int32, to int32) (cutBlock *model.Block, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
@@ -72,7 +73,7 @@ func toTextContent(content model.IsBlockContent) (textContent *model.BlockConten
 }
 
 func (t *Text) Copy() simple.Block {
-	return NewText(deepcopy.Copy(t.Model()).(*model.Block))
+	return NewText(pbtypes.CopyBlock(t.Model()))
 }
 
 func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
@@ -187,8 +188,10 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
-func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedText *model.BlockContentText) (caretPosition int32, err error) {
+func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedBlock *model.Block) (caretPosition int32, err error) {
 	caretPosition = -1
+	copiedText := copiedBlock.GetText()
+
 	if copyFrom < 0 || int(copyFrom) > utf8.RuneCountInString(copiedText.Text) {
 		return caretPosition, ErrOutOfRange
 	}
@@ -207,6 +210,12 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	}
 	if rangeFrom > rangeTo {
 		return caretPosition, ErrOutOfRange
+	}
+
+	if len(t.content.Text) == 0 || (rangeFrom == 0 && rangeTo == int32(len(t.content.Text))) {
+		t.content.Style = copiedText.Style
+		t.content.Color = copiedText.Color
+		t.BackgroundColor = copiedBlock.BackgroundColor
 	}
 
 	// 1. cut marks from 0 to TO
@@ -231,6 +240,39 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 
 	caretPosition = rangeFrom + (copyTo - copyFrom)
 	return caretPosition, nil
+}
+
+func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, err error) {
+	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
+		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
+		return nil, ErrOutOfRange
+	}
+	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
+		return nil, ErrOutOfRange
+	}
+	if from > to {
+		return nil, ErrOutOfRange
+	}
+
+	runesFirst := []rune(t.content.Text)[:from]
+	runesMiddle := []rune(t.content.Text)[from:to]
+	runesLast := []rune(t.content.Text)[to:]
+
+	// make a copy of the block
+	cutBlock = t.Copy().Model()
+	// set text, marks to the cutBlock
+
+	t.content.Text = string(runesFirst) + string(runesLast)
+	t.content.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
+
+	// 1. cut marks from 0 to TO
+	cutBlock.GetText().Marks.Marks, _ = t.splitMarks(t.content.Marks.Marks, &model.Range{From: to, To: to}, 0)
+	// 2. cut marks from FROM to TO
+	_, cutBlock.GetText().Marks.Marks = t.splitMarks(t.content.Marks.Marks, &model.Range{From: from, To: from}, 0)
+
+	cutBlock.GetText().Text = string(runesMiddle)
+
+	return cutBlock, nil
 }
 
 func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err error) {

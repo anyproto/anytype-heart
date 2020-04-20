@@ -17,8 +17,8 @@ func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBo
 }
 
 type Bookmark interface {
-	Fetch(id string, url string) (err error)
-	CreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
+	Fetch(ctx *state.Context, id string, url string) (err error)
+	CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(id string, apply func(b bookmark.Block) error) (err error)
 }
 
@@ -32,8 +32,8 @@ type sbookmark struct {
 	ctrl DoBookmark
 }
 
-func (b *sbookmark) Fetch(id string, url string) (err error) {
-	s := b.NewState()
+func (b *sbookmark) Fetch(ctx *state.Context, id string, url string) (err error) {
+	s := b.NewStateCtx(ctx)
 	if err = b.fetch(s, id, url); err != nil {
 		return
 	}
@@ -60,8 +60,8 @@ func (b *sbookmark) fetch(s *state.State, id, url string) (err error) {
 	return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 }
 
-func (b *sbookmark) CreateAndFetch(req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
-	s := b.NewState()
+func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
+	s := b.NewStateCtx(ctx)
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfBookmark{
 			Bookmark: &model.BlockContentBookmark{

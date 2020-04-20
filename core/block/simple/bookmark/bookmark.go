@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func init() {
@@ -74,7 +75,7 @@ func (f *Bookmark) Fetch(params FetchParams) (err error) {
 }
 
 func (f *Bookmark) Copy() simple.Block {
-	copy := deepcopy.Copy(f.Model()).(*model.Block)
+	copy := pbtypes.CopyBlock(f.Model())
 	return &Bookmark{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetBookmark(),
@@ -83,7 +84,7 @@ func (f *Bookmark) Copy() simple.Block {
 
 func (f *Bookmark) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	bookmark, ok := b.(*Bookmark)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = f.Base.Diff(bookmark); err != nil {
@@ -197,7 +198,7 @@ func loadImage(stor anytype.Service, url string) (hash string, err error) {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	im, err := stor.ImageAddWithReader(context.TODO(), resp.Body, filepath.Base(url))
+	im, err := stor.ImageAdd(context.TODO(), files.WithReader(resp.Body), files.WithName(filepath.Base(url)))
 	if err != nil {
 		return
 	}

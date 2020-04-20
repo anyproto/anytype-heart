@@ -3,6 +3,7 @@ package smarttest
 import (
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -11,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 )
 
@@ -33,11 +35,20 @@ type SmartTest struct {
 	anytype *testMock.MockService
 	id      string
 	hist    history.History
+	meta    *core.SmartBlockMeta
 	sync.Mutex
 	state.Doc
 }
 
 func (st *SmartTest) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	if st.meta == nil {
+		st.meta = &core.SmartBlockMeta{Details: &types.Struct{
+			Fields: make(map[string]*types.Value),
+		}}
+	}
+	for _, d := range details {
+		st.meta.Details.Fields[d.Key] = d.Value
+	}
 	return
 }
 
@@ -49,8 +60,16 @@ func (st *SmartTest) Id() string {
 	return st.id
 }
 
-func (st *SmartTest) Show() (err error) {
+func (st *SmartTest) Type() pb.SmartBlockType {
+	return pb.SmartBlockType_Page
+}
+
+func (st *SmartTest) Show(*state.Context) (err error) {
 	return
+}
+
+func (st *SmartTest) Meta() *core.SmartBlockMeta {
+	return st.meta
 }
 
 func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {

@@ -3,6 +3,7 @@ package anytype;
 option go_package = "pb";
 
 import "vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto";
+import "pb/protos/events.proto";
 import "google/protobuf/struct.proto";
 
 /*
@@ -24,7 +25,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-
+                ResponseEvent event = 2;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -101,6 +102,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -128,6 +130,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string linkId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -157,6 +160,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 repeated string blockIds = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -183,6 +187,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -206,6 +211,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -231,6 +237,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -254,6 +261,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -280,6 +288,7 @@ message Rpc {
                 }
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -304,6 +313,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -337,6 +347,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -363,6 +374,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -387,6 +399,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -444,6 +457,7 @@ message Rpc {
                 Error error = 1;
                 repeated string blockIds = 2;
                 int32 caretPosition = 3;
+                ResponseEvent event = 4;
 
                 message Error {
                     Code code = 1;
@@ -463,6 +477,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 repeated anytype.model.Block blocks = 2;
+                anytype.model.Range selectedTextRange = 3;
             }
 
             message Response {
@@ -470,6 +485,7 @@ message Rpc {
                 string textSlot = 2;
                 string htmlSlot = 3;
                 repeated anytype.model.Block anySlot = 4;
+                ResponseEvent event = 5;
 
                 message Error {
                     Code code = 1;
@@ -494,6 +510,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string path = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -519,6 +536,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -542,6 +560,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -567,6 +586,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -615,6 +635,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -691,6 +712,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -716,6 +738,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -740,6 +763,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -766,6 +790,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -892,6 +917,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -920,6 +946,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -945,6 +972,7 @@ message Rpc {
                 message Response {
                     Error error = 1;
                     string blockId = 2;
+                    ResponseEvent event = 3;
 
                     message Error {
                         Code code = 1;
@@ -974,6 +1002,7 @@ message Rpc {
                 message Response {
                     Error error = 1;
                     string blockId = 2;
+                    ResponseEvent event = 3;
 
                     message Error {
                         Code code = 1;
@@ -1002,6 +1031,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -1025,6 +1055,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1048,6 +1079,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1089,6 +1121,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1112,6 +1145,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -1135,6 +1169,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1176,6 +1211,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -1203,6 +1239,7 @@ message Rpc {
                 Error error = 1;
                 string blockId = 2;
                 string targetId = 3;
+                ResponseEvent event = 4;
 
                 message Error {
                     Code code = 1;
@@ -1229,6 +1266,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1681,7 +1719,8 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string homeBlockId = 2; // home dashboard block id
-                string archiveBlockId = 3; // home dashboard block id
+                string archiveBlockId = 3; // archive block id
+                string profileBlockId = 4; // profile block id
                 string gatewayUrl = 101; // gateway url for fetching static files
                 message Error {
                     Code code = 1;
@@ -1694,7 +1733,6 @@ message Rpc {
                         NODE_NOT_STARTED = 101;
                     }
                 }
-
             }
         }
     }
@@ -1773,6 +1811,7 @@ message Rpc {
             string url = 1;
             string localPath = 2;
             anytype.model.Block.Content.File.Type type = 3;
+            bool disableEncryption = 4;
         }
 
         message Response {

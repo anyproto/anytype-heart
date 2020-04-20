@@ -375,6 +375,7 @@
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
+    - [Event.Account.Details](#anytype.Event.Account.Details)
     - [Event.Account.Show](#anytype.Event.Account.Show)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
@@ -431,9 +432,11 @@
     - [Model](#anytype.Model)
     - [Model.Process](#anytype.Model.Process)
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
+    - [ResponseEvent](#anytype.ResponseEvent)
   
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
+    - [SmartBlockType](#anytype.SmartBlockType)
   
   
   
@@ -444,14 +447,12 @@
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
-    - [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard)
-    - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
     - [Block.Content.Link](#anytype.model.Block.Content.Link)
-    - [Block.Content.Page](#anytype.model.Block.Content.Page)
+    - [Block.Content.Smartblock](#anytype.model.Block.Content.Smartblock)
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
@@ -459,21 +460,17 @@
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
-    - [SmartBlock](#anytype.model.SmartBlock)
   
     - [Block.Align](#anytype.model.Block.Align)
-    - [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
     - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
-    - [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
-    - [SmartBlock.Type](#anytype.model.SmartBlock.Type)
   
   
   
@@ -896,6 +893,7 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Bookmark.CreateAndFetch.Response.Error](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -954,6 +952,7 @@ Namespace, that agregates subtopics and actions, that relates to blocks.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Bookmark.Fetch.Response.Error](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1142,6 +1141,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Create.Response.Error](#anytype.Rpc.Block.Create.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1203,6 +1203,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | error | [Rpc.Block.CreatePage.Response.Error](#anytype.Rpc.Block.CreatePage.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
 | targetId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1245,6 +1246,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype.model.Block) | repeated |  |
+| selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 
 
 
@@ -1263,6 +1265,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype.model.Block) | repeated |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1320,6 +1323,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Download.Response.Error](#anytype.Rpc.Block.Download.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1378,6 +1382,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Export.Response.Error](#anytype.Rpc.Block.Export.Response.Error) |  |  |
 | path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1450,6 +1455,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.File.CreateAndUpload.Response.Error](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1518,6 +1524,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Get.Marks.Response.Error](#anytype.Rpc.Block.Get.Marks.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1576,6 +1583,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Merge.Response.Error](#anytype.Rpc.Block.Merge.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1647,6 +1655,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Open.Response.Error](#anytype.Rpc.Block.Open.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1704,6 +1713,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.OpenBreadcrumbs.Response.Error](#anytype.Rpc.Block.OpenBreadcrumbs.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1769,6 +1779,7 @@ Image/Video/File blocks then:
 | error | [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | caretPosition | [int32](#int32) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1825,6 +1836,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Redo.Response.Error](#anytype.Rpc.Block.Redo.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -1884,6 +1896,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Replace.Response.Error](#anytype.Rpc.Block.Replace.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2025,6 +2038,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Set.Fields.Response.Error](#anytype.Rpc.Block.Set.Fields.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2093,6 +2107,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Set.File.Name.Response.Error](#anytype.Rpc.Block.Set.File.Name.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2287,6 +2302,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Set.Link.TargetBlockId.Response.Error](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2413,6 +2429,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Set.Restrictions.Response.Error](#anytype.Rpc.Block.Set.Restrictions.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2481,6 +2498,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Set.Text.Checked.Response.Error](#anytype.Rpc.Block.Set.Text.Checked.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2539,6 +2557,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Set.Text.Color.Response.Error](#anytype.Rpc.Block.Set.Text.Color.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2597,6 +2616,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Set.Text.Style.Response.Error](#anytype.Rpc.Block.Set.Text.Style.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2839,6 +2859,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.SetBreadcrumbs.Response.Error](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2899,6 +2920,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Split.Response.Error](#anytype.Rpc.Block.Split.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -2955,6 +2977,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Undo.Response.Error](#anytype.Rpc.Block.Undo.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3012,6 +3035,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3071,6 +3095,7 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Upload.Response.Error](#anytype.Rpc.Block.Upload.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3199,6 +3224,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Duplicate.Response.Error](#anytype.Rpc.BlockList.Duplicate.Response.Error) |  |  |
 | blockIds | [string](#string) | repeated |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3259,6 +3285,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Move.Response.Error](#anytype.Rpc.BlockList.Move.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3320,6 +3347,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.MoveToNewPage.Response.Error](#anytype.Rpc.BlockList.MoveToNewPage.Response.Error) |  |  |
 | linkId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3388,6 +3416,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Set.Align.Response.Error](#anytype.Rpc.BlockList.Set.Align.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3446,6 +3475,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Set.BackgroundColor.Response.Error](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3514,6 +3544,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Set.Div.Style.Response.Error](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3587,6 +3618,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3655,6 +3687,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Set.Text.Color.Response.Error](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3713,6 +3746,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockList.Set.Text.Style.Response.Error](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -3775,7 +3809,8 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error) |  |  |
 | homeBlockId | [string](#string) |  | home dashboard block id |
-| archiveBlockId | [string](#string) |  | home dashboard block id |
+| archiveBlockId | [string](#string) |  | archive block id |
+| profileBlockId | [string](#string) |  | profile block id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
@@ -3904,6 +3939,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ExternalDrop.Files.Response.Error](#anytype.Rpc.ExternalDrop.Files.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 
@@ -4462,6 +4498,7 @@ Usage: send request with topic (Level) and description (message) from client to 
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+| disableEncryption | [bool](#bool) |  |  |
 
 
 
@@ -5633,6 +5670,22 @@ Event – type of message, that could be sent from a middleware to the correspon
 
 
 
+<a name="anytype.Event.Account.Details"></a>
+
+### Event.Account.Details
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| profileId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Account.Show"></a>
 
 ### Event.Account.Show
@@ -6276,6 +6329,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | details for current and dependent smart blocks |
+| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 
 
 
@@ -6291,6 +6345,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
+| accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
@@ -6529,6 +6584,22 @@ Precondition: user A and user B opened the same block
 
 
 
+
+<a name="anytype.ResponseEvent"></a>
+
+### ResponseEvent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messages | [Event.Message](#anytype.Event.Message) | repeated |  |
+| contextId | [string](#string) |  |  |
+
+
+
+
+
  
 
 
@@ -6555,6 +6626,21 @@ Precondition: user A and user B opened the same block
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | DropFiles | 0 |  |
+
+
+
+<a name="anytype.SmartBlockType"></a>
+
+### SmartBlockType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Page | 0 |  |
+| Home | 1 |  |
+| ProfilePage | 2 |  |
+| Archive | 3 |  |
+| Breadcrumbs | 4 |  |
 
 
  
@@ -6619,9 +6705,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | childrenIds | [string](#string) | repeated |  |
 | backgroundColor | [string](#string) |  |  |
 | align | [Block.Align](#anytype.model.Block.Align) |  |  |
-| dashboard | [Block.Content.Dashboard](#anytype.model.Block.Content.Dashboard) |  |  |
-| page | [Block.Content.Page](#anytype.model.Block.Content.Page) |  |  |
-| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
+| smartblock | [Block.Content.Smartblock](#anytype.model.Block.Content.Smartblock) |  |  |
 | text | [Block.Content.Text](#anytype.model.Block.Content.Text) |  |  |
 | file | [Block.Content.File](#anytype.model.Block.Content.File) |  |  |
 | layout | [Block.Content.Layout](#anytype.model.Block.Content.Layout) |  |  |
@@ -6659,32 +6743,6 @@ Bookmark is to keep a web-link and to preview a content.
 | imageHash | [string](#string) |  |  |
 | faviconHash | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dashboard"></a>
-
-### Block.Content.Dashboard
-Block type to organize pages on the main screen (main purpose)
-It also can be mounted on a page.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Block.Content.Dashboard.Style](#anytype.model.Block.Content.Dashboard.Style) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dataview"></a>
-
-### Block.Content.Dataview
-
 
 
 
@@ -6775,15 +6833,10 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype.model.Block.Content.Page"></a>
+<a name="anytype.model.Block.Content.Smartblock"></a>
 
-### Block.Content.Page
+### Block.Content.Smartblock
 
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| style | [Block.Content.Page.Style](#anytype.model.Block.Content.Page.Style) |  |  |
 
 
 
@@ -6911,22 +6964,6 @@ General purpose structure, uses in Mark.
 
 
 
-
-<a name="anytype.model.SmartBlock"></a>
-
-### SmartBlock
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [SmartBlock.Type](#anytype.model.SmartBlock.Type) |  |  |
-
-
-
-
-
  
 
 
@@ -6940,18 +6977,6 @@ General purpose structure, uses in Mark.
 | AlignLeft | 0 |  |
 | AlignCenter | 1 |  |
 | AlignRight | 2 |  |
-
-
-
-<a name="anytype.model.Block.Content.Dashboard.Style"></a>
-
-### Block.Content.Dashboard.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| MainScreen | 0 |  |
-| Archive | 1 |  |
 
 
 
@@ -7019,21 +7044,6 @@ General purpose structure, uses in Mark.
 | Dataview | 1 |  |
 | Dashboard | 2 |  |
 | Archive | 3 | ... |
-
-
-
-<a name="anytype.model.Block.Content.Page.Style"></a>
-
-### Block.Content.Page.Style
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Empty | 0 | Ordinary page, without additional fields |
-| Task | 1 | Page with a task fields |
-| Set | 2 | Page, that organize a set of blocks by a specific criterio |
-| Profile | 3 |  |
-| Breadcrumbs | 101 |  |
 
 
 
@@ -7105,21 +7115,6 @@ General purpose structure, uses in Mark.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
-
-
-
-<a name="anytype.model.SmartBlock.Type"></a>
-
-### SmartBlock.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Dashboard | 0 |  |
-| Page | 1 |  |
-| Archive | 2 |  |
-| Breadcrumbs | 3 |  |
-| Dataview | 4 |  |
 
 
  
