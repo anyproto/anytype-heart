@@ -20,10 +20,8 @@ github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2 h1:swGeCLPiU
 github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2/go.mod h1:Juc2PrI3wtNfUwptSvAIeNx+HrETwHQs6nf+TkOJlOA=
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/anytypeio/go-anytype-cafe/api/pb v0.0.0-20200410151455-9d90495496d9 h1:OunF9rH3kU8rzI67HpeV/lHj9/qVmet1ioTtYiMyaqQ=
-github.com/anytypeio/go-anytype-cafe/api/pb v0.0.0-20200410151455-9d90495496d9/go.mod h1:ilx8d1v0hD1m4LX1Iww0OSDcyoKrof6ksqX7rPClM8Q=
-github.com/anytypeio/go-anytype-library v0.5.1-0.20200417162736-034785a21e59 h1:gsQklCG5mJSzesQfnlOorbu/o7RFzMTn0rOfyYKJOtE=
-github.com/anytypeio/go-anytype-library v0.5.1-0.20200417162736-034785a21e59/go.mod h1:1FHLy/xWSF+PVLLeCQnFpNToih4BqWZRqrH3c/ogixs=
+github.com/anytypeio/go-anytype-library v0.5.1-0.20200421135832-38471dacca0e h1:dmfFQHsz19HADlzlIJjctFD7L6MIdI2e3p/IYlN1llY=
+github.com/anytypeio/go-anytype-library v0.5.1-0.20200421135832-38471dacca0e/go.mod h1:Yxh39ekkYtN5aeBkfDc1DGBxiO5NZG8YwNClMP2Q/0c=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW52i65PtLFBr5Q5k6RskIY8L70pgnBcnWo=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
@@ -873,8 +871,8 @@ github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
-github.com/textileio/go-threads v0.1.14-rc1.0.20200414213954-1ea8c060937b h1:IFitclBOI4HGn1kfYfE4SoSpplpXgrVXzzzf5ZcfjQM=
-github.com/textileio/go-threads v0.1.14-rc1.0.20200414213954-1ea8c060937b/go.mod h1:p6S4FI2q3YoY+TMNv5KirEU6kPFU1OiBf6BvxKLUkh8=
+github.com/textileio/go-threads v0.1.15-0.20200418192634-d4a95b9c1c0f h1:A2lF7oT7zZIBd49cn1pg2Uv2lbEL/yAILYR+o0a44kY=
+github.com/textileio/go-threads v0.1.15-0.20200418192634-d4a95b9c1c0f/go.mod h1:p6S4FI2q3YoY+TMNv5KirEU6kPFU1OiBf6BvxKLUkh8=
 github.com/tidwall/gjson v1.3.5 h1:2oW9FBNu8qt9jy5URgrzsVx/T/KSn3qn/smJQ0crlDQ=
 github.com/tidwall/gjson v1.3.5/go.mod h1:P256ACg0Mn+j1RXIDXoss50DeIABTYK1PULOJHhxOls=
 github.com/tidwall/match v1.0.1 h1:PnKP62LPNxHKTwvHHZZzdOAOCtsJTjo6dZLCwpKm5xc=

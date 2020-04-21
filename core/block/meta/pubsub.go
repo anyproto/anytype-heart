@@ -284,7 +284,11 @@ func (c *collector) setMeta(d Meta) {
 
 func (c *collector) fetchInitialMeta() (sb core.SmartBlock, state vclock.VClock, err error) {
 	defer func() {
-		select {
+		if err == errEmpty {
+			return
+		}
+
+ 		select {
 		case <-c.ready:
 			return
 		default:

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
@@ -200,13 +201,13 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
 			details = append(details, &pb.RpcBlockSetDetailsDetail{
-				Key:   "iconUser",
+				Key:   "iconHash",
 				Value: pbtypes.String(hash),
 			})
 		}
 	} else if req.GetAvatarColor() != "" {
 		details = append(details, &pb.RpcBlockSetDetailsDetail{
-			Key:   "iconUser",
+			Key:   "iconColor",
 			Value: pbtypes.String(req.GetAvatarColor()),
 		})
 	}
@@ -233,9 +234,12 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return m
 	}
 
+	var sentAccountsMutex = sync.RWMutex{}
 	var sentAccounts = make(map[string]struct{})
 	sendAccountAddEvent := func(index int, account *model.Account) {
+		sentAccountsMutex.Lock()
 		sentAccounts[account.Id] = struct{}{}
+		sentAccountsMutex.Unlock()
 		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
 		if mw.SendEvent != nil {
 			mw.SendEvent(m)
@@ -259,11 +263,9 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		<-accountSearchFinished
 	}
 
-	var hasAccountLoaded = map[string]struct{}{}
 	for index := 0; index < len(mw.localAccounts); index++ {
 		// in case we returned to the account choose screen we can use cached accounts
 		sendAccountAddEvent(index, mw.localAccounts[index])
-		hasAccountLoaded[mw.localAccounts[index].Id] = struct{}{}
 		if shouldCancel {
 			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
@@ -275,36 +277,123 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	}
 
 	var accountsOnDisk []nonameAccountWithIndex
+	var firstAccounts []string
+	var firstAccountsIndexes = make(map[string]int, 10)
+
 	for i := 0; i <= 10; i++ {
 		account, err := core.WalletAccountAt(mw.mnemonic, i, "")
 		if err != nil {
 			break
 		}
+		address := account.Address()
+		firstAccounts = append(firstAccounts, address)
+		firstAccountsIndexes[address] = i
 
-		if _, alreadyLoaded := hasAccountLoaded[account.Address()]; alreadyLoaded {
-			continue
-		}
-
-		if _, err := os.Stat(filepath.Join(mw.rootPath, account.Address())); err == nil {
+		if _, err := os.Stat(filepath.Join(mw.rootPath, address)); err == nil {
 			accountsOnDisk = append(accountsOnDisk, nonameAccountWithIndex{
-				id:    account.Address(),
+				id:    address,
 				index: i,
 			})
 		}
 	}
 
-	accountSearchFinished <- struct{}{}
-	n := time.Now()
-	mw.localAccountCachedAt = &n
+	zeroAccount, err := core.WalletAccountAt(mw.mnemonic, 0, "")
+	if err != nil {
+		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+	}
 
-	// this is workaround when we working offline
-	for _, accountOnDisk := range accountsOnDisk {
-		// todo: load profile name from the details cache in badger
-		if _, exists := sentAccounts[accountOnDisk.id]; !exists {
-			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
+	if _, err := os.Stat(filepath.Join(mw.rootPath, zeroAccount.Address())); os.IsNotExist(err) {
+		seedRaw, err := zeroAccount.Raw()
+		if err != nil {
+			return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
+		}
+
+		err = core.WalletInitRepo(mw.rootPath, seedRaw)
+		if err != nil {
+			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 	}
-	// todo: reimplement after cafe2.0 will be ready
+
+	c, err := core.New(mw.rootPath, zeroAccount.Address())
+	if err != nil {
+		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+	}
+
+	mw.Anytype = c
+
+	err = mw.start()
+	if err != nil {
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	remoteRequestDone := make(chan struct{})
+	go func() {
+		// start only after 5sec timeout(or remote request ends)
+		// to make a priority for remote recovery
+		// cause we don't have a local profile cache yey
+		select {
+		case <-time.After(time.Second * 5):
+			break
+		case <-remoteRequestDone:
+			break
+		}
+		sentAccountsMutex.RLock()
+		// this is workaround when we working offline
+		for _, accountOnDisk := range accountsOnDisk {
+			// todo: load profile name from the details cache in badger
+			if _, exists := sentAccounts[accountOnDisk.id]; !exists {
+				sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
+			}
+		}
+		sentAccountsMutex.RUnlock()
+
+		accountSearchFinished <- struct{}{}
+	}()
+
+	profilesCh := make(chan core.Profile)
+	go func() {
+		for {
+			select {
+			case profile, ok := <-profilesCh:
+				if !ok {
+					return
+				}
+
+				log.Infof("remote recovery got %+v", profile)
+				var avatar *model.AccountAvatar
+				if profile.AvatarHash != "" {
+					avatar = &model.AccountAvatar{
+						Avatar: &model.AccountAvatarAvatarOfImage{
+							Image: &model.BlockContentFile{Hash: profile.AvatarHash},
+						},
+					}
+				} else if profile.AvatarColor != "" {
+					avatar = &model.AccountAvatar{
+						Avatar: &model.AccountAvatarAvatarOfColor{
+							Color: profile.AvatarColor,
+						},
+					}
+				}
+
+				sendAccountAddEvent(firstAccountsIndexes[profile.AccountAddr], &model.Account{
+					Id:     profile.AccountAddr,
+					Name:   profile.Name,
+					Avatar: avatar,
+				})
+			}
+		}
+	}()
+
+	err = c.FindProfilesByAccountIDs(ctx, firstAccounts, profilesCh)
+	if err != nil {
+		log.Errorf("remote profiles request failed: %s", err.Error())
+	}
+	remoteRequestDone <- struct{}{}
+
+	n := time.Now()
+	mw.localAccountCachedAt = &n
 
 	if len(accountsOnDisk) == 0 && len(mw.localAccounts) == 0 {
 		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("remote account recovery not implemeted yet"))
