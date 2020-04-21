@@ -201,13 +201,13 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
 			details = append(details, &pb.RpcBlockSetDetailsDetail{
-				Key:   "iconHash",
+				Key:   "avatarHash",
 				Value: pbtypes.String(hash),
 			})
 		}
 	} else if req.GetAvatarColor() != "" {
 		details = append(details, &pb.RpcBlockSetDetailsDetail{
-			Key:   "iconColor",
+			Key:   "avatarColor",
 			Value: pbtypes.String(req.GetAvatarColor()),
 		})
 	}
