@@ -41,7 +41,7 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 const (
 	DefaultHostAddr              = "/ip4/0.0.0.0/tcp/4006"
 	DefaultCafeNodeP2P           = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
-	DefaultCafeNodeGRPC          = "cafe1.anytype.io:43006"
+	DefaultCafeNodeGRPC          = "cafe1.anytype.io:3006"
 	DefaultWebGatewayBaseUrl     = "https://anytype.page"
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
 )

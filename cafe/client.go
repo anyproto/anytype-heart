@@ -154,7 +154,7 @@ func (c *Online) ProfileFind(ctx context.Context, in *pb.ProfileFindRequest, opt
 }
 
 func NewClient(url string, device wallet.Keypair, account wallet.Keypair) (Client, error) {
-	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>") /*grpc.WithInsecure(),*/, grpc.WithPerRPCCredentials(thread.Credentials{}))
+	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>"), grpc.WithInsecure(), grpc.WithPerRPCCredentials(thread.Credentials{}))
 	if err != nil {
 		return nil, err
 	}
