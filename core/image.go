@@ -20,7 +20,7 @@ type Image interface {
 type image struct {
 	hash            string // directory hash
 	variantsByWidth map[int]*storage.FileInfo
-	node            *files.Service
+	service         *files.Service
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
@@ -29,7 +29,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.node.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
+	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	return &file{
 		hash: fileIndex.Hash,
 		info: fileIndex,
-		node: i.node,
+		node: i.service,
 	}, nil
 }
 
@@ -47,7 +47,7 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 	}
 
 	sizeName := "large"
-	fileIndex, err := i.node.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
+	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 	return &file{
 		hash: fileIndex.Hash,
 		info: fileIndex,
-		node: i.node,
+		node: i.service,
 	}, nil
 }
 
@@ -91,13 +91,13 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 		return &file{
 			hash: minWidthMatchedImage.Hash,
 			info: minWidthMatchedImage,
-			node: i.node,
+			node: i.service,
 		}, nil
 	} else if maxWidthImage != nil {
 		return &file{
 			hash: maxWidthImage.Hash,
 			info: maxWidthImage,
-			node: i.node,
+			node: i.service,
 		}, nil
 	}
 

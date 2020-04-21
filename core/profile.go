@@ -1,57 +1,64 @@
 package core
 
 import (
-	"fmt"
-	"regexp"
+	"context"
+	"io"
 
-	"github.com/gogo/protobuf/types"
-	mh "github.com/multiformats/go-multihash"
-
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/structs"
-	"github.com/anytypeio/go-anytype-library/vclock"
+	"github.com/anytypeio/go-anytype-library/cafe/pb"
+	"github.com/gogo/status"
+	"google.golang.org/grpc/codes"
 )
 
-func (a *Anytype) AccountSetNameAndAvatar(name string, avatarFilePath, color string) error {
-	block, err := a.GetBlock(a.predefinedBlockIds.Profile)
+type Profile struct {
+	AccountAddr string
+	Name        string
+	AvatarHash  string
+	AvatarColor string
+}
+
+func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error {
+	var errDeadlineExceeded = status.Error(codes.DeadlineExceeded, "deadline exceeded ")
+	select {
+	case <-a.onlineCh:
+	case <-ctx.Done():
+	}
+
+	s, err := a.cafe.ProfileFind(ctx, &pb.ProfileFindRequest{
+		AccountAddrs: AccountAddrs,
+	})
 	if err != nil {
 		return err
 	}
+	done := make(chan error)
 
-	if snapshot, _ := block.GetLastSnapshot(); snapshot == nil {
-		// snapshot not yet created
-		log.Debugf("add predefined profile block snapshot")
-		_, err = block.PushSnapshot(vclock.New(), &SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					"name":  structs.String(name),
-					"image": structs.String(avatarFilePath),
-					"color": structs.String(color),
-				},
-			},
-		}, []*model.Block{
-			// todo: add title and avatar blocks
-		})
+	go func() {
+		for {
+			resp, err := s.Recv()
+			if err != nil {
+				close(ch)
+				if err != io.EOF && err != errDeadlineExceeded {
+					done <- err
+					log.Errorf("failed to receive from cafe: %s", err.Error())
+				}
 
-		if err != nil {
-			return err
+				close(done)
+				return
+			}
+
+			ch <- Profile{
+				AccountAddr: resp.AccountAddr,
+				Name:        resp.Name,
+				AvatarHash:  resp.AvatarHash,
+				AvatarColor: resp.AvatarColor,
+			}
 		}
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return status.Error(codes.DeadlineExceeded, "timeouted")
 	}
 
-	return nil
 }
-
-var hexColorRegexp = regexp.MustCompile(`^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$`)
-var invalidHexColor = fmt.Errorf("HEX color has invalid format")
-
-func (a *Anytype) AccountSetAvatarColor(hex string) (err error) {
-	return fmt.Errorf("not implemented")
-}
-
-func (a *Anytype) AccountSetAvatar(localPath string) (hash mh.Multihash, err error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-/*func (a *Anytype) AccountRequestStoredContact(ctx context.Context, accountId string) (contact *tpb.Contact, err error) {
-	return nil, fmt.Errorf("not implemented")
-}*/

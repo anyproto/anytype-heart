@@ -39,7 +39,5 @@ func (m *Json) Mill(input []byte, name string) (*Result, error) {
 		return nil, err
 	}
 
-	log.Debugf("/json: %s", string(data))
-
 	return &Result{File: data}, nil
 }

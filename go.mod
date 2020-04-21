@@ -3,12 +3,12 @@ module github.com/anytypeio/go-anytype-library
 go 1.13
 
 require (
-	github.com/anytypeio/go-anytype-cafe/api/pb v0.0.0-20200410151455-9d90495496d9
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/disintegration/imaging v1.6.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/status v1.1.0
 	github.com/h2non/filetype v1.0.12
 	github.com/hsanjuan/ipfs-lite v1.1.6
 	github.com/ipfs/go-cid v0.0.5
@@ -36,7 +36,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/stretchr/testify v1.5.1
-	github.com/textileio/go-threads v0.1.14-rc1.0.20200414213954-1ea8c060937b
+	github.com/textileio/go-threads v0.1.15-0.20200418192634-d4a95b9c1c0f
 	github.com/tyler-smith/go-bip39 v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	google.golang.org/grpc v1.26.0

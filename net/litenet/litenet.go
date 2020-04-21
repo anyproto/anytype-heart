@@ -22,7 +22,8 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	ma "github.com/multiformats/go-multiaddr"
-	corenet "github.com/textileio/go-threads/core/net"
+	"github.com/textileio/go-threads/core/app"
+	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	"github.com/textileio/go-threads/net"
 	"google.golang.org/grpc"
@@ -54,6 +55,7 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 	}
 
 	ipfsLitePath := filepath.Join(repoPath, defaultIpfsLitePath)
+	fmt.Printf("creaing ipfsLitePath %s\n", ipfsLitePath)
 	if err := os.MkdirAll(ipfsLitePath, os.ModePerm); err != nil {
 		return nil, err
 	}
@@ -132,14 +134,15 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 	}
 
 	return &netBoostrapper{
-		cancel:    cancel,
-		Net:       api,
-		ipfs:      ipfsliteinterface.New(lite),
-		pstore:    pstore,
-		logstore:  logstore,
-		litestore: litestore,
-		host:      h,
-		dht:       d,
+		cancel:            cancel,
+		Net:               api,
+		ipfs:              ipfsliteinterface.New(lite),
+		pstore:            pstore,
+		logstore:          tstore,
+		logstoreDatastore: logstore,
+		litestore:         litestore,
+		host:              h,
+		dht:               d,
 	}, nil
 }
 
@@ -174,18 +177,24 @@ func WithNetGRPCOptions(opts ...grpc.ServerOption) NetOption {
 
 type netBoostrapper struct {
 	cancel context.CancelFunc
-	corenet.Net
-	ipfs      ipfs.IPFS
-	pstore    peerstore.Peerstore
-	logstore  datastore.Batching
-	litestore datastore.Batching
-	host      host.Host
-	dht       *dht.IpfsDHT
+	app.Net
+	ipfs              ipfs.IPFS
+	pstore            peerstore.Peerstore
+	logstoreDatastore datastore.Batching
+	litestore         datastore.Batching
+	logstore          logstore.Logstore
+
+	host host.Host
+	dht  *dht.IpfsDHT
 }
 
 var _ net2.NetBoostrapper = (*netBoostrapper)(nil)
 
 func (tsb *netBoostrapper) Datastore() datastore.Batching {
+	return tsb.logstoreDatastore
+}
+
+func (tsb *netBoostrapper) Logstore() logstore.Logstore {
 	return tsb.logstore
 }
 

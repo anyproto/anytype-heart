@@ -1,4 +1,4 @@
-package cafeclient
+package cafe
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-cafe/api/pb"
+	"github.com/anytypeio/go-anytype-library/cafe/pb"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/mr-tron/base58"
 	"github.com/textileio/go-threads/core/thread"
@@ -144,17 +144,17 @@ func (c *Online) FilePin(ctx context.Context, in *pb.FilePinRequest, opts ...grp
 	return c.client.FilePin(ctx, in, opts...)
 }
 
-func (c *Online) AccountFind(ctx context.Context, in *pb.AccountFindRequest, opts ...grpc.CallOption) (pb.API_AccountFindClient, error) {
+func (c *Online) ProfileFind(ctx context.Context, in *pb.ProfileFindRequest, opts ...grpc.CallOption) (pb.API_ProfileFindClient, error) {
 	ctx, err := c.withToken(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.client.AccountFind(ctx, in, opts...)
+	return c.client.ProfileFind(ctx, in, opts...)
 }
 
 func NewClient(url string, device wallet.Keypair, account wallet.Keypair) (Client, error) {
-	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>"), grpc.WithInsecure(), grpc.WithPerRPCCredentials(thread.Credentials{}))
+	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>") /*grpc.WithInsecure(),*/, grpc.WithPerRPCCredentials(thread.Credentials{}))
 	if err != nil {
 		return nil, err
 	}

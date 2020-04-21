@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/cafeclient"
+	"github.com/anytypeio/go-anytype-library/cafe"
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
@@ -22,6 +21,8 @@ import (
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/textileio/go-threads/broadcast"
+	"github.com/textileio/go-threads/db"
 	net2 "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
 )
@@ -37,11 +38,12 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 	keyFileDevice  = "device.key"
 )
 
-var (
-	CafeNodeP2P           = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
-	CafeNodeGRPC          = "134.122.78.144:3006"
-	WebGatewayHost        = "https://anytype.page"
-	WebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
+const (
+	DefaultHostAddr              = "/ip4/0.0.0.0/tcp/4006"
+	DefaultCafeNodeP2P           = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+	DefaultCafeNodeGRPC          = "cafe1.anytype.io:43006"
+	DefaultWebGatewayBaseUrl     = "https://anytype.page"
+	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
 )
 
 var BootstrapNodes = []string{
@@ -58,21 +60,28 @@ type PredefinedBlockIds struct {
 }
 
 type Anytype struct {
-	repoPath           string
 	t                  net.NetBoostrapper
-	cafe               cafeclient.Client
+	files              *files.Service
+	cafe               cafe.Client
 	mdns               discovery.Service
-	account            wallet.Keypair
-	device             wallet.Keypair
 	localStore         localstore.LocalStore
 	predefinedBlockIds PredefinedBlockIds
-	logLevels          map[string]string
-	lock               sync.Mutex
-	replicationWG      sync.WaitGroup
-	done               chan struct{}
-	online             bool
+	db                 *db.DB
+	threadsCollection  *db.Collection
 
-	files *files.Service
+	account                wallet.Keypair
+	device                 wallet.Keypair
+	logLevels              map[string]string
+	repoPath               string
+	cafeP2PAddr            ma.Multiaddr
+	cafeGatewayBaseUrl     string
+	cafeGatewaySnapshotUri string
+
+	smartBlockChanges *broadcast.Broadcaster
+	replicationWG     sync.WaitGroup
+	lock              sync.Mutex
+	shutdownCh        chan struct{} // closed when node shutdown finishes
+	onlineCh          chan struct{} // closed when became online
 }
 
 type Service interface {
@@ -96,6 +105,8 @@ type Service interface {
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)     // deprecated
 	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) // deprecated
+
+	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
 }
 
 func (a *Anytype) Account() string {
@@ -111,14 +122,15 @@ func (a *Anytype) IsStarted() bool {
 }
 
 func (a *Anytype) BecameOnline(ch chan<- error) {
-	// todo: rewrite with internal chan
 	for {
-		if a.online {
+		select {
+		case <-a.onlineCh:
 			ch <- nil
 			close(ch)
-			return
+		case <-a.shutdownCh:
+			ch <- fmt.Errorf("node was shutdown")
+			close(ch)
 		}
-		time.Sleep(time.Millisecond * 100)
 	}
 }
 
@@ -147,28 +159,77 @@ func init() {
 	logging.ApplyLevelsFromEnv()
 }
 
+func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
+	opts := ServiceOptions{}
+	opts.SetDefaults()
+
+	for _, opt := range options {
+		err := opt(&opts)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if opts.Device == nil {
+		return nil, fmt.Errorf("no device keypair provided")
+	}
+
+	a := &Anytype{
+		device:  opts.Device,
+		account: opts.Account,
+
+		repoPath:           opts.Repo,
+		cafeGatewayBaseUrl: opts.WebGatewayBaseUrl,
+		cafeP2PAddr:        opts.CafeP2PAddr,
+		replicationWG:      sync.WaitGroup{},
+		shutdownCh:         make(chan struct{}),
+		onlineCh:           make(chan struct{}),
+		smartBlockChanges:  broadcast.NewBroadcaster(0),
+	}
+
+	if opts.CafeGrpcHost != "" {
+		var err error
+		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, a.device, a.account)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get grpc client: %w", err)
+		}
+	}
+
+	if opts.NetBootstraper != nil {
+		a.t = opts.NetBootstraper
+	} else {
+		var err error
+		a.t, err = litenet.DefaultNetwork(
+			opts.Repo,
+			opts.Device,
+			[]byte(ipfsPrivateNetworkKey),
+			litenet.WithNetHostAddr(opts.HostAddr),
+			litenet.WithNetDebug(false))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	a.localStore = localstore.NewLocalStore(a.t.Datastore())
+	a.files = files.New(a.localStore.Files, a.t.GetIpfs())
+
+	return a, nil
+}
+
 func New(rootPath string, account string) (Service, error) {
 	repoPath := filepath.Join(rootPath, account)
-	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("not exists")
-	}
 
-	a := Anytype{
-		repoPath:      repoPath,
-		replicationWG: sync.WaitGroup{},
-	}
-
-	var err error
 	b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read account keyfile: %w", err)
 	}
-	a.account, err = wallet.UnmarshalBinary(b)
+
+	accountKp, err := wallet.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
 	}
-	if a.account.KeypairType() != wallet.KeypairTypeAccount {
-		return nil, fmt.Errorf("got %s key type instead of %s", a.account.KeypairType(), wallet.KeypairTypeAccount)
+	if accountKp.KeypairType() != wallet.KeypairTypeAccount {
+		return nil, fmt.Errorf("got %s key type instead of %s", accountKp.KeypairType(), wallet.KeypairTypeAccount)
 	}
 
 	b, err = ioutil.ReadFile(filepath.Join(repoPath, keyFileDevice))
@@ -176,20 +237,17 @@ func New(rootPath string, account string) (Service, error) {
 		return nil, fmt.Errorf("failed to read device keyfile: %w", err)
 	}
 
-	a.device, err = wallet.UnmarshalBinary(b)
+	deviceKp, err := wallet.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
 	}
-	if a.device.KeypairType() != wallet.KeypairTypeDevice {
-		return nil, fmt.Errorf("got %s key type instead of %s", a.device.KeypairType(), wallet.KeypairTypeDevice)
+	if deviceKp.KeypairType() != wallet.KeypairTypeDevice {
+		return nil, fmt.Errorf("got %s key type instead of %s", deviceKp.KeypairType(), wallet.KeypairTypeDevice)
 	}
 
-	a.cafe, err = cafeclient.NewClient(CafeNodeGRPC, a.device, a.account)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get grpc client: %w", err)
-	}
+	a, err := NewFromOptions(WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithCafeGRPCHost(DefaultCafeNodeGRPC), WithHostMultiaddr(DefaultHostAddr))
 
-	return &a, nil
+	return a, err
 }
 
 func (a *Anytype) runPeriodicJobsInBackground() {
@@ -202,7 +260,7 @@ func (a *Anytype) runPeriodicJobsInBackground() {
 			case <-tick.C:
 				//a.syncAccount(false)
 
-			case <-a.done:
+			case <-a.shutdownCh:
 				return
 			}
 		}
@@ -220,43 +278,13 @@ func DefaultBoostrapPeers() []peer.AddrInfo {
 func (a *Anytype) Start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
-	hostAddr, err := ma.NewMultiaddr("/ip4/0.0.0.0/tcp/4006")
-	if err != nil {
-		return err
-	}
-
-	ts, err := litenet.DefaultNetwork(
-		a.repoPath,
-		a.device,
-		[]byte(ipfsPrivateNetworkKey),
-		litenet.WithNetHostAddr(hostAddr),
-		litenet.WithNetDebug(false))
-	if err != nil {
-		return err
-	}
 
 	go func() {
-		ts.Bootstrap(DefaultBoostrapPeers())
-		a.online = true
+		a.t.Bootstrap(DefaultBoostrapPeers())
+		// todo: init mdns discovery and register notifee
+		// discovery.NewMdnsService
+		close(a.onlineCh)
 	}()
-
-	// ctx := context.Background()
-	/*mdns, err := discovery.NewMdnsService(ctx, t.Host(), time.Second, "")
-	if err != nil {
-		log.Fatal(err)
-	}*/
-
-	// todo: use the datastore from go-threads to save resources on the second instance
-	//ds,= t.Datastore()
-
-	a.done = make(chan struct{})
-	a.t = ts
-
-	a.localStore = localstore.NewLocalStore(a.t.Datastore())
-	a.files = files.New(a.localStore.Files, a.Ipfs())
-	//	a.ds = ds
-	//a.mdns = mdns
-	//mdns.RegisterNotifee(a)
 
 	return nil
 }
@@ -272,15 +300,16 @@ func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
 }
 
 func (a *Anytype) Stop() error {
-	fmt.Printf("stopping the node %p\n", a.t)
+	fmt.Printf("stopping the service %p\n", a.t)
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	a.replicationWG.Wait()
-	if a.done != nil {
-		close(a.done)
-		a.done = nil
+	if a.shutdownCh != nil {
+		close(a.shutdownCh)
+		a.shutdownCh = nil
 	}
+
+	a.replicationWG.Wait()
 
 	if a.mdns != nil {
 		err := a.mdns.Close()
@@ -296,12 +325,12 @@ func (a *Anytype) Stop() error {
 		}
 	}
 
-	/*if a.ds != nil {
-		err := a.ds.Close()
+	if a.db != nil {
+		err := a.db.Close()
 		if err != nil {
 			return err
 		}
-	}*/
+	}
 
 	return nil
 }

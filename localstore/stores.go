@@ -168,7 +168,6 @@ func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string,
 
 	key := indexBase.ChildString(prefix).ChildString(keyIndexName).ChildString(keyStr)
 
-	log.Debugf("GetKeysByIndexParts %s", key.String()+"/")
 	return ds.Query(query.Query{
 		Prefix:   key.String() + "/",
 		Limit:    limit,

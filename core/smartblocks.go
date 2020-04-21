@@ -3,11 +3,17 @@ package core
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
+	"time"
 
+	util2 "github.com/anytypeio/go-anytype-library/util"
+	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/crypto/symmetric"
+	"github.com/textileio/go-threads/db"
+	"github.com/textileio/go-threads/util"
 )
 
 var ErrBlockSnapshotNotFound = fmt.Errorf("block snapshot not found")
@@ -37,24 +43,87 @@ func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
 			versionId: versionId,
 			creator:      creator,
 			date:      date,
-			node:      a,
+			service:      a,
 		}
 	default:
 		return &SimpleBlockVersion{
 			model:                   block,
 			parentSmartBlockVersion: parentSmartBlockVersion,
-			node:                    a,
+			service:                    a,
 		}
 	}
 }*/
+func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
+	if sb, err := a.GetSmartBlock(id.String()); err == nil {
+		snap, err := sb.GetLastSnapshot()
+		if err != nil {
+			if err == ErrBlockSnapshotNotFound {
+				log.Infof("pullThread %s before: empty", id.String())
+			} else {
+				log.Errorf("pullThread %s before: %s", id.String(), err.Error())
+			}
+		} else {
+			log.Infof("pullThread %s before: %s", id.String(), snap.State().String())
+		}
+	}
+
+	err := a.t.PullThread(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if sb, err := a.GetSmartBlock(id.String()); err == nil {
+		snap, err := sb.GetLastSnapshot()
+		if err != nil {
+			if err == ErrBlockSnapshotNotFound {
+				log.Infof("pullThread %s after: empty", id.String())
+			} else {
+				log.Errorf("pullThread %s after: %s", id.String(), err.Error())
+			}
+		} else {
+			log.Infof("pullThread %s after: %s", id.String(), snap.State().String())
+		}
+	}
+
+	return nil
+}
 
 func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) error {
 	// account
-	account, err := a.predefinedThreadAdd(threadDerivedIndexAccount, syncSnapshotIfNotExist)
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	account, err := a.predefinedThreadAdd(threadDerivedIndexAccount, false)
 	if err != nil {
 		return err
 	}
 	a.predefinedBlockIds.Account = account.ID.String()
+	if a.db == nil {
+		d, err := db.NewDB(context.Background(), a.t, account.ID, db.WithNewDBRepoPath(filepath.Join(a.repoPath, "collections")))
+		if err != nil {
+			return err
+		}
+		a.db = d
+		err = a.listenExternalNewThreads()
+		if err != nil {
+			return fmt.Errorf("failed to listen external new threads: %w", err)
+		}
+		a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
+
+		if a.threadsCollection == nil {
+			a.threadsCollection, err = a.db.NewCollection(threadInfoCollection)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// pull only after adding collection to handle all events
+	if syncSnapshotIfNotExist {
+		err = a.pullThread(context.TODO(), account.ID)
+		if err != nil {
+			return err
+		}
+	}
 
 	// profile
 	profile, err := a.predefinedThreadAdd(threadDerivedIndexProfilePage, syncSnapshotIfNotExist)
@@ -64,18 +133,18 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 	a.predefinedBlockIds.Profile = profile.ID.String()
 
 	// archive
-	thread, err := a.predefinedThreadAdd(threadDerivedIndexArchive, syncSnapshotIfNotExist)
+	archive, err := a.predefinedThreadAdd(threadDerivedIndexArchive, syncSnapshotIfNotExist)
 	if err != nil {
 		return err
 	}
-	a.predefinedBlockIds.Archive = thread.ID.String()
+	a.predefinedBlockIds.Archive = archive.ID.String()
 
 	// home
-	thread, err = a.predefinedThreadAdd(threadDerivedIndexHome, syncSnapshotIfNotExist)
+	home, err := a.predefinedThreadAdd(threadDerivedIndexHome, syncSnapshotIfNotExist)
 	if err != nil {
 		return err
 	}
-	a.predefinedBlockIds.Home = thread.ID.String()
+	a.predefinedBlockIds.Home = home.ID.String()
 
 	return nil
 }
@@ -95,7 +164,47 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 		return thread.Info{}, err
 	}
 
-	return a.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(thread.NewKey(followKey, readKey)), net.WithLogKey(a.device))
+	thrd, err := a.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(thread.NewKey(followKey, readKey)), net.WithLogKey(a.device))
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	if a.cafeP2PAddr != nil {
+		a.replicationWG.Add(1)
+		go func() {
+			// todo: rewrite to job queue in badger
+			for {
+				defer a.replicationWG.Done()
+
+				p, err := a.t.AddReplicator(context.TODO(), thrd.ID, a.cafeP2PAddr)
+				if err != nil {
+					log.Errorf("failed to add log replicator: %s", err.Error())
+					select {
+					case <-time.After(time.Second * 30):
+					case <-a.shutdownCh:
+						return
+					}
+					continue
+				}
+
+				log.With("thread", thrd.ID.String()).Infof("added log replicator: %s", p.String())
+				threadInfo := threadInfo{
+					ID:    db2.InstanceID(thrd.ID.String()),
+					Key:   thrd.Key.String(),
+					Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
+				}
+
+				// todo: wait for threadsCollection to push?
+				_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+				if err != nil {
+					log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+				}
+				return
+			}
+		}()
+	}
+
+	return thrd, nil
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
