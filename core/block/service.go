@@ -49,9 +49,9 @@ var (
 )
 
 type Service interface {
-	OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...string) error
+	OpenBlock(ctx *state.Context, id string) error
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
-	CutBreadcrumbs(ctx *state.Context, req pb.RpcBlockCutBreadcrumbsRequest) (err error)
+	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
@@ -151,7 +151,7 @@ func (s *service) Anytype() anytype.Service {
 	return s.anytype
 }
 
-func (s *service) OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...string) (err error) {
+func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	ob, ok := s.openedBlocks[id]
@@ -172,18 +172,6 @@ func (s *service) OpenBlock(ctx *state.Context, id string, breadcrumbsIds ...str
 	ob.SetEventFunc(s.sendEvent)
 	if err = ob.Show(ctx); err != nil {
 		return
-	}
-
-	for _, bid := range breadcrumbsIds {
-		if b, ok := s.openedBlocks[bid]; ok {
-			if bs, ok := b.SmartBlock.(*editor.Breadcrumbs); ok {
-				bs.OnSmartOpen(id)
-			} else {
-				log.Warnf("unexpected smart block type %T; wand breadcrumbs", b)
-			}
-		} else {
-			log.Warnf("breadcrumbs block not found")
-		}
 	}
 	return nil
 }
@@ -248,10 +236,10 @@ func (s *service) MarkArchived(id string, archived bool) (err error) {
 	})
 }
 
-func (s *service) CutBreadcrumbs(ctx *state.Context, req pb.RpcBlockCutBreadcrumbsRequest) (err error) {
+func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error) {
 	return s.Do(req.BreadcrumbsId, func(b smartblock.SmartBlock) error {
 		if breadcrumbs, ok := b.(*editor.Breadcrumbs); ok {
-			breadcrumbs.ChainCut(int(req.Index))
+			return breadcrumbs.SetCrumbs(req.Ids)
 		} else {
 			return ErrUnexpectedBlockType
 		}

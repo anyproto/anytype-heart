@@ -19,52 +19,32 @@ type Breadcrumbs struct {
 	smartblock.SmartBlock
 }
 
-func (b *Breadcrumbs) OnSmartOpen(id string) {
+func (b *Breadcrumbs) SetCrumbs(ids []string) (err error) {
 	s := b.NewState()
-	var exists bool
+	var existingLinks = make(map[string]string)
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if link := b.Model().GetLink(); link != nil && link.TargetBlockId == id {
-			exists = true
-			return false
+		if link := b.Model().GetLink(); link != nil {
+			existingLinks[link.TargetBlockId] = b.Model().Id
 		}
 		return true
 	})
-	if exists {
-		return
+	root := s.Get(s.RootId()).Model()
+	root.ChildrenIds = make([]string, 0, len(ids))
+	for _, id := range ids {
+		linkId, ok := existingLinks[id]
+		if !ok {
+			link := simple.New(&model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: id,
+						Style:         model.BlockContentLink_Page,
+					},
+				},
+			})
+			s.Add(link)
+			linkId = link.Model().Id
+		}
+		root.ChildrenIds = append(root.ChildrenIds, linkId)
 	}
-
-	link := simple.New(&model.Block{
-		Content: &model.BlockContentOfLink{
-			Link: &model.BlockContentLink{
-				TargetBlockId: id,
-				Style:         model.BlockContentLink_Page,
-			},
-		},
-	})
-	s.Add(link)
-	root := s.Get(b.RootId())
-	root.Model().ChildrenIds = append(root.Model().ChildrenIds, link.Model().Id)
-	if err := b.Apply(s); err != nil {
-		log.Warnf("breadcrumbs page add error: %v", err)
-	}
-}
-
-func (b *Breadcrumbs) ChainCut(index int) {
-	if index < 0 {
-		return
-	}
-	s := b.NewState()
-	root := s.Get(b.RootId())
-	rootM := root.Model()
-	if len(rootM.ChildrenIds) <= index {
-		return
-	}
-
-	toRemoveIds := rootM.ChildrenIds[index:]
-	for _, rId := range toRemoveIds {
-		s.Remove(rId)
-	}
-	if err := b.Apply(s); err != nil {
-		log.Warnf("breadcrumbs cut error: %v", err)
-	}
+	return b.Apply(s)
 }

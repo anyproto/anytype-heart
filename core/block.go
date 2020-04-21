@@ -64,7 +64,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.OpenBlock(ctx, req.BlockId, req.BreadcrumbsIds...)
+		return bs.OpenBlock(ctx, req.BlockId)
 	})
 	if err != nil {
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
@@ -96,10 +96,10 @@ func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsReques
 	return response(pb.RpcBlockOpenBreadcrumbsResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockCutBreadcrumbs(req *pb.RpcBlockCutBreadcrumbsRequest) *pb.RpcBlockCutBreadcrumbsResponse {
+func (mw *Middleware) BlockSetBreadcrumbs(req *pb.RpcBlockSetBreadcrumbsRequest) *pb.RpcBlockSetBreadcrumbsResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockCutBreadcrumbsResponseErrorCode, err error) *pb.RpcBlockCutBreadcrumbsResponse {
-		m := &pb.RpcBlockCutBreadcrumbsResponse{Error: &pb.RpcBlockCutBreadcrumbsResponseError{Code: code}}
+	response := func(code pb.RpcBlockSetBreadcrumbsResponseErrorCode, err error) *pb.RpcBlockSetBreadcrumbsResponse {
+		m := &pb.RpcBlockSetBreadcrumbsResponse{Error: &pb.RpcBlockSetBreadcrumbsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -108,13 +108,13 @@ func (mw *Middleware) BlockCutBreadcrumbs(req *pb.RpcBlockCutBreadcrumbsRequest)
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.CutBreadcrumbs(ctx, *req)
+		return bs.SetBreadcrumbs(ctx, *req)
 	})
 	if err != nil {
-		return response(pb.RpcBlockCutBreadcrumbsResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcBlockSetBreadcrumbsResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(pb.RpcBlockCutBreadcrumbsResponseError_NULL, nil)
+	return response(pb.RpcBlockSetBreadcrumbsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockCloseResponse {
