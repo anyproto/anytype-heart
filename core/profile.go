@@ -12,8 +12,8 @@ import (
 type Profile struct {
 	AccountAddr string
 	Name        string
-	AvatarHash  string
-	AvatarColor string
+	IconImage   string
+	IconColor   string
 }
 
 func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error {
@@ -48,8 +48,8 @@ func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []s
 			ch <- Profile{
 				AccountAddr: resp.AccountAddr,
 				Name:        resp.Name,
-				AvatarHash:  resp.AvatarHash,
-				AvatarColor: resp.AvatarColor,
+				IconImage:   resp.IconImage,
+				IconColor:   resp.IconColor,
 			}
 		}
 	}()

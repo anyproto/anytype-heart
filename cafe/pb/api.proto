@@ -56,8 +56,8 @@ message ProfileFindRequest {
 message ProfileFindResponse {
     string accountAddr = 1;
     string name = 2;
-    string avatarHash = 3;
-    string avatarColor = 4;
+    string iconImage = 3;
+    string iconColor = 4;
 }
 
 service API {
