@@ -187,7 +187,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"1"}}))
 		s.Get("root").Model().ChildrenIds = []string{"1"}
 
-		_, _, err := s.apply()
+		_, _, err := ApplyState(s)
 		assert.Error(t, err)
 	})
 }

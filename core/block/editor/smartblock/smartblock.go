@@ -3,6 +3,7 @@ package smartblock
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -131,14 +132,24 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		if err != nil {
 			return err
 		}
+		if sb.Id() == "bafybbxntrwf5wlhvpg6elhdk76vivwb3nvmgd6yd4ik3qjthuhxy2rmt" {
+			ev := &pb.EventBlockShow{
+				RootId:  sb.RootId(),
+				Blocks:  sb.Blocks(),
+				Details: details,
+				Type:    sb.Type(),
+			}
+			data, _ := ev.Marshal()
+			ioutil.WriteFile("/home/che/349_blocks.pb", data, 0777)
+		}
 		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-						RootId:  sb.RootId(),
-						Blocks:  sb.Blocks(),
-						Details: details,
-						Type:    sb.Type(),
-					}},
+			{
+				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
+					RootId:  sb.RootId(),
+					Blocks:  sb.Blocks(),
+					Details: details,
+					Type:    sb.Type(),
+				}},
 			},
 		})
 	}

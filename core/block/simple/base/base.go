@@ -1,6 +1,8 @@
 package base
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -82,6 +84,10 @@ func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 
 func (b *Base) Copy() simple.Block {
 	return NewBase(pbtypes.CopyBlock(b.Model()))
+}
+
+func (b *Base) String() string {
+	return fmt.Sprintf("%s: %T (%d)", b.Id, b.Content, len(b.ChildrenIds))
 }
 
 func stringSlicesEq(s1, s2 []string) bool {
