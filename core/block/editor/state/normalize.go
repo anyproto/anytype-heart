@@ -16,7 +16,7 @@ var (
 	divSize              = maxChildrenThreshold / 2
 )
 
-func (s *State) normalize() {
+func (s *State) normalize() (err error) {
 	// remove invalid children
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
@@ -37,8 +37,7 @@ func (s *State) normalize() {
 			s.normalizeLayoutRow(b)
 		}
 	}
-	s.normalizeTree()
-	return
+	return s.normalizeTree()
 }
 
 func (s *State) normalizeChildren(b simple.Block) {
@@ -103,12 +102,6 @@ func (s *State) normalizeLayoutRow(b simple.Block) {
 	}
 }
 
-func (s *State) validateTree() (err error) {
-	return s.Iterate(func(b simple.Block) (isContinue bool) {
-		return true
-	})
-}
-
 func isDivLayout(m *model.Block) bool {
 	if layout := m.GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Div {
 		return true
@@ -116,10 +109,9 @@ func isDivLayout(m *model.Block) bool {
 	return false
 }
 
-func (s *State) normalizeTree() {
-	s.checkDividedLists(s.RootId())
+func (s *State) normalizeTree() (err error) {
 	var seq int32
-	s.Iterate(func(b simple.Block) (isContinue bool) {
+	err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		if isDivLayout(b.Model()) {
 			id := b.Model().Id
 			if strings.HasPrefix(id, "div-") {
@@ -131,8 +123,12 @@ func (s *State) normalizeTree() {
 		}
 		return true
 	})
-
+	if err != nil {
+		return
+	}
+	s.checkDividedLists(s.RootId())
 	s.normalizeTreeBranch(s.RootId(), &seq)
+	return nil
 }
 
 func (s *State) checkDividedLists(id string) {
@@ -142,7 +138,7 @@ func (s *State) checkDividedLists(id string) {
 	}
 	parent := pb.Model()
 	if isDivLayout(parent) {
-		if nextDiv := s.getNextDiv(parent.Id); nextDiv != nil {
+		if nextDiv := s.pickNextDiv(parent.Id); nextDiv != nil {
 			nextDivM := nextDiv.Model()
 			if len(parent.ChildrenIds) > 0 && len(nextDivM.ChildrenIds) > 0 {
 				if !s.canDivide(parent.ChildrenIds[len(parent.ChildrenIds)-1]) && !s.canDivide(nextDivM.ChildrenIds[0]) {
@@ -261,13 +257,21 @@ func (s *State) newDiv(seq *int32) simple.Block {
 }
 
 func (s *State) getNextDiv(id string) simple.Block {
+	if b := s.pickNextDiv(id); b != nil {
+		return s.Get(b.Model().Id)
+	}
+	return nil
+}
+
+func (s *State) pickNextDiv(id string) simple.Block {
 	parent := s.PickParentOf(id)
 	if parent != nil {
 		pm := parent.Model()
 		pos := slice.FindPos(pm.ChildrenIds, id)
 		if pos != -1 && pos < len(pm.ChildrenIds)-1 {
-			if isDivLayout(s.Pick(pm.ChildrenIds[pos+1]).Model()) {
-				return s.Get(pm.ChildrenIds[pos+1])
+			b := s.Pick(pm.ChildrenIds[pos+1])
+			if isDivLayout(b.Model()) {
+				return b
 			}
 		}
 	}

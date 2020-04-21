@@ -205,10 +205,10 @@ func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err e
 
 func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
 	st := time.Now()
-	if err = s.validateTree(); err != nil {
+	if err = s.normalize(); err != nil {
 		return
 	}
-	s.normalize()
+
 	var toSave []*model.Block
 	var newBlocks []*model.Block
 	for id, b := range s.blocks {
