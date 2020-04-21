@@ -2,6 +2,7 @@ package cafe
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/textileio/go-threads/core/thread"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var _ pb.APIClient = (*Online)(nil)
@@ -154,7 +156,12 @@ func (c *Online) ProfileFind(ctx context.Context, in *pb.ProfileFindRequest, opt
 }
 
 func NewClient(url string, device wallet.Keypair, account wallet.Keypair) (Client, error) {
-	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>"), grpc.WithInsecure(), grpc.WithPerRPCCredentials(thread.Credentials{}))
+	certpool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>"), grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(certpool, "")), grpc.WithPerRPCCredentials(thread.Credentials{}))
 	if err != nil {
 		return nil, err
 	}
