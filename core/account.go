@@ -98,7 +98,6 @@ addrsLoop:
 			continue
 		}
 
-		log.Debugf("processNewExternalThread connected to addr: %s", addri)
 		if !threadAdded {
 			threadAdded = true
 			_, err = a.t.AddThread(context.Background(), addr, net.WithThreadKey(key))
@@ -127,7 +126,6 @@ addrsLoop:
 	}
 
 	go func() {
-		log.Infof("smartBlockChanges.SendWithTimeout")
 		// todo: do we need timeout here?
 		err := a.smartBlockChanges.SendWithTimeout(tid, time.Second*30)
 		if err != nil {
