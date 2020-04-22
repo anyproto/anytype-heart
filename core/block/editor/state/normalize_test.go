@@ -2,10 +2,13 @@ package state
 
 import (
 	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -177,9 +180,8 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: rootIds}))
 
 		s := r.NewState()
-		s.normalizeTree()
-		ApplyState(s)
-		t.Log(r.String())
+		_, _, err := ApplyState(s)
+		require.NoError(t, err)
 	})
 
 	genIds := func(s *State, length, start int, isList ...bool) []string {
@@ -313,4 +315,55 @@ func TestState_Normalize(t *testing.T) {
 		require.Equal(t, []string{"div-1"}, r.Pick(r.RootId()).Model().ChildrenIds)
 		assert.Len(t, r.Pick("div-1").Model().ChildrenIds, 10)
 	})
+	t.Run("do not split numeric list", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		s := r.NewState()
+		ids := genIds(s, maxChildrenThreshold*3, 1, true)
+		ids = append(ids, genIds(s, 1, 1000)...)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: ids}))
+		_, _, err := ApplyState(s)
+		require.NoError(t, err)
+		root := r.Pick("root").Model()
+		require.Len(t, root.ChildrenIds, 2)
+		assert.Len(t, r.Pick(root.ChildrenIds[0]).Model().ChildrenIds, maxChildrenThreshold*3)
+		assert.Len(t, r.Pick(root.ChildrenIds[1]).Model().ChildrenIds, 1)
+	})
+	t.Run("split with numeric #349", func(t *testing.T) {
+		data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
+		require.NoError(t, err)
+		var ev = &pb.EventBlockShow{}
+		require.NoError(t, ev.Unmarshal(data))
+
+		r := NewDoc(ev.RootId, nil).(*State)
+		for _, b := range ev.Blocks {
+			r.Add(simple.New(b))
+		}
+		_, _, err = ApplyState(r.NewState())
+		require.NoError(t, err)
+		//t.Log(r.String())
+
+		root := r.Pick(ev.RootId).Model()
+		for _, childId := range root.ChildrenIds {
+			m := r.Pick(childId).Model()
+			assert.NotNil(t, m.GetLayout())
+			assert.True(t, len(m.ChildrenIds) > 0)
+		}
+	})
+}
+
+func BenchmarkNormalize(b *testing.B) {
+	data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
+	require.NoError(b, err)
+	var ev = &pb.EventBlockShow{}
+	require.NoError(b, ev.Unmarshal(data))
+
+	r := NewDoc(ev.RootId, nil).(*State)
+	for _, b := range ev.Blocks {
+		r.Add(simple.New(b))
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ApplyState(r.NewState())
+	}
 }
