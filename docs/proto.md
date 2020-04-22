@@ -1588,7 +1588,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.ImportMarkdown.Response.Error](#anytype.Rpc.Block.ImportMarkdown.Response.Error) |  |  |
-| newBlockId | [string](#string) |  |  |
+| rootLinkIds | [string](#string) | repeated |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 

@@ -75,7 +75,7 @@ type Service interface {
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
-	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (blockId string, err error)
+	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error)
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) error
@@ -497,7 +497,7 @@ func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte)
 	return path, err
 }
 
-func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (blockId string, err error) {
+func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error) {
 	anymarkConv := anymark.New()
 	nameToBlock, isPageLinked, err := anymarkConv.DirWithMarkdownToBlocks(req.ImportPath)
 
@@ -507,7 +507,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 		csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
 		if err != nil {
 			err = fmt.Errorf("anytype.CreateBlock error: %v", err)
-			return blockId, err
+			return rootLinkIds, err
 		}
 
 		pageId := csm.ID()
@@ -520,7 +520,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 			Details:   []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(name)}},
 		}); err != nil {
 			err = fmt.Errorf("can't set details to page: %v", err)
-			return blockId, err
+			return rootLinkIds, err
 		}
 	}
 
@@ -539,21 +539,25 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 		})
 
 		if err != nil {
-			return blockId, err
+			return rootLinkIds, err
 		}
 	}
 
 	rootLinks := anymarkConv.GetRootLinks(nameToBlock, nameToId, isPageLinked)
+
+	for _, r := range rootLinks {
+		rootLinkIds = append(rootLinkIds, r.Id)
+	}
 
 	_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
 		ContextId: req.ContextId,
 		AnySlot:   rootLinks,
 	})
 	if err != nil {
-		return blockId, err
+		return rootLinkIds, err
 	}
 
-	return blockId, err
+	return rootLinkIds, err
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
