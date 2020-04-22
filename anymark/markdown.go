@@ -4,6 +4,11 @@ package anymark
 import (
 	"bufio"
 	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
+	"github.com/google/uuid"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -55,7 +60,8 @@ type Markdown interface {
 	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
 	HTMLToBlocks(source []byte) (error, []*model.Block)
 	MarkdownToBlocks(markdownSource []byte) ([]*model.Block, error)
-
+	DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error)
+	GetRootLinks(nameToBlock map[string][]*model.Block, nameToId map[string]string, isPageLinked map[string]bool) (rootLinks []*model.Block)
 	// Parser returns a Parser that will be used for conversion.
 	Parser() parser.Parser
 
@@ -145,6 +151,92 @@ func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts
 	doc := m.parser.Parse(reader, opts...)
 
 	return m.renderer.Render(bWriter, source, doc)
+}
+
+func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error) {
+	nameToBlocks := make(map[string][]*model.Block)
+
+	err = filepath.Walk(directoryPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !info.IsDir() {
+				extension := filepath.Ext(path)
+
+				dat, err := ioutil.ReadFile(path)
+				if err != nil {
+					return err
+				}
+
+				// TODO: media
+				if extension == ".png" {
+				}
+
+				if extension == ".md" {
+					shortPath := strings.Replace(path, directoryPath+"/", "", -1)
+					nameToBlocks[shortPath], err = m.MarkdownToBlocks(dat)
+					if err != nil {
+						return err
+					}
+				}
+
+			}
+
+			return nil
+		})
+
+	isPageLinked = make(map[string]bool)
+	for name, _ := range nameToBlocks {
+		for i, block := range nameToBlocks[name] {
+			nameToBlocks[name][i].Id = uuid.New().String()
+
+			marks := block.GetText().Marks.Marks
+			if len(marks) == 1 &&
+				marks[0].Type == model.BlockContentTextMark_Link &&
+				nameToBlocks[marks[0].Param] != nil {
+				nameToBlocks[name][i], isPageLinked = m.convertTextToPageLink(block, isPageLinked)
+			}
+
+		}
+	}
+
+	return nameToBlocks, isPageLinked, err
+}
+
+func (m *markdown) GetRootLinks(nameToBlock map[string][]*model.Block, nameToId map[string]string, isPageLinked map[string]bool) (rootLinks []*model.Block) {
+	for name := range nameToBlock {
+		if !isPageLinked[name] {
+			rootLinks = append(rootLinks, &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: nameToId[name],
+						Style:         model.BlockContentLink_Page,
+						Fields:        nil,
+					},
+				},
+			})
+		}
+	}
+
+	return rootLinks
+}
+
+func (m *markdown) convertTextToPageLink(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
+	targetId := block.GetText().Marks.Marks[0].Param
+
+	blockOut := &model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetId,
+				Style:         model.BlockContentLink_Page,
+			},
+		},
+	}
+
+	isPageLinked[targetId] = true
+	return blockOut, isPageLinked
 }
 
 func (m *markdown) MarkdownToBlocks(markdownSource []byte) ([]*model.Block, error) {

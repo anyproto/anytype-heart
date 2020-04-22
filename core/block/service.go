@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/anymark"
+
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/gogo/protobuf/types"
@@ -73,6 +75,7 @@ type Service interface {
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
+	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (blockId string, err error)
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) error
@@ -492,6 +495,65 @@ func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte)
 		return err
 	})
 	return path, err
+}
+
+func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (blockId string, err error) {
+	anymarkConv := anymark.New()
+	nameToBlock, isPageLinked, err := anymarkConv.DirWithMarkdownToBlocks(req.ImportPath)
+
+	nameToId := make(map[string]string)
+
+	for name := range nameToBlock {
+		csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
+		if err != nil {
+			err = fmt.Errorf("anytype.CreateBlock error: %v", err)
+			return blockId, err
+		}
+
+		pageId := csm.ID()
+		nameToId[name] = pageId
+
+		log.Infof("created new smartBlock: %v", pageId)
+
+		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
+			ContextId: pageId,
+			Details:   []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(name)}},
+		}); err != nil {
+			err = fmt.Errorf("can't set details to page: %v", err)
+			return blockId, err
+		}
+	}
+
+	for name := range nameToBlock {
+		for i := range nameToBlock[name] {
+			if link := nameToBlock[name][i].GetLink(); link != nil && len(nameToId[name]) > 0 {
+				link.TargetBlockId = nameToId[name]
+			}
+		}
+	}
+
+	for name := range nameToBlock {
+		_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
+			ContextId: nameToId[name],
+			AnySlot:   nameToBlock[name],
+		})
+
+		if err != nil {
+			return blockId, err
+		}
+	}
+
+	rootLinks := anymarkConv.GetRootLinks(nameToBlock, nameToId, isPageLinked)
+
+	_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
+		ContextId: req.ContextId,
+		AnySlot:   rootLinks,
+	})
+	if err != nil {
+		return blockId, err
+	}
+
+	return blockId, err
 }
 
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {

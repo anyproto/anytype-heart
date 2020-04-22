@@ -243,9 +243,10 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 
 func (mw *Middleware) BlockImportMarkdown(req *pb.RpcBlockImportMarkdownRequest) *pb.RpcBlockImportMarkdownResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockImportMarkdownResponseErrorCode, path string, err error) *pb.RpcBlockImportMarkdownResponse {
+	response := func(code pb.RpcBlockImportMarkdownResponseErrorCode, blockId string, err error) *pb.RpcBlockImportMarkdownResponse {
 		m := &pb.RpcBlockImportMarkdownResponse{
-			Error: &pb.RpcBlockImportMarkdownResponseError{Code: code},
+			Error:      &pb.RpcBlockImportMarkdownResponseError{Code: code},
+			NewBlockId: blockId,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -254,16 +255,18 @@ func (mw *Middleware) BlockImportMarkdown(req *pb.RpcBlockImportMarkdownRequest)
 		}
 		return m
 	}
-	var path string
+
+	var blockId string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		path, err = bs.Export(*req, mw.getImages(req.Blocks))
-		return
+		blockId, err = bs.ImportMarkdown(ctx, *req)
+		return err
 	})
+
 	if err != nil {
-		return response(pb.RpcBlockImportMarkdownResponseError_UNKNOWN_ERROR, path, err)
+		return response(pb.RpcBlockImportMarkdownResponseError_UNKNOWN_ERROR, blockId, err)
 	}
 
-	return response(pb.RpcBlockImportMarkdownResponseError_NULL, path, nil)
+	return response(pb.RpcBlockImportMarkdownResponseError_NULL, blockId, nil)
 }
 
 func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {

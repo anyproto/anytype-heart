@@ -556,7 +556,7 @@
 | BlockPaste | [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request) | [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response) |  |
 | BlockCut | [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request) | [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response) |  |
 | BlockExport | [Rpc.Block.Export.Request](#anytype.Rpc.Block.Export.Request) | [Rpc.Block.Export.Response](#anytype.Rpc.Block.Export.Response) |  |
-| ImportMarkdown | [Rpc.Block.ImportMarkdown.Request](#anytype.Rpc.Block.ImportMarkdown.Request) | [Rpc.Block.ImportMarkdown.Response](#anytype.Rpc.Block.ImportMarkdown.Response) |  |
+| BlockImportMarkdown | [Rpc.Block.ImportMarkdown.Request](#anytype.Rpc.Block.ImportMarkdown.Request) | [Rpc.Block.ImportMarkdown.Response](#anytype.Rpc.Block.ImportMarkdown.Response) |  |
 | BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
 | BlockSetImageName | [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request) | [Rpc.Block.Set.Image.Name.Response](#anytype.Rpc.Block.Set.Image.Name.Response) |  |
 | BlockSetImageWidth | [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request) | [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response) |  |
