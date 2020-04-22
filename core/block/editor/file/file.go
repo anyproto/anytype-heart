@@ -154,7 +154,7 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{
 						"name": pbtypes.String(entry.name),
-						"icon": pbtypes.String(":file_folder:"),
+						"iconEmoji": pbtypes.String("📁"),
 					},
 				},
 			})
