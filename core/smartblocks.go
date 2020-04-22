@@ -172,10 +172,10 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 	if a.cafeP2PAddr != nil {
 		a.replicationWG.Add(1)
 		go func() {
+			defer a.replicationWG.Done()
+
 			// todo: rewrite to job queue in badger
 			for {
-				defer a.replicationWG.Done()
-
 				p, err := a.t.AddReplicator(context.TODO(), thrd.ID, a.cafeP2PAddr)
 				if err != nil {
 					log.Errorf("failed to add log replicator: %s", err.Error())
