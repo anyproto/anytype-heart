@@ -439,7 +439,6 @@
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
     - [ResponseEvent](#anytype.ResponseEvent)
   
-    - [Event.Block.SmartBlockType](#anytype.Event.Block.SmartBlockType)
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
@@ -6406,7 +6405,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | details for current and dependent smart blocks |
-| type | [Event.Block.SmartBlockType](#anytype.Event.Block.SmartBlockType) |  |  |
+| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 
 
 
@@ -6678,22 +6677,6 @@ Precondition: user A and user B opened the same block
 
 
  
-
-
-<a name="anytype.Event.Block.SmartBlockType"></a>
-
-### Event.Block.SmartBlockType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Home | 0 |  |
-| Archive | 1 |  |
-| Dataview | 2 |  |
-| Page | 20 |  |
-| ProfilePage | 21 |  |
-| Breadcrumbs | 101 |  |
-
 
 
 <a name="anytype.Model.Process.State"></a>

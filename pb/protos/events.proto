@@ -81,16 +81,6 @@ message Event {
             repeated anytype.model.Block blocks = 1; // id -> block
         }
 
-
-        enum SmartBlockType {
-            Home = 0;
-            Archive = 1;
-            Dataview = 2;
-            Page = 20;
-            ProfilePage = 21;
-            Breadcrumbs = 101;
-        }
-
         /*
           * Works with a smart blocks: Page, Dashboard
           * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
