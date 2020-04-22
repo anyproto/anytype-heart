@@ -1589,6 +1589,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.ImportMarkdown.Response.Error](#anytype.Rpc.Block.ImportMarkdown.Response.Error) |  |  |
 | newBlockId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
 

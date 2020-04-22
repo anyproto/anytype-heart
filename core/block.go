@@ -241,6 +241,31 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 	return response(pb.RpcBlockCutResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
 }
 
+func (mw *Middleware) BlockImportMarkdown(req *pb.RpcBlockImportMarkdownRequest) *pb.RpcBlockImportMarkdownResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockImportMarkdownResponseErrorCode, path string, err error) *pb.RpcBlockImportMarkdownResponse {
+		m := &pb.RpcBlockImportMarkdownResponse{
+			Error: &pb.RpcBlockImportMarkdownResponseError{Code: code},
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var path string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		path, err = bs.Export(*req, mw.getImages(req.Blocks))
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockImportMarkdownResponseError_UNKNOWN_ERROR, path, err)
+	}
+
+	return response(pb.RpcBlockImportMarkdownResponseError_NULL, path, nil)
+}
+
 func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockExportResponseErrorCode, path string, err error) *pb.RpcBlockExportResponse {
