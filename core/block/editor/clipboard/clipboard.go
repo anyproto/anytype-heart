@@ -35,7 +35,7 @@ type Clipboard interface {
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
-	ConvertMarkdown(directoryPath string) (blocks []*model.Block, err error)
+	ConvertMarkdown(directoryPath string) (nameToBlock map[string][]*model.Block, err error)
 }
 
 func NewClipboard(sb smartblock.SmartBlock) Clipboard {
@@ -179,9 +179,10 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 	return filePath, nil
 }
 
-func (cb *clipboard) ConvertMarkdown(directoryPath string) (blocks []*model.Block, err error) {
+func (cb *clipboard) ConvertMarkdown(directoryPath string) (nameToBlock map[string][]*model.Block, err error) {
 	anymarkConv := anymark.New()
 	nameToBlocks := make(map[string][]*model.Block)
+	nameToId := make(map[string]string)
 
 	err = filepath.Walk(directoryPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -205,6 +206,7 @@ func (cb *clipboard) ConvertMarkdown(directoryPath string) (blocks []*model.Bloc
 					//fmt.Println("\n-------------------- ", path, " --------------------\n", string(dat))
 					shortPath := strings.Replace(path, directoryPath+"/", "", -1)
 					nameToBlocks[shortPath], err = anymarkConv.MarkdownToBlocks(dat)
+					nameToId[shortPath] = uuid.New().String() // TODO
 					if err != nil {
 						return err
 					}
@@ -227,7 +229,6 @@ func (cb *clipboard) ConvertMarkdown(directoryPath string) (blocks []*model.Bloc
 	}
 
 	for name, _ := range nameToBlocks {
-		fmt.Println("name:", name)
 		for i, block := range nameToBlocks[name] {
 			nameToBlocks[name][i].Id = uuid.New().String()
 
@@ -236,19 +237,16 @@ func (cb *clipboard) ConvertMarkdown(directoryPath string) (blocks []*model.Bloc
 				marks[0].Type == model.BlockContentTextMark_Link &&
 				nameToBlocks[marks[0].Param] != nil {
 				nameToBlocks[name][i] = convertTextToPageLink(block)
-				fmt.Println(">>>>", nameToBlocks[name][i])
 			}
 
-			fmt.Println("block ", i, " :", block)
 		}
 	}
-	fmt.Println(nameToBlocks)
 
 	if err != nil {
-		return blocks, err
+		return nameToBlocks, err
 	}
 
-	return blocks, err
+	return nameToBlocks, err
 }
 
 func (cb *clipboard) pasteHtml(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
