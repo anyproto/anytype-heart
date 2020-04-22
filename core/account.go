@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -201,13 +200,13 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
 			details = append(details, &pb.RpcBlockSetDetailsDetail{
-				Key:   "avatarHash",
+				Key:   "iconImage",
 				Value: pbtypes.String(hash),
 			})
 		}
 	} else if req.GetAvatarColor() != "" {
 		details = append(details, &pb.RpcBlockSetDetailsDetail{
-			Key:   "avatarColor",
+			Key:   "iconColor",
 			Value: pbtypes.String(req.GetAvatarColor()),
 		})
 	}
@@ -233,6 +232,10 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 		return m
 	}
+
+	defer func(){
+		log.Debugf("AccountRecover done")
+	}()
 
 	var sentAccountsMutex = sync.RWMutex{}
 	var sentAccounts = make(map[string]struct{})
@@ -280,7 +283,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	var firstAccounts []string
 	var firstAccountsIndexes = make(map[string]int, 10)
 
-	for i := 0; i <= 10; i++ {
+	for i := 0; i < 10; i++ {
 		account, err := core.WalletAccountAt(mw.mnemonic, i, "")
 		if err != nil {
 			break
@@ -296,6 +299,8 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 			})
 		}
 	}
+
+
 
 	zeroAccount, err := core.WalletAccountAt(mw.mnemonic, 0, "")
 	if err != nil {
@@ -314,8 +319,13 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 	}
 
+	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
+	// it is ok to unlock just after we've started with the 1st account
+	mw.m.Lock()
+
 	c, err := core.New(mw.rootPath, zeroAccount.Address())
 	if err != nil {
+		mw.m.Unlock()
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 	}
 
@@ -323,9 +333,10 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 	err = mw.start()
 	if err != nil {
+		mw.m.Unlock()
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
-
+	mw.m.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	remoteRequestDone := make(chan struct{})
@@ -363,16 +374,16 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 				log.Infof("remote recovery got %+v", profile)
 				var avatar *model.AccountAvatar
-				if profile.AvatarHash != "" {
+				if profile.IconImage != "" {
 					avatar = &model.AccountAvatar{
 						Avatar: &model.AccountAvatarAvatarOfImage{
-							Image: &model.BlockContentFile{Hash: profile.AvatarHash},
+							Image: &model.BlockContentFile{Hash: profile.IconImage},
 						},
 					}
-				} else if profile.AvatarColor != "" {
+				} else if profile.IconColor != "" {
 					avatar = &model.AccountAvatar{
 						Avatar: &model.AccountAvatarAvatarOfColor{
-							Color: profile.AvatarColor,
+							Color: profile.IconColor,
 						},
 					}
 				}
@@ -390,7 +401,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	if err != nil {
 		log.Errorf("remote profiles request failed: %s", err.Error())
 	}
-	remoteRequestDone <- struct{}{}
+	close(remoteRequestDone)
 
 	n := time.Now()
 	mw.localAccountCachedAt = &n
@@ -480,39 +491,6 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
 	}
 
-	/*acc.Name, err = mw.Anytype.Textile.Name()
-	if err != nil {
-		return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
-	}
-
-	avatarHashOrColor, err := mw.Anytype.Textile.Avatar()
-	if err != nil {
-		return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
-	}
-
-	if acc.Name == "" && avatarHashOrColor == "" {
-		for {
-			// wait for cafe registration
-			// in order to use cafeAPI instead of pubsub
-			if cs := mw.Anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
-				break
-			}
-
-			time.Sleep(time.Second)
-		}
-
-		contact, err := mw.Anytype.AccountRequestStoredContact(context.Background(), req.Id)
-		if err != nil {
-			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
-		}
-		acc.Name = contact.Name
-		avatarHashOrColor = contact.Avatar
-	}
-
-	if avatarHashOrColor != "" {
-		acc.Avatar = getAvatarFromString(avatarHashOrColor)
-	}
-	*/
 	mw.setBlockService(block.NewService(acc.Id, mw.Anytype, mw.linkPreview, mw.SendEvent))
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
@@ -548,14 +526,4 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	}
 
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
-}
-
-func getAvatarFromString(avatarHashOrColor string) *model.AccountAvatar {
-	if strings.HasPrefix(avatarHashOrColor, "#") {
-		return &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfColor{avatarHashOrColor}}
-	} else {
-		return &model.AccountAvatar{
-			&model.AccountAvatarAvatarOfImage{&model.BlockContentFile{Hash: avatarHashOrColor}},
-		}
-	}
 }
