@@ -28,6 +28,7 @@ message Block {
         Content.Bookmark bookmark = 18;
         Content.Icon icon = 19;
         Content.Link link = 20;
+        Content.Dataview dataview = 21;
     }
 
 
@@ -185,6 +186,10 @@ message Block {
         }
 
         message Smartblock {
+        }
+
+        message Dataview {
+            string databaseId = 1;
         }
     }
 }

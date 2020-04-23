@@ -24,6 +24,8 @@ const (
 	SmartBlockTypeProfilePage SmartBlockType = 0x11
 	SmartBlockTypeHome        SmartBlockType = 0x20
 	SmartBlockTypeArchive     SmartBlockType = 0x30
+	SmartBlockTypeDatabase    SmartBlockType = 0x40
+	SmartBlockTypeSet         SmartBlockType = 0x41
 )
 
 type ProfileThreadEncryptionKeys struct {
