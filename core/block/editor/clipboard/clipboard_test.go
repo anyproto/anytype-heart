@@ -12,21 +12,14 @@ import (
 
 func TestCommonSmart_importFromMarkdown(t *testing.T) {
 	t.Run("No marks, paste middleCut to the middle", func(t *testing.T) {
-		//sb := page(block("1", "123456789"))
-		//cb := NewClipboard(sb)
 		anymarkConv := anymark.New()
 		dir := "/Users/enkogu/Downloads/Export-78020b1c-9a70-46a8-89c6-16f3136a10a8"
-		nameToBlock, isPageLinked, err := anymarkConv.DirWithMarkdownToBlocks(dir)
+		_, isPageLinked, err := anymarkConv.DirWithMarkdownToBlocks(dir)
 
 		if err != nil {
 			fmt.Println(err)
 		}
-
-		for name, b := range nameToBlock {
-			fmt.Println(name, " : ", b)
-		}
 		fmt.Println(isPageLinked)
-		//cb.ImportMarkdown("/Users/enkogu/Downloads/Export-78020b1c-9a70-46a8-89c6-16f3136a10a8")
 	})
 }
 

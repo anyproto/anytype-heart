@@ -4,6 +4,7 @@ package anymark
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -155,6 +156,27 @@ func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts
 
 func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error) {
 	nameToBlocks := make(map[string][]*model.Block)
+	linkRegexp := regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+
+	allFileShortPaths := []string{}
+
+	err = filepath.Walk(directoryPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !info.IsDir() {
+				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
+				allFileShortPaths = append(allFileShortPaths, shortPath)
+			}
+
+			return nil
+		})
+
+	if err != nil {
+		return nameToBlocks, isPageLinked, err
+	}
 
 	err = filepath.Walk(directoryPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -175,8 +197,24 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 				}
 
 				if extension == ".md" {
+					datStr := string(dat)
+					linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
+
 					shortPath := strings.Replace(path, directoryPath+"/", "", -1)
-					nameToBlocks[shortPath], err = m.MarkdownToBlocks(dat)
+
+					for _, linkSubmatch := range linkSubmatches {
+						l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
+
+						for _, sPath := range allFileShortPaths {
+							// TODO: strings.Contains(l, ".md"
+							if strings.Contains(sPath, l) && strings.Contains(l, ".md") {
+
+								datStr = strings.Replace(datStr, linkSubmatch[2], strings.Replace(sPath, " ", "%20", -1), -1)
+							}
+						}
+					}
+
+					nameToBlocks[shortPath], err = m.MarkdownToBlocks([]byte(datStr))
 					if err != nil {
 						return err
 					}
@@ -192,11 +230,14 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 		for i, block := range nameToBlocks[name] {
 			nameToBlocks[name][i].Id = uuid.New().String()
 
-			marks := block.GetText().Marks.Marks
-			if len(marks) == 1 &&
-				marks[0].Type == model.BlockContentTextMark_Link &&
-				nameToBlocks[marks[0].Param] != nil {
-				nameToBlocks[name][i], isPageLinked = m.convertTextToPageLink(block, isPageLinked)
+			txt := block.GetText()
+
+			if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
+				txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
+				if nameToBlocks[name] != nil {
+					nameToBlocks[name][i], isPageLinked = m.convertTextToPageLink(block, isPageLinked)
+				}
+				fmt.Println("CONVERT TO BLOCK_LINK:", name, isPageLinked[name])
 			}
 
 		}
@@ -224,8 +265,8 @@ func (m *markdown) GetRootLinks(nameToBlock map[string][]*model.Block, nameToId 
 }
 
 func (m *markdown) convertTextToPageLink(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
-	targetId := block.GetText().Marks.Marks[0].Param
 
+	targetId := strings.Replace(block.GetText().Marks.Marks[0].Param, "%20", " ", -1)
 	blockOut := &model.Block{
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
