@@ -4,7 +4,6 @@ package anymark
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -167,6 +166,8 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 			}
 
 			if !info.IsDir() {
+				//if filepath.Ext(path) == ".png" ||
+
 				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
 				allFileShortPaths = append(allFileShortPaths, shortPath)
 			}
@@ -206,9 +207,7 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 						l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
 
 						for _, sPath := range allFileShortPaths {
-							// TODO: strings.Contains(l, ".md"
-							if strings.Contains(sPath, l) && strings.Contains(l, ".md") {
-
+							if strings.Contains(sPath, l) { // && strings.Contains(l, ".md")
 								datStr = strings.Replace(datStr, linkSubmatch[2], strings.Replace(sPath, " ", "%20", -1), -1)
 							}
 						}
@@ -236,10 +235,7 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 
 				linkConverted := strings.Replace(txt.Marks.Marks[0].Param, "%20", " ", -1)
 
-				fmt.Println("LINK:", name, linkConverted, len(nameToBlocks[linkConverted]))
-
 				if nameToBlocks[linkConverted] != nil {
-					fmt.Println("@@@ CONVERT:", nameToBlocks[name])
 					nameToBlocks[name][i], isPageLinked = m.convertTextToPageLink(block, isPageLinked)
 				}
 			}
