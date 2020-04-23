@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/cafe"
+	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-library/localstore"
@@ -35,15 +37,17 @@ var log = logging.Logger("anytype-files")
 type Service struct {
 	store localstore.FileStore
 	ipfs  ipfs.IPFS
+	cafe  cafe.Client
 
 	KeysCache      map[string]map[string]string
 	KeysCacheMutex sync.RWMutex
 }
 
-func New(store localstore.FileStore, ipfs ipfs.IPFS) *Service {
+func New(store localstore.FileStore, ipfs ipfs.IPFS, cafe cafe.Client) *Service {
 	return &Service{
 		store:          store,
 		ipfs:           ipfs,
+		cafe:           cafe,
 		KeysCache:      make(map[string]map[string]string),
 		KeysCacheMutex: sync.RWMutex{},
 	}
@@ -81,6 +85,22 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	s.KeysCacheMutex.Lock()
 	defer s.KeysCacheMutex.Unlock()
 	s.KeysCache[nodeHash] = keys.KeysByPath
+
+	if s.cafe != nil {
+		go func() {
+			for i := 0; i <= 10; i++ {
+				_, err := s.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: nodeHash})
+				if err != nil {
+					log.Errorf("failed to pin file %s on the cafe: %s", nodeHash, err.Error())
+					time.Sleep(time.Minute * time.Duration(i+1))
+					continue
+				}
+
+				log.Debugf("file %s pinned on the cafe", nodeHash)
+				break
+			}
+		}()
+	}
 
 	return nodeHash, fileInfo, nil
 }

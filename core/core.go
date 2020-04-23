@@ -211,7 +211,7 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	}
 
 	a.localStore = localstore.NewLocalStore(a.t.Datastore())
-	a.files = files.New(a.localStore.Files, a.t.GetIpfs())
+	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
 
 	return a, nil
 }

@@ -3,7 +3,9 @@ package files
 import (
 	"context"
 	"io/ioutil"
+	"time"
 
+	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/anytypeio/go-anytype-library/schema/anytype"
 )
@@ -43,6 +45,22 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 		if v, exists := f.Meta.Fields["width"]; exists {
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}
+	}
+
+	if s.cafe != nil {
+		go func() {
+			for i := 0; i <= 10; i++ {
+				_, err := s.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: nodeHash})
+				if err != nil {
+					log.Errorf("failed to pin image %s on the cafe: %s", nodeHash, err.Error())
+					time.Sleep(time.Minute * time.Duration((i+1)*2))
+					continue
+				}
+				log.Debugf("image %s pinned on cafe", nodeHash)
+
+				break
+			}
+		}()
 	}
 
 	return nodeHash, variantsByWidth, nil
