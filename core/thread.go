@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-slip21"
@@ -33,6 +33,10 @@ var (
 		Name:   threadInfoCollectionName,
 		Schema: util.SchemaFromInstance(threadInfo{}, false),
 	}
+)
+
+const (
+	waitInitialSyncMaxAttempts = 3
 )
 
 const (
@@ -212,6 +216,92 @@ func (a *Anytype) predefinedThreadWithIndex(index threadDerivedIndex) (thread.In
 	return a.t.GetThread(context.TODO(), id)
 }
 
+func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfterConnect bool, waitForPull bool) error {
+	var err error
+	if a.cafeP2PAddr == nil {
+		return nil
+	}
+
+	done := make(chan struct{})
+	go func() {
+		attempts := 0
+		defer close(done)
+		for _, addr := range thrd.Addrs {
+			if addr.Equal(a.cafeP2PAddr) {
+				log.Warnf("syncThread %s already has replicator")
+				return
+			}
+		}
+
+		for {
+			start := time.Now()
+			_, err = a.t.AddReplicator(context.TODO(), thrd.ID, a.cafeP2PAddr)
+			if err != nil {
+				attempts++
+				if mustConnectToCafe {
+					log.Errorf("syncThread failed to add replicator for %s after %.2fs %d/%d attempt: %s", thrd.ID.String(), time.Since(start).Seconds(), attempts, waitInitialSyncMaxAttempts, err.Error())
+
+					if attempts >= waitInitialSyncMaxAttempts {
+						break
+					}
+					// we do not need sleep here because we
+					continue
+				}
+
+				log.Errorf("syncThread failed to add replicator for %s after %.2fs (%d attempt): %s", thrd.ID.String(), time.Since(start).Seconds(), attempts, err.Error())
+
+				time.Sleep(time.Second * time.Duration(10*attempts))
+				continue
+			}
+
+			break
+		}
+	}()
+
+	pullDone := make(chan struct{})
+	if mustConnectToCafe {
+		<-done
+		if err != nil {
+			return err
+		}
+
+		if !pullAfterConnect {
+			return nil
+		}
+
+		go func() {
+			defer close(pullDone)
+			err = a.pullThread(context.TODO(), thrd.ID)
+			if err != nil {
+				log.Errorf("syncThread failed to pullThread: %s", err.Error())
+				return
+			}
+		}()
+	} else {
+		if !pullAfterConnect {
+			return nil
+		}
+
+		go func() {
+			defer close(pullDone)
+			<-done
+			err = a.pullThread(context.TODO(), thrd.ID)
+			if err != nil {
+				log.Errorf("syncThread failed to pullThread: %s", err.Error())
+				return
+			}
+		}()
+	}
+
+	if waitForPull {
+		log.Debugf("syncThread wait for pull")
+		<-pullDone
+		log.Debugf("syncThread pull done")
+	}
+
+	return nil
+}
+
 func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshotIfNotExist bool) (thread.Info, error) {
 	id, err := a.threadDeriveID(index)
 	if err != nil {
@@ -220,6 +310,10 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 	thrd, err := a.t.GetThread(context.TODO(), id)
 	if err == nil && thrd.Key.Service() != nil {
+		err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, index != threadDerivedIndexAccount, index == threadDerivedIndexHome)
+		if err != nil {
+			return thread.Info{}, err
+		}
 		return thrd, nil
 	}
 
@@ -236,26 +330,9 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 		return thread.Info{}, err
 	}
 
-	wg := sync.WaitGroup{}
-	if a.cafeP2PAddr != nil {
-		go func() {
-			wg.Add(1)
-			defer wg.Done()
-			_, err = a.t.AddReplicator(context.TODO(), thrd.ID, a.cafeP2PAddr)
-			if err != nil {
-				log.Errorf("failed to add replicator: %w", err)
-				return
-			}
-		}()
-	}
-
-	if mustSyncSnapshotIfNotExist {
-		wg.Wait()
-		log.Infof("pull thread %s", id)
-		err := a.pullThread(context.TODO(), id)
-		if err != nil {
-			return thread.Info{}, fmt.Errorf("failed to pull thread: %w", err)
-		}
+	err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, index != threadDerivedIndexAccount, index == threadDerivedIndexHome)
+	if err != nil {
+		return thread.Info{}, err
 	}
 
 	return thrd, nil

@@ -125,14 +125,6 @@ addrsLoop:
 		}
 	}
 
-	go func() {
-		// todo: do we need timeout here?
-		err := a.smartBlockChanges.SendWithTimeout(tid, time.Second*30)
-		if err != nil {
-			log.Errorf("processNewExternalThread: smartBlockChanges send failed: %s", err.Error())
-		}
-	}()
-
 	return nil
 }
 
