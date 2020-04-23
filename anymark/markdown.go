@@ -231,13 +231,17 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 			nameToBlocks[name][i].Id = uuid.New().String()
 
 			txt := block.GetText()
-
 			if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
 				txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-				if nameToBlocks[name] != nil {
+
+				linkConverted := strings.Replace(txt.Marks.Marks[0].Param, "%20", " ", -1)
+
+				fmt.Println("LINK:", name, linkConverted, len(nameToBlocks[linkConverted]))
+
+				if nameToBlocks[linkConverted] != nil {
+					fmt.Println("@@@ CONVERT:", nameToBlocks[name])
 					nameToBlocks[name][i], isPageLinked = m.convertTextToPageLink(block, isPageLinked)
 				}
-				fmt.Println("CONVERT TO BLOCK_LINK:", name, isPageLinked[name])
 			}
 
 		}

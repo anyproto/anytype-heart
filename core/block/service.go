@@ -3,6 +3,7 @@ package block
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -519,9 +520,10 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 
 		log.Infof("created new smartBlock: %v", pageId)
 
+		fileName := strings.Replace(filepath.Base(name), ".md", "", -1)
 		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
 			ContextId: pageId,
-			Details:   []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(name)}},
+			Details:   []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(fileName)}},
 		}); err != nil {
 			err = fmt.Errorf("can't set details to page: %v", err)
 			return rootLinkIds, err
