@@ -506,7 +506,6 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 	nameToId := make(map[string]string)
 
 	for name := range nameToBlock {
-		fmt.Println("---- create page ----", name)
 		csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
 		if err != nil {
 			err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -515,8 +514,6 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 
 		pageId := csm.ID()
 		nameToId[name] = pageId
-
-		fmt.Println("page id: ", pageId)
 
 		log.Infof("created new smartBlock: %v", pageId)
 
@@ -539,12 +536,21 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 	}
 
 	for name := range nameToBlock {
-		fmt.Println(" >>> paste to: ", name, nameToId[name])
-		fmt.Println("     blocks: ", nameToBlock[name])
 		_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
 			ContextId: nameToId[name],
 			AnySlot:   nameToBlock[name],
 		})
+
+		for _, b := range nameToBlock[name] {
+			if f := b.GetFile(); f != nil {
+				s.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
+					ContextId: nameToId[name],
+					BlockId:   b.Id,
+					FilePath:  req.ImportPath + "/" + strings.Replace(f.Name, "%20", " ", -1),
+					Url:       "",
+				})
+			}
+		}
 
 		if err != nil {
 			return rootLinkIds, err
@@ -557,7 +563,6 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 		rootLinkIds = append(rootLinkIds, r.Id)
 	}
 
-	fmt.Println("paste rootLinks:", rootLinks)
 	_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
 		ContextId: req.ContextId,
 		AnySlot:   rootLinks,

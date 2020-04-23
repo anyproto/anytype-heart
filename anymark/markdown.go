@@ -166,8 +166,6 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 			}
 
 			if !info.IsDir() {
-				//if filepath.Ext(path) == ".png" ||
-
 				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
 				allFileShortPaths = append(allFileShortPaths, shortPath)
 			}
@@ -193,10 +191,6 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 					return err
 				}
 
-				// TODO: media
-				if extension == ".png" {
-				}
-
 				if extension == ".md" {
 					datStr := string(dat)
 					linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
@@ -207,7 +201,7 @@ func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock ma
 						l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
 
 						for _, sPath := range allFileShortPaths {
-							if strings.Contains(sPath, l) { // && strings.Contains(l, ".md")
+							if strings.Contains(sPath, l) {
 								datStr = strings.Replace(datStr, linkSubmatch[2], strings.Replace(sPath, " ", "%20", -1), -1)
 							}
 						}
