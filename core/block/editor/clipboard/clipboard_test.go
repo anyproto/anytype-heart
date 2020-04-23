@@ -1,33 +1,11 @@
 package clipboard
 
 import (
-	"fmt"
 	"testing"
-
-	"github.com/anytypeio/go-anytype-middleware/anymark"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 )
-
-func TestCommonSmart_importFromMarkdown(t *testing.T) {
-	t.Run("No marks, paste middleCut to the middle", func(t *testing.T) {
-		anymarkConv := anymark.New()
-		//dir := "/Users/enkogu/Downloads/Export-8c7ac216-2a42-409f-884d-0573c192ef5e"
-		dir := "/Users/enkogu/Downloads/Export"
-		nameToBlocks, _, err := anymarkConv.DirWithMarkdownToBlocks(dir)
-
-		if err != nil {
-			fmt.Println(err)
-		}
-		for k := range nameToBlocks {
-			fmt.Println("PAGE:", k)
-			for _, b := range nameToBlocks[k] {
-				fmt.Println("block:", b)
-			}
-		}
-	})
-}
 
 func TestCommonSmart_copyRangeNoMarks(t *testing.T) {
 	t.Run("No marks, paste middleCut to the middle", func(t *testing.T) {
