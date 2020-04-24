@@ -293,7 +293,7 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 		}()
 	}
 
-	if waitForPull {
+	if mustConnectToCafe && pullAfterConnect && waitForPull {
 		log.Debugf("syncThread wait for pull")
 		<-pullDone
 		log.Debugf("syncThread pull done")
