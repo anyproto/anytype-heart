@@ -40,7 +40,6 @@ func TestAnytype_ImageByHash(t *testing.T) {
 	require.NotNil(t, flargest.Meta())
 	require.Equal(t, "image.jpeg", flargest.Meta().Name)
 	require.Equal(t, int64(68648), flargest.Meta().Size)
-	log.Errorf("%+v", s.(*Anytype).files.KeysCache)
 }
 
 func TestAnytype_ImageByHashUnencrypted(t *testing.T) {

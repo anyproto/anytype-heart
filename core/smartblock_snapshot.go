@@ -98,7 +98,7 @@ func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		WebGatewayHost+WebGatewaySnapshotURI,
+		DefaultWebGatewayBaseUrl+DefaultWebGatewaySnapshotURI,
 		snapshot.threadID.String(),
 		event.BodyID().String(),
 		base64.RawURLEncoding.EncodeToString(bodyKeyBin),
@@ -163,7 +163,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		}
 
 		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Descendant) {
-			log.Debugf("snapshotTraverseFromCid skip Descendant: %+v > %+v", snapshot.State, before)
+			log.Debugf("snapshotTraverseFromCid skip Descendant: %+v < %+v", snapshot.State, before)
 			continue
 		}
 

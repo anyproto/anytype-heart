@@ -25,6 +25,9 @@ func getRunningService(t *testing.T) Service {
 		s = createAccount(t)
 		err := s.Start()
 		require.NoError(t, err)
+
+		err = s.InitPredefinedBlocks(false)
+		require.NoError(t, err)
 	})
 	return s
 }
@@ -52,6 +55,11 @@ func TestAnytype_PredefinedBlocks(t *testing.T) {
 	require.Len(t, s.PredefinedBlocks().Home, 57)
 	require.Len(t, s.PredefinedBlocks().Profile, 57)
 	require.Len(t, s.PredefinedBlocks().Archive, 57)
+
+	tid, err := ProfileThreadIDFromAccountAddress(s.Account())
+	require.NoError(t, err)
+
+	require.Equal(t, s.PredefinedBlocks().Profile, tid.String())
 }
 
 func TestAnytype_CreateBlock(t *testing.T) {

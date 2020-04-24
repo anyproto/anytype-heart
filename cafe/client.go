@@ -1,19 +1,23 @@
-package cafeclient
+package cafe
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-cafe/api/pb"
+	"github.com/anytypeio/go-anytype-library/cafe/pb"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/mr-tron/base58"
 	"github.com/textileio/go-threads/core/thread"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var _ pb.APIClient = (*Online)(nil)
+
+const simultaneousRequests = 4
 
 type Client interface {
 	pb.APIClient
@@ -29,6 +33,8 @@ type Online struct {
 	client        pb.APIClient
 	token         *Token
 	getTokenMutex sync.Mutex
+
+	limiter chan struct{}
 
 	device  wallet.Keypair
 	account wallet.Keypair
@@ -136,6 +142,9 @@ func (c *Online) ThreadLogFollow(ctx context.Context, in *pb.ThreadLogFollowRequ
 }
 
 func (c *Online) FilePin(ctx context.Context, in *pb.FilePinRequest, opts ...grpc.CallOption) (*pb.FilePinResponse, error) {
+	<-c.limiter
+	defer func() { c.limiter <- struct{}{} }()
+
 	ctx, err := c.withToken(ctx)
 	if err != nil {
 		return nil, err
@@ -144,25 +153,37 @@ func (c *Online) FilePin(ctx context.Context, in *pb.FilePinRequest, opts ...grp
 	return c.client.FilePin(ctx, in, opts...)
 }
 
-func (c *Online) AccountFind(ctx context.Context, in *pb.AccountFindRequest, opts ...grpc.CallOption) (pb.API_AccountFindClient, error) {
+func (c *Online) ProfileFind(ctx context.Context, in *pb.ProfileFindRequest, opts ...grpc.CallOption) (pb.API_ProfileFindClient, error) {
 	ctx, err := c.withToken(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.client.AccountFind(ctx, in, opts...)
+	return c.client.ProfileFind(ctx, in, opts...)
 }
 
 func NewClient(url string, device wallet.Keypair, account wallet.Keypair) (Client, error) {
-	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>"), grpc.WithInsecure(), grpc.WithPerRPCCredentials(thread.Credentials{}))
+	certpool, err := x509.SystemCertPool()
 	if err != nil {
 		return nil, err
+	}
+
+	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>"), grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(certpool, "")), grpc.WithPerRPCCredentials(thread.Credentials{}))
+	if err != nil {
+		return nil, err
+	}
+
+	limiter := make(chan struct{}, simultaneousRequests)
+
+	for i := 0; i < cap(limiter); i++ {
+		limiter <- struct{}{}
 	}
 
 	return &Online{
 		pb.NewAPIClient(conn),
 		nil,
 		sync.Mutex{},
+		limiter,
 		device,
 		account,
 		conn,

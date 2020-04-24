@@ -1,0 +1,68 @@
+syntax = "proto3";
+package pb;
+
+option go_package = "pb";
+
+// this login flow used to verify that requests initiated by specific user & device address
+message WithSignature {
+    string accountAddress = 1;
+    string deviceAddress = 2;
+    string accountSignature = 3; // base58_encode(accountPrivateKey(payload))
+    string deviceSignature = 4; // base58_encode(devicePrivateKey(payload+accountAddress))
+}
+
+// this is a 2-step flow similar to OAuth2 except it also contains account/device address + signature made with account/device private key
+// this flow used to protect from the outgoing request leak that can be reused indefinite amount of times to receive the cafe token on behalf of user/device
+
+// 1st step: send an empty authCode and get the authCode in the response
+// 2nd step: send the authCode you've got in the 1st step and get the token in the response
+message AuthGetTokenRequest {
+    string authCode = 1;
+
+    WithSignature signature = 100;
+}
+
+message AuthGetTokenResponse {
+    message TokenInfo {
+        string token = 1;
+        int64  expiresAt = 2;
+    }
+
+    oneof twoStepFlow {
+        string authCode = 1;
+        TokenInfo token = 2;
+    }
+}
+
+message ThreadLogFollowRequest {
+    bytes addr = 1;
+    bytes followKey = 2;
+}
+
+message ThreadLogFollowResponse {
+}
+
+message FilePinRequest {
+    string cid = 1;
+}
+
+message FilePinResponse {
+}
+
+message ProfileFindRequest {
+    repeated string accountAddrs = 1;
+}
+
+message ProfileFindResponse {
+    string accountAddr = 1;
+    string name = 2;
+    string iconImage = 3;
+    string iconColor = 4;
+}
+
+service API {
+    rpc AuthGetToken(stream AuthGetTokenRequest) returns (stream AuthGetTokenResponse) {}
+    rpc ThreadLogFollow(ThreadLogFollowRequest) returns (ThreadLogFollowResponse) {}
+    rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
+    rpc ProfileFind(ProfileFindRequest) returns (stream ProfileFindResponse) {}
+}

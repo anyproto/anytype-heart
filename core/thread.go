@@ -5,16 +5,39 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-slip21"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	db2 "github.com/textileio/go-threads/core/db"
 	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/crypto/symmetric"
+	"github.com/textileio/go-threads/db"
+	"github.com/textileio/go-threads/util"
 )
 
 type threadDerivedIndex uint32
+
+type threadInfo struct {
+	ID    db2.InstanceID
+	Key   string
+	Addrs []string
+}
+
+var (
+	threadInfoCollectionName = "threads"
+
+	threadInfoCollection = db.CollectionConfig{
+		Name:   threadInfoCollectionName,
+		Schema: util.SchemaFromInstance(threadInfo{}, false),
+	}
+)
+
+const (
+	waitInitialSyncMaxAttempts = 3
+)
 
 const (
 	// profile page is publicly accessible as service/read keys derived from account public key
@@ -61,13 +84,21 @@ func ProfileThreadIDFromAccountPublicKey(pubk crypto.PubKey) (thread.ID, error) 
 }
 
 func ProfileThreadKeysFromAccountPublicKey(pubk crypto.PubKey) (service *symmetric.Key, read *symmetric.Key, err error) {
-	masterKey, err2 := pubk.Raw()
-	if err2 != nil {
-		err = err2
+	masterKey, err := pubk.Raw()
+	if err != nil {
 		return
 	}
 
 	return threadDeriveKeys(threadDerivedIndexProfilePage, masterKey)
+}
+
+func ProfileThreadKeysFromAccountAddress(address string) (service *symmetric.Key, read *symmetric.Key, err error) {
+	pubk, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeAccount, address)
+	if err != nil {
+		return
+	}
+
+	return ProfileThreadKeysFromAccountPublicKey(pubk)
 }
 
 func ProfileThreadIDFromAccountAddress(address string) (thread.ID, error) {
@@ -143,8 +174,12 @@ func (a *Anytype) threadDeriveKeys(index threadDerivedIndex) (service *symmetric
 }
 
 func (a *Anytype) threadDeriveID(index threadDerivedIndex) (thread.ID, error) {
+	if a.account == nil {
+		return thread.Undef, fmt.Errorf("account key not set")
+	}
+
 	if index == threadDerivedIndexProfilePage {
-		accountKey, err := a.account.GetPublic().Bytes()
+		accountKey, err := a.account.GetPublic().Raw()
 		if err != nil {
 			return thread.Undef, err
 		}
@@ -181,20 +216,110 @@ func (a *Anytype) predefinedThreadWithIndex(index threadDerivedIndex) (thread.In
 	return a.t.GetThread(context.TODO(), id)
 }
 
-func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshotIfNotExist bool) (thread.Info, error) {
+func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfterConnect bool, waitForPull bool) error {
+	var err error
+	if a.cafeP2PAddr == nil {
+		return nil
+	}
+
+	done := make(chan struct{})
+	go func() {
+		attempts := 0
+		defer close(done)
+		for _, addr := range thrd.Addrs {
+			if addr.Equal(a.cafeP2PAddr) {
+				log.Warnf("syncThread %s already has replicator")
+				return
+			}
+		}
+
+		for {
+			start := time.Now()
+			_, err = a.t.AddReplicator(context.TODO(), thrd.ID, a.cafeP2PAddr)
+			if err != nil {
+				attempts++
+				if mustConnectToCafe {
+					log.Errorf("syncThread failed to add replicator for %s after %.2fs %d/%d attempt: %s", thrd.ID.String(), time.Since(start).Seconds(), attempts, waitInitialSyncMaxAttempts, err.Error())
+
+					if attempts >= waitInitialSyncMaxAttempts {
+						break
+					}
+					// we do not need sleep here because we
+					continue
+				}
+
+				log.Errorf("syncThread failed to add replicator for %s after %.2fs (%d attempt): %s", thrd.ID.String(), time.Since(start).Seconds(), attempts, err.Error())
+
+				time.Sleep(time.Second * time.Duration(10*attempts))
+				continue
+			}
+
+			break
+		}
+	}()
+
+	pullDone := make(chan struct{})
+	if mustConnectToCafe {
+		<-done
+		if err != nil {
+			return err
+		}
+
+		if !pullAfterConnect {
+			return nil
+		}
+
+		go func() {
+			defer close(pullDone)
+			err = a.pullThread(context.TODO(), thrd.ID)
+			if err != nil {
+				log.Errorf("syncThread failed to pullThread: %s", err.Error())
+				return
+			}
+		}()
+	} else {
+		if !pullAfterConnect {
+			return nil
+		}
+
+		go func() {
+			defer close(pullDone)
+			<-done
+			err = a.pullThread(context.TODO(), thrd.ID)
+			if err != nil {
+				log.Errorf("syncThread failed to pullThread: %s", err.Error())
+				return
+			}
+		}()
+	}
+
+	if mustConnectToCafe && pullAfterConnect && waitForPull {
+		log.Debugf("syncThread wait for pull")
+		<-pullDone
+		log.Debugf("syncThread pull done")
+	}
+
+	return nil
+}
+
+func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshotIfNotExist bool, pullAfterConnect bool, waitForPull bool) (info thread.Info, justCreated bool, err error) {
 	id, err := a.threadDeriveID(index)
 	if err != nil {
-		return thread.Info{}, err
+		return thread.Info{}, false, err
 	}
 
 	thrd, err := a.t.GetThread(context.TODO(), id)
 	if err == nil && thrd.Key.Service() != nil {
-		return thrd, nil
+		err = a.syncThread(thrd, false, pullAfterConnect, waitForPull)
+		if err != nil {
+			return thread.Info{}, false, err
+		}
+		return thrd, false, nil
 	}
 
 	serviceKey, readKey, err := a.threadDeriveKeys(index)
 	if err != nil {
-		return thread.Info{}, err
+		return thread.Info{}, false, err
 	}
 
 	thrd, err = a.t.CreateThread(context.TODO(),
@@ -202,18 +327,15 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 		corenet.WithThreadKey(thread.NewKey(serviceKey, readKey)),
 		corenet.WithLogKey(a.device))
 	if err != nil {
-		return thread.Info{}, err
+		return thread.Info{}, false, err
 	}
 
-	if mustSyncSnapshotIfNotExist {
-		fmt.Printf("pull thread %s %p\n", id, a.t)
-		err := a.t.PullThread(context.TODO(), id)
-		if err != nil {
-			return thread.Info{}, fmt.Errorf("failed to pull thread: %w", err)
-		}
+	err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, pullAfterConnect, waitForPull)
+	if err != nil {
+		return thread.Info{}, true, err
 	}
 
-	return thrd, nil
+	return thrd, true, nil
 }
 
 func threadIDFromBytes(variant thread.Variant, blockType SmartBlockType, b []byte) (thread.ID, error) {

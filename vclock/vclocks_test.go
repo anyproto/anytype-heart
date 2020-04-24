@@ -8,6 +8,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCompare(t *testing.T) {
+
+	a := NewFromMap(map[string]uint64{"A": 1})
+	b := NewFromMap(map[string]uint64{"A": 3})
+
+	// b is Descendant
+	require.Equal(t, true, a.Compare(b, Descendant))
+	// b is not Ancestor
+	require.Equal(t, false, a.Compare(b, Ancestor))
+
+	// b is Ancestor
+	require.Equal(t, true, b.Compare(a, Ancestor))
+	// b is not Descendant
+	require.Equal(t, false, b.Compare(a, Descendant))
+
+}
 func TestSort(t *testing.T) {
 	clocks := VClocks{
 		// on A perspective

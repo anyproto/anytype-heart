@@ -6,17 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/core/thread"
-
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/vclock"
 )
 
 type SmartBlockType uint64
@@ -26,6 +24,8 @@ const (
 	SmartBlockTypeProfilePage SmartBlockType = 0x11
 	SmartBlockTypeHome        SmartBlockType = 0x20
 	SmartBlockTypeArchive     SmartBlockType = 0x30
+	SmartBlockTypeDatabase    SmartBlockType = 0x40
+	SmartBlockTypeSet         SmartBlockType = 0x41
 )
 
 type ProfileThreadEncryptionKeys struct {
@@ -188,12 +188,12 @@ func (block *smartBlock) GetSnapshotBefore(state vclock.VClock) (SmartBlockSnaps
 		return nil, err
 	}
 
-	node, err := event.GetBody(context.TODO(), block.node.t, block.thread.ReadKey)
+	service, err := event.GetBody(context.TODO(), block.service.t, block.thread.ReadKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record body: %w", err)
 	}
 	m := new(threadSnapshot)
-	err = cbornode.DecodeInto(node.RawData(), m)
+	err = cbornode.DecodeInto(service.RawData(), m)
 	if err != nil {
 		return nil, fmt.Errorf("incorrect record type: %w", err)
 	}
@@ -314,6 +314,13 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	}, nil
 }
 
+func hasCafeLog(logsinfo []thread.LogInfo) bool {
+	/*for _, li := range logsinfo {
+		//if li.
+	}*/
+	return false
+}
+
 func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (recID cid.Cid, user string, date *types.Timestamp, err error) {
 	var newSnapshotB []byte
 	newSnapshotB, err = proto.Marshal(newSnapshot)
@@ -333,44 +340,13 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	thrd, err2 := block.node.t.GetThread(context.TODO(), block.thread.ID)
-	if err2 != nil {
-		err = fmt.Errorf("failed to get thread: %s", err2.Error())
-		return
-	}
-
-	ownLog := thrd.GetOwnLog()
-
-	block.node.replicationWG.Add(1)
-	defer block.node.replicationWG.Done()
-
-	rec, err2 := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
-	if err2 != nil {
-		err = err2
+	_, err = block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+	if err != nil {
 		log.Errorf("failed to create record: %w", err)
 		return
 	}
 
-	recID = rec.Value().Cid()
-	go func() {
-		if ownLog == nil || ownLog.Head == cid.Undef {
-			addr, err2 := ma.NewMultiaddr(CafeNodeP2P)
-			if err2 != nil {
-				err = err2
-				return
-			}
-
-			p, err := block.node.t.AddReplicator(context.TODO(), block.thread.ID, addr)
-			if err != nil {
-				log.Errorf("failed to add log replicator: %s", err.Error())
-			}
-
-			log.With("thread", block.thread.ID.String()).Infof("added log replicator: %s", p.String())
-		}
-	}()
-
 	log.Debugf("SmartBlock.addSnapshot: blockId = %s", block.ID())
-
 	return
 }
 
@@ -391,34 +367,67 @@ func (block *smartBlock) SubscribeForChanges(since vclock.VClock, ch chan SmartB
 }
 
 func (block *smartBlock) SubscribeForMetaChanges(since vclock.VClock, ch chan SmartBlockMetaChange) (cancel func(), err error) {
-	chCloseFn := func() { close(ch) }
-
-	/*// temporary just sent the last version
-	if sinceSnapshotId == "" {
-		// it must be set to ensure no versions were skipped in between
-		return nil, fmt.Errorf("sinceSnapshotId must be set")
-	}
-	var closeChan = make(chan struct{})
+	doneCh := make(chan struct{})
 	chCloseFn := func() {
-		close(closeChan)
+		doneCh <- struct{}{}
 	}
 
-	// todo: implement with chan from textile events feed
-	if includeSinceSnapshot {
-		versionMeta, err := block.GetSnapshotMeta(sinceSnapshotId)
-		if err != nil {
-			return chCloseFn, err
-		}
-		go func() {
-			select {
-			case blockMeta <- versionMeta:
-			case <-closeChan:
+	log.Infof("SubscribeForMetaChanges %s", block.ID())
+
+	go func() {
+		listener := block.node.smartBlockChanges.Listen()
+
+		var lastDetails *types.Struct
+		lastSnap, _ := block.GetLastSnapshot()
+		if lastSnap != nil {
+			lastMeta, _ := lastSnap.Meta()
+			if lastMeta != nil {
+				lastDetails = lastMeta.Details
+				if lastSnap.State().Compare(since, vclock.Ancestor) {
+					ch <- SmartBlockMetaChange{
+						SmartBlockMeta: *lastMeta,
+						state:          lastSnap.State()}
+				}
 			}
-			close(blockMeta)
-		}()
-	}
-	*/
-	//todo: to be implemented
+		}
+
+		for {
+			select {
+			case <-doneCh:
+				listener.Discard()
+				close(ch)
+				return
+			case val, ok := <-listener.Channel():
+				if !ok {
+					close(ch)
+					return
+				}
+
+				if tid, ok := val.(thread.ID); ok {
+					if tid != block.thread.ID {
+						continue
+					}
+					log.Infof("got thread update... %s", tid.String())
+
+					newSnap, _ := block.GetLastSnapshot()
+					if newSnap != nil {
+						newMeta, _ := newSnap.Meta()
+						if newMeta != nil && newMeta.Details != nil {
+							if newMeta.Details.Compare(lastDetails) != 0 {
+								log.Infof("details changed! %s", tid.String())
+								ch <- SmartBlockMetaChange{
+									SmartBlockMeta: *newMeta,
+									state:          newSnap.State()}
+
+								lastDetails = newMeta.Details
+							}
+						}
+					}
+				}
+			}
+		}
+	}()
+
 	return chCloseFn, nil
 }
 
