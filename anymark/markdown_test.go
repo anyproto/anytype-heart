@@ -9,7 +9,7 @@ import (
 func TestCommonSmart_importFromMarkdown(t *testing.T) {
 	t.Run("No marks, paste middleCut to the middle", func(t *testing.T) {
 		anymarkConv := New()
-		dir := "md-import-test-files"
+		dir := "md-import-files_test"
 		nameToBlocks, _, err := anymarkConv.DirWithMarkdownToBlocks(dir)
 
 		if err != nil {
