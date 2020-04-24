@@ -33,6 +33,15 @@ func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
 	return smartBlock, nil
 }
 
+func (a *Anytype) DeleteBlock(id string) error {
+	tid, err := thread.Decode(id)
+	if err != nil {
+		return fmt.Errorf("incorrect block id: %w", err)
+	}
+
+	return a.t.DeleteThread(context.Background(), tid)
+}
+
 /*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, creator string, date *types.Timestamp) BlockVersion {
 	switch block.Content.(type) {
 	case *model.BlockContentOfDashboard, *model.BlockContentOfPage:

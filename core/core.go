@@ -94,6 +94,7 @@ type Service interface {
 	InitPredefinedBlocks(mustSyncFromRemote bool) error
 	PredefinedBlocks() PredefinedBlockIds
 	GetBlock(blockId string) (SmartBlock, error)
+	DeleteBlock(blockId string) error
 	CreateBlock(t SmartBlockType) (SmartBlock, error)
 
 	FileByHash(ctx context.Context, hash string) (File, error)
