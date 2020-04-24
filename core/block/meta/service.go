@@ -35,7 +35,8 @@ func (s *service) PubSub() PubSub {
 }
 
 func (s *service) ReportChange(m Meta) {
-	s.ps.setMeta(copyMeta(m))
+	m = copyMeta(m)
+	s.ps.setMeta(m)
 }
 
 func (s *service) Close() (err error) {
