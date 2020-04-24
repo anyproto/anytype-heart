@@ -16,7 +16,7 @@ var (
 	divSize              = maxChildrenThreshold / 2
 )
 
-func (s *State) normalize() {
+func (s *State) normalize() (err error) {
 	// remove invalid children
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
@@ -37,8 +37,7 @@ func (s *State) normalize() {
 			s.normalizeLayoutRow(b)
 		}
 	}
-	s.normalizeTree()
-	return
+	return s.normalizeTree()
 }
 
 func (s *State) normalizeChildren(b simple.Block) {
@@ -103,29 +102,6 @@ func (s *State) normalizeLayoutRow(b simple.Block) {
 	}
 }
 
-func (s *State) validateBlock(b simple.Block) (err error) {
-	id := b.Model().Id
-	if id == s.RootId() {
-		return
-	}
-	var parentIds = []string{id}
-	for {
-		parent := s.PickParentOf(id)
-		if parent == nil {
-			break
-		}
-		if parent.Model().Id == s.RootId() {
-			return nil
-		}
-		if slice.FindPos(parentIds, parent.Model().Id) != -1 {
-			return fmt.Errorf("cycle reference: %v", append(parentIds, parent.Model().Id))
-		}
-		id = parent.Model().Id
-		parentIds = append(parentIds, id)
-	}
-	return fmt.Errorf("block '%s' has not the page in parents: %v", id, parentIds)
-}
-
 func isDivLayout(m *model.Block) bool {
 	if layout := m.GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Div {
 		return true
@@ -133,10 +109,9 @@ func isDivLayout(m *model.Block) bool {
 	return false
 }
 
-func (s *State) normalizeTree() {
-	s.checkDividedLists(s.RootId())
+func (s *State) normalizeTree() (err error) {
 	var seq int32
-	s.Iterate(func(b simple.Block) (isContinue bool) {
+	err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		if isDivLayout(b.Model()) {
 			id := b.Model().Id
 			if strings.HasPrefix(id, "div-") {
@@ -148,7 +123,12 @@ func (s *State) normalizeTree() {
 		}
 		return true
 	})
+	if err != nil {
+		return
+	}
+	s.checkDividedLists(s.RootId())
 	s.normalizeTreeBranch(s.RootId(), &seq)
+	return nil
 }
 
 func (s *State) checkDividedLists(id string) {
@@ -158,7 +138,7 @@ func (s *State) checkDividedLists(id string) {
 	}
 	parent := pb.Model()
 	if isDivLayout(parent) {
-		if nextDiv := s.getNextDiv(parent.Id); nextDiv != nil {
+		if nextDiv := s.pickNextDiv(parent.Id); nextDiv != nil {
 			nextDivM := nextDiv.Model()
 			if len(parent.ChildrenIds) > 0 && len(nextDivM.ChildrenIds) > 0 {
 				if !s.canDivide(parent.ChildrenIds[len(parent.ChildrenIds)-1]) && !s.canDivide(nextDivM.ChildrenIds[0]) {
@@ -183,42 +163,38 @@ func (s *State) normalizeTreeBranch(id string, seq *int32) {
 	}
 	parent := parentB.Model()
 	if s.dividedLen(parent.ChildrenIds) > maxChildrenThreshold {
-		nextId := s.wrapChildrenToDiv(id, seq)
-		s.normalizeTreeBranch(nextId, seq)
-		return
+		if nextId := s.wrapChildrenToDiv(id, seq); nextId != "" {
+			s.normalizeTreeBranch(nextId, seq)
+			return
+		}
 	}
 	for _, chId := range parent.ChildrenIds {
 		s.normalizeTreeBranch(chId, seq)
 	}
 }
 
-func (s *State) dividedLen(ids []string) (l int) {
-	var m int
-	for _, id := range ids {
-		if s.canDivide(id) {
-			l++
-		} else {
-			if l > m {
-				m = l
-			}
-			l = 0
+func (s *State) dividedLen(ids []string) int {
+	l := len(ids)
+	for l > 0 {
+		if s.canDivide(ids[l-1]) {
+			return l
 		}
+		l--
 	}
-	if l > m {
-		return l
-	}
-	return m
+	return 0
 }
 
 func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
 	parent := s.Get(id).Model()
 	overflow := maxChildrenThreshold - len(parent.ChildrenIds)
 	if isDivLayout(parent) {
+		changes := false
 		nextDiv := s.getNextDiv(id)
 		if nextDiv == nil || len(nextDiv.Model().ChildrenIds)+overflow > maxChildrenThreshold {
 			nextDiv = s.newDiv(seq)
 			s.Add(nextDiv)
 			s.InsertTo(parent.Id, model.Block_Bottom, nextDiv.Model().Id)
+			changes = true
 		}
 		for s.divBalance(parent, nextDiv.Model()) {
 			parent = nextDiv.Model()
@@ -228,9 +204,13 @@ func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
 				nextDiv = s.newDiv(seq)
 				s.Add(nextDiv)
 				s.InsertTo(parent.Id, model.Block_Bottom, nextDiv.Model().Id)
+				changes = true
 			}
 		}
-		return s.PickParentOf(parent.Id).Model().Id
+		if changes {
+			return s.PickParentOf(parent.Id).Model().Id
+		}
+		return ""
 	}
 
 	div := s.newDiv(seq)
@@ -243,22 +223,17 @@ func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
 func (s *State) divBalance(d1, d2 *model.Block) (overflow bool) {
 	d1.ChildrenIds = append(d1.ChildrenIds, d2.ChildrenIds...)
 	sum := len(d1.ChildrenIds)
-	var overflowIds []string
-	if sum > maxChildrenThreshold*2 {
-		overflow = true
-		overflowIds = d1.ChildrenIds[maxChildrenThreshold:]
-		d1.ChildrenIds = d1.ChildrenIds[:maxChildrenThreshold]
-		sum = maxChildrenThreshold
-	}
 	div := sum / 2
+	if sum > maxChildrenThreshold*2 {
+		div = maxChildrenThreshold / 2
+	}
 	for div < sum && !s.canDivide(d1.ChildrenIds[div]) {
 		div++
 	}
-	d2.ChildrenIds = make([]string, sum-div)
+	d2.ChildrenIds = make([]string, len(d1.ChildrenIds[div:]))
 	copy(d2.ChildrenIds, d1.ChildrenIds[div:])
 	d1.ChildrenIds = d1.ChildrenIds[:div]
-	d2.ChildrenIds = append(d2.ChildrenIds, overflowIds...)
-	return
+	return s.dividedLen(d2.ChildrenIds) > maxChildrenThreshold
 }
 
 func (s *State) canDivide(id string) bool {
@@ -282,13 +257,21 @@ func (s *State) newDiv(seq *int32) simple.Block {
 }
 
 func (s *State) getNextDiv(id string) simple.Block {
+	if b := s.pickNextDiv(id); b != nil {
+		return s.Get(b.Model().Id)
+	}
+	return nil
+}
+
+func (s *State) pickNextDiv(id string) simple.Block {
 	parent := s.PickParentOf(id)
 	if parent != nil {
 		pm := parent.Model()
 		pos := slice.FindPos(pm.ChildrenIds, id)
 		if pos != -1 && pos < len(pm.ChildrenIds)-1 {
-			if isDivLayout(s.Pick(pm.ChildrenIds[pos+1]).Model()) {
-				return s.Get(pm.ChildrenIds[pos+1])
+			b := s.Pick(pm.ChildrenIds[pos+1])
+			if isDivLayout(b.Model()) {
+				return b
 			}
 		}
 	}

@@ -78,6 +78,10 @@
     - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
     - [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response)
     - [Rpc.Block.Get.Marks.Response.Error](#anytype.Rpc.Block.Get.Marks.Response.Error)
+    - [Rpc.Block.GetPublicWebURL](#anytype.Rpc.Block.GetPublicWebURL)
+    - [Rpc.Block.GetPublicWebURL.Request](#anytype.Rpc.Block.GetPublicWebURL.Request)
+    - [Rpc.Block.GetPublicWebURL.Response](#anytype.Rpc.Block.GetPublicWebURL.Response)
+    - [Rpc.Block.GetPublicWebURL.Response.Error](#anytype.Rpc.Block.GetPublicWebURL.Response.Error)
     - [Rpc.Block.ImportMarkdown](#anytype.Rpc.Block.ImportMarkdown)
     - [Rpc.Block.ImportMarkdown.Request](#anytype.Rpc.Block.ImportMarkdown.Request)
     - [Rpc.Block.ImportMarkdown.Response](#anytype.Rpc.Block.ImportMarkdown.Response)
@@ -321,6 +325,7 @@
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
     - [Rpc.Block.File.CreateAndUpload.Response.Error.Code](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
+    - [Rpc.Block.GetPublicWebURL.Response.Error.Code](#anytype.Rpc.Block.GetPublicWebURL.Response.Error.Code)
     - [Rpc.Block.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Block.ImportMarkdown.Response.Error.Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype.Rpc.Block.Merge.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
@@ -522,6 +527,7 @@
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
+| BlockGetPublicWebURL | [Rpc.Block.GetPublicWebURL.Request](#anytype.Rpc.Block.GetPublicWebURL.Request) | [Rpc.Block.GetPublicWebURL.Response](#anytype.Rpc.Block.GetPublicWebURL.Response) |  |
 | BlockOpenBreadcrumbs | [Rpc.Block.OpenBreadcrumbs.Request](#anytype.Rpc.Block.OpenBreadcrumbs.Request) | [Rpc.Block.OpenBreadcrumbs.Response](#anytype.Rpc.Block.OpenBreadcrumbs.Response) |  |
 | BlockSetBreadcrumbs | [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request) | [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
@@ -1546,6 +1552,63 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.GetPublicWebURL"></a>
+
+### Rpc.Block.GetPublicWebURL
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.GetPublicWebURL.Request"></a>
+
+### Rpc.Block.GetPublicWebURL.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.GetPublicWebURL.Response"></a>
+
+### Rpc.Block.GetPublicWebURL.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.GetPublicWebURL.Response.Error](#anytype.Rpc.Block.GetPublicWebURL.Response.Error) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.GetPublicWebURL.Response.Error"></a>
+
+### Rpc.Block.GetPublicWebURL.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.GetPublicWebURL.Response.Error.Code](#anytype.Rpc.Block.GetPublicWebURL.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4999,6 +5062,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Get.Marks.Response.Error.Code"></a>
 
 ### Rpc.Block.Get.Marks.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.GetPublicWebURL.Response.Error.Code"></a>
+
+### Rpc.Block.GetPublicWebURL.Response.Error.Code
 
 
 | Name | Number | Description |

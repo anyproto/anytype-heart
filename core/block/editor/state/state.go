@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"time"
 
@@ -167,27 +168,31 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 	return
 }
 
-func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) {
-	for _, newId := range s.newIds {
-		if !f(s.blocks[newId]) {
-			return
+func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
+	var iter func(id string) (isContinue bool, err error)
+	var parentIds []string
+	iter = func(id string) (isContinue bool, err error) {
+		if slice.FindPos(parentIds, id) != -1 {
+			return false, fmt.Errorf("cycle reference: %v %s", parentIds, id)
 		}
-	}
-	if s.parent == nil {
-		for _, b := range s.blocks {
-			if !f(b) {
+		parentIds = append(parentIds, id)
+		parentSize := len(parentIds)
+		b := s.Pick(id)
+		if b != nil {
+			if isContinue = f(b); !isContinue {
 				return
 			}
-		}
-	} else {
-		s.parent.Iterate(func(b simple.Block) (isContinue bool) {
-			if s.Exists(b.Model().Id) {
-				return f(s.Pick(b.Model().Id))
+			for _, cid := range b.Model().ChildrenIds {
+				if isContinue, err = iter(cid); !isContinue || err != nil {
+					return
+				}
+				parentIds = parentIds[:parentSize]
 			}
-			return true
-		})
-		return
+		}
+		return true, nil
 	}
+	_, err = iter(s.RootId())
+	return
 }
 
 func (s *State) Exists(id string) (ok bool) {
@@ -200,15 +205,10 @@ func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err e
 
 func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
 	st := time.Now()
-	for id, b := range s.blocks {
-		if slice.FindPos(s.toRemove, id) != -1 {
-			continue
-		}
-		if err := s.validateBlock(b); err != nil {
-			return nil, history.Action{}, err
-		}
+	if err = s.normalize(); err != nil {
+		return
 	}
-	s.normalize()
+
 	var toSave []*model.Block
 	var newBlocks []*model.Block
 	for id, b := range s.blocks {
@@ -298,9 +298,11 @@ func (s *State) String() (res string) {
 func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 	b := s.Pick(id)
 	buf.WriteString(strings.Repeat("\t", l))
-	buf.WriteString(id)
 	if b == nil {
+		buf.WriteString(id)
 		buf.WriteString(" MISSING")
+	} else {
+		buf.WriteString(b.String())
 	}
 	buf.WriteString("\n")
 	if b != nil {

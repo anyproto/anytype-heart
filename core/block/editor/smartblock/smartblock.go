@@ -132,13 +132,13 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 			return err
 		}
 		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-						RootId:  sb.RootId(),
-						Blocks:  sb.Blocks(),
-						Details: details,
-						Type:    sb.Type(),
-					}},
+			{
+				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
+					RootId:  sb.RootId(),
+					Blocks:  sb.Blocks(),
+					Details: details,
+					Type:    sb.Type(),
+				}},
 			},
 		})
 	}
