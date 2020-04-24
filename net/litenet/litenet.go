@@ -142,7 +142,8 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 		logstoreDatastore: logstore,
 		litestore:         litestore,
 		host:              h,
-		dht:               d,
+		lanDht:            d.LAN,
+		wanDht:            d.WAN,
 	}, nil
 }
 
@@ -184,8 +185,9 @@ type netBoostrapper struct {
 	litestore         datastore.Batching
 	logstore          logstore.Logstore
 
-	host host.Host
-	dht  *dht.IpfsDHT
+	host   host.Host
+	wanDht *dht.IpfsDHT
+	lanDht *dht.IpfsDHT
 }
 
 var _ net2.NetBoostrapper = (*netBoostrapper)(nil)
@@ -211,7 +213,10 @@ func (tsb *netBoostrapper) Close() error {
 		return err
 	}
 	tsb.cancel()
-	if err := tsb.dht.Close(); err != nil {
+	if err := tsb.lanDht.Close(); err != nil {
+		return err
+	}
+	if err := tsb.wanDht.Close(); err != nil {
 		return err
 	}
 	if err := tsb.host.Close(); err != nil {
