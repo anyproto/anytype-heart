@@ -357,7 +357,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		// this is workaround when we working offline
 		for _, accountOnDisk := range accountsOnDisk {
 			// todo: load profile name from the details cache in badger
-			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
+			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: ""})
 		}
 
 		accountSearchFinished <- struct{}{}
