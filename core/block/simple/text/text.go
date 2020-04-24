@@ -477,3 +477,7 @@ func (t *Text) normalizeMarksPure(marks []*model.BlockContentTextMark) (outputMa
 
 	return outputMarks
 }
+
+func (t *Text) String() string {
+	return fmt.Sprintf("%s: text:%s", t.Id, t.content.Style.String())
+}

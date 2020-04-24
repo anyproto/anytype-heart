@@ -82,8 +82,8 @@ message Event {
         }
 
         /*
-         * Works with a smart blocks: Page, Dashboard
-         * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+          * Works with a smart blocks: Page, Dashboard
+          * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
         */
         message Show {
             string rootId = 1; // Root block id
