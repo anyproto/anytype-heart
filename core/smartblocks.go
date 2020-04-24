@@ -96,11 +96,11 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 	return nil
 }
 
-func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) error {
+func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	// account
 	a.lock.Lock()
 	defer a.lock.Unlock()
-	account, err := a.predefinedThreadAdd(threadDerivedIndexAccount, false)
+	account, justCreated, err := a.predefinedThreadAdd(threadDerivedIndexAccount, false, false, false)
 	if err != nil {
 		return err
 	}
@@ -125,30 +125,44 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(syncSnapshotIfNotExist bool) 
 		}
 	}
 
-	// pull only after adding collection to handle all events
-	if syncSnapshotIfNotExist {
-		err = a.pullThread(context.TODO(), account.ID)
-		if err != nil {
-			return err
+	accountThreadPullDone := make(chan struct{})
+	if accountSelect {
+		// accountSelect common case
+		go func() {
+			defer close(accountThreadPullDone)
+			// pull only after adding collection to handle all events
+			err = a.pullThread(context.TODO(), account.ID)
+			if err != nil {
+				log.Errorf("failed to pull accountThread")
+			}
+		}()
+
+		if justCreated {
+			// this is the case of accountSelect after accountRecovery
+			// we need to wait for account thread pull to be done
+			<-accountThreadPullDone
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	// profile
-	profile, err := a.predefinedThreadAdd(threadDerivedIndexProfilePage, syncSnapshotIfNotExist)
+	profile, _, err := a.predefinedThreadAdd(threadDerivedIndexProfilePage, accountSelect, true, false)
 	if err != nil {
 		return err
 	}
 	a.predefinedBlockIds.Profile = profile.ID.String()
 
 	// archive
-	archive, err := a.predefinedThreadAdd(threadDerivedIndexArchive, syncSnapshotIfNotExist)
+	archive, _, err := a.predefinedThreadAdd(threadDerivedIndexArchive, accountSelect, true, false)
 	if err != nil {
 		return err
 	}
 	a.predefinedBlockIds.Archive = archive.ID.String()
 
 	// home
-	home, err := a.predefinedThreadAdd(threadDerivedIndexHome, syncSnapshotIfNotExist)
+	home, _, err := a.predefinedThreadAdd(threadDerivedIndexHome, accountSelect, true, true)
 	if err != nil {
 		return err
 	}

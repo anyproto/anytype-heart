@@ -302,24 +302,24 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 	return nil
 }
 
-func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshotIfNotExist bool) (thread.Info, error) {
+func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshotIfNotExist bool, pullAfterConnect bool, waitForPull bool) (info thread.Info, justCreated bool, err error) {
 	id, err := a.threadDeriveID(index)
 	if err != nil {
-		return thread.Info{}, err
+		return thread.Info{}, false, err
 	}
 
 	thrd, err := a.t.GetThread(context.TODO(), id)
 	if err == nil && thrd.Key.Service() != nil {
-		err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, index != threadDerivedIndexAccount, index == threadDerivedIndexHome)
+		err = a.syncThread(thrd, false, pullAfterConnect, waitForPull)
 		if err != nil {
-			return thread.Info{}, err
+			return thread.Info{}, false, err
 		}
-		return thrd, nil
+		return thrd, false, nil
 	}
 
 	serviceKey, readKey, err := a.threadDeriveKeys(index)
 	if err != nil {
-		return thread.Info{}, err
+		return thread.Info{}, false, err
 	}
 
 	thrd, err = a.t.CreateThread(context.TODO(),
@@ -327,15 +327,15 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 		corenet.WithThreadKey(thread.NewKey(serviceKey, readKey)),
 		corenet.WithLogKey(a.device))
 	if err != nil {
-		return thread.Info{}, err
+		return thread.Info{}, false, err
 	}
 
-	err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, index != threadDerivedIndexAccount, index == threadDerivedIndexHome)
+	err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, pullAfterConnect, waitForPull)
 	if err != nil {
-		return thread.Info{}, err
+		return thread.Info{}, true, err
 	}
 
-	return thrd, nil
+	return thrd, true, nil
 }
 
 func threadIDFromBytes(variant thread.Variant, blockType SmartBlockType, b []byte) (thread.ID, error) {
