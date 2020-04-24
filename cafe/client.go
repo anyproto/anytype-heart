@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/cafe/pb"
@@ -35,7 +34,7 @@ type Online struct {
 	token         *Token
 	getTokenMutex sync.Mutex
 
-	throttle *int32
+	limiter chan struct{}
 
 	device  wallet.Keypair
 	account wallet.Keypair
@@ -143,18 +142,8 @@ func (c *Online) ThreadLogFollow(ctx context.Context, in *pb.ThreadLogFollowRequ
 }
 
 func (c *Online) FilePin(ctx context.Context, in *pb.FilePinRequest, opts ...grpc.CallOption) (*pb.FilePinResponse, error) {
-	for {
-		v := atomic.LoadInt32(c.throttle)
-		if v >= simultaneousRequests {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if atomic.CompareAndSwapInt32(c.throttle, v, v+1) {
-			break
-		}
-	}
-	defer atomic.AddInt32(c.throttle, -1)
+	<-c.limiter
+	defer func() { c.limiter <- struct{}{} }()
 
 	ctx, err := c.withToken(ctx)
 	if err != nil {
@@ -184,12 +173,17 @@ func NewClient(url string, device wallet.Keypair, account wallet.Keypair) (Clien
 		return nil, err
 	}
 
-	throttle := int32(0)
+	limiter := make(chan struct{}, simultaneousRequests)
+
+	for i := 0; i < cap(limiter); i++ {
+		limiter <- struct{}{}
+	}
+
 	return &Online{
 		pb.NewAPIClient(conn),
 		nil,
 		sync.Mutex{},
-		&throttle,
+		limiter,
 		device,
 		account,
 		conn,
