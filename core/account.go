@@ -241,8 +241,11 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	var sentAccounts = make(map[string]struct{})
 	sendAccountAddEvent := func(index int, account *model.Account) {
 		sentAccountsMutex.Lock()
+		defer sentAccountsMutex.Unlock()
+		if _, exists := sentAccounts[account.Id]; exists{
+			return
+		}
 		sentAccounts[account.Id] = struct{}{}
-		sentAccountsMutex.Unlock()
 		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
 		if mw.SendEvent != nil {
 			mw.SendEvent(m)
@@ -350,15 +353,12 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		case <-remoteRequestDone:
 			break
 		}
-		sentAccountsMutex.RLock()
+
 		// this is workaround when we working offline
 		for _, accountOnDisk := range accountsOnDisk {
 			// todo: load profile name from the details cache in badger
-			if _, exists := sentAccounts[accountOnDisk.id]; !exists {
-				sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
-			}
+			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
 		}
-		sentAccountsMutex.RUnlock()
 
 		accountSearchFinished <- struct{}{}
 	}()
