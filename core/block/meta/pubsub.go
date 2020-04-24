@@ -80,9 +80,14 @@ func (p *pubSub) add(s Subscriber, ids ...string) {
 			p.subscribers[id] = sm
 		}
 		sm[s] = struct{}{}
-		go func() {
-			s.(*subscriber).call(p.collectors[id].GetMeta())
-		}()
+		go func(id string) {
+			p.m.Lock()
+			cl, ok := p.collectors[id]
+			p.m.Unlock()
+			if ok {
+				s.(*subscriber).call(cl.GetMeta())
+			}
+		}(id)
 	}
 }
 
@@ -98,7 +103,14 @@ func (p *pubSub) reSubscribe(s Subscriber, ids ...string) {
 			p.subscribers[id] = sm
 		}
 		if _, ok := sm[s]; !ok {
-			go s.(*subscriber).call(p.collectors[id].GetMeta())
+			go func(id string) {
+				p.m.Lock()
+				cl, ok := p.collectors[id]
+				p.m.Unlock()
+				if ok {
+					s.(*subscriber).call(cl.GetMeta())
+				}
+			}(id)
 			sm[s] = struct{}{}
 		}
 	}
@@ -337,8 +349,10 @@ func (c *collector) listener() {
 		sb, state, err := c.fetchInitialMeta()
 		if err != nil {
 			if err == errNotFound {
+				log.Infof("meta: %s: block not found - listener exit", c.blockId)
 				return
 			}
+			log.Infof("meta: %s: can't fetch initial meta: %v; - retry", c.blockId, err)
 			time.Sleep(time.Second * 5)
 			continue
 		}

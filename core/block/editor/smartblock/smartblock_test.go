@@ -41,11 +41,13 @@ func TestSmartBlock_Show(t *testing.T) {
 		},
 	}
 	fx.metaService.EXPECT().ReportChange(bm).Do(func(d meta.Meta) {
-		fx.SmartBlock.(*smartBlock).onMetaChange(d)
-		fx.SmartBlock.(*smartBlock).onMetaChange(meta.Meta{
-			BlockId:        "22",
-			SmartBlockMeta: core.SmartBlockMeta{},
-		})
+		go func() {
+			fx.SmartBlock.(*smartBlock).onMetaChange(d)
+			fx.SmartBlock.(*smartBlock).onMetaChange(meta.Meta{
+				BlockId:        "22",
+				SmartBlockMeta: core.SmartBlockMeta{},
+			})
+		}()
 	})
 
 	ctx := state.NewContext(nil)

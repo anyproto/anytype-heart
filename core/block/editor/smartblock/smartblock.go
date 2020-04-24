@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
@@ -62,8 +61,8 @@ type smartBlock struct {
 	source           source.Source
 	metaSub          meta.Subscriber
 	metaData         *core.SmartBlockMeta
-	metaFetchMode    int32
 	metaFetchResults chan meta.Meta
+	metaFetchMu      sync.Mutex
 }
 
 func (sb *smartBlock) Id() string {
@@ -100,7 +99,6 @@ func (sb *smartBlock) Init(s source.Source) error {
 	sb.Doc = state.NewDoc(s.Id(), blocks)
 	sb.source = s
 	sb.hist = history.NewHistory(0)
-	sb.metaFetchResults = make(chan meta.Meta, 10)
 	if sb.metaData == nil {
 		sb.metaData = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -132,13 +130,13 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 			return err
 		}
 		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-						RootId:  sb.RootId(),
-						Blocks:  sb.Blocks(),
-						Details: details,
-						Type:    sb.Type(),
-					}},
+			{
+				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
+					RootId:  sb.RootId(),
+					Blocks:  sb.Blocks(),
+					Details: details,
+					Type:    sb.Type(),
+				}},
 			},
 		})
 	}
@@ -146,15 +144,30 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 }
 
 func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err error) {
+	sb.metaFetchMu.Lock()
+	sb.metaFetchResults = make(chan meta.Meta)
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
 	sb.metaSub = sb.source.Meta().PubSub().NewSubscriber()
 	dependentIds := sb.dependentSmartIds()
-	atomic.StoreInt32(&sb.metaFetchMode, 1)
-	defer atomic.StoreInt32(&sb.metaFetchMode, 0)
 	sb.metaSub.Callback(sb.onMetaChange).Subscribe(dependentIds...)
-
+	sb.metaFetchMu.Unlock()
+	defer func() {
+		sb.metaFetchMu.Lock()
+		ch := sb.metaFetchResults
+		sb.metaFetchResults = nil
+		sb.metaFetchMu.Unlock()
+		timeout := time.After(time.Millisecond * 10)
+		for {
+			select {
+			case d := <-ch:
+				sb.onMetaChange(d)
+			case <-timeout:
+				return
+			}
+		}
+	}()
 	sb.source.Meta().ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
 		SmartBlockMeta: *sb.metaData,
@@ -175,26 +188,29 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 }
 
 func (sb *smartBlock) onMetaChange(d meta.Meta) {
-	if atomic.LoadInt32(&sb.metaFetchMode) == 1 {
+	sb.metaFetchMu.Lock()
+	if sb.metaFetchResults != nil {
 		sb.metaFetchResults <- d
-	} else {
-		sb.Lock()
-		defer sb.Unlock()
-		if sb.sendEvent != nil {
-			sb.sendEvent(&pb.Event{
-				Messages: []*pb.EventMessage{
-					{
-						Value: &pb.EventMessageValueOfBlockSetDetails{
-							BlockSetDetails: &pb.EventBlockSetDetails{
-								Id:      d.BlockId,
-								Details: d.Details,
-							},
+		sb.metaFetchMu.Unlock()
+		return
+	}
+	sb.metaFetchMu.Unlock()
+	sb.Lock()
+	defer sb.Unlock()
+	if sb.sendEvent != nil {
+		sb.sendEvent(&pb.Event{
+			Messages: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetDetails{
+						BlockSetDetails: &pb.EventBlockSetDetails{
+							Id:      d.BlockId,
+							Details: d.Details,
 						},
 					},
 				},
-				ContextId: sb.Id(),
-			})
-		}
+			},
+			ContextId: sb.Id(),
+		})
 	}
 }
 
