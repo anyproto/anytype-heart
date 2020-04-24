@@ -80,7 +80,9 @@ func (p *pubSub) add(s Subscriber, ids ...string) {
 			p.subscribers[id] = sm
 		}
 		sm[s] = struct{}{}
-		go s.(*subscriber).call(p.collectors[id].GetMeta())
+		go func() {
+			s.(*subscriber).call(p.collectors[id].GetMeta())
+		}()
 	}
 }
 
@@ -288,7 +290,7 @@ func (c *collector) fetchInitialMeta() (sb core.SmartBlock, state vclock.VClock,
 			return
 		}
 
- 		select {
+		select {
 		case <-c.ready:
 			return
 		default:
