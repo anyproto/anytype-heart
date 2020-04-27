@@ -4,11 +4,6 @@ package anymark
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
-	"github.com/google/uuid"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -63,8 +58,6 @@ type Markdown interface {
 	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
 	HTMLToBlocks(source []byte) (error, []*model.Block)
 	MarkdownToBlocks(markdownSource []byte) ([]*model.Block, error)
-	DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error)
-	GetRootLinks(nameToBlock map[string][]*model.Block, nameToId map[string]string, isPageLinked map[string]bool) (rootLinks []*model.Block)
 	// Parser returns a Parser that will be used for conversion.
 	Parser() parser.Parser
 
@@ -154,126 +147,6 @@ func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts
 	doc := m.parser.Parse(reader, opts...)
 
 	return m.renderer.Render(bWriter, source, doc)
-}
-
-func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error) {
-	nameToBlocks := make(map[string][]*model.Block)
-
-	allFileShortPaths := []string{}
-
-	err = filepath.Walk(directoryPath,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if !info.IsDir() {
-				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
-				allFileShortPaths = append(allFileShortPaths, shortPath)
-			}
-
-			return nil
-		})
-
-	if err != nil {
-		return nameToBlocks, isPageLinked, err
-	}
-
-	err = filepath.Walk(directoryPath,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if !info.IsDir() {
-				extension := filepath.Ext(path)
-
-				dat, err := ioutil.ReadFile(path)
-				if err != nil {
-					return err
-				}
-
-				if extension == ".md" {
-					datStr := string(dat)
-					linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
-
-					shortPath := strings.Replace(path, directoryPath+"/", "", -1)
-
-					for _, linkSubmatch := range linkSubmatches {
-						l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
-
-						for _, sPath := range allFileShortPaths {
-							if strings.Contains(sPath, l) {
-								datStr = strings.Replace(datStr, linkSubmatch[2], strings.Replace(sPath, " ", "%20", -1), -1)
-							}
-						}
-					}
-
-					nameToBlocks[shortPath], err = m.MarkdownToBlocks([]byte(datStr))
-					if err != nil {
-						return err
-					}
-				}
-
-			}
-
-			return nil
-		})
-
-	isPageLinked = make(map[string]bool)
-	for name, _ := range nameToBlocks {
-		for i, block := range nameToBlocks[name] {
-			nameToBlocks[name][i].Id = uuid.New().String()
-
-			txt := block.GetText()
-			if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
-				txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-
-				linkConverted := strings.Replace(txt.Marks.Marks[0].Param, "%20", " ", -1)
-
-				if nameToBlocks[linkConverted] != nil {
-					nameToBlocks[name][i], isPageLinked = m.convertTextToPageLink(block, isPageLinked)
-				}
-			}
-
-		}
-	}
-
-	return nameToBlocks, isPageLinked, err
-}
-
-func (m *markdown) GetRootLinks(nameToBlock map[string][]*model.Block, nameToId map[string]string, isPageLinked map[string]bool) (rootLinks []*model.Block) {
-	for name := range nameToBlock {
-		if !isPageLinked[name] {
-			rootLinks = append(rootLinks, &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: nameToId[name],
-						Style:         model.BlockContentLink_Page,
-						Fields:        nil,
-					},
-				},
-			})
-		}
-	}
-
-	return rootLinks
-}
-
-func (m *markdown) convertTextToPageLink(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
-
-	targetId := strings.Replace(block.GetText().Marks.Marks[0].Param, "%20", " ", -1)
-	blockOut := &model.Block{
-		Content: &model.BlockContentOfLink{
-			Link: &model.BlockContentLink{
-				TargetBlockId: targetId,
-				Style:         model.BlockContentLink_Page,
-			},
-		},
-	}
-
-	isPageLinked[targetId] = true
-	return blockOut, isPageLinked
 }
 
 func (m *markdown) MarkdownToBlocks(markdownSource []byte) ([]*model.Block, error) {

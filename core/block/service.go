@@ -59,6 +59,7 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -66,7 +67,6 @@ type Service interface {
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
 	ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
-
 	SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
@@ -260,8 +260,7 @@ func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) 
 	return
 }
 
-func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
-	// TODO: move to createSmartBlock
+func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error) {
 	csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -281,10 +280,19 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 			ContextId: pageId,
 			Details:   details,
 		}); err != nil {
-			err = fmt.Errorf("can't set details to page: %v", err)
-			return
+			return pageId, fmt.Errorf("can't set details to page: %v", err)
 		}
 	}
+
+	return pageId, nil
+}
+
+func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+	pageId, err = s.CreateSmartBlock(req)
+	if err != nil {
+		err = fmt.Errorf("create smartblock error: %v", err)
+	}
+
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		linkId, err = b.Create(ctx, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
@@ -757,7 +765,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s, s, s.linkPreview)
+		sb = editor.NewPage(s, s, s, s.linkPreview)
 	case pb.SmartBlockType_Home:
 		sb = editor.NewDashboard()
 	case pb.SmartBlockType_Archive:
