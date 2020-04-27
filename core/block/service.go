@@ -3,12 +3,10 @@ package block
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -509,77 +507,10 @@ func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte)
 }
 
 func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error) {
-	anymarkConv := anymark.New()
-	nameToBlock, isPageLinked, err := anymarkConv.DirWithMarkdownToBlocks(req.ImportPath)
-
-	nameToId := make(map[string]string)
-
-	for name := range nameToBlock {
-		csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
-		if err != nil {
-			err = fmt.Errorf("anytype.CreateBlock error: %v", err)
-			return rootLinkIds, err
-		}
-
-		pageId := csm.ID()
-		nameToId[name] = pageId
-
-		log.Infof("created new smartBlock: %v", pageId)
-
-		fileName := strings.Replace(filepath.Base(name), ".md", "", -1)
-		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
-			ContextId: pageId,
-			Details:   []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(fileName)}},
-		}); err != nil {
-			err = fmt.Errorf("can't set details to page: %v", err)
-			return rootLinkIds, err
-		}
-	}
-
-	for name := range nameToBlock {
-		for i := range nameToBlock[name] {
-			if link := nameToBlock[name][i].GetLink(); link != nil && len(nameToId[name]) > 0 {
-				link.TargetBlockId = nameToId[strings.Replace(link.TargetBlockId, "%20", " ", -1)]
-			}
-		}
-	}
-
-	for name := range nameToBlock {
-		_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
-			ContextId: nameToId[name],
-			AnySlot:   nameToBlock[name],
-		})
-
-		for _, b := range nameToBlock[name] {
-			if f := b.GetFile(); f != nil {
-				s.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
-					ContextId: nameToId[name],
-					BlockId:   b.Id,
-					FilePath:  req.ImportPath + "/" + strings.Replace(f.Name, "%20", " ", -1),
-					Url:       "",
-				})
-			}
-		}
-
-		if err != nil {
-			return rootLinkIds, err
-		}
-	}
-
-	rootLinks := anymarkConv.GetRootLinks(nameToBlock, nameToId, isPageLinked)
-
-	for _, r := range rootLinks {
-		rootLinkIds = append(rootLinkIds, r.Id)
-	}
-
-	_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
-		ContextId: req.ContextId,
-		AnySlot:   rootLinks,
+	err = s.DoImport(req.ContextId, func(imp _import.Import) error {
+		rootLinkIds, err = imp.ImportMarkdown(ctx, req)
+		return err
 	})
-	if err != nil {
-		return rootLinkIds, err
-	}
-
 	return rootLinkIds, err
 }
 
@@ -881,6 +812,20 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 	}
 	defer release()
 	if bb, ok := sb.(basic.IHistory); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+}
+
+func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(_import.Import); ok {
 		sb.Lock()
 		defer sb.Unlock()
 		return apply(bb)
