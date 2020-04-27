@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -20,6 +21,7 @@ func NewPage(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.L
 		File:       file.NewFile(sb, source),
 		Clipboard:  clipboard.NewClipboard(sb),
 		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
+		Import:     _import.NewImport(sb),
 	}
 }
 
@@ -31,4 +33,5 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
+	_import.Import
 }

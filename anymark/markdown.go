@@ -42,7 +42,10 @@ func DefaultRenderer() renderer.Renderer {
 	return renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(html.NewRenderer(), 1000)))
 }
 
-var defaultMarkdown = New()
+var (
+	defaultMarkdown = New()
+	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+)
 
 // Convert interprets a UTF-8 bytes source in Markdown and
 // write rendered contents to a writer w.
@@ -155,7 +158,6 @@ func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts
 
 func (m *markdown) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error) {
 	nameToBlocks := make(map[string][]*model.Block)
-	linkRegexp := regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
 
 	allFileShortPaths := []string{}
 
