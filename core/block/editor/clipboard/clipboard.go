@@ -244,19 +244,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 	firstPasteBlockText := &model.BlockContentText{}
 	firstPasteBlockText = nil
 
-	for bI, _ := range req.AnySlot {
-		if req.AnySlot[bI].GetText() != nil && req.AnySlot[bI].GetText().Marks != nil && len(req.AnySlot[bI].GetText().Marks.Marks) > 0 {
-			marks := req.AnySlot[bI].GetText().Marks.Marks
-
-			for mI, _ := range marks {
-				if marks[mI].Type == model.BlockContentTextMark_Link {
-					marks[mI].Param, _ = helpers.ProcessUrl(marks[mI].Param)
-				}
-			}
-
-			req.AnySlot[bI].GetText().Marks.Marks = marks
-		}
-	}
+	req.AnySlot = helpers.ProcessAllURI(req.AnySlot)
 
 	caretPosition = -1
 

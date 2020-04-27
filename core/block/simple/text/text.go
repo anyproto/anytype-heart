@@ -136,7 +136,7 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 	} else {
 		for mI, _ := range marks.Marks {
 			if marks.Marks[mI].Type == model.BlockContentTextMark_Link {
-				marks.Marks[mI].Param, _ = helpers.ProcessUrl(marks.Marks[mI].Param)
+				marks.Marks[mI].Param, _ = helpers.ProcessURI(marks.Marks[mI].Param)
 			}
 		}
 	}

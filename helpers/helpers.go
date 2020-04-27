@@ -3,6 +3,8 @@ package helpers
 import (
 	"fmt"
 	"regexp"
+
+	"github.com/anytypeio/go-anytype-library/pb/model"
 )
 
 var (
@@ -14,7 +16,7 @@ var (
 	haveUriSchemeRegex = regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
 )
 
-func ProcessUrl(url string) (urlOut string, err error) {
+func ProcessURI(url string) (urlOut string, err error) {
 	if len(url) == 0 {
 		return url, fmt.Errorf("url is empty")
 
@@ -32,4 +34,22 @@ func ProcessUrl(url string) (urlOut string, err error) {
 	}
 
 	return url, fmt.Errorf("not a uri")
+}
+
+func ProcessAllURI(blocks []*model.Block) []*model.Block {
+	for bI, _ := range blocks {
+		if blocks[bI].GetText() != nil && blocks[bI].GetText().Marks != nil && len(blocks[bI].GetText().Marks.Marks) > 0 {
+			marks := blocks[bI].GetText().Marks.Marks
+
+			for mI, _ := range marks {
+				if marks[mI].Type == model.BlockContentTextMark_Link {
+					marks[mI].Param, _ = ProcessURI(marks[mI].Param)
+				}
+			}
+
+			blocks[bI].GetText().Marks.Marks = marks
+		}
+	}
+
+	return blocks
 }
