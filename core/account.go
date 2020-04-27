@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
@@ -200,13 +200,13 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
 			details = append(details, &pb.RpcBlockSetDetailsDetail{
-				Key:   "iconUser",
+				Key:   "iconImage",
 				Value: pbtypes.String(hash),
 			})
 		}
 	} else if req.GetAvatarColor() != "" {
 		details = append(details, &pb.RpcBlockSetDetailsDetail{
-			Key:   "iconUser",
+			Key:   "iconColor",
 			Value: pbtypes.String(req.GetAvatarColor()),
 		})
 	}
@@ -233,8 +233,18 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return m
 	}
 
+	defer func(){
+		log.Debugf("AccountRecover done")
+	}()
+
+	var sentAccountsMutex = sync.RWMutex{}
 	var sentAccounts = make(map[string]struct{})
 	sendAccountAddEvent := func(index int, account *model.Account) {
+		sentAccountsMutex.Lock()
+		defer sentAccountsMutex.Unlock()
+		if _, exists := sentAccounts[account.Id]; exists{
+			return
+		}
 		sentAccounts[account.Id] = struct{}{}
 		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
 		if mw.SendEvent != nil {
@@ -259,11 +269,9 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		<-accountSearchFinished
 	}
 
-	var hasAccountLoaded = map[string]struct{}{}
 	for index := 0; index < len(mw.localAccounts); index++ {
 		// in case we returned to the account choose screen we can use cached accounts
 		sendAccountAddEvent(index, mw.localAccounts[index])
-		hasAccountLoaded[mw.localAccounts[index].Id] = struct{}{}
 		if shouldCancel {
 			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
@@ -275,36 +283,128 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	}
 
 	var accountsOnDisk []nonameAccountWithIndex
-	for i := 0; i <= 10; i++ {
+	var firstAccounts []string
+	var firstAccountsIndexes = make(map[string]int, 10)
+
+	for i := 0; i < 10; i++ {
 		account, err := core.WalletAccountAt(mw.mnemonic, i, "")
 		if err != nil {
 			break
 		}
+		address := account.Address()
+		firstAccounts = append(firstAccounts, address)
+		firstAccountsIndexes[address] = i
 
-		if _, alreadyLoaded := hasAccountLoaded[account.Address()]; alreadyLoaded {
-			continue
-		}
-
-		if _, err := os.Stat(filepath.Join(mw.rootPath, account.Address())); err == nil {
+		if _, err := os.Stat(filepath.Join(mw.rootPath, address)); err == nil {
 			accountsOnDisk = append(accountsOnDisk, nonameAccountWithIndex{
-				id:    account.Address(),
+				id:    address,
 				index: i,
 			})
 		}
 	}
 
-	accountSearchFinished <- struct{}{}
-	n := time.Now()
-	mw.localAccountCachedAt = &n
 
-	// this is workaround when we working offline
-	for _, accountOnDisk := range accountsOnDisk {
-		// todo: load profile name from the details cache in badger
-		if _, exists := sentAccounts[accountOnDisk.id]; !exists {
-			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: accountOnDisk.id})
+
+	zeroAccount, err := core.WalletAccountAt(mw.mnemonic, 0, "")
+	if err != nil {
+		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+	}
+
+	if _, err := os.Stat(filepath.Join(mw.rootPath, zeroAccount.Address())); os.IsNotExist(err) {
+		seedRaw, err := zeroAccount.Raw()
+		if err != nil {
+			return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
+		}
+
+		err = core.WalletInitRepo(mw.rootPath, seedRaw)
+		if err != nil {
+			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 	}
-	// todo: reimplement after cafe2.0 will be ready
+
+	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
+	// it is ok to unlock just after we've started with the 1st account
+	mw.m.Lock()
+
+	c, err := core.New(mw.rootPath, zeroAccount.Address())
+	if err != nil {
+		mw.m.Unlock()
+		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+	}
+
+	mw.Anytype = c
+
+	err = mw.start()
+	if err != nil {
+		mw.m.Unlock()
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
+	}
+	mw.m.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	remoteRequestDone := make(chan struct{})
+	go func() {
+		// start only after 5sec timeout(or remote request ends)
+		// to make a priority for remote recovery
+		// cause we don't have a local profile cache yey
+		select {
+		case <-time.After(time.Second * 5):
+			break
+		case <-remoteRequestDone:
+			break
+		}
+
+		// this is workaround when we working offline
+		for _, accountOnDisk := range accountsOnDisk {
+			// todo: load profile name from the details cache in badger
+			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: ""})
+		}
+
+		accountSearchFinished <- struct{}{}
+	}()
+
+	profilesCh := make(chan core.Profile)
+	go func() {
+		for {
+			select {
+			case profile, ok := <-profilesCh:
+				if !ok {
+					return
+				}
+
+				log.Infof("remote recovery got %+v", profile)
+				var avatar *model.AccountAvatar
+				if profile.IconImage != "" {
+					avatar = &model.AccountAvatar{
+						Avatar: &model.AccountAvatarAvatarOfImage{
+							Image: &model.BlockContentFile{Hash: profile.IconImage},
+						},
+					}
+				} else if profile.IconColor != "" {
+					avatar = &model.AccountAvatar{
+						Avatar: &model.AccountAvatarAvatarOfColor{
+							Color: profile.IconColor,
+						},
+					}
+				}
+
+				sendAccountAddEvent(firstAccountsIndexes[profile.AccountAddr], &model.Account{
+					Id:     profile.AccountAddr,
+					Name:   profile.Name,
+					Avatar: avatar,
+				})
+			}
+		}
+	}()
+
+	err = c.FindProfilesByAccountIDs(ctx, firstAccounts, profilesCh)
+	if err != nil {
+		log.Errorf("remote profiles request failed: %s", err.Error())
+	}
+	close(remoteRequestDone)
+
+	n := time.Now()
+	mw.localAccountCachedAt = &n
 
 	if len(accountsOnDisk) == 0 && len(mw.localAccounts) == 0 {
 		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("remote account recovery not implemeted yet"))
@@ -391,39 +491,6 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
 	}
 
-	/*acc.Name, err = mw.Anytype.Textile.Name()
-	if err != nil {
-		return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
-	}
-
-	avatarHashOrColor, err := mw.Anytype.Textile.Avatar()
-	if err != nil {
-		return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
-	}
-
-	if acc.Name == "" && avatarHashOrColor == "" {
-		for {
-			// wait for cafe registration
-			// in order to use cafeAPI instead of pubsub
-			if cs := mw.Anytype.Textile.Node().CafeSessions(); cs != nil && len(cs.Items) > 0 {
-				break
-			}
-
-			time.Sleep(time.Second)
-		}
-
-		contact, err := mw.Anytype.AccountRequestStoredContact(context.Background(), req.Id)
-		if err != nil {
-			return response(acc, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
-		}
-		acc.Name = contact.Name
-		avatarHashOrColor = contact.Avatar
-	}
-
-	if avatarHashOrColor != "" {
-		acc.Avatar = getAvatarFromString(avatarHashOrColor)
-	}
-	*/
 	mw.setBlockService(block.NewService(acc.Id, mw.Anytype, mw.linkPreview, mw.SendEvent))
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
@@ -459,14 +526,4 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	}
 
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
-}
-
-func getAvatarFromString(avatarHashOrColor string) *model.AccountAvatar {
-	if strings.HasPrefix(avatarHashOrColor, "#") {
-		return &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfColor{avatarHashOrColor}}
-	} else {
-		return &model.AccountAvatar{
-			&model.AccountAvatarAvatarOfImage{&model.BlockContentFile{Hash: avatarHashOrColor}},
-		}
-	}
 }

@@ -22,7 +22,7 @@ var (
 )
 
 type Import interface {
-	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error)
+	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error)
 }
 
 func NewImport(sb smartblock.SmartBlock, ctrl Services) Import {
@@ -40,11 +40,8 @@ type Services interface {
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
 }
 
-func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error) {
-	s := imp.NewStateCtx(ctx)
-
+func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
 	nameToBlock, isPageLinked, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
-
 	nameToId := make(map[string]string)
 
 	for name := range nameToBlock {
@@ -84,11 +81,9 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 
 		if err != nil {
-			return rootLinkIds, err
+			return rootLinks, err
 		}
 	}
-
-	rootLinks := []*model.Block{}
 
 	for name := range nameToBlock {
 		if !isPageLinked[name] {
@@ -104,19 +99,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
-	for _, r := range rootLinks {
-		rootLinkIds = append(rootLinkIds, r.Id)
-	}
-
-	_, _, _, err = imp.ctrl.Paste(ctx, pb.RpcBlockPasteRequest{
-		ContextId: req.ContextId,
-		AnySlot:   rootLinks,
-	})
-	if err != nil {
-		return rootLinkIds, err
-	}
-
-	return rootLinkIds, imp.Apply(s)
+	return rootLinks, err
 }
 
 func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error) {

@@ -40,7 +40,7 @@ func (p *Archive) init() (err error) {
 	}
 	return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
 		{Key: "name", Value: pbtypes.String("Archive")},
-		{Key: "icon", Value: pbtypes.String(":package:")},
+		{Key: "iconEmoji", Value: pbtypes.String("📦")},
 	})
 }
 

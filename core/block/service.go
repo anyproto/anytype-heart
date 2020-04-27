@@ -507,10 +507,25 @@ func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte)
 }
 
 func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error) {
+	rootLinks := []*model.Block{}
 	err = s.DoImport(req.ContextId, func(imp _import.Import) error {
-		rootLinkIds, err = imp.ImportMarkdown(ctx, req)
+		rootLinks, err = imp.ImportMarkdown(ctx, req)
 		return err
 	})
+
+	_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
+		ContextId: req.ContextId,
+		AnySlot:   rootLinks,
+	})
+
+	for _, r := range rootLinks {
+		rootLinkIds = append(rootLinkIds, r.Id)
+	}
+
+	if err != nil {
+		return rootLinkIds, err
+	}
+
 	return rootLinkIds, err
 }
 
@@ -825,11 +840,17 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 		return err
 	}
 	defer release()
+	fmt.Println("DoImport 1")
 	if bb, ok := sb.(_import.Import); ok {
+		fmt.Println("DoImport 2")
 		sb.Lock()
+		fmt.Println("DoImport 3")
 		defer sb.Unlock()
+		fmt.Println("DoImport 4")
 		return apply(bb)
+		fmt.Println("DoImport 5")
 	}
+	fmt.Println("DoImport 6")
 	return fmt.Errorf("unexpected operation for this block type: %T", sb)
 }
 
