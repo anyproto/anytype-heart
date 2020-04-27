@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/helpers"
+
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/google/uuid"
@@ -241,6 +243,20 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 	isMultipleBlocksToPaste := len(req.AnySlot) > 1
 	firstPasteBlockText := &model.BlockContentText{}
 	firstPasteBlockText = nil
+
+	for bI, _ := range req.AnySlot {
+		if req.AnySlot[bI].GetText() != nil && req.AnySlot[bI].GetText().Marks != nil && len(req.AnySlot[bI].GetText().Marks.Marks) > 0 {
+			marks := req.AnySlot[bI].GetText().Marks.Marks
+
+			for mI, _ := range marks {
+				if marks[mI].Type == model.BlockContentTextMark_Link {
+					marks[mI].Param, _ = helpers.ProcessUrl(marks[mI].Param)
+				}
+			}
+
+			req.AnySlot[bI].GetText().Marks.Marks = marks
+		}
+	}
 
 	caretPosition = -1
 
