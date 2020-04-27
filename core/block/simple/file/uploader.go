@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/helpers"
+
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -49,6 +51,7 @@ func (u *uploader) DoAuto(localPath string) {
 
 func (u *uploader) DoType(localPath, url string, fType model.BlockContentFileType) (err error) {
 	u.isImage = fType == model.BlockContentFile_Image
+	url, _ = helpers.ProcessURI(url)
 	return u.do(localPath, url)
 }
 
