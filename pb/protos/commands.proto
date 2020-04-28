@@ -420,6 +420,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 repeated anytype.model.Block blocks = 2;
+                anytype.model.Range selectedTextRange = 3;
             }
 
             message Response {
