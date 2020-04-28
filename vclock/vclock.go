@@ -37,6 +37,9 @@ func New() VClock {
 }
 
 func NewFromMap(m map[string]uint64) VClock {
+	if m == nil {
+		return Undef
+	}
 	return VClock{mutex: &sync.RWMutex{}, m: m}
 }
 

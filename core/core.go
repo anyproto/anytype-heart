@@ -16,6 +16,8 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/net"
 	"github.com/anytypeio/go-anytype-library/net/litenet"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
@@ -108,6 +110,10 @@ type Service interface {
 	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) // deprecated
 
 	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
+
+	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
+	PageList() ([]*model.PageInfo, error)
+	PageUpdateLastOpened(id string) error
 }
 
 func (a *Anytype) Account() string {
@@ -139,6 +145,14 @@ func (a *Anytype) CreateBlock(t SmartBlockType) (SmartBlock, error) {
 	thrd, err := a.newBlockThread(t)
 	if err != nil {
 		return nil, err
+	}
+	sb := &smartBlock{thread: thrd, node: a}
+	err = sb.indexSnapshot(&smartBlockSnapshot{
+		state:    vclock.New(),
+		threadID: thrd.ID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to index new block %s: %s", thrd.ID.String(), err.Error())
 	}
 
 	return &smartBlock{thread: thrd, node: a}, nil
@@ -195,7 +209,6 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 			return nil, fmt.Errorf("failed to get grpc client: %w", err)
 		}
 	}
-
 	if opts.NetBootstraper != nil {
 		a.t = opts.NetBootstraper
 	} else {
@@ -279,6 +292,18 @@ func DefaultBoostrapPeers() []peer.AddrInfo {
 func (a *Anytype) Start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
+
+	if a.t.DatastoreWasInited() {
+		err := a.localStore.Migrations.SaveVersion(len(migrations))
+		if err != nil {
+			return fmt.Errorf("failed to save migration version")
+		}
+	} else {
+		err := a.RunMigrations()
+		if err != nil {
+			return fmt.Errorf("failed to run migrations: %s", err.Error())
+		}
+	}
 
 	go func() {
 		a.t.Bootstrap(DefaultBoostrapPeers())
