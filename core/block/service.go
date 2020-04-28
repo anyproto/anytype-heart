@@ -840,17 +840,12 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 		return err
 	}
 	defer release()
-	fmt.Println("DoImport 1")
 	if bb, ok := sb.(_import.Import); ok {
-		fmt.Println("DoImport 2")
 		sb.Lock()
-		fmt.Println("DoImport 3")
 		defer sb.Unlock()
-		fmt.Println("DoImport 4")
 		return apply(bb)
-		fmt.Println("DoImport 5")
 	}
-	fmt.Println("DoImport 6")
+
 	return fmt.Errorf("unexpected operation for this block type: %T", sb)
 }
 
