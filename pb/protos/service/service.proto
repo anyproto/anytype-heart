@@ -85,6 +85,9 @@ service ClientCommands {
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) returns (anytype.Rpc.Block.Bookmark.CreateAndFetch.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.Block.File.CreateAndUpload.Request) returns (anytype.Rpc.Block.File.CreateAndUpload.Response);
 
+    rpc NavigationListPages (anytype.Rpc.Navigation.ListPages.Request) returns (anytype.Rpc.Navigation.ListPages.Response);
+    rpc NavigationGetPageInfoWithLinks (anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetPageInfoWithLinks.Response);
+
     rpc Ping (anytype.Rpc.Ping.Request) returns (anytype.Rpc.Ping.Response);
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);

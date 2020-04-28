@@ -274,6 +274,15 @@
     - [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request)
     - [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response)
     - [Rpc.Log.Send.Response.Error](#anytype.Rpc.Log.Send.Response.Error)
+    - [Rpc.Navigation](#anytype.Rpc.Navigation)
+    - [Rpc.Navigation.GetPageInfoWithLinks](#anytype.Rpc.Navigation.GetPageInfoWithLinks)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error)
+    - [Rpc.Navigation.ListPages](#anytype.Rpc.Navigation.ListPages)
+    - [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request)
+    - [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response)
+    - [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error)
     - [Rpc.Ping](#anytype.Rpc.Ping)
     - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
     - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
@@ -366,6 +375,8 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code)
+    - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
@@ -446,12 +457,28 @@
   
   
 
+- [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto)
+    - [PageDetails](#anytype.model.PageDetails)
+    - [PageInfo](#anytype.model.PageInfo)
+    - [PageInfoWithLinks](#anytype.model.PageInfoWithLinks)
+    - [PageInfoWithOutboundLinks](#anytype.model.PageInfoWithOutboundLinks)
+    - [PageInfoWithOutboundLinksIDs](#anytype.model.PageInfoWithOutboundLinksIDs)
+    - [PageLinks](#anytype.model.PageLinks)
+    - [PageLinksInfo](#anytype.model.PageLinksInfo)
+    - [State](#anytype.model.State)
+    - [State.StateEntry](#anytype.model.State.StateEntry)
+  
+  
+  
+  
+
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
+    - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
@@ -465,6 +492,7 @@
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
+    - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
@@ -566,6 +594,8 @@
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
+| NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
+| NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
@@ -4365,6 +4395,125 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.Navigation"></a>
+
+### Rpc.Navigation
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks
+Get the info for page alongside with info for all inbound and outbound links from/to this page
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Request"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error) |  |  |
+| page | [model.PageInfoWithLinks](#anytype.model.PageInfoWithLinks) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages"></a>
+
+### Rpc.Navigation.ListPages
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Request"></a>
+
+### Rpc.Navigation.ListPages.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response"></a>
+
+### Rpc.Navigation.ListPages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error) |  |  |
+| pages | [model.PageInfo](#anytype.model.PageInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response.Error"></a>
+
+### Rpc.Navigation.ListPages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ping"></a>
 
 ### Rpc.Ping
@@ -5608,6 +5757,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response.Error.Code"></a>
+
+### Rpc.Navigation.ListPages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Ping.Response.Error.Code"></a>
 
 ### Rpc.Ping.Response.Error.Code
@@ -6727,6 +6902,173 @@ Precondition: user A and user B opened the same block
 
 
 
+<a name="vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto
+
+
+
+<a name="anytype.model.PageDetails"></a>
+
+### PageDetails
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfo"></a>
+
+### PageInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| snippet | [string](#string) |  |  |
+| state | [State](#anytype.model.State) |  |  |
+| lastOpened | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfoWithLinks"></a>
+
+### PageInfoWithLinks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| info | [PageInfo](#anytype.model.PageInfo) |  |  |
+| links | [PageLinksInfo](#anytype.model.PageLinksInfo) |  |  |
+| state | [State](#anytype.model.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfoWithOutboundLinks"></a>
+
+### PageInfoWithOutboundLinks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| info | [PageInfo](#anytype.model.PageInfo) |  |  |
+| outboundLinks | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+| state | [State](#anytype.model.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfoWithOutboundLinksIDs"></a>
+
+### PageInfoWithOutboundLinksIDs
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| info | [PageInfo](#anytype.model.PageInfo) |  |  |
+| outboundLinks | [string](#string) | repeated |  |
+| state | [State](#anytype.model.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageLinks"></a>
+
+### PageLinks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| inboundIDs | [string](#string) | repeated |  |
+| outboundIDs | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.PageLinksInfo"></a>
+
+### PageLinksInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| inbound | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+| outbound | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.State"></a>
+
+### State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [State.StateEntry](#anytype.model.State.StateEntry) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.State.StateEntry"></a>
+
+### State.StateEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [uint64](#uint64) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
 <a name="vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -6789,6 +7131,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
 | icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
 | link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
+| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 
 
 
@@ -6819,6 +7162,21 @@ Bookmark is to keep a web-link and to preview a content.
 | imageHash | [string](#string) |  |  |
 | faviconHash | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview"></a>
+
+### Block.Content.Dataview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| databaseId | [string](#string) |  |  |
 
 
 
@@ -7035,6 +7393,23 @@ General purpose structure, uses in Mark.
 | ----- | ---- | ----- | ----------- |
 | from | [int32](#int32) |  |  |
 | to | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.SmartBlockSnapshotBase"></a>
+
+### SmartBlockSnapshotBase
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blocks | [Block](#anytype.model.Block) | repeated |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 
