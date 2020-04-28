@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/helpers"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -244,7 +244,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 	firstPasteBlockText := &model.BlockContentText{}
 	firstPasteBlockText = nil
 
-	req.AnySlot = helpers.ProcessAllURI(req.AnySlot)
+	req.AnySlot = uri.ProcessAllURI(req.AnySlot)
 
 	caretPosition = -1
 

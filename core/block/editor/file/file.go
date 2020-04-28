@@ -9,8 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/anytypeio/go-anytype-middleware/helpers"
-
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -21,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
@@ -88,7 +87,7 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 }
 
 func (sf *sfile) upload(s *state.State, id, localPath, url string) (err error) {
-	url, _ = helpers.ProcessURI(url)
+	url, _ = uri.ProcessURI(url)
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {

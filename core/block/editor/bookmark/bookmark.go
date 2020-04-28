@@ -3,12 +3,13 @@ package bookmark
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
@@ -47,7 +48,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string) (err error) {
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	url, err = helpers.ProcessURI(url)
+	url, err = uri.ProcessURI(url)
 	if err != nil {
 		return err
 	}
