@@ -69,24 +69,30 @@ func (cb *clipboard) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blo
 }
 
 func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+	s := cb.NewState()
 
-	blocksMap := make(map[string]*model.Block)
-	for _, b := range req.Blocks {
-		blocksMap[b.Id] = b
-	}
-
-	if err != nil {
-		return "", err
-	}
-
+	firstBlock := s.Get(req.Blocks[0].Id)
 	conv := converter.New()
+
+	// scenario: rangeCopy
+	if firstBlockText, isText := firstBlock.(text.Block); isText && req.SelectedTextRange != nil {
+		cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+
+		if err != nil {
+			return html, fmt.Errorf("error while cut: %s", err)
+		}
+
+		html = conv.Convert([]*model.Block{cutBlock}, images)
+		return html, cb.Apply(s)
+	}
+
+	// scenario: ordinary copy
 	return conv.Convert(req.Blocks, images), nil
 }
 
 func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewStateCtx(ctx)
 
-	blocksMap := make(map[string]*model.Block)
 	conv := converter.New()
 	textSlot = ""
 
@@ -114,8 +120,6 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 	// scenario: cutBlocks
 	var ids []string
 	for _, b := range req.Blocks {
-		blocksMap[b.Id] = b
-
 		if text := b.GetText(); text != nil {
 			textSlot += text.Text + "\n"
 		}
