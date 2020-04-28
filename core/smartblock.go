@@ -546,12 +546,21 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 }
 
 func (block *smartBlock) index() error {
-	snap, err := block.GetLastSnapshot()
+	versions, err := block.GetSnapshots(vclock.Undef, 1, false)
 	if err != nil {
 		return err
 	}
 
-	return block.indexSnapshot(snap.(*smartBlockSnapshot))
+	if len(versions) == 0 {
+		block.indexSnapshot(&smartBlockSnapshot{
+			state:    vclock.New(),
+			threadID: block.thread.ID,
+		})
+		return nil
+	}
+
+	lastVersion := versions[0]
+	return block.indexSnapshot(&lastVersion)
 }
 
 // Snapshot of varint function that work with a string rather than

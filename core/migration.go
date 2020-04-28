@@ -28,13 +28,15 @@ func (a *Anytype) RunMigrations() error {
 		return nil
 	}
 
+	log.Debugf("migrating from %d to %d", version, len(migrations))
+
 	for i := version; i < len(migrations); i++ {
 		err := migrations[i](a)
 		if err != nil {
 			return fmt.Errorf("failed to execute migration %d: %s", i+1, err.Error())
 		}
 
-		err = a.localStore.Migrations.SaveVersion(i)
+		err = a.localStore.Migrations.SaveVersion(i + 1)
 		if err != nil {
 			log.Errorf("failed to save migrated version to db: %s", err.Error())
 			return err

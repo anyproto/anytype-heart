@@ -101,7 +101,7 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 	val, err := txn.Get(pagesLastStateBase.ChildString(id))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get last state: %w", err)
 	}
 
 	var state model.State
@@ -112,7 +112,7 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 
 	val, err = txn.Get(pagesDetailsBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
-		return nil, err
+		return nil, fmt.Errorf("failed to get details: %w", err)
 	}
 
 	var details model.PageDetails
@@ -125,17 +125,17 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 
 	val, err = txn.Get(pagesSnippetBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
-		return nil, err
+		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
 	lastOpened, err := getLastOpened(txn, id)
 	if err != nil && err != ds.ErrNotFound {
-		return nil, err
+		return nil, fmt.Errorf("failed to get last opened: %w", err)
 	}
 
 	val, err = txn.Get(pagesSnippetBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
-		return nil, err
+		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
 	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened}, nil

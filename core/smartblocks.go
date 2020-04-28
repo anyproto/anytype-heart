@@ -91,7 +91,8 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 			}
 		} else {
 			log.Infof("pullThread %s after: %s", id.String(), snap.State().String())
-			err := sb.indexSnapshot(snap.(*smartBlockSnapshot))
+			ls := snap.(smartBlockSnapshot)
+			err := sb.indexSnapshot(&ls)
 			if err != nil {
 				log.Errorf("pullThread: failed to index the new snapshot for %s: %s", id.String(), err.Error())
 			}
