@@ -473,6 +473,10 @@ func getSnippet(snap *smartBlockSnapshot) string {
 }
 
 func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
+	if block.Type() != SmartBlockTypePage {
+		return nil
+	}
+
 	fromStateM, err := block.node.localStore.Pages.GetStateByID(block.ID())
 	if err != nil && err != ds.ErrNotFound {
 		return err
@@ -538,7 +542,7 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 	}
 
 	var changedDetails *model.PageDetails
-	if oldDetails == nil {
+	if oldDetails == nil || oldDetails.Compare(snap.details) != 0 {
 		changedDetails = &model.PageDetails{snap.details}
 	}
 

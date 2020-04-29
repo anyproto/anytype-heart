@@ -72,6 +72,32 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	require.True(t, info1.Links.Inbound[0].Details.Compare(details2) == 0)
 	require.Equal(t, snap2.State().Map(), info1.Links.Inbound[0].State.State)
 	require.Equal(t, "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. …", info1.Info.Snippet)
+
+	// test change of existing page index
+	details2Modified := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name_modified")}}
+
+	_, err = block2.PushSnapshot(
+		state2,
+		&SmartBlockMeta{Details: details2Modified},
+		[]*model.Block{
+			{
+				Id:      "test_id1",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "newtext"}},
+			},
+		},
+	)
+	require.NoError(t, err)
+
+	info2Modified, err := s.PageInfoWithLinks(block2.ID())
+	require.NoError(t, err)
+
+	info1Modified, err := s.PageInfoWithLinks(block1.ID())
+	require.NoError(t, err)
+
+	require.Len(t, info1Modified.Links.Inbound, 0)
+	require.Len(t, info2Modified.Links.Outbound, 0)
+	require.Equal(t, "newtext", info2Modified.Info.Snippet)
+	require.True(t, details2Modified.Compare(info2Modified.Info.Details) == 0)
 }
 
 func Test_Anytype_PageList(t *testing.T) {

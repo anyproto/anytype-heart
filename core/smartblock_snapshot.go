@@ -162,8 +162,9 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 			return nil, fmt.Errorf("failed to decode pb block snapshot: %w", err)
 		}
 
-		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Descendant) {
-			log.Debugf("snapshotTraverseFromCid skip Descendant: %+v < %+v", snapshot.State, before)
+		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Ancestor) {
+			log.Debugf("snapshotTraverseFromCid skip Ancestor: %+v < %+v", snapshot.State, before)
+			rid = rec.PrevID()
 			continue
 		}
 

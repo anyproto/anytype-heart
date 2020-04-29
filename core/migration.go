@@ -60,10 +60,6 @@ func migration1(a *Anytype) error {
 			continue
 		}
 
-		if block.Type() != SmartBlockTypePage {
-			continue
-		}
-
 		err = block.index()
 		if err != nil {
 			log.Errorf("failed to index page %s: %s", threadID.String(), err.Error())
