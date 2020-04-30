@@ -76,6 +76,31 @@ func TestArchive_UnArchive(t *testing.T) {
 	})
 }
 
+func TestArchive_Delete(t *testing.T) {
+	t.Run("delete", func(t *testing.T) {
+		c := newCtrl()
+		a := NewArchive(c)
+		a.SmartBlock = smarttest.New("root").AddBlock(simple.New(&model.Block{Id: "root"}))
+		require.NoError(t, a.Init(nil))
+
+		require.NoError(t, a.Archive("1"))
+		require.NoError(t, a.Archive("2"))
+
+		s := a.NewState()
+		chIds := s.Get(s.RootId()).Model().ChildrenIds
+		require.Len(t, chIds, 2)
+		require.Equal(t, "2", s.Get(chIds[0]).Model().GetLink().TargetBlockId)
+		require.Equal(t, "1", s.Get(chIds[1]).Model().GetLink().TargetBlockId)
+		assert.True(t, c.values["1"])
+		assert.True(t, c.values["2"])
+
+		require.NoError(t, a.Delete("1"))
+		require.NoError(t, a.Delete("2"))
+
+		assert.Len(t, c.values, 0)
+	})
+}
+
 func newCtrl() *ctrl {
 	return &ctrl{values: make(map[string]bool)}
 }
@@ -86,5 +111,10 @@ type ctrl struct {
 
 func (c *ctrl) MarkArchived(id string, archived bool) (err error) {
 	c.values[id] = archived
+	return nil
+}
+
+func (c *ctrl) DeletePage(id string) (err error) {
+	delete(c.values, id)
 	return nil
 }

@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -18,6 +20,7 @@ func NewArchive(ctrl ArchiveCtrl) *Archive {
 
 type ArchiveCtrl interface {
 	MarkArchived(id string, archived bool) (err error)
+	DeletePage(id string) (err error)
 }
 
 type Archive struct {
@@ -99,6 +102,32 @@ func (p *Archive) UnArchive(id string) (err error) {
 		return
 	}
 	if err = p.ctrl.MarkArchived(id, false); err != nil {
+		return
+	}
+	s.Remove(linkId)
+	return p.Apply(s, smartblock.NoHistory)
+}
+
+func (p *Archive) Delete(id string) (err error) {
+	s := p.NewState()
+	var (
+		found  bool
+		linkId string
+	)
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if link := b.Model().GetLink(); link != nil && link.TargetBlockId == id {
+			found = true
+			linkId = b.Model().Id
+			return false
+		}
+		return true
+	})
+	if !found {
+		err = fmt.Errorf("page %s not archived", id)
+		return
+	}
+
+	if err = p.ctrl.DeletePage(id); err != nil {
 		return
 	}
 	s.Remove(linkId)
