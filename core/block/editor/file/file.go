@@ -19,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
@@ -86,6 +87,7 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 }
 
 func (sf *sfile) upload(s *state.State, id, localPath, url string) (err error) {
+	url, _ = uri.ProcessURI(url)
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
@@ -153,7 +155,7 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 				Position:  pos,
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{
-						"name": pbtypes.String(entry.name),
+						"name":      pbtypes.String(entry.name),
 						"iconEmoji": pbtypes.String("📁"),
 					},
 				},
