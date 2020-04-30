@@ -110,6 +110,30 @@ func TestCommonSmart_copyRangeOnePageMark(t *testing.T) {
 }
 
 func TestCommonSmart_copyRangeOnePasteMark(t *testing.T) {
+	t.Run("One mark in paste: paste in an empty block", func(t *testing.T) {
+		sb := page(
+			block("1", "abcdef"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 3, To: 3}, &model.Range{From: 2, To: 7},
+			block("n1", "123456789", mark(bold, 3, 6)),
+		)
+		shouldBeDebug(sb, t,
+			block("1", "34567", mark(bold, 1, 4)),
+		)
+	})
+
+	t.Run("One mark in paste: paste in middle", func(t *testing.T) {
+		sb := page(
+			block("1", "abcdef"),
+		)
+		rangePaste(sb, t, "1", &model.Range{From: 3, To: 3}, &model.Range{From: 2, To: 7},
+			block("n1", "123456789", mark(bold, 3, 6)),
+		)
+		shouldBeDebug(sb, t,
+			block("1", "34567", mark(bold, 4, 7)),
+		)
+	})
+
 	t.Run("One mark in page: one fullRange mark in paste, middleCut to end", func(t *testing.T) {
 		sb := page(
 			block("1", "123456789"),
@@ -177,7 +201,7 @@ func TestCommonSmart_copyRangeOnePasteMark(t *testing.T) {
 		rangePaste(sb, t, "1", &model.Range{From: 9, To: 9}, &model.Range{From: 3, To: 8},
 			block("n1", "abcdefghi", mark(bold, 6, 7)),
 		)
-		shouldBe(sb, t,
+		shouldBeDebug(sb, t,
 			block("1", "123456789defgh", mark(bold, 12, 13)),
 		)
 	})

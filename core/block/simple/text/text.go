@@ -388,8 +388,8 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, n
 		if m.Range.From >= r.To {
 			botMarks = append(botMarks, &model.BlockContentTextMark{
 				Range: &model.Range{
-					From: m.Range.From - r.To + newTextLen,
-					To:   m.Range.To - r.To + newTextLen,
+					From: m.Range.From - (r.To - r.From) + newTextLen,
+					To:   m.Range.To - (r.To - r.From) + newTextLen,
 				},
 				Type:  m.Type,
 				Param: m.Param,
