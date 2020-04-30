@@ -42,11 +42,19 @@ type Services interface {
 }
 
 func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
-	nameToBlock, isPageLinked, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
+	s := imp.NewStateCtx(ctx)
+
+	nameToBlocks, isPageLinked, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
 	nameToId := make(map[string]string)
 
-	for name := range nameToBlock {
+	for name := range nameToBlocks {
 		fileName := strings.Replace(filepath.Base(name), ".md", "", -1)
+
+		if len(nameToBlocks[name]) > 0 && nameToBlocks[name][0].GetText() != nil &&
+			nameToBlocks[name][0].GetText().Text == fileName {
+			nameToBlocks[name] = nameToBlocks[name][1:]
+		}
+
 		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
@@ -60,46 +68,30 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
-	for name := range nameToBlock {
-		for i := range nameToBlock[name] {
-			if link := nameToBlock[name][i].GetLink(); link != nil && len(nameToId[name]) > 0 {
+	for name := range nameToBlocks {
+		for i := range nameToBlocks[name] {
+			if link := nameToBlocks[name][i].GetLink(); link != nil && len(nameToId[name]) > 0 {
 				link.TargetBlockId = nameToId[strings.Replace(link.TargetBlockId, "%20", " ", -1)]
 			}
 		}
 	}
 
-	for name := range nameToBlock {
+	for name := range nameToBlocks {
 		_, _, _, err = imp.ctrl.Paste(ctx, pb.RpcBlockPasteRequest{
 			ContextId: nameToId[name],
-			AnySlot:   nameToBlock[name],
+			AnySlot:   nameToBlocks[name],
 		})
 
 		if err != nil {
 			return rootLinks, err
 		}
 
-		for _, b := range nameToBlock[name] {
-			if f := b.GetFile(); f != nil {
-				fName := req.ImportPath + "/" + strings.Replace(f.Name, "%20", " ", -1)
-				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
-					ContextId: nameToId[name],
-					BlockId:   b.Id,
-					FilePath:  fName,
-					Url:       "",
-				})
-
-				if err != nil {
-					return rootLinks, fmt.Errorf("can not import this file: %s. error: %s", fName, err)
-				}
-			}
-		}
-
 		if err != nil {
 			return rootLinks, err
 		}
 	}
 
-	for name := range nameToBlock {
+	for name := range nameToBlocks {
 		if !isPageLinked[name] {
 			rootLinks = append(rootLinks, &model.Block{
 				Content: &model.BlockContentOfLink{
@@ -111,9 +103,25 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				},
 			})
 		}
+
+		for _, b := range nameToBlocks[name] {
+			if f := b.GetFile(); f != nil {
+
+				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
+					ContextId: nameToId[name],
+					BlockId:   b.Id,
+					FilePath:  f.Name,
+					Url:       "",
+				})
+
+				if err != nil {
+					return rootLinks, fmt.Errorf("can not import this file: %s. error: %s", f.Name, err)
+				}
+			}
+		}
 	}
 
-	return rootLinks, err
+	return rootLinks, imp.Apply(s)
 }
 
 func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error) {
@@ -141,6 +149,8 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 		return nameToBlocks, isPageLinked, err
 	}
 
+	isFileExist := make(map[string]bool)
+
 	err = filepath.Walk(directoryPath,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -155,11 +165,11 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 					return err
 				}
 
+				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
+
 				if extension == ".md" {
 					datStr := string(dat)
 					linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
-
-					shortPath := strings.Replace(path, directoryPath+"/", "", -1)
 
 					for _, linkSubmatch := range linkSubmatches {
 						l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
@@ -175,6 +185,8 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 					if err != nil {
 						return err
 					}
+				} else {
+					isFileExist[shortPath] = true
 				}
 
 			}
@@ -196,8 +208,11 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 				if nameToBlocks[linkConverted] != nil {
 					nameToBlocks[name][i], isPageLinked = imp.convertTextToPageLink(block, isPageLinked)
 				}
-			}
 
+				if isFileExist[linkConverted] {
+					nameToBlocks[name][i] = imp.convertTextToFile(block, directoryPath)
+				}
+			}
 		}
 	}
 
@@ -217,4 +232,20 @@ func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked ma
 
 	isPageLinked[targetId] = true
 	return blockOut, isPageLinked
+}
+
+func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) *model.Block {
+	fName := importPath + "/" + strings.Replace(block.GetText().Marks.Marks[0].Param, "%20", " ", -1)
+
+	blockOut := &model.Block{
+		Id: block.Id,
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Name:  fName,
+				State: model.BlockContentFile_Empty,
+			},
+		},
+	}
+
+	return blockOut
 }
