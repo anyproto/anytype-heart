@@ -105,7 +105,6 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 	// scenario: rangeCut
 	if firstBlockText, isText := firstBlock.(text.Block); isText && req.SelectedTextRange != nil {
 		cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
-
 		if err != nil {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}

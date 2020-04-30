@@ -262,13 +262,13 @@ func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, err error)
 	cutBlock = t.Copy().Model()
 	// set text, marks to the cutBlock
 
-	t.content.Text = string(runesFirst) + string(runesLast)
-	t.content.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
-
 	// 1. cut marks from 0 to TO
 	cutBlock.GetText().Marks.Marks, _ = t.splitMarks(t.content.Marks.Marks, &model.Range{From: to, To: to}, 0)
 	// 2. cut marks from FROM to TO
-	_, cutBlock.GetText().Marks.Marks = t.splitMarks(t.content.Marks.Marks, &model.Range{From: from, To: from}, 0)
+	_, cutBlock.GetText().Marks.Marks = t.splitMarks(cutBlock.GetText().Marks.Marks, &model.Range{From: from, To: from}, 0)
+
+	t.content.Text = string(runesFirst) + string(runesLast)
+	t.content.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
 
 	cutBlock.GetText().Text = string(runesMiddle)
 
@@ -388,8 +388,8 @@ func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, n
 		if m.Range.From >= r.To {
 			botMarks = append(botMarks, &model.BlockContentTextMark{
 				Range: &model.Range{
-					From: m.Range.From - (r.To - r.From) + newTextLen,
-					To:   m.Range.To - (r.To - r.From) + newTextLen,
+					From: m.Range.From - r.To + newTextLen,
+					To:   m.Range.To - r.To + newTextLen,
 				},
 				Type:  m.Type,
 				Param: m.Param,
