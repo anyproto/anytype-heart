@@ -1,6 +1,7 @@
 package _import
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -53,6 +54,10 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				},
 			},
 		})
+
+		if err != nil {
+			return rootLinks, err
+		}
 	}
 
 	for name := range nameToBlock {
@@ -69,14 +74,23 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			AnySlot:   nameToBlock[name],
 		})
 
+		if err != nil {
+			return rootLinks, err
+		}
+
 		for _, b := range nameToBlock[name] {
 			if f := b.GetFile(); f != nil {
-				imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
+				fName := req.ImportPath + "/" + strings.Replace(f.Name, "%20", " ", -1)
+				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
 					ContextId: nameToId[name],
 					BlockId:   b.Id,
-					FilePath:  req.ImportPath + "/" + strings.Replace(f.Name, "%20", " ", -1),
+					FilePath:  fName,
 					Url:       "",
 				})
+
+				if err != nil {
+					return rootLinks, fmt.Errorf("can not import this file: %s. error: %s", fName, err)
+				}
 			}
 		}
 
@@ -120,7 +134,8 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			}
 
 			return nil
-		})
+		},
+	)
 
 	if err != nil {
 		return nameToBlocks, isPageLinked, err
