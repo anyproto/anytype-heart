@@ -81,6 +81,12 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		if err != nil {
 			return html, fmt.Errorf("error while cut: %s", err)
 		}
+		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
+			for i, m := range cutBlock.GetText().Marks.Marks {
+				cutBlock.GetText().Marks.Marks[i].Range.From = m.Range.From - req.SelectedTextRange.From
+				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.From - req.SelectedTextRange.From
+			}
+		}
 
 		html = conv.Convert([]*model.Block{cutBlock}, images)
 		return html, cb.Apply(s)
@@ -107,6 +113,13 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 		cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
+		}
+
+		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
+			for i, m := range cutBlock.GetText().Marks.Marks {
+				cutBlock.GetText().Marks.Marks[i].Range.From = m.Range.From - req.SelectedTextRange.From
+				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.From - req.SelectedTextRange.From
+			}
 		}
 
 		textSlot = cutBlock.GetText().Text
