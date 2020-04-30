@@ -44,7 +44,7 @@ type Block interface {
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
 	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedBlock *model.Block) (caretPosition int32, err error)
-	RangeCut(from int32, to int32) (cutBlock *model.Block, err error)
+	RangeCut(from int32, to int32) (cutBlock *model.Block, initialContent *model.BlockContentText, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
@@ -242,16 +242,16 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	return caretPosition, nil
 }
 
-func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, err error) {
+func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialContent *model.BlockContentText, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
 		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
-		return nil, ErrOutOfRange
+		return nil, nil, ErrOutOfRange
 	}
 	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
-		return nil, ErrOutOfRange
+		return nil, nil, ErrOutOfRange
 	}
 	if from > to {
-		return nil, ErrOutOfRange
+		return nil, nil, ErrOutOfRange
 	}
 
 	runesFirst := []rune(t.content.Text)[:from]
@@ -267,12 +267,13 @@ func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, err error)
 	// 2. cut marks from FROM to TO
 	_, cutBlock.GetText().Marks.Marks = t.splitMarks(cutBlock.GetText().Marks.Marks, &model.Range{From: from, To: from}, 0)
 
-	t.content.Text = string(runesFirst) + string(runesLast)
-	t.content.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
+	initialContent = t.content
+	initialContent.Text = string(runesFirst) + string(runesLast)
+	initialContent.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
 
 	cutBlock.GetText().Text = string(runesMiddle)
 
-	return cutBlock, nil
+	return cutBlock, initialContent, nil
 }
 
 func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err error) {

@@ -76,7 +76,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 
 	// scenario: rangeCopy
 	if firstBlockText, isText := firstBlock.(text.Block); isText && req.SelectedTextRange != nil {
-		cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+		cutBlock, _, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
 		if err != nil {
 			return html, fmt.Errorf("error while cut: %s", err)
@@ -110,7 +110,11 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 
 	// scenario: rangeCut
 	if firstBlockText, isText := firstBlock.(text.Block); isText && req.SelectedTextRange != nil {
-		cutBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+		cutBlock, initialContent, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+
+		firstBlock.Model().GetText().Text = initialContent.Text
+		firstBlock.Model().GetText().Marks = initialContent.Marks
+
 		if err != nil {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
