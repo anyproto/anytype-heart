@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/google/uuid"
@@ -268,6 +270,8 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 	isMultipleBlocksToPaste := len(req.AnySlot) > 1
 	firstPasteBlockText := &model.BlockContentText{}
 	firstPasteBlockText = nil
+
+	req.AnySlot = uri.ProcessAllURI(req.AnySlot)
 
 	caretPosition = -1
 

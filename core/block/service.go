@@ -94,6 +94,8 @@ type Service interface {
 	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) error
 
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
+	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
+	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
@@ -210,6 +212,35 @@ func (s *service) CloseBlock(id string) (err error) {
 	return ErrBlockNotFound
 }
 
+func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
+	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(*editor.Archive)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		anySucceed := false
+		for _, blockId := range req.BlockIds {
+			if req.IsArchived {
+				err = archive.Archive(blockId)
+			} else {
+				err = archive.UnArchive(blockId)
+			}
+			if err != nil {
+				log.Errorf("failed to archive %s: %s", blockId, err.Error())
+			} else {
+				anySucceed = true
+			}
+		}
+
+		if !anySucceed {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(*editor.Archive)
@@ -223,6 +254,40 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 		}
 		return nil
 	})
+}
+
+func (s *service) DeletePages(req pb.RpcBlockListDeletePageRequest) (err error) {
+	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(*editor.Archive)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		anySucceed := false
+		for _, blockId := range req.BlockIds {
+			err = archive.Delete(blockId)
+			if err != nil {
+				log.Errorf("failed to delete page %s: %s", blockId, err.Error())
+			} else {
+				anySucceed = true
+			}
+		}
+
+		if !anySucceed {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (s *service) DeletePage(id string) (err error) {
+	err = s.CloseBlock(id)
+	if err != nil && err != ErrBlockNotFound {
+		return err
+	}
+
+	return s.anytype.DeleteBlock(id)
 }
 
 func (s *service) MarkArchived(id string, archived bool) (err error) {
