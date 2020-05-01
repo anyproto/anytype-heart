@@ -108,7 +108,6 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			if f := b.GetFile(); f != nil {
 
 				filesCount = filesCount - 1
-				fmt.Println("files left:", filesCount)
 
 				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
 					ContextId: nameToId[name],
@@ -216,6 +215,11 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 					nameToBlocks[name][i] = imp.convertTextToFile(block, directoryPath)
 				}
 			}
+
+			if block.GetFile() != nil {
+				block.GetFile().Name = strings.Replace(directoryPath+"/"+block.GetFile().Name, "%20", " ", -1)
+				block.GetFile().Type = model.BlockContentFile_Image
+			}
 		}
 	}
 
@@ -238,7 +242,23 @@ func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked ma
 }
 
 func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) *model.Block {
-	fName := importPath + "/" + strings.Replace(block.GetText().Marks.Marks[0].Param, "%20", " ", -1)
+	fName := strings.Replace(importPath+"/"+block.GetText().Marks.Marks[0].Param, "%20", " ", -1)
+
+	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"} // "svg" excluded
+	videoFormats := []string{"mp4", "m4v"}
+
+	fileType := model.BlockContentFile_File
+	for _, ext := range imageFormats {
+		if filepath.Ext(fName)[1:] == ext {
+			fileType = model.BlockContentFile_Image
+		}
+	}
+
+	for _, ext := range videoFormats {
+		if filepath.Ext(fName)[1:] == ext {
+			fileType = model.BlockContentFile_Video
+		}
+	}
 
 	blockOut := &model.Block{
 		Id: block.Id,
@@ -246,6 +266,7 @@ func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) 
 			File: &model.BlockContentFile{
 				Name:  fName,
 				State: model.BlockContentFile_Empty,
+				Type:  fileType,
 			},
 		},
 	}
