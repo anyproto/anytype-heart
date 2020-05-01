@@ -70,6 +70,11 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
+	err = mw.Anytype.PageUpdateLastOpened(req.BlockId)
+	if err != nil {
+		log.Errorf("failed to update last opened for the page %s: %s", req.BlockId, err.Error())
+	}
+
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
 }
 

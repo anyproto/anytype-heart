@@ -284,6 +284,15 @@
     - [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request)
     - [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response)
     - [Rpc.Log.Send.Response.Error](#anytype.Rpc.Log.Send.Response.Error)
+    - [Rpc.Navigation](#anytype.Rpc.Navigation)
+    - [Rpc.Navigation.GetPageInfoWithLinks](#anytype.Rpc.Navigation.GetPageInfoWithLinks)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error)
+    - [Rpc.Navigation.ListPages](#anytype.Rpc.Navigation.ListPages)
+    - [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request)
+    - [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response)
+    - [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error)
     - [Rpc.Ping](#anytype.Rpc.Ping)
     - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
     - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
@@ -378,6 +387,8 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code)
+    - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
@@ -597,6 +608,8 @@
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
+| NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
+| NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
@@ -4531,6 +4544,125 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.Navigation"></a>
+
+### Rpc.Navigation
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks
+Get the info for page alongside with info for all inbound and outbound links from/to this page
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Request"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error) |  |  |
+| page | [model.PageInfoWithLinks](#anytype.model.PageInfoWithLinks) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages"></a>
+
+### Rpc.Navigation.ListPages
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Request"></a>
+
+### Rpc.Navigation.ListPages.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response"></a>
+
+### Rpc.Navigation.ListPages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error) |  |  |
+| pages | [model.PageInfo](#anytype.model.PageInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response.Error"></a>
+
+### Rpc.Navigation.ListPages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ping"></a>
 
 ### Rpc.Ping
@@ -5800,6 +5932,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response.Error.Code"></a>
+
+### Rpc.Navigation.ListPages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Ping.Response.Error.Code"></a>
 
 ### Rpc.Ping.Response.Error.Code
@@ -6954,6 +7112,7 @@ Precondition: user A and user B opened the same block
 | snippet | [string](#string) |  |  |
 | state | [State](#anytype.model.State) |  |  |
 | lastOpened | [int64](#int64) |  |  |
+| inboundLinksCount | [uint32](#uint32) |  |  |
 
 
 
