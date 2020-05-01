@@ -44,7 +44,7 @@ type Block interface {
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
 	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedBlock *model.Block) (caretPosition int32, err error)
-	RangeCut(from int32, to int32) (cutBlock *model.Block, initialContent *model.BlockContentText, err error)
+	RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 }
@@ -242,7 +242,7 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	return caretPosition, nil
 }
 
-func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialContent *model.BlockContentText, err error) {
+func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
 		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
 		return nil, nil, ErrOutOfRange
@@ -267,13 +267,13 @@ func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialCon
 	// 2. cut marks from FROM to TO
 	_, cutBlock.GetText().Marks.Marks = t.splitMarks(cutBlock.GetText().Marks.Marks, &model.Range{From: from, To: from}, 0)
 
-	initialContent = t.content
-	initialContent.Text = string(runesFirst) + string(runesLast)
-	initialContent.Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
+	initialBlock = t.Copy().Model()
+	initialBlock.GetText().Text = string(runesFirst) + string(runesLast)
+	initialBlock.GetText().Marks.Marks = t.SplitMarks(&model.Range{From: from, To: to}, []*model.BlockContentTextMark{}, "")
 
 	cutBlock.GetText().Text = string(runesMiddle)
 
-	return cutBlock, initialContent, nil
+	return cutBlock, initialBlock, nil
 }
 
 func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err error) {
