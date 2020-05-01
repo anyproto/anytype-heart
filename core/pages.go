@@ -36,7 +36,7 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 			return true
 		}
 
-		if pages[i].LastOpened > pages[j].LastOpened {
+		if pages[i].LastOpened < pages[j].LastOpened {
 			return false
 		}
 
