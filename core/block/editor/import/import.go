@@ -44,7 +44,7 @@ type Services interface {
 func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
 	s := imp.NewStateCtx(ctx)
 
-	nameToBlocks, isPageLinked, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
+	nameToBlocks, isPageLinked, filesCount, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
 	nameToId := make(map[string]string)
 
 	for name := range nameToBlocks {
@@ -107,6 +107,9 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		for _, b := range nameToBlocks[name] {
 			if f := b.GetFile(); f != nil {
 
+				filesCount = filesCount - 1
+				fmt.Println("files left:", filesCount)
+
 				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
 					ContextId: nameToId[name],
 					BlockId:   b.Id,
@@ -124,7 +127,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	return rootLinks, imp.Apply(s)
 }
 
-func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, err error) {
+func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, filesCount int, err error) {
 	anymarkConv := anymark.New()
 
 	nameToBlocks := make(map[string][]*model.Block)
@@ -146,7 +149,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 	)
 
 	if err != nil {
-		return nameToBlocks, isPageLinked, err
+		return nameToBlocks, isPageLinked, filesCount, err
 	}
 
 	isFileExist := make(map[string]bool)
@@ -216,7 +219,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 		}
 	}
 
-	return nameToBlocks, isPageLinked, err
+	return nameToBlocks, isPageLinked, len(isFileExist), err
 }
 
 func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
