@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/anytypeio/go-anytype-library v0.8.1-0.20200501075442-9c846a8d998d
+	github.com/anytypeio/go-anytype-library v0.8.1-0.20200501090128-9947870ade36
 	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.3
