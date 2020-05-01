@@ -41,13 +41,6 @@ const (
 	defaultLogstorePath = "logstore"
 )
 
-func DatastoreNotExists(repoPath string) bool {
-	logstorePath := filepath.Join(repoPath, defaultLogstorePath)
-	_, err := os.Stat(logstorePath)
-
-	return os.IsNotExist(err)
-}
-
 func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []byte, opts ...NetOption) (net2.NetBoostrapper, error) {
 	config := &NetConfig{}
 	for _, opt := range opts {
@@ -108,7 +101,6 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 		litestore.Close()
 		return nil, err
 	}
-	datastoreNotExisted := DatastoreNotExists(repoPath)
 	// Build a logstore
 	logstorePath := filepath.Join(repoPath, defaultLogstorePath)
 	if err := os.MkdirAll(logstorePath, os.ModePerm); err != nil {
@@ -153,8 +145,6 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 		host:              h,
 		lanDht:            d.LAN,
 		wanDht:            d.WAN,
-
-		datastoreWasCreated: datastoreNotExisted,
 	}, nil
 }
 
@@ -207,8 +197,6 @@ type netBoostrapper struct {
 	host   host.Host
 	wanDht *dht.IpfsDHT
 	lanDht *dht.IpfsDHT
-
-	datastoreWasCreated bool
 }
 
 var _ net2.NetBoostrapper = (*netBoostrapper)(nil)
@@ -257,10 +245,6 @@ func (tsb *netBoostrapper) Close() error {
 	}
 	log.Debug("closing logstore...")
 	return tsb.logstoreDatastore.Close()
-}
-
-func (tsb *netBoostrapper) DatastoreWasInited() bool {
-	return tsb.datastoreWasCreated
 }
 
 func LoadKey(repoPath string) (crypto.PrivKey, error) {

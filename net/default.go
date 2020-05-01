@@ -14,5 +14,4 @@ type NetBoostrapper interface {
 	Bootstrap(addrs []peer.AddrInfo)
 	Datastore() datastore.Batching
 	Logstore() logstore.Logstore
-	DatastoreWasInited() bool // true when the datastore wasn't existing in the FS before (just created)
 }
