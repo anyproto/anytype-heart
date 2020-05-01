@@ -474,6 +474,40 @@ func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRe
 	return response(pb.RpcBlockSetPageIsArchivedResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockListDeletePage(req *pb.RpcBlockListDeletePageRequest) *pb.RpcBlockListDeletePageResponse {
+	response := func(code pb.RpcBlockListDeletePageResponseErrorCode, err error) *pb.RpcBlockListDeletePageResponse {
+		m := &pb.RpcBlockListDeletePageResponse{Error: &pb.RpcBlockListDeletePageResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.DeletePages(*req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListDeletePageResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListDeletePageResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListSetPageIsArchived(req *pb.RpcBlockListSetPageIsArchivedRequest) *pb.RpcBlockListSetPageIsArchivedResponse {
+	response := func(code pb.RpcBlockListSetPageIsArchivedResponseErrorCode, err error) *pb.RpcBlockListSetPageIsArchivedResponse {
+		m := &pb.RpcBlockListSetPageIsArchivedResponse{Error: &pb.RpcBlockListSetPageIsArchivedResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetPagesIsArchived(*req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListSetPageIsArchivedResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetPageIsArchivedResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockReplaceResponseErrorCode, blockId string, err error) *pb.RpcBlockReplaceResponse {
