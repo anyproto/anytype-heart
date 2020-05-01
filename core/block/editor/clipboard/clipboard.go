@@ -75,6 +75,9 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		return "", nil
 	}
 
+	if len(req.Blocks) == 0 {
+		return "", nil
+	}
 	firstBlock := s.Get(req.Blocks[0].Id)
 	conv := converter.New()
 
