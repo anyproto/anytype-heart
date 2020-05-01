@@ -7,7 +7,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"google.golang.org/grpc"
 
 	"github.com/anytypeio/go-anytype-middleware/core"
@@ -16,7 +19,7 @@ import (
 
 const defaultAddr = "127.0.0.1:9999"
 
-func main(){
+func main() {
 	var addr string
 	if len(os.Args) > 1 {
 		addr = os.Args[len(os.Args)-1]
@@ -25,6 +28,9 @@ func main(){
 	} else {
 		addr = defaultAddr
 	}
+
+	var stopChan = make(chan os.Signal, 2)
+	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	var mw = &core.Middleware{}
 	lis, err := net.Listen("tcp", addr)
@@ -36,5 +42,14 @@ func main(){
 	lib.RegisterClientCommandsServer(grpcServer, mw)
 
 	fmt.Println("gRPC server started at: " + addr)
-	grpcServer.Serve(lis)
+	go func() {
+		grpcServer.Serve(lis)
+	}()
+
+	select {
+	case <-stopChan:
+		grpcServer.Stop()
+		mw.Shutdown(&pb.RpcShutdownRequest{})
+		return
+	}
 }
