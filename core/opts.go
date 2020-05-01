@@ -19,6 +19,7 @@ type ServiceOptions struct {
 	CafeGrpcHost          string
 	CafeP2PAddr           ma.Multiaddr
 	WebGatewayBaseUrl     string
+	Offline               bool
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
 	WebGatewaySnapshotUri string
@@ -92,6 +93,13 @@ func WithHostMultiaddr(addr string) ServiceOption {
 		}
 
 		args.HostAddr = hostAddr
+		return nil
+	}
+}
+
+func WithOfflineMode(offline bool) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.Offline = offline
 		return nil
 	}
 }

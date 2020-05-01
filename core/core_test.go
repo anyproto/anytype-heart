@@ -39,7 +39,7 @@ func TestAnytype_IsStarted(t *testing.T) {
 
 func TestAnytype_DeviceKeyEquals(t *testing.T) {
 	s := getRunningService(t)
-	require.Equal(t, s.(*Anytype).t.Host().ID().String(), s.(*Anytype).device.Address())
+	require.Equal(t, s.(*Anytype).t.Host().ID().String(), s.(*Anytype).opts.Device.Address())
 }
 
 func TestAnytype_PredefinedBlocks(t *testing.T) {

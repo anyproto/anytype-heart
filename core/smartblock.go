@@ -342,7 +342,7 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	payload, err2 := newSignedPayload(newSnapshotB, block.node.device, block.node.account)
+	payload, err2 := newSignedPayload(newSnapshotB, block.node.opts.Device, block.node.opts.Account)
 	if err2 != nil {
 		err = err2
 		return

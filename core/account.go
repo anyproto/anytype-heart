@@ -34,7 +34,7 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			continue
 		}
 
-		if addr.Equal(a.cafeP2PAddr) {
+		if addr.Equal(a.opts.CafeP2PAddr) {
 			hasCafeAddress = true
 		}
 
@@ -48,7 +48,7 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			return err
 		}
 
-		multiAddrs = append(multiAddrs, a.cafeP2PAddr.Encapsulate(threadComp))
+		multiAddrs = append(multiAddrs, a.opts.CafeP2PAddr.Encapsulate(threadComp))
 	}
 
 addrsLoop:
