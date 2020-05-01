@@ -194,6 +194,14 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 		smartBlockChanges: broadcast.NewBroadcaster(0),
 	}
 
+	if opts.CafeGrpcHost != "" {
+		var err error
+		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, opts.Device, opts.Account)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get grpc client: %w", err)
+		}
+	}
+
 	return a, nil
 }
 

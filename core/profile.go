@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/anytypeio/go-anytype-library/cafe/pb"
@@ -17,10 +18,14 @@ type Profile struct {
 }
 
 func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error {
-	var errDeadlineExceeded = status.Error(codes.DeadlineExceeded, "deadline exceeded ")
+	var errDeadlineExceeded = status.Error(codes.DeadlineExceeded, "deadline exceeded")
 	select {
 	case <-a.onlineCh:
 	case <-ctx.Done():
+	}
+
+	if a.cafe == nil {
+		return fmt.Errorf("cafe client not set")
 	}
 
 	s, err := a.cafe.ProfileFind(ctx, &pb.ProfileFindRequest{
