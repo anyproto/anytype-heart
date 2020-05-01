@@ -32,22 +32,21 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 	}
 
 	sort.Slice(pages, func(i, j int) bool {
+		// show pages with inbound links first
+		if pages[i].InboundLinksCount > 0 && pages[j].InboundLinksCount == 0 {
+			return true
+		}
+
+		if pages[i].InboundLinksCount == 0 && pages[j].InboundLinksCount > 0 {
+			return false
+		}
+
+		// then sort by Last Opened date
 		if pages[i].LastOpened > pages[j].LastOpened {
 			return true
 		}
 
 		if pages[i].LastOpened < pages[j].LastOpened {
-			return false
-		}
-
-		// show pages with snippets first
-		if pages[i].Snippet != "" &&
-			pages[j].Snippet == "" {
-			return true
-		}
-
-		if pages[j].Snippet != "" &&
-			pages[i].Snippet == "" {
 			return false
 		}
 

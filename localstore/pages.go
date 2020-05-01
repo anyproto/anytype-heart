@@ -133,12 +133,14 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, fmt.Errorf("failed to get last opened: %w", err)
 	}
 
+	inboundLinks, _ := txn.GetSize(pagesInboundLinksBase.ChildString(id))
+
 	val, err = txn.Get(pagesSnippetBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
-	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened}, nil
+	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened, InboundLinksCount: uint32(inboundLinks)}, nil
 }
 
 func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
