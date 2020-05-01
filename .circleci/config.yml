@@ -531,34 +531,26 @@ workflows:
           requires:
             - unit-test
           filters:
-            branches:
-              only: master
             tags:
-              only: /.*/
+              only: /^v.*/
       - build-lib-linux:
           requires:
             - unit-test
           filters:
-            branches:
-              only: master
             tags:
               only: /.*/
       - build-ios-framework:
           requires:
             - unit-test
           filters:
-            branches:
-              only: master
             tags:
-              only: /.*/
+              only: /^v.*/
       - build-android-aar:
           requires:
             - unit-test
           filters:
-            branches:
-              only: master
             tags:
-              only: /.*/
+              only: /^v.*/
       - release:
           requires:
             - build-lib-darwin-windows
