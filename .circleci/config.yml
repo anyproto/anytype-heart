@@ -195,7 +195,7 @@ jobs:
             git checkout db6184738b77fbd5089e5fa1112177f391c91b24
             go install github.com/mitchellh/gox
       - restore_cache:
-          key: homebrew-v3-{{ arch }}
+          key: homebrew-v5-{{ arch }}
       - run:
           name: install mingw-w64 and node
           # also protobuf because we have the shared cache with build-ios-framework
@@ -203,7 +203,7 @@ jobs:
             brew install mingw-w64 protobuf jq
             npm i -g node-gyp
       - save_cache:
-          key: homebrew-v3-{{ arch }}
+          key: homebrew-v5-{{ arch }}
           paths:
             - /usr/local/Homebrew
             - ~/Library/Caches/Homebrew
@@ -333,15 +333,14 @@ jobs:
             go mod download
       - restore_cache:
           keys:
-            - homebrew-v4-{{ arch }}
-            - homebrew-v3-{{ arch }}
+            - homebrew-v5-{{ arch }}
       - run:
           name: install protobuf
           # also mingw-w64 because we have the shared cache with build-lib-darwin-windows
           command: |
             brew install mingw-w64 protobuf jq swift-protobuf
       - save_cache:
-          key: homebrew-v4-{{ arch }}
+          key: homebrew-v5-{{ arch }}
           paths:
             - /usr/local/Homebrew
             - ~/Library/Caches/Homebrew
