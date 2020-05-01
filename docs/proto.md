@@ -1103,6 +1103,7 @@ Precondition: block should be opened.
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype.model.Block) | repeated |  |
+| selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 
 
 
