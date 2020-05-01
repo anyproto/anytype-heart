@@ -1,12 +1,16 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	ds "github.com/ipfs/go-datastore"
+	badger "github.com/ipfs/go-ds-badger"
 )
 
 const versionFileName = "anytype_version"
@@ -20,6 +24,7 @@ var skipMigration = func(a *Anytype) error {
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
 	migration1,
+	migration2,
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -139,4 +144,45 @@ func migration1(a *Anytype) error {
 		log.Infof("migration1: %d pages indexed", migrated)
 		return nil
 	})
+}
+
+func migration2(a *Anytype) error {
+	path := filepath.Join(a.opts.Repo, "collections", "eventstore")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Info("migration2 skipped because collections db not yet created")
+		return nil
+	}
+
+	db, err := badger.NewDatastore(path, &badger.DefaultOptions)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			log.Errorf("failed to close db: %s", err.Error())
+		}
+	}()
+
+	dsDBPrefix := ds.NewKey("/db")
+	dsDBSchemas := dsDBPrefix.ChildString("schema")
+
+	key := dsDBSchemas.ChildString(threadInfoCollection.Name)
+	exists, err := db.Has(key)
+	if !exists {
+		log.Info("migration2 skipped because schema not exists in the collections db")
+		return nil
+	}
+
+	schemaBytes, err := json.Marshal(threadInfoCollection.Schema)
+	if err != nil {
+		return err
+	}
+	if err := db.Put(key, schemaBytes); err != nil {
+		return err
+	}
+
+	log.Infof("migration2: schema updated")
+
+	return nil
 }
