@@ -87,10 +87,6 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		if err != nil {
 			return rootLinks, err
 		}
-
-		if err != nil {
-			return rootLinks, err
-		}
 	}
 
 	for name := range nameToBlocks {
