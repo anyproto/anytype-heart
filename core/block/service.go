@@ -50,6 +50,17 @@ var (
 	blockCleanupTimeout = time.Second * 30
 )
 
+var (
+	// quick fix for limiting file upload goroutines
+	uploadFilesLimiter = make(chan struct{}, 8)
+)
+
+func init() {
+	for i := 0; i < cap(uploadFilesLimiter); i++ {
+		uploadFilesLimiter <- struct{}{}
+	}
+}
+
 type Service interface {
 	OpenBlock(ctx *state.Context, id string) error
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
@@ -583,6 +594,8 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 }
 
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
+	<-uploadFilesLimiter
+	defer func() { uploadFilesLimiter <- struct{}{} }()
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url)
 		return err
