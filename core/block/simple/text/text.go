@@ -5,6 +5,8 @@ import (
 	"sort"
 	"unicode/utf8"
 
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 
@@ -131,8 +133,15 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err err
 	t.content.Text = text
 	if marks == nil {
 		marks = &model.BlockContentTextMarks{}
+	} else {
+		for mI, _ := range marks.Marks {
+			if marks.Marks[mI].Type == model.BlockContentTextMark_Link {
+				marks.Marks[mI].Param, _ = uri.ProcessURI(marks.Marks[mI].Param)
+			}
+		}
 	}
 	t.content.Marks = marks
+
 	t.normalizeMarks()
 	return
 }
