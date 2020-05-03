@@ -161,26 +161,29 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
 }
 func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
-	response := func(code pb.RpcBlockCopyResponseErrorCode, html string, err error) *pb.RpcBlockCopyResponse {
+	response := func(code pb.RpcBlockCopyResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCopyResponse {
 		m := &pb.RpcBlockCopyResponse{
-			Error: &pb.RpcBlockCopyResponseError{Code: code},
-			Html:  html,
+			Error:    &pb.RpcBlockCopyResponseError{Code: code},
+			TextSlot: textSlot,
+			HtmlSlot: htmlSlot,
+			AnySlot:  anySlot,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
-	var html string
+	var textSlot, htmlSlot string
+	var anySlot []*model.Block
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		html, err = bs.Copy(*req, mw.getImages(req.Blocks))
+		textSlot, htmlSlot, anySlot, err = bs.Copy(*req, mw.getImages(req.Blocks))
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, textSlot, htmlSlot, anySlot, err)
 	}
 
-	return response(pb.RpcBlockCopyResponseError_NULL, html, nil)
+	return response(pb.RpcBlockCopyResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
 }
 
 func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
