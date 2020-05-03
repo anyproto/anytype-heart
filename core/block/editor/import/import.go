@@ -77,10 +77,12 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	}
 
 	for name := range nameToBlocks {
-		_, _, _, err = imp.ctrl.Paste(ctx, pb.RpcBlockPasteRequest{
-			ContextId: nameToId[name],
-			AnySlot:   nameToBlocks[name],
-		})
+		if len(nameToBlocks[name]) > 0 {
+			_, _, _, err = imp.ctrl.Paste(ctx, pb.RpcBlockPasteRequest{
+				ContextId: nameToId[name],
+				AnySlot:   nameToBlocks[name],
+			})
+		}
 
 		if err != nil {
 			return rootLinks, err
