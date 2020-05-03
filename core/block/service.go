@@ -70,7 +70,7 @@ type Service interface {
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
 
-	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
+	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 
@@ -461,12 +461,13 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	})
 }
 
-func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		html, err = cb.Copy(req, images)
+		textSlot, htmlSlot, anySlot, err = cb.Copy(req, images)
 		return err
 	})
-	return html, err
+
+	return textSlot, htmlSlot, anySlot, err
 }
 
 func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
