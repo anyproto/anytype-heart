@@ -1077,7 +1077,9 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error) |  |  |
-| html | [string](#string) |  |  |
+| textSlot | [string](#string) |  |  |
+| htmlSlot | [string](#string) |  |  |
+| anySlot | [model.Block](#anytype.model.Block) | repeated |  |
 
 
 
