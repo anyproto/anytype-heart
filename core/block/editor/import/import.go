@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -20,6 +21,7 @@ import (
 
 var (
 	linkRegexp = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	log        = logging.Logger("anytype-import")
 )
 
 type Import interface {
@@ -58,7 +60,8 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
-					"name": pbtypes.String(fileName),
+					"name":      pbtypes.String(fileName),
+					"iconEmoji": pbtypes.String("📁"),
 				},
 			},
 		})
@@ -68,6 +71,8 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
+	log.Debug("1. ImportMarkdown: all smartBlocks created")
+
 	for name := range nameToBlocks {
 		for i := range nameToBlocks[name] {
 			if link := nameToBlocks[name][i].GetLink(); link != nil && len(nameToId[name]) > 0 {
@@ -76,8 +81,10 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
+	log.Debug("2. ImportMarkdown: start to paste blocks")
 	for name := range nameToBlocks {
 		if len(nameToBlocks[name]) > 0 {
+			log.Debug("   >>> start to paste to page:", name)
 			_, _, _, err = imp.ctrl.Paste(ctx, pb.RpcBlockPasteRequest{
 				ContextId: nameToId[name],
 				AnySlot:   nameToBlocks[name],
@@ -89,7 +96,9 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
+	log.Debug("3. ImportMarkdown: all blocks pasted. Start to convert rootLinks")
 	for name := range nameToBlocks {
+		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
 		if !isPageLinked[name] {
 			rootLinks = append(rootLinks, &model.Block{
 				Content: &model.BlockContentOfLink{
@@ -106,7 +115,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			if f := b.GetFile(); f != nil {
 
 				filesCount = filesCount - 1
-
+				log.Debug("          page:", name, " | start to upload file :", f.Name)
 				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
 					ContextId: nameToId[name],
 					BlockId:   b.Id,
@@ -120,6 +129,8 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			}
 		}
 	}
+
+	log.Debug("4. ImportMarkdown: everything done")
 
 	return rootLinks, imp.Apply(s)
 }
@@ -145,6 +156,8 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 		},
 	)
 
+	log.Debug("1. DirWithMarkdownToBlocks: Get allFileShortPaths:", allFileShortPaths)
+
 	if err != nil {
 		return nameToBlocks, isPageLinked, filesCount, err
 	}
@@ -166,7 +179,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 				}
 
 				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
-
+				log.Debug("   >>> Current file:", shortPath)
 				if extension == ".md" {
 					datStr := string(dat)
 					linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
@@ -194,9 +207,13 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			return nil
 		})
 
+	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
+
 	isPageLinked = make(map[string]bool)
-	for name, _ := range nameToBlocks {
+	for name, j := range nameToBlocks {
+		log.Debug("   >>> Page:", name, " Number: ", j)
 		for i, block := range nameToBlocks[name] {
+			log.Debug("      Block:", i)
 			nameToBlocks[name][i].Id = uuid.New().String()
 
 			txt := block.GetText()
@@ -220,6 +237,8 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			}
 		}
 	}
+
+	log.Debug("3. DirWithMarkdownToBlocks: convertTextToPageLink, convertTextToFile completed")
 
 	return nameToBlocks, isPageLinked, len(isFileExist), err
 }
