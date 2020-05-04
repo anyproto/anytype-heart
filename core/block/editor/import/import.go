@@ -61,7 +61,10 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 
 		//untitled
-		if len(name) >= 8 && strings.ToLower(name)[:8] == "untitled" && nameToBlocks[name][0].GetText() != nil &&
+		if len(name) >= 8 &&
+			strings.ToLower(name)[:8] == "untitled" &&
+			len(nameToBlocks[name]) > 0 &&
+			nameToBlocks[name][0].GetText() != nil &&
 			len(nameToBlocks[name][0].GetText().Text) > 0 {
 
 			if strings.Contains(name, ".") {
