@@ -60,6 +60,17 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			nameToBlocks[name] = nameToBlocks[name][1:]
 		}
 
+		//untitled
+		if len(name) >= 8 && strings.ToLower(name)[:8] == "untitled" && nameToBlocks[name][0].GetText() != nil &&
+			len(nameToBlocks[name][0].GetText().Text) > 0 {
+
+			if strings.Contains(name, ".") {
+				fileName = strings.Split(name, ".")[0]
+			} else {
+				fileName = nameToBlocks[name][0].GetText().Text
+			}
+		}
+
 		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
