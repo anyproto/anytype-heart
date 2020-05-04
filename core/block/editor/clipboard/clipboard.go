@@ -105,7 +105,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
 			for i, m := range cutBlock.GetText().Marks.Marks {
 				cutBlock.GetText().Marks.Marks[i].Range.From = m.Range.From - req.SelectedTextRange.From
-				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.From - req.SelectedTextRange.From
+				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.To - req.SelectedTextRange.From
 			}
 		}
 
@@ -284,6 +284,7 @@ func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*m
 func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
 	s := cb.NewStateCtx(ctx)
 	targetId := req.FocusedBlockId
+
 	req.AnySlot = cb.replaceIds(req.AnySlot)
 	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
 	isMultipleBlocksToPaste := len(req.AnySlot) > 1
@@ -400,7 +401,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 	case pasteSingleTextInFocusedText:
 		caretPosition, err = focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0])
 		if err != nil {
-			return nil, nil, -1, nil
+			return nil, nil, -1, err
 		}
 		break
 
