@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
@@ -20,8 +22,9 @@ import (
 )
 
 var (
-	linkRegexp = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
-	log        = logging.Logger("anytype-import")
+	linkRegexp   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	log          = logging.Logger("anytype-import")
+	articleIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔", "📒", "📝", "📄", "📑"}
 )
 
 type Import interface {
@@ -61,7 +64,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name":      pbtypes.String(fileName),
-					"iconEmoji": pbtypes.String("📁"),
+					"iconEmoji": pbtypes.String(slice.GetRangomString(articleIcons)),
 				},
 			},
 		})
