@@ -72,12 +72,13 @@ func (cb *clipboard) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blo
 
 func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewState()
+	anySlot = req.Blocks
 
-	if req.SelectedTextRange == nil || req.SelectedTextRange.From == req.SelectedTextRange.To {
+	if len(req.Blocks) == 0 {
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
-	if len(req.Blocks) == 0 {
+	if len(req.Blocks) == 1 && (req.SelectedTextRange == nil || req.SelectedTextRange.From == req.SelectedTextRange.To) {
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
@@ -91,7 +92,10 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 	conv := converter.New()
 
 	// scenario: rangeCopy
-	if firstBlockText, isText := firstBlock.(text.Block); isText && req.SelectedTextRange != nil {
+	if firstBlockText, isText := firstBlock.(text.Block); isText &&
+		req.SelectedTextRange != nil &&
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
+		len(req.Blocks) == 1 {
 		cutBlock, _, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
 		if err != nil {
@@ -112,7 +116,6 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 	}
 
 	// scenario: ordinary copy
-	anySlot = req.Blocks
 	htmlSlot = conv.Convert(anySlot, images)
 
 	return textSlot, htmlSlot, anySlot, nil
