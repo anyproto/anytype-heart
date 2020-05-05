@@ -208,17 +208,7 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	}
 
 	copyFrom = 0
-	copyTo = int32(len(copiedText.Text))
-
-	if copyFrom < 0 || int(copyFrom) > utf8.RuneCountInString(copiedText.Text) {
-		return caretPosition, fmt.Errorf("out of range: copy.from is not corrent:", copyFrom)
-	}
-	if copyTo < 0 || int(copyTo) > utf8.RuneCountInString(copiedText.Text) {
-		return caretPosition, fmt.Errorf("out of range: copy.to is not corrent:", copyTo)
-	}
-	if copyFrom > copyTo {
-		return caretPosition, fmt.Errorf("out of range: copy.from > copy.to:", copyFrom, copyTo)
-	}
+	copyTo = int32(utf8.RuneCountInString(copiedText.Text))
 
 	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
 		return caretPosition, fmt.Errorf("out of range: range.from is not correct:", rangeFrom)
