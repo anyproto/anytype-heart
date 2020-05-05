@@ -77,7 +77,7 @@ type Anytype struct {
 	replicationWG     sync.WaitGroup
 	migrationOnce     sync.Once
 	lock              sync.Mutex
-	shutdownCh        chan struct{} // closed when node shutdown finishes
+	shutdownStartsCh  chan struct{} // closed when node shutdown starts
 	onlineCh          chan struct{} // closed when became online
 }
 
@@ -129,7 +129,7 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 		case <-a.onlineCh:
 			ch <- nil
 			close(ch)
-		case <-a.shutdownCh:
+		case <-a.shutdownStartsCh:
 			ch <- fmt.Errorf("node was shutdown")
 			close(ch)
 		}
@@ -189,7 +189,7 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 		replicationWG: sync.WaitGroup{},
 		migrationOnce: sync.Once{},
 
-		shutdownCh:        make(chan struct{}),
+		shutdownStartsCh:  make(chan struct{}),
 		onlineCh:          make(chan struct{}),
 		smartBlockChanges: broadcast.NewBroadcaster(0),
 	}
@@ -256,7 +256,7 @@ func (a *Anytype) runPeriodicJobsInBackground() {
 			case <-tick.C:
 				//a.syncAccount(false)
 
-			case <-a.shutdownCh:
+			case <-a.shutdownStartsCh:
 				return
 			}
 		}
@@ -333,9 +333,8 @@ func (a *Anytype) Stop() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	if a.shutdownCh != nil {
-		close(a.shutdownCh)
-		a.shutdownCh = nil
+	if a.shutdownStartsCh != nil {
+		close(a.shutdownStartsCh)
 	}
 
 	a.replicationWG.Wait()

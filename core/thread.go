@@ -222,6 +222,28 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 		return nil
 	}
 
+	select {
+	case <-a.onlineCh:
+		break
+	case <-a.shutdownStartsCh:
+		return fmt.Errorf("node was stopped")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var syncDone = make(chan struct{})
+	go func() {
+		select {
+		case <-a.shutdownStartsCh:
+			cancel()
+			return
+		case <-syncDone:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}()
+	defer close(syncDone)
+
 	done := make(chan struct{})
 	go func() {
 		attempts := 0
@@ -235,7 +257,15 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 		for {
 			start := time.Now()
-			_, err = a.t.AddReplicator(context.TODO(), thrd.ID, a.opts.CafeP2PAddr)
+
+			select {
+			case <-a.shutdownStartsCh:
+				err = fmt.Errorf("failed to add replicator to %s: node was stopped", thrd.ID.String())
+				return
+			default:
+			}
+
+			_, err = a.t.AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr)
 			if err != nil {
 				attempts++
 				if mustConnectToCafe {
@@ -250,8 +280,13 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 				log.Errorf("syncThread failed to add replicator for %s after %.2fs (%d attempt): %s", thrd.ID.String(), time.Since(start).Seconds(), attempts, err.Error())
 
-				time.Sleep(time.Second * time.Duration(10*attempts))
-				continue
+				select {
+				case <-time.After(time.Second * time.Duration(10*attempts)):
+					continue
+				case <-a.shutdownStartsCh:
+					err = fmt.Errorf("failed to add replicator to %s: node was stopped", thrd.ID.String())
+					return
+				}
 			}
 
 			break
@@ -260,18 +295,24 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 	pullDone := make(chan struct{})
 	if mustConnectToCafe {
-		<-done
+		select {
+		case <-done:
+		case <-a.shutdownStartsCh:
+			return fmt.Errorf("node stopped")
+		}
 		if err != nil {
+			close(pullDone)
 			return err
 		}
 
 		if !pullAfterConnect {
+			close(pullDone)
 			return nil
 		}
 
 		go func() {
 			defer close(pullDone)
-			err = a.pullThread(context.TODO(), thrd.ID)
+			err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return
@@ -279,13 +320,25 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 		}()
 	} else {
 		if !pullAfterConnect {
+			close(pullDone)
 			return nil
 		}
 
 		go func() {
 			defer close(pullDone)
-			<-done
-			err = a.pullThread(context.TODO(), thrd.ID)
+			select {
+			case <-done:
+			case <-a.shutdownStartsCh:
+				log.Errorf("syncThread failed to pullThread: node stopped")
+				return
+			}
+
+			if err != nil {
+				log.Errorf(err.Error())
+				return
+			}
+
+			err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return

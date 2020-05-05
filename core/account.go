@@ -137,7 +137,7 @@ func (a *Anytype) listenExternalNewThreads() error {
 		defer l.Close()
 		for {
 			select {
-			case <-a.shutdownCh:
+			case <-a.shutdownStartsCh:
 				log.Infof("shutting down external changes listener")
 				return
 			case c := <-l.Channel():

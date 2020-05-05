@@ -218,7 +218,7 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 					log.Errorf("failed to add log replicator: %s", err.Error())
 					select {
 					case <-time.After(time.Second * 30):
-					case <-a.shutdownCh:
+					case <-a.shutdownStartsCh:
 						return
 					}
 					continue
