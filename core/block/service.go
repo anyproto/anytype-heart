@@ -68,7 +68,7 @@ type Service interface {
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
-	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
+	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -535,13 +535,13 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (te
 	return textSlot, htmlSlot, anySlot, err
 }
 
-func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
+func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		blockIds, uploadArr, caretPosition, err = cb.Paste(ctx, req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.Paste(ctx, req)
 		return err
 	})
 
-	return blockIds, uploadArr, caretPosition, err
+	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 }
 
 func (s *service) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {

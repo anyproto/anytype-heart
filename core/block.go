@@ -209,8 +209,8 @@ func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
 
 func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, caretPosition int32, err error) *pb.RpcBlockPasteResponse {
-		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds, CaretPosition: caretPosition}
+	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, caretPosition int32, isSameBlockCaret bool, err error) *pb.RpcBlockPasteResponse {
+		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds, CaretPosition: caretPosition, IsSameBlockCaret: isSameBlockCaret}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -219,12 +219,13 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return m
 	}
 	var (
-		blockIds      []string
-		caretPosition int32
+		blockIds         []string
+		caretPosition    int32
+		isSameBlockCaret bool
 	)
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		var uploadArr []pb.RpcBlockUploadRequest
-		blockIds, uploadArr, caretPosition, err = bs.Paste(ctx, *req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = bs.Paste(ctx, *req)
 		if err != nil {
 			return
 		}
@@ -238,10 +239,10 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, err)
+		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, isSameBlockCaret, err)
 	}
 
-	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, caretPosition, nil)
+	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, caretPosition, isSameBlockCaret, nil)
 }
 
 func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {

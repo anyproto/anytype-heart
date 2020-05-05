@@ -201,6 +201,12 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	caretPosition = -1
 	copiedText := copiedBlock.GetText()
 
+	particalPaste := false
+
+	if copyTo == 0 {
+		particalPaste = true
+	}
+
 	copyFrom = 0
 	copyTo = int32(len(copiedText.Text))
 
@@ -231,8 +237,10 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 			t.content.Style = copiedText.Style
 		}
 
-		t.content.Color = copiedText.Color
-		t.BackgroundColor = copiedBlock.BackgroundColor
+		if !particalPaste {
+			t.content.Color = copiedText.Color
+			t.BackgroundColor = copiedBlock.BackgroundColor
+		}
 	}
 
 	// 1. cut marks from 0 to TO
