@@ -417,7 +417,6 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	defer sentAccountsMutex.Unlock()
 
 	if len(sentAccounts) == 0 {
-		log.Debugf("len(sentAccounts) == 0")
 		if zeroRepoWasCreated {
 			err = mw.stop()
 			if err != nil {
