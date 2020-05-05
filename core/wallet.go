@@ -2,7 +2,6 @@ package core
 
 import (
 	"os"
-	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -20,8 +19,11 @@ func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWallet
 		return m
 	}
 
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
 	mw.rootPath = req.RootPath
-	mw.localAccounts = nil
+	mw.foundAccounts = nil
 
 	err := os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
@@ -34,10 +36,8 @@ func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWallet
 	}
 
 	mw.mnemonic = mnemonic
+	mw.accountsRecoveryInProgress = nil
 
-	// because this is a fresh generated account we can be sure that there is no accounts in it yet
-	n := time.Now()
-	mw.localAccountCachedAt = &n
 	return response(mnemonic, pb.RpcWalletCreateResponseError_NULL, nil)
 }
 
@@ -51,12 +51,16 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 		return m
 	}
 
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
 	if mw.mnemonic != req.Mnemonic {
-		mw.localAccounts = nil
+		mw.foundAccounts = nil
 	}
 
 	mw.mnemonic = req.Mnemonic
 	mw.rootPath = req.RootPath
+	mw.accountsRecoveryInProgress = nil
 
 	err := os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {

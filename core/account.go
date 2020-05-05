@@ -111,14 +111,14 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return m
 	}
 
-	for attempt := 1; attempt < 3; attempt++ {
-		if mw.localAccountCachedAt != nil && time.Now().Sub(*mw.localAccountCachedAt).Hours() < 1 {
+	if mw.accountsRecoveryInProgress != nil {
+		// to make sure we don't create a new account with an existing index
+		select {
+		case <-mw.accountsRecoveryInProgress:
+			break
+		case <-time.After(time.Second * 10):
 			break
 		}
-
-		// wait until recover ends
-		time.Sleep(time.Second * 5)
-		continue
 	}
 
 	if mw.Anytype != nil {
@@ -128,7 +128,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		}
 	}
 
-	index := len(mw.localAccounts)
+	index := len(mw.foundAccounts)
 	var account wallet.Keypair
 	for {
 		var err error
@@ -142,7 +142,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			break
 		}
 
-		log.Warnf("Account already exists locally, but doesn't exist in the localAccounts list")
+		log.Warnf("Account already exists locally, but doesn't exist in the foundAccounts list")
 		index++
 		continue
 	}
@@ -218,7 +218,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	if err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
-	mw.localAccounts = append(mw.localAccounts, newAcc)
+	mw.foundAccounts = append(mw.foundAccounts, newAcc)
 	mw.setBlockService(bs)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
@@ -233,18 +233,21 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return m
 	}
 
-	defer func(){
+	defer func() {
 		log.Debugf("AccountRecover done")
 	}()
 
 	var sentAccountsMutex = sync.RWMutex{}
 	var sentAccounts = make(map[string]struct{})
 	sendAccountAddEvent := func(index int, account *model.Account) {
+		log.Debugf("sendAccountAddEvent %s", account.Id)
+
 		sentAccountsMutex.Lock()
 		defer sentAccountsMutex.Unlock()
-		if _, exists := sentAccounts[account.Id]; exists{
+		if _, exists := sentAccounts[account.Id]; exists {
 			return
 		}
+		log.Debugf("sendAccountAddEvent set sentAccounts for %s", account.Id)
 		sentAccounts[account.Id] = struct{}{}
 		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
 		if mw.SendEvent != nil {
@@ -257,7 +260,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	}
 
 	shouldCancel := false
-	var accountSearchFinished = make(chan struct{}, 1)
+	var remoteAccountsProceed = make(chan struct{})
 	var searchQueryCancel context.CancelFunc
 
 	mw.accountSearchCancel = func() {
@@ -266,12 +269,12 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 			searchQueryCancel()
 		}
 
-		<-accountSearchFinished
+		<-remoteAccountsProceed
 	}
 
-	for index := 0; index < len(mw.localAccounts); index++ {
+	for index := 0; index < len(mw.foundAccounts); index++ {
 		// in case we returned to the account choose screen we can use cached accounts
-		sendAccountAddEvent(index, mw.localAccounts[index])
+		sendAccountAddEvent(index, mw.foundAccounts[index])
 		if shouldCancel {
 			return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 		}
@@ -303,14 +306,15 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 	}
 
-
-
 	zeroAccount, err := core.WalletAccountAt(mw.mnemonic, 0, "")
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 	}
 
-	if _, err := os.Stat(filepath.Join(mw.rootPath, zeroAccount.Address())); os.IsNotExist(err) {
+	zeroRepoWasCreated := false
+	zeroRepoPath := filepath.Join(mw.rootPath, zeroAccount.Address())
+	if _, err := os.Stat(zeroRepoPath); os.IsNotExist(err) {
+		zeroRepoWasCreated = true
 		seedRaw, err := zeroAccount.Raw()
 		if err != nil {
 			return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
@@ -325,6 +329,9 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
 	// it is ok to unlock just after we've started with the 1st account
 	mw.m.Lock()
+	ch := make(chan struct{})
+	mw.accountsRecoveryInProgress = ch
+	defer close(ch)
 
 	c, err := core.New(mw.rootPath, zeroAccount.Address())
 	if err != nil {
@@ -359,12 +366,11 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 			// todo: load profile name from the details cache in badger
 			sendAccountAddEvent(accountOnDisk.index, &model.Account{Id: accountOnDisk.id, Name: ""})
 		}
-
-		accountSearchFinished <- struct{}{}
 	}()
 
 	profilesCh := make(chan core.Profile)
 	go func() {
+		defer close(remoteAccountsProceed)
 		for {
 			select {
 			case profile, ok := <-profilesCh:
@@ -397,17 +403,36 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 	}()
 
-	err = c.FindProfilesByAccountIDs(ctx, firstAccounts, profilesCh)
-	if err != nil {
-		log.Errorf("remote profiles request failed: %s", err.Error())
+	findProfilesErr := c.FindProfilesByAccountIDs(ctx, firstAccounts, profilesCh)
+	if findProfilesErr != nil {
+		log.Errorf("remote profiles request failed: %s", findProfilesErr.Error())
 	}
+
+	// wait until we read all profiles from chan and process them
+	<-remoteAccountsProceed
+
 	close(remoteRequestDone)
 
-	n := time.Now()
-	mw.localAccountCachedAt = &n
+	sentAccountsMutex.Lock()
+	defer sentAccountsMutex.Unlock()
 
-	if len(accountsOnDisk) == 0 && len(mw.localAccounts) == 0 {
-		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("remote account recovery not implemeted yet"))
+	if len(sentAccounts) == 0 {
+		log.Debugf("len(sentAccounts) == 0")
+		if zeroRepoWasCreated {
+			err = mw.stop()
+			if err != nil {
+				log.Error("failed to stop zero account repo: %s", err.Error())
+			}
+			err = os.RemoveAll(zeroRepoPath)
+			if err != nil {
+				log.Error("failed to remove zero account repo: %s", err.Error())
+			}
+		}
+		if findProfilesErr != nil {
+			return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
+		}
+
+		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to find any local or remote accounts derived from this mnemonic"))
 	}
 
 	return response(pb.RpcAccountRecoverResponseError_NULL, nil)
@@ -435,6 +460,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		// in case user selected account other than the first one(used to perform search)
 		// or this is the first time in this session we run the Anytype node
 		if mw.Anytype != nil {
+			log.Debugf("AccountSelect wrong account %s instead of %s. stop it", mw.Anytype.Account(), req.Id)
 			// user chose account other than the first one
 			// we need to stop the first node that what used to search other accounts and then start the right one
 			err := mw.stop()
@@ -452,9 +478,27 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
 			}
 
-			account, err := core.WalletAccountAt(mw.mnemonic, len(mw.localAccounts), "")
-			if err != nil {
-				return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+			var account wallet.Keypair
+			for i := 0; i < 100; i++ {
+				account, err = core.WalletAccountAt(mw.mnemonic, i, "")
+				if err != nil {
+					return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+				}
+				if account.Address() == req.Id {
+					break
+				}
+			}
+
+			var accountPreviouslyWasFoundRemotely bool
+			for _, foundAccount := range mw.foundAccounts {
+				if foundAccount.Id == account.Address() {
+					accountPreviouslyWasFoundRemotely = true
+				}
+			}
+
+			// do not allow to create repo if it wasn't previously(in the same session) found on the cafe
+			if !accountPreviouslyWasFoundRemotely {
+				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, fmt.Errorf("first you need to recover your account from remote cafe or create the new one with invite code"))
 			}
 
 			seedRaw, err := account.Raw()
