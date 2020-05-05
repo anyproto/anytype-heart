@@ -292,6 +292,7 @@ func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*m
 func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	s := cb.NewStateCtx(ctx)
 	targetId := req.FocusedBlockId
+	isSameBlockCaret = false
 
 	req.AnySlot = cb.replaceIds(req.AnySlot)
 	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
@@ -415,6 +416,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 
 	case pasteMultipleBlocksInFocusedText:
 		if isPasteTop {
+			isSameBlockCaret = true
 			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, targetId, req.AnySlot, model.Block_Top, true)
 			if err != nil {
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
@@ -440,6 +442,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 			break
 
 		} else if isPasteWithSplit {
+			isSameBlockCaret = true
 			newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
 			if err != nil {
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
