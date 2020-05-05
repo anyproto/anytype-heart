@@ -385,13 +385,6 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 		req.CopyTextRange = &model.Range{From: 0, To: 0}
 	}
 
-	if req.CopyTextRange.To == 0 {
-		if firstPasteBlockText != nil && firstPasteBlockText.Text != "" {
-			req.CopyTextRange.To = int32(len([]rune(firstPasteBlockText.Text)))
-
-		}
-	}
-
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
 	pasteSingleTextInFocusedText := focusedBlockText != nil && isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
 	pasteMultipleBlocksInFocusedText := isFocusedText && (isMultipleBlocksToPaste || firstPasteBlockText == nil)

@@ -203,7 +203,7 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 
 	particalPaste := false
 
-	if copyTo == 0 {
+	if copyTo != 0 {
 		particalPaste = true
 	}
 
