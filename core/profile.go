@@ -25,6 +25,7 @@ func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []s
 	}
 
 	if a.cafe == nil {
+		close(ch)
 		return fmt.Errorf("cafe client not set")
 	}
 
@@ -32,6 +33,7 @@ func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []s
 		AccountAddrs: AccountAddrs,
 	})
 	if err != nil {
+		close(ch)
 		return err
 	}
 	done := make(chan error)
