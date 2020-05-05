@@ -514,7 +514,8 @@ message Rpc {
                 Error error = 1;
                 repeated string blockIds = 2;
                 int32 caretPosition = 3;
-                ResponseEvent event = 4;
+                bool isSameBlockCaret = 4;
+                ResponseEvent event = 5;
 
                 message Error {
                     Code code = 1;
