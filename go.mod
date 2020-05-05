@@ -41,3 +41,5 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	google.golang.org/grpc v1.29.0
 )
+
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.17-0.20200505143931-1d998e4c026c
