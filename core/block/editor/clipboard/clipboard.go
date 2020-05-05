@@ -78,6 +78,10 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
+	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && req.Blocks[0].GetText() != nil {
+		req.SelectedTextRange.To = int32(len(req.Blocks[0].GetText().Text))
+	}
+
 	if len(req.Blocks) == 1 && (req.SelectedTextRange == nil || req.SelectedTextRange.From == req.SelectedTextRange.To) {
 		return textSlot, htmlSlot, anySlot, nil
 	}
@@ -129,6 +133,10 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 
 	if len(req.Blocks) == 0 || req.Blocks[0].Id == "" {
 		return textSlot, htmlSlot, anySlot, errors.New("nothing to cut")
+	}
+
+	if len(req.Blocks) == 1 && req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && req.Blocks[0].GetText() != nil {
+		req.SelectedTextRange.To = int32(len(req.Blocks[0].GetText().Text))
 	}
 
 	firstBlock := s.Get(req.Blocks[0].Id)
