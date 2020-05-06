@@ -100,7 +100,7 @@ addrsLoop:
 
 		if !threadAdded {
 			threadAdded = true
-			_, err = a.t.AddThread(context.Background(), addr, net.WithThreadKey(key))
+			_, err = a.t.AddThread(context.Background(), addr, net.WithThreadKey(key), net.WithLogKey(a.opts.Device))
 			if err != nil {
 				return fmt.Errorf("failed to add the remote thread %s: %s", ti.ID.String(), err.Error())
 			}
