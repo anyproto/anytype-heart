@@ -49,7 +49,13 @@ func (a *Anytype) DeleteBlock(id string) error {
 		return err
 	}
 
-	return a.threadsCollection.Delete(db2.InstanceID(id))
+	err = a.threadsCollection.Delete(db2.InstanceID(id))
+	if err != nil {
+		// todo: here we can get an error if we didn't yet added thead keys into DB
+		log.With("thread", id).Error("DeleteBlock failed to remove thread from collection: %s", err.Error())
+	}
+
+	return nil
 }
 
 /*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, creator string, date *types.Timestamp) BlockVersion {

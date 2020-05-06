@@ -98,6 +98,17 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	require.Len(t, info2Modified.Links.Outbound, 0)
 	require.Equal(t, "newtext", info2Modified.Info.Snippet)
 	require.True(t, details2Modified.Compare(info2Modified.Info.Details) == 0)
+
+	err = s.DeleteBlock(block1.ID())
+	require.NoError(t, err)
+
+	info1Modified, err = s.PageInfoWithLinks(block1.ID())
+	require.Error(t, err)
+	require.Nil(t, info1Modified)
+
+	info2Modified, err = s.PageInfoWithLinks(block2.ID())
+	require.NoError(t, err)
+	require.Len(t, info2Modified.Links.Outbound, 0)
 }
 
 func Test_Anytype_PageList(t *testing.T) {
