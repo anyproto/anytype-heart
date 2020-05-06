@@ -25,9 +25,8 @@ var (
 )
 
 type LocalStore struct {
-	Files      FileStore
-	Pages      PageStore
-	Migrations MigrationStore
+	Files FileStore
+	Pages PageStore
 }
 
 type FileStore interface {
@@ -56,19 +55,13 @@ type PageStore interface {
 	UpdateDetails(state *model.State, id string, details *model.PageDetails) error
 	UpdateSnippet(state *model.State, id string, snippet string) error
 	UpdateLastOpened(id string) error
-}
-
-type MigrationStore interface {
-	Indexable
-	SaveVersion(version int) error
-	GetVersion() (int, error)
+	Delete(id string) error
 }
 
 func NewLocalStore(store ds.Batching) LocalStore {
 	return LocalStore{
-		Files:      NewFileStore(store.(ds.TxnDatastore)),
-		Pages:      NewPageStore(store.(ds.TxnDatastore)),
-		Migrations: NewMigrationStore(store.(ds.TxnDatastore)),
+		Files: NewFileStore(store.(ds.TxnDatastore)),
+		Pages: NewPageStore(store.(ds.TxnDatastore)),
 	}
 }
 

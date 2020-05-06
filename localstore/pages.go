@@ -43,11 +43,6 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 	outboundKey := pagesOutboundLinksBase.ChildString(page.Id)
 	stateKey := pagesLastStateBase.ChildString(page.Id)
 
-	err = AddIndexes(m, m.ds, page, page.Id)
-	if err != nil {
-		return err
-	}
-
 	exists, err := txn.Has(detailsKey)
 	if err != nil {
 		return err
@@ -488,6 +483,78 @@ func (m *dsPageStore) UpdateSnippet(state *model.State, id string, snippet strin
 	}
 
 	err = m.updateState(txn, id, state)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsPageStore) Delete(id string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	detailsKey := pagesDetailsBase.ChildString(id)
+	snippetKey := pagesSnippetBase.ChildString(id)
+	outboundKey := pagesOutboundLinksBase.ChildString(id)
+	inboundKey := pagesInboundLinksBase.ChildString(id)
+	stateKey := pagesLastStateBase.ChildString(id)
+
+	exists, err := txn.Has(stateKey)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrNotFound
+	}
+
+	err = txn.Delete(detailsKey)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Delete(snippetKey)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Delete(outboundKey)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Delete(stateKey)
+	if err != nil {
+		return err
+	}
+
+	inboundResults, err := txn.Query(query.Query{
+		Prefix:   inboundKey.String(),
+		Limit:    0,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	inboundIds, err := GetAllKeysFromResults(inboundResults)
+	if err != nil {
+		return err
+	}
+
+	// remove indexed outbound links from the source pages
+	// todo: we have ghost links left
+	for _, inboundLinkPageId := range inboundIds {
+		err = txn.Delete(pagesOutboundLinksBase.ChildString(inboundLinkPageId).ChildString(id))
+		if err != nil {
+			return err
+		}
+	}
+
+	err = txn.Delete(inboundKey)
 	if err != nil {
 		return err
 	}

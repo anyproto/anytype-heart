@@ -39,7 +39,17 @@ func (a *Anytype) DeleteBlock(id string) error {
 		return fmt.Errorf("incorrect block id: %w", err)
 	}
 
-	return a.t.DeleteThread(context.Background(), tid)
+	err = a.t.DeleteThread(context.Background(), tid)
+	if err != nil {
+		return err
+	}
+
+	err = a.localStore.Pages.Delete(id)
+	if err != nil {
+		return err
+	}
+
+	return a.threadsCollection.Delete(db2.InstanceID(id))
 }
 
 /*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, creator string, date *types.Timestamp) BlockVersion {
