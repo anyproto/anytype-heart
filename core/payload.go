@@ -41,17 +41,17 @@ func (p *SignedPbPayload) Unmarshal(out proto.Message) error {
 func (p *SignedPbPayload) Verify(device crypto.PubKey) error {
 	ok, err := device.Verify(append(p.Data, p.AccSig...), p.DeviceSig)
 	if !ok || err != nil {
-		return fmt.Errorf("bad device signature")
+		return fmt.Errorf("bad device signature: %w", err)
 	}
 
 	account, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeAccount, p.AccAddr)
 	if err != nil {
-		return fmt.Errorf("incorrect account addr")
+		return fmt.Errorf("incorrect account addr: %w", err)
 	}
 
 	ok, err = account.Verify(append(p.Data), p.AccSig)
 	if !ok || err != nil {
-		return fmt.Errorf("bad account signature")
+		return fmt.Errorf("bad account signature: %w", err)
 	}
 	return nil
 }
