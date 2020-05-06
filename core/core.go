@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/gateway"
@@ -22,16 +21,17 @@ var (
 )
 
 type Middleware struct {
-	rootPath             string
-	pin                  string
-	mnemonic             string
-	gatewayAddr          string
-	accountSearchCancel  context.CancelFunc
-	localAccounts        []*model.Account
-	localAccountCachedAt *time.Time
-	SendEvent            func(event *pb.Event)
-	blocksService        block.Service
-	linkPreview          linkpreview.LinkPreview
+	rootPath                   string
+	pin                        string
+	mnemonic                   string
+	gatewayAddr                string
+	accountSearchCancel        context.CancelFunc
+	foundAccounts              []*model.Account // found local&remote account for the current mnemonic
+	accountsRecoveryInProgress chan struct{}
+
+	SendEvent     func(event *pb.Event)
+	blocksService block.Service
+	linkPreview   linkpreview.LinkPreview
 
 	Anytype libCore.Service
 
