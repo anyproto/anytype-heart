@@ -64,15 +64,11 @@ func (c *Online) getSignature(payload string) (*pb.WithSignature, error) {
 
 func (c *Online) withToken(ctx context.Context) (context.Context, error) {
 	token, err := c.requestToken(ctx)
-	fmt.Printf("setToken 1 %p", ctx)
-
 	if err != nil {
 		return nil, err
 	}
 
 	ctx = thread.NewTokenContext(ctx, thread.Token(token.Token))
-	fmt.Printf("setToken 2 %p", ctx)
-
 	return ctx, nil
 }
 
