@@ -3,6 +3,7 @@ package localstore
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -141,8 +142,13 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
 	var pages []*model.PageInfo
 	for _, id := range ids {
+		var val *model.PageInfo
 		val, err := getPageInfo(txn, id)
 		if err != nil {
+			if strings.HasSuffix(err.Error(), "key not found") {
+				continue
+			}
+
 			return nil, err
 		}
 
