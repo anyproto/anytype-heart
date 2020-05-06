@@ -74,6 +74,8 @@ func (cb *clipboard) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blo
 func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewState()
 	anySlot = req.Blocks
+	textSlot = ""
+	htmlSlot = ""
 
 	if len(req.Blocks) == 0 {
 		return textSlot, htmlSlot, anySlot, nil
@@ -87,10 +89,15 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
+	var texts []string
 	for _, b := range req.Blocks {
 		if text := b.GetText(); text != nil {
-			textSlot += text.Text + "\n"
+			texts = append(texts, text.Text)
 		}
+	}
+
+	if len(texts) > 0 {
+		textSlot = strings.Join(texts, "\n")
 	}
 
 	firstBlock := s.Get(req.Blocks[0].Id)
@@ -104,9 +111,9 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		cutBlock, _, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
 		if err != nil {
-
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
+
 		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
 			for i, m := range cutBlock.GetText().Marks.Marks {
 				cutBlock.GetText().Marks.Marks[i].Range.From = m.Range.From - req.SelectedTextRange.From
@@ -117,6 +124,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		anySlot = []*model.Block{cutBlock}
 		htmlSlot = conv.Convert(anySlot, images)
+		textSlot = cutBlock.GetText().Text
 
 		return textSlot, htmlSlot, anySlot, nil
 	}
