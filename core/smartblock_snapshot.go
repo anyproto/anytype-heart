@@ -117,10 +117,6 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 	// todo: filter by record type
 	var m = make(map[cid.Cid]struct{})
 
-	pubKey, err := li.ID.ExtractPublicKey()
-	if err != nil {
-		return nil, err
-	}
 	rid := li.Head
 	if rid == cid.Undef {
 		return []SnapshotWithMetadata{}, nil
@@ -151,7 +147,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 			return nil, fmt.Errorf("incorrect record type: %w", err)
 		}
 
-		err = m.Verify(pubKey)
+		err = m.Verify()
 		if err != nil {
 			return nil, err
 		}
