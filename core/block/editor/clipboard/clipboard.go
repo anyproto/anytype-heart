@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
@@ -79,7 +80,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 	}
 
 	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && req.Blocks[0].GetText() != nil {
-		req.SelectedTextRange.To = int32(len(req.Blocks[0].GetText().Text))
+		req.SelectedTextRange.To = int32(utf8.RuneCountInString(req.Blocks[0].GetText().Text))
 	}
 
 	if len(req.Blocks) == 1 && (req.SelectedTextRange == nil || req.SelectedTextRange.From == req.SelectedTextRange.To) {
@@ -116,6 +117,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		anySlot = []*model.Block{cutBlock}
 		htmlSlot = conv.Convert(anySlot, images)
+
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
@@ -136,7 +138,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 	}
 
 	if len(req.Blocks) == 1 && req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && req.Blocks[0].GetText() != nil {
-		req.SelectedTextRange.To = int32(len(req.Blocks[0].GetText().Text))
+		req.SelectedTextRange.To = int32(utf8.RuneCountInString(req.Blocks[0].GetText().Text))
 	}
 
 	firstBlock := s.Get(req.Blocks[0].Id)
@@ -148,6 +150,10 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 		len(req.Blocks) == 1 {
 
 		cutBlock, initialBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+
+		if err != nil {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
+		}
 
 		firstBlock.Model().GetText().Text = initialBlock.GetText().Text
 		firstBlock.Model().GetText().Marks = initialBlock.GetText().Marks
@@ -242,7 +248,7 @@ func (cb *clipboard) pasteHtml(ctx *state.Context, req pb.RpcBlockPasteRequest) 
 }
 
 func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
-	if len(req.TextSlot) == 0 {
+	if utf8.RuneCountInString(req.TextSlot) == 0 {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
 
@@ -371,9 +377,9 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 		focusedContent, isFocusedText = focusedBlock.Model().Content.(*model.BlockContentOfText)
 		isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
 
-		isPasteTop = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && len(focusedContent.Text.Text) != 0
-		isPasteBottom = req.SelectedTextRange.From == int32(len(focusedContent.Text.Text)) && req.SelectedTextRange.To == int32(len(focusedContent.Text.Text)) && req.SelectedTextRange.To != 0
-		isPasteInstead = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(len(focusedContent.Text.Text))
+		isPasteTop = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && utf8.RuneCountInString(focusedContent.Text.Text) != 0
+		isPasteBottom = req.SelectedTextRange.From == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To != 0
+		isPasteInstead = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text))
 		isPasteWithSplit = !isPasteInstead && !isPasteBottom && !isPasteTop
 	}
 
@@ -415,7 +421,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 			}
 
-			if len(focusedContent.Text.Text) == 0 {
+			if utf8.RuneCountInString(focusedContent.Text.Text) == 0 {
 				s.Remove(focusedBlock.Model().Id)
 			}
 
@@ -449,7 +455,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 			}
 
-			if len(newBlock.Model().GetText().Text) > 0 {
+			if utf8.RuneCountInString(newBlock.Model().GetText().Text) > 0 {
 				s.Add(newBlock)
 				err = s.InsertTo(targetId, model.Block_Top, newBlock.Model().Id)
 				if err != nil {
@@ -458,7 +464,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 				blockIds = append(blockIds, newBlock.Model().Id)
 			}
 
-			if len(focusedBlock.Model().GetText().Text) == 0 {
+			if utf8.RuneCountInString(focusedBlock.Model().GetText().Text) == 0 {
 				s.Remove(focusedBlock.Model().Id)
 			}
 		}

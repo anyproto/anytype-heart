@@ -277,33 +277,27 @@ func applyMarks(text string, marks *model.BlockContentTextMarks) (out string) {
 	var symbols []string
 
 	r := []rune(text)
-	if len(r) != len(text) {
-		return text
-	}
 
-	for i := 0; i < len(text); i++ {
+	for i := 0; i < len(r); i++ {
 		symbols = append(symbols, string(r[i]))
 	}
 
-	style_s := ""
 	style_kbd := "display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px;"
-	style_i := ""
-	style_b := ""
 
 	for i := 0; i < len(marks.Marks); i++ {
 		if len(symbols) > int(marks.Marks[i].Range.From) && len(symbols) > int(marks.Marks[i].Range.To-1) && marks.Marks[i].Range.To > 0 {
 			switch marks.Marks[i].Type {
 			case model.BlockContentTextMark_Strikethrough:
-				symbols[marks.Marks[i].Range.From] = ` <s style="` + style_s + `">` + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.From] = ` <s>` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</s>"
 			case model.BlockContentTextMark_Keyboard:
 				symbols[marks.Marks[i].Range.From] = `<kbd style="` + style_kbd + `">` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</kbd>"
 			case model.BlockContentTextMark_Italic:
-				symbols[marks.Marks[i].Range.From] = `<i style="` + style_i + `">` + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.From] = `<i>` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</i>"
 			case model.BlockContentTextMark_Bold:
-				symbols[marks.Marks[i].Range.From] = `<b style="` + style_b + `">` + symbols[marks.Marks[i].Range.From]
+				symbols[marks.Marks[i].Range.From] = `<b>` + symbols[marks.Marks[i].Range.From]
 				symbols[marks.Marks[i].Range.To-1] = symbols[marks.Marks[i].Range.To-1] + "</b>"
 			case model.BlockContentTextMark_Link:
 				symbols[marks.Marks[i].Range.From] = `<a href="` + marks.Marks[i].Param + `">` + symbols[marks.Marks[i].Range.From]
