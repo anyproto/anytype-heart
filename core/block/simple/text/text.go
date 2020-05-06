@@ -211,13 +211,13 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	copyTo = int32(utf8.RuneCountInString(copiedText.Text))
 
 	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
-		return caretPosition, fmt.Errorf("out of range: range.from is not correct:", rangeFrom)
+		return caretPosition, fmt.Errorf("out of range: range.from is not correct: %d", rangeFrom)
 	}
 	if rangeTo < 0 || int(rangeTo) > utf8.RuneCountInString(t.content.Text) {
-		return caretPosition, fmt.Errorf("out of range: range.to is not correct:", rangeTo)
+		return caretPosition, fmt.Errorf("out of range: range.to is not correct: %d", rangeTo)
 	}
 	if rangeFrom > rangeTo {
-		return caretPosition, fmt.Errorf("out of range: range.from > range.to:", rangeFrom, rangeTo)
+		return caretPosition, fmt.Errorf("out of range: range.from %d > range.to %d", rangeFrom, rangeTo)
 	}
 
 	if len(t.content.Text) == 0 || (rangeFrom == 0 && rangeTo == int32(len(t.content.Text))) {
