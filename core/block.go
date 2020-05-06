@@ -166,26 +166,29 @@ func (mw *Middleware) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockClose
 	return response(pb.RpcBlockCloseResponseError_NULL, nil)
 }
 func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
-	response := func(code pb.RpcBlockCopyResponseErrorCode, html string, err error) *pb.RpcBlockCopyResponse {
+	response := func(code pb.RpcBlockCopyResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCopyResponse {
 		m := &pb.RpcBlockCopyResponse{
-			Error: &pb.RpcBlockCopyResponseError{Code: code},
-			Html:  html,
+			Error:    &pb.RpcBlockCopyResponseError{Code: code},
+			TextSlot: textSlot,
+			HtmlSlot: htmlSlot,
+			AnySlot:  anySlot,
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
-	var html string
+	var textSlot, htmlSlot string
+	var anySlot []*model.Block
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		html, err = bs.Copy(*req, mw.getImages(req.Blocks))
+		textSlot, htmlSlot, anySlot, err = bs.Copy(*req, mw.getImages(req.Blocks))
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, textSlot, htmlSlot, anySlot, err)
 	}
 
-	return response(pb.RpcBlockCopyResponseError_NULL, html, nil)
+	return response(pb.RpcBlockCopyResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
 }
 
 func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
@@ -206,8 +209,8 @@ func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
 
 func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, caretPosition int32, err error) *pb.RpcBlockPasteResponse {
-		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds, CaretPosition: caretPosition}
+	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, caretPosition int32, isSameBlockCaret bool, err error) *pb.RpcBlockPasteResponse {
+		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds, CaretPosition: caretPosition, IsSameBlockCaret: isSameBlockCaret}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -216,12 +219,13 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return m
 	}
 	var (
-		blockIds      []string
-		caretPosition int32
+		blockIds         []string
+		caretPosition    int32
+		isSameBlockCaret bool
 	)
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		var uploadArr []pb.RpcBlockUploadRequest
-		blockIds, uploadArr, caretPosition, err = bs.Paste(ctx, *req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = bs.Paste(ctx, *req)
 		if err != nil {
 			return
 		}
@@ -235,10 +239,10 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, err)
+		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, isSameBlockCaret, err)
 	}
 
-	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, caretPosition, nil)
+	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, caretPosition, isSameBlockCaret, nil)
 }
 
 func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {

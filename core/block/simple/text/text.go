@@ -201,30 +201,36 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 	caretPosition = -1
 	copiedText := copiedBlock.GetText()
 
-	if copyFrom < 0 || int(copyFrom) > utf8.RuneCountInString(copiedText.Text) {
-		return caretPosition, ErrOutOfRange
-	}
-	if copyTo < 0 || int(copyTo) > utf8.RuneCountInString(copiedText.Text) {
-		return caretPosition, ErrOutOfRange
-	}
-	if copyFrom > copyTo {
-		return caretPosition, ErrOutOfRange
+	particalPaste := false
+
+	if copyTo != 0 {
+		particalPaste = true
 	}
 
+	copyFrom = 0
+	copyTo = int32(utf8.RuneCountInString(copiedText.Text))
+
 	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
-		return caretPosition, ErrOutOfRange
+		return caretPosition, fmt.Errorf("out of range: range.from is not correct: %d", rangeFrom)
 	}
 	if rangeTo < 0 || int(rangeTo) > utf8.RuneCountInString(t.content.Text) {
-		return caretPosition, ErrOutOfRange
+		return caretPosition, fmt.Errorf("out of range: range.to is not correct: %d", rangeTo)
 	}
 	if rangeFrom > rangeTo {
-		return caretPosition, ErrOutOfRange
+		return caretPosition, fmt.Errorf("out of range: range.from %d > range.to %d", rangeFrom, rangeTo)
 	}
 
 	if len(t.content.Text) == 0 || (rangeFrom == 0 && rangeTo == int32(len(t.content.Text))) {
-		t.content.Style = copiedText.Style
-		t.content.Color = copiedText.Color
-		t.BackgroundColor = copiedBlock.BackgroundColor
+		if t.content.Style != model.BlockContentText_Numbered &&
+			t.content.Style != model.BlockContentText_Marked &&
+			t.content.Style != model.BlockContentText_Code {
+			t.content.Style = copiedText.Style
+		}
+
+		if !particalPaste {
+			t.content.Color = copiedText.Color
+			t.BackgroundColor = copiedBlock.BackgroundColor
+		}
 	}
 
 	// 1. cut marks from 0 to TO
