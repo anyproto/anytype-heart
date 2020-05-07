@@ -57,7 +57,7 @@ type Markdown interface {
 
 	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
 	HTMLToBlocks(source []byte) (error, []*model.Block)
-	MarkdownToBlocks(markdownSource []byte) ([]*model.Block, error)
+	MarkdownToBlocks(markdownSource []byte, allFileShortPaths []string) ([]*model.Block, error)
 	// Parser returns a Parser that will be used for conversion.
 	Parser() parser.Parser
 
@@ -136,7 +136,7 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 	doc := m.parser.Parse(reader, opts...)
 
 	writer := bufio.NewWriter(w)
-	bWriter := blocksUtil.NewRWriter(writer)
+	bWriter := blocksUtil.NewRWriter(writer, []string{})
 	//bWriter := blocksUtil.ExtendWriter(writer, &rState)
 
 	return m.renderer.Render(bWriter, source, doc)
@@ -149,11 +149,11 @@ func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts
 	return m.renderer.Render(bWriter, source, doc)
 }
 
-func (m *markdown) MarkdownToBlocks(markdownSource []byte) ([]*model.Block, error) {
+func (m *markdown) MarkdownToBlocks(markdownSource []byte, allFileShortPaths []string) ([]*model.Block, error) {
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	bWriter := blocksUtil.NewRWriter(writer)
-
+	bWriter := blocksUtil.NewRWriter(writer, allFileShortPaths)
+	// allFileShortPaths,
 	err := m.ConvertBlocks(markdownSource, bWriter)
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	bWriter := blocksUtil.NewRWriter(writer)
+	bWriter := blocksUtil.NewRWriter(writer, []string{})
 
 	err := m.ConvertBlocks([]byte(md), bWriter)
 	if err != nil {

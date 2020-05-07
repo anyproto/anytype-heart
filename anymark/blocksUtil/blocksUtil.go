@@ -43,6 +43,7 @@ type RWriter interface {
 
 type rWriter struct {
 	*bufio.Writer
+	allFileShortPaths []string
 
 	isNumberedList bool
 
@@ -112,8 +113,8 @@ func (rw *rWriter) GetIsNumberedList() (isNumbered bool) {
 	return rw.isNumberedList
 }
 
-func NewRWriter(writer *bufio.Writer) RWriter {
-	return &rWriter{Writer: writer}
+func NewRWriter(writer *bufio.Writer, allFileShortPaths []string) RWriter {
+	return &rWriter{Writer: writer, allFileShortPaths: allFileShortPaths}
 }
 
 func (rw *rWriter) GetText() string {
