@@ -503,7 +503,7 @@ message Rpc {
                 string focusedBlockId = 2;
                 anytype.model.Range selectedTextRange = 3;
                 repeated string selectedBlockIds = 4;
-                anytype.model.Range copyTextRange = 5;
+                bool isPartOfBlock = 5;
 
                 string textSlot = 6;
                 string htmlSlot = 7;
