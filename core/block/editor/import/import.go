@@ -157,6 +157,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 
 	nameToBlocks := make(map[string][]*model.Block)
 	allFileShortPaths := []string{}
+	files := make(map[string][]byte)
 
 	err = filepath.Walk(directoryPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -167,6 +168,12 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			if !info.IsDir() {
 				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
 				allFileShortPaths = append(allFileShortPaths, shortPath)
+				dat, err := ioutil.ReadFile(path)
+				if err != nil {
+					return err
+				}
+
+				files[path] = dat
 			}
 
 			return nil
@@ -174,55 +181,37 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 	)
 
 	log.Debug("1. DirWithMarkdownToBlocks: Get allFileShortPaths:", allFileShortPaths)
-
 	if err != nil {
 		return nameToBlocks, isPageLinked, filesCount, err
 	}
 
 	isFileExist := make(map[string]bool)
 
-	err = filepath.Walk(directoryPath,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
+	for path := range files {
+		extension := filepath.Ext(path)
+
+		shortPath := strings.Replace(path, directoryPath+"/", "", -1)
+		log.Debug("   >>> Current file:", shortPath)
+		if extension == ".md" {
+			datStr := string(files[path])
+			linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
+
+			for _, linkSubmatch := range linkSubmatches {
+				l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
+
+				for _, sPath := range allFileShortPaths {
+					if strings.Contains(sPath, l) {
+						datStr = strings.Replace(datStr, linkSubmatch[2], strings.Replace(sPath, " ", "%20", -1), -1)
+					}
+				}
 			}
 
-			if !info.IsDir() {
-				extension := filepath.Ext(path)
+			nameToBlocks[shortPath], err = anymarkConv.MarkdownToBlocks([]byte(datStr))
+		} else {
+			isFileExist[shortPath] = true
+		}
 
-				dat, err := ioutil.ReadFile(path)
-				if err != nil {
-					return err
-				}
-
-				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
-				log.Debug("   >>> Current file:", shortPath)
-				if extension == ".md" {
-					datStr := string(dat)
-					linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
-
-					for _, linkSubmatch := range linkSubmatches {
-						l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
-
-						for _, sPath := range allFileShortPaths {
-							if strings.Contains(sPath, l) {
-								datStr = strings.Replace(datStr, linkSubmatch[2], strings.Replace(sPath, " ", "%20", -1), -1)
-							}
-						}
-					}
-
-					nameToBlocks[shortPath], err = anymarkConv.MarkdownToBlocks([]byte(datStr))
-					if err != nil {
-						return err
-					}
-				} else {
-					isFileExist[shortPath] = true
-				}
-
-			}
-
-			return nil
-		})
+	}
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
 
