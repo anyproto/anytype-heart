@@ -118,7 +118,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 	var m = make(map[cid.Cid]struct{})
 
 	rid := li.Head
-	if rid == cid.Undef {
+	if !rid.Defined() {
 		return []SnapshotWithMetadata{}, nil
 	}
 
@@ -126,6 +126,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		if _, exists := m[rid]; exists {
 			break
 		}
+
 		m[rid] = struct{}{}
 		rec, err := a.t.GetRecord(ctx, thrd.ID, rid)
 		if err != nil {
@@ -159,8 +160,10 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		}
 
 		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Ancestor) {
-			log.Debugf("snapshotTraverseFromCid skip Ancestor: %+v < %+v", snapshot.State, before)
 			rid = rec.PrevID()
+			if !rid.Defined() {
+				break
+			}
 			continue
 		}
 
@@ -179,6 +182,10 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		}
 
 		rid = rec.PrevID()
+
+		if !rid.Defined() {
+			break
+		}
 	}
 
 	return snapshots, nil
