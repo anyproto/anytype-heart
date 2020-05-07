@@ -47,7 +47,7 @@ func rangePaste(sb *smarttest.SmartTest, t *testing.T, focusId string, focusRang
 		ContextId:         sb.Id(),
 		FocusedBlockId:    focusId,
 		SelectedTextRange: focusRange,
-		CopyTextRange:     copyRange,
+		IsPartOfBlock:     true,
 		AnySlot:           blocks,
 	}
 	_, _, _, _, err := cb.Paste(nil, req)
