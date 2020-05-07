@@ -190,25 +190,10 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 	for shortPath := range files {
 		log.Debug("   >>> Current file:", shortPath)
 		if filepath.Ext(shortPath) == ".md" {
-
-			/*			datStr := string(files[shortPath])
-						linkSubmatches := linkRegexp.FindAllStringSubmatch(datStr, -1)
-
-						for _, linkSubmatch := range linkSubmatches {
-							l := strings.Replace(linkSubmatch[2], "%20", " ", -1)
-
-							for _, sPath := range allFileShortPaths {
-								if strings.Contains(sPath, l) {
-									datStr = strings.Replace(datStr, linkSubmatch[2], strings.Replace(sPath, " ", "%20", -1), -1)
-								}
-							}
-						}*/
-
 			nameToBlocks[shortPath], err = anymarkConv.MarkdownToBlocks(files[shortPath], allFileShortPaths)
 		} else {
 			isFileExist[shortPath] = true
 		}
-
 	}
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")

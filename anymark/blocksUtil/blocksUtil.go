@@ -39,6 +39,8 @@ type RWriter interface {
 
 	SetIsNumberedList(isNumbered bool)
 	GetIsNumberedList() (isNumbered bool)
+
+	GetAllFileShortPaths() []string
 }
 
 type rWriter struct {
@@ -53,6 +55,10 @@ type rWriter struct {
 	textStylesQueue []model.BlockContentTextStyle
 	blocks          []*model.Block
 	curStyledBlock  model.BlockContentTextStyle
+}
+
+func (rw *rWriter) GetAllFileShortPaths() []string {
+	return rw.allFileShortPaths
 }
 
 func (rw *rWriter) SetMarkStart() {
