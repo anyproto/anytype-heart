@@ -1,6 +1,7 @@
 package change
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -13,7 +14,7 @@ func TestTree_Add(t *testing.T) {
 		tr := new(Tree)
 		tr.Add(&Change{Id: "root"})
 		assert.Equal(t, tr.root.Id, "root")
-		assert.Equal(t, tr.headIds[0], "root")
+		assert.Equal(t, []string{"root"}, tr.headIds)
 	})
 	t.Run("linear add", func(t *testing.T) {
 		tr := new(Tree)
@@ -65,14 +66,33 @@ func TestTree_Add(t *testing.T) {
 		assert.Len(t, tr.unAttached, 0)
 		assert.Len(t, tr.attached, 7)
 	})
+	t.Run("big set", func(t *testing.T) {
+		tr := new(Tree)
+		tr.Add(&Change{Id: "root"})
+		var changes []*Change
+		for i := 0; i < 10000; i++ {
+			if i == 0 {
+				changes = append(changes, &Change{Id: fmt.Sprint(i), PreviousIds: []string{"root"}})
+			} else {
+				changes = append(changes, &Change{Id: fmt.Sprint(i), PreviousIds: []string{fmt.Sprint(i - 1)}})
+			}
+		}
+		rand.Shuffle(len(changes), func(i, j int) {
+			changes[i], changes[j] = changes[j], changes[i]
+		})
+		st := time.Now()
+		tr.Add(changes...)
+		t.Log(time.Since(st))
+		assert.Equal(t, tr.headIds, []string{"9999"})
+	})
 }
 
 func TestTree_Hash(t *testing.T) {
 	tr := new(Tree)
-	tr.Add(&Change{Id:"root"})
+	tr.Add(&Change{Id: "root"})
 	hash1 := tr.Hash()
 	assert.Equal(t, tr.Hash(), hash1)
-	tr.Add(&Change{Id:"1", PreviousIds: []string{"root"}})
+	tr.Add(&Change{Id: "1", PreviousIds: []string{"root"}})
 	assert.NotEqual(t, tr.Hash(), hash1)
 	assert.Equal(t, tr.Hash(), tr.Hash())
 }
