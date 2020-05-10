@@ -23,6 +23,13 @@ type Tree struct {
 	waitList map[string][]string
 }
 
+func (t *Tree) RootId() string {
+	if t.root != nil {
+		return t.root.Id
+	}
+	return ""
+}
+
 func (t *Tree) Add(changes ...*Change) (mode Mode) {
 	var beforeHeadIds = t.headIds
 	var attached bool
@@ -35,6 +42,9 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 		return Nothing
 	}
 	t.updateHeads()
+	if l := len(beforeHeadIds); l > 0 && l < len(t.headIds) {
+		return Rebuild
+	}
 	for _, oldId := range beforeHeadIds {
 		for _, newId := range t.headIds {
 			if !t.after(oldId, newId) {
@@ -137,6 +147,10 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) bool 
 		}
 	}
 	return true
+}
+
+func (t *Tree) Iterate(startId string, f func(c *Change) (isContinue bool)) {
+	t.iterate(t.attached[startId], f)
 }
 
 func (t *Tree) Hash() string {

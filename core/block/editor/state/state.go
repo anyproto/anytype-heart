@@ -42,6 +42,7 @@ type State struct {
 	rootId   string
 	toRemove []string
 	newIds   []string
+	changeId string
 }
 
 func (s *State) RootId() string {

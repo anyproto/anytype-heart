@@ -12,18 +12,18 @@ import (
 func TestTree_Add(t *testing.T) {
 	t.Run("add first el", func(t *testing.T) {
 		tr := new(Tree)
-		tr.Add(&Change{Id: "root"})
+		assert.Equal(t, Append, tr.Add(&Change{Id: "root"}))
 		assert.Equal(t, tr.root.Id, "root")
 		assert.Equal(t, []string{"root"}, tr.headIds)
 	})
 	t.Run("linear add", func(t *testing.T) {
 		tr := new(Tree)
-		tr.Add(
+		assert.Equal(t, Append, tr.Add(
 			&Change{Id: "root"},
 			&Change{Id: "one", PreviousIds: []string{"root"}},
 			&Change{Id: "two", PreviousIds: []string{"one"}},
-		)
-		tr.Add(&Change{Id: "three", PreviousIds: []string{"two"}})
+		))
+		assert.Equal(t, Append, tr.Add(&Change{Id: "three", PreviousIds: []string{"two"}}))
 		el := tr.root
 		var ids []string
 		for el != nil {
@@ -38,23 +38,23 @@ func TestTree_Add(t *testing.T) {
 	})
 	t.Run("branch", func(t *testing.T) {
 		tr := new(Tree)
-		tr.Add(
+		assert.Equal(t, Append, tr.Add(
 			&Change{Id: "root"},
 			&Change{Id: "1", PreviousIds: []string{"root"}},
 			&Change{Id: "2", PreviousIds: []string{"1"}},
-		)
-		tr.Add(
+		))
+		assert.Equal(t, Rebuild, tr.Add(
 			&Change{Id: "1.2", PreviousIds: []string{"1.1"}},
 			&Change{Id: "1.3", PreviousIds: []string{"1.2"}},
 			&Change{Id: "1.1", PreviousIds: []string{"1"}},
-		)
+		))
 		assert.Len(t, tr.attached["1"].Next, 2)
 		assert.Len(t, tr.unAttached, 0)
 		assert.Len(t, tr.attached, 6)
 	})
 	t.Run("branch union", func(t *testing.T) {
 		tr := new(Tree)
-		tr.Add(
+		assert.Equal(t, Append, tr.Add(
 			&Change{Id: "root"},
 			&Change{Id: "1", PreviousIds: []string{"root"}},
 			&Change{Id: "2", PreviousIds: []string{"1"}},
@@ -62,7 +62,7 @@ func TestTree_Add(t *testing.T) {
 			&Change{Id: "1.3", PreviousIds: []string{"1.2"}},
 			&Change{Id: "1.1", PreviousIds: []string{"1"}},
 			&Change{Id: "3", PreviousIds: []string{"2", "1.3"}},
-		)
+		))
 		assert.Len(t, tr.unAttached, 0)
 		assert.Len(t, tr.attached, 7)
 	})
