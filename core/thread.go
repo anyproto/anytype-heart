@@ -237,17 +237,17 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 			cancel()
 			return
 		case <-syncDone:
+			cancel()
 			return
 		case <-ctx.Done():
 			return
 		}
 	}()
-	defer close(syncDone)
 
-	done := make(chan struct{})
+	replicatorAddFinished := make(chan struct{})
 	go func() {
 		attempts := 0
-		defer close(done)
+		defer close(replicatorAddFinished)
 		for _, addr := range thrd.Addrs {
 			if addr.Equal(a.opts.CafeP2PAddr) {
 				log.Warnf("syncThread %s already has replicator")
@@ -296,22 +296,23 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 	pullDone := make(chan struct{})
 	if mustConnectToCafe {
 		select {
-		case <-done:
+		case <-replicatorAddFinished:
 		case <-a.shutdownStartsCh:
 			return fmt.Errorf("node stopped")
 		}
 		if err != nil {
-			close(pullDone)
+			close(syncDone)
 			return err
 		}
 
 		if !pullAfterConnect {
-			close(pullDone)
+			close(syncDone)
 			return nil
 		}
 
 		go func() {
 			defer close(pullDone)
+			defer close(syncDone)
 			err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
@@ -321,13 +322,15 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 	} else {
 		if !pullAfterConnect {
 			close(pullDone)
+			close(syncDone)
 			return nil
 		}
 
 		go func() {
 			defer close(pullDone)
+			defer close(syncDone)
 			select {
-			case <-done:
+			case <-replicatorAddFinished:
 			case <-a.shutdownStartsCh:
 				log.Errorf("syncThread failed to pullThread: node stopped")
 				return
