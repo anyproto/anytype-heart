@@ -73,7 +73,6 @@ func (s *State) changeUpdate(events []pb.EventMessage) (err error) {
 	return
 }
 
-
 func (s *State) Merge(st *State) *State {
 	result := s.NewState()
 

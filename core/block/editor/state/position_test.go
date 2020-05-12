@@ -190,4 +190,28 @@ func TestState_InsertTo(t *testing.T) {
 		_, _, err := ApplyState(s)
 		assert.Error(t, err)
 	})
+
+	t.Run("determinate layout ids", func(t *testing.T) {
+		r, c1, c2 := moveFromSide(t, model.Block_Left)
+		row := r.PickParentOf(c1.Model().Id)
+		c1Id := c1.Model().Id
+		c2Id := c2.Model().Id
+		rowId := row.Model().Id
+
+		assert.NotEqual(t, c1Id, c2Id)
+		assert.NotEqual(t, c1Id, rowId)
+
+		r, c1, c2 = moveFromSide(t, model.Block_Left)
+		row = r.PickParentOf(c1.Model().Id)
+
+		assert.Equal(t, rowId, row.Model().Id)
+		assert.Equal(t, c1Id, c1.Model().Id)
+		assert.Equal(t, c2Id, c2.Model().Id)
+
+		r, c1, c2 = moveFromSide(t, model.Block_Right)
+		row = r.PickParentOf(c1.Model().Id)
+		assert.NotEqual(t, rowId, row.Model().Id)
+		assert.NotEqual(t, c1Id, c1.Model().Id)
+		assert.NotEqual(t, c2Id, c2.Model().Id)
+	})
 }

@@ -1,6 +1,9 @@
 package state
 
 import (
+	"crypto/md5"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -78,18 +81,34 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	return
 }
 
+func makeOpId(target simple.Block, pos model.BlockPosition, ids ...string) string {
+	var del = [...]byte{'-'}
+	h := md5.New()
+	h.Write([]byte(target.Model().Id))
+	h.Write(del[:])
+	binary.Write(h, binary.LittleEndian, pos)
+	h.Write(del[:])
+	for _, id := range ids {
+		h.Write([]byte(id))
+		h.Write(del[:])
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids ...string) (err error) {
+	opId := makeOpId(target, pos, ids...)
 	row := s.GetParentOf(target.Model().Id)
 	if row == nil {
 		return fmt.Errorf("target block has not parent")
 	}
 	if row.Model().GetLayout() == nil || row.Model().GetLayout().Style != model.BlockContentLayout_Row {
-		if row, err = s.wrapToRow(row, target); err != nil {
+		if row, err = s.wrapToRow(opId, row, target); err != nil {
 			return
 		}
 		target = s.Get(row.Model().ChildrenIds[0])
 	}
 	column := simple.New(&model.Block{
+		Id : "cd-" + opId,
 		ChildrenIds: ids,
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -112,8 +131,9 @@ func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids .
 	return
 }
 
-func (s *State) wrapToRow(parent, b simple.Block) (row simple.Block, err error) {
+func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block, err error) {
 	column := simple.New(&model.Block{
+		Id:          "ct-" + opId,
 		ChildrenIds: []string{b.Model().Id},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -123,6 +143,7 @@ func (s *State) wrapToRow(parent, b simple.Block) (row simple.Block, err error) 
 	})
 	s.Add(column)
 	row = simple.New(&model.Block{
+		Id:          "r-" + opId,
 		ChildrenIds: []string{column.Model().Id},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
