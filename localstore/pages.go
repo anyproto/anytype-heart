@@ -129,14 +129,21 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, fmt.Errorf("failed to get last opened: %w", err)
 	}
 
-	inboundLinks, _ := txn.GetSize(pagesInboundLinksBase.ChildString(id))
+	inboundResults, err := txn.Query(query.Query{
+		Prefix:   pagesInboundLinksBase.String() + "/" + id + "/",
+		Limit:    1, // we only need to know if there is at least 1 inbound link
+		KeysOnly: true,
+	})
+
+	// max is 1
+	inboundLinks, err := CountAllKeysFromResults(inboundResults)
 
 	val, err = txn.Get(pagesSnippetBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
-	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened, InboundLinksCount: uint32(inboundLinks)}, nil
+	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened, HasInboundLinks: inboundLinks == 1}, nil
 }
 
 func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {

@@ -194,6 +194,23 @@ func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string,
 	})
 }
 
+func CountAllKeysFromResults(results query.Results) (int, error) {
+	var count int
+	for {
+		res, ok := <-results.Next()
+		if !ok {
+			break
+		}
+		if res.Error != nil {
+			return -1, res.Error
+		}
+
+		count++
+	}
+
+	return count, nil
+}
+
 func GetAllKeysFromResults(results query.Results) ([]string, error) {
 	var keys []string
 	for {

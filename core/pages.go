@@ -33,11 +33,11 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 
 	sort.Slice(pages, func(i, j int) bool {
 		// show pages with inbound links first
-		if pages[i].InboundLinksCount > 0 && pages[j].InboundLinksCount == 0 {
+		if pages[i].HasInboundLinks && !pages[j].HasInboundLinks {
 			return true
 		}
 
-		if pages[i].InboundLinksCount == 0 && pages[j].InboundLinksCount > 0 {
+		if !pages[i].HasInboundLinks && pages[j].HasInboundLinks {
 			return false
 		}
 
