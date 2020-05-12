@@ -48,6 +48,7 @@ type Services interface {
 
 func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
 	s := imp.NewStateCtx(ctx)
+	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
 
 	nameToBlocks, isPageLinked, filesCount, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
 	nameToId := make(map[string]string)
@@ -153,6 +154,8 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 }
 
 func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, filesCount int, err error) {
+	log.Debug("1. DirWithMarkdownToBlocks: directory %s", directoryPath)
+
 	anymarkConv := anymark.New()
 
 	nameToBlocks := make(map[string][]*model.Block)
