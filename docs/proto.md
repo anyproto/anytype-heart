@@ -1868,7 +1868,7 @@ Image/Video/File blocks then:
 | focusedBlockId | [string](#string) |  |  |
 | selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 | selectedBlockIds | [string](#string) | repeated |  |
-| copyTextRange | [model.Range](#anytype.model.Range) |  |  |
+| isPartOfBlock | [bool](#bool) |  |  |
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype.model.Block) | repeated |  |

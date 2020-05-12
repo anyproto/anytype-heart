@@ -395,10 +395,6 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, ErrTitlePasteRestricted
 	}
 
-	if req.CopyTextRange == nil {
-		req.CopyTextRange = &model.Range{From: 0, To: 0}
-	}
-
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
 	pasteSingleTextInFocusedText := focusedBlockText != nil && isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
 	pasteMultipleBlocksInFocusedText := isFocusedText && (isMultipleBlocksToPaste || firstPasteBlockText == nil)
@@ -415,7 +411,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 		break
 
 	case pasteSingleTextInFocusedText:
-		caretPosition, err = focusedBlockText.RangeTextPaste(req.CopyTextRange.From, req.CopyTextRange.To, req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0])
+		caretPosition, err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0], req.IsPartOfBlock)
 		if err != nil {
 			return nil, nil, -1, isSameBlockCaret, err
 		}

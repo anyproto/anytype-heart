@@ -45,7 +45,7 @@ type Block interface {
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
-	RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedBlock *model.Block) (caretPosition int32, err error)
+	RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error)
 	RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
@@ -197,18 +197,12 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
-func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, rangeTo int32, copiedBlock *model.Block) (caretPosition int32, err error) {
+func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error) {
 	caretPosition = -1
 	copiedText := copiedBlock.GetText()
 
-	particalPaste := false
-
-	if copyTo != 0 {
-		particalPaste = true
-	}
-
-	copyFrom = 0
-	copyTo = int32(utf8.RuneCountInString(copiedText.Text))
+	copyFrom := int32(0)
+	copyTo := int32(utf8.RuneCountInString(copiedText.Text))
 
 	if rangeFrom < 0 || int(rangeFrom) > utf8.RuneCountInString(t.content.Text) {
 		return caretPosition, fmt.Errorf("out of range: range.from is not correct: %d", rangeFrom)
@@ -227,7 +221,7 @@ func (t *Text) RangeTextPaste(copyFrom int32, copyTo int32, rangeFrom int32, ran
 			t.content.Style = copiedText.Style
 		}
 
-		if !particalPaste {
+		if !isPartOfBlock {
 			t.content.Color = copiedText.Color
 			t.BackgroundColor = copiedBlock.BackgroundColor
 		}
