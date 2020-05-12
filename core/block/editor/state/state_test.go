@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestState_Add(t *testing.T) {
@@ -65,4 +66,36 @@ func TestState_GetParentOf(t *testing.T) {
 		"2": base.NewBase(&model.Block{Id: "2"}),
 	}).NewState()
 	assert.Equal(t, "1", s.GetParentOf("2").Model().Id)
+}
+
+func TestApplyState(t *testing.T) {
+	d := NewDoc("1", map[string]simple.Block{
+		"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+		"2": base.NewBase(&model.Block{Id: "2"}),
+	})
+	s := d.NewState()
+	s.Add(simple.New(&model.Block{Id: "3"}))
+	s.InsertTo("2", model.Block_Bottom, "3")
+	s.changeId = "1"
+
+	s = s.NewState()
+	s.Add(simple.New(&model.Block{Id: "4"}))
+	s.InsertTo("3", model.Block_Bottom, "4")
+	s.changeId = "2"
+
+	s = s.NewState()
+	s.Remove("3")
+	s.changeId = "3"
+
+	s = s.NewState()
+	s.Add(simple.New(&model.Block{Id: "5"}))
+	s.InsertTo("4", model.Block_Bottom, "5")
+	s.changeId = "4"
+
+	msgs, hist, err := ApplyState(s)
+	require.NoError(t, err)
+	assert.Len(t, hist.Add,2)
+	assert.Len(t, hist.Change, 1)
+	assert.Len(t, hist.Remove, 0)
+	require.Len(t, msgs, 2)
 }

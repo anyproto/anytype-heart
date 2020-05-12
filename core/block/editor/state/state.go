@@ -205,9 +205,25 @@ func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err e
 }
 
 func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
+	if s.parent != nil && s.parent.parent != nil {
+		s.intermediateApply()
+		return s.parent.apply()
+	}
 	st := time.Now()
+	if s.parent != nil && s.changeId != "" {
+		s.parent.changeId = s.changeId
+	}
 	if err = s.normalize(); err != nil {
 		return
+	}
+	if len(s.toRemove) > 0 {
+		toRemoveFiltered := s.toRemove[:0]
+		for _, toRemoveId := range s.toRemove {
+			if s.PickOrigin(toRemoveId) != nil {
+				toRemoveFiltered = append(toRemoveFiltered, toRemoveId)
+			}
+		}
+		s.toRemove = toRemoveFiltered
 	}
 
 	var toSave []*model.Block
@@ -242,6 +258,7 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 			})
 		}
 	}
+
 	if len(s.toRemove) > 0 {
 		msgs = append(msgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockDelete{
@@ -264,14 +281,27 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 		}
 	}
 	for _, id := range s.toRemove {
-		if old := s.PickOrigin(id); old != nil {
-			action.Remove = append(action.Remove, old.Copy())
-		}
+		action.Remove = append(action.Remove, s.PickOrigin(id))
 		if s.parent != nil {
 			delete(s.parent.blocks, id)
 		}
 	}
 	log.Infof("middle: state apply: %d for save; %d for remove; %d copied; for a %v", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
+	return
+}
+
+func (s *State) intermediateApply() {
+	st := time.Now()
+	if s.changeId != "" {
+		s.parent.changeId = s.changeId
+	}
+	for _, b := range s.blocks {
+		s.parent.Set(b)
+	}
+	for _, id := range s.toRemove {
+		s.parent.Remove(id)
+	}
+	log.Infof("middle: state intermediate apply: %d to update; %d to remove ; for a %v", len(s.blocks), len(s.toRemove), time.Since(st))
 	return
 }
 
