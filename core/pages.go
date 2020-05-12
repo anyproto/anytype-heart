@@ -16,7 +16,7 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 		return nil, err
 	}
 
-	var idsS []string
+	var idsS = make([]string, 0, len(ids))
 	for _, id := range ids {
 		t, _ := SmartBlockTypeFromThreadID(id)
 		if t != SmartBlockTypePage {

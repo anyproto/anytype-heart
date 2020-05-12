@@ -23,8 +23,8 @@ var skipMigration = func(a *Anytype) error {
 
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
-	migration1,
-	migration2,
+	indexLinks,           // 1
+	alterThreadsDbSchema, // 2
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -118,7 +118,7 @@ func doWithOfflineNode(a *Anytype, f func() error) error {
 	return nil
 }
 
-func migration1(a *Anytype) error {
+func indexLinks(a *Anytype) error {
 	return doWithOfflineNode(a, func() error {
 		threadsIDs, err := a.t.Logstore().Threads()
 		if err != nil {
@@ -141,15 +141,15 @@ func migration1(a *Anytype) error {
 			migrated++
 		}
 
-		log.Infof("migration1: %d pages indexed", migrated)
+		log.Infof("migration indexLinks: %d pages indexed", migrated)
 		return nil
 	})
 }
 
-func migration2(a *Anytype) error {
+func alterThreadsDbSchema(a *Anytype) error {
 	path := filepath.Join(a.opts.Repo, "collections", "eventstore")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Info("migration2 skipped because collections db not yet created")
+		log.Info("migration alterThreadsDbSchema skipped because collections db not yet created")
 		return nil
 	}
 
@@ -170,7 +170,7 @@ func migration2(a *Anytype) error {
 	key := dsDBSchemas.ChildString(threadInfoCollection.Name)
 	exists, err := db.Has(key)
 	if !exists {
-		log.Info("migration2 skipped because schema not exists in the collections db")
+		log.Info("migration alterThreadsDbSchema skipped because schema not exists in the collections db")
 		return nil
 	}
 
@@ -182,7 +182,7 @@ func migration2(a *Anytype) error {
 		return err
 	}
 
-	log.Infof("migration2: schema updated")
+	log.Infof("migration alterThreadsDbSchema: schema updated")
 
 	return nil
 }
