@@ -1,6 +1,7 @@
 package slice
 
 import (
+	"hash/fnv"
 	"math/rand"
 )
 
@@ -35,6 +36,12 @@ func Remove(s []string, v string) []string {
 }
 
 func GetRangomString(s []string, seed string) string {
-	rand.Seed(seed)
+	rand.Seed(int64(hash(seed)))
 	return s[rand.Intn(len(s))]
+}
+
+func hash(s string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return h.Sum64()
 }
