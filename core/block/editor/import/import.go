@@ -180,35 +180,32 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 
 		for _, f := range r.File {
 			elements := strings.Split(f.Name, "/")
-
 			if len(elements) > 0 &&
 				len(elements[0]) > 2 &&
 				elements[0][:2] == "__" {
 				elements = elements[1:]
 			}
 
-			if len(elements) > 0 {
-				elements = elements[1:]
-			}
-
 			if len(elements) > 0 &&
 				len(elements[len(elements)-1]) > 2 &&
 				elements[len(elements)-1][:2] == "._" {
+
 				continue
 
-			} else if !f.FileInfo().IsDir() {
-				shortPath := strings.Join(elements, "/")
-
-				allFileShortPaths = append(allFileShortPaths, shortPath)
-				rc, err := f.Open()
-
-				files[shortPath], err = ioutil.ReadAll(rc)
-				rc.Close()
-
-				if err != nil {
-					return nameToBlock, isPageLinked, 0, fmt.Errorf("ERR while read file from zip while import: %s", err)
-				}
 			}
+
+			shortPath := strings.Join(elements, "/")
+
+			allFileShortPaths = append(allFileShortPaths, shortPath)
+			rc, err := f.Open()
+
+			files[shortPath], err = ioutil.ReadAll(rc)
+			rc.Close()
+
+			if err != nil {
+				return nameToBlock, isPageLinked, 0, fmt.Errorf("ERR while read file from zip while import: %s", err)
+			}
+
 		}
 
 	} else {
@@ -232,7 +229,6 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 				return nil
 			},
 		)
-
 		if err != nil {
 			return nameToBlocks, isPageLinked, filesCount, err
 		}
