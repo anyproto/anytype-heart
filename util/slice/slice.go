@@ -35,7 +35,7 @@ func Remove(s []string, v string) []string {
 	return s[:n]
 }
 
-func GetRangomString(s []string, seed string) string {
+func GetRandomString(s []string, seed string) string {
 	rand.Seed(int64(hash(seed)))
 	return s[rand.Intn(len(s))]
 }

@@ -81,7 +81,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
 					"name":      pbtypes.String(fileName),
-					"iconEmoji": pbtypes.String(slice.GetRangomString(articleIcons, fileName)),
+					"iconEmoji": pbtypes.String(slice.GetRandomString(articleIcons, fileName)),
 				},
 			},
 		})
