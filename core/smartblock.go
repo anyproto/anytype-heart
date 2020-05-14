@@ -473,10 +473,6 @@ func getSnippet(snap *smartBlockSnapshot) string {
 }
 
 func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
-	if block.Type() != SmartBlockTypePage {
-		return nil
-	}
-
 	fromStateM, err := block.node.localStore.Pages.GetStateByID(block.ID())
 	if err != nil && err != ds.ErrNotFound {
 		return err
@@ -556,11 +552,10 @@ func (block *smartBlock) index() error {
 	}
 
 	if len(versions) == 0 {
-		block.indexSnapshot(&smartBlockSnapshot{
+		return block.indexSnapshot(&smartBlockSnapshot{
 			state:    vclock.New(),
 			threadID: block.thread.ID,
 		})
-		return nil
 	}
 
 	lastVersion := versions[0]

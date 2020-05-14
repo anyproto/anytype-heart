@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/localstore"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 )
@@ -23,8 +24,9 @@ var skipMigration = func(a *Anytype) error {
 
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
-	indexLinks,           // 1
+	skipMigration,        // 1
 	alterThreadsDbSchema, // 2
+	indexLinks,           // 3
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -109,6 +111,11 @@ func doWithOfflineNode(a *Anytype, f func() error) error {
 		if err != nil {
 			log.Errorf("migration failed to stop the offline node node: %s", err.Error())
 		}
+		a.lock.Lock()
+		defer a.lock.Unlock()
+		// @todo: possible race condition here. These chans not assumed to be replaced
+		a.shutdownStartsCh = make(chan struct{})
+		a.onlineCh = make(chan struct{})
 	}()
 
 	err = f()
@@ -126,6 +133,13 @@ func indexLinks(a *Anytype) error {
 		}
 
 		migrated := 0
+		for _, threadID := range threadsIDs {
+			err := a.localStore.Pages.Delete(threadID.String())
+			if err != nil && err != localstore.ErrNotFound {
+				return err
+			}
+		}
+
 		for _, threadID := range threadsIDs {
 			block, err := a.GetSmartBlock(threadID.String())
 			if err != nil {
