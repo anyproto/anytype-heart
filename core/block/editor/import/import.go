@@ -154,19 +154,6 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	return rootLinks, imp.Apply(s)
 }
 
-func (imp *importImpl) recoverFilename(dirtyName string) (cleanName string) {
-	elements := strings.Split(dirtyName, "/")[2:]
-
-	if len(elements) > 0 &&
-		len(elements[len(elements)-1]) > 2 &&
-		elements[len(elements)-1][:2] == "._" {
-		elements[len(elements)-1] = elements[len(elements)-1][2:]
-	}
-	cleanName = strings.Join(elements, "/")
-	fmt.Printf("CONVERT this: %s \n \t\t\t TO THAT: %s \n", dirtyName, cleanName)
-	return cleanName
-}
-
 func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, filesCount int, err error) {
 	log.Debug("1. DirWithMarkdownToBlocks: directory %s", directoryPath)
 
@@ -185,7 +172,17 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 		}
 
 		for _, f := range r.File {
-			elements := strings.Split(f.Name, "/")[2:]
+			elements := strings.Split(f.Name, "/")
+
+			if len(elements) > 0 &&
+				len(elements[0]) > 2 &&
+				elements[0][:2] == "__" {
+				elements = elements[1:]
+			}
+
+			if len(elements) > 0 {
+				elements = elements[1:]
+			}
 
 			if len(elements) > 0 &&
 				len(elements[len(elements)-1]) > 2 &&
@@ -193,7 +190,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 				continue
 
 			} else if !f.FileInfo().IsDir() {
-				shortPath := imp.recoverFilename(f.Name)
+				shortPath := strings.Join(elements, "/")
 
 				allFileShortPaths = append(allFileShortPaths, shortPath)
 				rc, err := f.Open()
