@@ -21,7 +21,7 @@ import (
 type threadDerivedIndex uint32
 
 type threadInfo struct {
-	ID    db2.InstanceID
+	ID    db2.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
 }
@@ -154,7 +154,7 @@ func (a *Anytype) threadDeriveKeys(index threadDerivedIndex) (service *symmetric
 	if index == threadDerivedIndexProfilePage {
 		// anyone should be able to read profile
 		// so lets derive its encryption keys from the account public key instead
-		masterKey, err2 := a.account.GetPublic().Raw()
+		masterKey, err2 := a.opts.Account.GetPublic().Raw()
 		if err2 != nil {
 			err = err2
 			return
@@ -163,7 +163,7 @@ func (a *Anytype) threadDeriveKeys(index threadDerivedIndex) (service *symmetric
 	}
 
 	var masterKey = make([]byte, 32)
-	pkey, err2 := a.account.Raw()
+	pkey, err2 := a.opts.Account.Raw()
 	if err2 != nil {
 		err = err2
 		return
@@ -174,12 +174,12 @@ func (a *Anytype) threadDeriveKeys(index threadDerivedIndex) (service *symmetric
 }
 
 func (a *Anytype) threadDeriveID(index threadDerivedIndex) (thread.ID, error) {
-	if a.account == nil {
+	if a.opts.Account == nil {
 		return thread.Undef, fmt.Errorf("account key not set")
 	}
 
 	if index == threadDerivedIndexProfilePage {
-		accountKey, err := a.account.GetPublic().Raw()
+		accountKey, err := a.opts.Account.GetPublic().Raw()
 		if err != nil {
 			return thread.Undef, err
 		}
@@ -188,7 +188,7 @@ func (a *Anytype) threadDeriveID(index threadDerivedIndex) (thread.ID, error) {
 	}
 
 	var masterKey = make([]byte, 32)
-	pkey, err := a.account.Raw()
+	pkey, err := a.opts.Account.Raw()
 	if err != nil {
 		return thread.Undef, err
 	}
@@ -218,16 +218,38 @@ func (a *Anytype) predefinedThreadWithIndex(index threadDerivedIndex) (thread.In
 
 func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfterConnect bool, waitForPull bool) error {
 	var err error
-	if a.cafeP2PAddr == nil {
+	if a.opts.CafeP2PAddr == nil {
 		return nil
 	}
 
-	done := make(chan struct{})
+	select {
+	case <-a.onlineCh:
+		break
+	case <-a.shutdownStartsCh:
+		return fmt.Errorf("node was stopped")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var syncDone = make(chan struct{})
+	go func() {
+		select {
+		case <-a.shutdownStartsCh:
+			cancel()
+			return
+		case <-syncDone:
+			cancel()
+			return
+		case <-ctx.Done():
+			return
+		}
+	}()
+
+	replicatorAddFinished := make(chan struct{})
 	go func() {
 		attempts := 0
-		defer close(done)
+		defer close(replicatorAddFinished)
 		for _, addr := range thrd.Addrs {
-			if addr.Equal(a.cafeP2PAddr) {
+			if addr.Equal(a.opts.CafeP2PAddr) {
 				log.Warnf("syncThread %s already has replicator")
 				return
 			}
@@ -235,7 +257,15 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 		for {
 			start := time.Now()
-			_, err = a.t.AddReplicator(context.TODO(), thrd.ID, a.cafeP2PAddr)
+
+			select {
+			case <-a.shutdownStartsCh:
+				err = fmt.Errorf("failed to add replicator to %s: node was stopped", thrd.ID.String())
+				return
+			default:
+			}
+
+			_, err = a.t.AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr)
 			if err != nil {
 				attempts++
 				if mustConnectToCafe {
@@ -250,8 +280,13 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 				log.Errorf("syncThread failed to add replicator for %s after %.2fs (%d attempt): %s", thrd.ID.String(), time.Since(start).Seconds(), attempts, err.Error())
 
-				time.Sleep(time.Second * time.Duration(10*attempts))
-				continue
+				select {
+				case <-time.After(time.Second * time.Duration(10*attempts)):
+					continue
+				case <-a.shutdownStartsCh:
+					err = fmt.Errorf("failed to add replicator to %s: node was stopped", thrd.ID.String())
+					return
+				}
 			}
 
 			break
@@ -260,32 +295,51 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 	pullDone := make(chan struct{})
 	if mustConnectToCafe {
-		<-done
+		select {
+		case <-replicatorAddFinished:
+		case <-a.shutdownStartsCh:
+			return fmt.Errorf("node stopped")
+		}
 		if err != nil {
+			close(syncDone)
 			return err
 		}
 
 		if !pullAfterConnect {
+			close(syncDone)
 			return nil
 		}
 
 		go func() {
 			defer close(pullDone)
-			err = a.pullThread(context.TODO(), thrd.ID)
+			defer close(syncDone)
+			err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return
 			}
 		}()
 	} else {
-		if !pullAfterConnect {
-			return nil
-		}
-
 		go func() {
 			defer close(pullDone)
-			<-done
-			err = a.pullThread(context.TODO(), thrd.ID)
+			defer close(syncDone)
+			select {
+			case <-replicatorAddFinished:
+			case <-a.shutdownStartsCh:
+				log.Errorf("syncThread failed to pullThread: node stopped")
+				return
+			}
+
+			if err != nil {
+				log.Errorf(err.Error())
+				return
+			}
+
+			if !pullAfterConnect {
+				return
+			}
+
+			err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return
@@ -325,7 +379,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 	thrd, err = a.t.CreateThread(context.TODO(),
 		id,
 		corenet.WithThreadKey(thread.NewKey(serviceKey, readKey)),
-		corenet.WithLogKey(a.device))
+		corenet.WithLogKey(a.opts.Device))
 	if err != nil {
 		return thread.Info{}, false, err
 	}

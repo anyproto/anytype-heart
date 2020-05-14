@@ -39,7 +39,23 @@ func (a *Anytype) DeleteBlock(id string) error {
 		return fmt.Errorf("incorrect block id: %w", err)
 	}
 
-	return a.t.DeleteThread(context.Background(), tid)
+	err = a.t.DeleteThread(context.Background(), tid)
+	if err != nil {
+		return err
+	}
+
+	err = a.localStore.Pages.Delete(id)
+	if err != nil {
+		return err
+	}
+
+	err = a.threadsCollection.Delete(db2.InstanceID(id))
+	if err != nil {
+		// todo: here we can get an error if we didn't yet added thead keys into DB
+		log.With("thread", id).Error("DeleteBlock failed to remove thread from collection: %s", err.Error())
+	}
+
+	return nil
 }
 
 /*func (a *Anytype) blockToVersion(block *model.Block, parentSmartBlockVersion BlockVersion, versionId string, creator string, date *types.Timestamp) BlockVersion {
@@ -91,6 +107,11 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 			}
 		} else {
 			log.Infof("pullThread %s after: %s", id.String(), snap.State().String())
+			ls := snap.(smartBlockSnapshot)
+			err := sb.indexSnapshot(&ls)
+			if err != nil {
+				log.Errorf("pullThread: failed to index the new snapshot for %s: %s", id.String(), err.Error())
+			}
 		}
 	}
 
@@ -115,10 +136,11 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	}
 	a.predefinedBlockIds.Account = account.ID.String()
 	if a.db == nil {
-		d, err := db.NewDB(context.Background(), a.t, account.ID, db.WithNewDBRepoPath(filepath.Join(a.repoPath, "collections")))
+		d, err := db.NewDB(context.Background(), a.t, account.ID, db.WithNewDBRepoPath(filepath.Join(a.opts.Repo, "collections")))
 		if err != nil {
 			return err
 		}
+
 		a.db = d
 		err = a.listenExternalNewThreads()
 		if err != nil {
@@ -195,24 +217,24 @@ func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) 
 		return thread.Info{}, err
 	}
 
-	thrd, err := a.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(thread.NewKey(followKey, readKey)), net.WithLogKey(a.device))
+	thrd, err := a.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(thread.NewKey(followKey, readKey)), net.WithLogKey(a.opts.Device))
 	if err != nil {
 		return thread.Info{}, err
 	}
 
-	if a.cafeP2PAddr != nil {
+	if a.opts.CafeP2PAddr != nil {
 		a.replicationWG.Add(1)
 		go func() {
 			defer a.replicationWG.Done()
 
 			// todo: rewrite to job queue in badger
 			for {
-				p, err := a.t.AddReplicator(context.TODO(), thrd.ID, a.cafeP2PAddr)
+				p, err := a.t.AddReplicator(context.TODO(), thrd.ID, a.opts.CafeP2PAddr)
 				if err != nil {
 					log.Errorf("failed to add log replicator: %s", err.Error())
 					select {
 					case <-time.After(time.Second * 30):
-					case <-a.shutdownCh:
+					case <-a.shutdownStartsCh:
 						return
 					}
 					continue

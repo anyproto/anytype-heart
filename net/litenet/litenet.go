@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/logging"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -33,6 +34,8 @@ import (
 	net2 "github.com/anytypeio/go-anytype-library/net"
 )
 
+var log = logging.Logger("anytype-core-litenet")
+
 const (
 	defaultIpfsLitePath = "ipfslite"
 	defaultLogstorePath = "logstore"
@@ -55,7 +58,6 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 	}
 
 	ipfsLitePath := filepath.Join(repoPath, defaultIpfsLitePath)
-	fmt.Printf("creaing ipfsLitePath %s\n", ipfsLitePath)
 	if err := os.MkdirAll(ipfsLitePath, os.ModePerm); err != nil {
 		return nil, err
 	}
@@ -93,13 +95,12 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 		return nil, err
 	}
 
-	lite, err := ipfslite.New(ctx, litestore, h, d, nil)
+	lite, err := ipfslite.New(ctx, litestore, h, d, &ipfslite.Config{Offline: config.Offline})
 	if err != nil {
 		cancel()
 		litestore.Close()
 		return nil, err
 	}
-
 	// Build a logstore
 	logstorePath := filepath.Join(repoPath, defaultLogstorePath)
 	if err := os.MkdirAll(logstorePath, os.ModePerm); err != nil {
@@ -150,6 +151,7 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 type NetConfig struct {
 	HostAddr    ma.Multiaddr
 	Debug       bool
+	Offline     bool
 	GRPCOptions []grpc.ServerOption
 }
 
@@ -158,6 +160,13 @@ type NetOption func(c *NetConfig) error
 func WithNetHostAddr(addr ma.Multiaddr) NetOption {
 	return func(c *NetConfig) error {
 		c.HostAddr = addr
+		return nil
+	}
+}
+
+func WithOffline(offline bool) NetOption {
+	return func(c *NetConfig) error {
+		c.Offline = offline
 		return nil
 	}
 }
@@ -209,27 +218,33 @@ func (tsb *netBoostrapper) GetIpfs() ipfs.IPFS {
 }
 
 func (tsb *netBoostrapper) Close() error {
+	log.Debug("closing net...")
 	if err := tsb.Net.Close(); err != nil {
 		return err
 	}
 	tsb.cancel()
+	log.Debug("closing lan dht...")
 	if err := tsb.lanDht.Close(); err != nil {
 		return err
 	}
+	log.Debug("closing wan dht...")
 	if err := tsb.wanDht.Close(); err != nil {
 		return err
 	}
+	log.Debug("closing libp2p host...")
 	if err := tsb.host.Close(); err != nil {
 		return err
 	}
+	log.Debug("closing pstore...")
 	if err := tsb.pstore.Close(); err != nil {
 		return err
 	}
+	log.Debug("closing litestore...")
 	if err := tsb.litestore.Close(); err != nil {
 		return err
 	}
-	return tsb.logstore.Close()
-	// Logstore closed by service
+	log.Debug("closing logstore...")
+	return tsb.logstoreDatastore.Close()
 }
 
 func LoadKey(repoPath string) (crypto.PrivKey, error) {

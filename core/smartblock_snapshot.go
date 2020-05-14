@@ -117,12 +117,8 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 	// todo: filter by record type
 	var m = make(map[cid.Cid]struct{})
 
-	pubKey, err := li.ID.ExtractPublicKey()
-	if err != nil {
-		return nil, err
-	}
 	rid := li.Head
-	if rid == cid.Undef {
+	if !rid.Defined() {
 		return []SnapshotWithMetadata{}, nil
 	}
 
@@ -130,6 +126,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		if _, exists := m[rid]; exists {
 			break
 		}
+
 		m[rid] = struct{}{}
 		rec, err := a.t.GetRecord(ctx, thrd.ID, rid)
 		if err != nil {
@@ -151,7 +148,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 			return nil, fmt.Errorf("incorrect record type: %w", err)
 		}
 
-		err = m.Verify(pubKey)
+		err = m.Verify()
 		if err != nil {
 			return nil, err
 		}
@@ -162,8 +159,11 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 			return nil, fmt.Errorf("failed to decode pb block snapshot: %w", err)
 		}
 
-		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Descendant) {
-			log.Debugf("snapshotTraverseFromCid skip Descendant: %+v < %+v", snapshot.State, before)
+		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Ancestor) {
+			rid = rec.PrevID()
+			if !rid.Defined() {
+				break
+			}
 			continue
 		}
 
@@ -182,6 +182,10 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		}
 
 		rid = rec.PrevID()
+
+		if !rid.Defined() {
+			break
+		}
 	}
 
 	return snapshots, nil

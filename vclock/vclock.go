@@ -8,13 +8,15 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/anytypeio/go-anytype-library/logging"
 )
 
 // Condition constants define how to compare a vector clock against another,
 // and may be ORed together when being provided to the Compare method.
 type Condition int
 
-// Constants define compairison conditions between pairs of vector
+// Constants define comparison conditions between pairs of vector
 // clocks
 const (
 	Equal Condition = 1 << iota
@@ -22,6 +24,8 @@ const (
 	Descendant
 	Concurrent
 )
+
+var log = logging.Logger("anytype-vclock")
 
 type VClock struct {
 	mutex *sync.RWMutex
@@ -37,6 +41,9 @@ func New() VClock {
 }
 
 func NewFromMap(m map[string]uint64) VClock {
+	if m == nil {
+		return Undef
+	}
 	return VClock{mutex: &sync.RWMutex{}, m: m}
 }
 
@@ -47,6 +54,13 @@ func (vc VClock) IsNil() bool {
 //Merge takes the max of all clock values in other and updates the
 //values of the callee
 func (vc VClock) Merge(other VClock) {
+	if vc.m == nil {
+		// Undef is used only for indicating of non-set vclock
+		// need to use New() instead
+		log.Errorf("can't merge into undef")
+		return
+	}
+
 	vc.mutex.Lock()
 	defer vc.mutex.Unlock()
 	other.mutex.RLock()
@@ -60,6 +74,10 @@ func (vc VClock) Merge(other VClock) {
 
 //MarshalBinary returns an encoded vector clock
 func (vc VClock) MarshalBinary() ([]byte, error) {
+	if vc.m == nil {
+		// vclock is Undef
+		return []byte{}, nil
+	}
 	vc.mutex.RLock()
 	defer vc.mutex.RUnlock()
 
@@ -83,6 +101,11 @@ func UnmarshalBinary(data []byte) (vc VClock, err error) {
 }
 
 func (vc VClock) String() string {
+	if vc.m == nil {
+		// vclock is Undef
+		return "{}"
+	}
+
 	vc.mutex.RLock()
 	defer vc.mutex.RUnlock()
 

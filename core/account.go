@@ -34,7 +34,7 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			continue
 		}
 
-		if addr.Equal(a.cafeP2PAddr) {
+		if addr.Equal(a.opts.CafeP2PAddr) {
 			hasCafeAddress = true
 		}
 
@@ -48,7 +48,7 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			return err
 		}
 
-		multiAddrs = append(multiAddrs, a.cafeP2PAddr.Encapsulate(threadComp))
+		multiAddrs = append(multiAddrs, a.opts.CafeP2PAddr.Encapsulate(threadComp))
 	}
 
 addrsLoop:
@@ -100,7 +100,7 @@ addrsLoop:
 
 		if !threadAdded {
 			threadAdded = true
-			_, err = a.t.AddThread(context.Background(), addr, net.WithThreadKey(key))
+			_, err = a.t.AddThread(context.Background(), addr, net.WithThreadKey(key), net.WithLogKey(a.opts.Device))
 			if err != nil {
 				return fmt.Errorf("failed to add the remote thread %s: %s", ti.ID.String(), err.Error())
 			}
@@ -137,7 +137,7 @@ func (a *Anytype) listenExternalNewThreads() error {
 		defer l.Close()
 		for {
 			select {
-			case <-a.shutdownCh:
+			case <-a.shutdownStartsCh:
 				log.Infof("shutting down external changes listener")
 				return
 			case c := <-l.Channel():

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -25,6 +26,7 @@ var (
 
 type LocalStore struct {
 	Files FileStore
+	Pages PageStore
 }
 
 type FileStore interface {
@@ -40,10 +42,27 @@ type FileStore interface {
 	DeleteByHash(hash string) error
 }
 
-func NewLocalStore(store ds.Batching) LocalStore {
-	fileStore := NewFileStore(store.(ds.TxnDatastore))
+type PageStore interface {
+	Indexable
+	Add(page *model.PageInfoWithOutboundLinksIDs) error
+	GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error)
+	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)
+	GetByIDs(ids ...string) ([]*model.PageInfo, error)
+	GetStateByID(id string) (*model.State, error)
+	Update(state *model.State, id string, addedLinks []string, removedLinks []string, changeSnippet string, changedDetails *model.PageDetails) error
+	AddLinks(state *model.State, from string, targetIDs []string) error
+	RemoveLinks(state *model.State, from string, targetIDs []string) error
+	UpdateDetails(state *model.State, id string, details *model.PageDetails) error
+	UpdateSnippet(state *model.State, id string, snippet string) error
+	UpdateLastOpened(id string) error
+	Delete(id string) error
+}
 
-	return LocalStore{Files: fileStore}
+func NewLocalStore(store ds.Batching) LocalStore {
+	return LocalStore{
+		Files: NewFileStore(store.(ds.TxnDatastore)),
+		Pages: NewPageStore(store.(ds.TxnDatastore)),
+	}
 }
 
 type Indexable interface {
@@ -173,6 +192,23 @@ func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string,
 		Limit:    limit,
 		KeysOnly: true,
 	})
+}
+
+func CountAllKeysFromResults(results query.Results) (int, error) {
+	var count int
+	for {
+		res, ok := <-results.Next()
+		if !ok {
+			break
+		}
+		if res.Error != nil {
+			return -1, res.Error
+		}
+
+		count++
+	}
+
+	return count, nil
 }
 
 func GetAllKeysFromResults(results query.Results) ([]string, error) {

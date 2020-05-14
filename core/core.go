@@ -16,11 +16,12 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/net"
 	"github.com/anytypeio/go-anytype-library/net/litenet"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/db"
 	net2 "github.com/textileio/go-threads/net"
@@ -69,18 +70,14 @@ type Anytype struct {
 	db                 *db.DB
 	threadsCollection  *db.Collection
 
-	account                wallet.Keypair
-	device                 wallet.Keypair
-	logLevels              map[string]string
-	repoPath               string
-	cafeP2PAddr            ma.Multiaddr
-	cafeGatewayBaseUrl     string
-	cafeGatewaySnapshotUri string
+	logLevels map[string]string
 
+	opts              ServiceOptions
 	smartBlockChanges *broadcast.Broadcaster
 	replicationWG     sync.WaitGroup
+	migrationOnce     sync.Once
 	lock              sync.Mutex
-	shutdownCh        chan struct{} // closed when node shutdown finishes
+	shutdownStartsCh  chan struct{} // closed when node shutdown starts
 	onlineCh          chan struct{} // closed when became online
 }
 
@@ -108,10 +105,14 @@ type Service interface {
 	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) // deprecated
 
 	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
+
+	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
+	PageList() ([]*model.PageInfo, error)
+	PageUpdateLastOpened(id string) error
 }
 
 func (a *Anytype) Account() string {
-	return a.account.Address()
+	return a.opts.Account.Address()
 }
 
 func (a *Anytype) Ipfs() ipfs.IPFS {
@@ -128,7 +129,7 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 		case <-a.onlineCh:
 			ch <- nil
 			close(ch)
-		case <-a.shutdownCh:
+		case <-a.shutdownStartsCh:
 			ch <- fmt.Errorf("node was shutdown")
 			close(ch)
 		}
@@ -139,6 +140,14 @@ func (a *Anytype) CreateBlock(t SmartBlockType) (SmartBlock, error) {
 	thrd, err := a.newBlockThread(t)
 	if err != nil {
 		return nil, err
+	}
+	sb := &smartBlock{thread: thrd, node: a}
+	err = sb.indexSnapshot(&smartBlockSnapshot{
+		state:    vclock.New(),
+		threadID: thrd.ID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to index new block %s: %s", thrd.ID.String(), err.Error())
 	}
 
 	return &smartBlock{thread: thrd, node: a}, nil
@@ -176,48 +185,36 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	}
 
 	a := &Anytype{
-		device:  opts.Device,
-		account: opts.Account,
+		opts:          opts,
+		replicationWG: sync.WaitGroup{},
+		migrationOnce: sync.Once{},
 
-		repoPath:           opts.Repo,
-		cafeGatewayBaseUrl: opts.WebGatewayBaseUrl,
-		cafeP2PAddr:        opts.CafeP2PAddr,
-		replicationWG:      sync.WaitGroup{},
-		shutdownCh:         make(chan struct{}),
-		onlineCh:           make(chan struct{}),
-		smartBlockChanges:  broadcast.NewBroadcaster(0),
+		shutdownStartsCh:  make(chan struct{}),
+		onlineCh:          make(chan struct{}),
+		smartBlockChanges: broadcast.NewBroadcaster(0),
 	}
 
 	if opts.CafeGrpcHost != "" {
 		var err error
-		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, a.device, a.account)
+		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, opts.Device, opts.Account)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get grpc client: %w", err)
 		}
 	}
 
-	if opts.NetBootstraper != nil {
-		a.t = opts.NetBootstraper
-	} else {
-		var err error
-		a.t, err = litenet.DefaultNetwork(
-			opts.Repo,
-			opts.Device,
-			[]byte(ipfsPrivateNetworkKey),
-			litenet.WithNetHostAddr(opts.HostAddr),
-			litenet.WithNetDebug(false))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	a.localStore = localstore.NewLocalStore(a.t.Datastore())
-	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
-
 	return a, nil
 }
 
 func New(rootPath string, account string) (Service, error) {
+	opts, err := getNewConfig(rootPath, account)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewFromOptions(opts...)
+}
+
+func getNewConfig(rootPath string, account string) ([]ServiceOption, error) {
 	repoPath := filepath.Join(rootPath, account)
 
 	b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
@@ -246,9 +243,7 @@ func New(rootPath string, account string) (Service, error) {
 		return nil, fmt.Errorf("got %s key type instead of %s", deviceKp.KeypairType(), wallet.KeypairTypeDevice)
 	}
 
-	a, err := NewFromOptions(WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithCafeGRPCHost(DefaultCafeNodeGRPC), WithHostMultiaddr(DefaultHostAddr))
-
-	return a, err
+	return []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithCafeGRPCHost(DefaultCafeNodeGRPC), WithHostMultiaddr(DefaultHostAddr)}, nil
 }
 
 func (a *Anytype) runPeriodicJobsInBackground() {
@@ -261,7 +256,7 @@ func (a *Anytype) runPeriodicJobsInBackground() {
 			case <-tick.C:
 				//a.syncAccount(false)
 
-			case <-a.shutdownCh:
+			case <-a.shutdownStartsCh:
 				return
 			}
 		}
@@ -277,10 +272,43 @@ func DefaultBoostrapPeers() []peer.AddrInfo {
 }
 
 func (a *Anytype) Start() error {
+	err := a.RunMigrations()
+	if err != nil {
+		return err
+	}
+
+	return a.start()
+}
+
+func (a *Anytype) start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
+	if a.opts.NetBootstraper != nil {
+		a.t = a.opts.NetBootstraper
+	} else {
+		var err error
+
+		a.t, err = litenet.DefaultNetwork(
+			a.opts.Repo,
+			a.opts.Device,
+			[]byte(ipfsPrivateNetworkKey),
+			litenet.WithNetHostAddr(a.opts.HostAddr),
+			litenet.WithNetDebug(false),
+			litenet.WithOffline(a.opts.Offline))
+		if err != nil {
+			return err
+		}
+	}
+
+	a.localStore = localstore.NewLocalStore(a.t.Datastore())
+	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
+
 	go func() {
+		if a.opts.Offline {
+			return
+		}
+
 		a.t.Bootstrap(DefaultBoostrapPeers())
 		// todo: init mdns discovery and register notifee
 		// discovery.NewMdnsService
@@ -305,9 +333,8 @@ func (a *Anytype) Stop() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	if a.shutdownCh != nil {
-		close(a.shutdownCh)
-		a.shutdownCh = nil
+	if a.shutdownStartsCh != nil {
+		close(a.shutdownStartsCh)
 	}
 
 	a.replicationWG.Wait()

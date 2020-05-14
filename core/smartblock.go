@@ -8,10 +8,12 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/core/thread"
@@ -26,6 +28,11 @@ const (
 	SmartBlockTypeArchive     SmartBlockType = 0x30
 	SmartBlockTypeDatabase    SmartBlockType = 0x40
 	SmartBlockTypeSet         SmartBlockType = 0x41
+)
+
+const (
+	snippetMinSize = 50
+	snippetMaxSize = 300
 )
 
 type ProfileThreadEncryptionKeys struct {
@@ -138,14 +145,14 @@ func (block *smartBlock) GetThread() thread.Info {
 }
 
 func (block *smartBlock) Type() SmartBlockType {
-	id := block.thread.ID.KeyString()
-	// skip version
-	_, n := uvarint(id)
-	// skip variant
-	_, n2 := uvarint(id[n:])
-	blockType, _ := uvarint(id[n+n2:])
+	t, err := SmartBlockTypeFromThreadID(block.thread.ID)
+	if err != nil {
+		// shouldn't happen as we init the smartblock with an existing thread
+		log.Errorf("smartblock has incorrect id(%s), failed to decode type: %s", block.thread.ID.String(), err.Error())
+		return 0
+	}
 
-	return SmartBlockType(blockType)
+	return t
 }
 
 func (block *smartBlock) ID() string {
@@ -298,7 +305,7 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		return nil, err
 	}
 
-	return &smartBlockSnapshot{
+	snapshot := &smartBlockSnapshot{
 		blocks:  model.Blocks,
 		details: model.Details,
 
@@ -311,7 +318,14 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		creator: user,
 		date:    date,
 		node:    block.node,
-	}, nil
+	}
+
+	err = block.indexSnapshot(snapshot)
+	if err != nil {
+		return nil, err
+	}
+
+	return snapshot, nil
 }
 
 func hasCafeLog(logsinfo []thread.LogInfo) bool {
@@ -328,7 +342,7 @@ func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (
 		return
 	}
 
-	payload, err2 := newSignedPayload(newSnapshotB, block.node.device, block.node.account)
+	payload, err2 := newSignedPayload(newSnapshotB, block.node.opts.Account)
 	if err2 != nil {
 		err = err2
 		return
@@ -441,6 +455,113 @@ func (block *smartBlock) PublishClientEvent(event proto.Message) error {
 	return fmt.Errorf("not implemented")
 }
 
+func getSnippet(snap *smartBlockSnapshot) string {
+	var s string
+	for _, block := range snap.blocks {
+		if text := block.GetText(); text != nil {
+			if s != "" {
+				s += " "
+			}
+			s += text.Text
+			if len(s) >= snippetMinSize {
+				break
+			}
+		}
+	}
+
+	return util.TruncateText(s, snippetMaxSize)
+}
+
+func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
+	fromStateM, err := block.node.localStore.Pages.GetStateByID(block.ID())
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+
+	var fromState vclock.VClock
+	if fromStateM != nil && fromStateM.State != nil {
+		fromState = vclock.NewFromMap(fromStateM.State)
+		if !snap.State().Compare(fromState, vclock.Ancestor) {
+			return nil
+		}
+	}
+
+	storeOutgoingLinks := func(snap *smartBlockSnapshot, linksMap map[string]struct{}) {
+		for _, block := range snap.blocks {
+			if link := block.GetLink(); link != nil {
+				linksMap[link.TargetBlockId] = struct{}{}
+			}
+		}
+	}
+
+	prevOutgoingLinks := make(map[string]struct{})
+	newOutgoingLinks := make(map[string]struct{})
+	var oldSnippet string
+	var oldDetails *types.Struct
+	newSnippet := getSnippet(snap)
+
+	if !fromState.IsNil() {
+		prevSnaps, err := block.GetSnapshots(fromState, 1, false)
+		if err != nil && err != ErrBlockSnapshotNotFound {
+			return err
+		} else if prevSnaps != nil && len(prevSnaps) > 0 {
+			prevSnap := prevSnaps[0]
+			storeOutgoingLinks(&prevSnap, prevOutgoingLinks)
+			oldSnippet = getSnippet(&prevSnap)
+			oldDetails = prevSnaps[0].details
+		}
+	}
+
+	storeOutgoingLinks(snap, newOutgoingLinks)
+
+	var linksToRemove []string
+	var linksToAdd []string
+	for link, _ := range newOutgoingLinks {
+		if _, exists := prevOutgoingLinks[link]; !exists {
+			linksToAdd = append(linksToAdd, link)
+		}
+	}
+
+	for link, _ := range prevOutgoingLinks {
+		if _, exists := newOutgoingLinks[link]; !exists {
+			linksToRemove = append(linksToRemove, link)
+		}
+	}
+
+	var changeSnippet string
+	if oldSnippet != newSnippet {
+		if newSnippet == "" {
+			// workaround to send non-empty string
+			newSnippet = " "
+		}
+		changeSnippet = newSnippet
+	}
+
+	var changedDetails *model.PageDetails
+	if oldDetails == nil || oldDetails.Compare(snap.details) != 0 {
+		changedDetails = &model.PageDetails{snap.details}
+	}
+
+	return block.node.localStore.Pages.Update(&model.State{snap.State().Map()}, block.ID(), linksToAdd, linksToRemove, changeSnippet, changedDetails)
+}
+
+func (block *smartBlock) index() error {
+	versions, err := block.GetSnapshots(vclock.Undef, 1, false)
+	if err != nil {
+		return err
+	}
+
+	if len(versions) == 0 {
+		return block.indexSnapshot(&smartBlockSnapshot{
+			state:    vclock.New(),
+			threadID: block.thread.ID,
+		})
+	}
+
+	lastVersion := versions[0]
+	return block.indexSnapshot(&lastVersion)
+}
+
 // Snapshot of varint function that work with a string rather than
 // []byte to avoid unnecessary allocation
 
@@ -472,4 +593,24 @@ func uvarint(buf string) (uint64, int) {
 		s += 7
 	}
 	return 0, 0
+}
+
+func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
+	tid, err := thread.Decode(id)
+	if err != nil {
+		return 0, err
+	}
+
+	return SmartBlockTypeFromThreadID(tid)
+}
+
+func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
+	rawid := tid.KeyString()
+	// skip version
+	_, n := uvarint(rawid)
+	// skip variant
+	_, n2 := uvarint(rawid[n:])
+	blockType, _ := uvarint(rawid[n+n2:])
+
+	return SmartBlockType(blockType), nil
 }
