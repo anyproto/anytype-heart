@@ -320,12 +320,6 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 			}
 		}()
 	} else {
-		if !pullAfterConnect {
-			close(pullDone)
-			close(syncDone)
-			return nil
-		}
-
 		go func() {
 			defer close(pullDone)
 			defer close(syncDone)
@@ -338,6 +332,10 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 			if err != nil {
 				log.Errorf(err.Error())
+				return
+			}
+
+			if !pullAfterConnect {
 				return
 			}
 
