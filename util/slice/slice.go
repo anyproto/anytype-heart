@@ -2,7 +2,6 @@ package slice
 
 import (
 	"math/rand"
-	"time"
 )
 
 func FindPos(s []string, v string) int {
@@ -35,7 +34,7 @@ func Remove(s []string, v string) []string {
 	return s[:n]
 }
 
-func GetRangomString(s []string) string {
-	rand.Seed(time.Now().Unix())
+func GetRangomString(s []string, seed string) string {
+	rand.Seed(seed)
 	return s[rand.Intn(len(s))]
 }
