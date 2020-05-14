@@ -1,6 +1,7 @@
 package _import
 
 import (
+	"archive/zip"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -153,6 +154,19 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	return rootLinks, imp.Apply(s)
 }
 
+func (imp *importImpl) recoverFilename(dirtyName string) (cleanName string) {
+	elements := strings.Split(dirtyName, "/")[2:]
+
+	if len(elements) > 0 &&
+		len(elements[len(elements)-1]) > 2 &&
+		elements[len(elements)-1][:2] == "._" {
+		elements[len(elements)-1] = elements[len(elements)-1][2:]
+	}
+	cleanName = strings.Join(elements, "/")
+	fmt.Printf("CONVERT this: %s \n \t\t\t TO THAT: %s \n", dirtyName, cleanName)
+	return cleanName
+}
+
 func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, filesCount int, err error) {
 	log.Debug("1. DirWithMarkdownToBlocks: directory %s", directoryPath)
 
@@ -162,32 +176,65 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 	allFileShortPaths := []string{}
 	files := make(map[string][]byte)
 
-	err = filepath.Walk(directoryPath,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
+	if filepath.Ext(directoryPath) == ".zip" {
+		r, err := zip.OpenReader(directoryPath)
+		defer r.Close()
 
-			if !info.IsDir() {
-				shortPath := strings.Replace(path, directoryPath+"/", "", -1)
+		if err != nil {
+			return nameToBlocks, isPageLinked, 0, fmt.Errorf("can not read zip while import: %s", err)
+		}
+
+		for _, f := range r.File {
+			elements := strings.Split(f.Name, "/")[2:]
+
+			if len(elements) > 0 &&
+				len(elements[len(elements)-1]) > 2 &&
+				elements[len(elements)-1][:2] == "._" {
+				continue
+
+			} else if !f.FileInfo().IsDir() {
+				shortPath := imp.recoverFilename(f.Name)
+
 				allFileShortPaths = append(allFileShortPaths, shortPath)
-				dat, err := ioutil.ReadFile(path)
+				rc, err := f.Open()
+
+				files[shortPath], err = ioutil.ReadAll(rc)
+				rc.Close()
+
+				if err != nil {
+					return nameToBlock, isPageLinked, 0, fmt.Errorf("ERR while read file from zip while import: %s", err)
+				}
+			}
+		}
+
+	} else {
+		err = filepath.Walk(directoryPath,
+			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
 
-				files[shortPath] = dat
-			}
+				if !info.IsDir() {
+					shortPath := strings.Replace(path, directoryPath+"/", "", -1)
+					allFileShortPaths = append(allFileShortPaths, shortPath)
+					dat, err := ioutil.ReadFile(path)
+					if err != nil {
+						return err
+					}
 
-			return nil
-		},
-	)
+					files[shortPath] = dat
+				}
 
-	log.Debug("1. DirWithMarkdownToBlocks: Get allFileShortPaths:", allFileShortPaths)
-	if err != nil {
-		return nameToBlocks, isPageLinked, filesCount, err
+				return nil
+			},
+		)
+
+		if err != nil {
+			return nameToBlocks, isPageLinked, filesCount, err
+		}
 	}
 
+	log.Debug("1. DirWithMarkdownToBlocks: Get allFileShortPaths:", allFileShortPaths)
 	isFileExist := make(map[string]bool)
 
 	for shortPath := range files {
