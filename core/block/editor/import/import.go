@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -95,7 +96,13 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	for name := range nameToBlocks {
 		for i := range nameToBlocks[name] {
 			if link := nameToBlocks[name][i].GetLink(); link != nil && len(nameToId[name]) > 0 {
-				link.TargetBlockId = nameToId[strings.Replace(link.TargetBlockId, "%20", " ", -1)]
+				target, err := url.PathUnescape(link.TargetBlockId)
+				if err != nil {
+					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, link.TargetBlockId)
+					target = link.TargetBlockId
+				}
+
+				link.TargetBlockId = nameToId[target]
 			}
 		}
 	}
@@ -256,7 +263,11 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
 				txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
 
-				linkConverted := strings.Replace(txt.Marks.Marks[0].Param, "%20", " ", -1)
+				linkConverted, err := url.PathUnescape(txt.Marks.Marks[0].Param)
+				if err != nil {
+					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, txt.Marks.Marks[0].Param)
+					linkConverted = txt.Marks.Marks[0].Param
+				}
 
 				if nameToBlocks[linkConverted] != nil {
 					nameToBlocks[name][i], isPageLinked = imp.convertTextToPageLink(block, isPageLinked)
@@ -268,7 +279,15 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			}
 
 			if block.GetFile() != nil {
-				block.GetFile().Name = strings.Replace(directoryPath+"/"+block.GetFile().Name, "%20", " ", -1)
+				fileName, err := url.PathUnescape(block.GetFile().Name)
+				if err != nil {
+					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetFile().Name)
+					fileName = txt.Marks.Marks[0].Param
+				}
+
+				fileName = directoryPath + "/" + fileName
+
+				block.GetFile().Name = fileName
 				block.GetFile().Type = model.BlockContentFile_Image
 			}
 		}
@@ -280,7 +299,12 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 }
 
 func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
-	targetId := strings.Replace(block.GetText().Marks.Marks[0].Param, "%20", " ", -1)
+	targetId, err := url.PathUnescape(block.GetText().Marks.Marks[0].Param)
+	if err != nil {
+		log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetText().Marks.Marks[0].Param)
+		targetId = block.GetText().Marks.Marks[0].Param
+	}
+
 	blockOut := &model.Block{
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
@@ -295,7 +319,13 @@ func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked ma
 }
 
 func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) *model.Block {
-	fName := strings.Replace(importPath+"/"+block.GetText().Marks.Marks[0].Param, "%20", " ", -1)
+	fName, err := url.PathUnescape(block.GetText().Marks.Marks[0].Param)
+	if err != nil {
+		log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetText().Marks.Marks[0].Param)
+		fName = block.GetText().Marks.Marks[0].Param
+	}
+
+	fName = importPath + "/" + fName
 
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"} // "svg" excluded
 	videoFormats := []string{"mp4", "m4v"}
