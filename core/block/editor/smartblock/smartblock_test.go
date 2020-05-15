@@ -9,6 +9,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
@@ -43,7 +45,7 @@ func TestSmartBlock_Show(t *testing.T) {
 	})
 
 	fx.metaSubscriber.EXPECT().Callback(gomock.Any()).Return(fx.metaSubscriber)
-	fx.metaSubscriber.EXPECT().Subscribe([]string{"22", "33", "1"})
+	fx.metaSubscriber.EXPECT().Subscribe([]string{"1", "22", "33"})
 	bm := meta.Meta{
 		BlockId: "1",
 		SmartBlockMeta: core.SmartBlockMeta{

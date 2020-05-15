@@ -3,6 +3,7 @@ package smartblock
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -53,9 +55,15 @@ type SmartBlock interface {
 	sync.Locker
 }
 
+type linkSource interface {
+	FillSmartIds(ids []string) []string
+	HasSmartIds() bool
+}
+
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
+	depIds           []string
 	sendEvent        func(e *pb.Event)
 	hist             history.History
 	source           source.Source
@@ -150,8 +158,8 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 		sb.metaSub.Close()
 	}
 	sb.metaSub = sb.source.Meta().PubSub().NewSubscriber()
-	dependentIds := sb.dependentSmartIds()
-	sb.metaSub.Callback(sb.onMetaChange).Subscribe(dependentIds...)
+	sb.depIds = sb.dependentSmartIds()
+	sb.metaSub.Callback(sb.onMetaChange).Subscribe(sb.depIds...)
 	sb.metaFetchMu.Unlock()
 	defer func() {
 		sb.metaFetchMu.Lock()
@@ -173,7 +181,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 		SmartBlockMeta: *sb.metaData,
 	})
 	timeout := time.After(time.Second)
-	for i := 0; i < len(dependentIds); i++ {
+	for i := 0; i < len(sb.depIds); i++ {
 		select {
 		case <-timeout:
 			return
@@ -215,24 +223,17 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 }
 
 func (sb *smartBlock) dependentSmartIds() (ids []string) {
+	ids = make([]string, 0, 30)
 	sb.Doc.(*state.State).Iterate(func(b simple.Block) (isContinue bool) {
-		if link := b.Model().GetLink(); link != nil {
-			ids = append(ids, link.TargetBlockId)
-		}
-		if text := b.Model().GetText(); text != nil {
-			if text.Marks != nil {
-				for _, m := range text.Marks.Marks {
-					if m.Type == model.BlockContentTextMark_Mention {
-						ids = append(ids, m.Param)
-					}
-				}
-			}
+		if ls, ok := b.(linkSource); ok {
+			ids = ls.FillSmartIds(ids)
 		}
 		return true
 	})
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 	}
+	sort.Strings(ids)
 	return
 }
 
@@ -279,14 +280,24 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			})
 		}
 	}
+	for _, edit := range act.Change {
+		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
+			sb.checkSubscriptions()
+			return
+		}
+		if ls, ok := edit.Before.(linkSource); ok && ls.HasSmartIds() {
+			sb.checkSubscriptions()
+			return
+		}
+	}
 	for _, add := range act.Add {
-		if add.Model().GetLink() != nil {
+		if ls, ok := add.(linkSource); ok && ls.HasSmartIds() {
 			sb.checkSubscriptions()
 			return
 		}
 	}
 	for _, rem := range act.Remove {
-		if rem.Model().GetLink() != nil {
+		if ls, ok := rem.(linkSource); ok && ls.HasSmartIds() {
 			sb.checkSubscriptions()
 			return
 		}
@@ -296,7 +307,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) checkSubscriptions() {
 	if sb.metaSub != nil {
-		sb.metaSub.ReSubscribe(sb.dependentSmartIds()...)
+		depIds := sb.dependentSmartIds()
+		if !slice.SortedEquals(sb.depIds, depIds) {
+			sb.depIds = depIds
+			sb.metaSub.ReSubscribe(depIds...)
+		}
 	}
 }
 
