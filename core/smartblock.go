@@ -491,6 +491,14 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 			if link := block.GetLink(); link != nil {
 				linksMap[link.TargetBlockId] = struct{}{}
 			}
+
+			if text := block.GetText(); text != nil && text.Marks != nil {
+				for _, m := range text.Marks.Marks {
+					if m.Type == model.BlockContentTextMark_Mention {
+						linksMap[m.Param] = struct{}{}
+					}
+				}
+			}
 		}
 	}
 
