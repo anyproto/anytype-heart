@@ -219,6 +219,15 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		if link := b.Model().GetLink(); link != nil {
 			ids = append(ids, link.TargetBlockId)
 		}
+		if text := b.Model().GetText(); text != nil {
+			if text.Marks != nil {
+				for _, m := range text.Marks.Marks {
+					if m.Type == model.BlockContentTextMark_Mention {
+						ids = append(ids, m.Param)
+					}
+				}
+			}
+		}
 		return true
 	})
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
