@@ -29,3 +29,15 @@ func Remove(s []string, v string) []string {
 	}
 	return s[:n]
 }
+
+func SortedEquals(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+	for i := range s1 {
+		if s1[i] != s2[i] {
+			return false
+		}
+	}
+	return true
+}

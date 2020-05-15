@@ -9,6 +9,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
@@ -28,12 +30,22 @@ func TestSmartBlock_Init(t *testing.T) {
 func TestSmartBlock_Show(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.tearDown()
-	fx.init([]*model.Block{{Id: "1", ChildrenIds: []string{"2"}}, {Id: "2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-		TargetBlockId: "22",
-	}}}})
+	fx.init([]*model.Block{
+		{Id: "1", ChildrenIds: []string{"2", "3"}},
+		{Id: "2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+			TargetBlockId: "22",
+		}}},
+		{Id: "3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Marks: &model.BlockContentTextMarks{
+				Marks: []*model.BlockContentTextMark{
+					{Type: model.BlockContentTextMark_Mention, Param: "33"},
+				},
+			},
+		}}},
+	})
 
 	fx.metaSubscriber.EXPECT().Callback(gomock.Any()).Return(fx.metaSubscriber)
-	fx.metaSubscriber.EXPECT().Subscribe([]string{"22", "1"})
+	fx.metaSubscriber.EXPECT().Subscribe([]string{"1", "22", "33"})
 	bm := meta.Meta{
 		BlockId: "1",
 		SmartBlockMeta: core.SmartBlockMeta{
@@ -43,10 +55,12 @@ func TestSmartBlock_Show(t *testing.T) {
 	fx.metaService.EXPECT().ReportChange(bm).Do(func(d meta.Meta) {
 		go func() {
 			fx.SmartBlock.(*smartBlock).onMetaChange(d)
-			fx.SmartBlock.(*smartBlock).onMetaChange(meta.Meta{
-				BlockId:        "22",
-				SmartBlockMeta: core.SmartBlockMeta{},
-			})
+			for _, id := range []string{"22", "33"} {
+				fx.SmartBlock.(*smartBlock).onMetaChange(meta.Meta{
+					BlockId:        id,
+					SmartBlockMeta: core.SmartBlockMeta{},
+				})
+			}
 		}()
 	})
 
@@ -58,8 +72,8 @@ func TestSmartBlock_Show(t *testing.T) {
 	require.Len(t, msgs, 1)
 	msg := msgs[0].GetBlockShow()
 	require.NotNil(t, msg)
-	assert.Len(t, msg.Blocks, 2)
-	assert.Len(t, msg.Details, 2)
+	assert.Len(t, msg.Blocks, 3)
+	assert.Len(t, msg.Details, 3)
 	assert.Equal(t, "1", msg.RootId)
 }
 
