@@ -12,8 +12,19 @@ import "google/protobuf/struct.proto";
 message Change {
     // ids of previous changes
     repeated string previous_ids = 1;
+    // id of the last snapshot
+    string last_snapshot_id = 2;
     // set of actions to apply
-    repeated Content content = 2;
+    repeated Content content = 3;
+    // snapshot - when not null, the content will ignoring
+    Snapshot snapshot = 4;
+
+    message Snapshot {
+        // logId -> lastChangeId
+        map<string, string> logHeads = 1;
+        // snapshot data
+        anytype.model.SmartBlockSnapshotBase data = 2;
+    }
 
     message Content {
         oneof value {
@@ -61,4 +72,5 @@ message Change {
     message DetailsUnset {
         string key = 1;
     }
+
 }

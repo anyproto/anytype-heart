@@ -20,6 +20,8 @@
     - [Change.Content](#anytype.Change.Content)
     - [Change.DetailsSet](#anytype.Change.DetailsSet)
     - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
+    - [Change.Snapshot](#anytype.Change.Snapshot)
+    - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
   
   
@@ -649,7 +651,9 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | previous_ids | [string](#string) | repeated | ids of previous changes |
+| last_snapshot_id | [string](#string) |  | id of the last snapshot |
 | content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
+| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the content will ignoring |
 
 
 
@@ -783,6 +787,38 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.Snapshot"></a>
+
+### Change.Snapshot
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| logHeads | [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry) | repeated | logId -&gt; lastChangeId |
+| data | [model.SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase) |  | snapshot data |
+
+
+
+
+
+
+<a name="anytype.Change.Snapshot.LogHeadsEntry"></a>
+
+### Change.Snapshot.LogHeadsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -7296,7 +7332,7 @@ Precondition: user A and user B opened the same block
 | snippet | [string](#string) |  |  |
 | state | [State](#anytype.model.State) |  |  |
 | lastOpened | [int64](#int64) |  |  |
-| inboundLinksCount | [uint32](#uint32) |  |  |
+| hasInboundLinks | [bool](#bool) |  |  |
 
 
 
@@ -7873,6 +7909,7 @@ General purpose structure, uses in Mark.
 | Link | 5 |  |
 | TextColor | 6 |  |
 | BackgroundColor | 7 |  |
+| Mention | 8 |  |
 
 
 
