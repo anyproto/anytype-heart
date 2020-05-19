@@ -49,6 +49,8 @@ type Block interface {
 	RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error)
 	Merge(b simple.Block) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
+	FillSmartIds(ids []string) []string
+	HasSmartIds() bool
 }
 
 type Text struct {
@@ -490,4 +492,26 @@ func (t *Text) normalizeMarksPure(marks []*model.BlockContentTextMark) (outputMa
 
 func (t *Text) String() string {
 	return fmt.Sprintf("%s: text:%s", t.Id, t.content.Style.String())
+}
+
+func (t *Text) FillSmartIds(ids []string) []string {
+	if t.content.Marks != nil {
+		for _, m := range t.content.Marks.Marks {
+			if m.Type == model.BlockContentTextMark_Mention {
+				ids = append(ids, m.Param)
+			}
+		}
+	}
+	return ids
+}
+
+func (t *Text) HasSmartIds() bool {
+	if t.content.Marks != nil {
+		for _, m := range t.content.Marks.Marks {
+			if m.Type == model.BlockContentTextMark_Mention {
+				return true
+			}
+		}
+	}
+	return false
 }
