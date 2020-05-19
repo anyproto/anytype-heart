@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,10 +21,10 @@ func TestTree_Add(t *testing.T) {
 		tr := new(Tree)
 		assert.Equal(t, Append, tr.Add(
 			&Change{Id: "root"},
-			&Change{Id: "one", PreviousIds: []string{"root"}},
-			&Change{Id: "two", PreviousIds: []string{"one"}},
+			&Change{Id: "one", Change: &pb.Change{PreviousIds: []string{"root"}}},
+			&Change{Id: "two", Change: &pb.Change{PreviousIds: []string{"one"}}},
 		))
-		assert.Equal(t, Append, tr.Add(&Change{Id: "three", PreviousIds: []string{"two"}}))
+		assert.Equal(t, Append, tr.Add(&Change{Id: "three", Change: &pb.Change{PreviousIds: []string{"two"}}}))
 		el := tr.root
 		var ids []string
 		for el != nil {
@@ -40,13 +41,13 @@ func TestTree_Add(t *testing.T) {
 		tr := new(Tree)
 		assert.Equal(t, Append, tr.Add(
 			&Change{Id: "root"},
-			&Change{Id: "1", PreviousIds: []string{"root"}},
-			&Change{Id: "2", PreviousIds: []string{"1"}},
+			&Change{Id: "1", Change: &pb.Change{PreviousIds: []string{"root"}}},
+			&Change{Id: "2", Change: &pb.Change{PreviousIds: []string{"1"}}},
 		))
 		assert.Equal(t, Rebuild, tr.Add(
-			&Change{Id: "1.2", PreviousIds: []string{"1.1"}},
-			&Change{Id: "1.3", PreviousIds: []string{"1.2"}},
-			&Change{Id: "1.1", PreviousIds: []string{"1"}},
+			&Change{Id: "1.2", Change: &pb.Change{PreviousIds: []string{"1.1"}}},
+			&Change{Id: "1.3", Change: &pb.Change{PreviousIds: []string{"1.2"}}},
+			&Change{Id: "1.1", Change: &pb.Change{PreviousIds: []string{"1"}}},
 		))
 		assert.Len(t, tr.attached["1"].Next, 2)
 		assert.Len(t, tr.unAttached, 0)
@@ -56,12 +57,12 @@ func TestTree_Add(t *testing.T) {
 		tr := new(Tree)
 		assert.Equal(t, Append, tr.Add(
 			&Change{Id: "root"},
-			&Change{Id: "1", PreviousIds: []string{"root"}},
-			&Change{Id: "2", PreviousIds: []string{"1"}},
-			&Change{Id: "1.2", PreviousIds: []string{"1.1"}},
-			&Change{Id: "1.3", PreviousIds: []string{"1.2"}},
-			&Change{Id: "1.1", PreviousIds: []string{"1"}},
-			&Change{Id: "3", PreviousIds: []string{"2", "1.3"}},
+			&Change{Id: "1", Change: &pb.Change{PreviousIds: []string{"root"}}},
+			&Change{Id: "2", Change: &pb.Change{PreviousIds: []string{"1"}}},
+			&Change{Id: "1.2", Change: &pb.Change{PreviousIds: []string{"1.1"}}},
+			&Change{Id: "1.3", Change: &pb.Change{PreviousIds: []string{"1.2"}}},
+			&Change{Id: "1.1", Change: &pb.Change{PreviousIds: []string{"1"}}},
+			&Change{Id: "3", Change: &pb.Change{PreviousIds: []string{"2", "1.3"}}},
 		))
 		assert.Len(t, tr.unAttached, 0)
 		assert.Len(t, tr.attached, 7)
@@ -72,9 +73,9 @@ func TestTree_Add(t *testing.T) {
 		var changes []*Change
 		for i := 0; i < 10000; i++ {
 			if i == 0 {
-				changes = append(changes, &Change{Id: fmt.Sprint(i), PreviousIds: []string{"root"}})
+				changes = append(changes, &Change{Id: fmt.Sprint(i), Change: &pb.Change{PreviousIds: []string{"root"}}})
 			} else {
-				changes = append(changes, &Change{Id: fmt.Sprint(i), PreviousIds: []string{fmt.Sprint(i - 1)}})
+				changes = append(changes, &Change{Id: fmt.Sprint(i), Change: &pb.Change{PreviousIds: []string{fmt.Sprint(i - 1)}}})
 			}
 		}
 		rand.Shuffle(len(changes), func(i, j int) {
@@ -92,7 +93,7 @@ func TestTree_Hash(t *testing.T) {
 	tr.Add(&Change{Id: "root"})
 	hash1 := tr.Hash()
 	assert.Equal(t, tr.Hash(), hash1)
-	tr.Add(&Change{Id: "1", PreviousIds: []string{"root"}})
+	tr.Add(&Change{Id: "1", Change: &pb.Change{PreviousIds: []string{"root"}}})
 	assert.NotEqual(t, tr.Hash(), hash1)
 	assert.Equal(t, tr.Hash(), tr.Hash())
 }
@@ -101,12 +102,12 @@ func TestTree_AddFuzzy(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	getChanges := func() []*Change {
 		changes := []*Change{
-			{Id: "1", PreviousIds: []string{"root"}},
-			{Id: "2", PreviousIds: []string{"1"}},
-			{Id: "1.2", PreviousIds: []string{"1.1"}},
-			{Id: "1.3", PreviousIds: []string{"1.2"}},
-			{Id: "1.1", PreviousIds: []string{"1"}},
-			{Id: "3", PreviousIds: []string{"2", "1.3"}},
+			{Id: "1", Change: &pb.Change{PreviousIds: []string{"root"}}},
+			{Id: "2", Change: &pb.Change{PreviousIds: []string{"1"}}},
+			{Id: "1.2", Change: &pb.Change{PreviousIds: []string{"1.1"}}},
+			{Id: "1.3", Change: &pb.Change{PreviousIds: []string{"1.2"}}},
+			{Id: "1.1", Change: &pb.Change{PreviousIds: []string{"1"}}},
+			{Id: "3", Change: &pb.Change{PreviousIds: []string{"2", "1.3"}}},
 		}
 		rand.Shuffle(len(changes), func(i, j int) {
 			changes[i], changes[j] = changes[j], changes[i]
@@ -133,12 +134,12 @@ func BenchmarkTree_Add(b *testing.B) {
 		tr := new(Tree)
 		tr.Add(&Change{Id: "root"})
 		tr.Add([]*Change{
-			{Id: "1", PreviousIds: []string{"root"}},
-			{Id: "2", PreviousIds: []string{"1"}},
-			{Id: "1.2", PreviousIds: []string{"1.1"}},
-			{Id: "1.3", PreviousIds: []string{"1.2"}},
-			{Id: "1.1", PreviousIds: []string{"1"}},
-			{Id: "3", PreviousIds: []string{"2", "1.3"}},
+			{Id: "1", Change: &pb.Change{PreviousIds: []string{"root"}}},
+			{Id: "2", Change: &pb.Change{PreviousIds: []string{"1"}}},
+			{Id: "1.2", Change: &pb.Change{PreviousIds: []string{"1.1"}}},
+			{Id: "1.3", Change: &pb.Change{PreviousIds: []string{"1.2"}}},
+			{Id: "1.1", Change: &pb.Change{PreviousIds: []string{"1"}}},
+			{Id: "3", Change: &pb.Change{PreviousIds: []string{"2", "1.3"}}},
 		}...)
 	}
 }
