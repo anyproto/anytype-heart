@@ -10,6 +10,21 @@
     - [ClientCommands](#anytype.ClientCommands)
   
 
+- [pb/protos/changes.proto](#pb/protos/changes.proto)
+    - [Change](#anytype.Change)
+    - [Change.BlockCreate](#anytype.Change.BlockCreate)
+    - [Change.BlockDuplicate](#anytype.Change.BlockDuplicate)
+    - [Change.BlockMove](#anytype.Change.BlockMove)
+    - [Change.BlockRemove](#anytype.Change.BlockRemove)
+    - [Change.BlockUpdate](#anytype.Change.BlockUpdate)
+    - [Change.Content](#anytype.Change.Content)
+    - [Change.DetailsSet](#anytype.Change.DetailsSet)
+    - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
+  
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -613,6 +628,171 @@
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
+
+ 
+
+
+
+<a name="pb/protos/changes.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## pb/protos/changes.proto
+
+
+
+<a name="anytype.Change"></a>
+
+### Change
+the element of change tree used to store and internal apply smartBlock history
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| previous_ids | [string](#string) | repeated | ids of previous changes |
+| content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
+
+
+
+
+
+
+<a name="anytype.Change.BlockCreate"></a>
+
+### Change.BlockCreate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| blocks | [model.Block](#anytype.model.Block) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Change.BlockDuplicate"></a>
+
+### Change.BlockDuplicate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Change.BlockMove"></a>
+
+### Change.BlockMove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Change.BlockRemove"></a>
+
+### Change.BlockRemove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Change.BlockUpdate"></a>
+
+### Change.BlockUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| events | [Event.Message](#anytype.Event.Message) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Change.Content"></a>
+
+### Change.Content
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockCreate | [Change.BlockCreate](#anytype.Change.BlockCreate) |  |  |
+| blockUpdate | [Change.BlockUpdate](#anytype.Change.BlockUpdate) |  |  |
+| blockRemove | [Change.BlockRemove](#anytype.Change.BlockRemove) |  |  |
+| blockMove | [Change.BlockMove](#anytype.Change.BlockMove) |  |  |
+| blockDuplicate | [Change.BlockDuplicate](#anytype.Change.BlockDuplicate) |  |  |
+| detailsSet | [Change.DetailsSet](#anytype.Change.DetailsSet) |  |  |
+| detailsUnset | [Change.DetailsUnset](#anytype.Change.DetailsUnset) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.DetailsSet"></a>
+
+### Change.DetailsSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.DetailsUnset"></a>
+
+### Change.DetailsUnset
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 
