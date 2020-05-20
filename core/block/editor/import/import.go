@@ -55,7 +55,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	files := make(map[string][]byte)
 	isPageLinked := make(map[string]bool)
 	nameToBlocks := make(map[string][]*model.Block)
-	//nameToBlocksAfterCsv := make(map[string][]*model.Block)
+	nameToBlocksAfterCsv := make(map[string][][]*model.Block)
 
 	nameToBlocks, isPageLinked, files, err = imp.DirWithMarkdownToBlocks(req.ImportPath)
 	filesCount := len(files)
@@ -121,10 +121,12 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 
 	for name := range nameToBlocks {
 		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
-
+		//nameToBlocksAfterCsv[name] = [][]*model.Block{}
 		for i, b := range nameToBlocks[name] {
 			var links []*model.Block
-			//newBlocks = nameToBlocks[name]
+			//nameToBlocksAfterCsv[name] = [][]*model.Block{} //make([][]*model.Block, len(nameToBlocks[name]))
+
+			nameToBlocksAfterCsv[name] = append(nameToBlocksAfterCsv[name], []*model.Block{nameToBlocks[name][i]})
 
 			if f := b.GetFile(); f != nil {
 
@@ -140,7 +142,8 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 
 					fmt.Println("!!!   LEN:", len(nameToBlocks[name]), "name:", name, "I:", i)
 					//newBlocks = nameToBlocks[name][:i]
-					nameToBlocks[name] = append(nameToBlocks[name], links...)
+					//newBlocks = imp.insertInstead(nameToBlocks[name], links, i)
+					nameToBlocksAfterCsv[name][i] = links
 
 					//if len(nameToBlocks[name]) > i {
 					//	newBlocks = append(newBlocks, nameToBlocks[name][i:]...)
@@ -150,11 +153,19 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				}
 			}
 
-			//nameToBlocksAfterCsv[name] = newBlocks
 		}
 	}
+	for name := range nameToBlocksAfterCsv {
+		nameToBlocks[name] = []*model.Block{}
+		for i := range nameToBlocksAfterCsv[name] {
+			index := 0
+			for j := range nameToBlocksAfterCsv[name][i] {
+				nameToBlocks[name] = append(nameToBlocks[name], nameToBlocksAfterCsv[name][i][j])
+				index += 1
+			}
+		}
 
-	//nameToBlocks = nameToBlocksAfterCsv
+	}
 
 	log.Debug("2. ImportMarkdown: start to paste blocks")
 	for name := range nameToBlocks {
@@ -493,6 +504,19 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 	}
 	fmt.Println("            BLOCKS OUT:", blocks)
 	return blocks, isPageLinked
+}
+
+func (imp *importImpl) insertInstead(blocks []*model.Block, links []*model.Block, i int) (blocksOut []*model.Block) {
+	fmt.Println("BLOCKS BEFORE:", blocks)
+	blocksOut = append(blocks[:0:0], blocks[:i]...)
+	blocksOut = append(blocksOut, links...)
+	if len(blocks) > i {
+		blocksEnd := []*model.Block{}
+		blocksEnd = append(blocks[:0:0], blocks[i+1:]...)
+		blocksOut = append(blocksOut, blocksEnd...)
+	}
+	fmt.Println("BLOCKS AFTER:", blocksOut)
+	return blocksOut
 }
 
 /*
