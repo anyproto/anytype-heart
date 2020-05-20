@@ -8,6 +8,18 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 )
 
+type SmartblockLog struct {
+	ID   string
+	Head string
+}
+
+type SmartblockRecord struct {
+	ID     string
+	PrevID string
+	//LogID string
+	payload []byte
+}
+
 type SignedPbPayload struct {
 	DeviceSig []byte // deprecated
 	AccSig    []byte
@@ -30,6 +42,10 @@ func newSignedPayload(payload []byte, accountKey wallet.Keypair) (*SignedPbPaylo
 
 func (p *SignedPbPayload) Unmarshal(out proto.Message) error {
 	return proto.Unmarshal(p.Data, out)
+}
+
+func (p *SmartblockRecord) Unmarshal(out proto.Message) error {
+	return proto.Unmarshal(p.payload, out)
 }
 
 func (p *SignedPbPayload) Verify() error {

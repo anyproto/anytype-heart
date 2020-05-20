@@ -79,7 +79,6 @@ func (meta *SmartBlockContentChange) State() vclock.VClock {
 }
 
 type SmartBlockChange struct {
-	State   vclock.VClock
 	Content *SmartBlockContentChange
 	Meta    *SmartBlockMetaChange
 }
@@ -94,18 +93,8 @@ type SmartBlock interface {
 	ID() string
 	Type() SmartBlockType
 	Creator() (string, error)
-	GetLastSnapshot() (SmartBlockSnapshot, error)
-	// GetLastDownloadedVersion returns tha last snapshot and all full-downloaded changes
-	GetLastDownloadedVersion() (*SmartBlockVersion, error)
-	GetSnapshotBefore(state vclock.VClock) (SmartBlockSnapshot, error)
 
-	PushChanges(changes []*SmartBlockChange) (state vclock.VClock, err error)
-	ShouldCreateSnapshot(state vclock.VClock) bool
-	PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error)
-	GetChangesBetween(since vclock.VClock, until vclock.VClock) ([]SmartBlockChange, error)
-
-	SubscribeForChanges(since vclock.VClock, ch chan SmartBlockChange) (cancel func(), err error)
-	SubscribeForMetaChanges(since vclock.VClock, ch chan SmartBlockMetaChange) (cancel func(), err error)
+	SubscribeForRecords(ch chan SmartblockRecord) (cancel func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
 	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error)
 	// PublishClientEvent gives a way to push the new client-side event e.g. carriage position change
@@ -371,6 +360,13 @@ func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
 		threadID: block.thread.ID,
 		node:     block.node,
 	}
+}
+
+func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecord) (cancel func(), err error) {
+	chCloseFn := func() { close(ch) }
+
+	//todo: to be implemented
+	return chCloseFn, nil
 }
 
 func (block *smartBlock) SubscribeForChanges(since vclock.VClock, ch chan SmartBlockChange) (cancel func(), err error) {
