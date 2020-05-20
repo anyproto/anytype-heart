@@ -9,3 +9,10 @@ type Change struct {
 	Next []*Change
 	*pb.Change
 }
+
+func (ch *Change) GetLastSnapshotId() string {
+	if ch.Snapshot != nil {
+		return ch.Id
+	}
+	return ch.LastSnapshotId
+}
