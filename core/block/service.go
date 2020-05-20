@@ -405,27 +405,15 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 			return b.Move(ctx, req)
 		})
 	}
-	var blocks []simple.Block
-
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		blocks, err = b.InternalCut(ctx, req)
-		return err
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return s.DoBasic(req.TargetContextId, func(tb basic.Basic) error {
+			blocks, err := b.InternalCut(ctx, req)
+			if err != nil {
+				return err
+			}
+			return tb.InternalPaste(blocks)
+		})
 	})
-
-	if err != nil {
-		return err
-	}
-
-	err = s.DoBasic(req.TargetContextId, func(b basic.Basic) error {
-		return b.InternalPaste(blocks)
-	})
-
-	if err != nil {
-		// TODO: undo b.InternalCut(req)
-		return err
-	}
-
-	return err
 }
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
