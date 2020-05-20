@@ -97,6 +97,7 @@ type SmartBlock interface {
 
 	GetLogs() ([]SmartblockLog, error)
 	GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error)
+	PushRecord(payload proto.Message) (id string, err error)
 
 	SubscribeForRecords(ch chan SmartblockRecord) (cancel func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
@@ -271,6 +272,32 @@ func (block *smartBlock) getAllFileKeys(blocks []*model.Block) map[string]*stora
 	}
 
 	return fileKeys
+}
+
+func (block *smartBlock) PushRecord(payload proto.Message) (id string, err error) {
+	payloadB, err := proto.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	signedPayload, err := newSignedPayload(payloadB, block.node.opts.Account)
+	if err != nil {
+		return "", err
+	}
+
+	body, err := cbornode.WrapObject(signedPayload, mh.SHA2_256, -1)
+	if err != nil {
+		return "", err
+	}
+
+	rec, err := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+	if err != nil {
+		log.Errorf("failed to create record: %w", err)
+		return "", err
+	}
+
+	log.Debugf("SmartBlock.PushRecord: blockId = %s", block.ID())
+	return rec.Value().Cid().String(), nil
 }
 
 func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
