@@ -132,3 +132,20 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	r := sb.NewState()
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
+
+func TestBasic_InternalPaste(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
+	b := NewBasic(sb)
+	err := b.InternalPaste([]simple.Block{
+		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
+		simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}),
+		simple.New(&model.Block{Id: "1.1.1"}),
+		simple.New(&model.Block{Id: "2", ChildrenIds: []string{"2.1"}}),
+		simple.New(&model.Block{Id: "2.1"}),
+	})
+	require.NoError(t, err)
+	s := sb.NewState()
+	require.Len(t, s.Blocks(), 6)
+	assert.Len(t, s.Pick(s.RootId()).Model().ChildrenIds, 2)
+}
