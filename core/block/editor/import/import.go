@@ -52,7 +52,19 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	s := imp.NewStateCtx(ctx)
 	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
 
-	nameToBlocks, isPageLinked, filesCount, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
+	files := make(map[string][]byte)
+	isPageLinked := make(map[string]bool)
+	nameToBlocks := make(map[string][]*model.Block)
+	nameToBlocksAfterCsv := make(map[string][]*model.Block)
+
+	nameToBlocks, isPageLinked, files, err = imp.DirWithMarkdownToBlocks(req.ImportPath)
+	filesCount := len(files)
+	fmt.Println("FILES COUNT:", filesCount)
+
+	for n, _ := range files {
+		fmt.Println("@@@files:", n)
+	}
+
 	nameToId := make(map[string]string)
 
 	for name := range nameToBlocks {
@@ -107,6 +119,43 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
+	for name := range nameToBlocks {
+		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
+
+		for i, b := range nameToBlocks[name] {
+			var links, newBlocks []*model.Block
+			newBlocks = nameToBlocks[name]
+
+			if f := b.GetFile(); f != nil {
+
+				// 1. Is it CSV?
+				if filepath.Ext(f.Name) == ".csv" {
+
+					// 2. If it is, create links to pages
+					fmt.Println("CONVERT:", f.Name)
+					csvName := strings.Replace(f.Name, req.ImportPath+"/", "", -1)
+					fmt.Println("> name:", csvName)
+					fmt.Println("> file:", string(files[csvName]))
+					links, isPageLinked = imp.convertCsvToLinks(files[csvName], b, isPageLinked, nameToId, files)
+
+					fmt.Println("   LEN:", len(nameToBlocks[name]), "name:", name, "I:", i)
+					//newBlocks = nameToBlocks[name][:i]
+					newBlocks = append(nameToBlocks[name], links...)
+
+					//if len(nameToBlocks[name]) > i {
+					//	newBlocks = append(newBlocks, nameToBlocks[name][i:]...)
+					//}
+
+					//nameToBlocksAfterCsv[name] = newBlocks
+				}
+			}
+
+			nameToBlocksAfterCsv[name] = newBlocks
+		}
+	}
+
+	nameToBlocks = nameToBlocksAfterCsv
+
 	log.Debug("2. ImportMarkdown: start to paste blocks")
 	for name := range nameToBlocks {
 		if len(nameToBlocks[name]) > 0 {
@@ -125,17 +174,6 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	log.Debug("3. ImportMarkdown: all blocks pasted. Start to convert rootLinks")
 	for name := range nameToBlocks {
 		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
-		if !isPageLinked[name] {
-			rootLinks = append(rootLinks, &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: nameToId[name],
-						Style:         model.BlockContentLink_Page,
-						Fields:        nil,
-					},
-				},
-			})
-		}
 
 		for _, b := range nameToBlocks[name] {
 			if f := b.GetFile(); f != nil {
@@ -154,6 +192,21 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				}
 			}
 		}
+
+	}
+
+	for name := range nameToBlocks {
+		if !isPageLinked[name] {
+			rootLinks = append(rootLinks, &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: nameToId[name],
+						Style:         model.BlockContentLink_Page,
+						Fields:        nil,
+					},
+				},
+			})
+		}
 	}
 
 	log.Debug("4. ImportMarkdown: everything done")
@@ -161,21 +214,22 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	return rootLinks, imp.Apply(s)
 }
 
-func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, filesCount int, err error) {
+func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, files map[string][]byte, err error) {
 	log.Debug("1. DirWithMarkdownToBlocks: directory %s", directoryPath)
 
 	anymarkConv := anymark.New()
 
+	files = make(map[string][]byte)
+	isPageLinked = make(map[string]bool)
 	nameToBlocks := make(map[string][]*model.Block)
 	allFileShortPaths := []string{}
-	files := make(map[string][]byte)
 
 	if filepath.Ext(directoryPath) == ".zip" {
 		r, err := zip.OpenReader(directoryPath)
 		defer r.Close()
 
 		if err != nil {
-			return nameToBlocks, isPageLinked, 0, fmt.Errorf("can not read zip while import: %s", err)
+			return nameToBlocks, isPageLinked, files, fmt.Errorf("can not read zip while import: %s", err)
 		}
 
 		for _, f := range r.File {
@@ -203,7 +257,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			rc.Close()
 
 			if err != nil {
-				return nameToBlock, isPageLinked, 0, fmt.Errorf("ERR while read file from zip while import: %s", err)
+				return nameToBlock, isPageLinked, files, fmt.Errorf("ERR while read file from zip while import: %s", err)
 			}
 
 		}
@@ -223,14 +277,16 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 						return err
 					}
 
-					files[shortPath] = dat
+					if len(shortPath) > 0 {
+						files[shortPath] = dat
+					}
 				}
 
 				return nil
 			},
 		)
 		if err != nil {
-			return nameToBlocks, isPageLinked, filesCount, err
+			return nameToBlocks, isPageLinked, files, err
 		}
 	}
 
@@ -275,6 +331,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			}
 
 			if block.GetFile() != nil {
+
 				fileName, err := url.PathUnescape(block.GetFile().Name)
 				if err != nil {
 					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetFile().Name)
@@ -291,7 +348,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 
 	log.Debug("3. DirWithMarkdownToBlocks: convertTextToPageLink, convertTextToFile completed")
 
-	return nameToBlocks, isPageLinked, len(isFileExist), err
+	return nameToBlocks, isPageLinked, files, err
 }
 
 func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
@@ -352,3 +409,95 @@ func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) 
 
 	return blockOut
 }
+
+func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isPageLinked map[string]bool, nameToId map[string]string, files map[string][]byte) (blocks []*model.Block, newIsPageLinked map[string]bool) {
+	//fmt.Println("@convertCsvToLinks", block, string(csvData), "\n---------------------")
+	//newIsPageLinked = isPageLinked
+
+	records := [][]string{}
+	for _, str := range strings.Split(string(csvData), "\n") {
+		records = append(records, strings.Split(str, ","))
+	}
+
+	headers := records[0]
+	fmt.Println("@convertCsvToLinks headers:", headers)
+	// remove headers
+	records = records[1:]
+
+	fmt.Println("@convertCsvToLinks records:", records)
+
+	fmt.Println("--------------------\n\nnametoIds:", nameToId, "\n---------------")
+
+	for i, record := range records {
+		fileName := record[0]
+
+		shortPath := ""
+		for name, _ := range files {
+			if strings.Contains(name, fileName) {
+				shortPath = name
+			}
+		}
+
+		//fmt.Printf("          range records i: %d rec: %s path: %s\n", i, record, shortPath)
+		targetId := nameToId[shortPath]
+		if len(targetId) == 0 {
+			fmt.Printf("ERROR, target (%s) with shortpath (%s) not found (%s)\n", fileName, shortPath, nameToId[shortPath])
+		} else {
+
+		}
+
+		isPageLinked[targetId] = true
+
+		fmt.Println("---------\ni:", i, "\n   TARGET ID:", targetId, "\n   shortpath:", shortPath, "\n   filename:", fileName)
+		// TODO: if no targetId
+
+		blocks = append(blocks, &model.Block{
+			Id: uuid.New().String(),
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: targetId,
+					Style:         model.BlockContentLink_Page,
+					Fields: &types.Struct{
+						Fields: map[string]*types.Value{
+							"name": &types.Value{
+								Kind: &types.Value_StringValue{StringValue: record[0]},
+								// TODO: other fields
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+	fmt.Println("            BLOCKS OUT:", blocks)
+	return blocks, isPageLinked
+}
+
+/*
+func (imp *importImpl) parseCsv (path string) (records [][]string, err error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return records, err
+	}
+	// automatically call Close() at the end of current method
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	// options are available at: http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
+	reader.Comma = ','
+
+	for {
+		// read just one record, but we could ReadAll() as well
+		record, err := reader.Read()
+		// end-of-file is fitted into err
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return records, err
+		}
+		records = append(records, record)
+	}
+
+	return records, nil
+}
+*/
