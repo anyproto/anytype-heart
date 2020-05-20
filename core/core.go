@@ -94,9 +94,6 @@ type Service interface {
 	DeleteBlock(blockId string) error
 	CreateBlock(t SmartBlockType) (SmartBlock, error)
 
-	GetSmartblockLogs(smartblockID string) ([]SmartblockLog, error)
-	GetSmartblockRecord(ctx context.Context, smartblockID string, recordID string) (*SmartblockRecord, error)
-
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
 	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)     // deprecated

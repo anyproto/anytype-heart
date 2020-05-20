@@ -16,6 +16,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
+	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -93,6 +94,9 @@ type SmartBlock interface {
 	ID() string
 	Type() SmartBlockType
 	Creator() (string, error)
+
+	GetLogs() ([]SmartblockLog, error)
+	GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error)
 
 	SubscribeForRecords(ch chan SmartblockRecord) (cancel func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
@@ -449,6 +453,68 @@ func (block *smartBlock) SubscribeClientEvents(events chan<- proto.Message) (can
 func (block *smartBlock) PublishClientEvent(event proto.Message) error {
 	//todo: to be implemented
 	return fmt.Errorf("not implemented")
+}
+
+func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
+	thrd, err := block.node.t.GetThread(context.Background(), block.thread.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []SmartblockLog
+	for _, l := range thrd.Logs {
+		logs = append(logs, SmartblockLog{
+			ID:   l.ID.String(),
+			Head: l.Head.String(),
+		})
+	}
+
+	return logs, nil
+}
+
+func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error) {
+	rid, err := cid.Decode(recordID)
+	if err != nil {
+		return nil, err
+	}
+
+	rec, err := block.node.t.GetRecord(ctx, block.thread.ID, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	event, err := cbor.EventFromRecord(ctx, block.node.t, rec)
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := event.GetBody(context.TODO(), block.node.t, block.thread.Key.Read())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get record body: %w", err)
+	}
+	m := new(SignedPbPayload)
+	err = cbornode.DecodeInto(node.RawData(), m)
+	if err != nil {
+		return nil, fmt.Errorf("incorrect record type: %w", err)
+	}
+
+	err = m.Verify()
+	if err != nil {
+		return nil, err
+	}
+
+	var prevID string
+
+	if rec.PrevID().Defined() {
+		prevID = rec.PrevID().String()
+	}
+
+	return &SmartblockRecord{
+		ID:     rid.String(),
+		PrevID: prevID,
+		//LogID:      m.AccAddr,
+		payload: m.Data,
+	}, nil
 }
 
 func getSnippet(snap *smartBlockSnapshot) string {
