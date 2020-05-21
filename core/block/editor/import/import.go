@@ -197,9 +197,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				log.Debug("          page:", name, " | start to upload file :", f.Name)
 
 				FN := strings.Split(f.Name, "/")
-
 				tmpFile, err := os.Create(filepath.Join(os.TempDir(), FN[len(FN)-1]))
-				fmt.Println("FN[len(FN)-1]", tmpFile.Name())
 				fName := strings.ReplaceAll(f.Name, req.ImportPath+"/", "")
 				w := bufio.NewWriter(tmpFile)
 
@@ -208,17 +206,15 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 						fName = fn
 					}
 				}
-				fmt.Println("fName:", fName, "len:", len(files[fName]))
 
 				if _, err = w.Write(files[fName]); err != nil {
-					fmt.Println("Failed to write to temporary file: ", err)
+					log.Warn("Failed to write to temporary file:", err)
 				}
 
 				if err := w.Flush(); err != nil {
 					log.Fatal(err)
 				}
 
-				fmt.Println("@@@@@tmpFile.Name()", tmpFile.Name())
 				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
 					ContextId: nameToId[name],
 					BlockId:   b.Id,
@@ -230,7 +226,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 					return rootLinks, fmt.Errorf("can not import this file: %s. error: %s", f.Name, err)
 				}
 
-				//CHECK os.Remove(tmpFile.Name())
+				os.Remove(tmpFile.Name())
 			}
 		}
 
