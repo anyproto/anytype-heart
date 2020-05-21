@@ -21,18 +21,18 @@ func (sb *StateBuilder) Build(s core.SmartBlock) (err error) {
 	sb.smartblock = s
 	logs, err := sb.smartblock.GetLogs()
 	if err != nil {
-		return
+		return fmt.Errorf("GetLogs error: %v", err)
 	}
 	heads, err := sb.getActualHeads(logs)
 	if err != nil {
-		return
+		return fmt.Errorf("getActualHeads error: %v", err)
 	}
 	breakpoint, err := sb.findBreakpoint(heads)
 	if err != nil {
-		return
+		return fmt.Errorf("findBreakpoint error: %v", err)
 	}
 	if err = sb.buildTree(heads, breakpoint); err != nil {
-		return
+		return fmt.Errorf("buildTree error: %v", err)
 	}
 	sb.cache = nil
 	return
@@ -99,6 +99,9 @@ func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 	}
 	findCommon := func(s1, s2 string) (s string, err error) {
 		// fast cases
+		if s1 == s2 {
+			return s1, nil
+		}
 		ch1, err := sb.loadChange(s1)
 		if err != nil {
 			return "", err
@@ -106,14 +109,14 @@ func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 		if ch1.LastSnapshotId == s2 {
 			return s2, nil
 		}
-		ch2, err := sb.loadChange(s1)
+		ch2, err := sb.loadChange(s2)
 		if err != nil {
 			return "", err
 		}
 		if ch2.LastSnapshotId == s1 {
 			return s1, nil
 		}
-		if ch1.LastSnapshotId == ch2.LastSnapshotId {
+		if ch1.LastSnapshotId == ch2.LastSnapshotId && ch1.LastSnapshotId != "" {
 			return ch1.LastSnapshotId, nil
 		}
 		// traverse
@@ -150,14 +153,10 @@ func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			}
 			if lid1 == "" && lid2 == "" {
 				// unexpected behavior - just return lesser id
-				if s1 < s2 {
-					return s1, nil
-				} else {
-					return s2, nil
-				}
+				break
 			}
 		}
-		return
+		return "", fmt.Errorf("unexpected: possible versions split")
 	}
 
 	for len(snapshotIds) > 1 {

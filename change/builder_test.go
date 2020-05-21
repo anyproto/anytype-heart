@@ -12,31 +12,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	newSnapshot = func(id, snapshotId string, heads map[string]string, prevIds ...string) *Change {
+		return &Change{
+			Id: id,
+			Change: &pb.Change{
+				PreviousIds:    prevIds,
+				LastSnapshotId: snapshotId,
+				Snapshot: &pb.ChangeSnapshot{
+					LogHeads: heads,
+				},
+			},
+		}
+	}
+	newChange = func(id, snapshotId string, prevIds ...string) *Change {
+		return &Change{
+			Id: id,
+			Change: &pb.Change{
+				PreviousIds:    prevIds,
+				LastSnapshotId: snapshotId,
+				Content:        []*pb.ChangeContent{},
+			},
+		}
+	}
+)
+
 func TestStateBuilder_Build(t *testing.T) {
-	var (
-		newSnapshot = func(id, snapshotId string, heads map[string]string, prevIds ...string) *Change {
-			return &Change{
-				Id: id,
-				Change: &pb.Change{
-					PreviousIds:    prevIds,
-					LastSnapshotId: snapshotId,
-					Snapshot: &pb.ChangeSnapshot{
-						LogHeads: heads,
-					},
-				},
-			}
-		}
-		newChange = func(id, snapshotId string, prevIds ...string) *Change {
-			return &Change{
-				Id: id,
-				Change: &pb.Change{
-					PreviousIds:    prevIds,
-					LastSnapshotId: snapshotId,
-					Content:        []*pb.ChangeContent{},
-				},
-			}
-		}
-	)
+
 	t.Run("linear - one snapshot", func(t *testing.T) {
 		sb := newTestSmartBlock()
 		sb.AddChanges(
@@ -170,6 +172,69 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, "s2", b.Tree.RootId())
 		assert.Equal(t, 2, b.Tree.Len())
 		assert.Equal(t, []string{"c4"}, b.Tree.headIds)
+	})
+}
+
+func TestStateBuilder_findCommonSnapshot(t *testing.T) {
+	t.Run("error for empty", func(t *testing.T) {
+		b := new(StateBuilder)
+		_, err := b.findCommonSnapshot(nil)
+		require.Error(t, err)
+	})
+	t.Run("one snapshot", func(t *testing.T) {
+		b := new(StateBuilder)
+		id, err := b.findCommonSnapshot([]string{"one"})
+		require.NoError(t, err)
+		assert.Equal(t, "one", id)
+	})
+	t.Run("common parent", func(t *testing.T) {
+		sb := newTestSmartBlock()
+		sb.AddChanges(
+			"a",
+			newSnapshot("s0.1", "", nil),
+			newSnapshot("s0", "s0.1", nil, "s0.1"),
+		)
+		sb.AddChanges(
+			"b",
+			newSnapshot("s1.1", "s0", nil, "s0"),
+			newSnapshot("s2.1", "s1.1", nil, "s1.1"),
+			newSnapshot("s3.1", "s2.1", nil, "s2.1"),
+		)
+		sb.AddChanges(
+			"c",
+			newSnapshot("s1.2", "s0", nil, "s0"),
+		)
+		sb.AddChanges(
+			"d",
+			newSnapshot("s1.3", "s0", nil, "s0"),
+		)
+		sb.AddChanges(
+			"e",
+			newSnapshot("s1.4", "s1.3", nil, "s1.3"),
+			newSnapshot("s2.4", "s1.1", nil, "s1.4"),
+		)
+		sb.AddChanges(
+			"f",
+			newSnapshot("s1.5", "s2.4", nil, "s2.4"),
+		)
+		b := new(StateBuilder)
+		err := b.Build(sb)
+		require.NoError(t, err)
+		assert.Equal(t, "s0", b.Tree.RootId())
+	})
+	t.Run("abs split", func(t *testing.T) {
+		sb := newTestSmartBlock()
+		sb.AddChanges(
+			"a",
+			newSnapshot("s0.1", "", nil),
+		)
+		sb.AddChanges(
+			"b",
+			newSnapshot("s1.1", "", nil),
+		)
+		b := new(StateBuilder)
+		err := b.Build(sb)
+		require.Error(t, err)
 	})
 }
 
