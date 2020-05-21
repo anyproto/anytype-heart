@@ -35,6 +35,7 @@ message Event {
             Block.Set.Align blockSetAlign = 15;
             Block.Set.Details blockSetDetails = 16;
             Block.Set.Div blockSetDiv = 17;
+            Block.Set.DatabaseRecords blockSetDatabaseRecords = 18;
 
             Block.Show blockShow = 20;
             User.Block.Join userBlockJoin = 21;
@@ -119,6 +120,11 @@ message Event {
             message Details {
                 string id = 1;
                 google.protobuf.Struct details = 2;
+            }
+
+            message DatabaseRecords {
+                string id = 1;
+                repeated google.protobuf.Struct records = 2;
             }
 
             message Fields {

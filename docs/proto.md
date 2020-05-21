@@ -421,6 +421,7 @@
     - [Event.Block.Set.Bookmark.Type](#anytype.Event.Block.Set.Bookmark.Type)
     - [Event.Block.Set.Bookmark.Url](#anytype.Event.Block.Set.Bookmark.Url)
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
+    - [Event.Block.Set.DatabaseRecords](#anytype.Event.Block.Set.DatabaseRecords)
     - [Event.Block.Set.Details](#anytype.Event.Block.Set.Details)
     - [Event.Block.Set.Div](#anytype.Event.Block.Set.Div)
     - [Event.Block.Set.Div.Style](#anytype.Event.Block.Set.Div.Style)
@@ -491,6 +492,11 @@
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
+    - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
+    - [Block.Content.Dataview.Filters](#anytype.model.Block.Content.Dataview.Filters)
+    - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
+    - [Block.Content.Dataview.Sorts](#anytype.model.Block.Content.Dataview.Sorts)
+    - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
@@ -507,6 +513,10 @@
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
+    - [Block.Content.Dataview.FilterTypeCondition](#anytype.model.Block.Content.Dataview.FilterTypeCondition)
+    - [Block.Content.Dataview.FilterTypeOperator](#anytype.model.Block.Content.Dataview.FilterTypeOperator)
+    - [Block.Content.Dataview.SortType](#anytype.model.Block.Content.Dataview.SortType)
+    - [Block.Content.Dataview.ViewType](#anytype.model.Block.Content.Dataview.ViewType)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
@@ -6384,6 +6394,22 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.DatabaseRecords"></a>
+
+### Event.Block.Set.DatabaseRecords
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.Details"></a>
 
 ### Event.Block.Set.Details
@@ -6791,6 +6817,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetAlign | [Event.Block.Set.Align](#anytype.Event.Block.Set.Align) |  |  |
 | blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  |  |
 | blockSetDiv | [Event.Block.Set.Div](#anytype.Event.Block.Set.Div) |  |  |
+| blockSetDatabaseRecords | [Event.Block.Set.DatabaseRecords](#anytype.Event.Block.Set.DatabaseRecords) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
@@ -7116,7 +7143,7 @@ Precondition: user A and user B opened the same block
 | snippet | [string](#string) |  |  |
 | state | [State](#anytype.model.State) |  |  |
 | lastOpened | [int64](#int64) |  |  |
-| inboundLinksCount | [uint32](#uint32) |  |  |
+| hasInboundLinks | [bool](#bool) |  |  |
 
 
 
@@ -7357,6 +7384,90 @@ Bookmark is to keep a web-link and to preview a content.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | databaseId | [string](#string) |  |  |
+| views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
+| schemaURL | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Filter"></a>
+
+### Block.Content.Dataview.Filter
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| column | [string](#string) |  |  |
+| condition | [Block.Content.Dataview.FilterTypeCondition](#anytype.model.Block.Content.Dataview.FilterTypeCondition) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Filters"></a>
+
+### Block.Content.Dataview.Filters
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+| operator | [Block.Content.Dataview.FilterTypeOperator](#anytype.model.Block.Content.Dataview.FilterTypeOperator) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Sort"></a>
+
+### Block.Content.Dataview.Sort
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| column | [string](#string) |  |  |
+| type | [Block.Content.Dataview.SortType](#anytype.model.Block.Content.Dataview.SortType) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Sorts"></a>
+
+### Block.Content.Dataview.Sorts
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sorts | [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.View"></a>
+
+### Block.Content.Dataview.View
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [Block.Content.Dataview.ViewType](#anytype.model.Block.Content.Dataview.ViewType) |  |  |
+| name | [string](#string) |  |  |
+| sort | [Block.Content.Dataview.Sorts](#anytype.model.Block.Content.Dataview.Sorts) |  |  |
+| filters | [Block.Content.Dataview.Filters](#anytype.model.Block.Content.Dataview.Filters) |  |  |
 
 
 
@@ -7611,6 +7722,62 @@ General purpose structure, uses in Mark.
 
 
 
+<a name="anytype.model.Block.Content.Dataview.FilterTypeCondition"></a>
+
+### Block.Content.Dataview.FilterTypeCondition
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Equal | 0 |  |
+| NotEqual | 1 |  |
+| Greater | 2 |  |
+| Less | 3 |  |
+| Like | 4 |  |
+| NotLike | 5 |  |
+| In | 6 |  |
+| NotIn | 7 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.FilterTypeOperator"></a>
+
+### Block.Content.Dataview.FilterTypeOperator
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| And | 0 |  |
+| Or | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.SortType"></a>
+
+### Block.Content.Dataview.SortType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Asc | 0 |  |
+| Desc | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.ViewType"></a>
+
+### Block.Content.Dataview.ViewType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Table | 0 |  |
+| List | 1 |  |
+| Gallery | 2 |  |
+| Kanban | 3 |  |
+
+
+
 <a name="anytype.model.Block.Content.Div.Style"></a>
 
 ### Block.Content.Div.Style
@@ -7693,6 +7860,7 @@ General purpose structure, uses in Mark.
 | Link | 5 |  |
 | TextColor | 6 |  |
 | BackgroundColor | 7 |  |
+| Mention | 8 |  |
 
 
 
@@ -7758,21 +7926,21 @@ General purpose structure, uses in Mark.
 
 ## Scalar Value Types
 
-| .proto Type | Notes | C++ | Java | Python | Go | C# | PHP | Ruby |
-| ----------- | ----- | --- | ---- | ------ | -- | -- | --- | ---- |
-| <a name="double" /> double |  | double | double | float | float64 | double | float | Float |
-| <a name="float" /> float |  | float | float | float | float32 | float | float | Float |
-| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long | uint32 | uint | integer | Bignum or Fixnum (as required) |
-| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum or Fixnum (as required) |
-| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int | uint32 | uint | integer | Bignum or Fixnum (as required) |
-| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum |
-| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
-| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
-| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
+| .proto Type | Notes | C++ Type | Java Type | Python Type |
+| ----------- | ----- | -------- | --------- | ----------- |
+| <a name="double" /> double |  | double | double | float |
+| <a name="float" /> float |  | float | float | float |
+| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int |
+| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long |
+| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long |
+| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long |
+| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int |
+| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long |
+| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int |
+| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long |
+| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int |
+| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long |
+| <a name="bool" /> bool |  | bool | boolean | boolean |
+| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode |
+| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str |
 
