@@ -14,7 +14,7 @@ lint:
 	golint `go list ./... | grep -v /vendor/`
 
 generate:
-    go generate ./...
+	go generate ./...
 
 protos:
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)

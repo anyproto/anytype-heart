@@ -24,7 +24,6 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.2.6
-	github.com/jbenet/goprocess v0.1.4
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/libp2p/go-libp2p v0.8.3
 	github.com/libp2p/go-libp2p-connmgr v0.2.1

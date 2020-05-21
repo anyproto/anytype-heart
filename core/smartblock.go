@@ -94,6 +94,7 @@ type SmartBlock interface {
 	ID() string
 	Type() SmartBlockType
 	Creator() (string, error)
+	BaseSchema() SmartBlockSchema
 	GetLastSnapshot() (SmartBlockSnapshot, error)
 	// GetLastDownloadedVersion returns tha last snapshot and all full-downloaded changes
 	GetLastDownloadedVersion() (*SmartBlockVersion, error)
@@ -153,6 +154,10 @@ func (block *smartBlock) Type() SmartBlockType {
 	}
 
 	return t
+}
+
+func (block *smartBlock) BaseSchema() SmartBlockSchema {
+	return smartBlockBaseSchema(block.Type())
 }
 
 func (block *smartBlock) ID() string {
