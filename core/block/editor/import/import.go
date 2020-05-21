@@ -124,51 +124,23 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	}
 
 	for name := range nameToBlocks {
-		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
-		//nameToBlocksAfterCsv[name] = [][]*model.Block{}
 		for i, b := range nameToBlocks[name] {
-			var links []*model.Block
-			//nameToBlocksAfterCsv[name] = [][]*model.Block{} //make([][]*model.Block, len(nameToBlocks[name]))
-
 			nameToBlocksAfterCsv[name] = append(nameToBlocksAfterCsv[name], []*model.Block{nameToBlocks[name][i]})
 
-			if f := b.GetFile(); f != nil {
-
-				// 1. Is it CSV?
-				if filepath.Ext(f.Name) == ".csv" {
-
-					// 2. If it is, create links to pages
-					//fmt.Println("CONVERT:", f.Name)
-					csvName := strings.Replace(f.Name, req.ImportPath+"/", "", -1)
-					//fmt.Println("> name:", csvName)
-					//fmt.Println("> file:", string(files[csvName]))
-					links, isPageLinked = imp.convertCsvToLinks(files[csvName], b, isPageLinked, nameToId, files)
-
-					//fmt.Println("!!!   LEN:", len(nameToBlocks[name]), "name:", name, "I:", i)
-					//newBlocks = nameToBlocks[name][:i]
-					//newBlocks = imp.insertInstead(nameToBlocks[name], links, i)
-					nameToBlocksAfterCsv[name][i] = links
-
-					//if len(nameToBlocks[name]) > i {
-					//	newBlocks = append(newBlocks, nameToBlocks[name][i:]...)
-					//}
-
-					//nameToBlocksAfterCsv[name] = newBlocks
-				}
+			if f := b.GetFile(); f != nil && filepath.Ext(f.Name) == ".csv" {
+				csvName := strings.Replace(f.Name, req.ImportPath+"/", "", -1)
+				nameToBlocksAfterCsv[name][i], isPageLinked = imp.convertCsvToLinks(files[csvName], b, isPageLinked, nameToId, files)
 			}
-
 		}
 	}
+
 	for name := range nameToBlocksAfterCsv {
 		nameToBlocks[name] = []*model.Block{}
 		for i := range nameToBlocksAfterCsv[name] {
-			index := 0
 			for j := range nameToBlocksAfterCsv[name][i] {
 				nameToBlocks[name] = append(nameToBlocks[name], nameToBlocksAfterCsv[name][i][j])
-				index += 1
 			}
 		}
-
 	}
 
 	log.Debug("2. ImportMarkdown: start to paste blocks")
@@ -456,7 +428,7 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 		records = append(records, strings.Split(str, ","))
 	}
 
-	//headers := records[0]
+	headers := records[0]
 	//fmt.Println("@convertCsvToLinks headers:", headers)
 	// remove headers
 	records = records[1:]
@@ -510,6 +482,18 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 		//fmt.Println("---------\ni:", i, "\n   TARGET ID:", targetId, "\n   shortpath:", shortPath, "\n   filename:", fileName)
 		// TODO: if no targetId
 
+		fields := make(map[string]*types.Value)
+
+		for h, header := range headers {
+			fields[header] = &types.Value{
+				Kind: &types.Value_StringValue{StringValue: record[h]},
+			}
+		}
+
+		fields["name"] = &types.Value{
+			Kind: &types.Value_StringValue{StringValue: record[0]},
+		}
+
 		blocks = append(blocks, &model.Block{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfLink{
@@ -517,12 +501,7 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 					TargetBlockId: targetId,
 					Style:         model.BlockContentLink_Page,
 					Fields: &types.Struct{
-						Fields: map[string]*types.Value{
-							"name": &types.Value{
-								Kind: &types.Value_StringValue{StringValue: record[0]},
-								// TODO: other fields
-							},
-						},
+						Fields: fields,
 					},
 				},
 			},
