@@ -199,7 +199,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				FN := strings.Split(f.Name, "/")
 
 				tmpFile, err := os.Create(filepath.Join(os.TempDir(), FN[len(FN)-1]))
-				fmt.Println("FN[len(FN)-1]", FN[len(FN)-1], tmpFile.Name())
+				fmt.Println("FN[len(FN)-1]", tmpFile.Name())
 				fName := strings.ReplaceAll(f.Name, req.ImportPath+"/", "")
 				w := bufio.NewWriter(tmpFile)
 
@@ -218,6 +218,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 					log.Fatal(err)
 				}
 
+				fmt.Println("@@@@@tmpFile.Name()", tmpFile.Name())
 				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
 					ContextId: nameToId[name],
 					BlockId:   b.Id,
