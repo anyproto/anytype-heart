@@ -17,7 +17,7 @@ type SmartblockRecord struct {
 	ID     string
 	PrevID string
 	//LogID string
-	payload []byte
+	Payload []byte
 }
 
 type SignedPbPayload struct {
@@ -45,7 +45,7 @@ func (p *SignedPbPayload) Unmarshal(out proto.Message) error {
 }
 
 func (p *SmartblockRecord) Unmarshal(out proto.Message) error {
-	return proto.Unmarshal(p.payload, out)
+	return proto.Unmarshal(p.Payload, out)
 }
 
 func (p *SignedPbPayload) Verify() error {

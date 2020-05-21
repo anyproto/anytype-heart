@@ -540,7 +540,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 		ID:     rid.String(),
 		PrevID: prevID,
 		//LogID:      m.AccAddr,
-		payload: m.Data,
+		Payload: m.Data,
 	}, nil
 }
 
