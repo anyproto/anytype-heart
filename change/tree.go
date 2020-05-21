@@ -1,6 +1,7 @@
 package change
 
 import (
+	"bytes"
 	"crypto/md5"
 	"fmt"
 	"sort"
@@ -162,4 +163,18 @@ func (t *Tree) Hash() string {
 		return true
 	})
 	return fmt.Sprintf("%d-%x", n, h.Sum(nil))
+}
+
+func (t *Tree) Len() int {
+	return len(t.attached)
+}
+
+func (t *Tree) String() string {
+	var buf = bytes.NewBuffer(nil)
+	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
+		buf.WriteString("->")
+		buf.WriteString(c.Id)
+		return true
+	})
+	return buf.String()
 }

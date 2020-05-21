@@ -12,7 +12,7 @@ import (
 
 type StateBuilder struct {
 	cache      map[string]*Change
-	changeTree *Tree
+	Tree       *Tree
 	smartblock core.SmartBlock
 }
 
@@ -43,21 +43,22 @@ func (sb *StateBuilder) buildTree(heads []string, breakpoint string) (err error)
 	if err != nil {
 		return
 	}
-	sb.changeTree = new(Tree)
-	sb.changeTree.Add(ch)
+	sb.Tree = new(Tree)
+	sb.Tree.Add(ch)
 	var changes = make([]*Change, 0, len(heads)*2)
+	var uniqMap = map[string]struct{}{breakpoint: {}}
 	for _, id := range heads {
-		changes, err = sb.loadChangesFor(id, breakpoint, changes)
+		changes, err = sb.loadChangesFor(id, uniqMap, changes)
 		if err != nil {
 			return
 		}
 	}
-	sb.changeTree.Add(changes...)
+	sb.Tree.Add(changes...)
 	return
 }
 
-func (sb *StateBuilder) loadChangesFor(id, breakpoint string, buf []*Change) ([]*Change, error) {
-	if id == breakpoint {
+func (sb *StateBuilder) loadChangesFor(id string, uniqMap map[string]struct{}, buf []*Change) ([]*Change, error) {
+	if _, exists := uniqMap[id]; exists {
 		return buf, nil
 	}
 	ch, err := sb.loadChange(id)
@@ -65,13 +66,11 @@ func (sb *StateBuilder) loadChangesFor(id, breakpoint string, buf []*Change) ([]
 		return nil, err
 	}
 	for _, prev := range ch.PreviousIds {
-		if prev == breakpoint {
-			break
-		}
-		if buf, err = sb.loadChangesFor(prev, breakpoint, buf); err != nil {
+		if buf, err = sb.loadChangesFor(prev, uniqMap, buf); err != nil {
 			return nil, err
 		}
 	}
+	uniqMap[id] = struct{}{}
 	return append(buf, ch), nil
 }
 
@@ -125,9 +124,9 @@ func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 		for {
 			lid1 := t1[len(t1)-1]
 			if lid1 != "" {
-				l1, err := sb.loadChange(lid1)
-				if err != nil {
-					return
+				l1, e := sb.loadChange(lid1)
+				if e != nil {
+					return "", e
 				}
 				if l1.LastSnapshotId != "" {
 					if slice.FindPos(t2, l1.LastSnapshotId) != -1 {
@@ -138,9 +137,9 @@ func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			}
 			lid2 := t2[len(t2)-1]
 			if lid2 != "" {
-				l2, err := sb.loadChange(t2[len(t2)-1])
-				if err != nil {
-					return
+				l2, e := sb.loadChange(t2[len(t2)-1])
+				if e != nil {
+					return "", e
 				}
 				if l2.LastSnapshotId != "" {
 					if slice.FindPos(t1, l2.LastSnapshotId) != -1 {
@@ -163,9 +162,9 @@ func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 
 	for len(snapshotIds) > 1 {
 		l := len(snapshotIds)
-		shId, err := findCommon(snapshotIds[l-2], snapshotIds[l-1])
-		if err != nil {
-			return
+		shId, e := findCommon(snapshotIds[l-2], snapshotIds[l-1])
+		if e != nil {
+			return "", e
 		}
 		snapshotIds[l-2] = shId
 		snapshotIds = snapshotIds[:l-1]
@@ -186,8 +185,10 @@ func (sb *StateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 		if err != nil {
 			return nil, err
 		}
-		for _, headId := range sh.Snapshot.LogHeads {
-			knownHeads = append(knownHeads, headId)
+		if sh.Snapshot.LogHeads != nil {
+			for _, headId := range sh.Snapshot.LogHeads {
+				knownHeads = append(knownHeads, headId)
+			}
 		}
 	}
 	for _, l := range logs {
@@ -215,7 +216,7 @@ func (sb *StateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 	if sch.Snapshot == nil {
 		return nil, fmt.Errorf("snapshot %s is empty", ch.LastSnapshotId)
 	}
-	return
+	return sch, nil
 }
 
 func (sb *StateBuilder) loadChange(id string) (ch *Change, err error) {
