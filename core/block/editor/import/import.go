@@ -87,7 +87,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 
 		fArr := strings.Split(fileName, " ")
-		fileName = strings.Join(fArr[:len(fArr)-1], "")
+		fileName = strings.Join(fArr[:len(fArr)-1], " ")
 
 		// FIELD-BLOCK
 		fields := map[string]*types.Value{
