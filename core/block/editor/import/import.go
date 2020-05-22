@@ -59,13 +59,9 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	nameToBlocksAfterCsv := make(map[string][][]*model.Block)
 
 	nameToBlocks, isPageLinked, files, err = imp.DirWithMarkdownToBlocks(req.ImportPath)
+
 	filesCount := len(files)
-	////fmt.Println("FILES COUNT:", filesCount)
-
-	//for n, _ := range files {
-	//	//fmt.Println("@@@files:", n)
-	//}
-
+	log.Debug("FILES COUNT:", filesCount)
 	nameToId := make(map[string]string)
 
 	for name := range nameToBlocks {
@@ -99,7 +95,6 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			"iconEmoji": pbtypes.String(slice.GetRandomString(articleIcons, fileName)),
 		}
 
-		////fmt.Println(nameToBlocks[name][1])
 		if len(nameToBlocks[name]) > 0 {
 			nameToBlocks[name], fields = imp.processFieldBlockIfItIs(nameToBlocks[name], fields)
 		}
@@ -397,7 +392,8 @@ func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) 
 
 	fName = importPath + "/" + fName
 
-	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"} // "svg" excluded
+	// "svg" excluded
+	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
 	videoFormats := []string{"mp4", "m4v"}
 
 	fileType := model.BlockContentFile_File
@@ -428,25 +424,16 @@ func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) 
 }
 
 func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isPageLinked map[string]bool, nameToId map[string]string, files map[string][]byte) (blocks []*model.Block, newIsPageLinked map[string]bool) {
-	//////fmt.Println("@convertCsvToLinks", block, string(csvData), "\n---------------------")
-	//newIsPageLinked = isPageLinked
+	var records [][]string
 
-	records := [][]string{}
 	for _, str := range strings.Split(string(csvData), "\n") {
 		records = append(records, strings.Split(str, ","))
 	}
 
 	headers := records[0]
-	////fmt.Println("@convertCsvToLinks headers:", headers)
-	// remove headers
 	records = records[1:]
-
-	////fmt.Println("@convertCsvToLinks records:", records)
-
-	////fmt.Println("--------------------\n\nnametoIds:", nameToId, "\n---------------")
-	//headerText := ""
 	nameArr := strings.Split(block.GetFile().Name, "/")
-	//headerText := nameArr[len(nameArr) - 1]
+
 	headerLastElArr := strings.Split(nameArr[len(nameArr)-1], " ")
 	headerLastElArr = headerLastElArr[:len(headerLastElArr)-1]
 
@@ -458,38 +445,25 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 		}},
 	})
 
-	/*	for name, _ := range files {
-		////fmt.Println("FILENAME:", name)
-	}*/
 	for _, record := range records {
-		//fileName := strings.TrimSpace(record[0])
 		fileName := record[0]
-		////fmt.Println("###BEFORE:", fileName)
 		fileName = strings.ReplaceAll(fileName, `"`, "")
-		//fileName = strings.ReplaceAll(fileName, `"`, "")
-		//fileName = strings.TrimSpace(record[0])
-		////fmt.Println("###AFTER:", fileName)
-
 		shortPath := ""
 		for name, _ := range files {
 			nameSects := strings.Split(name, "/")
-			////fmt.Println("nameSects:", nameSects, "filename:", fileName, "contains: ", strings.Contains(nameSects[len(nameSects)-1], fileName))
 			if strings.Contains(nameSects[len(nameSects)-1], fileName) && filepath.Ext(nameSects[len(nameSects)-1]) == ".md" {
 				shortPath = name
 			}
 		}
 
-		//////fmt.Printf("          range records i: %d rec: %s path: %s\n", i, record, shortPath)
 		targetId := nameToId[shortPath]
 		if len(targetId) == 0 {
-			////fmt.Printf("ERROR, target (%s) with shortpath (%s) not found (%s)\n", fileName, shortPath, nameToId[shortPath])
+			log.Warn("WARNING! target (%s) with shortpath (%s) not found (%s)\n", fileName, shortPath, nameToId[shortPath])
 		} else {
 			isPageLinked[shortPath] = true
 		}
 
-		////fmt.Println("---------\ni:", i, "\n   TARGET ID:", targetId, "\n   shortpath:", shortPath, "\n   filename:", fileName)
 		// TODO: if no targetId
-
 		fields := make(map[string]*types.Value)
 
 		for h, header := range headers {
@@ -515,12 +489,11 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 			},
 		})
 	}
-	////fmt.Println("            BLOCKS OUT:", blocks)
+
 	return blocks, isPageLinked
 }
 
 func (imp *importImpl) insertInstead(blocks []*model.Block, links []*model.Block, i int) (blocksOut []*model.Block) {
-	////fmt.Println("BLOCKS BEFORE:", blocks)
 	blocksOut = append(blocks[:0:0], blocks[:i]...)
 	blocksOut = append(blocksOut, links...)
 	if len(blocks) > i {
@@ -528,7 +501,6 @@ func (imp *importImpl) insertInstead(blocks []*model.Block, links []*model.Block
 		blocksEnd = append(blocks[:0:0], blocks[i+1:]...)
 		blocksOut = append(blocksOut, blocksEnd...)
 	}
-	////fmt.Println("BLOCKS AFTER:", blocksOut)
 	return blocksOut
 }
 
