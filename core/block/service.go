@@ -115,6 +115,8 @@ type Service interface {
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
 
+	SimplePaste(contextId string, anySlot []*model.Block) (err error)
+
 	Close() error
 }
 
@@ -384,6 +386,18 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 	}
 
 	return err
+}
+
+func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err error) {
+	var blocks []simple.Block
+
+	for _, b := range anySlot {
+		blocks = append(blocks, simple.New(b))
+	}
+
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.InternalPaste(blocks)
+	})
 }
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {

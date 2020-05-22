@@ -45,7 +45,7 @@ type importImpl struct {
 
 type Services interface {
 	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
-	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
+	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
 }
 
@@ -150,10 +150,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	for name := range nameToBlocks {
 		if len(nameToBlocks[name]) > 0 {
 			log.Debug("   >>> start to paste to page:", name)
-			_, _, _, err = imp.ctrl.Paste(ctx, pb.RpcBlockPasteRequest{
-				ContextId: nameToId[name],
-				AnySlot:   nameToBlocks[name],
-			})
+			err = imp.ctrl.SimplePaste(nameToId[name], nameToBlocks[name])
 		}
 
 		if err != nil {
@@ -493,22 +490,10 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 	return blocks, isPageLinked
 }
 
-func (imp *importImpl) insertInstead(blocks []*model.Block, links []*model.Block, i int) (blocksOut []*model.Block) {
-	blocksOut = append(blocks[:0:0], blocks[:i]...)
-	blocksOut = append(blocksOut, links...)
-	if len(blocks) > i {
-		blocksEnd := []*model.Block{}
-		blocksEnd = append(blocks[:0:0], blocks[i+1:]...)
-		blocksOut = append(blocksOut, blocksEnd...)
-	}
-	return blocksOut
-}
-
 func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map[string]*types.Value) (blocksOut []*model.Block, fieldsOut map[string]*types.Value) {
-	if len(blocks) < 2 {
+	if len(blocks) < 2 || blocks[1].GetText() == nil {
 		return blocks, fields
 	}
-
 	blocksOut = blocks
 
 	txt := blocks[1].GetText().Text
