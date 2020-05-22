@@ -1,5 +1,10 @@
 package slice
 
+import (
+	"hash/fnv"
+	"math/rand"
+)
+
 func FindPos(s []string, v string) int {
 	for i, sv := range s {
 		if sv == v {
@@ -28,6 +33,17 @@ func Remove(s []string, v string) []string {
 		}
 	}
 	return s[:n]
+}
+
+func GetRandomString(s []string, seed string) string {
+	rand.Seed(int64(hash(seed)))
+	return s[rand.Intn(len(s))]
+}
+
+func hash(s string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return h.Sum64()
 }
 
 func SortedEquals(s1, s2 []string) bool {
