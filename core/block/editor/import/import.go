@@ -100,7 +100,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 
 		if len(nameToBlocks[name]) > 0 {
-			nameToBlocks[name], fields = imp.processFieldBlockIfItIs(nameToBlocks[name], fields)
+			nameToBlocks[name], fields, isPageLinked = imp.processFieldBlockIfItIs(nameToBlocks[name], fields, isPageLinked, files, nameToId)
 		}
 
 		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{
@@ -494,31 +494,97 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 	return blocks, isPageLinked
 }
 
-func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map[string]*types.Value) (blocksOut []*model.Block, fieldsOut map[string]*types.Value) {
+func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map[string]*types.Value, isPageLinked map[string]bool, files map[string][]byte, nameToId map[string]string) (blocksOut []*model.Block, fieldsOut map[string]*types.Value, isPageLinkedOut map[string]bool) {
 	if len(blocks) < 2 || blocks[1].GetText() == nil {
-		return blocks, fields
+		return blocks, fields, isPageLinked
 	}
 	blocksOut = blocks
 
 	txt := blocks[1].GetText().Text
 	potentialPairs := strings.Split(txt, "\n")
 	potentialFields := make(map[string]*types.Value)
+	var keyVals [][]string
+	var potentialLinks []*model.Block
 
 	for _, pair := range potentialPairs {
+		if pair[len(pair)-3:] != ".md" {
+			continue
+		}
+
 		keyVal := strings.Split(pair, ":")
+		keyVals = append(keyVals, keyVal)
 		if len(keyVal) != 2 {
-			return blocksOut, fields
+			return blocksOut, fields, isPageLinked
 		}
 
 		potentialFields[keyVal[0]] = pbtypes.String(keyVal[1])
+	}
+
+	for _, keyVal := range keyVals {
+		targetId := ""
+		potentialFileNames := strings.Split(keyVal[1], ",")
+		fmt.Println("@potentialFileNames:", potentialFileNames)
+		for _, potentialFileName := range potentialFileNames {
+			potentialFileName, _ = url.PathUnescape(potentialFileName)
+			potentialFileName = strings.ReplaceAll(potentialFileName, `"`, "")
+			potentialFileNameSects := strings.Split(potentialFileName, "/")
+
+			fmt.Println("     potentialFileName:", potentialFileName)
+			shortPath := ""
+			for name, _ := range files {
+				nameSects := strings.Split(name, "/")
+				fmt.Println("     CHECK:::", nameSects[len(nameSects)-1], potentialFileNameSects[len(potentialFileNameSects)-1], strings.Contains(nameSects[len(nameSects)-1], potentialFileNameSects[len(potentialFileNameSects)-1]))
+
+				//potentialFileId :=
+				if strings.Contains(nameSects[len(nameSects)-1], potentialFileNameSects[len(potentialFileNameSects)-1]) &&
+					filepath.Ext(nameSects[len(nameSects)-1]) == ".md" {
+					shortPath = name
+
+				}
+			}
+
+			targetId = nameToId[shortPath]
+			if len(targetId) == 0 {
+
+			} else {
+				fmt.Println("     TARGET FOUND:", targetId)
+				isPageLinked[shortPath] = true
+
+				potentialLinks = append(potentialLinks, &model.Block{
+					Id: uuid.New().String(),
+					Content: &model.BlockContentOfLink{
+						Link: &model.BlockContentLink{
+							TargetBlockId: targetId,
+							Style:         model.BlockContentLink_Page,
+							Fields: &types.Struct{
+								Fields: fields,
+							},
+						},
+					},
+				})
+
+			}
+
+		}
+
 	}
 
 	for k, _ := range potentialFields {
 		fields[k] = potentialFields[k]
 	}
 
-	// TODO: do not remove while we can not render fields
-	// blocksOut = append(blocks[:1], blocks[2:]...)
+	if len(potentialLinks) > 0 {
+		potentialLinks = append([]*model.Block{{
+			Id: uuid.New().String(),
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:  "Field links",
+				Style: model.BlockContentText_Header3,
+			}},
+		}}, potentialLinks...)
+	}
 
-	return blocksOut, fields
+	// TODO: do not remove while we can not render fields
+	blocksOut = append(potentialLinks, blocksOut...)
+
+	return blocksOut, fields, isPageLinked
 }

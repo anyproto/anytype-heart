@@ -586,23 +586,23 @@ func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte)
 }
 
 func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error) {
-	rootLinks := []*model.Block{}
+	var rootLinks []*model.Block
 	err = s.DoImport(req.ContextId, func(imp _import.Import) error {
 		rootLinks, err = imp.ImportMarkdown(ctx, req)
 		return err
 	})
-
-	_, _, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
-		ContextId: req.ContextId,
-		AnySlot:   rootLinks,
-	})
-
-	for _, r := range rootLinks {
-		rootLinkIds = append(rootLinkIds, r.Id)
+	if err != nil {
+		return rootLinkIds, err
 	}
+
+	err = s.SimplePaste(req.ContextId, rootLinks)
 
 	if err != nil {
 		return rootLinkIds, err
+	}
+
+	for _, r := range rootLinks {
+		rootLinkIds = append(rootLinkIds, r.Id)
 	}
 
 	return rootLinkIds, err
@@ -830,7 +830,7 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("basic operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
@@ -844,7 +844,7 @@ func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("clipboard operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoText(id string, apply func(b stext.Text) error) error {
@@ -858,7 +858,7 @@ func (s *service) DoText(id string, apply func(b stext.Text) error) error {
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("text operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoFile(id string, apply func(b file.File) error) error {
@@ -872,7 +872,7 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("file operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
@@ -886,7 +886,7 @@ func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("bookmark operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
@@ -898,7 +898,7 @@ func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error 
 	if bb, ok := sb.(file.File); ok {
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error {
@@ -912,7 +912,7 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("history operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
@@ -927,7 +927,7 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 		return apply(bb)
 	}
 
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("import operation not available for this block type: %T", sb)
 }
 
 func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
