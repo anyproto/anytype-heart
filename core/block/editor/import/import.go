@@ -60,11 +60,11 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 
 	nameToBlocks, isPageLinked, files, err = imp.DirWithMarkdownToBlocks(req.ImportPath)
 	filesCount := len(files)
-	//fmt.Println("FILES COUNT:", filesCount)
+	////fmt.Println("FILES COUNT:", filesCount)
 
-	for n, _ := range files {
-		fmt.Println("@@@files:", n)
-	}
+	//for n, _ := range files {
+	//	//fmt.Println("@@@files:", n)
+	//}
 
 	nameToId := make(map[string]string)
 
@@ -93,12 +93,20 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		fArr := strings.Split(fileName, " ")
 		fileName = strings.Join(fArr[:len(fArr)-1], "")
 
+		// FIELD-BLOCK
+		fields := map[string]*types.Value{
+			"name":      pbtypes.String(fileName),
+			"iconEmoji": pbtypes.String(slice.GetRandomString(articleIcons, fileName)),
+		}
+
+		////fmt.Println(nameToBlocks[name][1])
+		if len(nameToBlocks[name]) > 0 {
+			nameToBlocks[name], fields = imp.processFieldBlockIfItIs(nameToBlocks[name], fields)
+		}
+
 		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{
 			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					"name":      pbtypes.String(fileName),
-					"iconEmoji": pbtypes.String(slice.GetRandomString(articleIcons, fileName)),
-				},
+				Fields: fields,
 			},
 		})
 
@@ -420,7 +428,7 @@ func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) 
 }
 
 func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isPageLinked map[string]bool, nameToId map[string]string, files map[string][]byte) (blocks []*model.Block, newIsPageLinked map[string]bool) {
-	////fmt.Println("@convertCsvToLinks", block, string(csvData), "\n---------------------")
+	//////fmt.Println("@convertCsvToLinks", block, string(csvData), "\n---------------------")
 	//newIsPageLinked = isPageLinked
 
 	records := [][]string{}
@@ -429,13 +437,13 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 	}
 
 	headers := records[0]
-	//fmt.Println("@convertCsvToLinks headers:", headers)
+	////fmt.Println("@convertCsvToLinks headers:", headers)
 	// remove headers
 	records = records[1:]
 
-	//fmt.Println("@convertCsvToLinks records:", records)
+	////fmt.Println("@convertCsvToLinks records:", records)
 
-	//fmt.Println("--------------------\n\nnametoIds:", nameToId, "\n---------------")
+	////fmt.Println("--------------------\n\nnametoIds:", nameToId, "\n---------------")
 	//headerText := ""
 	nameArr := strings.Split(block.GetFile().Name, "/")
 	//headerText := nameArr[len(nameArr) - 1]
@@ -451,35 +459,35 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 	})
 
 	/*	for name, _ := range files {
-		//fmt.Println("FILENAME:", name)
+		////fmt.Println("FILENAME:", name)
 	}*/
 	for _, record := range records {
 		//fileName := strings.TrimSpace(record[0])
 		fileName := record[0]
-		//fmt.Println("###BEFORE:", fileName)
+		////fmt.Println("###BEFORE:", fileName)
 		fileName = strings.ReplaceAll(fileName, `"`, "")
 		//fileName = strings.ReplaceAll(fileName, `"`, "")
 		//fileName = strings.TrimSpace(record[0])
-		//fmt.Println("###AFTER:", fileName)
+		////fmt.Println("###AFTER:", fileName)
 
 		shortPath := ""
 		for name, _ := range files {
 			nameSects := strings.Split(name, "/")
-			//fmt.Println("nameSects:", nameSects, "filename:", fileName, "contains: ", strings.Contains(nameSects[len(nameSects)-1], fileName))
+			////fmt.Println("nameSects:", nameSects, "filename:", fileName, "contains: ", strings.Contains(nameSects[len(nameSects)-1], fileName))
 			if strings.Contains(nameSects[len(nameSects)-1], fileName) && filepath.Ext(nameSects[len(nameSects)-1]) == ".md" {
 				shortPath = name
 			}
 		}
 
-		////fmt.Printf("          range records i: %d rec: %s path: %s\n", i, record, shortPath)
+		//////fmt.Printf("          range records i: %d rec: %s path: %s\n", i, record, shortPath)
 		targetId := nameToId[shortPath]
 		if len(targetId) == 0 {
-			//fmt.Printf("ERROR, target (%s) with shortpath (%s) not found (%s)\n", fileName, shortPath, nameToId[shortPath])
+			////fmt.Printf("ERROR, target (%s) with shortpath (%s) not found (%s)\n", fileName, shortPath, nameToId[shortPath])
 		} else {
 			isPageLinked[shortPath] = true
 		}
 
-		//fmt.Println("---------\ni:", i, "\n   TARGET ID:", targetId, "\n   shortpath:", shortPath, "\n   filename:", fileName)
+		////fmt.Println("---------\ni:", i, "\n   TARGET ID:", targetId, "\n   shortpath:", shortPath, "\n   filename:", fileName)
 		// TODO: if no targetId
 
 		fields := make(map[string]*types.Value)
@@ -507,12 +515,12 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 			},
 		})
 	}
-	//fmt.Println("            BLOCKS OUT:", blocks)
+	////fmt.Println("            BLOCKS OUT:", blocks)
 	return blocks, isPageLinked
 }
 
 func (imp *importImpl) insertInstead(blocks []*model.Block, links []*model.Block, i int) (blocksOut []*model.Block) {
-	//fmt.Println("BLOCKS BEFORE:", blocks)
+	////fmt.Println("BLOCKS BEFORE:", blocks)
 	blocksOut = append(blocks[:0:0], blocks[:i]...)
 	blocksOut = append(blocksOut, links...)
 	if len(blocks) > i {
@@ -520,35 +528,31 @@ func (imp *importImpl) insertInstead(blocks []*model.Block, links []*model.Block
 		blocksEnd = append(blocks[:0:0], blocks[i+1:]...)
 		blocksOut = append(blocksOut, blocksEnd...)
 	}
-	//fmt.Println("BLOCKS AFTER:", blocksOut)
+	////fmt.Println("BLOCKS AFTER:", blocksOut)
 	return blocksOut
 }
 
-/*
-func (imp *importImpl) parseCsv (path string) (records [][]string, err error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return records, err
+func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map[string]*types.Value) (blocksOut []*model.Block, fieldsOut map[string]*types.Value) {
+	if len(blocks) < 2 {
+		return blocks, fields
 	}
-	// automatically call Close() at the end of current method
-	defer file.Close()
 
-	reader := csv.NewReader(file)
-	// options are available at: http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
-	reader.Comma = ','
+	blocksOut = blocks
 
-	for {
-		// read just one record, but we could ReadAll() as well
-		record, err := reader.Read()
-		// end-of-file is fitted into err
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return records, err
+	txt := blocks[1].GetText().Text
+	potentialPairs := strings.Split(txt, "\n")
+
+	for _, pair := range potentialPairs {
+		keyVal := strings.Split(pair, ":")
+		if len(keyVal) != 2 {
+			return blocksOut, fields
 		}
-		records = append(records, record)
+
+		fields[keyVal[0]] = pbtypes.String(keyVal[1])
 	}
 
-	return records, nil
+	// TODO: do not remove while we can not render fields
+	// blocksOut = append(blocks[:1], blocks[2:]...)
+
+	return blocksOut, fields
 }
-*/

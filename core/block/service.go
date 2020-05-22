@@ -726,7 +726,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	case pb.SmartBlockType_Page:
 		sb = editor.NewPage(s, s, s, s.linkPreview)
 	case pb.SmartBlockType_Home:
-		sb = editor.NewDashboard()
+		sb = editor.NewDashboard(s)
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case pb.SmartBlockType_ProfilePage:

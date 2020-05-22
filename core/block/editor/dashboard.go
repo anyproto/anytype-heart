@@ -3,6 +3,8 @@ package editor
 import (
 	"fmt"
 
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -10,17 +12,19 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 )
 
-func NewDashboard() *Dashboard {
+func NewDashboard(importServices _import.Services) *Dashboard {
 	sb := smartblock.New()
 	return &Dashboard{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
+		Import:     _import.NewImport(sb, importServices),
 	}
 }
 
 type Dashboard struct {
 	smartblock.SmartBlock
 	basic.Basic
+	_import.Import
 }
 
 func (p *Dashboard) Init(s source.Source) (err error) {
