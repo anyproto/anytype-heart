@@ -595,10 +595,26 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 		return rootLinkIds, err
 	}
 
-	err = s.SimplePaste(req.ContextId, rootLinks)
+	if len(rootLinks) == 1 {
+		err = s.SimplePaste(req.ContextId, rootLinks)
 
-	if err != nil {
-		return rootLinkIds, err
+		if err != nil {
+			return rootLinkIds, err
+		}
+	} else {
+		_, pageId, err := s.CreatePage(ctx, pb.RpcBlockCreatePageRequest{
+			ContextId: req.ContextId,
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				"name":      pbtypes.String("Import from Notion"),
+				"iconEmoji": pbtypes.String("📁"),
+			}},
+		})
+
+		if err != nil {
+			return rootLinkIds, err
+		}
+
+		err = s.SimplePaste(pageId, rootLinks)
 	}
 
 	for _, r := range rootLinks {

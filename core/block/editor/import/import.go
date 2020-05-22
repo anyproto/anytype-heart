@@ -527,19 +527,12 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 		for _, potentialFileName := range potentialFileNames {
 			potentialFileName, _ = url.PathUnescape(potentialFileName)
 			potentialFileName = strings.ReplaceAll(potentialFileName, `"`, "")
-			potentialFileNameSects := strings.Split(potentialFileName, "/")
 
 			fmt.Println("     potentialFileName:", potentialFileName)
 			shortPath := ""
 			for name, _ := range files {
-				nameSects := strings.Split(name, "/")
-				fmt.Println("     CHECK:::", nameSects[len(nameSects)-1], potentialFileNameSects[len(potentialFileNameSects)-1], strings.Contains(nameSects[len(nameSects)-1], potentialFileNameSects[len(potentialFileNameSects)-1]))
-
-				//potentialFileId :=
-				if strings.Contains(nameSects[len(nameSects)-1], potentialFileNameSects[len(potentialFileNameSects)-1]) &&
-					filepath.Ext(nameSects[len(nameSects)-1]) == ".md" {
+				if imp.getIdFromPath(name) == imp.getIdFromPath(potentialFileName) {
 					shortPath = name
-
 				}
 			}
 
@@ -547,7 +540,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 			if len(targetId) == 0 {
 
 			} else {
-				fmt.Println("     TARGET FOUND:", targetId)
+				fmt.Println("     TARGET FOUND:", targetId, shortPath)
 				isPageLinked[shortPath] = true
 
 				potentialLinks = append(potentialLinks, &model.Block{
@@ -573,7 +566,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 		fields[k] = potentialFields[k]
 	}
 
-	if len(potentialLinks) > 0 {
+	/*	if len(potentialLinks) > 0 {
 		potentialLinks = append([]*model.Block{{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
@@ -581,10 +574,18 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 				Style: model.BlockContentText_Header3,
 			}},
 		}}, potentialLinks...)
-	}
+	}*/
 
-	// TODO: do not remove while we can not render fields
-	blocksOut = append(potentialLinks, blocksOut...)
+	blocksOut = append(blocksOut, potentialLinks...)
 
 	return blocksOut, fields, isPageLinked
+}
+
+func (imp *importImpl) getIdFromPath(path string) (id string) {
+	a := strings.Split(path, " ")
+	b := a[len(a)-1]
+	if len(b) < 3 {
+		return ""
+	}
+	return b[:len(b)-3]
 }
