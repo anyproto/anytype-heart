@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/google/uuid"
 )
 
 type Basic interface {
@@ -25,18 +26,18 @@ type Basic interface {
 }
 
 func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
-	contextState := bs.NewStateCtx(ctx)
+	s := bs.NewStateCtx(ctx)
 
 	for _, bId := range req.BlockIds {
-		b := contextState.Pick(bId)
+		b := s.Pick(bId)
 		if b != nil {
-			descendants := bs.getAllDescendants(b, []simple.Block{})
+			descendants := bs.getAllDescendants(b.Copy(), []simple.Block{})
 			blocks = append(blocks, descendants...)
-			contextState.Remove(b.Model().Id)
+			s.Remove(b.Model().Id)
 		}
 	}
 
-	err = bs.Apply(contextState)
+	err = bs.Apply(s)
 	if err != nil {
 		return blocks, err
 	}
@@ -45,28 +46,32 @@ func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 }
 
 func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
-	targetState := bs.NewState()
-	idToIsChild := make(map[string]bool)
+	s := bs.NewState()
+	childIdsRewrite := make(map[string]string)
 	for _, b := range blocks {
-		for _, cId := range b.Model().ChildrenIds {
-			idToIsChild[cId] = true
+		for i, cId := range b.Model().ChildrenIds {
+			newId := uuid.New().String()
+			childIdsRewrite[cId] = newId
+			b.Model().ChildrenIds[i] = newId
 		}
 	}
-
 	for _, b := range blocks {
-		targetState.Add(b)
-		if idToIsChild[b.Model().Id] != true {
-			err := targetState.InsertTo("", model.Block_Inner, b.Model().Id)
+		var child bool
+		if newId, ok := childIdsRewrite[b.Model().Id]; ok {
+			b.Model().Id = newId
+			child = true
+		} else {
+			b.Model().Id = uuid.New().String()
+		}
+		s.Add(b)
+		if !child {
+			err := s.InsertTo("", model.Block_Inner, b.Model().Id)
 			if err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
 	}
-
-	return bs.Apply(targetState)
+	return bs.Apply(s)
 }
 
 func NewBasic(sb smartblock.SmartBlock) Basic {
@@ -208,8 +213,7 @@ func (bs *basic) SetDivStyle(ctx *state.Context, style model.BlockContentDivStyl
 func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []simple.Block {
 	blocks = append(blocks, block)
 	for _, cId := range block.Model().ChildrenIds {
-		blocks = bs.getAllDescendants(bs.Pick(cId), blocks)
+		blocks = bs.getAllDescendants(bs.Pick(cId).Copy(), blocks)
 	}
-
 	return blocks
 }

@@ -282,8 +282,9 @@ func (s *State) Blocks() []*model.Block {
 }
 
 func (s *State) fillSlice(id string, blocks []*model.Block) []*model.Block {
-	blocks = append(blocks, s.blocks[id].Copy().Model())
-	for _, chId := range s.blocks[id].Model().ChildrenIds {
+	b := s.Pick(id)
+	blocks = append(blocks, b.Copy().Model())
+	for _, chId := range b.Model().ChildrenIds {
 		blocks = s.fillSlice(chId, blocks)
 	}
 	return blocks

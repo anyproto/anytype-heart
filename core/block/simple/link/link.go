@@ -26,6 +26,8 @@ func NewLink(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
+	FillSmartIds(ids []string) []string
+	HasSmartIds() bool
 }
 
 type Link struct {
@@ -67,4 +69,15 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes}})
 	}
 	return
+}
+
+func (l *Link) FillSmartIds(ids []string) []string {
+	if l.content.TargetBlockId != "" {
+		ids = append(ids, l.content.TargetBlockId)
+	}
+	return ids
+}
+
+func (l *Link) HasSmartIds() bool {
+	return l.content.TargetBlockId != ""
 }

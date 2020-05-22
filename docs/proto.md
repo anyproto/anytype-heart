@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -199,6 +195,11 @@
     - [Rpc.BlockList.ConvertChildrenToPages.Request](#anytype.Rpc.BlockList.ConvertChildrenToPages.Request)
     - [Rpc.BlockList.ConvertChildrenToPages.Response](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response)
     - [Rpc.BlockList.ConvertChildrenToPages.Response.Error](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error)
+    - [Rpc.BlockList.Delete](#anytype.Rpc.BlockList.Delete)
+    - [Rpc.BlockList.Delete.Page](#anytype.Rpc.BlockList.Delete.Page)
+    - [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request)
+    - [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response)
+    - [Rpc.BlockList.Delete.Page.Response.Error](#anytype.Rpc.BlockList.Delete.Page.Response.Error)
     - [Rpc.BlockList.Duplicate](#anytype.Rpc.BlockList.Duplicate)
     - [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request)
     - [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response)
@@ -230,6 +231,11 @@
     - [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField)
     - [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response)
     - [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error)
+    - [Rpc.BlockList.Set.Page](#anytype.Rpc.BlockList.Set.Page)
+    - [Rpc.BlockList.Set.Page.IsArchived](#anytype.Rpc.BlockList.Set.Page.IsArchived)
+    - [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request)
+    - [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response)
+    - [Rpc.BlockList.Set.Page.IsArchived.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
     - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
     - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
@@ -278,6 +284,15 @@
     - [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request)
     - [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response)
     - [Rpc.Log.Send.Response.Error](#anytype.Rpc.Log.Send.Response.Error)
+    - [Rpc.Navigation](#anytype.Rpc.Navigation)
+    - [Rpc.Navigation.GetPageInfoWithLinks](#anytype.Rpc.Navigation.GetPageInfoWithLinks)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error)
+    - [Rpc.Navigation.ListPages](#anytype.Rpc.Navigation.ListPages)
+    - [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request)
+    - [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response)
+    - [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error)
     - [Rpc.Ping](#anytype.Rpc.Ping)
     - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
     - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
@@ -353,6 +368,7 @@
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code)
+    - [Rpc.BlockList.Delete.Page.Response.Error.Code](#anytype.Rpc.BlockList.Delete.Page.Response.Error.Code)
     - [Rpc.BlockList.Duplicate.Response.Error.Code](#anytype.Rpc.BlockList.Duplicate.Response.Error.Code)
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
     - [Rpc.BlockList.MoveToNewPage.Response.Error.Code](#anytype.Rpc.BlockList.MoveToNewPage.Response.Error.Code)
@@ -360,6 +376,7 @@
     - [Rpc.BlockList.Set.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code)
     - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
+    - [Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
@@ -371,6 +388,8 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
+    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code)
+    - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
@@ -379,9 +398,6 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -448,15 +464,24 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
+- [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto)
+    - [PageDetails](#anytype.model.PageDetails)
+    - [PageInfo](#anytype.model.PageInfo)
+    - [PageInfoWithLinks](#anytype.model.PageInfoWithLinks)
+    - [PageInfoWithOutboundLinks](#anytype.model.PageInfoWithOutboundLinks)
+    - [PageInfoWithOutboundLinksIDs](#anytype.model.PageInfoWithOutboundLinksIDs)
+    - [PageLinks](#anytype.model.PageLinks)
+    - [PageLinksInfo](#anytype.model.PageLinksInfo)
+    - [State](#anytype.model.State)
+    - [State.StateEntry](#anytype.model.State.StateEntry)
   
-  
-
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
+    - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
@@ -470,6 +495,7 @@
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
+    - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
@@ -482,9 +508,6 @@
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -551,6 +574,8 @@
 | BlockListSetBackgroundColor | [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request) | [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response) |  |
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
+| BlockListSetPageIsArchived | [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request) | [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response) |  |
+| BlockListDeletePage | [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request) | [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
 | BlockListSetTextColor | [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request) | [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response) |  |
@@ -572,6 +597,8 @@
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
+| NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
+| NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
@@ -1065,6 +1092,7 @@ Precondition: block should be opened.
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype.model.Block) | repeated |  |
+| selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 
 
 
@@ -1080,7 +1108,9 @@ Precondition: block should be opened.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error) |  |  |
-| html | [string](#string) |  |  |
+| textSlot | [string](#string) |  |  |
+| htmlSlot | [string](#string) |  |  |
+| anySlot | [model.Block](#anytype.model.Block) | repeated |  |
 
 
 
@@ -1886,7 +1916,7 @@ Image/Video/File blocks then:
 | focusedBlockId | [string](#string) |  |  |
 | selectedTextRange | [model.Range](#anytype.model.Range) |  |  |
 | selectedBlockIds | [string](#string) | repeated |  |
-| copyTextRange | [model.Range](#anytype.model.Range) |  |  |
+| isPartOfBlock | [bool](#bool) |  |  |
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype.model.Block) | repeated |  |
@@ -1907,6 +1937,7 @@ Image/Video/File blocks then:
 | error | [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | caretPosition | [int32](#int32) |  |  |
+| isSameBlockCaret | [bool](#bool) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
@@ -3314,6 +3345,73 @@ Remove blocks from the childrenIds of its parents
 
 
 
+<a name="anytype.Rpc.BlockList.Delete"></a>
+
+### Rpc.BlockList.Delete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Delete.Page"></a>
+
+### Rpc.BlockList.Delete.Page
+Deletes the page, keys and all records from the local store and unsubscribe from remote changes
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Delete.Page.Request"></a>
+
+### Rpc.BlockList.Delete.Page.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockIds | [string](#string) | repeated | pages to remove |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Delete.Page.Response"></a>
+
+### Rpc.BlockList.Delete.Page.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Delete.Page.Response.Error](#anytype.Rpc.BlockList.Delete.Page.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Delete.Page.Response.Error"></a>
+
+### Rpc.BlockList.Delete.Page.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Delete.Page.Response.Error.Code](#anytype.Rpc.BlockList.Delete.Page.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Duplicate"></a>
 
 ### Rpc.BlockList.Duplicate
@@ -3762,6 +3860,74 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page"></a>
+
+### Rpc.BlockList.Set.Page
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsArchived"></a>
+
+### Rpc.BlockList.Set.Page.IsArchived
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Request"></a>
+
+### Rpc.BlockList.Set.Page.IsArchived.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| isArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Response"></a>
+
+### Rpc.BlockList.Set.Page.IsArchived.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Page.IsArchived.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error"></a>
+
+### Rpc.BlockList.Set.Page.IsArchived.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4423,6 +4589,125 @@ Usage: send request with topic (Level) and description (message) from client to 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation"></a>
+
+### Rpc.Navigation
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks
+Get the info for page alongside with info for all inbound and outbound links from/to this page
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Request"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error) |  |  |
+| page | [model.PageInfoWithLinks](#anytype.model.PageInfoWithLinks) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages"></a>
+
+### Rpc.Navigation.ListPages
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Request"></a>
+
+### Rpc.Navigation.ListPages.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response"></a>
+
+### Rpc.Navigation.ListPages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error) |  |  |
+| pages | [model.PageInfo](#anytype.model.PageInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response.Error"></a>
+
+### Rpc.Navigation.ListPages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -5438,6 +5723,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Delete.Page.Response.Error.Code"></a>
+
+### Rpc.BlockList.Delete.Page.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Duplicate.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Duplicate.Response.Error.Code
@@ -5519,6 +5817,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.BlockList.Set.Fields.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Fields.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -5683,6 +5994,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code"></a>
+
+### Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Navigation.ListPages.Response.Error.Code"></a>
+
+### Rpc.Navigation.ListPages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -6805,6 +7142,174 @@ Precondition: user A and user B opened the same block
 
 
 
+<a name="vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto
+
+
+
+<a name="anytype.model.PageDetails"></a>
+
+### PageDetails
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfo"></a>
+
+### PageInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| snippet | [string](#string) |  |  |
+| state | [State](#anytype.model.State) |  |  |
+| lastOpened | [int64](#int64) |  |  |
+| hasInboundLinks | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfoWithLinks"></a>
+
+### PageInfoWithLinks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| info | [PageInfo](#anytype.model.PageInfo) |  |  |
+| links | [PageLinksInfo](#anytype.model.PageLinksInfo) |  |  |
+| state | [State](#anytype.model.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfoWithOutboundLinks"></a>
+
+### PageInfoWithOutboundLinks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| info | [PageInfo](#anytype.model.PageInfo) |  |  |
+| outboundLinks | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+| state | [State](#anytype.model.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageInfoWithOutboundLinksIDs"></a>
+
+### PageInfoWithOutboundLinksIDs
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| info | [PageInfo](#anytype.model.PageInfo) |  |  |
+| outboundLinks | [string](#string) | repeated |  |
+| state | [State](#anytype.model.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.PageLinks"></a>
+
+### PageLinks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| inboundIDs | [string](#string) | repeated |  |
+| outboundIDs | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.PageLinksInfo"></a>
+
+### PageLinksInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| inbound | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+| outbound | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.State"></a>
+
+### State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [State.StateEntry](#anytype.model.State.StateEntry) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.State.StateEntry"></a>
+
+### State.StateEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [uint64](#uint64) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
 <a name="vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -6867,6 +7372,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | bookmark | [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark) |  |  |
 | icon | [Block.Content.Icon](#anytype.model.Block.Content.Icon) |  |  |
 | link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
+| dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 
 
 
@@ -6897,6 +7403,21 @@ Bookmark is to keep a web-link and to preview a content.
 | imageHash | [string](#string) |  |  |
 | faviconHash | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview"></a>
+
+### Block.Content.Dataview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| databaseId | [string](#string) |  |  |
 
 
 
@@ -7118,6 +7639,23 @@ General purpose structure, uses in Mark.
 
 
 
+
+<a name="anytype.model.SmartBlockSnapshotBase"></a>
+
+### SmartBlockSnapshotBase
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blocks | [Block](#anytype.model.Block) | repeated |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
  
 
 
@@ -7216,6 +7754,7 @@ General purpose structure, uses in Mark.
 | Link | 5 |  |
 | TextColor | 6 |  |
 | BackgroundColor | 7 |  |
+| Mention | 8 |  |
 
 
 

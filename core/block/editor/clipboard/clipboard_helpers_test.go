@@ -47,10 +47,10 @@ func rangePaste(sb *smarttest.SmartTest, t *testing.T, focusId string, focusRang
 		ContextId:         sb.Id(),
 		FocusedBlockId:    focusId,
 		SelectedTextRange: focusRange,
-		CopyTextRange:     copyRange,
+		IsPartOfBlock:     true,
 		AnySlot:           blocks,
 	}
-	_, _, _, err := cb.Paste(nil, req)
+	_, _, _, _, err := cb.Paste(nil, req)
 	require.NoError(t, err)
 }
 
@@ -245,7 +245,7 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 	req.AnySlot = blocks
 	req.SelectedTextRange = &textRange
 
-	_, _, _, err := cb.Paste(nil, req)
+	_, _, _, _, err := cb.Paste(nil, req)
 	require.NoError(t, err)
 }
 
@@ -261,7 +261,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	req.TextSlot = textSlot
 	req.SelectedTextRange = &textRange
 
-	_, _, _, err := cb.Paste(nil, req)
+	_, _, _, _, err := cb.Paste(nil, req)
 	require.NoError(t, err)
 }
 
@@ -277,6 +277,6 @@ func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 	req.HtmlSlot = htmlSlot
 	req.SelectedTextRange = &textRange
 
-	_, _, _, err := cb.Paste(nil, req)
+	_, _, _, _, err := cb.Paste(nil, req)
 	require.NoError(t, err)
 }

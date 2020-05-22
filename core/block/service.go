@@ -81,9 +81,9 @@ type Service interface {
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
-	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error)
+	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
-	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error)
+	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error)
@@ -108,6 +108,8 @@ type Service interface {
 	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) error
 
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
+	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
+	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
@@ -226,6 +228,35 @@ func (s *service) CloseBlock(id string) (err error) {
 	return ErrBlockNotFound
 }
 
+func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
+	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(*editor.Archive)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		anySucceed := false
+		for _, blockId := range req.BlockIds {
+			if req.IsArchived {
+				err = archive.Archive(blockId)
+			} else {
+				err = archive.UnArchive(blockId)
+			}
+			if err != nil {
+				log.Errorf("failed to archive %s: %s", blockId, err.Error())
+			} else {
+				anySucceed = true
+			}
+		}
+
+		if !anySucceed {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(*editor.Archive)
@@ -239,6 +270,40 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 		}
 		return nil
 	})
+}
+
+func (s *service) DeletePages(req pb.RpcBlockListDeletePageRequest) (err error) {
+	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(*editor.Archive)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		anySucceed := false
+		for _, blockId := range req.BlockIds {
+			err = archive.Delete(blockId)
+			if err != nil {
+				log.Errorf("failed to delete page %s: %s", blockId, err.Error())
+			} else {
+				anySucceed = true
+			}
+		}
+
+		if !anySucceed {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (s *service) DeletePage(id string) (err error) {
+	err = s.CloseBlock(id)
+	if err != nil && err != ErrBlockNotFound {
+		return err
+	}
+
+	return s.anytype.DeleteBlock(id)
 }
 
 func (s *service) MarkArchived(id string, archived bool) (err error) {
@@ -365,27 +430,15 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 			return b.Move(ctx, req)
 		})
 	}
-	var blocks []simple.Block
-
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		blocks, err = b.InternalCut(ctx, req)
-		return err
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return s.DoBasic(req.TargetContextId, func(tb basic.Basic) error {
+			blocks, err := b.InternalCut(ctx, req)
+			if err != nil {
+				return err
+			}
+			return tb.InternalPaste(blocks)
+		})
 	})
-
-	if err != nil {
-		return err
-	}
-
-	err = s.DoBasic(req.TargetContextId, func(b basic.Basic) error {
-		return b.InternalPaste(blocks)
-	})
-
-	if err != nil {
-		// TODO: undo b.InternalCut(req)
-		return err
-	}
-
-	return err
 }
 
 func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err error) {
@@ -498,21 +551,22 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	})
 }
 
-func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (html string, err error) {
+func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		html, err = cb.Copy(req, images)
+		textSlot, htmlSlot, anySlot, err = cb.Copy(req, images)
 		return err
 	})
-	return html, err
+
+	return textSlot, htmlSlot, anySlot, err
 }
 
-func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, err error) {
+func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		blockIds, uploadArr, caretPosition, err = cb.Paste(ctx, req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.Paste(ctx, req)
 		return err
 	})
 
-	return blockIds, uploadArr, caretPosition, err
+	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 }
 
 func (s *service) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
@@ -538,7 +592,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 		return err
 	})
 
-	_, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
+	_, _, _, _, err = s.Paste(ctx, pb.RpcBlockPasteRequest{
 		ContextId: req.ContextId,
 		AnySlot:   rootLinks,
 	})
