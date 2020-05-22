@@ -95,6 +95,10 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			"iconEmoji": pbtypes.String(slice.GetRandomString(articleIcons, fileName)),
 		}
 
+		if t := nameToBlocks[name][0].GetText(); t != nil && t.Text == fileName {
+			nameToBlocks[name] = nameToBlocks[name][1:]
+		}
+
 		if len(nameToBlocks[name]) > 0 {
 			nameToBlocks[name], fields = imp.processFieldBlockIfItIs(nameToBlocks[name], fields)
 		}
