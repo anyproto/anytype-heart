@@ -25,7 +25,10 @@ import (
 )
 
 var (
-	linkRegexp   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	linkRegexp                   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	filenameCleanRegexp          = regexp.MustCompile(`[^\w_\s]+`)
+	filenameDuplicateSpaceRegexp = regexp.MustCompile(`\s+`)
+
 	log          = logging.Logger("anytype-import")
 	articleIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔", "📒", "📝", "📄", "📑"}
 )
@@ -45,6 +48,7 @@ type importImpl struct {
 
 type Services interface {
 	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
+	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
 }
@@ -63,6 +67,10 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	filesCount := len(files)
 	log.Debug("FILES COUNT:", filesCount)
 	nameToId := make(map[string]string)
+
+	for name := range nameToBlocks {
+		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{})
+	}
 
 	for name := range nameToBlocks {
 		fileName := strings.Replace(filepath.Base(name), ".md", "", -1)
@@ -103,10 +111,18 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			nameToBlocks[name], fields, isPageLinked = imp.processFieldBlockIfItIs(nameToBlocks[name], fields, isPageLinked, files, nameToId)
 		}
 
-		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{
-			Details: &types.Struct{
-				Fields: fields,
-			},
+		var details = []*pb.RpcBlockSetDetailsDetail{}
+
+		for name, val := range fields {
+			details = append(details, &pb.RpcBlockSetDetailsDetail{
+				Key:   name,
+				Value: val,
+			})
+		}
+
+		err = imp.ctrl.SetDetails(pb.RpcBlockSetDetailsRequest{
+			ContextId: nameToId[name],
+			Details:   details,
 		})
 
 		if err != nil {
@@ -448,7 +464,12 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 
 	for _, record := range records {
 		fileName := record[0]
-		fileName = strings.ReplaceAll(fileName, `"`, "")
+		fileName = filenameCleanRegexp.ReplaceAllString(fileName, " ")
+		fileName = filenameDuplicateSpaceRegexp.ReplaceAllString(fileName, " ")
+		fileName = strings.TrimSpace(fileName)
+		if len(fileName) > 50 {
+			fileName = fileName[0:50]
+		}
 		shortPath := ""
 		for name, _ := range files {
 			nameSects := strings.Split(name, "/")
@@ -459,7 +480,7 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 
 		targetId := nameToId[shortPath]
 		if len(targetId) == 0 {
-			log.Warn("WARNING! target (%s) with shortpath (%s) not found (%s)\n", fileName, shortPath, nameToId[shortPath])
+			log.Warnf("WARNING! target (%s) with shortpath (%s) not found", fileName, shortPath)
 		} else {
 			isPageLinked[shortPath] = true
 		}
@@ -521,21 +542,30 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 	}
 
 	for _, keyVal := range keyVals {
-		targetId := ""
 		potentialFileNames := strings.Split(keyVal[1], ",")
 		for _, potentialFileName := range potentialFileNames {
 			potentialFileName, _ = url.PathUnescape(potentialFileName)
 			potentialFileName = strings.ReplaceAll(potentialFileName, `"`, "")
+			potentialFileName = strings.TrimLeft(potentialFileName, " ")
 
 			shortPath := ""
+			id := imp.getIdFromPath(potentialFileName)
 			for name, _ := range files {
-				if imp.getIdFromPath(name) == imp.getIdFromPath(potentialFileName) {
+				if imp.getIdFromPath(name) == id {
 					shortPath = name
+					break
 				}
 			}
 
-			targetId = nameToId[shortPath]
+			var targetId = nameToId[shortPath]
+			/*for name, anytypePageId := range nameToId {
+				if imp.getIdFromPath(name) == id {
+					targetId = anytypePageId
+				}
+			}*/
+
 			if len(targetId) == 0 {
+				log.Debug("     TARGET NOT FOUND:", shortPath, potentialFileName)
 
 			} else {
 				log.Debug("     TARGET FOUND:", targetId, shortPath)
