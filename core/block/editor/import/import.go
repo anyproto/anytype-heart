@@ -523,12 +523,10 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 	for _, keyVal := range keyVals {
 		targetId := ""
 		potentialFileNames := strings.Split(keyVal[1], ",")
-		fmt.Println("@potentialFileNames:", potentialFileNames)
 		for _, potentialFileName := range potentialFileNames {
 			potentialFileName, _ = url.PathUnescape(potentialFileName)
 			potentialFileName = strings.ReplaceAll(potentialFileName, `"`, "")
 
-			fmt.Println("     potentialFileName:", potentialFileName)
 			shortPath := ""
 			for name, _ := range files {
 				if imp.getIdFromPath(name) == imp.getIdFromPath(potentialFileName) {
@@ -540,7 +538,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 			if len(targetId) == 0 {
 
 			} else {
-				fmt.Println("     TARGET FOUND:", targetId, shortPath)
+				log.Debug("     TARGET FOUND:", targetId, shortPath)
 				isPageLinked[shortPath] = true
 
 				potentialLinks = append(potentialLinks, &model.Block{
@@ -565,16 +563,6 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 	for k, _ := range potentialFields {
 		fields[k] = potentialFields[k]
 	}
-
-	/*	if len(potentialLinks) > 0 {
-		potentialLinks = append([]*model.Block{{
-			Id: uuid.New().String(),
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-				Text:  "Field links",
-				Style: model.BlockContentText_Header3,
-			}},
-		}}, potentialLinks...)
-	}*/
 
 	blocksOut = append(blocksOut, potentialLinks...)
 
