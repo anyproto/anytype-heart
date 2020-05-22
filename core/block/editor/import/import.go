@@ -502,6 +502,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 
 	txt := blocks[1].GetText().Text
 	potentialPairs := strings.Split(txt, "\n")
+	potentialFields := make(map[string]*types.Value)
 
 	for _, pair := range potentialPairs {
 		keyVal := strings.Split(pair, ":")
@@ -509,7 +510,11 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 			return blocksOut, fields
 		}
 
-		fields[keyVal[0]] = pbtypes.String(keyVal[1])
+		potentialFields[keyVal[0]] = pbtypes.String(keyVal[1])
+	}
+
+	for k, _ := range potentialFields {
+		fields[k] = potentialFields[k]
 	}
 
 	// TODO: do not remove while we can not render fields
