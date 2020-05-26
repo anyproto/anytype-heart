@@ -145,7 +145,6 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error {
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
-
 	return m.renderer.Render(bWriter, source, doc)
 }
 

@@ -41,6 +41,7 @@ type RWriter interface {
 	GetIsNumberedList() (isNumbered bool)
 
 	GetAllFileShortPaths() []string
+	AddDivider()
 }
 
 type rWriter struct {
@@ -143,6 +144,20 @@ func (rw *rWriter) AddImageBlock(url string) {
 	}
 
 	rw.blocks = append(rw.blocks, &newBlock)
+}
+
+func (rw *rWriter) AddDivider() {
+	rw.marksStartQueue = []int{}
+	rw.marksBuffer = []*model.BlockContentTextMark{}
+	rw.textBuffer = ""
+
+	rw.blocks = append(rw.blocks, &model.Block{
+		Content: &model.BlockContentOfDiv{
+			Div: &model.BlockContentDiv{
+				Style: model.BlockContentDiv_Line,
+			},
+		},
+	})
 }
 
 func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
