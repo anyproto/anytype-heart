@@ -302,7 +302,7 @@ func (s *smartblock) PushRecord(payload proto.Message) (id string, err error) {
 	panic("implement me")
 }
 
-func (s *smartblock) SubscribeForRecords(ch chan core.SmartblockRecord) (cancel func(), err error) {
+func (s *smartblock) SubscribeForRecords(ch chan core.SmartblockRecordWithLogID) (cancel func(), err error) {
 	panic("implement me")
 }
 
