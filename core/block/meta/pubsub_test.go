@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/golang/mock/gomock"
 )
@@ -15,17 +13,9 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	defer fx.tearDown()
 
 	var (
-		blockId   = "1"
-		state     = vclock.New()
-		mockBlock = testMock.NewMockSmartBlock(fx.ctrl)
-		snapshot  = testMock.NewMockSmartBlockSnapshot(fx.ctrl)
-		meta      = &core.SmartBlockMeta{}
+		blockId = "1"
 	)
-	mockBlock.EXPECT().GetLastSnapshot().Return(snapshot, nil)
-	snapshot.EXPECT().State().Return(state)
-	snapshot.EXPECT().Meta().Return(meta, nil)
-	mockBlock.EXPECT().SubscribeForMetaChanges(state, gomock.Any())
-	fx.anytype.EXPECT().GetBlock(blockId).Return(mockBlock, nil)
+
 	s := fx.PubSub().NewSubscriber()
 	var mch = make(chan Meta, 1)
 	f := func(m Meta) {
@@ -45,7 +35,9 @@ func newFixture(t *testing.T) (fx *fixture) {
 	return &fixture{
 		ctrl:    ctrl,
 		anytype: at,
-		Service: NewService(at),
+		Service: NewService(at, func(id string) (m Meta, err error) {
+			return Meta{}, nil
+		}),
 	}
 }
 

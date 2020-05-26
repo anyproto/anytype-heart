@@ -39,7 +39,7 @@ var (
 
 func TestStateBuilder_Build(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		_, err := BuildTree(newTestSmartBlock())
+		_, _, err := BuildTree(newTestSmartBlock())
 		assert.Equal(t, ErrEmpty, err)
 	})
 	t.Run("linear - one snapshot", func(t *testing.T) {

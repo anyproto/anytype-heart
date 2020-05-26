@@ -132,8 +132,8 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		openedBlocks: make(map[string]*openedBlock),
 		linkPreview:  lp,
 		process:      process.NewService(sendEvent),
-		meta:         meta.NewService(a),
 	}
+	s.meta = meta.NewService(a, s.metaFetcher)
 	go s.cleanupTicker()
 	s.init()
 	log.Info("block service started")
@@ -163,6 +163,21 @@ func (s *service) init() {
 	s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		return nil
 	})
+}
+
+func (s *service) metaFetcher(id string) (m meta.Meta, err error) {
+	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		mt := b.Meta()
+		if mt == nil {
+			mt = &core.SmartBlockMeta{}
+		}
+		m = meta.Meta{
+			BlockId:        id,
+			SmartBlockMeta: *mt,
+		}
+		return nil
+	})
+	return
 }
 
 func (s *service) Anytype() anytype.Service {

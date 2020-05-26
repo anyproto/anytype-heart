@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -99,9 +100,7 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 			Messages: msgs,
 		})
 	}
-	st.Results.Applies = append(st.Results.Applies, source.Version{
-		Blocks: st.Blocks(),
-	})
+	st.Results.Applies = append(st.Results.Applies, st.Blocks())
 	return
 }
 
@@ -128,5 +127,5 @@ func (st *SmartTest) Close() (err error) {
 
 type Results struct {
 	Events  []*pb.Event
-	Applies []source.Version
+	Applies [][]*model.Block
 }

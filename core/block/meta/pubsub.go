@@ -7,7 +7,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -42,12 +41,13 @@ type Subscriber interface {
 	Close()
 }
 
-func newPubSub(a anytype.Service) *pubSub {
+func newPubSub(a anytype.Service, fetcher func(id string) (m Meta, err error)) *pubSub {
 	ps := &pubSub{
 		subscribers: make(map[string]map[Subscriber]struct{}),
 		collectors:  make(map[string]*collector),
 		lastUsage:   make(map[string]time.Time),
 		anytype:     a,
+		fetcher:     fetcher,
 	}
 	go ps.ticker()
 	return ps
@@ -58,6 +58,7 @@ type pubSub struct {
 	subscribers map[string]map[Subscriber]struct{}
 	collectors  map[string]*collector
 	lastUsage   map[string]time.Time
+	fetcher     func(id string) (m Meta, err error)
 	m           sync.Mutex
 	closed      bool
 }
@@ -296,7 +297,7 @@ func (c *collector) setMeta(d Meta) {
 	}
 }
 
-func (c *collector) fetchInitialMeta() (sb core.SmartBlock, state vclock.VClock, err error) {
+func (c *collector) fetchInitialMeta() (err error) {
 	defer func() {
 		if err == errEmpty {
 			return
@@ -317,36 +318,20 @@ func (c *collector) fetchInitialMeta() (sb core.SmartBlock, state vclock.VClock,
 		}
 		c.m.Unlock()
 	}
-	sb, err = c.ps.anytype.GetBlock(c.blockId)
+	meta, err := c.ps.fetcher(c.blockId)
 	if err != nil {
-		log.Infof("metaListener: GetBlock error: %v", err)
 		setCurrentMeta(*notFoundMeta)
-		err = errNotFound
-		return
+		return errNotFound
 	}
-	ss, err := sb.GetLastSnapshot()
-	if err != nil {
-		log.Infof("metaListener: GetLastSnapshot error: %v", err)
-		setCurrentMeta(core.SmartBlockMeta{})
-		err = errEmpty
-		return
-	}
-	m, err := ss.Meta()
-	if err != nil {
-		setCurrentMeta(*metaError(err.Error()))
-		return
-	}
-	if m != nil {
-		setCurrentMeta(*m)
-	} else {
-		setCurrentMeta(core.SmartBlockMeta{})
-	}
-	return sb, ss.State(), nil
+	setCurrentMeta(core.SmartBlockMeta{
+		Details: meta.Details,
+	})
+	return nil
 }
 
 func (c *collector) listener() {
 	for {
-		sb, state, err := c.fetchInitialMeta()
+		err := c.fetchInitialMeta()
 		if err != nil {
 			if err == errNotFound {
 				log.Infof("meta: %s: block not found - listener exit", c.blockId)
@@ -357,11 +342,6 @@ func (c *collector) listener() {
 			continue
 		}
 		var ch = make(chan core.SmartBlockMetaChange)
-		cancel, err := sb.SubscribeForMetaChanges(state, ch)
-		if err != nil {
-			return
-		}
-		defer cancel()
 		for {
 			select {
 			case meta := <-ch:

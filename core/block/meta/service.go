@@ -18,16 +18,16 @@ type Service interface {
 	Close() (err error)
 }
 
-func NewService(a anytype.Service) Service {
+func NewService(a anytype.Service, metaFetcher func(id string) (m Meta, err error)) Service {
 	return &service{
-		ps: newPubSub(a),
+		ps:          newPubSub(a, metaFetcher),
+
 	}
 }
 
 type service struct {
-	ps *pubSub
-
-	m sync.Mutex
+	ps          *pubSub
+	m           sync.Mutex
 }
 
 func (s *service) PubSub() PubSub {

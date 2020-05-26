@@ -24,6 +24,10 @@ func (s *State) ChangeId() string {
 	return s.changeId
 }
 
+func (s *State) AddChanges(changes ...*pb.ChangeContent) {
+	s.changes = append(s.changes, changes...)
+}
+
 func (s *State) ApplyChange(change *pb.Change) (err error) {
 	// TODO:
 	return
@@ -31,5 +35,14 @@ func (s *State) ApplyChange(change *pb.Change) (err error) {
 
 func (s *State) Merge(st *State) *State {
 	result := s.NewState()
+	// TODO:
 	return result
+}
+
+func (s *State) GetChanges() []*pb.ChangeContent {
+	res := s.changes
+	if s.parent != nil {
+		res = append(res, s.parent.GetChanges()...)
+	}
+	return res
 }

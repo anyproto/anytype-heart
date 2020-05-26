@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -86,23 +88,27 @@ func (mw *Middleware) BlockGetPublicWebURL(req *pb.RpcBlockGetPublicWebURLReques
 		}
 		return m
 	}
+	/*
+		b, err := mw.Anytype.GetBlock(req.BlockId)
+		if err != nil {
+			return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
+		}
 
-	b, err := mw.Anytype.GetBlock(req.BlockId)
-	if err != nil {
-		return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
-	}
+		snap, err := b.GetLastSnapshot()
+		if err != nil {
+			return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
+		}
 
-	snap, err := b.GetLastSnapshot()
-	if err != nil {
-		return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
-	}
+		u, err := snap.PublicWebURL()
+		if err != nil {
+			return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
+		}
 
-	u, err := snap.PublicWebURL()
-	if err != nil {
-		return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, err)
-	}
+		return response(u, pb.RpcBlockGetPublicWebURLResponseError_NULL, nil)
 
-	return response(u, pb.RpcBlockGetPublicWebURLResponseError_NULL, nil)
+	*/
+	// TODO: make with changes
+	return response("", pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, fmt.Errorf("disabled"))
 }
 
 func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse {

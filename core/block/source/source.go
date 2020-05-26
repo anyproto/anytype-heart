@@ -13,11 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-type Version struct {
-	Meta   *core.SmartBlockMeta
-	Blocks []*model.Block
-}
-
 type Source interface {
 	Id() string
 	Anytype() anytype.Service

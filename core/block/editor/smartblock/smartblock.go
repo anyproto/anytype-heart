@@ -2,7 +2,6 @@ package smartblock
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -85,26 +84,10 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source) error {
-	ver, err := s.ReadVersion()
-	if err != nil && err != core.ErrBlockSnapshotNotFound {
+func (sb *smartBlock) Init(s source.Source) (err error) {
+	if sb.Doc, err = s.ReadDoc(); err != nil {
 		return err
 	}
-	var blocks = make(map[string]simple.Block)
-	if err == nil {
-		models, e := ver.Snapshot.Blocks()
-		if e != nil {
-			return e
-		}
-		for _, m := range models {
-			blocks[m.Id] = simple.New(m)
-		}
-		sb.metaData, e = ver.Snapshot.Meta()
-		if e != nil {
-			return fmt.Errorf("can't get meta from snapshot: %v", e)
-		}
-	}
-	sb.Doc = state.NewDoc(s.Id(), blocks)
 	sb.source = s
 	sb.hist = history.NewHistory(0)
 	if sb.metaData == nil {
@@ -243,6 +226,12 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var sendEvent, addHistory = true, true
+	changes := s.GetChanges()
+	id, err := sb.source.PushChange(s, changes...)
+	if err != nil {
+		return
+	}
+	s.SetChangeId(id)
 	msgs, act, err := state.ApplyState(s)
 	if err != nil {
 		return
@@ -254,17 +243,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		case NoHistory:
 			addHistory = false
 		}
-	}
-
-	if err = sb.source.WriteVersion(source.Version{
-		Meta:   sb.metaData,
-		Blocks: sb.Blocks(),
-	}); err != nil {
-		return
-	}
-
-	if len(msgs) == 0 {
-		return
 	}
 
 	if sb.hist != nil && addHistory {

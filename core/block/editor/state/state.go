@@ -43,6 +43,7 @@ type State struct {
 	toRemove []string
 	newIds   []string
 	changeId string
+	changes  []*pb.ChangeContent
 }
 
 func (s *State) RootId() string {
@@ -210,6 +211,7 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 		return s.parent.apply()
 	}
 	st := time.Now()
+	s.changes = s.changes[:0]
 	if s.parent != nil && s.changeId != "" {
 		s.parent.changeId = s.changeId
 	}
@@ -301,6 +303,7 @@ func (s *State) intermediateApply() {
 	for _, id := range s.toRemove {
 		s.parent.Remove(id)
 	}
+	s.changes = s.changes[:0]
 	log.Infof("middle: state intermediate apply: %d to update; %d to remove ; for a %v", len(s.blocks), len(s.toRemove), time.Since(st))
 	return
 }

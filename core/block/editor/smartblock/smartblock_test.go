@@ -86,7 +86,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
 
-		fx.source.EXPECT().WriteVersion(gomock.Any())
+		fx.source.EXPECT().PushChange(gomock.Any(), gomock.Any())
 		var event *pb.Event
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e
@@ -111,8 +111,6 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
-	snapshot := testMock.NewMockSmartBlockSnapshot(ctrl)
-	snapshot.EXPECT().Meta().Return(&core.SmartBlockMeta{}, nil)
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(pb.SmartBlockType_Page)
 	metaSubscriber := mockMeta.NewMockSubscriber(ctrl)
@@ -126,7 +124,6 @@ func newFixture(t *testing.T) *fixture {
 		t:              t,
 		ctrl:           ctrl,
 		source:         source,
-		snapshot:       snapshot,
 		metaSubscriber: metaSubscriber,
 		metaService:    metaService,
 	}
@@ -137,12 +134,14 @@ func (fx *fixture) tearDown() {
 }
 
 func (fx *fixture) init(blocks []*model.Block) {
-	sb := &core.SmartBlockVersion{
-		Snapshot: fx.snapshot,
+	id := blocks[0].Id
+	bm := make(map[string]simple.Block)
+	for _, b := range blocks {
+		bm[b.Id] = simple.New(b)
 	}
-	fx.source.EXPECT().ReadVersion().Return(sb, nil)
-	fx.source.EXPECT().Id().Return(blocks[0].Id).AnyTimes()
-	fx.snapshot.EXPECT().Blocks().Return(blocks, nil)
+	doc := state.NewDoc(id, bm)
+	fx.source.EXPECT().ReadDoc().Return(doc, nil)
+	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
 	err := fx.Init(fx.source)
 	require.NoError(fx.t, err)
