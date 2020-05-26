@@ -338,6 +338,7 @@ func (r *Renderer) renderListItem(w blocksUtil.RWriter, source []byte, n ast.Nod
 		tag = model.BlockContentText_Numbered
 	}
 
+	fmt.Println("n.Text(source)", n.Text(source))
 	if entering {
 		w.OpenNewTextBlock(tag)
 	} else {
@@ -560,12 +561,11 @@ func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node
 		return ast.WalkContinue, nil
 	}
 	n := node.(*ast.Text)
-	fmt.Println("LAST:", n.LastChild())
 	segment := n.Segment
 	//fmt.Println("segment.Value(source):", string(segment.Value(source)))
 
 	fmt.Println(" renderText >>>>>>>>>>")
-	fmt.Println(n.Segment.Value(source))
+	fmt.Println(string(n.Segment.Value(source)))
 	fmt.Println("<<<<<<<<<<<<<<")
 
 	r.Writer.Write(w, segment.Value(source))

@@ -1,5 +1,5 @@
 [
   {
-    "md": " # Header \n Some text \n\n ----------- \n\n Another one"
+    "md": " # Header \n - [ ] Do some stuff \n - [ ] one more stuff \n - [x] Completed"
   }
 ]

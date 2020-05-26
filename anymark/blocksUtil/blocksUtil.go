@@ -4,6 +4,7 @@ package blocksUtil
 import (
 	"bufio"
 	"io"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -176,15 +177,31 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 		style = rw.curStyledBlock
 	}
 
+	text := &model.BlockContentText{
+		Text:  rw.textBuffer,
+		Style: style,
+		Marks: &model.BlockContentTextMarks{
+			Marks: rw.marksBuffer,
+		},
+	}
+
+	if len(rw.textBuffer) >= 3 && rw.textBuffer[:3] == "[ ]" {
+		text.Text = strings.TrimLeft(rw.textBuffer[3:], " ")
+		text.Style = model.BlockContentText_Checkbox
+
+	} else if len(rw.textBuffer) >= 2 && rw.textBuffer[:2] == "[]" {
+		text.Text = strings.TrimLeft(rw.textBuffer[2:], " ")
+		text.Style = model.BlockContentText_Checkbox
+
+	} else if len(rw.textBuffer) >= 3 && rw.textBuffer[:3] == "[x]" {
+		text.Text = strings.TrimLeft(rw.textBuffer[3:], " ")
+		text.Style = model.BlockContentText_Checkbox
+		text.Checked = true
+	}
+
 	newBlock := model.Block{
 		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:  rw.textBuffer,
-				Style: style,
-				Marks: &model.BlockContentTextMarks{
-					Marks: rw.marksBuffer,
-				},
-			},
+			Text: text,
 		},
 	}
 
