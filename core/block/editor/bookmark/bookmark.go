@@ -50,7 +50,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string) (err error) {
 
 	url, err = uri.ProcessURI(url)
 	if err != nil {
-		return err
+		// Do nothing
 	}
 
 	if bm, ok := bb.(bookmark.Block); ok {
