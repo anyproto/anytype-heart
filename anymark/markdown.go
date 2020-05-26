@@ -40,7 +40,7 @@ func DefaultRenderer() renderer.Renderer {
 var (
 	defaultMarkdown = New()
 	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
-	markRightEdge   = regexp.MustCompile(`([^\*\~\_]+)([\*\~\_]+)(\S)`)
+	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
 )
 
 // Convert interprets a UTF-8 bytes source in Markdown and

@@ -130,7 +130,7 @@ func (rw *rWriter) GetText() string {
 }
 
 func (rw *rWriter) AddTextToBuffer(text string) {
-	rw.textBuffer += text
+	rw.textBuffer += strings.ReplaceAll(text, "*", "")
 }
 
 func (rw *rWriter) AddImageBlock(url string) {
