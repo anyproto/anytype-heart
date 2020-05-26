@@ -2,7 +2,6 @@ package html
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -168,7 +167,6 @@ func NewRenderer(opts ...Option) renderer.NodeRenderer {
 
 // RegisterFuncs implements NodeRenderer.RegisterFuncs .
 func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	fmt.Println(" RegisterFuncs")
 	// blocks
 
 	reg.Register(ast.KindDocument, r.renderDocument)
@@ -196,7 +194,6 @@ func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 }
 
 func (r *Renderer) writeLines(w blocksUtil.RWriter, source []byte, n ast.Node) {
-	fmt.Println(" writeLines")
 	l := n.Lines().Len()
 	for i := 0; i < l; i++ {
 		line := n.Lines().At(i)
@@ -227,7 +224,6 @@ var GlobalAttributeFilter = util.NewBytesFilter(
 )
 
 func (r *Renderer) renderDocument(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderDocument")
 	// nothing to do
 	return ast.WalkContinue, nil
 }
@@ -236,7 +232,6 @@ func (r *Renderer) renderDocument(w blocksUtil.RWriter, source []byte, node ast.
 var HeadingAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderHeading(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderHeading")
 	n := node.(*ast.Heading)
 
 	var style model.BlockContentTextStyle
@@ -270,7 +265,6 @@ var BlockquoteAttributeFilter = GlobalAttributeFilter.Extend(
 )
 
 func (r *Renderer) renderBlockquote(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderBlockquote")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Quote)
 	} else {
@@ -280,7 +274,6 @@ func (r *Renderer) renderBlockquote(w blocksUtil.RWriter, source []byte, n ast.N
 }
 
 func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderCodeBlock")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
 	} else {
@@ -290,7 +283,6 @@ func (r *Renderer) renderCodeBlock(w blocksUtil.RWriter, source []byte, n ast.No
 }
 
 func (r *Renderer) renderFencedCodeBlock(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderFencedCodeBlock")
 	n := node.(*ast.FencedCodeBlock)
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Code)
@@ -302,7 +294,6 @@ func (r *Renderer) renderFencedCodeBlock(w blocksUtil.RWriter, source []byte, no
 }
 
 func (r *Renderer) renderHTMLBlock(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderHTMLBlock")
 	// Do not render
 	return ast.WalkContinue, nil
 }
@@ -314,7 +305,6 @@ var ListAttributeFilter = GlobalAttributeFilter.Extend(
 )
 
 func (r *Renderer) renderList(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderList")
 	n := node.(*ast.List)
 
 	if n.IsOrdered() && entering {
@@ -332,13 +322,11 @@ var ListItemAttributeFilter = GlobalAttributeFilter.Extend(
 )
 
 func (r *Renderer) renderListItem(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderListItem")
 	tag := model.BlockContentText_Marked
 	if w.GetIsNumberedList() {
 		tag = model.BlockContentText_Numbered
 	}
 
-	fmt.Println("n.Text(source)", n.Text(source))
 	if entering {
 		w.OpenNewTextBlock(tag)
 	} else {
@@ -351,7 +339,6 @@ func (r *Renderer) renderListItem(w blocksUtil.RWriter, source []byte, n ast.Nod
 var ParagraphAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderParagraph(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderParagraph")
 	if entering {
 		w.OpenNewTextBlock(model.BlockContentText_Paragraph)
 	} else {
@@ -361,7 +348,6 @@ func (r *Renderer) renderParagraph(w blocksUtil.RWriter, source []byte, n ast.No
 }
 
 func (r *Renderer) renderTextBlock(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderTextBlock")
 	if !entering {
 		// TODO: check it
 		//w.CloseTextBlock(model.BlockContentText_Paragraph)
@@ -379,7 +365,6 @@ var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
 )
 
 func (r *Renderer) renderThematicBreak(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderThematicBreak")
 	if entering {
 		w.ForceCloseTextBlock()
 	} else {
@@ -403,7 +388,6 @@ var LinkAttributeFilter = GlobalAttributeFilter.Extend(
 )
 
 func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderAutoLink")
 	n := node.(*ast.AutoLink)
 	if !entering {
 		return ast.WalkContinue, nil
@@ -440,7 +424,6 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 var CodeAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderCodeSpan")
 	if entering {
 		w.SetMarkStart()
 
@@ -472,7 +455,6 @@ func (r *Renderer) renderCodeSpan(w blocksUtil.RWriter, source []byte, n ast.Nod
 var EmphasisAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderEmphasis(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderEmphasis")
 	n := node.(*ast.Emphasis)
 	tag := model.BlockContentTextMark_Italic
 	if n.Level == 2 {
@@ -493,7 +475,6 @@ func (r *Renderer) renderEmphasis(w blocksUtil.RWriter, source []byte, node ast.
 }
 
 func (r *Renderer) renderLink(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderLink")
 	n := node.(*ast.Link)
 
 	destination := n.Destination
@@ -538,7 +519,6 @@ var ImageAttributeFilter = GlobalAttributeFilter.Extend(
 )
 
 func (r *Renderer) renderImage(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderImage")
 	if !entering {
 		return ast.WalkContinue, nil
 	}
@@ -550,7 +530,6 @@ func (r *Renderer) renderImage(w blocksUtil.RWriter, source []byte, node ast.Nod
 }
 
 func (r *Renderer) renderRawHTML(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderRawHTML")
 	// DO NOT RENDER
 	return ast.WalkSkipChildren, nil
 }
@@ -562,11 +541,6 @@ func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node
 	}
 	n := node.(*ast.Text)
 	segment := n.Segment
-	//fmt.Println("segment.Value(source):", string(segment.Value(source)))
-
-	fmt.Println(" renderText >>>>>>>>>>")
-	fmt.Println(string(n.Segment.Value(source)))
-	fmt.Println("<<<<<<<<<<<<<<")
 
 	r.Writer.Write(w, segment.Value(source))
 	if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
@@ -579,7 +553,6 @@ func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node
 }
 
 func (r *Renderer) renderString(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	fmt.Println(" renderString")
 	if !entering {
 		return ast.WalkContinue, nil
 	}
@@ -611,7 +584,6 @@ func (d *defaultWriter) RawWrite(writer blocksUtil.RWriter, source []byte) {
 }
 
 func (d *defaultWriter) Write(writer blocksUtil.RWriter, source []byte) {
-	fmt.Println("WRITE:", string(source))
 	d.RawWrite(writer, source)
 }
 
