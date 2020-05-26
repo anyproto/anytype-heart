@@ -188,6 +188,18 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				filesCount = filesCount - 1
 				log.Debug("          page:", name, " | start to upload file :", f.Name)
 
+				if strings.HasPrefix(f.Name, "http://") || strings.HasPrefix(f.Name, "https://") {
+					err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
+						ContextId: nameToId[name],
+						BlockId:   b.Id,
+						Url:       f.Name,
+					})
+					if err != nil {
+						return rootLinks, fmt.Errorf("can not import this file from URL: %s. error: %s", f.Name, err)
+					}
+					continue
+				}
+
 				FN := strings.Split(f.Name, "/")
 				tmpFile, err := os.Create(filepath.Join(os.TempDir(), FN[len(FN)-1]))
 				fName := strings.ReplaceAll(f.Name, req.ImportPath+"/", "")
@@ -367,8 +379,10 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetFile().Name)
 					fileName = txt.Marks.Marks[0].Param
 				}
-
-				fileName = directoryPath + "/" + fileName
+				if !strings.HasPrefix(fileName, "http://") && !strings.HasPrefix(fileName, "https://") {
+					// not a URL
+					fileName = directoryPath + "/" + fileName
+				}
 
 				block.GetFile().Name = fileName
 				block.GetFile().Type = model.BlockContentFile_Image
