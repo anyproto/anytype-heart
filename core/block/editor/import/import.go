@@ -95,8 +95,10 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			"iconEmoji": pbtypes.String(slice.GetRandomString(articleIcons, fileName)),
 		}
 
-		if t := nameToBlocks[name][0].GetText(); t != nil && t.Text == fileName {
-			nameToBlocks[name] = nameToBlocks[name][1:]
+		if len(nameToBlocks[name]) > 0 {
+			if t := nameToBlocks[name][0].GetText(); t != nil && t.Text == fileName {
+				nameToBlocks[name] = nameToBlocks[name][1:]
+			}
 		}
 
 		if len(nameToBlocks[name]) > 0 {
@@ -468,6 +470,10 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 		fields := make(map[string]*types.Value)
 
 		for h, header := range headers {
+			if len(record) <= h {
+				continue
+			}
+
 			fields[header] = &types.Value{
 				Kind: &types.Value_StringValue{StringValue: record[h]},
 			}
