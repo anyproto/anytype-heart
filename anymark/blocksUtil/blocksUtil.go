@@ -139,7 +139,9 @@ func (rw *rWriter) PreprocessBlocks() {
 
 	}
 
-	blocksOut = append(blocksOut, rw.combineCodeBlocks(accum))
+	if len(accum) > 0 {
+		blocksOut = append(blocksOut, rw.combineCodeBlocks(accum))
+	}
 
 	rw.blocks = blocksOut
 }
@@ -275,6 +277,7 @@ func (rw *rWriter) ProcessMarkdownArtifacts() {
 
 func (rw *rWriter) combineCodeBlocks(accum []*model.Block) (res *model.Block) {
 	var textArr []string
+
 	for _, b := range accum {
 		if b.GetText() != nil {
 			textArr = append(textArr, b.GetText().Text)
