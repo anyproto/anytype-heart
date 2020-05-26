@@ -38,14 +38,17 @@ var (
 )
 
 func TestStateBuilder_Build(t *testing.T) {
-
+	t.Run("empty", func(t *testing.T) {
+		_, err := BuildTree(newTestSmartBlock())
+		assert.Equal(t, ErrEmpty, err)
+	})
 	t.Run("linear - one snapshot", func(t *testing.T) {
 		sb := newTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.Tree)
@@ -60,7 +63,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newSnapshot("s0", "", nil),
 			newChange("c0", "s0", "s0"),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.Tree)
@@ -80,7 +83,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newChange("c1", "s0", "c0"),
 			newChange("c2", "s0", "c1"),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.Tree)
@@ -102,7 +105,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newSnapshot("s1", "s0", map[string]string{"a": "c0", "b": "c2"}, "c2"),
 			newChange("c3", "s1", "s1"),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.Tree)
@@ -131,7 +134,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newSnapshot("s1.1", "s0", map[string]string{"a": "c0", "c": "c2.2"}, "c2.2"),
 			newChange("c3.3", "s1.1", "s1.1"),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.Tree)
@@ -165,7 +168,7 @@ func TestStateBuilder_Build(t *testing.T) {
 			newSnapshot("s2", "s0", map[string]string{"a": "c0", "b": "c3", "c": "c3.3"}, "c3", "c3.3"),
 			newChange("c4", "s2", "s2"),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
 		require.NotNil(t, b.Tree)
@@ -177,12 +180,12 @@ func TestStateBuilder_Build(t *testing.T) {
 
 func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 	t.Run("error for empty", func(t *testing.T) {
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		_, err := b.findCommonSnapshot(nil)
 		require.Error(t, err)
 	})
 	t.Run("one snapshot", func(t *testing.T) {
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		id, err := b.findCommonSnapshot([]string{"one"})
 		require.NoError(t, err)
 		assert.Equal(t, "one", id)
@@ -217,7 +220,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 			"f",
 			newSnapshot("s1.5", "s2.4", nil, "s2.4"),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
 		assert.Equal(t, "s0", b.Tree.RootId())
@@ -232,7 +235,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 			"b",
 			newSnapshot("s1.1", "", nil),
 		)
-		b := new(StateBuilder)
+		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.Error(t, err)
 	})

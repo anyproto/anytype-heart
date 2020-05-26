@@ -2,6 +2,7 @@ package change
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -10,19 +11,34 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-type StateBuilder struct {
+var (
+	ErrEmpty = errors.New("logs empty")
+)
+
+func BuildTree(s core.SmartBlock) (t *Tree, err error) {
+	sb := new(stateBuilder)
+	if err = sb.Build(s); err != nil {
+		return
+	}
+	return sb.Tree, nil
+}
+
+type stateBuilder struct {
 	cache      map[string]*Change
 	Tree       *Tree
 	smartblock core.SmartBlock
 }
 
-func (sb *StateBuilder) Build(s core.SmartBlock) (err error) {
-	sb.cache = make(map[string]*Change)
+func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	sb.smartblock = s
 	logs, err := sb.smartblock.GetLogs()
 	if err != nil {
 		return fmt.Errorf("GetLogs error: %v", err)
 	}
+	if len(logs) == 0 || len(logs) == 1 && logs[0].Head == "" {
+		return ErrEmpty
+	}
+	sb.cache = make(map[string]*Change)
 	heads, err := sb.getActualHeads(logs)
 	if err != nil {
 		return fmt.Errorf("getActualHeads error: %v", err)
@@ -38,7 +54,7 @@ func (sb *StateBuilder) Build(s core.SmartBlock) (err error) {
 	return
 }
 
-func (sb *StateBuilder) buildTree(heads []string, breakpoint string) (err error) {
+func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error) {
 	ch, err := sb.loadChange(breakpoint)
 	if err != nil {
 		return
@@ -57,7 +73,7 @@ func (sb *StateBuilder) buildTree(heads []string, breakpoint string) (err error)
 	return
 }
 
-func (sb *StateBuilder) loadChangesFor(id string, uniqMap map[string]struct{}, buf []*Change) ([]*Change, error) {
+func (sb *stateBuilder) loadChangesFor(id string, uniqMap map[string]struct{}, buf []*Change) ([]*Change, error) {
 	if _, exists := uniqMap[id]; exists {
 		return buf, nil
 	}
@@ -74,7 +90,7 @@ func (sb *StateBuilder) loadChangesFor(id string, uniqMap map[string]struct{}, b
 	return append(buf, ch), nil
 }
 
-func (sb *StateBuilder) findBreakpoint(heads []string) (breakpoint string, err error) {
+func (sb *stateBuilder) findBreakpoint(heads []string) (breakpoint string, err error) {
 	var (
 		ch          *Change
 		snapshotIds []string
@@ -91,7 +107,7 @@ func (sb *StateBuilder) findBreakpoint(heads []string) (breakpoint string, err e
 	return sb.findCommonSnapshot(snapshotIds)
 }
 
-func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId string, err error) {
+func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId string, err error) {
 	if len(snapshotIds) == 1 {
 		return snapshotIds[0], nil
 	} else if len(snapshotIds) == 0 {
@@ -171,7 +187,7 @@ func (sb *StateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 	return snapshotIds[0], nil
 }
 
-func (sb *StateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []string, err error) {
+func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []string, err error) {
 	sort.Slice(logs, func(i, j int) bool {
 		return logs[i].ID < logs[j].ID
 	})
@@ -200,7 +216,7 @@ func (sb *StateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 	return
 }
 
-func (sb *StateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
+func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 	ch, err := sb.loadChange(id)
 	if err != nil {
 		return
@@ -218,7 +234,7 @@ func (sb *StateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 	return sch, nil
 }
 
-func (sb *StateBuilder) loadChange(id string) (ch *Change, err error) {
+func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
 	}

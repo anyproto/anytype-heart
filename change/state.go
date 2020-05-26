@@ -55,8 +55,8 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			s = root
 			if applyRoot {
 				s = s.NewState()
-				if err := s.ApplyChange(c.Change); err != nil {
-					panic(err)
+				if err = s.ApplyChange(c.Change); err != nil {
+					return false
 				}
 			}
 			sc.Set(c.Id, s, len(c.Next))
@@ -64,8 +64,8 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 		}
 		if len(c.PreviousIds) == 1 {
 			s = sc.Get(c.PreviousIds[0]).NewState()
-			if err := s.ApplyChange(c.Change); err != nil {
-				panic(err)
+			if err = s.ApplyChange(c.Change); err != nil {
+				return false
 			}
 			s.SetChangeId(c.Id)
 			sc.Set(c.Id, s, len(c.Next))
@@ -76,14 +76,17 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 				toMerge[i] = sc.Get(prevId)
 			}
 			s = merge(toMerge...)
-			if err := s.ApplyChange(c.Change); err != nil {
-				panic(err)
+			if err = s.ApplyChange(c.Change); err != nil {
+				return false
 			}
 			s.SetChangeId(c.Id)
 			sc.Set(c.Id, s, len(c.Next))
 		}
 		return true
 	})
+	if err != nil {
+		return nil, err
+	}
 	if len(t.headIds) > 1 {
 		toMerge := make([]*state.State, len(t.headIds))
 		sort.Strings(t.headIds)

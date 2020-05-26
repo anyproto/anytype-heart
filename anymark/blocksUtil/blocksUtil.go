@@ -39,10 +39,13 @@ type RWriter interface {
 
 	SetIsNumberedList(isNumbered bool)
 	GetIsNumberedList() (isNumbered bool)
+
+	GetAllFileShortPaths() []string
 }
 
 type rWriter struct {
 	*bufio.Writer
+	allFileShortPaths []string
 
 	isNumberedList bool
 
@@ -52,6 +55,10 @@ type rWriter struct {
 	textStylesQueue []model.BlockContentTextStyle
 	blocks          []*model.Block
 	curStyledBlock  model.BlockContentTextStyle
+}
+
+func (rw *rWriter) GetAllFileShortPaths() []string {
+	return rw.allFileShortPaths
 }
 
 func (rw *rWriter) SetMarkStart() {
@@ -112,8 +119,8 @@ func (rw *rWriter) GetIsNumberedList() (isNumbered bool) {
 	return rw.isNumberedList
 }
 
-func NewRWriter(writer *bufio.Writer) RWriter {
-	return &rWriter{Writer: writer}
+func NewRWriter(writer *bufio.Writer, allFileShortPaths []string) RWriter {
+	return &rWriter{Writer: writer, allFileShortPaths: allFileShortPaths}
 }
 
 func (rw *rWriter) GetText() string {

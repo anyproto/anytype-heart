@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/gogo/protobuf/types"
@@ -48,6 +50,17 @@ var (
 	blockCleanupTimeout = time.Second * 30
 )
 
+var (
+	// quick fix for limiting file upload goroutines
+	uploadFilesLimiter = make(chan struct{}, 8)
+)
+
+func init() {
+	for i := 0; i < cap(uploadFilesLimiter); i++ {
+		uploadFilesLimiter <- struct{}{}
+	}
+}
+
 type Service interface {
 	OpenBlock(ctx *state.Context, id string) error
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
@@ -55,6 +68,7 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -62,7 +76,6 @@ type Service interface {
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
 	ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
-
 	SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
@@ -73,6 +86,7 @@ type Service interface {
 	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
+	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error)
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) error
@@ -102,6 +116,8 @@ type Service interface {
 
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
+
+	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
 	Close() error
 }
@@ -320,7 +336,7 @@ func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) 
 	return
 }
 
-func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error) {
 	csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -340,10 +356,19 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 			ContextId: pageId,
 			Details:   details,
 		}); err != nil {
-			err = fmt.Errorf("can't set details to page: %v", err)
-			return
+			return pageId, fmt.Errorf("can't set details to page: %v", err)
 		}
 	}
+
+	return pageId, nil
+}
+
+func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+	pageId, err = s.CreateSmartBlock(req)
+	if err != nil {
+		err = fmt.Errorf("create smartblock error: %v", err)
+	}
+
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		linkId, err = b.Create(ctx, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
@@ -405,27 +430,27 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 			return b.Move(ctx, req)
 		})
 	}
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return s.DoBasic(req.TargetContextId, func(tb basic.Basic) error {
+			blocks, err := b.InternalCut(ctx, req)
+			if err != nil {
+				return err
+			}
+			return tb.InternalPaste(blocks)
+		})
+	})
+}
+
+func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err error) {
 	var blocks []simple.Block
 
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		blocks, err = b.InternalCut(ctx, req)
-		return err
-	})
-
-	if err != nil {
-		return err
+	for _, b := range anySlot {
+		blocks = append(blocks, simple.New(b))
 	}
 
-	err = s.DoBasic(req.TargetContextId, func(b basic.Basic) error {
+	return s.DoBasic(contextId, func(b basic.Basic) error {
 		return b.InternalPaste(blocks)
 	})
-
-	if err != nil {
-		// TODO: undo b.InternalCut(req)
-		return err
-	}
-
-	return err
 }
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
@@ -560,6 +585,45 @@ func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte)
 	return path, err
 }
 
+func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error) {
+	var rootLinks []*model.Block
+	err = s.DoImport(req.ContextId, func(imp _import.Import) error {
+		rootLinks, err = imp.ImportMarkdown(ctx, req)
+		return err
+	})
+	if err != nil {
+		return rootLinkIds, err
+	}
+
+	if len(rootLinks) == 1 {
+		err = s.SimplePaste(req.ContextId, rootLinks)
+
+		if err != nil {
+			return rootLinkIds, err
+		}
+	} else {
+		_, pageId, err := s.CreatePage(ctx, pb.RpcBlockCreatePageRequest{
+			ContextId: req.ContextId,
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				"name":      pbtypes.String("Import from Notion"),
+				"iconEmoji": pbtypes.String("📁"),
+			}},
+		})
+
+		if err != nil {
+			return rootLinkIds, err
+		}
+
+		err = s.SimplePaste(pageId, rootLinks)
+	}
+
+	for _, r := range rootLinks {
+		rootLinkIds = append(rootLinkIds, r.Id)
+	}
+
+	return rootLinkIds, err
+}
+
 func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
 	return s.DoText(req.ContextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(nil, []string{req.BlockId}, false, func(t text.Block) error {
@@ -614,6 +678,8 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 }
 
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
+	<-uploadFilesLimiter
+	defer func() { uploadFilesLimiter <- struct{}{} }()
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url)
 		return err
@@ -742,9 +808,9 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s, s, s.linkPreview)
+		sb = editor.NewPage(s, s, s, s.linkPreview)
 	case pb.SmartBlockType_Home:
-		sb = editor.NewDashboard()
+		sb = editor.NewDashboard(s)
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case pb.SmartBlockType_ProfilePage:
@@ -780,7 +846,7 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("basic operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
@@ -794,7 +860,7 @@ func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("clipboard operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoText(id string, apply func(b stext.Text) error) error {
@@ -808,7 +874,7 @@ func (s *service) DoText(id string, apply func(b stext.Text) error) error {
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("text operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoFile(id string, apply func(b file.File) error) error {
@@ -822,7 +888,7 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("file operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
@@ -836,7 +902,7 @@ func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("bookmark operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
@@ -848,7 +914,7 @@ func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error 
 	if bb, ok := sb.(file.File); ok {
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error {
@@ -862,7 +928,22 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("unexpected operation for this block type: %T", sb)
+	return fmt.Errorf("history operation not available for this block type: %T", sb)
+}
+
+func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(_import.Import); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+
+	return fmt.Errorf("import operation not available for this block type: %T", sb)
 }
 
 func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
