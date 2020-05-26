@@ -3,11 +3,17 @@ package blocksUtil
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+)
+
+var (
+	markdownLink = regexp.MustCompile(`(?:__|[*#])|\[(.*?)\]\(.*?\)`)
 )
 
 // A RWriter is a subset of the bufio.Writer .
@@ -32,6 +38,8 @@ type RWriter interface {
 	SetMarkStart()
 
 	AddMark(mark model.BlockContentTextMark)
+
+	ProcessMarkdownArtifacts()
 
 	AddImageBlock(url string)
 	OpenNewTextBlock(model.BlockContentTextStyle)
@@ -177,6 +185,8 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 		style = rw.curStyledBlock
 	}
 
+	rw.ProcessMarkdownArtifacts()
+
 	text := &model.BlockContentText{
 		Text:  rw.textBuffer,
 		Style: style,
@@ -223,4 +233,13 @@ func (rw *rWriter) ForceCloseTextBlock() {
 	}
 
 	rw.CloseTextBlock(style)
+}
+
+func (rw *rWriter) ProcessMarkdownArtifacts() {
+	res := markdownLink.FindAllStringSubmatchIndex(rw.textBuffer, -1)
+	if len(res) != 0 {
+		for i, _ := range res {
+			fmt.Println(res[i])
+		}
+	}
 }

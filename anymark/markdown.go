@@ -41,6 +41,7 @@ var (
 	defaultMarkdown = New()
 	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
 	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
+	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
 )
 
 // Convert interprets a UTF-8 bytes source in Markdown and
@@ -252,7 +253,8 @@ func (m *markdown) SetRenderer(v renderer.Renderer) {
 }
 
 func (m *markdown) allMdReplaces(source []byte) (out []byte) {
-	source = markRightEdge.ReplaceAll(source, []byte("$1$2 $3"))
+	/*	source = markRightEdge.ReplaceAll(source, []byte("$1$2 $3"))
+		source = linkLeftEdge.ReplaceAll(source, []byte("$1 ["))*/
 	return source
 }
 
