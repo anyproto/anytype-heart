@@ -94,7 +94,7 @@ func TestApplyState(t *testing.T) {
 
 	msgs, hist, err := ApplyState(s)
 	require.NoError(t, err)
-	assert.Len(t, hist.Add,2)
+	assert.Len(t, hist.Add, 2)
 	assert.Len(t, hist.Change, 1)
 	assert.Len(t, hist.Remove, 0)
 	require.Len(t, msgs, 2)

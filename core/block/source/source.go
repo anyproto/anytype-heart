@@ -2,6 +2,7 @@ package source
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -23,7 +24,7 @@ type Source interface {
 	Meta() meta.Service
 	Type() pb.SmartBlockType
 	ReadDoc() (doc state.Doc, err error)
-	PushChange(c *pb.Change) (err error)
+	PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error)
 	Close() (err error)
 }
 
@@ -43,11 +44,13 @@ func NewSource(a anytype.Service, m meta.Service, id string) (s Source, err erro
 }
 
 type source struct {
-	id   string
-	a    anytype.Service
-	sb   core.SmartBlock
-	meta meta.Service
-	tree *change.Tree
+	id, logId      string
+	a              anytype.Service
+	sb             core.SmartBlock
+	meta           meta.Service
+	tree           *change.Tree
+	lastSnapshotId string
+	logHeads       map[string]string
 }
 
 func (s *source) Id() string {
@@ -67,24 +70,62 @@ func (s *source) Type() pb.SmartBlockType {
 }
 
 func (s *source) ReadDoc() (doc state.Doc, err error) {
-	doc = state.NewDoc(s.id, nil)
-	s.tree, err = change.BuildTree(s.sb)
+	s.tree, s.logHeads, err = change.BuildTree(s.sb)
 	if err == change.ErrEmpty {
-		return doc, nil
+		s.tree = new(change.Tree)
+		return state.NewDoc(s.id, nil), nil
 	} else if err != nil {
 		return nil, err
 	}
+	root := s.tree.Root()
+	if root == nil || root.GetSnapshot() == nil {
+		return nil, fmt.Errorf("root missing or not a snapshot")
+	}
+	s.lastSnapshotId = root.Id
+	doc = state.NewDocFromSnapshot(s.id, root.GetSnapshot())
 	st, err := change.BuildState(doc.(*state.State), s.tree)
 	if err != nil {
 		return
 	}
-
+	if _, _, err = state.ApplyState(st); err != nil {
+		return
+	}
 	return
 }
 
-func (s *source) PushChange(c *pb.Change) (err error) {
+func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error) {
+	var c = &pb.Change{
+		PreviousIds:    s.tree.Heads(),
+		LastSnapshotId: s.lastSnapshotId,
+	}
+	if s.needSnapshot() {
+		c.Snapshot = &pb.ChangeSnapshot{
+			LogHeads: s.logHeads,
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks:  st.Blocks(),
+				Details: nil, //TODO:
+			},
+		}
+	} else {
+		c.Content = changes
+	}
 
+	if id, err = s.sb.PushRecord(c); err != nil {
+		return
+	}
+	ch := &change.Change{Id: id, Change: c}
+	s.tree.Add(ch)
+	s.logHeads[s.logId] = id
 	return
+}
+
+func (s *source) needSnapshot() bool {
+	if s.tree.Len() == 0 {
+		// starting tree with snapshot
+		return true
+	}
+	// TODO: think about a more smart way
+	return rand.Intn(100) == 42
 }
 
 func (s *source) Close() (err error) {

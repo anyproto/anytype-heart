@@ -31,6 +31,10 @@ func (t *Tree) RootId() string {
 	return ""
 }
 
+func (t *Tree) Root() *Change {
+	return t.root
+}
+
 func (t *Tree) Add(changes ...*Change) (mode Mode) {
 	var beforeHeadIds = t.headIds
 	var attached bool
@@ -167,6 +171,10 @@ func (t *Tree) Hash() string {
 
 func (t *Tree) Len() int {
 	return len(t.attached)
+}
+
+func (t *Tree) Heads() []string {
+	return t.headIds
 }
 
 func (t *Tree) String() string {

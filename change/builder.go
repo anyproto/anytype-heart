@@ -15,17 +15,18 @@ var (
 	ErrEmpty = errors.New("logs empty")
 )
 
-func BuildTree(s core.SmartBlock) (t *Tree, err error) {
+func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
 	sb := new(stateBuilder)
 	if err = sb.Build(s); err != nil {
 		return
 	}
-	return sb.Tree, nil
+	return sb.tree, sb.logHeads, nil
 }
 
 type stateBuilder struct {
 	cache      map[string]*Change
-	Tree       *Tree
+	logHeads   map[string]string
+	tree       *Tree
 	smartblock core.SmartBlock
 }
 
@@ -39,6 +40,10 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 		return ErrEmpty
 	}
 	sb.cache = make(map[string]*Change)
+	sb.logHeads = make(map[string]string)
+	for _, l := range logs {
+		sb.logHeads[l.ID] = l.Head
+	}
 	heads, err := sb.getActualHeads(logs)
 	if err != nil {
 		return fmt.Errorf("getActualHeads error: %v", err)
@@ -59,8 +64,8 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 	if err != nil {
 		return
 	}
-	sb.Tree = new(Tree)
-	sb.Tree.Add(ch)
+	sb.tree = new(Tree)
+	sb.tree.Add(ch)
 	var changes = make([]*Change, 0, len(heads)*2)
 	var uniqMap = map[string]struct{}{breakpoint: {}}
 	for _, id := range heads {
@@ -69,7 +74,7 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 			return
 		}
 	}
-	sb.Tree.Add(changes...)
+	sb.tree.Add(changes...)
 	return
 }
 
