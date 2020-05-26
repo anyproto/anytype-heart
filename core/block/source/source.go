@@ -93,12 +93,12 @@ func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id s
 		PreviousIds:    s.tree.Heads(),
 		LastSnapshotId: s.lastSnapshotId,
 	}
-	if s.needSnapshot() {
+	if s.needSnapshot() || len(changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.logHeads,
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:  st.Blocks(),
-				Details: nil, //TODO:
+				Details: st.Details(),
 			},
 		}
 	} else {

@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("anytype-mw-state")
@@ -44,6 +45,7 @@ type State struct {
 	newIds   []string
 	changeId string
 	changes  []*pb.ChangeContent
+	details  *types.Struct
 }
 
 func (s *State) RootId() string {
@@ -215,6 +217,9 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 	if s.parent != nil && s.changeId != "" {
 		s.parent.changeId = s.changeId
 	}
+	if s.parent != nil && s.details != nil {
+		s.parent.details = s.details
+	}
 	if err = s.normalize(); err != nil {
 		return
 	}
@@ -303,6 +308,9 @@ func (s *State) intermediateApply() {
 	for _, id := range s.toRemove {
 		s.parent.Remove(id)
 	}
+	if s.details != nil {
+		s.parent.details = s.details
+	}
 	s.changes = s.changes[:0]
 	log.Infof("middle: state intermediate apply: %d to update; %d to remove ; for a %v", len(s.blocks), len(s.toRemove), time.Since(st))
 	return
@@ -345,4 +353,16 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 			s.writeString(buf, l+1, cid)
 		}
 	}
+}
+
+func (s *State) SetDetails(d *types.Struct) *State {
+	s.details = d
+	return s
+}
+
+func (s *State) Details() *types.Struct {
+	if s.details == nil && s.parent != nil {
+		return s.parent.Details()
+	}
+	return s.details
 }

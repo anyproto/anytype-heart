@@ -11,8 +11,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		blocks[b.Id] = simple.New(b)
 	}
 	return &State{
-		rootId: rootId,
-		blocks: blocks,
+		rootId:  rootId,
+		blocks:  blocks,
+		details: snapshot.Data.Details,
 	}
 }
 

@@ -321,7 +321,8 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 		return
 	}
 	sb.metaData.Details = copy
-	if err = sb.Apply(sb.NewState(), NoHistory, NoEvent); err != nil {
+	s := sb.NewState().SetDetails(copy)
+	if err = sb.Apply(s, NoHistory, NoEvent); err != nil {
 		return
 	}
 	sb.source.Meta().ReportChange(meta.Meta{
