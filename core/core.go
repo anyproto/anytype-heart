@@ -74,15 +74,18 @@ type Anytype struct {
 
 	opts              ServiceOptions
 	smartBlockChanges *broadcast.Broadcaster
-	replicationWG     sync.WaitGroup
-	migrationOnce     sync.Once
-	lock              sync.Mutex
-	shutdownStartsCh  chan struct{} // closed when node shutdown starts
-	onlineCh          chan struct{} // closed when became online
+
+	replicationWG    sync.WaitGroup
+	migrationOnce    sync.Once
+	lock             sync.Mutex
+	shutdownStartsCh chan struct{} // closed when node shutdown starts
+	onlineCh         chan struct{} // closed when became online
 }
 
 type Service interface {
 	Account() string
+	Device() string
+
 	Start() error
 	Stop() error
 	IsStarted() bool
@@ -113,6 +116,10 @@ type Service interface {
 
 func (a *Anytype) Account() string {
 	return a.opts.Account.Address()
+}
+
+func (a *Anytype) Device() string {
+	return a.opts.Device.Address()
 }
 
 func (a *Anytype) Ipfs() ipfs.IPFS {

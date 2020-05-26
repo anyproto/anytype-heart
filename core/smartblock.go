@@ -17,6 +17,7 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/cbor"
+	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -99,7 +100,7 @@ type SmartBlock interface {
 	GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error)
 	PushRecord(payload proto.Message) (id string, err error)
 
-	SubscribeForRecords(ch chan SmartblockRecord) (cancel func(), err error)
+	SubscribeForRecords(ch chan SmartblockRecordWithLogID) (cancel func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
 	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error)
 	// PublishClientEvent gives a way to push the new client-side event e.g. carriage position change
@@ -348,13 +349,6 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	return snapshot, nil
 }
 
-func hasCafeLog(logsinfo []thread.LogInfo) bool {
-	/*for _, li := range logsinfo {
-		//if li.
-	}*/
-	return false
-}
-
 func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (recID cid.Cid, user string, date *types.Timestamp, err error) {
 	var newSnapshotB []byte
 	newSnapshotB, err = proto.Marshal(newSnapshot)
@@ -393,10 +387,45 @@ func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
 	}
 }
 
-func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecord) (cancel func(), err error) {
-	chCloseFn := func() { close(ch) }
+func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordWithLogID) (cancel func(), err error) {
+	doneCh := make(chan struct{})
+	chCloseFn := func() {
+		doneCh <- struct{}{}
+	}
 
-	//todo: to be implemented
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	// todo: this is not effective, need to make a single subscribe point for all subscribed threads
+	threadsCh, err := block.node.t.Subscribe(ctx, net.WithSubFilter(block.thread.ID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to subscribe: %s", err.Error())
+	}
+
+	go func() {
+		for {
+			select {
+			case <-doneCh:
+				ctxCancel()
+				return
+			case val, ok := <-threadsCh:
+				if !ok {
+					return
+				}
+
+				rec, err := block.decodeRecord(ctx, val.Value())
+				if err != nil {
+					log.Errorf("failed to decode thread record: %s", err.Error())
+					continue
+				}
+
+				ch <- SmartblockRecordWithLogID{
+					SmartblockRecord: *rec,
+					LogID:            val.LogID().String(),
+				}
+
+			}
+		}
+	}()
+
 	return chCloseFn, nil
 }
 
@@ -499,17 +528,7 @@ func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
 	return logs, nil
 }
 
-func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error) {
-	rid, err := cid.Decode(recordID)
-	if err != nil {
-		return nil, err
-	}
-
-	rec, err := block.node.t.GetRecord(ctx, block.thread.ID, rid)
-	if err != nil {
-		return nil, err
-	}
-
+func (block *smartBlock) decodeRecord(ctx context.Context, rec net.Record) (*SmartblockRecord, error) {
 	event, err := cbor.EventFromRecord(ctx, block.node.t, rec)
 	if err != nil {
 		return nil, err
@@ -537,11 +556,24 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	}
 
 	return &SmartblockRecord{
-		ID:     rid.String(),
-		PrevID: prevID,
-		//LogID:      m.AccAddr,
+		ID:      rec.Cid().String(),
+		PrevID:  prevID,
 		Payload: m.Data,
 	}, nil
+}
+
+func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error) {
+	rid, err := cid.Decode(recordID)
+	if err != nil {
+		return nil, err
+	}
+
+	rec, err := block.node.t.GetRecord(ctx, block.thread.ID, rid)
+	if err != nil {
+		return nil, err
+	}
+
+	return block.decodeRecord(ctx, rec)
 }
 
 func getSnippet(snap *smartBlockSnapshot) string {

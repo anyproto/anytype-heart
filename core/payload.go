@@ -13,10 +13,14 @@ type SmartblockLog struct {
 	Head string
 }
 
+type SmartblockRecordWithLogID struct {
+	SmartblockRecord
+	LogID string
+}
+
 type SmartblockRecord struct {
-	ID     string
-	PrevID string
-	//LogID string
+	ID      string
+	PrevID  string
 	Payload []byte
 }
 
