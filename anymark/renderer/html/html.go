@@ -367,6 +367,8 @@ var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
 func (r *Renderer) renderThematicBreak(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		w.ForceCloseTextBlock()
+	} else {
+		w.AddDivider()
 	}
 
 	return ast.WalkContinue, nil
@@ -533,6 +535,7 @@ func (r *Renderer) renderRawHTML(w blocksUtil.RWriter, source []byte, node ast.N
 }
 
 func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+
 	if !entering {
 		return ast.WalkContinue, nil
 	}

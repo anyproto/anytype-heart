@@ -40,6 +40,8 @@ func DefaultRenderer() renderer.Renderer {
 var (
 	defaultMarkdown = New()
 	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
+	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
 )
 
 // Convert interprets a UTF-8 bytes source in Markdown and
@@ -143,9 +145,10 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 }
 
 func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error {
+	source = m.allMdReplaces(source)
+
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
-
 	return m.renderer.Render(bWriter, source, doc)
 }
 
@@ -247,6 +250,12 @@ func (m *markdown) Renderer() renderer.Renderer {
 
 func (m *markdown) SetRenderer(v renderer.Renderer) {
 	m.renderer = v
+}
+
+func (m *markdown) allMdReplaces(source []byte) (out []byte) {
+	/*	source = markRightEdge.ReplaceAll(source, []byte("$1$2 $3"))
+		source = linkLeftEdge.ReplaceAll(source, []byte("$1 ["))*/
+	return source
 }
 
 // An Extender interface is used for extending Markdown.
