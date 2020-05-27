@@ -278,11 +278,10 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 
 	if filepath.Ext(directoryPath) == ".zip" {
 		r, err := zip.OpenReader(directoryPath)
-		defer r.Close()
-
 		if err != nil {
 			return nameToBlocks, isPageLinked, files, fmt.Errorf("can not read zip while import: %s", err)
 		}
+		defer r.Close()
 
 		for _, f := range r.File {
 			elements := strings.Split(f.Name, "/")
@@ -304,14 +303,15 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 
 			allFileShortPaths = append(allFileShortPaths, shortPath)
 			rc, err := f.Open()
+			if err != nil {
+				return nameToBlocks, isPageLinked, files, fmt.Errorf("failed to open file from zip while import: %s", err)
+			}
 
 			files[shortPath], err = ioutil.ReadAll(rc)
 			rc.Close()
-
 			if err != nil {
-				return nameToBlocks, isPageLinked, files, fmt.Errorf("ERR while read file from zip while import: %s", err)
+				return nameToBlocks, isPageLinked, files, fmt.Errorf("failed to read file from zip while import: %s", err)
 			}
-
 		}
 
 	} else {
