@@ -78,7 +78,8 @@ func (s *source) ReadDoc() (doc state.Doc, err error) {
 		return nil, fmt.Errorf("root missing or not a snapshot")
 	}
 	s.lastSnapshotId = root.Id
-	doc = state.NewDocFromSnapshot(s.id, root.GetSnapshot())
+	doc = state.NewDocFromSnapshot(s.id, root.GetSnapshot()).(*state.State)
+	doc.(*state.State).SetChangeId(root.Id)
 	st, err := change.BuildState(doc.(*state.State), s.tree)
 	if err != nil {
 		return

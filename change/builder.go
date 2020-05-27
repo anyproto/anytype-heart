@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -15,12 +16,12 @@ var (
 	ErrEmpty = errors.New("logs empty")
 )
 
+var log = logging.Logger("anytype-mw-change-builder")
+
 func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
 	sb := new(stateBuilder)
-	if err = sb.Build(s); err != nil {
-		return
-	}
-	return sb.tree, sb.logHeads, nil
+	err = sb.Build(s)
+	return sb.tree, sb.logHeads, err
 }
 
 type stateBuilder struct {
@@ -36,11 +37,12 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	if err != nil {
 		return fmt.Errorf("GetLogs error: %v", err)
 	}
-	if len(logs) == 0 || len(logs) == 1 && logs[0].Head == "" {
+	log.Debugf("build tree: logs: %v", logs)
+	sb.logHeads = make(map[string]string)
+	if len(logs) == 0 || len(logs) == 1 && len(logs[0].Head) <= 1 {
 		return ErrEmpty
 	}
 	sb.cache = make(map[string]*Change)
-	sb.logHeads = make(map[string]string)
 	for _, l := range logs {
 		sb.logHeads[l.ID] = l.Head
 	}

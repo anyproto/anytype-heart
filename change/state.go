@@ -41,6 +41,7 @@ func (sc *stateCache) Get(id string) *state.State {
 }
 
 func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
+	log.Debugf("build state: %v", t.String())
 	var (
 		sc        = newStateCache()
 		startId   string
