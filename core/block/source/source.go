@@ -106,9 +106,8 @@ func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id s
 				Details: st.Details(),
 			},
 		}
-	} else {
-		c.Content = changes
 	}
+	c.Content = changes
 
 	if id, err = s.sb.PushRecord(c); err != nil {
 		return
@@ -117,6 +116,7 @@ func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id s
 	s.tree.Add(ch)
 	s.logHeads[s.logId] = id
 	if c.Snapshot != nil {
+		s.lastSnapshotId = id
 		log.Infof("%s: pushed snapshot", s.id)
 	} else {
 		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
