@@ -142,6 +142,16 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				}
 
 				link.TargetBlockId = nameToId[target]
+			} else if text := block.GetText(); text != nil && text.Marks != nil && len(text.Marks.Marks) > 0 {
+				for _, mark := range text.Marks.Marks {
+					if mark.Type != model.BlockContentTextMark_Mention {
+						continue
+					}
+
+					if id, exists := nameToId[mark.Param]; exists {
+						mark.Param = id
+					}
+				}
 			}
 		}
 	}
@@ -364,7 +374,12 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 				}
 
 				if nameToBlocks[linkConverted] != nil {
-					nameToBlocks[name][i], isPageLinked = imp.convertTextToPageLink(block, isPageLinked)
+					// only conver
+					if len(txt.Marks.Marks) == 1 && txt.Marks.Marks[0].Range.From == 0 && int(txt.Marks.Marks[0].Range.To) >= (len(txt.Text)-1) {
+						nameToBlocks[name][i], isPageLinked = imp.convertTextToPageLink(block, isPageLinked)
+					} else {
+						imp.convertTextToPageMention(block, isPageLinked)
+					}
 				}
 
 				if isFileExist[linkConverted] {
@@ -413,6 +428,23 @@ func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked ma
 
 	isPageLinked[targetId] = true
 	return blockOut, isPageLinked
+}
+
+func (imp *importImpl) convertTextToPageMention(block *model.Block, isPageLinked map[string]bool) {
+	for _, mark := range block.GetText().Marks.Marks {
+		if mark.Type != model.BlockContentTextMark_Link {
+			continue
+		}
+		targetId, err := url.PathUnescape(block.GetText().Marks.Marks[0].Param)
+		if err != nil {
+			log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetText().Marks.Marks[0].Param)
+			targetId = block.GetText().Marks.Marks[0].Param
+		}
+
+		mark.Param = targetId
+		mark.Type = model.BlockContentTextMark_Mention
+		isPageLinked[targetId] = true
+	}
 }
 
 func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) *model.Block {
