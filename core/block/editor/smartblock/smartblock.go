@@ -90,7 +90,10 @@ func (sb *smartBlock) Init(s source.Source) (err error) {
 	}
 	sb.source = s
 	sb.hist = history.NewHistory(0)
-	if sb.metaData == nil {
+	sb.metaData = &core.SmartBlockMeta{
+		Details: pbtypes.CopyStruct(sb.Doc.(*state.State).Details()),
+	}
+	if sb.metaData.Details == nil {
 		sb.metaData = &core.SmartBlockMeta{
 			Details: &types.Struct{
 				Fields: make(map[string]*types.Value),
