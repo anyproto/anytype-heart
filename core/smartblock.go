@@ -519,9 +519,14 @@ func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
 
 	var logs []SmartblockLog
 	for _, l := range thrd.Logs {
+		var head string
+		if l.Head.Defined() {
+			head = l.Head.String()
+		}
+
 		logs = append(logs, SmartblockLog{
 			ID:   l.ID.String(),
-			Head: l.Head.String(),
+			Head: head,
 		})
 	}
 
@@ -550,7 +555,6 @@ func (block *smartBlock) decodeRecord(ctx context.Context, rec net.Record) (*Sma
 	}
 
 	var prevID string
-
 	if rec.PrevID().Defined() {
 		prevID = rec.PrevID().String()
 	}
