@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/localstore"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 const versionFileName = "anytype_version"
@@ -26,7 +27,8 @@ var skipMigration = func(a *Anytype) error {
 var migrations = []migration{
 	skipMigration,        // 1
 	alterThreadsDbSchema, // 2
-	indexLinks,           // 3
+	skipMigration,        // 3
+	indexLinks,           // 4
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -132,6 +134,11 @@ func indexLinks(a *Anytype) error {
 			return err
 		}
 
+		archive, _ := thread.Decode(a.predefinedBlockIds.Archive)
+		home, _ := thread.Decode(a.predefinedBlockIds.Home)
+		profile, _ := thread.Decode(a.predefinedBlockIds.Profile)
+
+		threadsIDs = append(threadsIDs, archive, home, profile)
 		migrated := 0
 		for _, threadID := range threadsIDs {
 			err := a.localStore.Pages.Delete(threadID.String())
