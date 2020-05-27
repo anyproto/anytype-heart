@@ -30,10 +30,11 @@ func NewSource(a anytype.Service, m meta.Service, id string) (s Source, err erro
 		return
 	}
 	s = &source{
-		id:   id,
-		a:    a,
-		sb:   sb,
-		meta: m,
+		id:    id,
+		a:     a,
+		sb:    sb,
+		meta:  m,
+		logId: a.Device(),
 	}
 	return
 }
