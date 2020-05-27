@@ -518,7 +518,9 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, isPageLink
 	blocksOut = blocks
 
 	txt := blocks[0].GetText().Text
-	if txt == "" {
+	if txt == "" ||
+		(blocks[0].GetText().Marks != nil && len(blocks[0].GetText().Marks.Marks) > 0) {
+		// fields can't have a markup
 		return blocks, isPageLinked
 	}
 
@@ -535,7 +537,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, isPageLink
 			continue
 		}
 
-		keyVal := strings.Split(pair, ":")
+		keyVal := strings.SplitN(pair, ":", 2)
 		if len(keyVal) < 2 {
 			text += pair
 			continue
@@ -588,9 +590,11 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, isPageLink
 		}
 	}
 
-	blockText := blocks[0].GetText()
-	blockText.Text = text
-	blockText.Marks = &model.BlockContentTextMarks{marks}
+	if len(marks) > 0 {
+		blockText := blocks[0].GetText()
+		blockText.Text = text
+		blockText.Marks = &model.BlockContentTextMarks{marks}
+	}
 
 	return blocksOut, isPageLinked
 }
