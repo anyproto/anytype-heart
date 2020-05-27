@@ -2,6 +2,7 @@ package change
 
 import (
 	"sort"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 )
@@ -41,11 +42,12 @@ func (sc *stateCache) Get(id string) *state.State {
 }
 
 func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
-	log.Debugf("build state: %v", t.String())
 	var (
 		sc        = newStateCache()
 		startId   string
 		applyRoot bool
+		st        = time.Now()
+		count     int
 	)
 	if startId = root.ChangeId(); startId == "" {
 		startId = t.RootId()
@@ -55,19 +57,21 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 		if root.ChangeId() == c.Id {
 			s = root
 			if applyRoot {
-				s = s.NewState()
+				s = s.NewState().DisableAutoChanges()
 				if err = s.ApplyChange(c.Change); err != nil {
 					return false
 				}
+				count++
 			}
 			sc.Set(c.Id, s, len(c.Next))
 			return true
 		}
 		if len(c.PreviousIds) == 1 {
-			s = sc.Get(c.PreviousIds[0]).NewState()
+			s = sc.Get(c.PreviousIds[0]).NewState().DisableAutoChanges()
 			if err = s.ApplyChange(c.Change); err != nil {
 				return false
 			}
+			count++
 			s.SetChangeId(c.Id)
 			sc.Set(c.Id, s, len(c.Next))
 		} else if len(c.PreviousIds) > 1 {
@@ -80,6 +84,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			if err = s.ApplyChange(c.Change); err != nil {
 				return false
 			}
+			count++
 			s.SetChangeId(c.Id)
 			sc.Set(c.Id, s, len(c.Next))
 		}
@@ -100,6 +105,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 		}
 		s = merge(toMerge...)
 	}
+	log.Debugf("build state: changes: %d; dur: %v; tree: %v", count, time.Since(st), t.String())
 	return
 }
 

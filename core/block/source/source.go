@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -12,6 +13,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
+
+var log = logging.Logger("anytype-mw-source")
 
 type Source interface {
 	Id() string
@@ -113,6 +116,11 @@ func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id s
 	ch := &change.Change{Id: id, Change: c}
 	s.tree.Add(ch)
 	s.logHeads[s.logId] = id
+	if c.Snapshot != nil {
+		log.Infof("%s: pushed snapshot", s.id)
+	} else {
+		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
+	}
 	return
 }
 

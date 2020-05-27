@@ -37,15 +37,16 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx      *Context
-	parent   *State
-	blocks   map[string]simple.Block
-	rootId   string
-	toRemove []string
-	newIds   []string
-	changeId string
-	changes  []*pb.ChangeContent
-	details  *types.Struct
+	ctx           *Context
+	parent        *State
+	blocks        map[string]simple.Block
+	rootId        string
+	toRemove      []string
+	newIds        []string
+	changeId      string
+	changes       []*pb.ChangeContent
+	noAutoChanges bool
+	details       *types.Struct
 }
 
 func (s *State) RootId() string {
@@ -213,7 +214,6 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 		return s.parent.apply()
 	}
 	st := time.Now()
-	s.changes = s.changes[:0]
 	if s.parent != nil && s.changeId != "" {
 		s.parent.changeId = s.changeId
 	}
@@ -293,6 +293,12 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 			delete(s.parent.blocks, id)
 		}
 	}
+	if !s.noAutoChanges {
+		s.fillAutoChange(msgs)
+	}
+	if s.parent != nil {
+		s.parent.changes = s.changes
+	}
 	log.Infof("middle: state apply: %d for save; %d for remove; %d copied; for a %v", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return
 }
@@ -311,7 +317,7 @@ func (s *State) intermediateApply() {
 	if s.details != nil {
 		s.parent.details = s.details
 	}
-	s.changes = s.changes[:0]
+	s.parent.changes = append(s.parent.changes, s.changes...)
 	log.Infof("middle: state intermediate apply: %d to update; %d to remove ; for a %v", len(s.blocks), len(s.toRemove), time.Since(st))
 	return
 }

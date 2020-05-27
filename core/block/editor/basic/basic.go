@@ -89,6 +89,13 @@ func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id st
 	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
 		return
 	}
+	s.AddChanges(&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfBlockCreate{BlockCreate: &pb.ChangeBlockCreate{
+			TargetId: req.TargetId,
+			Position: req.Position,
+			Blocks:   []*model.Block{block.Copy().Model()},
+		}},
+	})
 	if err = bs.Apply(s); err != nil {
 		return
 	}
@@ -141,29 +148,49 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 			return smartblock.ErrSimpleBlockNotFound
 		}
 	}
+	s.AddChanges(&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfBlockRemove{BlockRemove: &pb.ChangeBlockRemove{
+			Ids: ids,
+		}},
+	})
 	return bs.Apply(s)
 }
 
 func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	for _, id := range req.BlockIds {
-		s.Unlink(id)
+		if b := s.Pick(id); b != nil {
+			s.Unlink(id)
+		}
 	}
 	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
 		return
 	}
+	s.AddChanges(&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfBlockMove{BlockMove: &pb.ChangeBlockMove{
+			TargetId: req.DropTargetId,
+			Position: req.Position,
+			Ids:      req.BlockIds,
+		},
+		}})
 	return bs.Apply(s)
 }
 
 func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error) {
 	s := bs.NewStateCtx(ctx)
-
 	new := simple.New(block)
 	newId = new.Model().Id
 	s.Add(new)
 	if err = s.InsertTo(id, model.Block_Replace, newId); err != nil {
 		return
 	}
+	s.AddChanges(&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfBlockCreate{BlockCreate: &pb.ChangeBlockCreate{
+			TargetId: id,
+			Position: model.Block_Replace,
+			Blocks:   []*model.Block{new.Copy().Model()},
+		},
+		}})
 	if err = bs.Apply(s); err != nil {
 		return
 	}

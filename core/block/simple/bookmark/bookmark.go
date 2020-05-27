@@ -37,6 +37,7 @@ type Block interface {
 	SetLinkPreview(data model.LinkPreview)
 	SetImageHash(hash string)
 	SetFaviconHash(hash string)
+	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
 }
 
 type FetchParams struct {
@@ -122,6 +123,28 @@ func (f *Bookmark) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 
 	if hasChanges {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes}})
+	}
+	return
+}
+
+func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
+	if e.Type != nil {
+		b.content.Type = e.Type.GetValue()
+	}
+	if e.Description != nil {
+		b.content.Description = e.Description.GetValue()
+	}
+	if e.FaviconHash != nil {
+		b.content.FaviconHash = e.FaviconHash.GetValue()
+	}
+	if e.ImageHash != nil {
+		b.content.ImageHash = e.ImageHash.GetValue()
+	}
+	if e.Title != nil {
+		b.content.Title = e.Title.GetValue()
+	}
+	if e.Url != nil {
+		b.content.Url = e.Url.GetValue()
 	}
 	return
 }

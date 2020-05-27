@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -32,6 +33,7 @@ type stateBuilder struct {
 }
 
 func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
+	st := time.Now()
 	sb.smartblock = s
 	logs, err := sb.smartblock.GetLogs()
 	if err != nil {
@@ -57,6 +59,7 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	if err = sb.buildTree(heads, breakpoint); err != nil {
 		return fmt.Errorf("buildTree error: %v", err)
 	}
+	log.Debugf("tree build: len: %d; scanned: %d; dur: %v", sb.tree.Len(), len(sb.cache), time.Since(st))
 	sb.cache = nil
 	return
 }

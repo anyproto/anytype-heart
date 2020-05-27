@@ -51,6 +51,7 @@ type Block interface {
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
+	ApplyEvent(e *pb.EventBlockSetText) error
 }
 
 type Text struct {
@@ -514,4 +515,23 @@ func (t *Text) HasSmartIds() bool {
 		}
 	}
 	return false
+}
+
+func (t *Text) ApplyEvent(e *pb.EventBlockSetText) error {
+	if e.Style != nil {
+		t.content.Style = e.Style.GetValue()
+	}
+	if e.Text != nil {
+		t.content.Text = e.Text.GetValue()
+	}
+	if e.Marks != nil {
+		t.content.Marks = e.Marks.GetValue()
+	}
+	if e.Checked != nil {
+		t.content.Checked = e.Checked.GetValue()
+	}
+	if e.Color != nil {
+		t.content.Color = e.Color.GetValue()
+	}
+	return nil
 }

@@ -19,6 +19,7 @@ func NewDiv(m *model.Block) simple.Block {
 type DivBlock interface {
 	simple.Block
 	SetStyle(style model.BlockContentDivStyle)
+	ApplyEvent(e *pb.EventBlockSetDiv) (err error)
 }
 
 type Div struct {
@@ -55,4 +56,11 @@ func (b *Div) Copy() simple.Block {
 
 func (b *Div) SetStyle(style model.BlockContentDivStyle) {
 	b.content.Style = style
+}
+
+func (d *Div) ApplyEvent(e *pb.EventBlockSetDiv) (err error) {
+	if e.Style != nil {
+		d.content.Style = e.Style.GetValue()
+	}
+	return
 }

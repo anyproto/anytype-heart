@@ -229,12 +229,6 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var sendEvent, addHistory = true, true
-	changes := s.GetChanges()
-	id, err := sb.source.PushChange(s, changes...)
-	if err != nil {
-		return
-	}
-	s.SetChangeId(id)
 	msgs, act, err := state.ApplyState(s)
 	if err != nil {
 		return
@@ -247,7 +241,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			addHistory = false
 		}
 	}
-
+	changes := sb.Doc.(*state.State).GetChanges()
+	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes...)
+	if err != nil {
+		return
+	}
+	sb.Doc.(*state.State).SetChangeId(id)
 	if sb.hist != nil && addHistory {
 		sb.hist.Add(act)
 	}
