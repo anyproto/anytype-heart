@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/google/uuid"
 )
 
 func NewSet(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Set {
@@ -70,6 +71,7 @@ func (p *Set) init() (err error) {
 				SchemaURL:  "https://anytype.io/schemas/page",
 				Views: []*model.BlockContentDataviewView{
 					{
+						Id:   uuid.New().String(),
 						Type: model.BlockContentDataviewView_Table,
 						Name: "Table",
 						Sorts: []*model.BlockContentDataviewSort{
@@ -78,10 +80,11 @@ func (p *Set) init() (err error) {
 								Type:   model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []string{"name", "isArchived"},
+						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
 						Filters:   nil,
 					},
 					{
+						Id:   uuid.New().String(),
 						Type: model.BlockContentDataviewView_Gallery,
 						Name: "Gallery",
 						Sorts: []*model.BlockContentDataviewSort{
@@ -90,10 +93,11 @@ func (p *Set) init() (err error) {
 								Type:   model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []string{"name", "isArchived"},
+						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
 						Filters:   nil,
 					},
 					{
+						Id:   uuid.New().String(),
 						Type: model.BlockContentDataviewView_Kanban,
 						Name: "Kanban",
 						Sorts: []*model.BlockContentDataviewSort{
@@ -102,10 +106,11 @@ func (p *Set) init() (err error) {
 								Type:   model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []string{"name", "isArchived"},
+						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
 						Filters:   nil,
 					},
 					{
+						Id:   uuid.New().String(),
 						Type: model.BlockContentDataviewView_List,
 						Name: "List",
 						Sorts: []*model.BlockContentDataviewSort{
@@ -114,7 +119,7 @@ func (p *Set) init() (err error) {
 								Type:   model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []string{"name", "isArchived"},
+						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
 						Filters:   nil,
 					},
 				},

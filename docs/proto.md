@@ -498,6 +498,7 @@
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
+    - [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation)
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
@@ -7487,6 +7488,22 @@ Bookmark is to keep a web-link and to preview a content.
 
 
 
+<a name="anytype.model.Block.Content.Dataview.Relation"></a>
+
+### Block.Content.Dataview.Relation
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| visible | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype.model.Block.Content.Dataview.Sort"></a>
 
 ### Block.Content.Dataview.Sort
@@ -7511,11 +7528,12 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | type | [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type) |  |  |
 | name | [string](#string) |  |  |
 | sorts | [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
 | filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
-| relations | [string](#string) | repeated | ids of enabled relations that also provides the order |
+| relations | [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation) | repeated | relations fields/columns options, also used to provide the order |
 
 
 
