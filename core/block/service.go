@@ -813,6 +813,8 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 		sb = editor.NewDashboard(s)
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
+	case pb.SmartBlockType_Set:
+		sb = editor.NewSet(s, s, s.linkPreview, s.sendEvent)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	default:

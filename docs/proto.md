@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -398,6 +402,9 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -465,6 +472,9 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
+  
+  
+
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto)
     - [PageDetails](#anytype.model.PageDetails)
     - [PageInfo](#anytype.model.PageInfo)
@@ -476,6 +486,10 @@
     - [State](#anytype.model.State)
     - [State.StateEntry](#anytype.model.State.StateEntry)
   
+  
+  
+  
+
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -484,9 +498,7 @@
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
-    - [Block.Content.Dataview.Filters](#anytype.model.Block.Content.Dataview.Filters)
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
-    - [Block.Content.Dataview.Sorts](#anytype.model.Block.Content.Dataview.Sorts)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
@@ -504,10 +516,10 @@
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
-    - [Block.Content.Dataview.FilterTypeCondition](#anytype.model.Block.Content.Dataview.FilterTypeCondition)
-    - [Block.Content.Dataview.FilterTypeOperator](#anytype.model.Block.Content.Dataview.FilterTypeOperator)
-    - [Block.Content.Dataview.SortType](#anytype.model.Block.Content.Dataview.SortType)
-    - [Block.Content.Dataview.ViewType](#anytype.model.Block.Content.Dataview.ViewType)
+    - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
+    - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
+    - [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type)
+    - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
@@ -518,6 +530,9 @@
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -7155,10 +7170,11 @@ Precondition: user A and user B opened the same block
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Page | 0 |  |
-| Home | 1 |  |
-| ProfilePage | 2 |  |
-| Archive | 3 |  |
-| Breadcrumbs | 4 |  |
+| Home | 1 | have only Link simpleblocks |
+| ProfilePage | 2 | just a usual page for now |
+| Archive | 3 | have only Link simpleblocks |
+| Breadcrumbs | 4 | have only Link simpleblocks |
+| Set | 5 | only have dataview simpleblock |
 
 
  
@@ -7461,25 +7477,10 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  |  |
 | column | [string](#string) |  |  |
-| condition | [Block.Content.Dataview.FilterTypeCondition](#anytype.model.Block.Content.Dataview.FilterTypeCondition) |  |  |
+| condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
 | value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dataview.Filters"></a>
-
-### Block.Content.Dataview.Filters
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
-| operator | [Block.Content.Dataview.FilterTypeOperator](#anytype.model.Block.Content.Dataview.FilterTypeOperator) |  |  |
 
 
 
@@ -7495,22 +7496,7 @@ Bookmark is to keep a web-link and to preview a content.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | column | [string](#string) |  |  |
-| type | [Block.Content.Dataview.SortType](#anytype.model.Block.Content.Dataview.SortType) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dataview.Sorts"></a>
-
-### Block.Content.Dataview.Sorts
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| sorts | [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
+| type | [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type) |  |  |
 
 
 
@@ -7525,10 +7511,11 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| type | [Block.Content.Dataview.ViewType](#anytype.model.Block.Content.Dataview.ViewType) |  |  |
+| type | [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type) |  |  |
 | name | [string](#string) |  |  |
-| sort | [Block.Content.Dataview.Sorts](#anytype.model.Block.Content.Dataview.Sorts) |  |  |
-| filters | [Block.Content.Dataview.Filters](#anytype.model.Block.Content.Dataview.Filters) |  |  |
+| sorts | [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
+| filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+| relations | [string](#string) | repeated | ids of enabled relations that also provides the order |
 
 
 
@@ -7783,9 +7770,9 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.model.Block.Content.Dataview.FilterTypeCondition"></a>
+<a name="anytype.model.Block.Content.Dataview.Filter.Condition"></a>
 
-### Block.Content.Dataview.FilterTypeCondition
+### Block.Content.Dataview.Filter.Condition
 
 
 | Name | Number | Description |
@@ -7801,9 +7788,9 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.model.Block.Content.Dataview.FilterTypeOperator"></a>
+<a name="anytype.model.Block.Content.Dataview.Filter.Operator"></a>
 
-### Block.Content.Dataview.FilterTypeOperator
+### Block.Content.Dataview.Filter.Operator
 
 
 | Name | Number | Description |
@@ -7813,9 +7800,9 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.model.Block.Content.Dataview.SortType"></a>
+<a name="anytype.model.Block.Content.Dataview.Sort.Type"></a>
 
-### Block.Content.Dataview.SortType
+### Block.Content.Dataview.Sort.Type
 
 
 | Name | Number | Description |
@@ -7825,9 +7812,9 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.model.Block.Content.Dataview.ViewType"></a>
+<a name="anytype.model.Block.Content.Dataview.View.Type"></a>
 
-### Block.Content.Dataview.ViewType
+### Block.Content.Dataview.View.Type
 
 
 | Name | Number | Description |

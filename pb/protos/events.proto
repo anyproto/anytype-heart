@@ -357,10 +357,12 @@ message Event {
 
 enum SmartBlockType {
     Page = 0;
-    Home = 1;
-    ProfilePage = 2;
-    Archive = 3;
-    Breadcrumbs = 4;
+    Home = 1; // have only Link simpleblocks
+    ProfilePage = 2; // just a usual page for now
+    Archive = 3; // have only Link simpleblocks
+    Breadcrumbs = 4; // have only Link simpleblocks
+
+    Set = 5; // only have dataview simpleblock
 }
 
 message ResponseEvent {
