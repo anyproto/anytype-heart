@@ -21,5 +21,3 @@ require (
 	golang.org/x/text v0.3.2
 	google.golang.org/grpc v1.29.0
 )
-
-replace github.com/anytypeio/go-anytype-library => ../go-anytype-library
