@@ -407,6 +407,10 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 
 	switch true {
 
+	case isPasteToCodeBlock:
+		combinedCodeBlock := anyblocks.CombineCodeBlocks(req.AnySlot)
+		caretPosition, err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, combinedCodeBlock, req.IsPartOfBlock)
+
 	case pasteToTheEnd:
 		targetId = cb.Pick(cIds[len(cIds)-1]).Model().Id
 		blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, targetId, req.AnySlot, model.Block_Bottom, false)
@@ -496,9 +500,9 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 
 func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targetId string, blocks []*model.Block, pos model.BlockPosition, isReversed bool) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, targetIdOut string, err error) {
 	idToIsChild := make(map[string]bool)
-	if isPasteToCodeBlock {
+	/*	if isPasteToCodeBlock {
 		blocks = anyblocks.AllBlocksToCode(blocks)
-	}
+	}*/
 
 	for _, b := range blocks {
 		for _, cId := range b.ChildrenIds {

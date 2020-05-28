@@ -56,6 +56,9 @@ func CombineCodeBlocks(accum []*model.Block) (res *model.Block) {
 			Text: &model.BlockContentText{
 				Text:  strings.Join(textArr, "\n"),
 				Style: model.BlockContentText_Code,
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{},
+				},
 			},
 		},
 	}
