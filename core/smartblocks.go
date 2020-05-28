@@ -192,6 +192,13 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	}
 	a.predefinedBlockIds.Archive = archive.ID.String()
 
+	// set pages
+	setPages, _, err := a.predefinedThreadAdd(threadDerivedIndexSetPages, accountSelect, true, false)
+	if err != nil {
+		return err
+	}
+	a.predefinedBlockIds.SetPages = setPages.ID.String()
+
 	// home
 	home, _, err := a.predefinedThreadAdd(threadDerivedIndexHome, accountSelect, true, true)
 	if err != nil {

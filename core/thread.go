@@ -46,6 +46,8 @@ const (
 	threadDerivedIndexArchive     threadDerivedIndex = 2
 	threadDerivedIndexAccount     threadDerivedIndex = 3
 
+	threadDerivedIndexSetPages threadDerivedIndex = 20
+
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
 	// derivation as described in SEP-00XX. Use with `fmt.Sprintf` and `DeriveForPath`.
@@ -66,6 +68,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]SmartBlockType{
 	threadDerivedIndexProfilePage: SmartBlockTypeProfilePage,
 	threadDerivedIndexHome:        SmartBlockTypeHome,
 	threadDerivedIndexArchive:     SmartBlockTypeArchive,
+	threadDerivedIndexSetPages:    SmartBlockTypeSet,
 }
 
 func ProfileThreadIDFromAccountPublicKey(pubk crypto.PubKey) (thread.ID, error) {

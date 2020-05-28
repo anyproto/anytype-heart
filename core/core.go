@@ -58,6 +58,8 @@ type PredefinedBlockIds struct {
 	Profile string
 	Home    string
 	Archive string
+
+	SetPages string
 }
 
 type Anytype struct {
