@@ -19,7 +19,7 @@ type smartBlockBaseSchema SmartBlockType
 
 func init() {
 	// compile page first because others depends on it
-	var keys = []string{"https://anytype.io/schemas/page"}
+	var keys = []string{"https://anytype.io/schemas/relation-definitions", "https://anytype.io/schemas/page"}
 loop:
 	for schemaURL, _ := range schema.SchemaByURL {
 		for _, key := range keys {

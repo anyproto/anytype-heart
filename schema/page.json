@@ -3,32 +3,62 @@
   "id": "https://anytype.io/schemas/page",
   "title": "Anytype Page",
   "description": "This schema contains the base properties of Anytype Page and should be refereed if you want to extend it",
-
-  "definitions": {
-    "image": {
-      "$id": "https://anytype.io/schemas/image",
-      "type": "string",
-      "description": "CID of image node in the IPFS"
-    },
-    "file": {
-      "$id": "https://anytype.io/schemas/file",
-      "type": "string",
-      "description": "CID of file node in the IPFS"
-    },
-    "emoji": {
-      "$id": "https://anytype.io/schemas/emoji",
-      "type": "string",
-      "description": "Unicode emoji"
-    }
-  },
-
   "type": "object",
   "properties": {
-    "name": { "type": "string", "default": "Untitled" },
-    "iconEmoji": { "$ref": "#/definitions/emoji" },
-    "iconImage":  { "$ref": "#/definitions/image" },
-    "isArchived":  { "type": "boolean", "comment": "scope:account" },
-    "isDeleted":  { "type": "boolean", "comment": "scope:local", "readOnly": true}
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "https://anytype.io/schemas/types/relation"
+      },
+      "default": [
+        {
+          "id": "name",
+          "name": "Name",
+          "type": "https://anytype.io/schemas/types/title"
+        },
+        {
+          "id": "iconEmoji",
+          "name": "Emoji",
+          "type": "https://anytype.io/schemas/types/emoji"
+        },
+        {
+          "id": "iconImage",
+          "name": "Image",
+          "type": "https://anytype.io/schemas/types/image"
+        },
+        {
+          "id": "isArchived",
+          "name": "Archived",
+          "type": "https://anytype.io/schemas/types/checkbox"
+        }
+      ]
+    },
+    "details": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": "Untitled"
+        },
+        "iconEmoji": {
+          "type": "string"
+        },
+        "iconImage": {
+          "type": "string"
+        },
+        "isArchived": {
+          "type": "boolean",
+          "comment": "scope:account"
+        },
+        "isDeleted": {
+          "type": "boolean",
+          "comment": "scope:account",
+          "readOnly": true
+        }
+      }
+    }
   },
-  "required": ["name"]
+  "required": [
+    "name"
+  ]
 }

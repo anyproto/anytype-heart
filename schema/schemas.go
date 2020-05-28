@@ -42,34 +42,64 @@ var SchemaByURL = map[string]string{
   "id": "https://anytype.io/schemas/page",
   "title": "Anytype Page",
   "description": "This schema contains the base properties of Anytype Page and should be refereed if you want to extend it",
-
-  "definitions": {
-    "image": {
-      "$id": "https://anytype.io/schemas/image",
-      "type": "string",
-      "description": "CID of image node in the IPFS"
-    },
-    "file": {
-      "$id": "https://anytype.io/schemas/file",
-      "type": "string",
-      "description": "CID of file node in the IPFS"
-    },
-    "emoji": {
-      "$id": "https://anytype.io/schemas/emoji",
-      "type": "string",
-      "description": "Unicode emoji"
-    }
-  },
-
   "type": "object",
   "properties": {
-    "name": { "type": "string", "default": "Untitled" },
-    "iconEmoji": { "$ref": "#/definitions/emoji" },
-    "iconImage":  { "$ref": "#/definitions/image" },
-    "isArchived":  { "type": "boolean", "comment": "scope:account" },
-    "isDeleted":  { "type": "boolean", "comment": "scope:local", "readOnly": true}
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "https://anytype.io/schemas/types/relation"
+      },
+      "default": [
+        {
+          "id": "name",
+          "name": "Name",
+          "type": "https://anytype.io/schemas/types/title"
+        },
+        {
+          "id": "iconEmoji",
+          "name": "Emoji",
+          "type": "https://anytype.io/schemas/types/emoji"
+        },
+        {
+          "id": "iconImage",
+          "name": "Image",
+          "type": "https://anytype.io/schemas/types/image"
+        },
+        {
+          "id": "isArchived",
+          "name": "Archived",
+          "type": "https://anytype.io/schemas/types/checkbox"
+        }
+      ]
+    },
+    "details": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": "Untitled"
+        },
+        "iconEmoji": {
+          "type": "string"
+        },
+        "iconImage": {
+          "type": "string"
+        },
+        "isArchived": {
+          "type": "boolean",
+          "comment": "scope:account"
+        },
+        "isDeleted": {
+          "type": "boolean",
+          "comment": "scope:account",
+          "readOnly": true
+        }
+      }
+    }
   },
-  "required": ["name"]
+  "required": [
+    "name"
+  ]
 }
 `,
 	"https://anytype.io/schemas/person": `{
@@ -83,5 +113,103 @@ var SchemaByURL = map[string]string{
   ],
 
   "type": "object"
+}
+`,
+	"https://anytype.io/schemas/relation-definitions": `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "https://anytype.io/schemas/relation-definitions",
+  "title": "Anytype Page",
+  "description": "This schema contains all base definitions",
+  "definitions": {
+    "relation": {
+      "$id": "https://anytype.io/schemas/relation",
+      "type": "object",
+      "$comment": "fills relation from specific details",
+      "properties": {
+        "id": {
+          "type": "string",
+          "$comment": "detail's ID"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "$comment": "json schema $id for the relation type, starting from https://anytype.io/schemas/types/"
+        }
+      }
+    },
+    "title": {
+      "$id": "https://anytype.io/schemas/types/title",
+      "type": "string",
+      "description": "Title renders name plus first emoji/image relation for the same relation"
+    },
+    "description": {
+      "$id": "https://anytype.io/schemas/types/description",
+      "type": "string"
+    },
+    "select": {
+      "$id": "https://anytype.io/schemas/types/select",
+      "type": "string"
+    },
+    "multiselect": {
+      "$id": "https://anytype.io/schemas/types/multiselect",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "number": {
+      "$id": "https://anytype.io/schemas/types/number",
+      "type": "number"
+    },
+    "url": {
+      "$id": "https://anytype.io/schemas/types/url",
+      "type": "string",
+      "description": "External URL"
+    },
+    "email": {
+      "$id": "https://anytype.io/schemas/types/email",
+      "type": "string"
+    },
+    "phone": {
+      "$id": "https://anytype.io/schemas/types/phone",
+      "type": "string"
+    },
+    "date": {
+      "$id": "https://anytype.io/schemas/types/date",
+      "type": "string",
+      "description": "UNIX timestamp as a string"
+    },
+    "checkbox": {
+      "$id": "https://anytype.io/schemas/types/checkbox",
+      "type": "boolean"
+    },
+    "page": {
+      "$id": "https://anytype.io/schemas/types/page",
+      "type": "string",
+      "description": "ID of the page"
+    },
+    "person": {
+      "$id": "https://anytype.io/schemas/types/person",
+      "type": "string",
+      "description": "ID of the profile"
+    },
+    "image": {
+      "$id": "https://anytype.io/schemas/types/image",
+      "type": "string",
+      "description": "CID of image node in the IPFS"
+    },
+    "file": {
+      "$id": "https://anytype.io/schemas/types/file",
+      "type": "string",
+      "description": "CID of file node in the IPFS"
+    },
+    "emoji": {
+      "$id": "https://anytype.io/schemas/types/emoji",
+      "type": "string",
+      "description": "One emoji as unicode"
+    }
+  }
 }
 `}
