@@ -67,6 +67,7 @@ func (p *Set) init() (err error) {
 		Content: &model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
 				DatabaseId: "pages",
+				SchemaURL:  "https://anytype.io/schemas/page",
 				Views: []*model.BlockContentDataviewView{
 					{
 						Type: model.BlockContentDataviewView_Table,
