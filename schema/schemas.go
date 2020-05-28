@@ -5,100 +5,37 @@ package schema
 
 var SchemaByURL = map[string]string{
 
-	"https://anytype.io/schemas/homescreen": `{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "id": "https://anytype.io/schemas/homescreen",
-  "title": "Anytype Home Screen",
-  "description": "This schema contains the base properties of Anytype Page and should be refereed if you want to extend it",
-
-  "definitions": {
-    "image": {
-      "$id": "https://anytype.io/schemas/image",
-      "type": "string",
-      "description": "CID of image node in the IPFS"
-    },
-    "emoji": {
-      "$id": "https://anytype.io/schemas/emoji",
-      "type": "string",
-      "description": "Unicode emoji"
-    }
-  },
-
-  "type": "object",
-  "comment": "scope:account",
-  "properties": {
-    "name": { "type": "string", "default": "Home" },
-    "iconEmoji": { "$ref": "#/definitions/emoji", "default": "🏠" },
-    "coverType":  { "type": "string"},
-    "coverId":  { "type": "string" },
-    "coverY":  { "type": "integer" },
-    "coverX":  { "type": "integer"}
-  },
-  "required": []
-}
-`,
 	"https://anytype.io/schemas/page": `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "id": "https://anytype.io/schemas/page",
   "title": "Anytype Page",
   "description": "This schema contains the base properties of Anytype Page and should be refereed if you want to extend it",
-  "type": "object",
-  "properties": {
-    "relations": {
-      "type": "array",
-      "items": {
-        "$ref": "https://anytype.io/schemas/types/relation"
-      },
-      "default": [
-        {
-          "id": "name",
-          "name": "Name",
-          "type": "https://anytype.io/schemas/types/title"
-        },
-        {
-          "id": "iconEmoji",
-          "name": "Emoji",
-          "type": "https://anytype.io/schemas/types/emoji"
-        },
-        {
-          "id": "iconImage",
-          "name": "Image",
-          "type": "https://anytype.io/schemas/types/image"
-        },
-        {
-          "id": "isArchived",
-          "name": "Archived",
-          "type": "https://anytype.io/schemas/types/checkbox"
-        }
-      ]
-    },
-    "details": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "default": "Untitled"
-        },
-        "iconEmoji": {
-          "type": "string"
-        },
-        "iconImage": {
-          "type": "string"
-        },
-        "isArchived": {
-          "type": "boolean",
-          "comment": "scope:account"
-        },
-        "isDeleted": {
-          "type": "boolean",
-          "comment": "scope:account",
-          "readOnly": true
-        }
-      }
-    }
+  "type": "array",
+  "items": {
+    "$ref": "https://anytype.io/schemas/relation"
   },
-  "required": [
-    "name"
+  "uniqueItems": true,
+  "default": [
+    {
+      "id": "name",
+      "name": "Name",
+      "type": "https://anytype.io/schemas/types/title"
+    },
+    {
+      "id": "iconEmoji",
+      "name": "Emoji",
+      "type": "https://anytype.io/schemas/types/emoji"
+    },
+    {
+      "id": "iconImage",
+      "name": "Image",
+      "type": "https://anytype.io/schemas/types/image"
+    },
+    {
+      "id": "isArchived",
+      "name": "Archived",
+      "type": "https://anytype.io/schemas/types/checkbox"
+    }
   ]
 }
 `,
@@ -166,11 +103,13 @@ var SchemaByURL = map[string]string{
     "url": {
       "$id": "https://anytype.io/schemas/types/url",
       "type": "string",
-      "description": "External URL"
+      "description": "External URL",
+      "format": "uri"
     },
     "email": {
       "$id": "https://anytype.io/schemas/types/email",
-      "type": "string"
+      "type": "string",
+      "format": "email"
     },
     "phone": {
       "$id": "https://anytype.io/schemas/types/phone",

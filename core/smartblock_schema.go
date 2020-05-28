@@ -45,8 +45,6 @@ func (s smartBlockBaseSchema) URL() string {
 		return schemaURLPrefix + "page"
 	case SmartBlockTypeProfilePage:
 		return schemaURLPrefix + "person"
-	case SmartBlockTypeHome:
-		return schemaURLPrefix + "home"
 	default:
 		return ""
 	}

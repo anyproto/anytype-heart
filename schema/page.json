@@ -3,62 +3,31 @@
   "id": "https://anytype.io/schemas/page",
   "title": "Anytype Page",
   "description": "This schema contains the base properties of Anytype Page and should be refereed if you want to extend it",
-  "type": "object",
-  "properties": {
-    "relations": {
-      "type": "array",
-      "items": {
-        "$ref": "https://anytype.io/schemas/types/relation"
-      },
-      "default": [
-        {
-          "id": "name",
-          "name": "Name",
-          "type": "https://anytype.io/schemas/types/title"
-        },
-        {
-          "id": "iconEmoji",
-          "name": "Emoji",
-          "type": "https://anytype.io/schemas/types/emoji"
-        },
-        {
-          "id": "iconImage",
-          "name": "Image",
-          "type": "https://anytype.io/schemas/types/image"
-        },
-        {
-          "id": "isArchived",
-          "name": "Archived",
-          "type": "https://anytype.io/schemas/types/checkbox"
-        }
-      ]
-    },
-    "details": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "default": "Untitled"
-        },
-        "iconEmoji": {
-          "type": "string"
-        },
-        "iconImage": {
-          "type": "string"
-        },
-        "isArchived": {
-          "type": "boolean",
-          "comment": "scope:account"
-        },
-        "isDeleted": {
-          "type": "boolean",
-          "comment": "scope:account",
-          "readOnly": true
-        }
-      }
-    }
+  "type": "array",
+  "items": {
+    "$ref": "https://anytype.io/schemas/relation"
   },
-  "required": [
-    "name"
+  "uniqueItems": true,
+  "default": [
+    {
+      "id": "name",
+      "name": "Name",
+      "type": "https://anytype.io/schemas/types/title"
+    },
+    {
+      "id": "iconEmoji",
+      "name": "Emoji",
+      "type": "https://anytype.io/schemas/types/emoji"
+    },
+    {
+      "id": "iconImage",
+      "name": "Image",
+      "type": "https://anytype.io/schemas/types/image"
+    },
+    {
+      "id": "isArchived",
+      "name": "Archived",
+      "type": "https://anytype.io/schemas/types/checkbox"
+    }
   ]
 }

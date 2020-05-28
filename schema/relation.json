@@ -49,11 +49,13 @@
     "url": {
       "$id": "https://anytype.io/schemas/types/url",
       "type": "string",
-      "description": "External URL"
+      "description": "External URL",
+      "format": "uri"
     },
     "email": {
       "$id": "https://anytype.io/schemas/types/email",
-      "type": "string"
+      "type": "string",
+      "format": "email"
     },
     "phone": {
       "$id": "https://anytype.io/schemas/types/phone",
