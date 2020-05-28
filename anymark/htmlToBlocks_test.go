@@ -2,6 +2,7 @@ package anymark_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -29,11 +30,15 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 	}
 
 	for testNum, _ := range testCases {
-
+		fmt.Println("Case ", testNum)
+		//if testNum != 13 {
+		//	continue
+		//}
 		mdToBlocksConverter := anymark.New()
 		_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(testCases[testNum].HTML))
 
 		for _, b := range blocks {
+			fmt.Println(b)
 			assert.NotEmpty(t, b)
 		}
 	}

@@ -2,7 +2,10 @@ package html
 
 import (
 	"bytes"
+	"strings"
 	"unicode/utf8"
+
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -364,6 +367,8 @@ var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
 func (r *Renderer) renderThematicBreak(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		w.ForceCloseTextBlock()
+	} else {
+		w.AddDivider()
 	}
 
 	return ast.WalkContinue, nil
@@ -388,15 +393,27 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 		return ast.WalkContinue, nil
 	}
 
+	destination := source
 	label := n.Label(source)
 	w.SetMarkStart()
 
 	start := int32(utf8.RuneCountInString(w.GetText()))
 	labelLength := int32(utf8.RuneCount(label))
+	if slice.FindPos(w.GetAllFileShortPaths(), strings.Replace(string(source), "%20", " ", -1)) != -1 {
+
+	}
+
+	destinationConverted := strings.Replace(string(destination), "%20", " ", -1)
+	for _, sPath := range w.GetAllFileShortPaths() {
+		if strings.Contains(sPath, destinationConverted) {
+			destination = []byte(sPath)
+		}
+	}
+
 	w.AddMark(model.BlockContentTextMark{
 		Range: &model.Range{From: start, To: start + labelLength},
 		Type:  model.BlockContentTextMark_Link,
-		Param: string(n.URL(source)),
+		Param: string(n.URL(destination)),
 	})
 
 	_, _ = w.Write(util.EscapeHTML(label))
@@ -459,14 +476,25 @@ func (r *Renderer) renderEmphasis(w blocksUtil.RWriter, source []byte, node ast.
 
 func (r *Renderer) renderLink(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Link)
+
+	destination := n.Destination
+
 	if entering {
 		w.SetMarkStart()
 	} else {
+
+		destinationConverted := strings.Replace(string(destination), "%20", " ", -1)
+		for _, sPath := range w.GetAllFileShortPaths() {
+			if strings.Contains(sPath, destinationConverted) {
+				destination = []byte(sPath)
+			}
+		}
+
 		to := int32(utf8.RuneCountInString(w.GetText()))
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
 			Type:  model.BlockContentTextMark_Link,
-			Param: string(n.Destination),
+			Param: string(destination),
 		})
 	}
 	return ast.WalkContinue, nil
@@ -507,6 +535,7 @@ func (r *Renderer) renderRawHTML(w blocksUtil.RWriter, source []byte, node ast.N
 }
 
 func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+
 	if !entering {
 		return ast.WalkContinue, nil
 	}

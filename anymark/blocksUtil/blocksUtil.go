@@ -3,10 +3,17 @@ package blocksUtil
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"regexp"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+)
+
+var (
+	markdownLink = regexp.MustCompile(`(?:__|[*#])|\[(.*?)\]\(.*?\)`)
 )
 
 // A RWriter is a subset of the bufio.Writer .
@@ -32,6 +39,9 @@ type RWriter interface {
 
 	AddMark(mark model.BlockContentTextMark)
 
+	PreprocessBlocks()
+	ProcessMarkdownArtifacts()
+
 	AddImageBlock(url string)
 	OpenNewTextBlock(model.BlockContentTextStyle)
 	CloseTextBlock(model.BlockContentTextStyle)
@@ -39,10 +49,14 @@ type RWriter interface {
 
 	SetIsNumberedList(isNumbered bool)
 	GetIsNumberedList() (isNumbered bool)
+
+	GetAllFileShortPaths() []string
+	AddDivider()
 }
 
 type rWriter struct {
 	*bufio.Writer
+	allFileShortPaths []string
 
 	isNumberedList bool
 
@@ -52,6 +66,10 @@ type rWriter struct {
 	textStylesQueue []model.BlockContentTextStyle
 	blocks          []*model.Block
 	curStyledBlock  model.BlockContentTextStyle
+}
+
+func (rw *rWriter) GetAllFileShortPaths() []string {
+	return rw.allFileShortPaths
 }
 
 func (rw *rWriter) SetMarkStart() {
@@ -100,7 +118,37 @@ func (rw *rWriter) OpenNewTextBlock(style model.BlockContentTextStyle) {
 	rw.textStylesQueue = append(rw.textStylesQueue, style)
 }
 
+func (rw *rWriter) PreprocessBlocks() {
+	fmt.Println("PreprocessBlocks")
+	blocksOut := []*model.Block{}
+	accum := []*model.Block{}
+
+	fmt.Println("len rw.blocks", len(rw.blocks))
+	for _, b := range rw.blocks {
+		if t := b.GetText(); t != nil && t.Style == model.BlockContentText_Code {
+			accum = append(accum, b)
+		} else {
+			if len(accum) > 0 {
+				fmt.Println("accum:", accum)
+				blocksOut = append(blocksOut, rw.combineCodeBlocks(accum))
+				accum = []*model.Block{}
+			}
+
+			blocksOut = append(blocksOut, b)
+		}
+
+	}
+
+	if len(accum) > 0 {
+		blocksOut = append(blocksOut, rw.combineCodeBlocks(accum))
+	}
+
+	rw.blocks = blocksOut
+}
+
 func (rw *rWriter) GetBlocks() []*model.Block {
+
+	rw.PreprocessBlocks()
 	return rw.blocks
 }
 
@@ -112,8 +160,8 @@ func (rw *rWriter) GetIsNumberedList() (isNumbered bool) {
 	return rw.isNumberedList
 }
 
-func NewRWriter(writer *bufio.Writer) RWriter {
-	return &rWriter{Writer: writer}
+func NewRWriter(writer *bufio.Writer, allFileShortPaths []string) RWriter {
+	return &rWriter{Writer: writer, allFileShortPaths: allFileShortPaths}
 }
 
 func (rw *rWriter) GetText() string {
@@ -121,7 +169,7 @@ func (rw *rWriter) GetText() string {
 }
 
 func (rw *rWriter) AddTextToBuffer(text string) {
-	rw.textBuffer += text
+	rw.textBuffer += strings.ReplaceAll(text, "*", "")
 }
 
 func (rw *rWriter) AddImageBlock(url string) {
@@ -136,6 +184,20 @@ func (rw *rWriter) AddImageBlock(url string) {
 	}
 
 	rw.blocks = append(rw.blocks, &newBlock)
+}
+
+func (rw *rWriter) AddDivider() {
+	rw.marksStartQueue = []int{}
+	rw.marksBuffer = []*model.BlockContentTextMark{}
+	rw.textBuffer = ""
+
+	rw.blocks = append(rw.blocks, &model.Block{
+		Content: &model.BlockContentOfDiv{
+			Div: &model.BlockContentDiv{
+				Style: model.BlockContentDiv_Line,
+			},
+		},
+	})
 }
 
 func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
@@ -154,15 +216,33 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 		style = rw.curStyledBlock
 	}
 
+	rw.ProcessMarkdownArtifacts()
+
+	text := &model.BlockContentText{
+		Text:  rw.textBuffer,
+		Style: style,
+		Marks: &model.BlockContentTextMarks{
+			Marks: rw.marksBuffer,
+		},
+	}
+
+	if len(rw.textBuffer) >= 3 && rw.textBuffer[:3] == "[ ]" {
+		text.Text = strings.TrimLeft(rw.textBuffer[3:], " ")
+		text.Style = model.BlockContentText_Checkbox
+
+	} else if len(rw.textBuffer) >= 2 && rw.textBuffer[:2] == "[]" {
+		text.Text = strings.TrimLeft(rw.textBuffer[2:], " ")
+		text.Style = model.BlockContentText_Checkbox
+
+	} else if len(rw.textBuffer) >= 3 && rw.textBuffer[:3] == "[x]" {
+		text.Text = strings.TrimLeft(rw.textBuffer[3:], " ")
+		text.Style = model.BlockContentText_Checkbox
+		text.Checked = true
+	}
+
 	newBlock := model.Block{
 		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:  rw.textBuffer,
-				Style: style,
-				Marks: &model.BlockContentTextMarks{
-					Marks: rw.marksBuffer,
-				},
-			},
+			Text: text,
 		},
 	}
 
@@ -184,4 +264,34 @@ func (rw *rWriter) ForceCloseTextBlock() {
 	}
 
 	rw.CloseTextBlock(style)
+}
+
+func (rw *rWriter) ProcessMarkdownArtifacts() {
+	res := markdownLink.FindAllStringSubmatchIndex(rw.textBuffer, -1)
+	if len(res) != 0 {
+		for i, _ := range res {
+			fmt.Println(res[i])
+		}
+	}
+}
+
+func (rw *rWriter) combineCodeBlocks(accum []*model.Block) (res *model.Block) {
+	var textArr []string
+
+	for _, b := range accum {
+		if b.GetText() != nil {
+			textArr = append(textArr, b.GetText().Text)
+		}
+	}
+
+	res = &model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  strings.Join(textArr, "\n"),
+				Style: model.BlockContentText_Code,
+			},
+		},
+	}
+
+	return res
 }
