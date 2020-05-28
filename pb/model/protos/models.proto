@@ -195,11 +195,12 @@ message Block {
             string schemaURL = 3;
 
             message View {
-                Type type = 1;
-                string name = 2;
-                repeated Sort sorts = 3;
-                repeated Filter filters = 4;
-                repeated string relations = 5; // ids of enabled relations that also provides the order
+                string id = 1;
+                Type type = 2;
+                string name = 3;
+                repeated Sort sorts = 4;
+                repeated Filter filters = 5;
+                repeated Relation relations = 6; // relations fields/columns options, also used to provide the order
 
                 enum Type {
                     Table = 0;
@@ -207,6 +208,11 @@ message Block {
                     Gallery = 2;
                     Kanban = 3;
                 }
+            }
+
+            message Relation {
+                string id = 1;
+                bool visible = 2;
             }
 
             message Sort {
