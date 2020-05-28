@@ -5,12 +5,13 @@ package pb
 
 import (
 	fmt "fmt"
-	model "github.com/anytypeio/go-anytype-library/pb/model"
-	proto "github.com/gogo/protobuf/proto"
-	types "github.com/gogo/protobuf/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
+
+	model "github.com/anytypeio/go-anytype-library/pb/model"
+	proto "github.com/gogo/protobuf/proto"
+	types "github.com/gogo/protobuf/types"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -752,18 +753,18 @@ func (m *EventBlock) XXX_DiscardUnknown() {
 var xxx_messageInfo_EventBlock proto.InternalMessageInfo
 
 //
-// Event to show internal blocks on a client.
+// Event to show internal anyblocks on a client.
 // Example Scenarios
 // A. Block Creation
 // 1. Block A have been created on a client C1
 // 2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
 // B. Partial block load
-// 1. Client C1 opens Page1, that contains, for example, 133 blocks.
+// 1. Client C1 opens Page1, that contains, for example, 133 anyblocks.
 // 2. M -> F: ShowFullScreen(Root, blocks1-50)
 // 3. M -> F: Block.Add(blocks51-100)
 // 3. M -> F: Block.Add(blocks101-133)
 type EventBlockAdd struct {
-	Blocks []*model.Block `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	Blocks []*model.Block `protobuf:"bytes,1,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
 }
 
 func (m *EventBlockAdd) Reset()         { *m = EventBlockAdd{} }
@@ -807,11 +808,11 @@ func (m *EventBlockAdd) GetBlocks() []*model.Block {
 }
 
 //
-// Works with a smart blocks: Page, Dashboard
+// Works with a smart anyblocks: Page, Dashboard
 // Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
 type EventBlockShow struct {
 	RootId  string                  `protobuf:"bytes,1,opt,name=rootId,proto3" json:"rootId,omitempty"`
-	Blocks  []*model.Block          `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	Blocks  []*model.Block          `protobuf:"bytes,2,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
 	Details []*EventBlockSetDetails `protobuf:"bytes,3,rep,name=details,proto3" json:"details,omitempty"`
 	Type    SmartBlockType          `protobuf:"varint,4,opt,name=type,proto3,enum=anytype.SmartBlockType" json:"type,omitempty"`
 }
@@ -2966,7 +2967,7 @@ func (m *EventUserBlockTextRange) GetRange() *model.Range {
 //*
 // Middleware to front end event message, that will be sent in this scenario:
 // Precondition: user A and user B opened the same block
-// 1. User B selects some inner blocks
+// 1. User B selects some inner anyblocks
 // 2. User A receives a message about p.1
 type EventUserBlockSelectRange struct {
 	Account       *EventAccount `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`

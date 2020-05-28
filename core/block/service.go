@@ -466,7 +466,7 @@ func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMov
 		return linkId, err
 	}
 
-	// 2. Move blocks to new page
+	// 2. Move anyblocks to new page
 	err = s.MoveBlocks(nil, pb.RpcBlockListMoveRequest{
 		ContextId:       req.ContextId,
 		BlockIds:        req.BlockIds,

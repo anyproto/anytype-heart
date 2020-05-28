@@ -177,7 +177,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
-	log.Debug("2. ImportMarkdown: start to paste blocks")
+	log.Debug("2. ImportMarkdown: start to paste anyblocks")
 	for name := range nameToBlocks {
 		if len(nameToBlocks[name]) > 0 {
 			log.Debug("   >>> start to paste to page:", name)
@@ -189,7 +189,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
-	log.Debug("3. ImportMarkdown: all blocks pasted. Start to convert rootLinks")
+	log.Debug("3. ImportMarkdown: all anyblocks pasted. Start to convert rootLinks")
 	for name := range nameToBlocks {
 		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
 
@@ -305,7 +305,6 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 				elements[len(elements)-1][:2] == "._" {
 
 				continue
-
 			}
 
 			shortPath := strings.Join(elements, "/")

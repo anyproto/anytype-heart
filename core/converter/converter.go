@@ -78,7 +78,7 @@ func (c *converter) CreateTree(blocks []*model.Block) Node {
 		}
 	}
 
-	// 3. get root level blocks
+	// 3. get root level anyblocks
 	blocksRootLvl := blocks
 	for _, b := range blocks {
 
@@ -92,7 +92,7 @@ func (c *converter) CreateTree(blocks []*model.Block) Node {
 
 	c.remainBlocks = blocks
 
-	// 5. Set top level blocks to root model
+	// 5. Set top level anyblocks to root model
 	for _, br := range blocksRootLvl {
 		c.rootNode.model.ChildrenIds = append(c.rootNode.model.ChildrenIds, br.Id)
 		c.remainBlocks = c.filterById(c.remainBlocks, br.Id)

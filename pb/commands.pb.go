@@ -3331,7 +3331,7 @@ func (m *RpcBlockListMoveToNewPageResponseError) GetDescription() string {
 }
 
 //
-// Makes blocks copy by given ids and paste it to shown place
+// Makes anyblocks copy by given ids and paste it to shown place
 type RpcBlockListDuplicate struct {
 }
 
@@ -5362,7 +5362,7 @@ func (m *RpcBlockListDeletePageResponseError) GetDescription() string {
 }
 
 //
-// Namespace, that agregates subtopics and actions, that relates to blocks.
+// Namespace, that agregates subtopics and actions, that relates to anyblocks.
 type RpcBlock struct {
 }
 
@@ -6061,7 +6061,7 @@ var xxx_messageInfo_RpcBlockCopy proto.InternalMessageInfo
 
 type RpcBlockCopyRequest struct {
 	ContextId         string         `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
 	SelectedTextRange *model.Range   `protobuf:"bytes,3,opt,name=selectedTextRange,proto3" json:"selectedTextRange,omitempty"`
 }
 
@@ -6541,7 +6541,7 @@ var xxx_messageInfo_RpcBlockCut proto.InternalMessageInfo
 
 type RpcBlockCutRequest struct {
 	ContextId         string         `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
 	SelectedTextRange *model.Range   `protobuf:"bytes,3,opt,name=selectedTextRange,proto3" json:"selectedTextRange,omitempty"`
 }
 
@@ -6965,7 +6965,7 @@ var xxx_messageInfo_RpcBlockExport proto.InternalMessageInfo
 
 type RpcBlockExportRequest struct {
 	ContextId string         `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	Blocks    []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	Blocks    []*model.Block `protobuf:"bytes,2,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
 }
 
 func (m *RpcBlockExportRequest) Reset()         { *m = RpcBlockExportRequest{} }
@@ -11914,7 +11914,7 @@ func (m *RpcBlockRedoResponseError) GetDescription() string {
 }
 
 //
-// Works with a smart blocks (block-organizers, like page, dashboard etc)
+// Works with a smart anyblocks (block-organizers, like page, dashboard etc)
 // **Example scenario**
 // 1A. On front-end start.
 //     1. Front -> MW: Rpc.Block.Open.Request(dashboard.id)
@@ -11925,10 +11925,10 @@ func (m *RpcBlockRedoResponseError) GetDescription() string {
 // Get close response first, then open request:
 //     2. MW -> Front: Rpc.Block.Close.Response(err)
 //     3. Front -> MW: Rpc.Block.Open.Request(page.id)
-//     4. MW -> Front: BlockShow(<page, blocks>)
+//     4. MW -> Front: BlockShow(<page, anyblocks>)
 //     5. MW -> Front: Rpc.Block.Open.Response(err)
-// Image/Video/File blocks then:
-//     6. MW -> Front: BlockShow(<blocks>)
+// Image/Video/File anyblocks then:
+//     6. MW -> Front: BlockShow(<anyblocks>)
 type RpcBlockOpen struct {
 }
 
@@ -13144,7 +13144,7 @@ func (m *RpcBlockCreatePageResponseError) GetDescription() string {
 }
 
 //
-// Remove blocks from the childrenIds of its parents
+// Remove anyblocks from the childrenIds of its parents
 type RpcBlockUnlink struct {
 }
 

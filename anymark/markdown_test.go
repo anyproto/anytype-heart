@@ -30,8 +30,8 @@ func TestConvertMdToBlocks(t *testing.T) {
 		fmt.Println("TEST CASE:\n\n", testCases[testNum].MD, "\n   ***   ")
 		blocks, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), []string{})
 
-		for _, b := range blocks {
-			//fmt.Println(i, ": ", b)
+		for i, b := range blocks {
+			fmt.Println(i, ": ", b)
 			assert.NotEmpty(t, b)
 		}
 	}

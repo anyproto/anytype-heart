@@ -149,7 +149,7 @@ message Rpc {
         }
 
         /*
-         * Makes blocks copy by given ids and paste it to shown place
+         * Makes anyblocks copy by given ids and paste it to shown place
         */
         message Duplicate {
             message Request {
@@ -388,7 +388,7 @@ message Rpc {
     }
 
     /*
-     * Namespace, that agregates subtopics and actions, that relates to blocks.
+     * Namespace, that agregates subtopics and actions, that relates to anyblocks.
     */
     message Block {
         message Replace {
@@ -1180,7 +1180,7 @@ message Rpc {
         }
 
         /*
-         * Works with a smart blocks (block-organizers, like page, dashboard etc)
+         * Works with a smart anyblocks (block-organizers, like page, dashboard etc)
          * **Example scenario**
          * 1A. On front-end start.
          *     1. Front -> MW: Rpc.Block.Open.Request(dashboard.id)
@@ -1191,10 +1191,10 @@ message Rpc {
          * Get close response first, then open request:
          *     2. MW -> Front: Rpc.Block.Close.Response(err)
          *     3. Front -> MW: Rpc.Block.Open.Request(page.id)
-         *     4. MW -> Front: BlockShow(<page, blocks>)
+         *     4. MW -> Front: BlockShow(<page, anyblocks>)
          *     5. MW -> Front: Rpc.Block.Open.Response(err)
-         * Image/Video/File blocks then:
-         *     6. MW -> Front: BlockShow(<blocks>)
+         * Image/Video/File anyblocks then:
+         *     6. MW -> Front: BlockShow(<anyblocks>)
         */
         message Open {
             message Request {
@@ -1362,7 +1362,7 @@ message Rpc {
         }
 
     /*
-     * Remove blocks from the childrenIds of its parents
+     * Remove anyblocks from the childrenIds of its parents
     */
         message Unlink {
             message Request {
