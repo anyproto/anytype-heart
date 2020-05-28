@@ -23,6 +23,8 @@ func SmartBlockTypeToProto(t core.SmartBlockType) pb.SmartBlockType {
 		return pb.SmartBlockType_Home
 	case core.SmartBlockTypeProfilePage:
 		return pb.SmartBlockType_ProfilePage
+	case core.SmartBlockTypeSet:
+		return pb.SmartBlockType_Set
 	}
 	return 0
 }
@@ -37,6 +39,8 @@ func SmartBlockTypeToCore(t pb.SmartBlockType) core.SmartBlockType {
 		return core.SmartBlockTypeHome
 	case pb.SmartBlockType_ProfilePage:
 		return core.SmartBlockTypeProfilePage
+	case pb.SmartBlockType_Set:
+		return core.SmartBlockTypeSet
 	}
 	return 0
 }

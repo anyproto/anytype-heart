@@ -163,6 +163,10 @@ func (s *service) init() {
 	s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		return nil
 	})
+
+	s.Do(s.anytype.PredefinedBlocks().SetPages, func(b smartblock.SmartBlock) error {
+		return nil
+	})
 }
 
 func (s *service) Anytype() anytype.Service {
