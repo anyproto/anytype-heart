@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/localstore"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 const versionFileName = "anytype_version"
@@ -134,9 +133,9 @@ func indexLinks(a *Anytype) error {
 			return err
 		}
 
-		archive, _ := thread.Decode(a.predefinedBlockIds.Archive)
-		home, _ := thread.Decode(a.predefinedBlockIds.Home)
-		profile, _ := thread.Decode(a.predefinedBlockIds.Profile)
+		archive, _ := a.threadDeriveID(threadDerivedIndexArchive)
+		home, _ := a.threadDeriveID(threadDerivedIndexHome)
+		profile, _ := a.threadDeriveID(threadDerivedIndexProfilePage)
 
 		threadsIDs = append(threadsIDs, archive, home, profile)
 		migrated := 0
