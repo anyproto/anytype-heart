@@ -24,7 +24,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	} else {
 		target = s.Get(targetId)
 		if target == nil {
-			return fmt.Errorf("target block not found")
+			return fmt.Errorf("target block (%v) not found", targetId)
 		}
 		if reqPos != model.Block_Inner {
 			if pv := s.GetParentOf(targetId); pv != nil {
@@ -108,7 +108,7 @@ func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids .
 		target = s.Get(row.Model().ChildrenIds[0])
 	}
 	column := simple.New(&model.Block{
-		Id : "cd-" + opId,
+		Id:          "cd-" + opId,
 		ChildrenIds: ids,
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{

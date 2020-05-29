@@ -30,6 +30,7 @@ type stateBuilder struct {
 	logHeads   map[string]string
 	tree       *Tree
 	smartblock core.SmartBlock
+	qt         time.Duration
 }
 
 func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
@@ -59,7 +60,7 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	if err = sb.buildTree(heads, breakpoint); err != nil {
 		return fmt.Errorf("buildTree error: %v", err)
 	}
-	log.Debugf("tree build: len: %d; scanned: %d; dur: %v", sb.tree.Len(), len(sb.cache), time.Since(st))
+	log.Debugf("tree build: len: %d; scanned: %d; dur: %v (lib %v)", sb.tree.Len(), len(sb.cache), time.Since(st), sb.qt)
 	sb.cache = nil
 	return
 }
@@ -248,10 +249,12 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
 	}
+	st := time.Now()
 	sr, err := sb.smartblock.GetRecord(context.TODO(), id)
 	if err != nil {
 		return
 	}
+	sb.qt += time.Since(st)
 	chp := new(pb.Change)
 	if err = sr.Unmarshal(chp); err != nil {
 		return

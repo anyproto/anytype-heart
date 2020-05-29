@@ -130,7 +130,7 @@ func (s *source) needSnapshot() bool {
 		return true
 	}
 	// TODO: think about a more smart way
-	return rand.Intn(100) == 42
+	return rand.Intn(1000) == 42
 }
 
 func (s *source) Close() (err error) {
