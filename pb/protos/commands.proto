@@ -205,6 +205,7 @@ message Rpc {
                 }
             }
 
+            // commands acceptable only for text blocks, others will be ignored
             message Text {
                 message Style {
                     message Request {
@@ -1361,9 +1362,9 @@ message Rpc {
             }
         }
 
-    /*
-     * Remove blocks from the childrenIds of its parents
-    */
+        /*
+         * Remove blocks from the childrenIds of its parents
+        */
         message Unlink {
             message Request {
                 string contextId = 1; // id of the context block

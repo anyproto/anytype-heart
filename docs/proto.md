@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -398,6 +402,9 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -464,6 +471,9 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
+  
+  
+
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto)
     - [PageDetails](#anytype.model.PageDetails)
     - [PageInfo](#anytype.model.PageInfo)
@@ -475,6 +485,10 @@
     - [State](#anytype.model.State)
     - [State.StateEntry](#anytype.model.State.StateEntry)
   
+  
+  
+  
+
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -508,6 +522,9 @@
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -3938,7 +3955,7 @@ Makes blocks copy by given ids and paste it to shown place
 <a name="anytype.Rpc.BlockList.Set.Text"></a>
 
 ### Rpc.BlockList.Set.Text
-
+commands acceptable only for text blocks, others will be ignored
 
 
 
