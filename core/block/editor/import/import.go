@@ -52,6 +52,7 @@ type Services interface {
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 }
 
 func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
@@ -193,8 +194,16 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
 
 		for _, b := range nameToBlocks[name] {
-			if f := b.GetFile(); f != nil {
-
+			if bm := b.GetBookmark(); bm != nil {
+				err = imp.ctrl.BookmarkFetch(ctx, pb.RpcBlockBookmarkFetchRequest{
+					ContextId: nameToId[name],
+					BlockId:   b.Id,
+					Url:       bm.Url,
+				})
+				if err != nil {
+					log.Errorf("failed to fetch bookmark %s: %s", bm.Url, err.Error())
+				}
+			} else if f := b.GetFile(); f != nil {
 				filesCount = filesCount - 1
 				log.Debug("          page:", name, " | start to upload file :", f.Name)
 
@@ -373,17 +382,23 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 					linkConverted = txt.Marks.Marks[0].Param
 				}
 
+				var wholeLineLink bool
+				if (txt.Marks.Marks[0].Range.From == 0 || strings.TrimSpace(txt.Text[0:txt.Marks.Marks[0].Range.From]) == "") &&
+					(int(txt.Marks.Marks[0].Range.To) >= (len(txt.Text)-1) || strings.TrimSpace(txt.Text[txt.Marks.Marks[0].Range.To:]) == "") {
+					wholeLineLink = true
+				}
+
 				if nameToBlocks[linkConverted] != nil {
-					// only conver
-					if len(txt.Marks.Marks) == 1 && txt.Marks.Marks[0].Range.From == 0 && int(txt.Marks.Marks[0].Range.To) >= (len(txt.Text)-1) {
+					// only convert if this is the only link in the row
+					if wholeLineLink {
 						nameToBlocks[name][i], isPageLinked = imp.convertTextToPageLink(block, isPageLinked)
 					} else {
 						imp.convertTextToPageMention(block, isPageLinked)
 					}
-				}
-
-				if isFileExist[linkConverted] {
+				} else if isFileExist[linkConverted] {
 					nameToBlocks[name][i] = imp.convertTextToFile(block, directoryPath)
+				} else if wholeLineLink {
+					nameToBlocks[name][i], isPageLinked = imp.convertTextToBookmark(block, isPageLinked)
 				}
 			}
 
@@ -422,6 +437,28 @@ func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked ma
 			Link: &model.BlockContentLink{
 				TargetBlockId: targetId,
 				Style:         model.BlockContentLink_Page,
+			},
+		},
+	}
+
+	isPageLinked[targetId] = true
+	return blockOut, isPageLinked
+}
+
+func (imp *importImpl) convertTextToBookmark(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
+	targetId, err := url.PathUnescape(block.GetText().Marks.Marks[0].Param)
+	if err != nil {
+		log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetText().Marks.Marks[0].Param)
+		targetId = block.GetText().Marks.Marks[0].Param
+	}
+	if _, err := url.Parse(targetId); err != nil {
+		return block, isPageLinked
+	}
+
+	blockOut := &model.Block{
+		Content: &model.BlockContentOfBookmark{
+			Bookmark: &model.BlockContentBookmark{
+				Url: targetId,
 			},
 		},
 	}
