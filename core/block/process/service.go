@@ -22,8 +22,13 @@ type Process interface {
 }
 
 type Service interface {
+	// Add adds new process to pool
 	Add(p Process) (err error)
+	// Cancel cancels process by id
 	Cancel(id string) (err error)
+	// NewQueue creates new queue with given workers count
+	NewQueue(info pb.ModelProcess, workers int) Queue
+	// Close closes pool and cancel all running processes
 	Close() (err error)
 }
 
@@ -69,7 +74,7 @@ func (s *service) monitor(p Process) {
 		select {
 		case <-ticker.C:
 			info := p.Info()
-			if ! infoEquals(info, prevInfo) {
+			if !infoEquals(info, prevInfo) {
 				s.sendEvent(&pb.Event{
 					Messages: []*pb.EventMessage{
 						{

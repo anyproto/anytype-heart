@@ -6,6 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/anytypeio/go-anytype-library v0.8.1-0.20200529115847-61026102e8f0
 	github.com/anytypeio/html-to-markdown v0.0.0-20200221082113-a2021b1b2129
+	github.com/cheggaaa/mb v1.0.2
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.3
 	github.com/google/uuid v1.1.1
