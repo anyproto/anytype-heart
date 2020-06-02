@@ -28,7 +28,7 @@ func TestConvertMdToBlocks(t *testing.T) {
 	for testNum, _ := range testCases {
 		mdToBlocksConverter := anymark.New()
 		fmt.Println("TEST CASE:\n\n", testCases[testNum].MD, "\n   ***   ")
-		blocks, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), []string{})
+		blocks, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
 
 		for i, b := range blocks {
 			fmt.Println(i, ": ", b)

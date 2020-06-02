@@ -346,11 +346,13 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 	isPasteBottom := false
 	isPasteInstead := false
 	isPasteWithSplit := false
+	isPasteToCodeBlock := false
 
 	focusedBlock := s.Get(targetId)
 	focusedBlockText, ok := focusedBlock.(text.Block)
-
-	isPasteToCodeBlock := focusedBlock.Model().GetText() != nil && focusedBlock.Model().GetText().Style == model.BlockContentText_Code
+	if ok {
+		isPasteToCodeBlock = focusedBlock.Model().GetText() != nil && focusedBlock.Model().GetText().Style == model.BlockContentText_Code
+	}
 
 	cIds := cb.Pick(cb.Id()).Model().ChildrenIds
 

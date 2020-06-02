@@ -5,6 +5,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -52,11 +54,14 @@ type RWriter interface {
 	GetIsNumberedList() (isNumbered bool)
 
 	GetAllFileShortPaths() []string
+	GetBaseFilepath() string
+
 	AddDivider()
 }
 
 type rWriter struct {
 	*bufio.Writer
+	baseFilepath      string
 	allFileShortPaths []string
 
 	isNumberedList bool
@@ -71,6 +76,10 @@ type rWriter struct {
 
 func (rw *rWriter) GetAllFileShortPaths() []string {
 	return rw.allFileShortPaths
+}
+
+func (rw *rWriter) GetBaseFilepath() string {
+	return rw.baseFilepath
 }
 
 func (rw *rWriter) SetMarkStart() {
@@ -132,8 +141,8 @@ func (rw *rWriter) GetIsNumberedList() (isNumbered bool) {
 	return rw.isNumberedList
 }
 
-func NewRWriter(writer *bufio.Writer, allFileShortPaths []string) RWriter {
-	return &rWriter{Writer: writer, allFileShortPaths: allFileShortPaths}
+func NewRWriter(writer *bufio.Writer, baseFilepath string, allFileShortPaths []string) RWriter {
+	return &rWriter{Writer: writer, baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths}
 }
 
 func (rw *rWriter) GetText() string {
@@ -144,12 +153,21 @@ func (rw *rWriter) AddTextToBuffer(text string) {
 	rw.textBuffer += strings.ReplaceAll(text, "*", "")
 }
 
-func (rw *rWriter) AddImageBlock(url string) {
+func (rw *rWriter) AddImageBlock(source string) {
+	sourceUnescaped, err := url.PathUnescape(source)
+	if err != nil {
+		sourceUnescaped = source
+	}
+
+	if !strings.HasPrefix(strings.ToLower(source), "http://") && !strings.HasPrefix(strings.ToLower(source), "https://") {
+		sourceUnescaped = filepath.Join(rw.GetBaseFilepath(), sourceUnescaped)
+	}
+
 	newBlock := model.Block{
 		Content: &model.BlockContentOfFile{
 
 			File: &model.BlockContentFile{
-				Name:  url,
+				Name:  sourceUnescaped,
 				State: model.BlockContentFile_Empty,
 				Type:  model.BlockContentFile_Image,
 			}},
