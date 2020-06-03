@@ -1,18 +1,18 @@
-package anymark_test
+package anymark
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"sync/atomic"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/stretchr/testify/require"
 )
 
 type MdCase struct {
-	MD string `json:"md"`
+	MD     string                   `json:"md"`
+	Blocks []map[string]interface{} `json:"blocks"`
+	Desc   string                   `json:"desc"`
 }
 
 func TestConvertMdToBlocks(t *testing.T) {
@@ -25,14 +25,25 @@ func TestConvertMdToBlocks(t *testing.T) {
 		panic(err)
 	}
 
-	for testNum, _ := range testCases {
-		mdToBlocksConverter := anymark.New()
-		fmt.Println("TEST CASE:\n\n", testCases[testNum].MD, "\n   ***   ")
-		blocks, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
+	var c int64 = 0
+	idGetter := SequenceIDGetter{count: &c}
+	defaultIdGetter = &idGetter
 
-		for i, b := range blocks {
-			fmt.Println(i, ": ", b)
-			assert.NotEmpty(t, b)
-		}
+	for testNum, testCase := range testCases {
+		t.Run(testCase.Desc, func(t *testing.T) {
+			atomic.StoreInt64(idGetter.count, 0)
+
+			mdToBlocksConverter := New()
+			blocks, _, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
+
+			actualJson, err := json.Marshal(blocks)
+			require.NoError(t, err)
+
+			var actual []map[string]interface{}
+			err = json.Unmarshal(actualJson, &actual)
+			require.NoError(t, err)
+			require.Equal(t, testCase.Blocks, actual)
+
+		})
 	}
 }

@@ -252,7 +252,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]by
 
 func (cb *clipboard) pasteHtml(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	mdToBlocksConverter := anymark.New()
-	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
+	_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
 	req.AnySlot = blocks
 	return cb.pasteAny(ctx, req)
 }

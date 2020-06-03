@@ -1,13 +1,13 @@
-package anymark_test
+package anymark
 
 import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sync/atomic"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -16,7 +16,17 @@ var (
 )
 
 type TestCase struct {
-	HTML string `json:"html"`
+	Blocks []map[string]interface{} `json:"blocks"`
+	HTML   string                   `json:"html"`
+	Desc   string                   `json:"desc"`
+}
+
+type SequenceIDGetter struct {
+	count *int64
+}
+
+func (sg SequenceIDGetter) String() string {
+	return fmt.Sprintf("%d", atomic.AddInt64(sg.count, 1))
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
@@ -29,17 +39,24 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 		panic(err)
 	}
 
-	for testNum, _ := range testCases {
-		fmt.Println("Case ", testNum)
-		//if testNum != 13 {
-		//	continue
-		//}
-		mdToBlocksConverter := anymark.New()
-		_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(testCases[testNum].HTML))
+	var c int64 = 0
+	idGetter := SequenceIDGetter{count: &c}
+	defaultIdGetter = &idGetter
 
-		for _, b := range blocks {
-			fmt.Println(b)
-			assert.NotEmpty(t, b)
-		}
+	for _, testCase := range testCases {
+		t.Run(testCase.Desc, func(t *testing.T) {
+			atomic.StoreInt64(idGetter.count, 0)
+			mdToBlocksConverter := New()
+			_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(testCase.HTML))
+
+			actualJson, err := json.Marshal(blocks)
+			require.NoError(t, err)
+
+			var actual []map[string]interface{}
+			err = json.Unmarshal(actualJson, &actual)
+			fmt.Println(string(actualJson))
+			require.NoError(t, err)
+			require.Equal(t, testCase.Blocks, actual)
+		})
 	}
 }

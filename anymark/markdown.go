@@ -4,9 +4,14 @@ package anymark
 import (
 	"bufio"
 	"bytes"
+	"fmt"
+	"io"
+	"regexp"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/google/uuid"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
@@ -17,11 +22,7 @@ import (
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
-	"io"
-	"regexp"
-	"strings"
-
-	htmlConverter "github.com/anytypeio/html-to-markdown"
+	htmlConverter "github.com/JohannesKaufmann/html-to-markdown"
 )
 
 // DefaultParser returns a new Parser that is configured by default values.
@@ -38,13 +39,23 @@ func DefaultRenderer() renderer.Renderer {
 }
 
 var (
-	defaultMarkdown = New()
-	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
-	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
-	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
+	defaultMarkdown              = New()
+	linkRegexp                   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	markRightEdge                = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
+	linkLeftEdge                 = regexp.MustCompile(`(\S)\[`)
+	reEmptyLinkText              = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
+	reWikiCode                   = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
+	defaultIdGetter fmt.Stringer = &uuidGetter{}
 )
 
-// Convert interprets a UTF-8 bytes source in Markdown and
+type uuidGetter struct{}
+
+func (u uuidGetter) String() string {
+	return uuid.New().String()
+}
+
+// Convert interprets a UTF-8
+//bytes source in Markdown and
 // write rendered contents to a writer w.
 func Convert(source []byte, w io.Writer, opts ...parser.ParseOption) error {
 	return defaultMarkdown.Convert(source, w, opts...)
@@ -58,8 +69,8 @@ type Markdown interface {
 	Convert(source []byte, writer io.Writer, opts ...parser.ParseOption) error
 
 	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
-	HTMLToBlocks(source []byte) (error, []*model.Block)
-	MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) ([]*model.Block, error)
+	HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string)
+	MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error)
 	// Parser returns a Parser that will be used for conversion.
 	Parser() parser.Parser
 
@@ -138,41 +149,38 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 	doc := m.parser.Parse(reader, opts...)
 
 	writer := bufio.NewWriter(w)
-	bWriter := blocksUtil.NewRWriter(writer, "", []string{})
+	bWriter := blocksUtil.NewRWriter(writer, "", []string{}, defaultIdGetter)
 	//bWriter := blocksUtil.ExtendWriter(writer, &rState)
 
 	return m.renderer.Render(bWriter, source, doc)
 }
 
 func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error {
-	source = m.allMdReplaces(source)
-
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
 	return m.renderer.Render(bWriter, source, doc)
 }
 
-func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) ([]*model.Block, error) {
+func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	bWriter := blocksUtil.NewRWriter(writer, baseFilepath, allFileShortPaths)
+	bWriter := blocksUtil.NewRWriter(writer, baseFilepath, allFileShortPaths, defaultIdGetter)
 	// allFileShortPaths,
-	err := m.ConvertBlocks(markdownSource, bWriter)
+	err = m.ConvertBlocks(markdownSource, bWriter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return bWriter.GetBlocks(), nil
+	return bWriter.GetBlocks(), bWriter.GetRootBlockIDs(), nil
 }
 
-func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
+func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string) {
 	preprocessedSource := string(source)
 
 	// special wiki spaces
 	preprocessedSource = strings.ReplaceAll(preprocessedSource, "<span> </span>", " ")
 
 	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
-	reWikiCode := regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
 
 	strikethrough := htmlConverter.Rule{
@@ -209,7 +217,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 		},
 	}
 
-	converter := htmlConverter.NewConverter("", true, nil)
+	converter := htmlConverter.NewConverter("", true, &htmlConverter.Options{DisableEscaping: true})
 	converter.AddRules(strikethrough, italic, br)
 
 	md, _ := converter.ConvertString(preprocessedSource)
@@ -218,22 +226,18 @@ func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
 	md = spaceReplace.WhitespaceNormalizeString(md)
 	//md = strings.ReplaceAll(md, "*  *", "* *")
 
-	reCode := regexp.MustCompile(`[ ]+`)
-	md = reCode.ReplaceAllString(md, ` `)
-
-	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	bWriter := blocksUtil.NewRWriter(writer, "", []string{})
+	bWriter := blocksUtil.NewRWriter(writer, "", []string{}, defaultIdGetter)
 
-	err := m.ConvertBlocks([]byte(md), bWriter)
+	err = m.ConvertBlocks([]byte(md), bWriter)
 	if err != nil {
-		return err, nil
+		return err, nil, nil
 	}
 
-	return nil, bWriter.GetBlocks()
+	return nil, bWriter.GetBlocks(), bWriter.GetRootBlockIDs()
 }
 
 func (m *markdown) Parser() parser.Parser {
@@ -250,12 +254,6 @@ func (m *markdown) Renderer() renderer.Renderer {
 
 func (m *markdown) SetRenderer(v renderer.Renderer) {
 	m.renderer = v
-}
-
-func (m *markdown) allMdReplaces(source []byte) (out []byte) {
-	/*	source = markRightEdge.ReplaceAll(source, []byte("$1$2 $3"))
-		source = linkLeftEdge.ReplaceAll(source, []byte("$1 ["))*/
-	return source
 }
 
 // An Extender interface is used for extending Markdown.

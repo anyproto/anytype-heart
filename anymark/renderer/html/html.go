@@ -323,6 +323,7 @@ var ListItemAttributeFilter = GlobalAttributeFilter.Extend(
 
 func (r *Renderer) renderListItem(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	tag := model.BlockContentText_Marked
+
 	if w.GetIsNumberedList() {
 		tag = model.BlockContentText_Numbered
 	}

@@ -12,8 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
@@ -21,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
@@ -465,7 +464,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 				continue
 			}
 
-			file.parsedBlocks, err = anymarkConv.MarkdownToBlocks(b, filepath.Dir(shortPath), allFileShortPaths)
+			file.parsedBlocks, _, err = anymarkConv.MarkdownToBlocks(b, filepath.Dir(shortPath), allFileShortPaths)
 			if err != nil {
 				log.Errorf("failed to read blocks %s: %s", shortPath, err.Error())
 			}
@@ -474,7 +473,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 
 			for i, block := range file.parsedBlocks {
 				log.Debug("      Block:", i)
-				file.parsedBlocks[i].Id = uuid.New().String()
+				//file.parsedBlocks[i].Id = uuid.New().String()
 
 				txt := block.GetText()
 				if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
