@@ -3,7 +3,6 @@ package anymark
 import (
 	"encoding/json"
 	"io/ioutil"
-	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,16 +24,11 @@ func TestConvertMdToBlocks(t *testing.T) {
 		panic(err)
 	}
 
-	var c int64 = 0
-	idGetter := SequenceIDGetter{count: &c}
-	defaultIdGetter = &idGetter
-
 	for testNum, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
-			atomic.StoreInt64(idGetter.count, 0)
-
 			mdToBlocksConverter := New()
 			blocks, _, _ := mdToBlocksConverter.MarkdownToBlocks([]byte(testCases[testNum].MD), "", []string{})
+			replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)
 			require.NoError(t, err)

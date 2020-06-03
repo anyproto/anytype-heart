@@ -4,15 +4,12 @@ package anymark
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/google/uuid"
-
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer/html"
@@ -39,20 +36,13 @@ func DefaultRenderer() renderer.Renderer {
 }
 
 var (
-	defaultMarkdown              = New()
-	linkRegexp                   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
-	markRightEdge                = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
-	linkLeftEdge                 = regexp.MustCompile(`(\S)\[`)
-	reEmptyLinkText              = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
-	reWikiCode                   = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
-	defaultIdGetter fmt.Stringer = &uuidGetter{}
+	defaultMarkdown = New()
+	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
+	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
+	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
+	reWikiCode      = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
 )
-
-type uuidGetter struct{}
-
-func (u uuidGetter) String() string {
-	return uuid.New().String()
-}
 
 // Convert interprets a UTF-8
 //bytes source in Markdown and
@@ -149,7 +139,7 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 	doc := m.parser.Parse(reader, opts...)
 
 	writer := bufio.NewWriter(w)
-	bWriter := blocksUtil.NewRWriter(writer, "", []string{}, defaultIdGetter)
+	bWriter := blocksUtil.NewRWriter(writer, "", []string{})
 	//bWriter := blocksUtil.ExtendWriter(writer, &rState)
 
 	return m.renderer.Render(bWriter, source, doc)
@@ -164,7 +154,7 @@ func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts
 func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	bWriter := blocksUtil.NewRWriter(writer, baseFilepath, allFileShortPaths, defaultIdGetter)
+	bWriter := blocksUtil.NewRWriter(writer, baseFilepath, allFileShortPaths)
 	// allFileShortPaths,
 	err = m.ConvertBlocks(markdownSource, bWriter)
 	if err != nil {
@@ -230,7 +220,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	bWriter := blocksUtil.NewRWriter(writer, "", []string{}, defaultIdGetter)
+	bWriter := blocksUtil.NewRWriter(writer, "", []string{})
 
 	err = m.ConvertBlocks([]byte(md), bWriter)
 	if err != nil {

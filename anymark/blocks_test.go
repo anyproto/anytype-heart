@@ -21,7 +21,7 @@ func TestConvertBlocks(t *testing.T) {
 	var b bytes.Buffer
 
 	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer, "", []string{}, defaultIdGetter)
+	BR := blocksUtil.NewRWriter(writer, "", []string{})
 
 	err := markdown.ConvertBlocks(source, BR)
 	if err != nil {

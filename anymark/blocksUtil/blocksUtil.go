@@ -13,6 +13,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
+	"github.com/google/uuid"
 )
 
 var (
@@ -80,7 +81,6 @@ type rWriter struct {
 	blocks           []*model.Block
 	rootBlockIDs     []string
 	curStyledBlock   model.BlockContentTextStyle
-	idGetter         fmt.Stringer
 }
 
 func (rw *rWriter) GetAllFileShortPaths() []string {
@@ -156,7 +156,7 @@ func (rw *rWriter) OpenNewTextBlock(style model.BlockContentTextStyle) {
 		rw.curStyledBlock = style
 	}
 
-	id := rw.idGetter.String()
+	id := uuid.New().String()
 
 	newBlock := model.Block{
 		Id: id,
@@ -187,8 +187,8 @@ func (rw *rWriter) GetIsNumberedList() (isNumbered bool) {
 	return rw.isNumberedList
 }
 
-func NewRWriter(writer *bufio.Writer, baseFilepath string, allFileShortPaths []string, idGetter fmt.Stringer) RWriter {
-	return &rWriter{Writer: writer, baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths, idGetter: idGetter}
+func NewRWriter(writer *bufio.Writer, baseFilepath string, allFileShortPaths []string) RWriter {
+	return &rWriter{Writer: writer, baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths}
 }
 
 func (rw *rWriter) GetText() string {
@@ -278,7 +278,7 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 	if closingBlock == nil {
 		closingBlock = &textBlock{
 			Block: model.Block{
-				Id: rw.idGetter.String(),
+				Id: uuid.New().String(),
 				Content: &model.BlockContentOfText{
 					Text: &model.BlockContentText{},
 				},

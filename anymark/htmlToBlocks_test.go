@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"sync/atomic"
+	"reflect"
 	"testing"
 
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,12 +22,21 @@ type TestCase struct {
 	Desc   string                   `json:"desc"`
 }
 
-type SequenceIDGetter struct {
-	count *int64
-}
+func replaceFakeIds(blocks []*model.Block) {
+	var m = make(map[string]string, len(blocks))
 
-func (sg SequenceIDGetter) String() string {
-	return fmt.Sprintf("%d", atomic.AddInt64(sg.count, 1))
+	for i, block := range blocks {
+		newId := fmt.Sprintf("%d", i+1)
+		m[block.Id] = newId
+		block.Id = newId
+	}
+
+	for _, block := range blocks {
+		for j := range block.ChildrenIds {
+			block.ChildrenIds[j] = m[block.ChildrenIds[j]]
+		}
+	}
+
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
@@ -39,15 +49,11 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 		panic(err)
 	}
 
-	var c int64 = 0
-	idGetter := SequenceIDGetter{count: &c}
-	defaultIdGetter = &idGetter
-
 	for _, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
-			atomic.StoreInt64(idGetter.count, 0)
 			mdToBlocksConverter := New()
 			_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(testCase.HTML))
+			replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)
 			require.NoError(t, err)
@@ -56,7 +62,10 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 			err = json.Unmarshal(actualJson, &actual)
 			fmt.Println(string(actualJson))
 			require.NoError(t, err)
-			require.Equal(t, testCase.Blocks, actual)
+
+			if !reflect.DeepEqual(testCase.Blocks, actual) {
+				require.Equal(t, testCase.Blocks, actual)
+			}
 		})
 	}
 }
