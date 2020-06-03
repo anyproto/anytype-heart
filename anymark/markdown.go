@@ -200,8 +200,9 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 	}
 
 	converter := htmlConverter.NewConverter("", true, &htmlConverter.Options{
-		DisableEscaping: true,
-		EmDelimiter:     "*",
+		DisableEscaping:  true,
+		AllowHeaderBreak: true,
+		EmDelimiter:      "*",
 	})
 	converter.AddRules(strikethrough, br)
 
