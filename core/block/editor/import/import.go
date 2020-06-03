@@ -257,7 +257,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		file.parsedBlocks = blocks
 	}
 
-	log.Debug("2. ImportMarkdown: start to paste anyblocks")
+	log.Debug("2. ImportMarkdown: start to paste blocks")
 	for name, file := range files {
 		if file.pageID == "" {
 			// file is not a page
@@ -274,7 +274,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
-	log.Debug("3. ImportMarkdown: all anyblocks pasted. Start to upload files & fetch bookmarks")
+	log.Debug("3. ImportMarkdown: all blocks pasted. Start to upload files & fetch bookmarks")
 	for name, file := range files {
 		log.Debug("   >>> current page:", name, "    |   linked: ", file.hasInboundLinks)
 		if file.pageID == "" {

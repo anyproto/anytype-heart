@@ -5,13 +5,12 @@ package pb
 
 import (
 	fmt "fmt"
-	io "io"
-	math "math"
-	math_bits "math/bits"
-
 	model "github.com/anytypeio/go-anytype-library/pb/model"
 	proto "github.com/gogo/protobuf/proto"
 	types "github.com/gogo/protobuf/types"
+	io "io"
+	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -2730,8 +2729,10 @@ type RpcBlockListConvertChildrenToPagesRequest struct {
 func (m *RpcBlockListConvertChildrenToPagesRequest) Reset() {
 	*m = RpcBlockListConvertChildrenToPagesRequest{}
 }
-func (m *RpcBlockListConvertChildrenToPagesRequest) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockListConvertChildrenToPagesRequest) ProtoMessage()    {}
+func (m *RpcBlockListConvertChildrenToPagesRequest) String() string {
+	return proto.CompactTextString(m)
+}
+func (*RpcBlockListConvertChildrenToPagesRequest) ProtoMessage() {}
 func (*RpcBlockListConvertChildrenToPagesRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 0}
 }
@@ -3331,7 +3332,7 @@ func (m *RpcBlockListMoveToNewPageResponseError) GetDescription() string {
 }
 
 //
-// Makes anyblocks copy by given ids and paste it to shown place
+// Makes blocks copy by given ids and paste it to shown place
 type RpcBlockListDuplicate struct {
 }
 
@@ -5362,7 +5363,7 @@ func (m *RpcBlockListDeletePageResponseError) GetDescription() string {
 }
 
 //
-// Namespace, that agregates subtopics and actions, that relates to anyblocks.
+// Namespace, that agregates subtopics and actions, that relates to blocks.
 type RpcBlock struct {
 }
 
@@ -6061,7 +6062,7 @@ var xxx_messageInfo_RpcBlockCopy proto.InternalMessageInfo
 
 type RpcBlockCopyRequest struct {
 	ContextId         string         `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
+	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
 	SelectedTextRange *model.Range   `protobuf:"bytes,3,opt,name=selectedTextRange,proto3" json:"selectedTextRange,omitempty"`
 }
 
@@ -6541,7 +6542,7 @@ var xxx_messageInfo_RpcBlockCut proto.InternalMessageInfo
 
 type RpcBlockCutRequest struct {
 	ContextId         string         `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
+	Blocks            []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
 	SelectedTextRange *model.Range   `protobuf:"bytes,3,opt,name=selectedTextRange,proto3" json:"selectedTextRange,omitempty"`
 }
 
@@ -6965,7 +6966,7 @@ var xxx_messageInfo_RpcBlockExport proto.InternalMessageInfo
 
 type RpcBlockExportRequest struct {
 	ContextId string         `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
-	Blocks    []*model.Block `protobuf:"bytes,2,rep,name=anyblocks,proto3" json:"anyblocks,omitempty"`
+	Blocks    []*model.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
 }
 
 func (m *RpcBlockExportRequest) Reset()         { *m = RpcBlockExportRequest{} }
@@ -10533,8 +10534,10 @@ type RpcBlockSetLinkTargetBlockIdResponseError struct {
 func (m *RpcBlockSetLinkTargetBlockIdResponseError) Reset() {
 	*m = RpcBlockSetLinkTargetBlockIdResponseError{}
 }
-func (m *RpcBlockSetLinkTargetBlockIdResponseError) String() string { return proto.CompactTextString(m) }
-func (*RpcBlockSetLinkTargetBlockIdResponseError) ProtoMessage()    {}
+func (m *RpcBlockSetLinkTargetBlockIdResponseError) String() string {
+	return proto.CompactTextString(m)
+}
+func (*RpcBlockSetLinkTargetBlockIdResponseError) ProtoMessage() {}
 func (*RpcBlockSetLinkTargetBlockIdResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 8, 0, 1, 0}
 }
@@ -11914,7 +11917,7 @@ func (m *RpcBlockRedoResponseError) GetDescription() string {
 }
 
 //
-// Works with a smart anyblocks (block-organizers, like page, dashboard etc)
+// Works with a smart blocks (block-organizers, like page, dashboard etc)
 // **Example scenario**
 // 1A. On front-end start.
 //     1. Front -> MW: Rpc.Block.Open.Request(dashboard.id)
@@ -11925,10 +11928,10 @@ func (m *RpcBlockRedoResponseError) GetDescription() string {
 // Get close response first, then open request:
 //     2. MW -> Front: Rpc.Block.Close.Response(err)
 //     3. Front -> MW: Rpc.Block.Open.Request(page.id)
-//     4. MW -> Front: BlockShow(<page, anyblocks>)
+//     4. MW -> Front: BlockShow(<page, blocks>)
 //     5. MW -> Front: Rpc.Block.Open.Response(err)
-// Image/Video/File anyblocks then:
-//     6. MW -> Front: BlockShow(<anyblocks>)
+// Image/Video/File blocks then:
+//     6. MW -> Front: BlockShow(<blocks>)
 type RpcBlockOpen struct {
 }
 
@@ -13144,7 +13147,7 @@ func (m *RpcBlockCreatePageResponseError) GetDescription() string {
 }
 
 //
-// Remove anyblocks from the childrenIds of its parents
+// Remove blocks from the childrenIds of its parents
 type RpcBlockUnlink struct {
 }
 
@@ -17451,8 +17454,10 @@ type RpcNavigationGetPageInfoWithLinksResponse struct {
 func (m *RpcNavigationGetPageInfoWithLinksResponse) Reset() {
 	*m = RpcNavigationGetPageInfoWithLinksResponse{}
 }
-func (m *RpcNavigationGetPageInfoWithLinksResponse) String() string { return proto.CompactTextString(m) }
-func (*RpcNavigationGetPageInfoWithLinksResponse) ProtoMessage()    {}
+func (m *RpcNavigationGetPageInfoWithLinksResponse) String() string {
+	return proto.CompactTextString(m)
+}
+func (*RpcNavigationGetPageInfoWithLinksResponse) ProtoMessage() {}
 func (*RpcNavigationGetPageInfoWithLinksResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 14, 1, 1}
 }

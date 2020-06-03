@@ -167,7 +167,7 @@ func NewRenderer(opts ...Option) renderer.NodeRenderer {
 
 // RegisterFuncs implements NodeRenderer.RegisterFuncs .
 func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	// anyblocks
+	// blocks
 
 	reg.Register(ast.KindDocument, r.renderDocument)
 	reg.Register(ast.KindHeading, r.renderHeading)

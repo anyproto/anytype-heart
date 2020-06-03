@@ -66,13 +66,13 @@ message Event {
     }
     message Block {
         /*
-        * Event to show internal anyblocks on a client.
+        * Event to show internal blocks on a client.
          * Example Scenarios
          * A. Block Creation
          * 1. Block A have been created on a client C1
          * 2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
          * B. Partial block load
-         * 1. Client C1 opens Page1, that contains, for example, 133 anyblocks.
+         * 1. Client C1 opens Page1, that contains, for example, 133 blocks.
          * 2. M -> F: ShowFullScreen(Root, blocks1-50)
          * 3. M -> F: Block.Add(blocks51-100)
          * 3. M -> F: Block.Add(blocks101-133)
@@ -82,13 +82,13 @@ message Event {
         }
 
         /*
-          * Works with a smart anyblocks: Page, Dashboard
+          * Works with a smart blocks: Page, Dashboard
           * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
         */
         message Show {
             string rootId = 1; // Root block id
-            repeated anytype.model.Block blocks = 2; // dependent anyblocks (descendants)
-            repeated Block.Set.Details details = 3; // details for current and dependent smart anyblocks
+            repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
+            repeated Block.Set.Details details = 3; // details for current and dependent smart blocks
             SmartBlockType type = 4;
         }
 
@@ -99,7 +99,7 @@ message Event {
         * 2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
         */
         message FilesUpload {
-            string blockId = 1; // if empty => create new anyblocks
+            string blockId = 1; // if empty => create new blocks
             repeated string filePath = 2; // filepaths to the files
         }
 
@@ -321,12 +321,12 @@ message Event {
             /**
             * Middleware to front end event message, that will be sent in this scenario:
             * Precondition: user A and user B opened the same block
-            * 1. User B selects some inner anyblocks
+            * 1. User B selects some inner blocks
             * 2. User A receives a message about p.1
             */
             message SelectRange {
-                Account account = 1; // Account of the user, that selected anyblocks
-                repeated string blockIdsArray = 2; // Ids of selected anyblocks.
+                Account account = 1; // Account of the user, that selected blocks
+                repeated string blockIdsArray = 2; // Ids of selected blocks.
             }
         }
     }

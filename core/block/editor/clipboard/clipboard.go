@@ -462,7 +462,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 			}
 
-			// insert new anyblocks
+			// insert new blocks
 			pos := model.Block_Top
 			isReversed := true
 			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, targetId, req.AnySlot, pos, isReversed)
@@ -503,7 +503,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targetId string, blocks []*model.Block, pos model.BlockPosition, isReversed bool) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, targetIdOut string, err error) {
 	idToIsChild := make(map[string]bool)
 	/*	if isPasteToCodeBlock {
-		blocks = anyblocks.AllBlocksToCode(blocks)
+		blocks = blocks.AllBlocksToCode(blocks)
 	}*/
 
 	for _, b := range blocks {

@@ -14,7 +14,7 @@ func TestCommonSmart_pasteHtml(t *testing.T) {
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "ab000e", "55555"})
 	})
 
-	t.Run("Simple: 2 p anyblocks", func(t *testing.T) {
+	t.Run("Simple: 2 p blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "abcde", "55555"}, emptyMarks))
 		pasteHtml(t, sb, "4", model.Range{From: 2, To: 4}, []string{}, "<p>lkjhg</p><p>hello</p>")
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "ab", "lkjhg", "hello", "e", "55555"})
@@ -82,7 +82,7 @@ func TestCommonSmart_pasteHtml(t *testing.T) {
 }
 
 func TestCommonSmart_pasteAny(t *testing.T) {
-	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting anyblocks on top", func(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteAny(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555"})
@@ -316,7 +316,7 @@ func TestCommonSmart_pasteAny_marks(t *testing.T) {
 }
 
 func TestCommonSmart_RangeSplit(t *testing.T) {
-	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting anyblocks on top", func(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteAny(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555"})
@@ -360,7 +360,7 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 }
 
 func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
-	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting anyblocks on top", func(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, "aaaaa\nbbbbb")
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "qwerty", "55555"})
@@ -402,31 +402,31 @@ func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "55555"})
 	})
 
-	t.Run("8.0 Cursor in the middle. Paste two anyblocks", func(t *testing.T) {
+	t.Run("8.0 Cursor in the middle. Paste two blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
 		pasteAny(t, sb, "1", model.Range{From: 0, To: 0}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
 		checkBlockText(t, sb, []string{"abc", "def", "123456789"})
 	})
 
-	t.Run("8.1 Cursor in the middle. Paste two anyblocks", func(t *testing.T) {
+	t.Run("8.1 Cursor in the middle. Paste two blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
 		pasteAny(t, sb, "1", model.Range{From: 1, To: 1}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
 		checkBlockText(t, sb, []string{"1", "abc", "def", "23456789"})
 	})
 
-	t.Run("8.2 Cursor in the middle. Paste two anyblocks", func(t *testing.T) {
+	t.Run("8.2 Cursor in the middle. Paste two blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
 		pasteAny(t, sb, "1", model.Range{From: 2, To: 2}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
 		checkBlockText(t, sb, []string{"12", "abc", "def", "3456789"})
 	})
 
-	t.Run("9. Cursor at the pre-end. Paste two anyblocks", func(t *testing.T) {
+	t.Run("9. Cursor at the pre-end. Paste two blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
 		pasteAny(t, sb, "1", model.Range{From: 4, To: 4}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
 		checkBlockText(t, sb, []string{"1234", "abc", "def", "56789"})
 	})
 
-	t.Run("10. Cursor at the end. Paste two anyblocks", func(t *testing.T) {
+	t.Run("10. Cursor at the end. Paste two blocks", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"123456789"}, emptyMarks))
 		pasteAny(t, sb, "1", model.Range{From: 9, To: 9}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"abc", "def"}, emptyMarks))
 		checkBlockText(t, sb, []string{"123456789", "abc", "def"})
@@ -458,7 +458,7 @@ func TestCommonSmart_TextSlot_CommonCases(t *testing.T) {
 		checkBlockText(t, sb, []string{"22222", "33333"})
 	})
 
-	t.Run("should paste when all anyblocks selected", func(t *testing.T) {
+	t.Run("should paste when all blocks selected", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
 		pasteText(t, sb, "", model.Range{From: 0, To: 0}, []string{"1", "2", "3", "4", "5"}, "aaaaa\nbbbbb")
 		checkBlockText(t, sb, []string{"aaaaa", "bbbbb"})

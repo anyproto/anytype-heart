@@ -218,7 +218,7 @@ func TestText_Merge(t *testing.T) {
 		}).(*Text)
 	}
 
-	t.Run("should merge two anyblocks", func(t *testing.T) {
+	t.Run("should merge two blocks", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		err := b1.Merge(b2)
