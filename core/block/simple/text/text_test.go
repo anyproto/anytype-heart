@@ -231,3 +231,34 @@ func TestText_Merge(t *testing.T) {
 		assert.Equal(t, model.Range{From: 13, To: 14}, *b1.content.Marks.Marks[2].Range)
 	})
 }
+
+func TestText_SetMarkForAllText(t *testing.T) {
+	b := NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "1234567890",
+			},
+		},
+	})
+	tb := b.(Block)
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Bold,
+	})
+	require.Len(t, tb.Model().GetText().Marks.Marks, 1)
+	assert.Equal(t, &model.BlockContentTextMark{
+		Type:  model.BlockContentTextMark_Bold,
+		Range: &model.Range{From: 0, To: 10},
+	}, tb.Model().GetText().Marks.Marks[0])
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Italic,
+	})
+	require.Len(t, tb.Model().GetText().Marks.Marks, 2)
+	assert.Equal(t, &model.BlockContentTextMark{
+		Type:  model.BlockContentTextMark_Italic,
+		Range: &model.Range{From: 0, To: 10},
+	}, tb.Model().GetText().Marks.Marks[1])
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Bold,
+	})
+	assert.Len(t, tb.Model().GetText().Marks.Marks, 2)
+}
