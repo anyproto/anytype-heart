@@ -2,7 +2,9 @@ package anymark
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,8 +38,11 @@ func TestConvertMdToBlocks(t *testing.T) {
 			var actual []map[string]interface{}
 			err = json.Unmarshal(actualJson, &actual)
 			require.NoError(t, err)
-			require.Equal(t, testCase.Blocks, actual)
 
+			if !reflect.DeepEqual(testCase.Blocks, actual) {
+				fmt.Println("expected:\n", string(actualJson))
+				require.Equal(t, testCase.Blocks, actual)
+			}
 		})
 	}
 }

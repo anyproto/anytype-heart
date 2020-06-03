@@ -191,14 +191,6 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 		},
 	}
 
-	italic := htmlConverter.Rule{
-		Filter: []string{"i"},
-		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
-			content = strings.TrimSpace(content)
-			return htmlConverter.String(" *" + content + "* ")
-		},
-	}
-
 	br := htmlConverter.Rule{
 		Filter: []string{"br"},
 		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
@@ -207,8 +199,11 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 		},
 	}
 
-	converter := htmlConverter.NewConverter("", true, &htmlConverter.Options{DisableEscaping: true})
-	converter.AddRules(strikethrough, italic, br)
+	converter := htmlConverter.NewConverter("", true, &htmlConverter.Options{
+		DisableEscaping: true,
+		EmDelimiter:     "*",
+	})
+	converter.AddRules(strikethrough, br)
 
 	md, _ := converter.ConvertString(preprocessedSource)
 

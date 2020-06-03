@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -49,6 +51,13 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 		panic(err)
 	}
 
+	var dumpTests = os.Getenv("DUMP_TESTS") == "1"
+	var dumpPath string
+	if dumpTests {
+		dumpPath = filepath.Join("_test", "html")
+		os.MkdirAll(dumpPath, 0700)
+	}
+
 	for _, testCase := range testCases {
 		t.Run(testCase.Desc, func(t *testing.T) {
 			mdToBlocksConverter := New()
@@ -60,9 +69,13 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 
 			var actual []map[string]interface{}
 			err = json.Unmarshal(actualJson, &actual)
+			if dumpTests {
+				ioutil.WriteFile(filepath.Join(dumpPath, filepath.Clean(testCase.Desc)+".html"), []byte(testCase.HTML), 0644)
+			}
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(testCase.Blocks, actual) {
+				fmt.Println("expected:\n", string(actualJson))
 				require.Equal(t, testCase.Blocks, actual)
 			}
 		})
