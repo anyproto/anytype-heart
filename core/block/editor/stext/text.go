@@ -29,7 +29,7 @@ func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent 
 	for _, id := range ids {
 		tb, err := getText(s, id)
 		if err != nil {
-			return err
+			continue
 		}
 		if err = apply(tb); err != nil {
 			return err

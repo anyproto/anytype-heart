@@ -3961,7 +3961,7 @@ Makes blocks copy by given ids and paste it to shown place
 <a name="anytype.Rpc.BlockList.Set.Text"></a>
 
 ### Rpc.BlockList.Set.Text
-
+commands acceptable only for text blocks, others will be ignored
 
 
 

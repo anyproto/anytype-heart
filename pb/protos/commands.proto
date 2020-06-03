@@ -205,6 +205,7 @@ message Rpc {
                 }
             }
 
+            // commands acceptable only for text blocks, others will be ignored
             message Text {
                 message Style {
                     message Request {

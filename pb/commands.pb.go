@@ -3845,6 +3845,7 @@ func (m *RpcBlockListSetPageIsArchivedResponseError) GetDescription() string {
 	return ""
 }
 
+// commands acceptable only for text blocks, others will be ignored
 type RpcBlockListSetText struct {
 }
 
