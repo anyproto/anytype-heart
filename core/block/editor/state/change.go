@@ -33,8 +33,8 @@ func (s *State) AddChanges(changes ...*pb.ChangeContent) *State {
 	return s
 }
 
-func (s *State) ApplyChange(change *pb.Change) (err error) {
-	for _, ch := range change.Content {
+func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
+	for _, ch := range changes {
 		switch {
 		case ch.GetBlockCreate() != nil:
 			if err = s.changeBlockCreate(ch.GetBlockCreate()); err != nil {
@@ -196,4 +196,16 @@ func (s *State) makeCreateChange(id string) (ch *pb.ChangeContent) {
 		create.Position = model.Block_Bottom
 	}
 	return
+}
+
+func newChangeMove(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {
+	return &pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfBlockMove{
+			BlockMove: &pb.ChangeBlockMove{
+				TargetId: targetId,
+				Position: pos,
+				Ids:      ids,
+			},
+		},
+	}
 }

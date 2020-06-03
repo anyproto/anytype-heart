@@ -58,7 +58,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			s = root
 			if applyRoot {
 				s = s.NewState().DisableAutoChanges()
-				if err = s.ApplyChange(c.Change); err != nil {
+				if err = s.ApplyChange(c.Change.Content...); err != nil {
 					return false
 				}
 				count++
@@ -68,7 +68,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 		}
 		if len(c.PreviousIds) == 1 {
 			s = sc.Get(c.PreviousIds[0]).NewState().DisableAutoChanges()
-			if err = s.ApplyChange(c.Change); err != nil {
+			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
 			count++
@@ -81,7 +81,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 				toMerge[i] = sc.Get(prevId)
 			}
 			s = merge(toMerge...)
-			if err = s.ApplyChange(c.Change); err != nil {
+			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
 			count++

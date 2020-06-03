@@ -14,14 +14,14 @@ func FindPos(s []string, v string) int {
 	return -1
 }
 
-func Insert(s []string, v string, pos int) []string {
+func Insert(s []string, pos int, v ...string) []string {
 	if len(s) <= pos {
-		return append(s, v)
+		return append(s, v...)
 	}
 	if pos == 0 {
-		return append([]string{v}, s[pos:]...)
+		return append(v, s[pos:]...)
 	}
-	return append(s[:pos], append([]string{v}, s[pos:]...)...)
+	return append(s[:pos], append(v, s[pos:]...)...)
 }
 
 func Remove(s []string, v string) []string {

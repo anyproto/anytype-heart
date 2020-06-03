@@ -48,20 +48,13 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	}
 
 	var pos int
-	insertPos := func() {
-		for _, id := range ids {
-			targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, id, pos)
-			pos++
-		}
-	}
-
 	switch reqPos {
 	case model.Block_Bottom:
 		pos = targetPos + 1
-		insertPos()
+		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
 	case model.Block_Top:
 		pos = targetPos
-		insertPos()
+		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
 	case model.Block_Left, model.Block_Right:
 		if err = s.moveFromSide(target, reqPos, ids...); err != nil {
 			return
@@ -73,7 +66,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 		if len(ids) > 0 && len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
 			s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
 		}
-		insertPos()
+		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
 		s.Remove(target.Model().Id)
 	default:
 		return fmt.Errorf("unexpected position")
@@ -127,7 +120,7 @@ func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids .
 	if pos == model.Block_Right {
 		columnPos += 1
 	}
-	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, column.Model().Id, columnPos)
+	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, columnPos, column.Model().Id)
 	return
 }
 
