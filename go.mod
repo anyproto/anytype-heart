@@ -7,7 +7,6 @@ require (
 	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/anytypeio/go-anytype-library v0.8.1-0.20200529115847-61026102e8f0
 	github.com/cheggaaa/mb v1.0.2
-	github.com/davecgh/go-spew v1.1.1
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.3
 	github.com/google/uuid v1.1.1
@@ -24,4 +23,4 @@ require (
 	google.golang.org/grpc v1.29.0
 )
 
-replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200603085221-791777acf16b
+replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200603130138-95b7ea6b0cab

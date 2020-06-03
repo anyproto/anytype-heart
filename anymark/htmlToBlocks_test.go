@@ -60,7 +60,6 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 
 			var actual []map[string]interface{}
 			err = json.Unmarshal(actualJson, &actual)
-			fmt.Println(string(actualJson))
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(testCase.Blocks, actual) {
