@@ -6761,7 +6761,7 @@ B. Partial block load
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  | dataview block&#39;s id |
+| id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id to remove |
 
 

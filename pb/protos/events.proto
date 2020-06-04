@@ -114,7 +114,7 @@ message Event {
 
             message Dataview {
                 message View {
-                    string blockId = 1; // dataview block's id
+                    string id = 1; // dataview block's id
                     string viewId = 2; // view id to remove
                 }
             }
