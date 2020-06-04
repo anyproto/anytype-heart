@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var _ Block = (*Dataview)(nil)
+
 func init() {
 	simple.RegisterCreator(NewDataview)
 }
@@ -118,7 +120,7 @@ func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	s.content.Views = append(s.content.Views, &view)
 }
 
-func (s *Dataview) Delete(viewID string) error {
+func (s *Dataview) DeleteView(viewID string) error {
 	var found bool
 	for i, v := range s.content.Views {
 		if v.Id == viewID {
