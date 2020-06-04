@@ -23,4 +23,4 @@ require (
 	google.golang.org/grpc v1.29.0
 )
 
-replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200603204045-ce4f5c38d730
+replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200604073925-3e04de035205
