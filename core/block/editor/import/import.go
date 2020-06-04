@@ -81,6 +81,24 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	log.Debug("FILES COUNT:", filesCount)
 
 	var pagesCreated int
+
+	for name, file := range files {
+		// index links in the root csv file
+		if !file.isRootFile || !strings.EqualFold(filepath.Ext(name), ".csv") {
+			continue
+		}
+
+		ext := filepath.Ext(name)
+		csvDir := strings.TrimSuffix(name, ext)
+
+		for targetName, targetFile := range files {
+			fileExt := filepath.Ext(targetName)
+			if filepath.Dir(targetName) == csvDir && strings.EqualFold(fileExt, ".md") {
+				targetFile.hasInboundLinks = true
+			}
+		}
+	}
+
 	for name, file := range files {
 		if !strings.EqualFold(filepath.Ext(name), ".md") {
 			continue
