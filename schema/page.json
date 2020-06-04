@@ -36,6 +36,36 @@
       "id": "isArchived",
       "name": "Archived",
       "type": "https://anytype.io/schemas/types/checkbox"
+    },
+    {
+      "id": "coverType",
+      "name": "Cover Type",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/coverType"
+    },
+    {
+      "id": "coverId",
+      "name": "Predefined ID or Image",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/image"
+    },
+    {
+      "id": "coverX",
+      "name": "Cover x offset",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/number"
+    },
+    {
+      "id": "coverY",
+      "name": "Cover y offset",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/number"
+    },
+    {
+      "id": "coverScale",
+      "name": "Cover scale",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/number"
     }
   ]
 }

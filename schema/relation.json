@@ -20,6 +20,14 @@
           "type": "string",
           "$comment": "json schema $id for the relation type, starting from https://anytype.io/schemas/types/"
         },
+        "objectType": {
+          "type": "string",
+          "$comment": "json schema $id of the object type for relations with the object type, e.g. https://anytype.io/schemas/page"
+        },
+        "isMulti": {
+          "type": "boolean",
+          "$comment": "multiple fields of the same type grouped in the array. allowed for: select, image, file, object"
+        },
         "isHided": {
           "type": "boolean",
           "$comment": "presented in the dataset, may be rendered with some view types but should be hided in the relations list"
@@ -38,13 +46,6 @@
     "select": {
       "$id": "https://anytype.io/schemas/types/select",
       "type": "string"
-    },
-    "multiselect": {
-      "$id": "https://anytype.io/schemas/types/multiselect",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     },
     "number": {
       "$id": "https://anytype.io/schemas/types/number",
@@ -74,15 +75,10 @@
       "$id": "https://anytype.io/schemas/types/checkbox",
       "type": "boolean"
     },
-    "page": {
-      "$id": "https://anytype.io/schemas/types/page",
+    "object": {
+      "$id": "https://anytype.io/schemas/types/object",
       "type": "string",
-      "description": "ID of the page"
-    },
-    "person": {
-      "$id": "https://anytype.io/schemas/types/person",
-      "type": "string",
-      "description": "ID of the profile"
+      "description": "ID of the object, e.g. page or person"
     },
     "image": {
       "$id": "https://anytype.io/schemas/types/image",
@@ -98,6 +94,18 @@
       "$id": "https://anytype.io/schemas/types/emoji",
       "type": "string",
       "description": "One emoji as unicode"
+    },
+    "coverType": {
+      "$id": "https://anytype.io/schemas/types/coverType",
+      "enum": [
+        0, "None",
+        1, "Image",
+        2, "Color",
+        3, "Gradient",
+        4, "Upload",
+        5, "BgImage"
+      ],
+      "description": "Page cover type"
     }
   }
 }
