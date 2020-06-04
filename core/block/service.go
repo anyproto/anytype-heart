@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 
 	"github.com/anytypeio/go-anytype-library/files"
@@ -27,8 +28,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -111,6 +114,11 @@ type Service interface {
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
 	DeletePages(req pb.RpcBlockListDeletePageRequest) error
+
+	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error
+	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
+	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
+	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) error
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
@@ -556,6 +564,37 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	})
 }
 
+func (s *service) SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateDataview(ctx, req.BlockId, true, func(sb simpleDataview.Block) error {
+			return sb.SetView(req.ViewId, *req.View)
+		})
+	})
+}
+
+func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateDataview(ctx, req.BlockId, true, func(sb simpleDataview.Block) error {
+			return sb.DeleteView(req.ViewId)
+		})
+	})
+}
+
+func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.SetActiveView(ctx, req.BlockId, req.ViewId, true)
+	})
+}
+
+func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateDataview(ctx, req.BlockId, true, func(sb simpleDataview.Block) error {
+			sb.AddView(*req.View)
+			return nil
+		})
+	})
+}
+
 func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		textSlot, htmlSlot, anySlot, err = cb.Copy(req, images)
@@ -960,6 +999,20 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 	}
 
 	return fmt.Errorf("import operation not available for this block type: %T", sb)
+}
+
+func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(dataview.Dataview); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("text operation not available for this block type: %T", sb)
 }
 
 func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {

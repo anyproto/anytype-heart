@@ -6,10 +6,9 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -24,10 +23,7 @@ func NewSet(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.Li
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
-		Text:       stext.NewText(sb),
-		File:       file.NewFile(sb, source),
-		Clipboard:  clipboard.NewClipboard(sb),
-		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
+		Dataview:   dataview.NewDataview(sb),
 		sendEvent:  sendEvent,
 	}
 }
@@ -36,10 +32,7 @@ type Set struct {
 	smartblock.SmartBlock
 	basic.Basic
 	basic.IHistory
-	file.File
-	stext.Text
-	clipboard.Clipboard
-	bookmark.Bookmark
+	dataview.Dataview
 
 	sendEvent func(e *pb.Event)
 }
