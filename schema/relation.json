@@ -19,6 +19,10 @@
         "type": {
           "type": "string",
           "$comment": "json schema $id for the relation type, starting from https://anytype.io/schemas/types/"
+        },
+        "isHided": {
+          "type": "boolean",
+          "$comment": "presented in the dataset, may be rendered with some view types but should be hided in the relations list"
         }
       }
     },

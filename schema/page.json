@@ -10,6 +10,12 @@
   "uniqueItems": true,
   "default": [
     {
+      "id": "id",
+      "name": "ID",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/page"
+    },
+    {
       "id": "name",
       "name": "Name",
       "type": "https://anytype.io/schemas/types/title"
@@ -17,11 +23,13 @@
     {
       "id": "iconEmoji",
       "name": "Emoji",
+      "isHided": true,
       "type": "https://anytype.io/schemas/types/emoji"
     },
     {
       "id": "iconImage",
       "name": "Image",
+      "isHided": true,
       "type": "https://anytype.io/schemas/types/image"
     },
     {
