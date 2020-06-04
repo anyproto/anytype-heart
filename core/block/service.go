@@ -94,6 +94,7 @@ type Service interface {
 	SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error
 	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
+	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
 
@@ -658,6 +659,15 @@ func (s *service) SetTextColor(ctx *state.Context, contextId string, color strin
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.SetTextColor(color)
+			return nil
+		})
+	})
+}
+
+func (s *service) SetTextMark(ctx *state.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
+			t.SetMarkForAllText(mark)
 			return nil
 		})
 	})

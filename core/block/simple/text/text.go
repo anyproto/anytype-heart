@@ -42,6 +42,7 @@ type Block interface {
 	GetText() (text string)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
+	SetMarkForAllText(mark *model.BlockContentTextMark)
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
@@ -129,6 +130,28 @@ func (t *Text) SetChecked(v bool) {
 
 func (t *Text) SetTextColor(color string) {
 	t.content.Color = color
+}
+
+func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
+	mRange := &model.Range{
+		To: int32(utf8.RuneCountInString(t.content.Text)),
+	}
+	if t.content.Marks == nil {
+		t.content.Marks = &model.BlockContentTextMarks{}
+	}
+	filteredMarks := t.content.Marks.Marks[:0]
+	for _, m := range t.content.Marks.Marks {
+		if m.Type != mark.Type {
+			filteredMarks = append(filteredMarks, m)
+		}
+	}
+	t.content.Marks.Marks = filteredMarks
+	t.content.Marks.Marks = append(t.content.Marks.Marks, &model.BlockContentTextMark{
+		Range: mRange,
+		Type:  mark.Type,
+		Param: mark.Param,
+	})
+	return
 }
 
 func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
