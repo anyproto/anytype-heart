@@ -8564,7 +8564,7 @@ Bookmark is to keep a web-link and to preview a content.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  |  |
-| column | [string](#string) |  |  |
+| relationId | [string](#string) |  |  |
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
 | value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 
@@ -8597,7 +8597,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| column | [string](#string) |  |  |
+| relationId | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type) |  |  |
 
 

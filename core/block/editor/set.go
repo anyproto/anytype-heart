@@ -69,8 +69,8 @@ func (p *Set) init() (err error) {
 						Name: "Table",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
-								Column: "name",
-								Type:   model.BlockContentDataviewSort_Asc,
+								RelationId: "name",
+								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
 						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
@@ -82,8 +82,8 @@ func (p *Set) init() (err error) {
 						Name: "Gallery",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
-								Column: "name",
-								Type:   model.BlockContentDataviewSort_Asc,
+								RelationId: "name",
+								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
 						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
@@ -95,8 +95,8 @@ func (p *Set) init() (err error) {
 						Name: "Kanban",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
-								Column: "name",
-								Type:   model.BlockContentDataviewSort_Asc,
+								RelationId: "name",
+								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
 						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
@@ -108,8 +108,8 @@ func (p *Set) init() (err error) {
 						Name: "List",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
-								Column: "name",
-								Type:   model.BlockContentDataviewSort_Asc,
+								RelationId: "name",
+								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
 						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
