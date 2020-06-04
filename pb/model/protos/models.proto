@@ -216,7 +216,7 @@ message Block {
             }
 
             message Sort {
-                string column = 1;
+                string relationId = 1;
                 Type type = 2;
 
                 enum Type {
@@ -227,7 +227,7 @@ message Block {
 
             message Filter {
                 Operator operator = 1;
-                string column = 2;
+                string relationId = 2;
                 Condition condition = 3;
                 google.protobuf.Value value = 4;
 
