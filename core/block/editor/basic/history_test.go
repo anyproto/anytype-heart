@@ -16,7 +16,7 @@ func TestHistory_Undo(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "2"}))
 
 	s := sb.NewState()
-	s.Remove("2")
+	s.Unlink("2")
 	require.NoError(t, sb.Apply(s))
 	require.Len(t, sb.Blocks(), 1)
 
@@ -33,7 +33,7 @@ func TestHistory_Redo(t *testing.T) {
 		AddBlock(simple.New(&model.Block{Id: "2"}))
 
 	s := sb.NewState()
-	s.Remove("2")
+	s.Unlink("2")
 	require.NoError(t, sb.Apply(s))
 	require.Len(t, sb.Blocks(), 1)
 

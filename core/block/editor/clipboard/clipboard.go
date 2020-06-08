@@ -198,7 +198,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 	anySlot = req.Blocks
 
 	for i, _ := range req.Blocks {
-		ok := s.Remove(req.Blocks[i].Id)
+		ok := s.Unlink(req.Blocks[i].Id)
 		if !ok {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block with id: %s", req.Blocks[i].Id)
 		}
@@ -426,7 +426,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 			}
 
 			if utf8.RuneCountInString(focusedContent.Text.Text) == 0 {
-				s.Remove(focusedBlock.Model().Id)
+				s.Unlink(focusedBlock.Model().Id)
 			}
 
 		} else if isPasteBottom {
@@ -440,7 +440,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 			if err != nil {
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 			}
-			s.Remove(req.FocusedBlockId)
+			s.Unlink(req.FocusedBlockId)
 
 			break
 
@@ -469,7 +469,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 			}
 
 			if utf8.RuneCountInString(focusedBlock.Model().GetText().Text) == 0 {
-				s.Remove(focusedBlock.Model().Id)
+				s.Unlink(focusedBlock.Model().Id)
 			}
 		}
 		break
@@ -480,7 +480,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 			return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 		}
 		for _, selectedBlockId := range req.SelectedBlockIds {
-			s.Remove(selectedBlockId)
+			s.Unlink(selectedBlockId)
 		}
 
 		break

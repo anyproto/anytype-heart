@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/mb0/diff"
 )
 
 func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
@@ -25,12 +26,6 @@ func (s *State) SetChangeId(id string) {
 
 func (s *State) ChangeId() string {
 	return s.changeId
-}
-
-func (s *State) AddChanges(changes ...*pb.ChangeContent) *State {
-	s.DisableAutoChanges()
-	s.changes = append(s.changes, changes...)
-	return s
 }
 
 func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
@@ -73,7 +68,7 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 
 func (s *State) changeBlockRemove(remove *pb.ChangeBlockRemove) error {
 	for _, id := range remove.Ids {
-		s.Remove(id)
+		s.Unlink(id)
 	}
 	return nil
 }
@@ -106,23 +101,17 @@ func (s *State) Merge(st *State) *State {
 }
 
 func (s *State) GetChanges() []*pb.ChangeContent {
-	res := s.changes
-	if s.parent != nil {
-		res = append(res, s.parent.GetChanges()...)
-	}
-	return res
+	return s.changes
 }
 
-func (s *State) DisableAutoChanges() *State {
-	s.noAutoChanges = true
-	return s
-}
-
-func (s *State) fillAutoChange(msgs []*pb.EventMessage) {
+func (s *State) fillChanges(msgs []*pb.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
 	var delIds []string
+	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
 	for _, msg := range msgs {
 		switch o := msg.Value.(type) {
+		case *pb.EventMessageValueOfBlockSetChildrenIds:
+			structMsgs = append(structMsgs, o.BlockSetChildrenIds)
 		case *pb.EventMessageValueOfBlockSetAlign:
 			updMsgs = append(updMsgs, msg)
 		case *pb.EventMessageValueOfBlockSetBackgroundColor:
@@ -143,21 +132,23 @@ func (s *State) fillAutoChange(msgs []*pb.EventMessage) {
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
 		case *pb.EventMessageValueOfBlockAdd:
 			for _, b := range o.BlockAdd.Blocks {
-				s.changes = append(s.changes, s.makeCreateChange(b.Id))
+				if len(b.ChildrenIds) > 0 {
+					structMsgs = append(structMsgs, &pb.EventBlockSetChildrenIds{
+						Id:          b.Id,
+						ChildrenIds: b.ChildrenIds,
+					})
+				}
 			}
+		default:
+			log.Errorf("unexpected event - can't convert to changes: %T", msg)
 		}
 	}
-	if len(updMsgs) > 0 {
-		s.changes = append(s.changes, &pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfBlockUpdate{
-				BlockUpdate: &pb.ChangeBlockUpdate{
-					Events: updMsgs,
-				},
-			},
-		})
+	var cb = &changeBuilder{}
+	if len(structMsgs) > 0 {
+		s.fillStructureChanges(cb, structMsgs)
 	}
 	if len(delIds) > 0 {
-		s.changes = append(s.changes, &pb.ChangeContent{
+		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfBlockRemove{
 				BlockRemove: &pb.ChangeBlockRemove{
 					Ids: delIds,
@@ -165,47 +156,149 @@ func (s *State) fillAutoChange(msgs []*pb.EventMessage) {
 			},
 		})
 	}
+	if len(updMsgs) > 0 {
+		cb.AddChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfBlockUpdate{
+				BlockUpdate: &pb.ChangeBlockUpdate{
+					Events: updMsgs,
+				},
+			},
+		})
+	}
+	s.changes = cb.Build()
 }
 
-func (s *State) makeCreateChange(id string) (ch *pb.ChangeContent) {
-	var create = &pb.ChangeBlockCreate{}
-	ch = &pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfBlockCreate{
-			BlockCreate: create,
-		},
+func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
+	for _, msg := range msgs {
+		s.makeStructureChanges(cb, msg)
 	}
-	create.Blocks = []*model.Block{s.Pick(id).Copy().Model()}
-	parent := s.PickParentOf(id)
-	if parent == nil {
-		return
+}
+
+func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChildrenIds) (ch []*pb.ChangeContent) {
+	var before []string
+	orig := s.PickOrigin(msg.Id)
+	if orig != nil {
+		before = orig.Model().ChildrenIds
 	}
-	pm := parent.Model()
-	pos := slice.FindPos(pm.ChildrenIds, id)
-	if pos == 0 {
-		if len(pm.ChildrenIds) == 1 {
-			create.TargetId = pm.Id
-			create.Position = model.Block_Inner
-			return
+
+	ds := &dstrings{a: before, b: msg.ChildrenIds}
+	d := diff.Diff(len(ds.a), len(ds.b), ds)
+	var (
+		targetId  string
+		targetPos model.BlockPosition
+	)
+	var makeTarget = func(pos int) {
+		if pos == 0 {
+			if len(ds.a) == 0 {
+				targetId = msg.Id
+				targetPos = model.Block_Inner
+			} else {
+				targetId = ds.a[0]
+				targetPos = model.Block_Top
+			}
+		} else {
+			targetId = ds.b[pos-1]
+			targetPos = model.Block_Bottom
 		}
-		create.TargetId = pm.ChildrenIds[1]
-		create.Position = model.Block_Top
-		return
 	}
-	if pos > 0 {
-		create.TargetId = pm.ChildrenIds[pos-1]
-		create.Position = model.Block_Bottom
+	for _, c := range d {
+		if c.Ins > 0 {
+			prevOp := 0
+			for ins := 0; ins < c.Ins; ins++ {
+				pos := c.B + ins
+				id := ds.b[pos]
+				if slice.FindPos(s.newIds, id) != -1 {
+					if prevOp != 1 {
+						makeTarget(pos)
+					}
+					cb.Add(targetId, targetPos, s.Pick(id).Copy().Model())
+					prevOp = 1
+				} else {
+					if prevOp != 2 {
+						makeTarget(pos)
+					}
+					cb.Move(targetId, targetPos, id)
+					prevOp = 2
+				}
+			}
+		}
 	}
 	return
 }
 
-func newChangeMove(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {
-	return &pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfBlockMove{
-			BlockMove: &pb.ChangeBlockMove{
-				TargetId: targetId,
-				Position: pos,
-				Ids:      ids,
-			},
-		},
+type dstrings struct{ a, b []string }
+
+func (d *dstrings) Equal(i, j int) bool { return d.a[i] == d.b[j] }
+
+type changeBuilder struct {
+	changes []*pb.ChangeContent
+
+	isLastAdd    bool
+	lastTargetId string
+	lastPosition model.BlockPosition
+	lastIds      []string
+	lastBlocks   []*model.Block
+}
+
+func (cb *changeBuilder) Move(targetId string, pos model.BlockPosition, id string) {
+	if cb.isLastAdd || cb.lastTargetId != targetId || cb.lastPosition != pos {
+		cb.Flush()
 	}
+	cb.isLastAdd = false
+	cb.lastTargetId = targetId
+	cb.lastPosition = pos
+	cb.lastIds = append(cb.lastIds, id)
+}
+
+func (cb *changeBuilder) Add(targetId string, pos model.BlockPosition, m *model.Block) {
+	if !cb.isLastAdd || cb.lastTargetId != targetId || cb.lastPosition != pos {
+		cb.Flush()
+	}
+	m.ChildrenIds = nil
+	cb.isLastAdd = true
+	cb.lastTargetId = targetId
+	cb.lastPosition = pos
+	cb.lastBlocks = append(cb.lastBlocks, m)
+}
+
+func (cb *changeBuilder) AddChange(ch ...*pb.ChangeContent) {
+	cb.Flush()
+	cb.changes = append(cb.changes, ch...)
+}
+
+func (cb *changeBuilder) Flush() {
+	if cb.lastTargetId == "" {
+		return
+	}
+	if cb.isLastAdd && len(cb.lastBlocks) > 0 {
+		var create = &pb.ChangeBlockCreate{
+			TargetId: cb.lastTargetId,
+			Position: cb.lastPosition,
+			Blocks:   cb.lastBlocks,
+		}
+		cb.changes = append(cb.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfBlockCreate{
+				BlockCreate: create,
+			},
+		})
+	} else if !cb.isLastAdd && len(cb.lastIds) > 0 {
+		var move = &pb.ChangeBlockMove{
+			TargetId: cb.lastTargetId,
+			Position: cb.lastPosition,
+			Ids:      cb.lastIds,
+		}
+		cb.changes = append(cb.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfBlockMove{
+				BlockMove: move,
+			},
+		})
+	}
+	cb.lastTargetId = ""
+	cb.lastBlocks = nil
+	cb.lastIds = nil
+}
+
+func (cb *changeBuilder) Build() []*pb.ChangeContent {
+	cb.Flush()
+	return cb.changes
 }

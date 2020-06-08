@@ -57,7 +57,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 		if root.ChangeId() == c.Id {
 			s = root
 			if applyRoot {
-				s = s.NewState().DisableAutoChanges()
+				s = s.NewState()
 				if err = s.ApplyChange(c.Change.Content...); err != nil {
 					return false
 				}
@@ -67,7 +67,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			return true
 		}
 		if len(c.PreviousIds) == 1 {
-			s = sc.Get(c.PreviousIds[0]).NewState().DisableAutoChanges()
+			s = sc.Get(c.PreviousIds[0]).NewState()
 			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}

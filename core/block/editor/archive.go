@@ -104,7 +104,7 @@ func (p *Archive) UnArchive(id string) (err error) {
 	if err = p.ctrl.MarkArchived(id, false); err != nil {
 		return
 	}
-	s.Remove(linkId)
+	s.Unlink(linkId)
 	return p.Apply(s, smartblock.NoHistory)
 }
 
@@ -130,6 +130,6 @@ func (p *Archive) Delete(id string) (err error) {
 	if err = p.ctrl.DeletePage(id); err != nil {
 		return
 	}
-	s.Remove(linkId)
+	s.Unlink(linkId)
 	return p.Apply(s, smartblock.NoHistory)
 }

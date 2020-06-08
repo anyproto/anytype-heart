@@ -48,18 +48,6 @@ func TestState_Unlink(t *testing.T) {
 	assert.False(t, s.Unlink("2"))
 }
 
-func TestState_Remove(t *testing.T) {
-	s := NewDoc("1", map[string]simple.Block{
-		"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
-		"2": base.NewBase(&model.Block{Id: "2"}),
-	}).NewState()
-	assert.True(t, s.Remove("2"))
-	assert.Len(t, s.Pick("1").Model().ChildrenIds, 0)
-	assert.False(t, s.Remove("2"))
-	assert.Nil(t, s.Get("2"))
-	assert.Nil(t, s.Pick("2"))
-}
-
 func TestState_GetParentOf(t *testing.T) {
 	s := NewDoc("1", map[string]simple.Block{
 		"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
@@ -84,7 +72,7 @@ func TestApplyState(t *testing.T) {
 	s.changeId = "2"
 
 	s = s.NewState()
-	s.Remove("3")
+	s.Unlink("3")
 	s.changeId = "3"
 
 	s = s.NewState()

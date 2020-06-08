@@ -67,7 +67,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 			s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
 		}
 		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
-		s.Remove(target.Model().Id)
+		s.Unlink(target.Model().Id)
 	default:
 		return fmt.Errorf("unexpected position")
 	}

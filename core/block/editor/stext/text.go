@@ -97,7 +97,7 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	if err = first.Merge(second); err != nil {
 		return
 	}
-	s.Remove(second.Model().Id)
+	s.Unlink(second.Model().Id)
 	first.Model().ChildrenIds = append(first.Model().ChildrenIds, second.Model().ChildrenIds...)
 	return t.Apply(s)
 }

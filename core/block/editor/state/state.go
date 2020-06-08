@@ -41,7 +41,6 @@ type State struct {
 	parent        *State
 	blocks        map[string]simple.Block
 	rootId        string
-	toRemove      []string
 	newIds        []string
 	changeId      string
 	changes       []*pb.ChangeContent
@@ -86,14 +85,11 @@ func (s *State) Set(b simple.Block) {
 }
 
 func (s *State) Get(id string) (b simple.Block) {
-	if slice.FindPos(s.toRemove, id) != -1 {
-		return nil
-	}
 	if b = s.blocks[id]; b != nil {
 		return
 	}
 	if s.parent != nil {
-		if b = s.parent.Get(id); b != nil {
+		if b = s.Pick(id); b != nil {
 			b = b.Copy()
 			s.blocks[id] = b
 			return
@@ -103,9 +99,6 @@ func (s *State) Get(id string) (b simple.Block) {
 }
 
 func (s *State) Pick(id string) (b simple.Block) {
-	if slice.FindPos(s.toRemove, id) != -1 {
-		return nil
-	}
 	if b = s.blocks[id]; b != nil {
 		return
 	}
@@ -118,24 +111,6 @@ func (s *State) Pick(id string) (b simple.Block) {
 func (s *State) PickOrigin(id string) (b simple.Block) {
 	if s.parent != nil {
 		return s.parent.Pick(id)
-	}
-	return
-}
-
-func (s *State) Remove(id string) (ok bool) {
-	if slice.FindPos(s.toRemove, id) != -1 {
-		return false
-	}
-	if s.Pick(id) != nil {
-		s.Unlink(id)
-		if _, ok = s.blocks[id]; ok {
-			delete(s.blocks, id)
-		}
-		s.toRemove = append(s.toRemove, id)
-		if slice.FindPos(s.newIds, id) != -1 {
-			s.newIds = slice.Remove(s.newIds, id)
-		}
-		return true
 	}
 	return
 }
@@ -171,6 +146,22 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 		return true
 	})
 	return
+}
+
+func (s *State) PickOriginParentOf(id string) (res simple.Block) {
+	if s.parent != nil {
+		return s.parent.PickParentOf(id)
+	}
+	return
+}
+
+func (s *State) Diff(id string) ([]*pb.EventMessage, error) {
+	if new := s.blocks[id]; new != nil && s.parent != nil {
+		if old := s.PickOrigin(id); old != nil {
+			return old.Diff(new)
+		}
+	}
+	return nil, nil
 }
 
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
@@ -223,83 +214,106 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 	if err = s.normalize(); err != nil {
 		return
 	}
-	if len(s.toRemove) > 0 {
-		toRemoveFiltered := s.toRemove[:0]
-		for _, toRemoveId := range s.toRemove {
-			if s.PickOrigin(toRemoveId) != nil {
-				toRemoveFiltered = append(toRemoveFiltered, toRemoveId)
-			}
-		}
-		s.toRemove = toRemoveFiltered
-	}
+	var (
+		inUse       = make(map[string]struct{})
+		affectedIds = make([]string, 0, len(s.blocks))
+		newBlocks   []*model.Block
+	)
 
-	var toSave []*model.Block
-	var newBlocks []*model.Block
-	for id, b := range s.blocks {
-		if slice.FindPos(s.toRemove, id) != -1 {
-			continue
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		id := b.Model().Id
+		inUse[id] = struct{}{}
+		if _, ok := s.blocks[id]; ok {
+			affectedIds = append(affectedIds, id)
 		}
-		orig := s.PickOrigin(id)
-		if orig == nil {
-			newBlocks = append(newBlocks, b.Model())
-			toSave = append(toSave, b.Model())
-			action.Add = append(action.Add, b.Copy())
-			continue
-		}
+		return true
+	})
 
-		diff, err := orig.Diff(b)
-		if err != nil {
-			return nil, history.Action{}, err
-		}
-		if len(diff) > 0 {
-			toSave = append(toSave, b.Model())
-			msgs = append(msgs, diff...)
-			if file := orig.Model().GetFile(); file != nil {
-				if file.State == model.BlockContentFile_Uploading {
-					file.State = model.BlockContentFile_Empty
-				}
-			}
-			action.Change = append(action.Change, history.Change{
-				Before: orig.Copy(),
-				After:  b.Copy(),
+	flushNewBlocks := func() {
+		if len(newBlocks) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfBlockAdd{
+					BlockAdd: &pb.EventBlockAdd{
+						Blocks: newBlocks,
+					},
+				},
 			})
 		}
+		newBlocks = nil
 	}
 
-	if len(s.toRemove) > 0 {
+	// new and changed blocks
+	// we need to create events with affectedIds order for correct changes generation
+	for _, id := range affectedIds {
+		orig := s.PickOrigin(id)
+		if orig == nil {
+			bc := s.blocks[id].Copy()
+			newBlocks = append(newBlocks, bc.Model())
+			action.Add = append(action.Add, bc)
+		} else {
+			flushNewBlocks()
+			b := s.blocks[id]
+			diff, err := orig.Diff(b)
+			if err != nil {
+				return nil, history.Action{}, err
+			}
+			if len(diff) > 0 {
+				msgs = append(msgs, diff...)
+				if file := orig.Model().GetFile(); file != nil {
+					if file.State == model.BlockContentFile_Uploading {
+						file.State = model.BlockContentFile_Empty
+					}
+				}
+				action.Change = append(action.Change, history.Change{
+					Before: orig.Copy(),
+					After:  b.Copy(),
+				})
+			}
+		}
+	}
+	flushNewBlocks()
+
+	// removed blocks
+	var (
+		toRemove []string
+		bm       map[string]simple.Block
+	)
+	if s.parent != nil {
+		bm = s.parent.blocks
+	} else {
+		bm = s.blocks
+	}
+	for id := range bm {
+		if _, ok := inUse[id]; !ok {
+			toRemove = append(toRemove, id)
+		}
+	}
+	if len(toRemove) > 0 {
 		msgs = append(msgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockDelete{
-				BlockDelete: &pb.EventBlockDelete{BlockIds: s.toRemove},
+				BlockDelete: &pb.EventBlockDelete{BlockIds: toRemove},
 			},
 		})
 	}
-	if len(newBlocks) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfBlockAdd{
-				BlockAdd: &pb.EventBlockAdd{
-					Blocks: newBlocks,
-				},
-			},
-		})
-	}
+	// generate changes
+	s.fillChanges(msgs)
+
+	// apply to parent
 	for _, b := range s.blocks {
 		if s.parent != nil {
 			s.parent.blocks[b.Model().Id] = b
 		}
 	}
-	for _, id := range s.toRemove {
-		action.Remove = append(action.Remove, s.PickOrigin(id))
+	for _, id := range toRemove {
+		action.Remove = append(action.Remove, s.Pick(id))
 		if s.parent != nil {
 			delete(s.parent.blocks, id)
 		}
 	}
-	if !s.noAutoChanges {
-		s.fillAutoChange(msgs)
-	}
 	if s.parent != nil {
 		s.parent.changes = s.changes
 	}
-	log.Infof("middle: state apply: %d for save; %d for remove; %d copied; for a %v", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
+	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
 
@@ -311,14 +325,11 @@ func (s *State) intermediateApply() {
 	for _, b := range s.blocks {
 		s.parent.Set(b)
 	}
-	for _, id := range s.toRemove {
-		s.parent.Remove(id)
-	}
 	if s.details != nil {
 		s.parent.details = s.details
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
-	log.Infof("middle: state intermediate apply: %d to update; %d to remove ; for a %v", len(s.blocks), len(s.toRemove), time.Since(st))
+	log.Infof("middle: state intermediate apply: %d to update; for a %v", len(s.blocks), time.Since(st))
 	return
 }
 

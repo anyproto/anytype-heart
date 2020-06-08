@@ -117,12 +117,12 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "t3"}))
 
 		s := r.NewState()
-		s.Remove("c2")
+		s.Unlink("c2")
 
 		msgs, hist, err := s.apply()
 		require.NoError(t, err)
 		assert.Len(t, msgs, 4) // 1 row change + 1 remove + 2 width reset
-		assert.Len(t, hist.Remove, 1)
+		assert.Len(t, hist.Remove, 2)
 		assert.Len(t, hist.Change, 3)
 		assert.Equal(t, []string{"r1"}, r.Pick("root").Model().ChildrenIds)
 		assert.Nil(t, r.Pick("c2"))

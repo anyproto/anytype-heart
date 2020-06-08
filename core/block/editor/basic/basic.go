@@ -33,7 +33,7 @@ func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 		if b != nil {
 			descendants := bs.getAllDescendants(b.Copy(), []simple.Block{})
 			blocks = append(blocks, descendants...)
-			s.Remove(b.Model().Id)
+			s.Unlink(b.Model().Id)
 		}
 	}
 
@@ -89,13 +89,6 @@ func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id st
 	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
 		return
 	}
-	s.AddChanges(&pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfBlockCreate{BlockCreate: &pb.ChangeBlockCreate{
-			TargetId: req.TargetId,
-			Position: req.Position,
-			Blocks:   []*model.Block{block.Copy().Model()},
-		}},
-	})
 	if err = bs.Apply(s); err != nil {
 		return
 	}
@@ -144,15 +137,10 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
 	for _, id := range ids {
-		if !s.Remove(id) {
+		if !s.Unlink(id) {
 			return smartblock.ErrSimpleBlockNotFound
 		}
 	}
-	s.AddChanges(&pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfBlockRemove{BlockRemove: &pb.ChangeBlockRemove{
-			Ids: ids,
-		}},
-	})
 	return bs.Apply(s)
 }
 
@@ -166,13 +154,6 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
 		return
 	}
-	s.AddChanges(&pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfBlockMove{BlockMove: &pb.ChangeBlockMove{
-			TargetId: req.DropTargetId,
-			Position: req.Position,
-			Ids:      req.BlockIds,
-		},
-		}})
 	return bs.Apply(s)
 }
 
@@ -184,13 +165,6 @@ func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (new
 	if err = s.InsertTo(id, model.Block_Replace, newId); err != nil {
 		return
 	}
-	s.AddChanges(&pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfBlockCreate{BlockCreate: &pb.ChangeBlockCreate{
-			TargetId: id,
-			Position: model.Block_Replace,
-			Blocks:   []*model.Block{new.Copy().Model()},
-		},
-		}})
 	if err = bs.Apply(s); err != nil {
 		return
 	}
