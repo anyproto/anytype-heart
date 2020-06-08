@@ -17,7 +17,12 @@ type SmartBlockSchema interface {
 
 type smartBlockBaseSchema SmartBlockType
 
+var jsonSchemaCompiler *jsonschema.Compiler
+
 func init() {
+	jsonSchemaCompiler = jsonschema.NewCompiler()
+	jsonSchemaCompiler.ExtractAnnotations = true
+
 	// compile page first because others depends on it
 	var keys = []string{"https://anytype.io/schemas/relation-definitions", "https://anytype.io/schemas/page"}
 loop:
@@ -30,9 +35,8 @@ loop:
 		keys = append(keys, schemaURL)
 	}
 
-	compiler := jsonschema.NewCompiler()
 	for _, schemaURL := range keys {
-		err := compiler.AddResource(schemaURL, strings.NewReader(schema.SchemaByURL[schemaURL]))
+		err := jsonSchemaCompiler.AddResource(schemaURL, strings.NewReader(schema.SchemaByURL[schemaURL]))
 		if err != nil {
 			log.Fatalf("failed to compile %s: %s", schemaURL, err.Error())
 		}
