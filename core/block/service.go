@@ -46,8 +46,12 @@ var (
 var log = logging.Logger("anytype-mw-service")
 
 var (
-	blockCacheTTL       = time.Minute
-	blockCleanupTimeout = time.Second * 30
+	/*
+		blockCacheTTL       = time.Minute
+		blockCleanupTimeout = time.Second * 30
+	*/
+	blockCacheTTL       = time.Second // TODO: need to revert after changes testing
+	blockCleanupTimeout = time.Second * 10
 )
 
 var (
