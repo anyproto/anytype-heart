@@ -17,6 +17,12 @@ var SchemaByURL = map[string]string{
   "uniqueItems": true,
   "default": [
     {
+      "id": "id",
+      "name": "ID",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/page"
+    },
+    {
       "id": "name",
       "name": "Name",
       "type": "https://anytype.io/schemas/types/title"
@@ -24,17 +30,49 @@ var SchemaByURL = map[string]string{
     {
       "id": "iconEmoji",
       "name": "Emoji",
+      "isHided": true,
       "type": "https://anytype.io/schemas/types/emoji"
     },
     {
       "id": "iconImage",
       "name": "Image",
+      "isHided": true,
       "type": "https://anytype.io/schemas/types/image"
     },
     {
       "id": "isArchived",
       "name": "Archived",
       "type": "https://anytype.io/schemas/types/checkbox"
+    },
+    {
+      "id": "coverType",
+      "name": "Cover Type",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/coverType"
+    },
+    {
+      "id": "coverId",
+      "name": "Predefined ID or Image",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/image"
+    },
+    {
+      "id": "coverX",
+      "name": "Cover x offset",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/number"
+    },
+    {
+      "id": "coverY",
+      "name": "Cover y offset",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/number"
+    },
+    {
+      "id": "coverScale",
+      "name": "Cover scale",
+      "isHided": true,
+      "type": "https://anytype.io/schemas/types/number"
     }
   ]
 }
@@ -52,30 +90,39 @@ var SchemaByURL = map[string]string{
   "type": "object"
 }
 `,
-	"https://anytype.io/schemas/relation-definitions": `{
+	"https://anytype.io/schemas/relation": `{
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "id": "https://anytype.io/schemas/relation-definitions",
+  "id": "https://anytype.io/schemas/relation",
   "title": "Anytype Page",
-  "description": "This schema contains all base definitions",
-  "definitions": {
-    "relation": {
-      "$id": "https://anytype.io/schemas/relation",
-      "type": "object",
-      "$comment": "fills relation from specific details",
-      "properties": {
-        "id": {
-          "type": "string",
-          "$comment": "detail's ID"
-        },
-        "name": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string",
-          "$comment": "json schema $id for the relation type, starting from https://anytype.io/schemas/types/"
-        }
-      }
+  "description": "This schema contains relation and all type definitions",
+  "type": "object",
+  "$comment": "fills relation from specific details",
+  "properties": {
+    "id": {
+      "type": "string",
+      "$comment": "detail's ID"
     },
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "$comment": "json schema $id for the relation type, starting from https://anytype.io/schemas/types/"
+    },
+    "objectType": {
+      "type": "string",
+      "$comment": "json schema $id of the object type for relations with the object type, e.g. https://anytype.io/schemas/page"
+    },
+    "isMulti": {
+      "type": "boolean",
+      "$comment": "multiple fields of the same type grouped in the array. allowed for: select, image, file, object"
+    },
+    "isHided": {
+      "type": "boolean",
+      "$comment": "presented in the dataset, may be rendered with some view types but should be hided in the relations list"
+    }
+  },
+  "definitions": {
     "title": {
       "$id": "https://anytype.io/schemas/types/title",
       "type": "string",
@@ -88,13 +135,6 @@ var SchemaByURL = map[string]string{
     "select": {
       "$id": "https://anytype.io/schemas/types/select",
       "type": "string"
-    },
-    "multiselect": {
-      "$id": "https://anytype.io/schemas/types/multiselect",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     },
     "number": {
       "$id": "https://anytype.io/schemas/types/number",
@@ -124,15 +164,10 @@ var SchemaByURL = map[string]string{
       "$id": "https://anytype.io/schemas/types/checkbox",
       "type": "boolean"
     },
-    "page": {
-      "$id": "https://anytype.io/schemas/types/page",
+    "object": {
+      "$id": "https://anytype.io/schemas/types/object",
       "type": "string",
-      "description": "ID of the page"
-    },
-    "person": {
-      "$id": "https://anytype.io/schemas/types/person",
-      "type": "string",
-      "description": "ID of the profile"
+      "description": "ID of the object, e.g. page or person"
     },
     "image": {
       "$id": "https://anytype.io/schemas/types/image",
@@ -148,6 +183,18 @@ var SchemaByURL = map[string]string{
       "$id": "https://anytype.io/schemas/types/emoji",
       "type": "string",
       "description": "One emoji as unicode"
+    },
+    "coverType": {
+      "$id": "https://anytype.io/schemas/types/coverType",
+      "enum": [
+        0, "None",
+        1, "Image",
+        2, "Color",
+        3, "Gradient",
+        4, "Upload",
+        5, "BgImage"
+      ],
+      "description": "Page cover type"
     }
   }
 }
