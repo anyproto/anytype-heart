@@ -588,10 +588,11 @@ func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDa
 
 func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateDataview(ctx, req.BlockId, true, func(sb simpleDataview.Block) error {
-			sb.AddView(*req.View)
-			return nil
-		})
+		if req.View == nil {
+			req.View = &model.BlockContentDataviewView{}
+		}
+		_, err := b.CreateView(ctx, req.BlockId, *req.View)
+		return err
 	})
 }
 

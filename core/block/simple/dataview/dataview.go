@@ -113,10 +113,12 @@ func (d *Dataview) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	return
 }
 
+// AddView adds a view to the dataview. It doesn't fills any missing field excepting id
 func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	if view.Id == "" {
 		view.Id = uuid.New().String()
 	}
+
 	s.content.Views = append(s.content.Views, &view)
 }
 
@@ -138,10 +140,28 @@ func (s *Dataview) DeleteView(viewID string) error {
 
 func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) error {
 	var found bool
-	for i, v := range s.content.Views {
+	for _, v := range s.content.Views {
 		if v.Id == viewID {
 			found = true
-			s.content.Views[i] = &view
+
+			if len(view.Relations) > 0 {
+				v.Relations = view.Relations
+			}
+
+			if len(view.Sorts) > 0 {
+				v.Sorts = view.Sorts
+			}
+
+			if len(view.Filters) > 0 {
+				v.Filters = view.Filters
+			}
+
+			if len(view.Name) > 0 {
+				v.Name = view.Name
+			}
+
+			v.Type = view.Type
+
 			break
 		}
 	}
