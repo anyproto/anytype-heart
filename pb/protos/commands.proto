@@ -494,7 +494,6 @@ message Rpc {
             }
         }
 
-
         message Copy {
             message Request {
                 string contextId = 1;

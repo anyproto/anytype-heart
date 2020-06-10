@@ -7542,7 +7542,7 @@ changed either by the view settings(filters/sort/limit/offset) or by the data it
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
 | updated | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | existing records updated |
-| removed | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| removed | [string](#string) | repeated |  |
 | inserted | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
 | insertPosition | [int32](#int32) |  | position to insert |
 

@@ -582,7 +582,7 @@ func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDa
 
 func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.SetActiveView(ctx, req.BlockId, req.ViewId, true)
+		return b.SetActiveView(ctx, req.BlockId, req.ViewId, int(req.Limit), int(req.Offset))
 	})
 }
 
@@ -868,7 +868,7 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewSet(s.sendEvent)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	default:

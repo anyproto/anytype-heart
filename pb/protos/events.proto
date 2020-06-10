@@ -139,7 +139,7 @@ message Event {
                     string id = 1; // dataview block's id
                     string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
                     repeated google.protobuf.Struct updated = 3; // existing records updated
-                    repeated google.protobuf.Struct removed = 6;
+                    repeated string removed = 6;
                     repeated google.protobuf.Struct inserted = 4; // block of new records to insert
                     int32 insertPosition = 5; // position to insert
                 }
