@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/database"
+	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
@@ -30,6 +32,53 @@ var (
 type dsPageStore struct {
 	ds ds.TxnDatastore
 	l  sync.Mutex
+}
+
+func (m *dsPageStore) Schema() string {
+	return "https://anytype.io/schemas/page"
+}
+
+func (m *dsPageStore) Query(query database.Query) ([]database.Entry, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	q := query.DSQuery()
+	q.Prefix = pagesDetailsBase.String() + "/"
+
+	res, err := txn.Query(q)
+	if err != nil {
+		return nil, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	entries, err := res.Rest()
+	if err != nil {
+		return nil, fmt.Errorf("error when getting query results: %w", err)
+	}
+
+	var results []database.Entry
+
+	for _, entry := range entries {
+		var details model.PageDetails
+		err = proto.Unmarshal(entry.Value, &details)
+		if err != nil {
+			log.Errorf("failed to unmarshal: %s", err.Error())
+			continue
+		}
+
+		key := ds.NewKey(entry.Key)
+		keyList := key.List()
+		id := keyList[len(keyList)-1]
+		lastOpenedTS, _ := getLastOpened(txn, id)
+		details.Details.Fields["lastOpened"] = pb.ToValue(lastOpenedTS)
+		details.Details.Fields["id"] = pb.ToValue(id)
+
+		results = append(results, database.Entry{Details: details.Details})
+	}
+
+	return results, nil
 }
 
 func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {

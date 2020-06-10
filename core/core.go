@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/cafe"
+	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
@@ -114,6 +115,7 @@ type Service interface {
 	PageUpdateLastOpened(id string) error
 
 	GetSchema(url string) (*jsonschema.Schema, error)
+	DatabaseByID(id string) (database.Database, error)
 }
 
 func (a *Anytype) Account() string {
@@ -320,6 +322,9 @@ func (a *Anytype) start() error {
 		close(a.onlineCh)
 	}()
 
+	log.Info("Anytype device: " + a.opts.Device.Address())
+	log.Info("Anytype account: " + a.opts.Account.Address())
+
 	return nil
 }
 
@@ -370,4 +375,13 @@ func (a *Anytype) Stop() error {
 
 func (a *Anytype) GetSchema(url string) (*jsonschema.Schema, error) {
 	return jsonSchemaCompiler.Compile(url)
+}
+
+func (a *Anytype) DatabaseByID(id string) (database.Database, error) {
+	switch id {
+	case "pages":
+		return a.localStore.Pages, nil
+	default:
+		return nil, fmt.Errorf("database not found")
+	}
 }

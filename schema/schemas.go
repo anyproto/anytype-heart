@@ -20,6 +20,7 @@ var SchemaByURL = map[string]string{
       "id": "id",
       "name": "ID",
       "isHided": true,
+      "isReadonly": true,
       "type": "https://anytype.io/schemas/types/page"
     },
     {
@@ -43,6 +44,13 @@ var SchemaByURL = map[string]string{
       "id": "isArchived",
       "name": "Archived",
       "type": "https://anytype.io/schemas/types/checkbox"
+    },
+    {
+      "id": "lastOpened",
+      "name": "Last opened date",
+      "isHided": true,
+      "isReadonly": true,
+      "type": "https://anytype.io/schemas/types/date"
     },
     {
       "id": "coverType",
@@ -120,6 +128,10 @@ var SchemaByURL = map[string]string{
     "isHided": {
       "type": "boolean",
       "$comment": "presented in the dataset, may be rendered with some view types but should be hided in the relations list"
+    },
+    "isReadonly": {
+      "type": "boolean",
+      "$comment": "not existing in the page's details, added afterwards"
     }
   },
   "definitions": {
