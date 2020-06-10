@@ -473,6 +473,10 @@ func getSnippet(snap *smartBlockSnapshot) string {
 }
 
 func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
+	if block.Type() == SmartBlockTypeArchive {
+		return nil
+	}
+
 	fromStateM, err := block.node.localStore.Pages.GetStateByID(block.ID())
 	if err != nil && err != ds.ErrNotFound {
 		return err

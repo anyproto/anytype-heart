@@ -26,7 +26,8 @@ var skipMigration = func(a *Anytype) error {
 var migrations = []migration{
 	skipMigration,        // 1
 	alterThreadsDbSchema, // 2
-	indexLinks,           // 3
+	skipMigration,        // 3
+	indexLinks,           // 4
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -132,6 +133,11 @@ func indexLinks(a *Anytype) error {
 			return err
 		}
 
+		archive, _ := a.threadDeriveID(threadDerivedIndexArchive)
+		home, _ := a.threadDeriveID(threadDerivedIndexHome)
+		profile, _ := a.threadDeriveID(threadDerivedIndexProfilePage)
+
+		threadsIDs = append(threadsIDs, archive, home, profile)
 		migrated := 0
 		for _, threadID := range threadsIDs {
 			err := a.localStore.Pages.Delete(threadID.String())
