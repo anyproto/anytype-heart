@@ -69,6 +69,10 @@ func (d *dataviewImpl) SetActiveView(ctx *state.Context, id string, activeViewId
 
 	for _, view := range tb.Model().GetDataview().Views {
 		if view.Id == activeViewId {
+			if d.activeView != activeViewId {
+				// reset state in case view have changed
+				d.entries = []database.Entry{}
+			}
 			d.activeView = activeViewId
 			msgs, err := d.getEventsMessages(id, tb.Model().GetDataview().DatabaseId, view, offset, limit)
 			if err != nil {
