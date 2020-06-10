@@ -25,11 +25,14 @@ func Test_getDefaultRelations(t *testing.T) {
 	require.NoError(t, err)
 
 	relations := getDefaultRelations(sch)
-	require.Len(t, relations, 2)
+	require.Len(t, relations, 3)
 
 	require.Equal(t, relations[0].Id, "name")
 	require.Equal(t, relations[0].Visible, true)
 	require.Equal(t, relations[1].Id, "isArchived")
+	require.Equal(t, relations[1].Visible, true)
+
+	require.Equal(t, relations[2].Id, "lastOpened")
 	require.Equal(t, relations[1].Visible, true)
 }
 

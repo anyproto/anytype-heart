@@ -86,8 +86,8 @@ func getDefaultRelations(schema *jsonschema.Schema) []*model.BlockContentDatavie
 	if defaults, ok := schema.Default.([]interface{}); ok {
 		for _, def := range defaults {
 			if v, ok := def.(map[string]interface{}); ok {
-				if isHided, exists := v["isHided"]; exists {
-					if v, ok := isHided.(bool); ok {
+				if isHidden, exists := v["isHidden"]; exists {
+					if v, ok := isHidden.(bool); ok {
 						if v {
 							continue
 						}
