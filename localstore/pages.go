@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 )
@@ -72,6 +73,10 @@ func (m *dsPageStore) Query(query database.Query) ([]database.Entry, error) {
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
 		lastOpenedTS, _ := getLastOpened(txn, id)
+		if details.Details == nil || details.Details.Fields == nil {
+			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+
 		details.Details.Fields["lastOpened"] = pb.ToValue(lastOpenedTS)
 		details.Details.Fields["id"] = pb.ToValue(id)
 
