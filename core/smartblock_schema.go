@@ -3,6 +3,7 @@ package core
 import (
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/schema"
 	"github.com/santhosh-tekuri/jsonschema/v2"
 )
@@ -15,7 +16,7 @@ type SmartBlockSchema interface {
 	Schema() *jsonschema.Schema
 }
 
-type smartBlockBaseSchema SmartBlockType
+type smartBlockBaseSchema smartblock.SmartBlockType
 
 var jsonSchemaCompiler *jsonschema.Compiler
 
@@ -44,10 +45,10 @@ loop:
 }
 
 func (s smartBlockBaseSchema) URL() string {
-	switch SmartBlockType(s) {
-	case SmartBlockTypePage:
+	switch smartblock.SmartBlockType(s) {
+	case smartblock.SmartBlockTypePage:
 		return schemaURLPrefix + "page"
-	case SmartBlockTypeProfilePage:
+	case smartblock.SmartBlockTypeProfilePage:
 		return schemaURLPrefix + "person"
 	default:
 		return ""

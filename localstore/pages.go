@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -35,28 +36,47 @@ type dsPageStore struct {
 	l  sync.Mutex
 }
 
+type filterPagesOnly struct{}
+
+func (m *filterPagesOnly) Filter(e query.Entry) bool {
+	keyParts := strings.Split(e.Key, "/")
+	id := keyParts[len(keyParts)-1]
+
+	t, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		log.Errorf("failed to detect smartblock type for %s: %s", id, err.Error())
+		return false
+	}
+
+	if t == smartblock.SmartBlockTypePage || t == smartblock.SmartBlockTypeProfilePage {
+		return true
+	}
+
+	return false
+}
+
 func (m *dsPageStore) Schema() string {
 	return "https://anytype.io/schemas/page"
 }
 
-func (m *dsPageStore) Query(query database.Query) ([]database.Entry, error) {
+func (m *dsPageStore) Query(q database.Query) ([]database.Entry, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	q := query.DSQuery()
-	q.Prefix = pagesDetailsBase.String() + "/"
-
-	res, err := txn.Query(q)
+	dsq := q.DSQuery()
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+	dsq.Filters = append([]query.Filter{&filterPagesOnly{}}, dsq.Filters...)
+	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, fmt.Errorf("error when querying ds: %w", err)
 	}
 
 	entries, err := res.Rest()
 	if err != nil {
-		return nil, fmt.Errorf("error when getting query results: %w", err)
+		return nil, fmt.Errorf("error when getting q results: %w", err)
 	}
 
 	var results []database.Entry

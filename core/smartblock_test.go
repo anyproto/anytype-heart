@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
@@ -19,7 +20,7 @@ func BenchmarkSnapshot(b *testing.B) {
 	b.StopTimer()
 	// run the Fib function b.N times
 	s := getRunningServiceB(b)
-	block, err := s.CreateBlock(SmartBlockTypePage)
+	block, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	state := vclock.New()
 	snap, err := block.PushSnapshot(
 		state,
@@ -58,7 +59,7 @@ func BenchmarkGetLastSnapshot(b *testing.B) {
 	b.StopTimer()
 	// run the Fib function b.N times
 	s := getRunningServiceB(b)
-	block, err := s.CreateBlock(SmartBlockTypePage)
+	block, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	state := vclock.New()
 	var blocks []*model.Block
 	for i := 0; i <= 1000; i++ {
@@ -89,7 +90,7 @@ func BenchmarkGetLastSnapshot(b *testing.B) {
 
 func Test_smartBlock_GetLastSnapshot(t *testing.T) {
 	s := getRunningService(t)
-	block, err := s.CreateBlock(SmartBlockTypePage)
+	block, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state := vclock.New()
@@ -149,7 +150,7 @@ func Test_smartBlock_GetLastSnapshot(t *testing.T) {
 
 func Test_smartBlock_GetSnapshots(t *testing.T) {
 	s := getRunningService(t)
-	block, err := s.CreateBlock(SmartBlockTypePage)
+	block, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state := vclock.New()
@@ -209,7 +210,7 @@ func Test_smartBlock_GetSnapshots(t *testing.T) {
 
 func Test_smartBlock_SnapshotFileKeys(t *testing.T) {
 	s := getRunningService(t)
-	block, err := s.CreateBlock(SmartBlockTypePage)
+	block, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state := vclock.New()

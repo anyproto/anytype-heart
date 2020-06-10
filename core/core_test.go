@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
@@ -54,7 +55,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	err := s.InitPredefinedBlocks(false)
 	require.NoError(t, err)
 
-	block1, err := s.CreateBlock(SmartBlockTypePage)
+	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state1 := vclock.New()
@@ -105,8 +106,8 @@ func TestAnytype_PredefinedBlocks(t *testing.T) {
 
 func TestAnytype_CreateBlock(t *testing.T) {
 	s := getRunningService(t)
-	block, err := s.CreateBlock(SmartBlockTypePage)
+	block, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
-	require.Equal(t, block.Type(), SmartBlockTypePage)
+	require.Equal(t, block.Type(), smartblock.SmartBlockTypePage)
 	require.Len(t, block.ID(), 57)
 }

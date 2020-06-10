@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/cafe"
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/ipfs"
@@ -96,7 +97,7 @@ type Service interface {
 	PredefinedBlocks() PredefinedBlockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	DeleteBlock(blockId string) error
-	CreateBlock(t SmartBlockType) (SmartBlock, error)
+	CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error)
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
@@ -143,7 +144,7 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 	}
 }
 
-func (a *Anytype) CreateBlock(t SmartBlockType) (SmartBlock, error) {
+func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 	thrd, err := a.newBlockThread(t)
 	if err != nil {
 		return nil, err
