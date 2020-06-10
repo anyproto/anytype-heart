@@ -46,6 +46,10 @@ type State struct {
 	changes       []*pb.ChangeContent
 	noAutoChanges bool
 	details       *types.Struct
+
+	changesStructureIgnoreIds []string
+
+	bufIterateParentIds []string
 }
 
 func (s *State) RootId() string {
@@ -99,11 +103,12 @@ func (s *State) Get(id string) (b simple.Block) {
 }
 
 func (s *State) Pick(id string) (b simple.Block) {
-	if b = s.blocks[id]; b != nil {
-		return
-	}
-	if s.parent != nil {
-		return s.parent.Pick(id)
+	t := s
+	for t != nil {
+		if b = t.blocks[id]; b != nil {
+			return
+		}
+		t = t.parent
 	}
 	return
 }
@@ -166,7 +171,7 @@ func (s *State) Diff(id string) ([]*pb.EventMessage, error) {
 
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	var iter func(id string) (isContinue bool, err error)
-	var parentIds []string
+	var parentIds = s.bufIterateParentIds[:0]
 	iter = func(id string) (isContinue bool, err error) {
 		if slice.FindPos(parentIds, id) != -1 {
 			return false, fmt.Errorf("cycle reference: %v %s", parentIds, id)

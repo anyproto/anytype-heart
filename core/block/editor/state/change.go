@@ -143,7 +143,7 @@ func (s *State) fillChanges(msgs []*pb.EventMessage) {
 			log.Errorf("unexpected event - can't convert to changes: %T", msg)
 		}
 	}
-	var cb = &changeBuilder{}
+	var cb = &changeBuilder{changes: s.changes}
 	if len(structMsgs) > 0 {
 		s.fillStructureChanges(cb, structMsgs)
 	}
@@ -175,6 +175,9 @@ func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSet
 }
 
 func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChildrenIds) (ch []*pb.ChangeContent) {
+	if slice.FindPos(s.changesStructureIgnoreIds, msg.Id) != -1 {
+		return
+	}
 	var before []string
 	orig := s.PickOrigin(msg.Id)
 	if orig != nil {

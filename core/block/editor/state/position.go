@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -56,7 +57,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 		pos = targetPos
 		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
 	case model.Block_Left, model.Block_Right:
-		if err = s.moveFromSide(target, reqPos, ids...); err != nil {
+		if err = s.moveFromSide(target, s.Get(targetParentM.Id), reqPos, ids...); err != nil {
 			return
 		}
 	case model.Block_Inner:
@@ -88,13 +89,23 @@ func makeOpId(target simple.Block, pos model.BlockPosition, ids ...string) strin
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids ...string) (err error) {
+func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPosition, ids ...string) (err error) {
+	change := &pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfBlockMove{
+			BlockMove: &pb.ChangeBlockMove{
+				TargetId: target.Model().Id,
+				Position: pos,
+				Ids:      ids,
+			},
+		},
+	}
 	opId := makeOpId(target, pos, ids...)
-	row := s.GetParentOf(target.Model().Id)
+	row := parent
 	if row == nil {
 		return fmt.Errorf("target block has not parent")
 	}
 	if row.Model().GetLayout() == nil || row.Model().GetLayout().Style != model.BlockContentLayout_Row {
+		s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, row.Model().Id)
 		if row, err = s.wrapToRow(opId, row, target); err != nil {
 			return
 		}
@@ -121,6 +132,8 @@ func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids .
 		columnPos += 1
 	}
 	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, columnPos, column.Model().Id)
+	s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, "cd-"+opId, "ct-"+opId, "r-"+opId, row.Model().Id)
+	s.changes = append(s.changes, change)
 	return
 }
 

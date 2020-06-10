@@ -1,9 +1,12 @@
 package change
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"sort"
 	"time"
 
@@ -62,6 +65,14 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	}
 	log.Debugf("tree build: len: %d; scanned: %d; dur: %v (lib %v)", sb.tree.Len(), len(sb.cache), time.Since(st), sb.qt)
 	sb.cache = nil
+	if sb.smartblock.ID() == "bafybapt3aap3tmkbs7mkj5jao3vhjblijkiwqq37wxlylx5nn7cqokgk" {
+		var buf = bytes.NewBuffer(nil)
+		enc := gob.NewEncoder(buf)
+		if e := enc.Encode(changeSet); e != nil {
+			panic(e)
+		}
+		ioutil.WriteFile("/home/che/changes.pb", buf.Bytes(), 0777)
+	}
 	return
 }
 
@@ -245,6 +256,8 @@ func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 	return sch, nil
 }
 
+var changeSet = make(map[string][]byte)
+
 func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
@@ -261,5 +274,8 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	}
 	ch = &Change{Id: id, Change: chp}
 	sb.cache[id] = ch
+	if sb.smartblock.ID() == "bafybapt3aap3tmkbs7mkj5jao3vhjblijkiwqq37wxlylx5nn7cqokgk" {
+		changeSet[id] = sr.Payload
+	}
 	return
 }
