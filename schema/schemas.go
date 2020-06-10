@@ -19,7 +19,7 @@ var SchemaByURL = map[string]string{
     {
       "id": "id",
       "name": "ID",
-      "isHided": true,
+      "isHidden": true,
       "isReadonly": true,
       "type": "https://anytype.io/schemas/types/page"
     },
@@ -31,13 +31,13 @@ var SchemaByURL = map[string]string{
     {
       "id": "iconEmoji",
       "name": "Emoji",
-      "isHided": true,
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/emoji"
     },
     {
       "id": "iconImage",
       "name": "Image",
-      "isHided": true,
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/image"
     },
     {
@@ -48,38 +48,38 @@ var SchemaByURL = map[string]string{
     {
       "id": "lastOpened",
       "name": "Last opened date",
-      "isHided": true,
+      "isHidden": false,
       "isReadonly": true,
       "type": "https://anytype.io/schemas/types/date"
     },
     {
       "id": "coverType",
       "name": "Cover Type",
-      "isHided": true,
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/coverType"
     },
     {
       "id": "coverId",
       "name": "Predefined ID or Image",
-      "isHided": true,
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/image"
     },
     {
       "id": "coverX",
       "name": "Cover x offset",
-      "isHided": true,
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/number"
     },
     {
       "id": "coverY",
       "name": "Cover y offset",
-      "isHided": true,
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/number"
     },
     {
       "id": "coverScale",
       "name": "Cover scale",
-      "isHided": true,
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/number"
     }
   ]
@@ -125,7 +125,7 @@ var SchemaByURL = map[string]string{
       "type": "boolean",
       "$comment": "multiple fields of the same type grouped in the array. allowed for: select, image, file, object"
     },
-    "isHided": {
+    "isHidden": {
       "type": "boolean",
       "$comment": "presented in the dataset, may be rendered with some view types but should be hided in the relations list"
     },

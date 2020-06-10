@@ -25,7 +25,7 @@
       "type": "boolean",
       "$comment": "multiple fields of the same type grouped in the array. allowed for: select, image, file, object"
     },
-    "isHided": {
+    "isHidden": {
       "type": "boolean",
       "$comment": "presented in the dataset, may be rendered with some view types but should be hided in the relations list"
     },
