@@ -24,6 +24,8 @@ type Dataview interface {
 	UpdateDataview(ctx *state.Context, id string, showEvent bool, apply func(t dataview.Block) error) error
 	SetActiveView(ctx *state.Context, id string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
+
+	smartblock.SmartblockOpenListner
 }
 
 func NewDataview(sb smartblock.SmartBlock) Dataview {
@@ -68,7 +70,7 @@ func (d *dataviewImpl) SetActiveView(ctx *state.Context, id string, activeViewId
 	for _, view := range tb.Model().GetDataview().Views {
 		if view.Id == activeViewId {
 			d.activeView = activeViewId
-			msgs, err := d.getEventsMessages(tb.Model().GetDataview().DatabaseId, view, offset, limit)
+			msgs, err := d.getEventsMessages(id, tb.Model().GetDataview().DatabaseId, view, offset, limit)
 			if err != nil {
 				return err
 			}
@@ -139,6 +141,11 @@ func (d *dataviewImpl) CreateView(ctx *state.Context, id string, view model.Bloc
 
 	tb.AddView(view)
 	return &view, d.Apply(s)
+}
+
+func (d *dataviewImpl) SmartblockOpened() {
+	d.activeView = ""
+	d.entries = []database.Entry{}
 }
 
 func getDataview(s *state.State, id string) (dataview.Block, error) {
@@ -223,7 +230,7 @@ func calculateEntriesDiff(a []database.Entry, b []database.Entry) (updated []*ty
 	return
 }
 
-func (d *dataviewImpl) getEventsMessages(databaseId string, activeView *model.BlockContentDataviewView, offset int, limit int) ([]*pb.EventMessage, error) {
+func (d *dataviewImpl) getEventsMessages(dataviewId string, databaseId string, activeView *model.BlockContentDataviewView, offset int, limit int) ([]*pb.EventMessage, error) {
 	db, err := d.Anytype().DatabaseByID(databaseId)
 	if err != nil {
 		return nil, err
@@ -255,7 +262,7 @@ func (d *dataviewImpl) getEventsMessages(databaseId string, activeView *model.Bl
 
 		msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
 			&pb.EventBlockSetDataviewRecords{
-				Id:             d.Id(),
+				Id:             dataviewId,
 				ViewId:         d.activeView,
 				Updated:        updated,
 				Removed:        removed,

@@ -39,6 +39,10 @@ func New() SmartBlock {
 	return &smartBlock{}
 }
 
+type SmartblockOpenListner interface {
+	SmartblockOpened()
+}
+
 type SmartBlock interface {
 	Init(s source.Source) (err error)
 	Id() string

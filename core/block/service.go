@@ -197,6 +197,11 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		}
 		s.openedBlocks[id] = ob
 	}
+
+	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
+		v.SmartblockOpened()
+	}
+
 	ob.Lock()
 	defer ob.Unlock()
 	ob.locked = true
