@@ -373,8 +373,15 @@ func calculateEntriesDiff(a []database.Entry, b []database.Entry) (updated []*ty
 	for i, entry := range b {
 		id := getEntryID(entry)
 		if prev, exists := existing[id]; exists {
-			if !prev.Equal(entry.Details) {
-				updated = append(updated, entry.Details)
+
+			if len(a) < i || getEntryID(a[i]) != id {
+				// todo: return as moved?
+				removed = append(removed, id)
+				inserted = append(inserted, recordInsertedAtPosition{i, entry.Details})
+			} else {
+				if !prev.Equal(entry.Details) {
+					updated = append(updated, entry.Details)
+				}
 			}
 		} else {
 			inserted = append(inserted, recordInsertedAtPosition{i, entry.Details})
