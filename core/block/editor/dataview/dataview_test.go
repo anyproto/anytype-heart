@@ -61,8 +61,8 @@ func Test_calculateEntriesDiff(t *testing.T) {
 	b := []database.Entry{
 		{Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id0"),
-				"name": pbtypes.String("name0"),
+				"id":   pbtypes.String("id1"),
+				"name": pbtypes.String("name1_change"),
 			},
 		}},
 		{Details: &types.Struct{
@@ -73,14 +73,8 @@ func Test_calculateEntriesDiff(t *testing.T) {
 		}},
 		{Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("after_id2"),
-				"name": pbtypes.String("name2_after"),
-			},
-		}},
-		{Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("id3"),
-				"name": pbtypes.String("name3_changed"),
+				"id":   pbtypes.String("id4"),
+				"name": pbtypes.String("name4"),
 			},
 		}},
 	}
@@ -89,14 +83,11 @@ func Test_calculateEntriesDiff(t *testing.T) {
 
 	require.Len(t, updated, 1)
 	require.Len(t, removed, 1)
-	require.Len(t, inserted, 2)
+	require.Len(t, inserted, 1)
 
-	require.Equal(t, b[3].Details, updated[0])
-	require.Equal(t, "id1", removed[0])
-	require.Equal(t, 0, inserted[0].position)
-	require.Equal(t, []*types.Struct{b[0].Details}, inserted[0].entries)
-
-	require.Equal(t, 2, inserted[1].position)
-	require.Equal(t, []*types.Struct{b[2].Details}, inserted[1].entries)
+	require.Equal(t, b[0].Details, updated[0])
+	require.Equal(t, "id3", removed[0])
+	require.Equal(t, 2, inserted[0].position)
+	require.Equal(t, []*types.Struct{b[2].Details}, inserted[0].entries)
 
 }
