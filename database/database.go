@@ -67,7 +67,17 @@ func (filter filter) Filter(e query.Entry) bool {
 		// todo: compare nil and empty
 		switch filter.Condition {
 		case model.BlockContentDataviewFilter_Equal:
-			res = filter.Value.Equal(details.Details.Fields[filter.RelationId])
+			if v1, ok := filter.Value.Kind.(*types.Value_StringValue); ok {
+				if details.Details == nil || details.Details.Fields == nil {
+					res = v1.String() == ""
+				}
+
+				if v2, ok := details.Details.Fields[filter.RelationId].Kind.(*types.Value_StringValue); ok {
+					res = strings.EqualFold(v1.String(), v2.String())
+				}
+			} else {
+				res = filter.Value.Equal(details.Details.Fields[filter.RelationId])
+			}
 		case model.BlockContentDataviewFilter_NotEqual:
 			res = !filter.Value.Equal(details.Details.Fields[filter.RelationId])
 		case model.BlockContentDataviewFilter_Greater:
@@ -86,7 +96,8 @@ func (filter filter) Filter(e query.Entry) bool {
 				res = false
 				break
 			}
-			if strings.Contains(relation.GetStringValue(), filter.Value.GetStringValue()) {
+
+			if strings.Contains(strings.ToLower(relation.GetStringValue()), strings.ToLower(filter.Value.GetStringValue())) {
 				res = true
 				break
 			}
@@ -104,7 +115,7 @@ func (filter filter) Filter(e query.Entry) bool {
 				break
 			}
 
-			if !strings.Contains(relation.GetStringValue(), filter.Value.GetStringValue()) {
+			if !strings.Contains(strings.ToLower(relation.GetStringValue()), strings.ToLower(filter.Value.GetStringValue())) {
 				res = true
 				break
 			}

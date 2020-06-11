@@ -82,6 +82,17 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.Equal(t, details1.Fields["name"].GetStringValue(), results[0].Details.Fields["name"].GetStringValue())
 	require.Equal(t, block1.ID(), results[0].Details.Fields["id"].GetStringValue())
 
+	results, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:   model.BlockContentDataviewFilter_And,
+		RelationId: "name",
+		Condition:  model.BlockContentDataviewFilter_Like,
+		Value:      structs.String("lock1"),
+	}},
+		Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
+
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
 }
 
 func TestAnytype_PredefinedBlocks(t *testing.T) {
