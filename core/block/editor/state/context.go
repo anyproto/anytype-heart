@@ -12,6 +12,18 @@ type Context struct {
 	sendEvent    func(e *pb.Event)
 }
 
+func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
+	ctx.smartBlockId = smartBlockId
+	ctx.messages = append(ctx.messages, msgs...)
+	if ctx.sendEvent != nil {
+		ctx.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: smartBlockId,
+			Initiator: nil,
+		})
+	}
+}
+
 func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = msgs

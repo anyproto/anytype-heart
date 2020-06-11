@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
@@ -17,39 +18,84 @@ import (
 )
 
 const defaultViewName = "Untitled"
+const defaultLimit = 20
 
 var log = logging.Logger("anytype-mw-editor")
 
 type Dataview interface {
-	UpdateDataview(ctx *state.Context, id string, showEvent bool, apply func(t dataview.Block) error) error
-	SetActiveView(ctx *state.Context, id string, activeViewId string, limit int, offset int) error
-	CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
+	UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
+	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
+	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
+	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
 
 	smartblock.SmartblockOpenListner
 }
 
-func NewDataview(sb smartblock.SmartBlock) Dataview {
-	return &dataviewImpl{SmartBlock: sb}
+func NewDataview(sb smartblock.SmartBlock, sendEvent func(e *pb.Event)) Dataview {
+	return &dataviewCollectionImpl{SmartBlock: sb, sendEvent: sendEvent}
 }
 
 type dataviewImpl struct {
-	smartblock.SmartBlock
-	activeView string
-	entries    []database.Entry
-	mu         sync.Mutex
+	blockId      string
+	activeViewId string
+	offset       int
+	limit        int
+	entries      []database.Entry
+	mu           sync.Mutex
 }
 
-func (d *dataviewImpl) UpdateDataview(ctx *state.Context, id string, showEvent bool, apply func(t dataview.Block) error) error {
+type dataviewCollectionImpl struct {
+	smartblock.SmartBlock
+	dataviews []*dataviewImpl
+	mu        sync.Mutex
+	sendEvent func(e *pb.Event)
+}
+
+// This method is not thread-safe
+func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataviewImpl {
+	for _, dv := range d.dataviews {
+		if dv.blockId == block.Model().Id {
+			return dv
+		}
+	}
+
+	var activeViewId string
+	if len(block.Model().GetDataview().Views) > 0 {
+		activeViewId = block.Model().GetDataview().Views[0].Id
+	}
+
+	dv := &dataviewImpl{blockId: block.Model().Id, activeViewId: activeViewId, offset: 0, limit: defaultLimit}
+	d.dataviews = append(d.dataviews, dv)
+	return dv
+}
+
+func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	s := d.NewStateCtx(ctx)
-	tb, err := getDataview(s, id)
+	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 
-	if err = apply(tb); err != nil {
+	if err = tb.DeleteView(viewId); err != nil {
 		return err
+	}
+
+	dv := d.getDataviewImpl(tb)
+	if dv.activeViewId == viewId {
+		views := tb.Model().GetDataview().Views
+		if len(views) > 0 {
+			dv.activeViewId = views[0].Id
+			dv.offset = 0
+			msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(tb), tb)
+			if err != nil {
+				return err
+			}
+
+			ctx.SetMessages(d.Id(), msgs)
+		}
+
 	}
 
 	if showEvent {
@@ -58,66 +104,73 @@ func (d *dataviewImpl) UpdateDataview(ctx *state.Context, id string, showEvent b
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *dataviewImpl) SetActiveView(ctx *state.Context, id string, activeViewId string, limit int, offset int) error {
+func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	s := d.NewStateCtx(ctx)
-	tb, err := getDataview(s, id)
+	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 
-	for _, view := range tb.Model().GetDataview().Views {
-		if view.Id == activeViewId {
-			if d.activeView != activeViewId {
-				// reset state in case view have changed
-				d.entries = []database.Entry{}
-			}
-			d.activeView = activeViewId
-			msgs, err := d.getEventsMessages(id, tb.Model().GetDataview().DatabaseId, view, offset, limit)
-			if err != nil {
-				return err
-			}
-			ctx.SetMessages(d.SmartBlock.Id(), msgs)
-			return nil
-		}
+	if err = tb.SetView(viewId, view); err != nil {
+		return err
 	}
 
-	return fmt.Errorf("view not found")
-}
-
-func getDefaultRelations(schema *jsonschema.Schema) []*model.BlockContentDataviewRelation {
-	var relations []*model.BlockContentDataviewRelation
-
-	if defaults, ok := schema.Default.([]interface{}); ok {
-		for _, def := range defaults {
-			if v, ok := def.(map[string]interface{}); ok {
-				if isHidden, exists := v["isHidden"]; exists {
-					if v, ok := isHidden.(bool); ok {
-						if v {
-							continue
-						}
-					}
-				}
-
-				relations = append(relations,
-					&model.BlockContentDataviewRelation{
-						Id:      v["id"].(string),
-						Visible: true,
-					})
-			}
+	dv := d.getDataviewImpl(tb)
+	if dv.activeViewId == viewId {
+		dv.offset = 0
+		msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(tb), tb)
+		if err != nil {
+			return err
 		}
+
+		defer ctx.AddMessages(d.Id(), msgs)
 	}
-	return relations
+
+	if showEvent {
+		return d.Apply(s)
+	}
+	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *dataviewImpl) CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
+func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, activeViewId string, limit int, offset int) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	var dvBlock dataview.Block
+	var ok bool
+	if dvBlock, ok = d.Pick(id).(dataview.Block); !ok {
+		return fmt.Errorf("not a dataview block")
+	}
+
+	dv := d.getDataviewImpl(dvBlock)
+	activeView := dvBlock.GetView(activeViewId)
+	if activeView == nil {
+		return fmt.Errorf("view not found")
+	}
+
+	if dv.activeViewId != activeViewId {
+		dv.entries = []database.Entry{}
+		dv.activeViewId = activeViewId
+	}
+
+	dv.limit = limit
+	dv.offset = offset
+	msgs, err := d.fetchAndGetEventsMessages(dv, dvBlock)
+	if err != nil {
+		return err
+	}
+	ctx.SetMessages(d.SmartBlock.Id(), msgs)
+	return nil
+}
+
+func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
-	tb, err := getDataview(s, id)
+	tb, err := getDataviewBlock(s, id)
 	if err != nil {
 		return nil, err
 	}
@@ -147,12 +200,139 @@ func (d *dataviewImpl) CreateView(ctx *state.Context, id string, view model.Bloc
 	return &view, d.Apply(s)
 }
 
-func (d *dataviewImpl) SmartblockOpened() {
-	d.activeView = ""
-	d.entries = []database.Entry{}
+func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	for _, dv := range d.dataviews {
+		block := d.Pick(dv.blockId)
+		if dvBlock, ok := block.(dataview.Block); !ok {
+			continue
+		} else {
+			msgs, err := d.fetchAndGetEventsMessages(dv, dvBlock)
+			if err != nil {
+				log.Errorf("fetchAndGetEventsMessages for dataview block %s failed: %s", dv.blockId, err.Error())
+				continue
+			}
+
+			d.sendEvent(&pb.Event{
+				Messages:  msgs,
+				ContextId: d.SmartBlock.Id(),
+				Initiator: nil,
+			})
+		}
+	}
+
 }
 
-func getDataview(s *state.State, id string) (dataview.Block, error) {
+func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.Iterate(func(b simple.Block) (isContinue bool) {
+		if dvBlock, ok := b.(dataview.Block); !ok {
+			return true
+		} else {
+			// reset state after block was reopened
+			// getDataviewImpl will also set activeView to the fist one in case the smartblock wasn't opened in this session before
+			dv := d.getDataviewImpl(dvBlock)
+			dv.entries = []database.Entry{}
+		}
+		return true
+	})
+
+	go d.fetchAllDataviewsRecordsAndSendEvents()
+}
+
+func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvBlock dataview.Block) ([]*pb.EventMessage, error) {
+	databaseId := dvBlock.Model().GetDataview().DatabaseId
+	activeView := dvBlock.GetView(dv.activeViewId)
+
+	db, err := d.Anytype().DatabaseByID(databaseId)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgs []*pb.EventMessage
+
+	entries, err := db.Query(database.Query{
+		Filters: activeView.Filters,
+		Sorts:   activeView.Sorts,
+		Limit:   dv.limit,
+		Offset:  dv.offset,
+	})
+
+	updated, removed, insertedGroupedByPosition := calculateEntriesDiff(dv.entries, entries)
+
+	var firstEventInserted []*types.Struct
+	var firstEventInsertedAt int
+	if len(insertedGroupedByPosition) > 0 {
+		firstEventInserted = insertedGroupedByPosition[0].entries
+		firstEventInsertedAt = insertedGroupedByPosition[0].position
+	}
+
+	if len(insertedGroupedByPosition) > 0 ||
+		len(updated) > 0 ||
+		len(removed) > 0 {
+
+		msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
+			&pb.EventBlockSetDataviewRecords{
+				Id:             dv.blockId,
+				ViewId:         activeView.Id,
+				Updated:        updated,
+				Removed:        removed,
+				Inserted:       firstEventInserted,
+				InsertPosition: int32(firstEventInsertedAt),
+			},
+		}})
+	}
+
+	if len(insertedGroupedByPosition) > 1 {
+		for _, insertedPortion := range insertedGroupedByPosition[1:] {
+			msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
+				&pb.EventBlockSetDataviewRecords{
+					Id:             dv.blockId,
+					ViewId:         activeView.Id,
+					Updated:        nil,
+					Removed:        nil,
+					Inserted:       insertedPortion.entries,
+					InsertPosition: int32(insertedPortion.position),
+				},
+			}})
+		}
+	}
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, updated: %d, removed: %d, insertedGroups: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), len(updated), len(removed), len(insertedGroupedByPosition), len(msgs))
+
+	dv.entries = entries
+
+	return msgs, nil
+}
+
+func getDefaultRelations(schema *jsonschema.Schema) []*model.BlockContentDataviewRelation {
+	var relations []*model.BlockContentDataviewRelation
+
+	if defaults, ok := schema.Default.([]interface{}); ok {
+		for _, def := range defaults {
+			if v, ok := def.(map[string]interface{}); ok {
+				if isHidden, exists := v["isHidden"]; exists {
+					if v, ok := isHidden.(bool); ok {
+						if v {
+							continue
+						}
+					}
+				}
+
+				relations = append(relations,
+					&model.BlockContentDataviewRelation{
+						Id:      v["id"].(string),
+						Visible: true,
+					})
+			}
+		}
+	}
+	return relations
+}
+
+func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	b := s.Get(id)
 	if b == nil {
 		return nil, smartblock.ErrSimpleBlockNotFound
@@ -160,7 +340,7 @@ func getDataview(s *state.State, id string) (dataview.Block, error) {
 	if tb, ok := b.(dataview.Block); ok {
 		return tb, nil
 	}
-	return nil, fmt.Errorf("block '%s' not a dataview block", id)
+	return nil, fmt.Errorf("not a dataview block")
 }
 
 func getEntryID(entry database.Entry) string {
@@ -232,66 +412,4 @@ func calculateEntriesDiff(a []database.Entry, b []database.Entry) (updated []*ty
 	}
 
 	return
-}
-
-func (d *dataviewImpl) getEventsMessages(dataviewId string, databaseId string, activeView *model.BlockContentDataviewView, offset int, limit int) ([]*pb.EventMessage, error) {
-	db, err := d.Anytype().DatabaseByID(databaseId)
-	if err != nil {
-		return nil, err
-	}
-
-	var msgs []*pb.EventMessage
-
-	entries, err := db.Query(database.Query{
-		Filters: activeView.Filters,
-		Sorts:   activeView.Sorts,
-		Limit:   limit,
-		Offset:  offset,
-	})
-
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries", databaseId, activeView.Filters, activeView.Sorts, limit, offset, len(entries))
-
-	updated, removed, insertedGroupedByPosition := calculateEntriesDiff(d.entries, entries)
-
-	var firstEventInserted []*types.Struct
-	var firstEventInsertedAt int
-	if len(insertedGroupedByPosition) > 0 {
-		firstEventInserted = insertedGroupedByPosition[0].entries
-		firstEventInsertedAt = insertedGroupedByPosition[0].position
-	}
-
-	if len(insertedGroupedByPosition) > 0 ||
-		len(updated) > 0 ||
-		len(removed) > 0 {
-
-		msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-			&pb.EventBlockSetDataviewRecords{
-				Id:             dataviewId,
-				ViewId:         d.activeView,
-				Updated:        updated,
-				Removed:        removed,
-				Inserted:       firstEventInserted,
-				InsertPosition: int32(firstEventInsertedAt),
-			},
-		}})
-	}
-
-	if len(insertedGroupedByPosition) > 1 {
-		for _, insertedPortion := range insertedGroupedByPosition[1:] {
-			msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-				&pb.EventBlockSetDataviewRecords{
-					Id:             d.Id(),
-					ViewId:         d.activeView,
-					Updated:        nil,
-					Removed:        nil,
-					Inserted:       insertedPortion.entries,
-					InsertPosition: int32(insertedPortion.position),
-				},
-			}})
-		}
-	}
-
-	d.entries = entries
-
-	return msgs, nil
 }

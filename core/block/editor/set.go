@@ -20,7 +20,7 @@ func NewSet(sendEvent func(e *pb.Event)) *Set {
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
-		Dataview:   dataview.NewDataview(sb),
+		Dataview:   dataview.NewDataview(sb, sendEvent),
 		sendEvent:  sendEvent,
 	}
 }
@@ -130,27 +130,4 @@ func (p *Set) init() (err error) {
 
 	log.Infof("create default structure for set: %v", s.RootId())
 	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
-}
-
-func (p *Set) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	if err = p.SmartBlock.SetDetails(details); err != nil {
-		return
-	}
-	meta := p.SmartBlock.Meta()
-	if meta == nil {
-		return
-	}
-	p.sendEvent(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfAccountDetails{
-					AccountDetails: &pb.EventAccountDetails{
-						ProfileId: p.Id(),
-						Details:   meta.Details,
-					},
-				},
-			},
-		},
-	})
-	return
 }

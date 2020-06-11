@@ -40,7 +40,7 @@ func New() SmartBlock {
 }
 
 type SmartblockOpenListner interface {
-	SmartblockOpened()
+	SmartblockOpened(*state.Context)
 }
 
 type SmartBlock interface {

@@ -28,7 +28,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
-	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 
@@ -199,7 +198,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	}
 
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
-		v.SmartblockOpened()
+		v.SmartblockOpened(ctx)
 	}
 
 	ob.Lock()
@@ -571,17 +570,13 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 
 func (s *service) SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateDataview(ctx, req.BlockId, true, func(sb simpleDataview.Block) error {
-			return sb.SetView(req.ViewId, *req.View)
-		})
+		return b.UpdateView(ctx, req.BlockId, req.ViewId, *req.View, true)
 	})
 }
 
 func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateDataview(ctx, req.BlockId, true, func(sb simpleDataview.Block) error {
-			return sb.DeleteView(req.ViewId)
-		})
+		return b.DeleteView(ctx, req.BlockId, req.ViewId, true)
 	})
 }
 
