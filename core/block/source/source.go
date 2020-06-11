@@ -87,7 +87,7 @@ func (s *source) ReadDoc() (doc state.Doc, err error) {
 	if err != nil {
 		return
 	}
-	if _, _, err = state.ApplyState(st); err != nil {
+	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
 	return

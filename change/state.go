@@ -67,13 +67,17 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			return true
 		}
 		if len(c.PreviousIds) == 1 {
-			s = sc.Get(c.PreviousIds[0]).NewState()
+			ps := sc.Get(c.PreviousIds[0])
+			s := ps.NewState()
 			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
 			count++
 			s.SetChangeId(c.Id)
-			sc.Set(c.Id, s, len(c.Next))
+			if _, _, err = state.ApplyStateFastOne(s); err != nil {
+				return false
+			}
+			sc.Set(c.Id, ps, len(c.Next))
 		} else if len(c.PreviousIds) > 1 {
 			toMerge := make([]*state.State, len(c.PreviousIds))
 			sort.Strings(c.PreviousIds)

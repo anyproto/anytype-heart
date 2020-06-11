@@ -13,7 +13,7 @@ import (
 )
 
 func BenchmarkOpenDoc(b *testing.B) {
-	data, err := ioutil.ReadFile("./testdata/bench_changes.pb")
+	data, err := ioutil.ReadFile("./testdata/bench_changes_short_ids.pb")
 	require.NoError(b, err)
 	dec := gob.NewDecoder(bytes.NewReader(data))
 	var changeSet map[string][]byte

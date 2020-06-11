@@ -11,13 +11,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/google/uuid"
-
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
@@ -296,7 +295,7 @@ func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered 
 
 func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
 	for _, b := range anySlot {
-		b.Id = uuid.New().String()
+		b.Id = bson.NewObjectId().Hex()
 		anySlotreplacedIds = append(anySlotreplacedIds, b)
 	}
 

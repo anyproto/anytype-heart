@@ -31,7 +31,7 @@ func TestState_ChangesCreate_MoveAdd(t *testing.T) {
 	require.NoError(t, s.InsertTo("2", model.Block_Bottom, "3.1"))
 	_, _, err := ApplyState(s)
 	require.NoError(t, err)
-	changes := s.GetChanges()
+	changes := d.(*State).GetChanges()
 	require.Len(t, changes, 4)
 	assert.Equal(t, []*pb.ChangeContent{
 		newMoveChange("b", model.Block_Inner, "1", "2"),
@@ -64,8 +64,7 @@ func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
 
 	_, _, err := ApplyState(s)
 	require.NoError(t, err)
-	changes := s.GetChanges()
-	t.Log(changes)
+	changes := d.(*State).GetChanges()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState(s2)
@@ -97,10 +96,7 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 
 	_, _, err := ApplyState(s)
 	require.NoError(t, err)
-	changes := s.GetChanges()
-	for _, ch := range changes {
-		t.Log(ch)
-	}
+	changes := d.(*State).GetChanges()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState(s2)
@@ -141,5 +137,3 @@ func newRemoveChange(ids ...string) *pb.ChangeContent {
 		},
 	}
 }
-
-

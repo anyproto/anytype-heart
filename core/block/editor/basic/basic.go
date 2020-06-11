@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/google/uuid"
+	"github.com/globalsign/mgo/bson"
 )
 
 type Basic interface {
@@ -50,7 +50,7 @@ func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
 	childIdsRewrite := make(map[string]string)
 	for _, b := range blocks {
 		for i, cId := range b.Model().ChildrenIds {
-			newId := uuid.New().String()
+			newId := bson.NewObjectId().Hex()
 			childIdsRewrite[cId] = newId
 			b.Model().ChildrenIds[i] = newId
 		}
@@ -61,7 +61,7 @@ func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
 			b.Model().Id = newId
 			child = true
 		} else {
-			b.Model().Id = uuid.New().String()
+			b.Model().Id = bson.NewObjectId().Hex()
 		}
 		s.Add(b)
 		if !child {

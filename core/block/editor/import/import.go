@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -21,7 +22,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 )
 
 var (
@@ -322,7 +322,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 		log.Debug("   >>> Page:", name, " Number: ", j)
 		for i, block := range nameToBlocks[name] {
 			log.Debug("      Block:", i)
-			nameToBlocks[name][i].Id = uuid.New().String()
+			nameToBlocks[name][i].Id = bson.NewObjectId().Hex()
 
 			txt := block.GetText()
 			if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
@@ -439,7 +439,7 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 	headerLastElArr = headerLastElArr[:len(headerLastElArr)-1]
 
 	blocks = append(blocks, &model.Block{
-		Id: uuid.New().String(),
+		Id: bson.NewObjectId().Hex(),
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:  strings.Join(headerLastElArr, " "),
 			Style: model.BlockContentText_Header3,
@@ -478,7 +478,7 @@ func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isP
 		}
 
 		blocks = append(blocks, &model.Block{
-			Id: uuid.New().String(),
+			Id: bson.NewObjectId().Hex(),
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
 					TargetBlockId: targetId,
@@ -542,7 +542,7 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map
 				isPageLinked[shortPath] = true
 
 				potentialLinks = append(potentialLinks, &model.Block{
-					Id: uuid.New().String(),
+					Id: bson.NewObjectId().Hex(),
 					Content: &model.BlockContentOfLink{
 						Link: &model.BlockContentLink{
 							TargetBlockId: targetId,

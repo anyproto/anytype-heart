@@ -37,15 +37,14 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx           *Context
-	parent        *State
-	blocks        map[string]simple.Block
-	rootId        string
-	newIds        []string
-	changeId      string
-	changes       []*pb.ChangeContent
-	noAutoChanges bool
-	details       *types.Struct
+	ctx      *Context
+	parent   *State
+	blocks   map[string]simple.Block
+	rootId   string
+	newIds   []string
+	changeId string
+	changes  []*pb.ChangeContent
+	details  *types.Struct
 
 	changesStructureIgnoreIds []string
 
@@ -103,9 +102,12 @@ func (s *State) Get(id string) (b simple.Block) {
 }
 
 func (s *State) Pick(id string) (b simple.Block) {
-	t := s
+	var (
+		t  = s
+		ok bool
+	)
 	for t != nil {
-		if b = t.blocks[id]; b != nil {
+		if b, ok = t.blocks[id]; ok {
 			return
 		}
 		t = t.parent
@@ -201,13 +203,27 @@ func (s *State) Exists(id string) (ok bool) {
 }
 
 func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
-	return s.apply()
+	return s.apply(false, false)
 }
 
-func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
-	if s.parent != nil && s.parent.parent != nil {
+func ApplyStateFast(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
+	return s.apply(true, false)
+}
+
+func ApplyStateFastOne(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
+	return s.apply(true, true)
+}
+
+func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.Action, err error) {
+	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
-		return s.parent.apply()
+		if one {
+			return
+		}
+		return s.parent.apply(fast, one)
+	}
+	if fast {
+		return
 	}
 	st := time.Now()
 	if s.parent != nil && s.changeId != "" {
@@ -216,8 +232,10 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 	if s.parent != nil && s.details != nil {
 		s.parent.details = s.details
 	}
-	if err = s.normalize(); err != nil {
-		return
+	if !fast {
+		if err = s.normalize(); err != nil {
+			return
+		}
 	}
 	var (
 		inUse       = make(map[string]struct{})
