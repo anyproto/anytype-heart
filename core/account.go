@@ -13,7 +13,7 @@ import (
 	"github.com/textileio/go-threads/util"
 )
 
-const nodeConnectionTimeout = time.Second * 5
+const nodeConnectionTimeout = time.Second * 15
 
 func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	log.Infof("got new thread Id: %s, addrs: %+v", ti.ID.String(), ti.Addrs)
