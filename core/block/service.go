@@ -175,7 +175,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	defer s.m.Unlock()
 	ob, ok := s.openedBlocks[id]
 	if !ok {
-		sb, e := s.createSmartBlock(id)
+		sb, e := s.createSmartBlock(id, false)
 		if e != nil {
 			return e
 		}
@@ -199,7 +199,7 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	s.m.Lock()
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs()
-	if err = bs.Init(source.NewVirtual(s.anytype, s.meta, pb.SmartBlockType_Breadcrumbs)); err != nil {
+	if err = bs.Init(source.NewVirtual(s.anytype, s.meta, pb.SmartBlockType_Breadcrumbs), true); err != nil {
 		return
 	}
 	bs.Lock()
@@ -344,6 +344,11 @@ func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId str
 		return
 	}
 	pageId = csm.ID()
+
+	if _, err = s.createSmartBlock(pageId, true); err != nil {
+		return pageId, err
+	}
+
 	log.Infof("created new smartBlock: %v", pageId)
 	if req.Details != nil && req.Details.Fields != nil {
 		var details []*pb.RpcBlockSetDetailsDetail
@@ -793,7 +798,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 	}
 	ob, ok := s.openedBlocks[id]
 	if !ok {
-		sb, err = s.createSmartBlock(id)
+		sb, err = s.createSmartBlock(id, false)
 		if err != nil {
 			return
 		}
@@ -811,7 +816,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 	}, nil
 }
 
-func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err error) {
+func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.SmartBlock, err error) {
 	sc, err := source.NewSource(s.anytype, s.meta, id)
 	if err != nil {
 		return
@@ -829,9 +834,10 @@ func (s *service) createSmartBlock(id string) (sb smartblock.SmartBlock, err err
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
-	if err = sb.Init(sc); err != nil {
+	if err = sb.Init(sc, initEmpty); err != nil {
 		return
 	}
+
 	return
 }
 
