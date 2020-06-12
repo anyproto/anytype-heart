@@ -68,7 +68,7 @@ func (filter filter) Filter(e query.Entry) bool {
 		switch filter.Condition {
 		case model.BlockContentDataviewFilter_Equal:
 			if v1, ok := filter.Value.Kind.(*types.Value_StringValue); ok {
-				if details.Details == nil || details.Details.Fields == nil {
+				if details.Details == nil || details.Details.Fields == nil || details.Details.Fields[filter.RelationId] == nil {
 					res = v1.String() == ""
 				}
 
