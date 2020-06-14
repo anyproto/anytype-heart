@@ -70,9 +70,7 @@ func (filter filter) Filter(e query.Entry) bool {
 			if v1, ok := filter.Value.Kind.(*types.Value_StringValue); ok {
 				if details.Details == nil || details.Details.Fields == nil || details.Details.Fields[filter.RelationId] == nil {
 					res = v1.String() == ""
-				}
-
-				if v2, ok := details.Details.Fields[filter.RelationId].Kind.(*types.Value_StringValue); ok {
+				} else if v2, ok := details.Details.Fields[filter.RelationId].Kind.(*types.Value_StringValue); ok {
 					res = strings.EqualFold(v1.String(), v2.String())
 				}
 			} else {
