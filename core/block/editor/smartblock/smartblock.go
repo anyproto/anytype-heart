@@ -67,7 +67,6 @@ type smartBlock struct {
 	hist             history.History
 	source           source.Source
 	metaSub          meta.Subscriber
-	metaData         *core.SmartBlockMeta
 	metaFetchResults chan meta.Meta
 	metaFetchMu      sync.Mutex
 }
@@ -77,7 +76,9 @@ func (sb *smartBlock) Id() string {
 }
 
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
-	return sb.metaData
+	return &core.SmartBlockMeta{
+		Details: sb.Details(),
+	}
 }
 
 func (sb *smartBlock) Type() pb.SmartBlockType {
@@ -90,16 +91,6 @@ func (sb *smartBlock) Init(s source.Source) (err error) {
 	}
 	sb.source = s
 	sb.hist = history.NewHistory(0)
-	sb.metaData = &core.SmartBlockMeta{
-		Details: pbtypes.CopyStruct(sb.Doc.(*state.State).Details()),
-	}
-	if sb.metaData.Details == nil {
-		sb.metaData = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			},
-		}
-	}
 	return sb.checkRootBlock()
 }
 
@@ -164,7 +155,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 	}()
 	sb.source.Meta().ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.metaData,
+		SmartBlockMeta: *sb.Meta(),
 	})
 	timeout := time.After(time.Second)
 	for i := 0; i < len(sb.depIds); i++ {
@@ -304,32 +295,23 @@ func (sb *smartBlock) Anytype() anytype.Service {
 }
 
 func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	if sb.metaData == nil {
-		sb.metaData = &core.SmartBlockMeta{}
-	}
-	if sb.metaData.Details == nil || sb.metaData.Details.Fields == nil {
-		sb.metaData.Details = &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}
-	}
-	var copy = pbtypes.CopyStruct(sb.metaData.Details)
+	copy := pbtypes.CopyStruct(sb.Details())
 	if copy.Fields == nil {
 		copy.Fields = make(map[string]*types.Value)
 	}
 	for _, detail := range details {
 		copy.Fields[detail.Key] = detail.Value
 	}
-	if copy.Equal(sb.metaData) {
+	if copy.Equal(sb.Details()) {
 		return
 	}
-	sb.metaData.Details = copy
 	s := sb.NewState().SetDetails(copy)
 	if err = sb.Apply(s, NoHistory, NoEvent); err != nil {
 		return
 	}
 	sb.source.Meta().ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.metaData,
+		SmartBlockMeta: *sb.Meta(),
 	})
 	return
 }

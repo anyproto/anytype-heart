@@ -4,7 +4,9 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 	"github.com/mb0/diff"
 )
 
@@ -47,13 +49,41 @@ func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
 			if err = s.changeBlockMove(ch.GetBlockMove()); err != nil {
 				return
 			}
-		case ch.GetBlockDuplicate() != nil:
-			if err = s.changeBlockDuplicate(ch.GetBlockDuplicate()); err != nil {
+		case ch.GetDetailsSet() != nil:
+			if err = s.changeBlockDetailsSet(ch.GetDetailsSet()); err != nil {
+				return
+			}
+		case ch.GetDetailsUnset() != nil:
+			if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
 				return
 			}
 		}
 	}
 	return
+}
+
+func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
+	det := s.Details()
+	if det == nil {
+		det = &types.Struct{
+			Fields: make(map[string]*types.Value),
+		}
+	}
+	s.details = pbtypes.CopyStruct(det)
+	s.details.Fields[set.Key] = set.Value
+	return nil
+}
+
+func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
+	det := s.Details()
+	if det == nil {
+		det = &types.Struct{
+			Fields: make(map[string]*types.Value),
+		}
+	}
+	s.details = pbtypes.CopyStruct(det)
+	delete(s.details.Fields, unset.Key)
+	return nil
 }
 
 func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
@@ -87,11 +117,6 @@ func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
 		s.Unlink(id)
 	}
 	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
-}
-
-func (s *State) changeBlockDuplicate(duplicate *pb.ChangeBlockDuplicate) error {
-	// TODO:
-	return nil
 }
 
 func (s *State) Merge(st *State) *State {
@@ -224,6 +249,39 @@ func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChi
 					prevOp = 2
 				}
 			}
+		}
+	}
+	return
+}
+
+func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
+	if s.details == nil || s.details.Fields == nil {
+		return nil
+	}
+	var prev *types.Struct
+	if s.parent != nil {
+		prev = s.parent.Details()
+	}
+	if prev == nil || prev.Fields == nil {
+		prev = &types.Struct{Fields: make(map[string]*types.Value)}
+	}
+	for k, v := range s.details.Fields {
+		pv, ok := prev.Fields[k]
+		if !ok || !pv.Equal(v) {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfDetailsSet{
+					DetailsSet: &pb.ChangeDetailsSet{Key: k, Value: v},
+				},
+			})
+		}
+	}
+	for k := range prev.Fields {
+		if _, ok := s.details.Fields[k]; !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfDetailsUnset{
+					DetailsUnset: &pb.ChangeDetailsUnset{Key: k},
+				},
+			})
 		}
 	}
 	return

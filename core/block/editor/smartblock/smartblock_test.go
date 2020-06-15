@@ -49,7 +49,7 @@ func TestSmartBlock_Show(t *testing.T) {
 	bm := meta.Meta{
 		BlockId: "1",
 		SmartBlockMeta: core.SmartBlockMeta{
-			Details: fx.SmartBlock.(*smartBlock).metaData.Details,
+			Details: fx.SmartBlock.(*smartBlock).Details(),
 		},
 	}
 	fx.metaService.EXPECT().ReportChange(bm).Do(func(d meta.Meta) {

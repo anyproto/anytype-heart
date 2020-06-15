@@ -24,6 +24,8 @@ type Doc interface {
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
 	Append(targetId string, id string) (ok bool)
+	Details() *types.Struct
+	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
