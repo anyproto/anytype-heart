@@ -5,6 +5,8 @@ import (
 	"crypto/md5"
 	"fmt"
 	"sort"
+
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type Mode int
@@ -16,10 +18,11 @@ const (
 )
 
 type Tree struct {
-	root       *Change
-	headIds    []string
-	attached   map[string]*Change
-	unAttached map[string]*Change
+	root           *Change
+	headIds        []string
+	detailsHeadIds []string
+	attached       map[string]*Change
+	unAttached     map[string]*Change
 	// missed id -> list of dependency ids
 	waitList map[string][]string
 }
@@ -123,15 +126,23 @@ func (t *Tree) after(id1, id2 string) (found bool) {
 }
 
 func (t *Tree) updateHeads() {
-	var newHeadIds []string
+	var newHeadIds, newDetailsHeadIds []string
 	t.iterate(t.root, func(c *Change) (isContinue bool) {
 		if len(c.Next) == 0 {
 			newHeadIds = append(newHeadIds, c.Id)
 		}
+		if c.HasDetails() {
+			for _, prevDetId := range c.PreviousDetailsIds {
+				newDetailsHeadIds = slice.Remove(newDetailsHeadIds, prevDetId)
+			}
+			newDetailsHeadIds = append(newDetailsHeadIds, c.Id)
+		}
 		return true
 	})
 	t.headIds = newHeadIds
+	t.detailsHeadIds = newDetailsHeadIds
 	sort.Strings(t.headIds)
+	sort.Strings(t.detailsHeadIds)
 }
 
 func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) bool {
@@ -146,6 +157,9 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) bool 
 			return start.Next[i].Id > start.Next[j].Id
 		})
 		for _, n := range start.Next {
+			if len(n.PreviousIds) > 1 && start.Id != n.PreviousIds[len(n.PreviousIds)-1] {
+				continue
+			}
 			if !t.iterate(n, f) {
 				return false
 			}
@@ -177,10 +191,18 @@ func (t *Tree) Heads() []string {
 	return t.headIds
 }
 
+func (t *Tree) DetailsHeads() []string {
+	return t.detailsHeadIds
+}
+
 func (t *Tree) String() string {
 	var buf = bytes.NewBuffer(nil)
 	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
-		buf.WriteString("->")
+		if len(c.PreviousIds) > 1 {
+			fmt.Fprintf(buf, "->%v->", c.PreviousIds)
+		} else {
+			buf.WriteString("->")
+		}
 		buf.WriteString(c.Id)
 		return true
 	})
