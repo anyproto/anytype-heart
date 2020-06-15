@@ -241,6 +241,35 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 	})
 }
 
+func TestBuildDetailsTree(t *testing.T) {
+	detailsContent := []*pb.ChangeContent{{Value: &pb.ChangeContentValueOfDetailsSet{&pb.ChangeDetailsSet{}}}}
+	newDetChange := func(id, snapshotId string, prevIds string, prevDetIds string, withDet bool) *Change {
+		ch := newChange(id, snapshotId, prevIds)
+		ch.PreviousDetailsIds = []string{prevDetIds}
+		if withDet {
+			ch.Content = detailsContent
+		}
+		return ch
+	}
+	sb := newTestSmartBlock()
+
+	sb.AddChanges(
+		"a",
+		newSnapshot("s0", "", nil),
+		newDetChange("c0", "s0", "s0", "s0", false),
+		newDetChange("c1", "s0", "c0", "s0", false),
+		newDetChange("c2", "s0", "c1", "s0", true),
+		newDetChange("c3", "s0", "c2", "c2", false),
+		newDetChange("c4", "s0", "c3", "c2", true),
+		newDetChange("c5", "s0", "c4", "c4", false),
+		newDetChange("c6", "s0", "c5", "c4", false),
+	)
+	tr, _, err := BuildDetailsTree(sb)
+	require.NoError(t, err)
+	assert.Equal(t, 3, tr.Len())
+	assert.Equal(t, "->s0->c2->c4", tr.String())
+}
+
 func newTestSmartBlock() *smartblock {
 	return &smartblock{
 		changes: make(map[string]*core.SmartblockRecord),

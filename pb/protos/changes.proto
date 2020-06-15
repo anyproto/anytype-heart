@@ -14,6 +14,8 @@ message Change {
     repeated string previous_ids = 1;
     // id of the last snapshot
     string last_snapshot_id = 2;
+    // ids of the last changes with details content
+    repeated string previous_details_ids = 5;
     // set of actions to apply
     repeated Content content = 3;
     // snapshot - when not null, the content will ignoring

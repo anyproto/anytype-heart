@@ -1,12 +1,9 @@
 package change
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"sort"
 	"time"
 
@@ -28,12 +25,19 @@ func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err erro
 	return sb.tree, sb.logHeads, err
 }
 
+func BuildDetailsTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
+	sb := &stateBuilder{onlyDetails: true}
+	err = sb.Build(s)
+	return sb.tree, sb.logHeads, err
+}
+
 type stateBuilder struct {
-	cache      map[string]*Change
-	logHeads   map[string]string
-	tree       *Tree
-	smartblock core.SmartBlock
-	qt         time.Duration
+	cache       map[string]*Change
+	logHeads    map[string]string
+	tree        *Tree
+	smartblock  core.SmartBlock
+	qt          time.Duration
+	onlyDetails bool
 }
 
 func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
@@ -65,14 +69,6 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	}
 	log.Debugf("tree build: len: %d; scanned: %d; dur: %v (lib %v)", sb.tree.Len(), len(sb.cache), time.Since(st), sb.qt)
 	sb.cache = nil
-	if sb.smartblock.ID() == "bafybapt3aap3tmkbs7mkj5jao3vhjblijkiwqq37wxlylx5nn7cqokgk" {
-		var buf = bytes.NewBuffer(nil)
-		enc := gob.NewEncoder(buf)
-		if e := enc.Encode(changeSet); e != nil {
-			panic(e)
-		}
-		ioutil.WriteFile("/home/che/changes.pb", buf.Bytes(), 0777)
-	}
 	return
 }
 
@@ -91,6 +87,15 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 			return
 		}
 	}
+	if sb.onlyDetails {
+		var filteredChanges = changes[:0]
+		for _, ch := range changes {
+			if ch.HasDetails() {
+				filteredChanges = append(filteredChanges, ch)
+			}
+		}
+		changes = filteredChanges
+	}
 	sb.tree.Add(changes...)
 	return
 }
@@ -103,7 +108,7 @@ func (sb *stateBuilder) loadChangesFor(id string, uniqMap map[string]struct{}, b
 	if err != nil {
 		return nil, err
 	}
-	for _, prev := range ch.PreviousIds {
+	for _, prev := range ch.GetPreviousIds() {
 		if buf, err = sb.loadChangesFor(prev, uniqMap, buf); err != nil {
 			return nil, err
 		}
@@ -273,6 +278,9 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return
 	}
 	ch = &Change{Id: id, Change: chp}
+	if sb.onlyDetails {
+		ch.PreviousIds = ch.PreviousDetailsIds
+	}
 	sb.cache[id] = ch
 	if sb.smartblock.ID() == "bafybapt3aap3tmkbs7mkj5jao3vhjblijkiwqq37wxlylx5nn7cqokgk" {
 		changeSet[id] = sr.Payload

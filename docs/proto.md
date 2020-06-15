@@ -658,6 +658,7 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | previous_ids | [string](#string) | repeated | ids of previous changes |
 | last_snapshot_id | [string](#string) |  | id of the last snapshot |
+| previous_details_ids | [string](#string) | repeated | ids of the last changes with details content |
 | content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
 | snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the content will ignoring |
 
