@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
@@ -228,12 +229,6 @@ func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.A
 		return
 	}
 	st := time.Now()
-	if s.parent != nil && s.changeId != "" {
-		s.parent.changeId = s.changeId
-	}
-	if s.parent != nil && s.details != nil {
-		s.parent.details = s.details
-	}
 	if !fast {
 		if err = s.normalize(); err != nil {
 			return
@@ -337,6 +332,16 @@ func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.A
 	}
 	if s.parent != nil {
 		s.parent.changes = s.changes
+	}
+	if s.parent != nil && s.changeId != "" {
+		s.parent.changeId = s.changeId
+	}
+	if s.parent != nil && s.details != nil {
+		prev := s.parent.Details()
+		if !prev.Equal(s.details) {
+			action.Details = &history.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
+			s.parent.details = s.details
+		}
 	}
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return

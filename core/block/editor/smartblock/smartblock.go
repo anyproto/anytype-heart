@@ -224,6 +224,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
+	if act.IsEmpty() {
+		return nil
+	}
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
@@ -250,6 +253,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				ContextId: sb.RootId(),
 			})
 		}
+	}
+	if act.Details != nil {
+		sb.source.Meta().ReportChange(meta.Meta{
+			BlockId:        sb.Id(),
+			SmartBlockMeta: *sb.Meta(),
+		})
 	}
 	for _, edit := range act.Change {
 		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
@@ -296,8 +305,10 @@ func (sb *smartBlock) Anytype() anytype.Service {
 
 func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
 	copy := pbtypes.CopyStruct(sb.Details())
-	if copy.Fields == nil {
-		copy.Fields = make(map[string]*types.Value)
+	if copy == nil || copy.Fields == nil {
+		copy = &types.Struct{
+			Fields: make(map[string]*types.Value),
+		}
 	}
 	for _, detail := range details {
 		copy.Fields[detail.Key] = detail.Value
@@ -309,10 +320,6 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 	if err = sb.Apply(s, NoHistory, NoEvent); err != nil {
 		return
 	}
-	sb.source.Meta().ReportChange(meta.Meta{
-		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.Meta(),
-	})
 	return
 }
 

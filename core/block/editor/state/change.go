@@ -191,6 +191,7 @@ func (s *State) fillChanges(msgs []*pb.EventMessage) {
 		})
 	}
 	s.changes = cb.Build()
+	s.changes = append(s.changes, s.makeDetailsChanges()...)
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {

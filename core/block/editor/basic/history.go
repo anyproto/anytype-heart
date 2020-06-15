@@ -3,6 +3,7 @@ package basic
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type IHistory interface {
@@ -35,7 +36,9 @@ func (h *history) Undo(ctx *state.Context) (err error) {
 	for _, b := range action.Change {
 		s.Set(b.Before.Copy())
 	}
-
+	if action.Details != nil {
+		s.SetDetails(pbtypes.CopyStruct(action.Details.Before))
+	}
 	return h.Apply(s, smartblock.NoHistory)
 }
 
@@ -55,6 +58,9 @@ func (h *history) Redo(ctx *state.Context) (err error) {
 	}
 	for _, b := range action.Change {
 		s.Set(b.After.Copy())
+	}
+	if action.Details != nil {
+		s.SetDetails(pbtypes.CopyStruct(action.Details.After))
 	}
 	return h.Apply(s, smartblock.NoHistory)
 }

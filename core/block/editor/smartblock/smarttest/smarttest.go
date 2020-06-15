@@ -50,6 +50,7 @@ func (st *SmartTest) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err err
 	for _, d := range details {
 		st.meta.Details.Fields[d.Key] = d.Value
 	}
+	st.Doc.(*state.State).SetDetails(st.meta.Details)
 	return
 }
 

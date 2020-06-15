@@ -68,8 +68,20 @@ func (s *source) Type() pb.SmartBlockType {
 	return anytype.SmartBlockTypeToProto(s.sb.Type())
 }
 
+func (s *source) ReadDetails() (doc state.Doc, err error) {
+	return s.readDoc(true)
+}
+
 func (s *source) ReadDoc() (doc state.Doc, err error) {
-	s.tree, s.logHeads, err = change.BuildTree(s.sb)
+	return s.readDoc(false)
+}
+
+func (s *source) readDoc(detailsOnly bool) (doc state.Doc, err error) {
+	if detailsOnly {
+		s.tree, s.logHeads, err = change.BuildDetailsTree(s.sb)
+	} else {
+		s.tree, s.logHeads, err = change.BuildTree(s.sb)
+	}
 	if err == change.ErrEmpty {
 		s.tree = new(change.Tree)
 		return state.NewDoc(s.id, nil), nil
@@ -95,8 +107,9 @@ func (s *source) ReadDoc() (doc state.Doc, err error) {
 
 func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error) {
 	var c = &pb.Change{
-		PreviousIds:    s.tree.Heads(),
-		LastSnapshotId: s.lastSnapshotId,
+		PreviousIds:        s.tree.Heads(),
+		LastSnapshotId:     s.lastSnapshotId,
+		PreviousDetailsIds: s.tree.DetailsHeads(),
 	}
 	if s.needSnapshot() || len(changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
