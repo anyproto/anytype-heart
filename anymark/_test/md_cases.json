@@ -1,0 +1,205 @@
+[
+  {
+    "desc": "list with checkboxes",
+    "md": " # Header \n - [ ] Do some stuff \n - [ ] One more stuff \n - [x] Completed",
+    "blocks": [
+      {
+        "id": "1",
+        "Content": {
+          "text": {
+            "text": "Header",
+            "style": 1,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "2",
+        "Content": {
+          "text": {
+            "text": "Do some stuff",
+            "style": 8,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "3",
+        "Content": {
+          "text": {
+            "text": "One more stuff",
+            "style": 8,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "4",
+        "Content": {
+          "text": {
+            "text": "Completed",
+            "style": 8,
+            "marks": {},
+            "checked": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "desc": "not a list",
+    "md": " # Header \n Some text \n\n ----------- \n\n Another one",
+    "blocks": [
+      {
+        "id": "1",
+        "Content": {
+          "text": {
+            "text": "Header",
+            "style": 1,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "2",
+        "Content": {
+          "text": {
+            "text": "Some text",
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "3",
+        "Content": {
+          "div": {}
+        }
+      },
+      {
+        "id": "4",
+        "Content": {
+          "text": {
+            "text": "Another one",
+            "marks": {}
+          }
+        }
+      }
+    ]
+  },
+  {
+    "desc": "bold&italic link",
+    "md": "***[Opposable Mind: Winning through Integrative Thinking](http://www.amazon.com/Opposable-Mind-Winning-Integrative-Thinking/dp/1422139778)*** Roger MartinHarvard Business Review, 2009\n",
+    "blocks": [
+      {
+        "id": "1",
+        "Content": {
+          "text": {
+            "text": "Opposable Mind: Winning through Integrative Thinking Roger MartinHarvard Business Review, 2009",
+            "marks": {
+              "marks": [
+                {
+                  "range": {
+                    "to": 52
+                  },
+                  "type": 5,
+                  "param": "http://www.amazon.com/Opposable-Mind-Winning-Integrative-Thinking/dp/1422139778"
+                },
+                {
+                  "range": {
+                    "to": 52
+                  },
+                  "type": 3
+                },
+                {
+                  "range": {
+                    "to": 52
+                  },
+                  "type": 2
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "desc": "nested list",
+    "md": "## A Nested List\n\nList can be nested (lists inside lists):\n\n- Coffee\n- Tea\n     - Black tea\n    - Green tea\n- Milk",
+    "blocks": [
+      {
+        "id": "1",
+        "Content": {
+          "text": {
+            "text": "A Nested List",
+            "style": 2,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "2",
+        "Content": {
+          "text": {
+            "text": "List can be nested (lists inside lists):",
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "3",
+        "Content": {
+          "text": {
+            "text": "Coffee",
+            "style": 9,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "4",
+        "Content": {
+          "text": {
+            "text": "Black tea",
+            "style": 9,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "5",
+        "Content": {
+          "text": {
+            "text": "Green tea",
+            "style": 9,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "6",
+        "childrenIds": [
+          "4",
+          "5"
+        ],
+        "Content": {
+          "text": {
+            "text": "Tea",
+            "style": 9,
+            "marks": {}
+          }
+        }
+      },
+      {
+        "id": "7",
+        "Content": {
+          "text": {
+            "text": "Milk",
+            "style": 9,
+            "marks": {}
+          }
+        }
+      }
+    ]
+  }
+]

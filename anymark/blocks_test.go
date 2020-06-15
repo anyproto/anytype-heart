@@ -1,14 +1,14 @@
-package anymark_test
+package anymark
 
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 
-	. "github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer/html"
 )
 
@@ -21,13 +21,12 @@ func TestConvertBlocks(t *testing.T) {
 	var b bytes.Buffer
 
 	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer)
+	BR := blocksUtil.NewRWriter(writer, "", []string{})
 
 	err := markdown.ConvertBlocks(source, BR)
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	fmt.Println("rState:", BR.GetBlocks())
-	fmt.Println("b:", b.String())
+	assert.NotEmpty(t, BR.GetBlocks())
 }

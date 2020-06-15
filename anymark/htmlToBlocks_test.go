@@ -1,18 +1,16 @@
-package anymark_test
+package anymark
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
-	"os/exec"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
-	htmlToMdConverter "github.com/anytypeio/html-to-markdown"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -20,39 +18,30 @@ var (
 	copyCmdArgs  = "pbcopy"
 )
 
-func getPasteCommand() *exec.Cmd {
-	return exec.Command(pasteCmdArgs)
-}
-
-func readAll() (string, error) {
-	pasteCmd := getPasteCommand()
-	out, err := pasteCmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
-}
-
 type TestCase struct {
-	HTML string `json:"html"`
+	Blocks []map[string]interface{} `json:"blocks"`
+	HTML   string                   `json:"html"`
+	Desc   string                   `json:"desc"`
+}
+
+func replaceFakeIds(blocks []*model.Block) {
+	var m = make(map[string]string, len(blocks))
+
+	for i, block := range blocks {
+		newId := fmt.Sprintf("%d", i+1)
+		m[block.Id] = newId
+		block.Id = newId
+	}
+
+	for _, block := range blocks {
+		for j := range block.ChildrenIds {
+			block.ChildrenIds[j] = m[block.ChildrenIds[j]]
+		}
+	}
+
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
-	bs, err := ioutil.ReadFile("_test/spec.json")
-	if err != nil {
-		panic(err)
-	}
-	var testCases []TestCase
-	if err := json.Unmarshal(bs, &testCases); err != nil {
-		panic(err)
-	}
-
-	for _, c := range testCases {
-		convertToBlocksAndPrint(c.HTML)
-	}
-}
-
-func TestConvertHTMLToBlocks2(t *testing.T) {
 	bs, err := ioutil.ReadFile("_test/testData.json")
 	if err != nil {
 		panic(err)
@@ -62,37 +51,33 @@ func TestConvertHTMLToBlocks2(t *testing.T) {
 		panic(err)
 	}
 
-	testNum := 9
-	s := testCases[testNum].HTML
-
-	mdToBlocksConverter := anymark.New()
-	_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(s))
-	fmt.Println("html:", testCases[testNum].HTML)
-	for i, b := range blocks {
-		fmt.Println(i, " block: ", b)
+	var dumpTests = os.Getenv("DUMP_TESTS") == "1"
+	var dumpPath string
+	if dumpTests {
+		dumpPath = filepath.Join("_test", "html")
+		os.MkdirAll(dumpPath, 0700)
 	}
 
-}
+	for _, testCase := range testCases {
+		t.Run(testCase.Desc, func(t *testing.T) {
+			mdToBlocksConverter := New()
+			_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(testCase.HTML))
+			replaceFakeIds(blocks)
 
-func convertToBlocksAndPrint(html string) error {
-	mdToBlocksConverter := anymark.New()
+			actualJson, err := json.Marshal(blocks)
+			require.NoError(t, err)
 
-	converter := htmlToMdConverter.NewConverter("", true, nil)
-	md, err := converter.ConvertString(html)
-	if err != nil {
-		log.Fatal(err)
+			var actual []map[string]interface{}
+			err = json.Unmarshal(actualJson, &actual)
+			if dumpTests {
+				ioutil.WriteFile(filepath.Join(dumpPath, filepath.Clean(testCase.Desc)+".html"), []byte(testCase.HTML), 0644)
+			}
+			require.NoError(t, err)
+
+			if !reflect.DeepEqual(testCase.Blocks, actual) {
+				fmt.Println("expected:\n", string(actualJson))
+				require.Equal(t, testCase.Blocks, actual)
+			}
+		})
 	}
-	//fmt.Println("md ->", md)
-
-	var b bytes.Buffer
-	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer)
-
-	err = mdToBlocksConverter.ConvertBlocks([]byte(md), BR)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("blocks:", BR.GetBlocks())
-	return nil
 }

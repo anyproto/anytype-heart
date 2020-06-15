@@ -3,6 +3,9 @@ package anytype;
 option go_package = "pb";
 
 import "vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto";
+import "vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto";
+
+import "pb/protos/events.proto";
 import "google/protobuf/struct.proto";
 
 /*
@@ -17,13 +20,14 @@ message Rpc {
         message Files {
             message Request {
                 string contextId = 1;
-                string focusedBlockId = 2; // can be null
-                repeated string localFilePaths = 3;
+                string dropTargetId = 2;
+                anytype.model.Block.Position position = 3;
+                repeated string localFilePaths = 4;
             }
 
             message Response {
                 Error error = 1;
-
+                ResponseEvent event = 2;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -65,6 +69,30 @@ message Rpc {
 
     message BlockList {
 
+        message ConvertChildrenToPages {
+            message Request {
+                string contextId = 1;
+                repeated string blockIds = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated string linkIds = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message Move {
             message Request {
                 string contextId = 1;
@@ -76,6 +104,35 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message MoveToNewPage {
+            message Request {
+                string contextId = 1;
+                repeated string blockIds = 2;
+                google.protobuf.Struct details = 3; // page details
+                string dropTargetId = 4;
+                anytype.model.Block.Position position = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                string linkId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -105,6 +162,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 repeated string blockIds = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -121,6 +179,33 @@ message Rpc {
         }
 
         message Set {
+            message Page {
+                message IsArchived {
+                    message Request {
+                        string contextId = 1;
+                        repeated string blockIds = 2;
+                        bool isArchived = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+            }
+
+            // commands acceptable only for text blocks, others will be ignored
             message Text {
                 message Style {
                     message Request {
@@ -131,6 +216,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -154,6 +240,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -168,15 +255,16 @@ message Rpc {
                         }
                     }
                 }
-                message BackgroundColor {
+                message Mark {
                     message Request {
                         string contextId = 1;
                         repeated string blockIds = 2;
-                        string color = 3;
+                        anytype.model.Block.Content.Text.Mark mark = 3;
                     }
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -188,6 +276,55 @@ message Rpc {
                                 BAD_INPUT = 2;
                                 // ...
                             }
+                        }
+                    }
+                }
+            }
+
+            message BackgroundColor {
+                message Request {
+                    string contextId = 1;
+                    repeated string blockIds = 2;
+                    string color = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message Align {
+                message Request {
+                    string contextId = 1;
+                    repeated string blockIds = 2;
+                    anytype.model.Block.Align align = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
                         }
                     }
                 }
@@ -204,6 +341,60 @@ message Rpc {
                 }
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message Div {
+                message Style {
+                    message Request {
+                        string contextId = 1;
+                        repeated string blockIds = 2;
+                        anytype.model.Block.Content.Div.Style style = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+                        ResponseEvent event = 2;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        message Delete {
+            // Deletes the page, keys and all records from the local store and unsubscribe from remote changes
+            message Page {
+                message Request {
+                    repeated string blockIds = 1; // pages to remove
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -235,6 +426,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -254,12 +446,14 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                int32 cursorPosition = 3;
+                anytype.model.Range range = 3;
+                anytype.model.Block.Content.Text.Style style = 4;
             }
 
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -284,6 +478,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -303,14 +498,15 @@ message Rpc {
         message Copy {
             message Request {
                 string contextId = 1;
-                repeated string blockIds = 2;
+                repeated anytype.model.Block blocks = 2;
+                anytype.model.Range selectedTextRange = 3;
             }
 
             message Response {
                 Error error = 1;
-                string clipboardText = 2;
-                string clipboardHtml = 3;
-                // string clipboardAny = 4; Client already knows blockIds
+                string textSlot = 2;
+                string htmlSlot = 3;
+                repeated anytype.model.Block anySlot = 4;
 
                 message Error {
                     Code code = 1;
@@ -332,14 +528,97 @@ message Rpc {
                 string focusedBlockId = 2;
                 anytype.model.Range selectedTextRange = 3;
                 repeated string selectedBlockIds = 4;
+                bool isPartOfBlock = 5;
 
-                string textSlot = 5;
-                string htmlSlot = 6;
-                repeated anytype.model.Block anySlot = 7;
+                string textSlot = 6;
+                string htmlSlot = 7;
+                repeated anytype.model.Block anySlot = 8;
             }
 
             message Response {
                 Error error = 1;
+                repeated string blockIds = 2;
+                int32 caretPosition = 3;
+                bool isSameBlockCaret = 4;
+                ResponseEvent event = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Cut {
+            message Request {
+                string contextId = 1;
+                repeated anytype.model.Block blocks = 2;
+                anytype.model.Range selectedTextRange = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                string textSlot = 2;
+                string htmlSlot = 3;
+                repeated anytype.model.Block anySlot = 4;
+                ResponseEvent event = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message ImportMarkdown {
+            message Request {
+                string contextId = 1;
+                string importPath = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated string rootLinkIds = 2;
+                ResponseEvent event = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Export {
+            message Request {
+                string contextId = 1;
+                repeated anytype.model.Block blocks = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                string path = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -365,6 +644,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -388,6 +668,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -413,6 +694,32 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message Details {
+                message Detail {
+                    string key = 1;
+                    google.protobuf.Value value = 2; // NUll - removes key
+                }
+                message Request {
+                    string contextId = 1;
+                    repeated Detail details = 2;
+                }
+                message Response {
+                    Error error = 1;
 
                     message Error {
                         Code code = 1;
@@ -436,6 +743,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -451,25 +759,27 @@ message Rpc {
                 }
             }
 
-            message IsArchived {
-                message Request {
-                    string contextId = 1;
-                    string blockId = 2;
-                    bool IsArchived = 3;
-                }
+            message Page {
+                message IsArchived {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        bool isArchived = 3;
+                    }
 
-                message Response {
-                    Error error = 1;
+                    message Response {
+                        Error error = 1;
 
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
 
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            // ...
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
                         }
                     }
                 }
@@ -510,6 +820,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -525,29 +836,6 @@ message Rpc {
                     }
                 }
 
-                message BackgroundColor {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2;
-                        string color = 3;
-                    }
-
-                    message Response {
-                        Error error = 1;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
 
                 message Style {
                     message Request {
@@ -558,6 +846,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -582,6 +871,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -608,6 +898,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -724,16 +1015,17 @@ message Rpc {
                 }
             }
 
-            message Icon {
-                message Name {
+            message Link {
+                message TargetBlockId {
                     message Request {
                         string contextId = 1;
                         string blockId = 2;
-                        string name = 3;
+                        string targetBlockId = 3;
                     }
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;
@@ -749,28 +1041,85 @@ message Rpc {
                     }
                 }
             }
+        }
 
-            message Link {
-                message TargetBlockId {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2;
-                        string targetBlockId = 3;
+
+        message Bookmark {
+            message Fetch {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    string url = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
                     }
+                }
+            }
 
-                    message Response {
-                        Error error = 1;
+            message CreateAndFetch {
+                message Request {
+                    string contextId = 1;
+                    string targetId = 2;
+                    anytype.model.Block.Position position = 3;
+                    string url = 4;
+                }
 
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
+                message Response {
+                    Error error = 1;
+                    string blockId = 2;
+                    ResponseEvent event = 3;
 
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+        }
+
+        message File {
+            message CreateAndUpload {
+                message Request {
+                    string contextId = 1;
+                    string targetId = 2;
+                    anytype.model.Block.Position position = 3;
+                    string url = 4;
+                    string localPath = 5;
+                    anytype.model.Block.Content.File.Type fileType = 6;
+                }
+
+                message Response {
+                    Error error = 1;
+                    string blockId = 2;
+                    ResponseEvent event = 3;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
                         }
                     }
                 }
@@ -790,6 +1139,7 @@ message Rpc {
 
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -813,6 +1163,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -836,6 +1187,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -877,6 +1229,78 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message GetPublicWebURL {
+            message Request {
+                string blockId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                string url = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message OpenBreadcrumbs {
+            message Request {
+                string contextId = 1; // id of the context blo1k
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;
+                ResponseEvent event = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message SetBreadcrumbs {
+            message Request {
+                string breadcrumbsId = 1;
+                repeated string ids = 2; // page ids
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -918,6 +1342,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string blockId = 2;
+                ResponseEvent event = 3;
 
                 message Error {
                     Code code = 1;
@@ -937,7 +1362,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context block
                 string targetId = 2; // id of the closest block
-                anytype.model.Block block = 3; // page block
+                google.protobuf.Struct details = 3; // page details
                 anytype.model.Block.Position position = 4;
             }
 
@@ -945,6 +1370,7 @@ message Rpc {
                 Error error = 1;
                 string blockId = 2;
                 string targetId = 3;
+                ResponseEvent event = 4;
 
                 message Error {
                     Code code = 1;
@@ -959,6 +1385,7 @@ message Rpc {
                 }
             }
         }
+
         /*
          * Remove blocks from the childrenIds of its parents
         */
@@ -971,6 +1398,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -1093,6 +1521,9 @@ message Rpc {
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
                     string avatarColor = 3; // Avatar color as an alternative for avatar image
                 }
+
+
+                string alphaInviteCode = 20;
             }
 
             /**
@@ -1116,6 +1547,7 @@ message Rpc {
                         ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR = 103;
                         FAILED_TO_STOP_RUNNING_NODE = 104;
 
+                        BAD_INVITE_CODE = 900;
                     }
                 }
             }
@@ -1276,7 +1708,8 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                string version = 2; // BuildDate, GitCommit, GitBranch, GitState
+                string version = 2;
+                string details = 3; // build date, branch and commit
 
                 message Error {
                     Code code = 1;
@@ -1390,6 +1823,27 @@ message Rpc {
         }
     }
 
+    message Shutdown {
+        message Request {
+        }
+        message Response {
+            Error error = 1;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+
+                    NODE_NOT_STARTED = 101;
+                }
+            }
+
+        }
+    }
+
     message Config {
         message Get {
             message Request {
@@ -1397,7 +1851,8 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string homeBlockId = 2; // home dashboard block id
-                string archiveBlockId = 3; // home dashboard block id
+                string archiveBlockId = 3; // archive block id
+                string profileBlockId = 4; // profile block id
                 string gatewayUrl = 101; // gateway url for fetching static files
                 message Error {
                     Code code = 1;
@@ -1410,7 +1865,6 @@ message Rpc {
                         NODE_NOT_STARTED = 101;
                     }
                 }
-
             }
         }
     }
@@ -1438,6 +1892,126 @@ message Rpc {
         }
     }
 
+    message Process {
+        message Cancel {
+            message Request {
+                string id = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+    }
+
+
+    message LinkPreview {
+        message Request {
+            string url = 1;
+        }
+
+        message Response {
+            Error error = 1;
+            anytype.model.LinkPreview linkPreview = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                }
+            }
+        }
+    }
+
+    message UploadFile {
+        message Request {
+            string url = 1;
+            string localPath = 2;
+            anytype.model.Block.Content.File.Type type = 3;
+            bool disableEncryption = 4;
+        }
+
+        message Response {
+            Error error = 1;
+            string hash = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                }
+            }
+        }
+    }
+
+    message Navigation {
+        message ListPages {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated anytype.model.PageInfo pages = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        /*
+          * Get the info for page alongside with info for all inbound and outbound links from/to this page
+        */
+        message GetPageInfoWithLinks {
+            message Request {
+                string pageId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                anytype.model.PageInfoWithLinks page = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
 }
 
 message Empty {

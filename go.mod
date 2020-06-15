@@ -3,24 +3,26 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.13
 
 require (
-	github.com/PuerkitoBio/goquery v1.5.0 // indirect
-	github.com/anytypeio/go-anytype-library v0.0.0-20200203093556-863a2783feeb
-	github.com/anytypeio/html-to-markdown v0.0.0-20200123120722-1c256e006f13
-
+	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
+	github.com/PuerkitoBio/goquery v1.5.1
+	github.com/anytypeio/go-anytype-library v0.8.1-0.20200612135956-8b468478b4e6
+	github.com/cheggaaa/mb v1.0.2
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/mock v1.3.1
-	github.com/ipfs/go-log v0.0.1
-	github.com/lunny/html2md v0.0.0-20181018071239-7d234de44546
-	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
-	github.com/stretchr/testify v1.4.0
-	github.com/textileio/go-textile v0.7.8-0.20200102164400-98b263e32c0c
+	github.com/golang/mock v1.4.3
+	github.com/google/uuid v1.1.1
+	github.com/h2non/filetype v1.0.12
+	github.com/hashicorp/golang-lru v0.5.4
+	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
+	github.com/microcosm-cc/bluemonday v1.0.2
+	github.com/otiai10/opengraph v1.1.1
+	github.com/stretchr/testify v1.5.1
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
-	github.com/yuin/goldmark v1.1.22
+	github.com/yuin/goldmark v1.1.30
+	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.24.0
-	gotest.tools v2.1.0+incompatible
+	google.golang.org/grpc v1.29.0
 )
 
-replace github.com/textileio/go-textile => github.com/anytypeio/go-textile v0.7.8-0.20200202161814-7f86e00257c2
+replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200604073925-3e04de035205
 
-replace github.com/libp2p/go-eventbus => github.com/libp2p/go-eventbus v0.1.0
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200612135054-98cf128fb49f

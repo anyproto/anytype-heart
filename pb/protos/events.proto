@@ -16,6 +16,7 @@ message Event {
     message Message {
         oneof value {
             Account.Show accountShow = 1;
+            Account.Details accountDetails = 201;
 
             Block.Add blockAdd = 2;
             Block.Delete blockDelete = 3;
@@ -25,12 +26,15 @@ message Event {
             Block.Set.Fields blockSetFields = 6;
             Block.Set.ChildrenIds blockSetChildrenIds = 7;
             Block.Set.Restrictions blockSetRestrictions = 8;
-            Block.Set.IsArchived blockSetIsArchived = 9;
+            Block.Set.BackgroundColor blockSetBackgroundColor = 9;
 
             Block.Set.Text blockSetText = 10;
             Block.Set.File blockSetFile = 11;
-            Block.Set.Icon blockSetIcon = 12;
             Block.Set.Link blockSetLink = 13;
+            Block.Set.Bookmark blockSetBookmark = 14;
+            Block.Set.Align blockSetAlign = 15;
+            Block.Set.Details blockSetDetails = 16;
+            Block.Set.Div blockSetDiv = 17;
 
             Block.Show blockShow = 20;
             User.Block.Join userBlockJoin = 21;
@@ -39,6 +43,10 @@ message Event {
             User.Block.TextRange userBlockTextRange = 24;
 
             Ping ping = 100;
+
+            Process.New processNew = 101;
+            Process.Update processUpdate = 102;
+            Process.Done processDone = 103;
         }
     }
 
@@ -49,6 +57,11 @@ message Event {
         message Show {
             int32 index = 1; // Number of an account in an all found accounts list
             anytype.model.Account account = 2; // An Account, that has been found for the mnemonic
+        }
+
+        message Details {
+            string profileId = 1;
+            google.protobuf.Struct details = 2;
         }
     }
     message Block {
@@ -69,12 +82,14 @@ message Event {
         }
 
         /*
-         * Works with a smart blocks: Page, Dashboard
-         * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+          * Works with a smart blocks: Page, Dashboard
+          * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
         */
         message Show {
             string rootId = 1; // Root block id
             repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
+            repeated Block.Set.Details details = 3; // details for current and dependent smart blocks
+            SmartBlockType type = 4;
         }
 
         /**
@@ -86,15 +101,13 @@ message Event {
         message FilesUpload {
             string blockId = 1; // if empty => create new blocks
             repeated string filePath = 2; // filepaths to the files
-
         }
 
         /*
          *
         */
         message Delete {
-            // TODO: repeated string blockIds?
-            string blockId = 1;
+            repeated string blockIds = 1;
         }
 
         message MarksInfo {
@@ -102,6 +115,11 @@ message Event {
         }
 
         message Set {
+
+            message Details {
+                string id = 1;
+                google.protobuf.Struct details = 2;
+            }
 
             message Fields {
                 string id = 1;
@@ -118,10 +136,16 @@ message Event {
                 anytype.model.Block.Restrictions restrictions = 2;
             }
 
-            message IsArchived {
+            message BackgroundColor {
                 string id = 1;
-                bool IsArchived = 2;
+                string backgroundColor = 2;
             }
+
+            message Align {
+                string id = 1;
+                anytype.model.Block.Align align = 2;
+            }
+
 
             message Text {
                 string id = 1;
@@ -130,7 +154,6 @@ message Event {
                 Marks marks = 4;
                 Checked checked = 5;
                 Color color = 6;
-                BackgroundColor backgroundColor = 7;
 
                 message Text {
                     string value = 1;
@@ -152,10 +175,17 @@ message Event {
                     string value = 1;
                 }
 
-                message BackgroundColor {
-                    string value = 1;
+            }
+
+            message Div {
+                string id = 1;
+                Style style = 2;
+
+                message Style {
+                    anytype.model.Block.Content.Div.Style value = 1;
                 }
             }
+
 
             message File {
                 string id = 1;
@@ -195,14 +225,6 @@ message Event {
                 }
             }
 
-            message Icon {
-                string id = 1;
-                Name name = 2;
-
-                message Name {
-                    string value = 1;
-                }
-            }
 
             message Link {
                 string id = 1;
@@ -221,6 +243,42 @@ message Event {
                 message Fields {
                     google.protobuf.Struct value = 1;
                 }
+
+            }
+
+            message Bookmark {
+                string id = 1;
+                Url url = 2;
+                Title title = 3;
+                Description description = 4;
+                ImageHash imageHash = 5;
+                FaviconHash faviconHash = 6;
+                Type type = 7;
+
+                message Url {
+                    string value = 1;
+                }
+
+                message Title {
+                    string value = 1;
+                }
+
+                message Description {
+                    string value = 1;
+                }
+
+                message ImageHash {
+                    string value = 1;
+                }
+
+                message FaviconHash {
+                    string value = 1;
+                }
+
+                message Type {
+                    anytype.model.LinkPreview.Type value = 1;
+                }
+
             }
         }
     }
@@ -275,5 +333,57 @@ message Event {
 
     message Ping {
         int32 index = 1;
+    }
+
+    message Process {
+        message New {
+            Model.Process process = 1;
+        }
+        message Update {
+            Model.Process process = 1;
+        }
+        message Done {
+            Model.Process process = 1;
+        }
+    }
+
+}
+
+enum SmartBlockType {
+    Page = 0;
+    Home = 1;
+    ProfilePage = 2;
+    Archive = 3;
+    Breadcrumbs = 4;
+}
+
+message ResponseEvent {
+    repeated Event.Message messages = 1;
+    string contextId = 2;
+}
+
+message Model {
+    message Process {
+        string id = 1;
+        Type type = 2;
+        State state = 3;
+        Progress progress = 4;
+
+        enum Type {
+            DropFiles = 0;
+        }
+
+        enum State {
+            None = 0;
+            Running = 1;
+            Done = 2;
+            Canceled = 3;
+            Error = 4;
+        }
+
+        message Progress {
+            int64 total = 1;
+            int64 done = 2;
+        }
     }
 }

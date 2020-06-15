@@ -3,6 +3,7 @@ package simple
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/google/uuid"
 )
 
 type BlockCreator = func(m *model.Block) Block
@@ -21,13 +22,16 @@ func RegisterFallback(c BlockCreator) {
 }
 
 type Block interface {
-	Virtual() bool
 	Model() *model.Block
 	Diff(block Block) (msgs []*pb.EventMessage, err error)
+	String() string
 	Copy() Block
 }
 
 func New(block *model.Block) (b Block) {
+	if block.Id == "" {
+		block.Id = uuid.New().String()
+	}
 	for _, c := range registry {
 		if b = c(block); b != nil {
 			return

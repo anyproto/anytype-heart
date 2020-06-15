@@ -28,7 +28,6 @@ func TestBase_Diff(t *testing.T) {
 				DropOn: false,
 			},
 			ChildrenIds: []string{"1", "2", "3"},
-			IsArchived:  false,
 		}).(*Base)
 	}
 	t.Run("equals", func(t *testing.T) {
@@ -46,15 +45,6 @@ func TestBase_Diff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		assert.Equal(t, b2.ChildrenIds, diff[0].Value.(*pb.EventMessageValueOfBlockSetChildrenIds).BlockSetChildrenIds.ChildrenIds)
-	})
-	t.Run("isArchived", func(t *testing.T) {
-		b1 := testBlock()
-		b2 := testBlock()
-		b2.IsArchived = !b1.IsArchived
-		diff, err := b1.Diff(b2)
-		require.NoError(t, err)
-		require.Len(t, diff, 1)
-		assert.Equal(t, b2.IsArchived, diff[0].Value.(*pb.EventMessageValueOfBlockSetIsArchived).BlockSetIsArchived.IsArchived)
 	})
 	t.Run("restrictions", func(t *testing.T) {
 		b1 := testBlock()

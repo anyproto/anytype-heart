@@ -1,33 +1,70 @@
 package file
 
 import (
-	"fmt"
+	"context"
 	"image"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
+	"github.com/anytypeio/go-anytype-library/files"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/h2non/filetype"
 )
+
+var log = logging.Logger("anytype-mw-file")
+
+func NewUploader(a anytype.Service, fn func(f func(file Block)), opts ...files.AddOption) Uploader {
+	return &uploader{
+		updateFile: fn,
+		storage:    a,
+		options:    opts,
+	}
+}
+
+type Uploader interface {
+	DoAuto(localPath string)
+	DoType(localPath, url string, fType model.BlockContentFileType) (err error)
+}
 
 type uploader struct {
 	updateFile func(f func(file Block))
-	storage    anytype.Anytype
+	storage    anytype.Service
 	isImage    bool
+	options    []files.AddOption
+}
+
+func (u *uploader) DoAuto(localPath string) {
+	tp, _ := filetype.MatchFile(localPath)
+	if strings.HasPrefix(tp.MIME.Value, "image") {
+		u.DoImage(localPath, "")
+	} else {
+		u.Do(localPath, "")
+	}
+}
+
+func (u *uploader) DoType(localPath, url string, fType model.BlockContentFileType) (err error) {
+	u.isImage = fType == model.BlockContentFile_Image
+	url, _ = uri.ProcessURI(url)
+	return u.do(localPath, url)
 }
 
 func (u *uploader) DoImage(localPath, url string) {
 	u.isImage = true
 	err := u.do(localPath, url)
 	if err == image.ErrFormat {
-		fmt.Println("can't decode image upload as file:", err)
+		log.Infof("can't decode image upload as file: %v", err)
 		u.isImage = false
 		err = u.do(localPath, url)
 	}
 	if err != nil {
-		fmt.Println("upload file error:", err)
+		log.Warningf("upload file error: %v", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})
@@ -36,7 +73,7 @@ func (u *uploader) DoImage(localPath, url string) {
 
 func (u *uploader) Do(localPath, url string) {
 	if err := u.do(localPath, url); err != nil {
-		fmt.Println("upload file error:", err)
+		log.Warnf("upload file error: %v", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})
@@ -78,7 +115,7 @@ func (u *uploader) upload(rd io.ReadCloser, name string) (err error) {
 }
 
 func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
-	image, err := u.storage.ImageAddWithReader(rd, name)
+	image, err := u.storage.ImageAdd(context.TODO(), append(u.options, files.WithReader(rd), files.WithName(name))...)
 	if err != nil {
 		return
 	}
@@ -89,7 +126,7 @@ func (u *uploader) uploadImage(rd io.Reader, name string) (err error) {
 }
 
 func (u *uploader) uploadFile(rd io.Reader, name string) (err error) {
-	cf, err := u.storage.FileAddWithReader(rd, name)
+	cf, err := u.storage.FileAdd(context.TODO(), append(u.options, files.WithReader(rd), files.WithName(name))...)
 	if err != nil {
 		return
 	}

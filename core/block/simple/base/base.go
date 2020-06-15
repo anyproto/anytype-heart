@@ -1,17 +1,19 @@
 package base
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/mohae/deepcopy"
 )
 
 func init() {
 	simple.RegisterCreator(func(m *model.Block) simple.Block {
-		if m.GetIcon() != nil {
-			return NewIcon(m)
+		if m.GetDiv() != nil {
+			return NewDiv(m)
 		}
 		return nil
 	})
@@ -28,24 +30,12 @@ type Base struct {
 	*model.Block
 }
 
-func (s *Base) Virtual() bool {
-	return false
-}
-
 func (s *Base) Model() *model.Block {
 	return s.Block
 }
 
 func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 	m := block.Model()
-	if m.IsArchived != s.IsArchived {
-		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetIsArchived{BlockSetIsArchived: &pb.EventBlockSetIsArchived{
-			Id:         s.Id,
-			IsArchived: m.IsArchived,
-		}}}
-		msgs = append(msgs, m)
-	}
-
 	if !stringSlicesEq(m.ChildrenIds, s.ChildrenIds) {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetChildrenIds{BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
 			Id:          s.Id,
@@ -74,11 +64,30 @@ func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 		}}}
 		msgs = append(msgs, m)
 	}
+	if s.BackgroundColor != m.BackgroundColor {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBackgroundColor{BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
+			Id:              s.Id,
+			BackgroundColor: m.BackgroundColor,
+		}}}
+		msgs = append(msgs, m)
+	}
+	if s.Align != m.Align {
+		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetAlign{BlockSetAlign: &pb.EventBlockSetAlign{
+			Id:    s.Id,
+			Align: m.Align,
+		}}}
+		msgs = append(msgs, m)
+	}
+
 	return
 }
 
 func (b *Base) Copy() simple.Block {
-	return NewBase(deepcopy.Copy(b.Model()).(*model.Block))
+	return NewBase(pbtypes.CopyBlock(b.Model()))
+}
+
+func (b *Base) String() string {
+	return fmt.Sprintf("%s: %T (%d)", b.Id, b.Content, len(b.ChildrenIds))
 }
 
 func stringSlicesEq(s1, s2 []string) bool {

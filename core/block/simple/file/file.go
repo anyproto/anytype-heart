@@ -10,7 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func init() {
@@ -19,13 +19,6 @@ func init() {
 
 func NewFile(m *model.Block) simple.Block {
 	if file := m.GetFile(); file != nil {
-		if file.State == model.BlockContentFile_Uploading {
-			if file.Hash != "" {
-				file.State = model.BlockContentFile_Done
-			} else {
-				file.State = model.BlockContentFile_Error
-			}
-		}
 		return &File{
 			Base:    base.NewBase(m).(*base.Base),
 			content: file,
@@ -36,7 +29,7 @@ func NewFile(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error)
+	Upload(stor anytype.Service, updater Updater, localPath, url string) (err error)
 	SetFileData(hash string, meta core.FileMeta)
 	SetImage(hash, name string)
 	SetState(state model.BlockContentFileState)
@@ -51,7 +44,7 @@ type File struct {
 	content *model.BlockContentFile
 }
 
-func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url string) (err error) {
+func (f *File) Upload(stor anytype.Service, updater Updater, localPath, url string) (err error) {
 	if f.content.State != model.BlockContentFile_Empty && f.content.State != model.BlockContentFile_Error {
 		return fmt.Errorf("block is not empty")
 	}
@@ -60,7 +53,7 @@ func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url stri
 	up := &uploader{
 		updateFile: func(apply func(file Block)) {
 			if e := updater.UpdateFileBlock(id, apply); e != nil {
-				fmt.Println("can't update file block:", e)
+				log.Warnf("can't update file block: %v", e)
 			}
 		},
 		storage: stor,
@@ -74,7 +67,7 @@ func (f *File) Upload(stor anytype.Anytype, updater Updater, localPath, url stri
 }
 
 func (f *File) Copy() simple.Block {
-	copy := deepcopy.Copy(f.Model()).(*model.Block)
+	copy := pbtypes.CopyBlock(f.Model())
 	return &File{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetFile(),
@@ -87,9 +80,10 @@ func (f *File) SetState(state model.BlockContentFileState) {
 
 func (f *File) SetFileData(hash string, meta core.FileMeta) {
 	f.content.Size_ = meta.Size
-	if strings.HasPrefix(meta.Media, "video/") {
-		f.content.Type = model.BlockContentFile_Video
-	} else {
+	isVideoCT := strings.HasPrefix(meta.Media, "video/")
+	if f.content.Type == model.BlockContentFile_Video && !isVideoCT {
+		f.content.Type = model.BlockContentFile_File
+	} else if f.content.Type == model.BlockContentFile_None {
 		f.content.Type = model.BlockContentFile_File
 	}
 	f.content.State = model.BlockContentFile_Done
@@ -107,7 +101,7 @@ func (f *File) SetImage(hash, name string) {
 
 func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	file, ok := b.(*File)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = f.Base.Diff(file); err != nil {

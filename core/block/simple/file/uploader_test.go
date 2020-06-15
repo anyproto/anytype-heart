@@ -13,8 +13,8 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func TestUploader_Do(t *testing.T) {
@@ -41,7 +41,7 @@ func TestUploader_Do(t *testing.T) {
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")
@@ -73,7 +73,7 @@ func TestUploader_Do(t *testing.T) {
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "http.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, "", ts.URL+"/http.txt")
@@ -96,13 +96,13 @@ func TestUploader_Do(t *testing.T) {
 		fx := newFixture(t, f)
 		defer fx.ctrl.Finish()
 
-		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), "test.txt").Return(nil, image.ErrFormat)
+		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(nil, image.ErrFormat)
 
 		file := testMock.NewMockFile(fx.ctrl)
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 		file.EXPECT().Meta().Return(fileMeta).AnyTimes()
 
-		fx.anytype.EXPECT().FileAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")
@@ -127,7 +127,7 @@ func TestUploader_Do(t *testing.T) {
 		file := testMock.NewMockImage(fx.ctrl)
 		file.EXPECT().Hash().Return(fileHash).AnyTimes()
 
-		fx.anytype.EXPECT().ImageAddWithReader(gomock.Any(), "test.txt").Return(file, nil)
+		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
 		err := f.Upload(fx.anytype, fx, testFilepath, "")
@@ -141,14 +141,13 @@ func TestUploader_Do(t *testing.T) {
 		case <-fx.done:
 		}
 	})
-
 }
 
 func newFixture(t *testing.T, file *File) *fixture {
 	ctrl := gomock.NewController(t)
 	return &fixture{
 		ctrl:    ctrl,
-		anytype: testMock.NewMockAnytype(ctrl),
+		anytype: testMock.NewMockService(ctrl),
 		file:    file,
 		t:       t,
 		done:    make(chan struct{}),
@@ -157,7 +156,7 @@ func newFixture(t *testing.T, file *File) *fixture {
 
 type fixture struct {
 	ctrl    *gomock.Controller
-	anytype *testMock.MockAnytype
+	anytype *testMock.MockService
 	file    *File
 	t       *testing.T
 	done    chan struct{}

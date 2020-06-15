@@ -3,12 +3,11 @@ package link
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/mohae/deepcopy"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func init() {
@@ -27,7 +26,8 @@ func NewLink(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	SetMeta(meta core.BlockVersionMeta)
+	FillSmartIds(ids []string) []string
+	HasSmartIds() bool
 }
 
 type Link struct {
@@ -36,7 +36,7 @@ type Link struct {
 }
 
 func (l *Link) Copy() simple.Block {
-	copy := deepcopy.Copy(l.Model()).(*model.Block)
+	copy := pbtypes.CopyBlock(l.Model())
 	return &Link{
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetLink(),
@@ -45,7 +45,7 @@ func (l *Link) Copy() simple.Block {
 
 func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	link, ok := b.(*Link)
-	if ! ok {
+	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
 	if msgs, err = l.Base.Diff(link); err != nil {
@@ -60,10 +60,6 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		hasChanges = true
 		changes.Style = &pb.EventBlockSetLinkStyle{Value: link.content.Style}
 	}
-	if !l.content.Fields.Equal(link.content.Fields) {
-		hasChanges = true
-		changes.Fields = &pb.EventBlockSetLinkFields{Value: link.content.Fields}
-	}
 	if l.content.TargetBlockId != link.content.TargetBlockId {
 		hasChanges = true
 		changes.TargetBlockId = &pb.EventBlockSetLinkTargetBlockId{Value: link.content.TargetBlockId}
@@ -75,6 +71,13 @@ func (l *Link) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	return
 }
 
-func (l *Link) SetMeta(meta core.BlockVersionMeta) {
-	l.content.Fields = meta.ExternalFields()
+func (l *Link) FillSmartIds(ids []string) []string {
+	if l.content.TargetBlockId != "" {
+		ids = append(ids, l.content.TargetBlockId)
+	}
+	return ids
+}
+
+func (l *Link) HasSmartIds() bool {
+	return l.content.TargetBlockId != ""
 }

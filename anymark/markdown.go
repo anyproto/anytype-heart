@@ -4,9 +4,12 @@ package anymark
 import (
 	"bufio"
 	"bytes"
+	"io"
+	"regexp"
+	"strings"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer/html"
@@ -16,11 +19,7 @@ import (
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
-	"io"
-	"regexp"
-	"strings"
-
-	"github.com/lunny/html2md"
+	htmlConverter "github.com/JohannesKaufmann/html-to-markdown"
 )
 
 // DefaultParser returns a new Parser that is configured by default values.
@@ -36,9 +35,17 @@ func DefaultRenderer() renderer.Renderer {
 	return renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(html.NewRenderer(), 1000)))
 }
 
-var defaultMarkdown = New()
+var (
+	defaultMarkdown = New()
+	linkRegexp      = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	markRightEdge   = regexp.MustCompile(`([^\*\~\_\s])([\*\~\_]+)(\S)`)
+	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
+	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
+	reWikiCode      = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
+)
 
-// Convert interprets a UTF-8 bytes source in Markdown and
+// Convert interprets a UTF-8
+//bytes source in Markdown and
 // write rendered contents to a writer w.
 func Convert(source []byte, w io.Writer, opts ...parser.ParseOption) error {
 	return defaultMarkdown.Convert(source, w, opts...)
@@ -51,9 +58,9 @@ type Markdown interface {
 	// contents to a writer w.
 	Convert(source []byte, writer io.Writer, opts ...parser.ParseOption) error
 
-	ConvertBlocks(source []byte, BR blocksUtil.RWriter, opts ...parser.ParseOption) error
-	HTMLToBlocks(source []byte) (error, []*model.Block)
-
+	ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error
+	HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string)
+	MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error)
 	// Parser returns a Parser that will be used for conversion.
 	Parser() parser.Parser
 
@@ -132,45 +139,91 @@ func (m *markdown) Convert(source []byte, w io.Writer, opts ...parser.ParseOptio
 	doc := m.parser.Parse(reader, opts...)
 
 	writer := bufio.NewWriter(w)
-	BR := blocksUtil.NewRWriter(writer)
-	//BR := blocksUtil.ExtendWriter(writer, &rState)
+	bWriter := blocksUtil.NewRWriter(writer, "", []string{})
+	//bWriter := blocksUtil.ExtendWriter(writer, &rState)
 
-	return m.renderer.Render(BR, source, doc)
+	return m.renderer.Render(bWriter, source, doc)
 }
 
-func (m *markdown) ConvertBlocks(source []byte, BR blocksUtil.RWriter, opts ...parser.ParseOption) error {
+func (m *markdown) ConvertBlocks(source []byte, bWriter blocksUtil.RWriter, opts ...parser.ParseOption) error {
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
-
-	return m.renderer.Render(BR, source, doc)
+	return m.renderer.Render(bWriter, source, doc)
 }
 
-func (m *markdown) HTMLToBlocks(source []byte) (error, []*model.Block) {
+func (m *markdown) MarkdownToBlocks(markdownSource []byte, baseFilepath string, allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
+	var b bytes.Buffer
+	writer := bufio.NewWriter(&b)
+	bWriter := blocksUtil.NewRWriter(writer, baseFilepath, allFileShortPaths)
+	// allFileShortPaths,
+	err = m.ConvertBlocks(markdownSource, bWriter)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return bWriter.GetBlocks(), bWriter.GetRootBlockIDs(), nil
+}
+
+func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block, rootBlockIDs []string) {
 	preprocessedSource := string(source)
 
 	// special wiki spaces
 	preprocessedSource = strings.ReplaceAll(preprocessedSource, "<span> </span>", " ")
 
-	md := html2md.Convert(preprocessedSource)
+	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
+	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
+
+	strikethrough := htmlConverter.Rule{
+		Filter: []string{"span"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			// If the span element has not the classname `bb_strike` return nil.
+			// That way the next rules will apply. In this case the commonmark rules.
+			// -> return nil -> next rule applies
+			if !selec.HasClass("bb_strike") {
+				return nil
+			}
+
+			// Trim spaces so that the following does NOT happen: `~ and cake~`.
+			// Because of the space it is not recognized as strikethrough.
+			// -> trim spaces at begin&end of string when inside strong/italic/...
+			content = strings.TrimSpace(content)
+			return htmlConverter.String("~" + content + "~")
+		},
+	}
+
+	br := htmlConverter.Rule{
+		Filter: []string{"br"},
+		Replacement: func(content string, selec *goquery.Selection, opt *htmlConverter.Options) *string {
+			content = strings.TrimSpace(content)
+			return htmlConverter.String("\n" + content)
+		},
+	}
+
+	converter := htmlConverter.NewConverter("", true, &htmlConverter.Options{
+		DisableEscaping:  true,
+		AllowHeaderBreak: true,
+		EmDelimiter:      "*",
+	})
+	converter.AddRules(strikethrough, br)
+
+	md, _ := converter.ConvertString(preprocessedSource)
+
+	//md := html2md.Convert(preprocessedSource)
 	md = spaceReplace.WhitespaceNormalizeString(md)
+	//md = strings.ReplaceAll(md, "*  *", "* *")
 
-	reLinkBreaks := regexp.MustCompile(`\[[\s]*?([\s\S])[\s]*?\]\(([\s\S]*?)\)`)
-	md = reLinkBreaks.ReplaceAllString(md, `[$1]($2)`)
-
-	// Pattern: <a href> <div style=background-image:...>  </div> <a>
-	reEmptyLinkText := regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	md = reEmptyLinkText.ReplaceAllString(md, `[$1]($1)`)
 
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer)
+	bWriter := blocksUtil.NewRWriter(writer, "", []string{})
 
-	err := m.ConvertBlocks([]byte(md), BR)
+	err = m.ConvertBlocks([]byte(md), bWriter)
 	if err != nil {
-		return err, nil
+		return err, nil, nil
 	}
 
-	return nil, BR.GetBlocks()
+	return nil, bWriter.GetBlocks(), bWriter.GetRootBlockIDs()
 }
 
 func (m *markdown) Parser() parser.Parser {

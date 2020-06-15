@@ -1,107 +1,42 @@
 package anytype
 
 import (
-	"fmt"
-	"sync"
-	"time"
-
 	"github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-var (
-	saveTimeout = time.Second * 5
-)
-
-func NewAnytype(c *core.Anytype) Anytype {
-	return &anytype{c}
+func NewService(c core.Service) Service {
+	return &service{c}
 }
 
-type anytype struct {
-	*core.Anytype
+type service struct {
+	core.Service
 }
 
-func (a *anytype) GetBlock(id string) (Block, error) {
-	b, err := a.Anytype.GetBlock(id)
-	if err != nil {
-		return nil, err
+func SmartBlockTypeToProto(t core.SmartBlockType) pb.SmartBlockType {
+	switch t {
+	case core.SmartBlockTypePage:
+		return pb.SmartBlockType_Page
+	case core.SmartBlockTypeArchive:
+		return pb.SmartBlockType_Archive
+	case core.SmartBlockTypeHome:
+		return pb.SmartBlockType_Home
+	case core.SmartBlockTypeProfilePage:
+		return pb.SmartBlockType_ProfilePage
 	}
-	return a.newSmartBlock(b), nil
+	return 0
 }
 
-func (a *anytype) newSmartBlock(b core.Block) Block {
-	sb := &smartBlock{
-		Block:      b,
-		blocks:     make(chan []*model.Block, 10),
-		flushAndDo: make(chan func()),
-		stop:       make(chan struct{}),
-		buf:        make(map[string]*model.Block),
+func SmartBlockTypeToCore(t pb.SmartBlockType) core.SmartBlockType {
+	switch t {
+	case pb.SmartBlockType_Page:
+		return core.SmartBlockTypePage
+	case pb.SmartBlockType_Archive:
+		return core.SmartBlockTypeArchive
+	case pb.SmartBlockType_Home:
+		return core.SmartBlockTypeHome
+	case pb.SmartBlockType_ProfilePage:
+		return core.SmartBlockTypeProfilePage
 	}
-	go sb.saveLoop()
-	return sb
-}
-
-type smartBlock struct {
-	core.Block
-	blocks     chan []*model.Block
-	flushAndDo chan func()
-	stop       chan struct{}
-	buf        map[string]*model.Block
-	m          sync.Mutex
-}
-
-func (sb *smartBlock) AddVersions(vers []*model.Block) ([]core.BlockVersion, error) {
-	sb.blocks <- vers
-	return make([]core.BlockVersion, len(vers)), nil
-}
-
-func (sb *smartBlock) Flush() {
-	done := make(chan struct{})
-	sb.flushAndDo <- func() { close(done) }
-	<-done
-}
-
-func (sb *smartBlock) saveLoop() {
-	ticker := time.NewTicker(saveTimeout)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			sb.doFlush()
-		case f := <-sb.flushAndDo:
-			sb.doFlush()
-			f()
-		case blocks := <-sb.blocks:
-			for _, m := range blocks {
-				sb.buf[m.Id] = m
-			}
-		case <-sb.stop:
-			sb.doFlush()
-			close(sb.stop)
-			return
-		}
-	}
-}
-
-func (sb *smartBlock) doFlush() {
-	if len(sb.buf) == 0 {
-		return
-	}
-	blocksToSave := make([]*model.Block, 0, len(sb.buf))
-	for _, m := range sb.buf {
-		blocksToSave = append(blocksToSave, m)
-	}
-	if _, err := sb.Block.AddVersions(blocksToSave); err != nil {
-		fmt.Printf("middle: can't save versions to lib: %v\n", err)
-		return
-	}
-	fmt.Printf("middle: flush %d versions to lib\n", len(blocksToSave))
-	sb.buf = make(map[string]*model.Block)
-	return
-}
-
-func (sb *smartBlock) Close() error {
-	sb.stop <- struct{}{}
-	<-sb.stop
-	return nil
+	return 0
 }

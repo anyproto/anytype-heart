@@ -7,8 +7,9 @@
 2. `make setup` to install deps
 3. `make build-lib` to build C-archived(`lib.a + lib.h`) library into `dist` folder
 4. `make build-js` to build NodeJS Addon into `jsaddon/build`
-5. `npm install & npm build:ts` to compile proto files for TS/JS into `build/ts`
-6. `make install-dev-js` to copy the compiled NodeJS addon and protobuf binding into `../js-anytype`
+5. `make protos-deps` to copy proto files into `vendor`
+6. `npm install & npm run build:ts` to compile proto files for TS/JS into `build/ts`
+7. `make install-dev-js` to copy the compiled NodeJS addon and protobuf binding into `../js-anytype`
 
 #### Rebuild protobuf generated files
 This repo uses custom protoc located at [anytypeio/protobuf](https://github.com/anytypeio/protobuf/tree/master/protoc-gen-gogo). It adds `gomobile` plugin and some env-controlled options to control the generated code style.
@@ -26,6 +27,11 @@ make protos
 ```
 
 #### Run tests
+Generate mocks:
+```
+make test-deps
+```
+
 GO test:
 ```
 make test

@@ -103,19 +103,29 @@ func TestText_Split(t *testing.T) {
 		newBlock, err := b.Split(5)
 		require.NoError(t, err)
 		nb := newBlock.(*Text)
-		assert.Equal(t, "12345", b.content.Text)
-		assert.Equal(t, "67890", nb.content.Text)
+		assert.Equal(t, "12345", nb.content.Text)
+		assert.Equal(t, "67890", b.content.Text)
 		require.Len(t, b.content.Marks.Marks, 2)
 		require.Len(t, nb.content.Marks.Marks, 2)
-		assert.Equal(t, model.Range{0, 5}, *b.content.Marks.Marks[0].Range)
-		assert.Equal(t, model.Range{3, 4}, *b.content.Marks.Marks[1].Range)
 		assert.Equal(t, model.Range{0, 5}, *nb.content.Marks.Marks[0].Range)
-		assert.Equal(t, model.Range{1, 5}, *nb.content.Marks.Marks[1].Range)
+		assert.Equal(t, model.Range{3, 4}, *nb.content.Marks.Marks[1].Range)
+		assert.Equal(t, model.Range{0, 5}, *b.content.Marks.Marks[0].Range)
+		assert.Equal(t, model.Range{1, 5}, *b.content.Marks.Marks[1].Range)
 	})
 	t.Run("out of range", func(t *testing.T) {
 		b := testBlock()
-		_, err := b.Split(15)
+		_, err := b.Split(11)
 		require.Equal(t, ErrOutOfRange, err)
+	})
+	t.Run("start pos", func(t *testing.T) {
+		b := testBlock()
+		_, err := b.Split(0)
+		require.NoError(t, err)
+	})
+	t.Run("end pos", func(t *testing.T) {
+		b := testBlock()
+		_, err := b.Split(10)
+		require.NoError(t, err)
 	})
 }
 
@@ -220,4 +230,35 @@ func TestText_Merge(t *testing.T) {
 		assert.Equal(t, model.Range{From: 3, To: 4}, *b1.content.Marks.Marks[1].Range)
 		assert.Equal(t, model.Range{From: 13, To: 14}, *b1.content.Marks.Marks[2].Range)
 	})
+}
+
+func TestText_SetMarkForAllText(t *testing.T) {
+	b := NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "1234567890",
+			},
+		},
+	})
+	tb := b.(Block)
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Bold,
+	})
+	require.Len(t, tb.Model().GetText().Marks.Marks, 1)
+	assert.Equal(t, &model.BlockContentTextMark{
+		Type:  model.BlockContentTextMark_Bold,
+		Range: &model.Range{From: 0, To: 10},
+	}, tb.Model().GetText().Marks.Marks[0])
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Italic,
+	})
+	require.Len(t, tb.Model().GetText().Marks.Marks, 2)
+	assert.Equal(t, &model.BlockContentTextMark{
+		Type:  model.BlockContentTextMark_Italic,
+		Range: &model.Range{From: 0, To: 10},
+	}, tb.Model().GetText().Marks.Marks[1])
+	tb.SetMarkForAllText(&model.BlockContentTextMark{
+		Type: model.BlockContentTextMark_Bold,
+	})
+	assert.Len(t, tb.Model().GetText().Marks.Marks, 2)
 }
