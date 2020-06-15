@@ -8,7 +8,7 @@
 3. `make build-lib` to build C-archived(`lib.a + lib.h`) library into `dist` folder
 4. `make build-js` to build NodeJS Addon into `jsaddon/build`
 5. `make protos-deps` to copy proto files into `vendor`
-6. `npm install & npm run build:ts` to compile proto files for TS/JS into `build/ts`
+6. `npm install && npm run build:ts` to compile proto files for TS/JS into `build/ts`
 7. `make install-dev-js` to copy the compiled NodeJS addon and protobuf binding into `../js-anytype`
 
 #### Rebuild protobuf generated files
