@@ -64,7 +64,7 @@ func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	det := s.Details()
-	if det == nil {
+	if det == nil || det.Fields == nil {
 		det = &types.Struct{
 			Fields: make(map[string]*types.Value),
 		}
@@ -76,7 +76,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 
 func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	det := s.Details()
-	if det == nil {
+	if det == nil || det.Fields == nil {
 		det = &types.Struct{
 			Fields: make(map[string]*types.Value),
 		}
