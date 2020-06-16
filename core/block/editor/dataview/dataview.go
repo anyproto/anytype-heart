@@ -200,7 +200,7 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	return &view, d.Apply(s)
 }
 
-func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents() {
+func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *state.Context) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -215,11 +215,9 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents() {
 				continue
 			}
 
-			d.sendEvent(&pb.Event{
-				Messages:  msgs,
-				ContextId: d.SmartBlock.Id(),
-				Initiator: nil,
-			})
+			if len(msgs) > 0 {
+				ctx.AddMessages(d.SmartBlock.Id(), msgs)
+			}
 		}
 	}
 
@@ -240,7 +238,7 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 		return true
 	})
 
-	go d.fetchAllDataviewsRecordsAndSendEvents()
+	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 
 func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvBlock dataview.Block) ([]*pb.EventMessage, error) {
@@ -323,8 +321,8 @@ func getDefaultRelations(schema *jsonschema.Schema) []*model.BlockContentDatavie
 
 				relations = append(relations,
 					&model.BlockContentDataviewRelation{
-						Id:      v["id"].(string),
-						Visible: true,
+						Id:        v["id"].(string),
+						IsVisible: true,
 					})
 			}
 		}
