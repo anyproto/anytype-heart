@@ -212,7 +212,7 @@ message Block {
 
             message Relation {
                 string id = 1;
-                bool visible = 2;
+                bool isVisible = 2;
             }
 
             message Sort {
