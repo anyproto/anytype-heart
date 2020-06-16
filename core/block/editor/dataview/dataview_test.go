@@ -28,12 +28,12 @@ func Test_getDefaultRelations(t *testing.T) {
 	require.Len(t, relations, 3)
 
 	require.Equal(t, relations[0].Id, "name")
-	require.Equal(t, relations[0].Visible, true)
+	require.Equal(t, relations[0].IsVisible, true)
 	require.Equal(t, relations[1].Id, "isArchived")
-	require.Equal(t, relations[1].Visible, true)
+	require.Equal(t, relations[1].IsVisible, true)
 
 	require.Equal(t, relations[2].Id, "lastOpened")
-	require.Equal(t, relations[1].Visible, true)
+	require.Equal(t, relations[1].IsVisible, true)
 }
 
 func Test_calculateEntriesDiff(t *testing.T) {
