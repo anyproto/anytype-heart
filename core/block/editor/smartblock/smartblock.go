@@ -34,8 +34,8 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New() SmartBlock {
-	return &smartBlock{}
+func New(ms meta.Service) SmartBlock {
+	return &smartBlock{meta: ms}
 }
 
 type SmartBlock interface {
@@ -66,6 +66,7 @@ type smartBlock struct {
 	sendEvent        func(e *pb.Event)
 	hist             history.History
 	source           source.Source
+	meta             meta.Service
 	metaSub          meta.Subscriber
 	metaFetchResults chan meta.Meta
 	metaFetchMu      sync.Mutex
@@ -134,7 +135,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
-	sb.metaSub = sb.source.Meta().PubSub().NewSubscriber()
+	sb.metaSub = sb.meta.PubSub().NewSubscriber()
 	sb.depIds = sb.dependentSmartIds()
 	sb.metaSub.Callback(sb.onMetaChange).Subscribe(sb.depIds...)
 	sb.metaFetchMu.Unlock()
@@ -153,7 +154,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 			}
 		}
 	}()
-	sb.source.Meta().ReportChange(meta.Meta{
+	sb.meta.ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
 		SmartBlockMeta: *sb.Meta(),
 	})
@@ -255,7 +256,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 	if act.Details != nil {
-		sb.source.Meta().ReportChange(meta.Meta{
+		sb.meta.ReportChange(meta.Meta{
 			BlockId:        sb.Id(),
 			SmartBlockMeta: *sb.Meta(),
 		})

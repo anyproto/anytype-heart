@@ -7,19 +7,20 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
-func NewProfile(source file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
-	sb := smartblock.New()
+func NewProfile(m meta.Service, fileSource file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
+	sb := smartblock.New(m)
 	return &Profile{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
 		Text:       stext.NewText(sb),
-		File:       file.NewFile(sb, source),
+		File:       file.NewFile(sb, fileSource),
 		Clipboard:  clipboard.NewClipboard(sb),
 		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
 		sendEvent:  sendEvent,

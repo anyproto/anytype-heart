@@ -4,14 +4,15 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 )
 
 var log = logging.Logger("anytype-mw-editor")
 
-func NewBreadcrumbs() *Breadcrumbs {
+func NewBreadcrumbs(m meta.Service) *Breadcrumbs {
 	return &Breadcrumbs{
-		SmartBlock: smartblock.New(),
+		SmartBlock: smartblock.New(m),
 	}
 }
 

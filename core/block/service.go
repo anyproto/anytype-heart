@@ -217,8 +217,8 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	bs := editor.NewBreadcrumbs()
-	if err = bs.Init(source.NewVirtual(s.anytype, s.meta, pb.SmartBlockType_Breadcrumbs), true); err != nil {
+	bs := editor.NewBreadcrumbs(s.meta)
+	if err = bs.Init(source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs), true); err != nil {
 		return
 	}
 	bs.Lock()
@@ -836,19 +836,19 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, s.meta, id)
+	sc, err := source.NewSource(s.anytype, id)
 	if err != nil {
 		return
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s, s, s, s.linkPreview)
+		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
 	case pb.SmartBlockType_Home:
-		sb = editor.NewDashboard(s)
+		sb = editor.NewDashboard(s.meta, s)
 	case pb.SmartBlockType_Archive:
-		sb = editor.NewArchive(s)
+		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
-		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -856,7 +856,6 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	if err = sb.Init(sc, initEmpty); err != nil {
 		return
 	}
-
 	return
 }
 

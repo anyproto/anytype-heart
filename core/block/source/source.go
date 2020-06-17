@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -19,14 +18,13 @@ var log = logging.Logger("anytype-mw-source")
 type Source interface {
 	Id() string
 	Anytype() anytype.Service
-	Meta() meta.Service
 	Type() pb.SmartBlockType
 	ReadDoc() (doc state.Doc, err error)
 	PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error)
 	Close() (err error)
 }
 
-func NewSource(a anytype.Service, m meta.Service, id string) (s Source, err error) {
+func NewSource(a anytype.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock(%v) error: %v", id, err)
@@ -36,7 +34,6 @@ func NewSource(a anytype.Service, m meta.Service, id string) (s Source, err erro
 		id:    id,
 		a:     a,
 		sb:    sb,
-		meta:  m,
 		logId: a.Device(),
 	}
 	return
@@ -46,7 +43,6 @@ type source struct {
 	id, logId      string
 	a              anytype.Service
 	sb             core.SmartBlock
-	meta           meta.Service
 	tree           *change.Tree
 	lastSnapshotId string
 	logHeads       map[string]string
@@ -58,10 +54,6 @@ func (s *source) Id() string {
 
 func (s *source) Anytype() anytype.Service {
 	return s.a
-}
-
-func (s *source) Meta() meta.Service {
-	return s.meta
 }
 
 func (s *source) Type() pb.SmartBlockType {
