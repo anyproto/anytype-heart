@@ -20,7 +20,7 @@ require (
 	github.com/yuin/goldmark v1.1.30
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.3
-	google.golang.org/grpc v1.29.0
+	google.golang.org/grpc v1.29.1
 )
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200604073925-3e04de035205
