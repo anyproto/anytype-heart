@@ -1,12 +1,16 @@
-package anymark_test
+package anymark
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/anymark"
-	"github.com/stretchr/testify/assert"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -15,7 +19,26 @@ var (
 )
 
 type TestCase struct {
-	HTML string `json:"html"`
+	Blocks []map[string]interface{} `json:"blocks"`
+	HTML   string                   `json:"html"`
+	Desc   string                   `json:"desc"`
+}
+
+func replaceFakeIds(blocks []*model.Block) {
+	var m = make(map[string]string, len(blocks))
+
+	for i, block := range blocks {
+		newId := fmt.Sprintf("%d", i+1)
+		m[block.Id] = newId
+		block.Id = newId
+	}
+
+	for _, block := range blocks {
+		for j := range block.ChildrenIds {
+			block.ChildrenIds[j] = m[block.ChildrenIds[j]]
+		}
+	}
+
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
@@ -28,13 +51,33 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 		panic(err)
 	}
 
-	for testNum, _ := range testCases {
+	var dumpTests = os.Getenv("DUMP_TESTS") == "1"
+	var dumpPath string
+	if dumpTests {
+		dumpPath = filepath.Join("_test", "html")
+		os.MkdirAll(dumpPath, 0700)
+	}
 
-		mdToBlocksConverter := anymark.New()
-		_, blocks := mdToBlocksConverter.HTMLToBlocks([]byte(testCases[testNum].HTML))
+	for _, testCase := range testCases {
+		t.Run(testCase.Desc, func(t *testing.T) {
+			mdToBlocksConverter := New()
+			_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(testCase.HTML))
+			replaceFakeIds(blocks)
 
-		for _, b := range blocks {
-			assert.NotEmpty(t, b)
-		}
+			actualJson, err := json.Marshal(blocks)
+			require.NoError(t, err)
+
+			var actual []map[string]interface{}
+			err = json.Unmarshal(actualJson, &actual)
+			if dumpTests {
+				ioutil.WriteFile(filepath.Join(dumpPath, filepath.Clean(testCase.Desc)+".html"), []byte(testCase.HTML), 0644)
+			}
+			require.NoError(t, err)
+
+			if !reflect.DeepEqual(testCase.Blocks, actual) {
+				fmt.Println("expected:\n", string(actualJson))
+				require.Equal(t, testCase.Blocks, actual)
+			}
+		})
 	}
 }

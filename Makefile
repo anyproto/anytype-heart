@@ -118,8 +118,8 @@ run-debug: build-debug
 
 build-dev-js: setup protos-deps build-lib build-js protos-ts
 	cp -r jsaddon/build ../js-anytype/
-	cp build/ts/commands.js ../js-anytype/src/proto/commands.js
+	cp build/ts/commands.js ../js-anytype/dist/commands.js
 
 install-dev-js:
 	cp -r jsaddon/build ../js-anytype/
-	cp build/ts/commands.js ../js-anytype/src/proto/commands.js
+	cp build/ts/commands.js ../js-anytype/dist/commands.js

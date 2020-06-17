@@ -1,4 +1,4 @@
-package anymark_test
+package anymark
 
 import (
 	"bufio"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 
-	. "github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer/html"
 )
 
@@ -22,7 +21,7 @@ func TestConvertBlocks(t *testing.T) {
 	var b bytes.Buffer
 
 	writer := bufio.NewWriter(&b)
-	BR := blocksUtil.NewRWriter(writer, []string{})
+	BR := blocksUtil.NewRWriter(writer, "", []string{})
 
 	err := markdown.ConvertBlocks(source, BR)
 	if err != nil {

@@ -4,15 +4,13 @@ import (
 	"archive/zip"
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -21,13 +19,20 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
 var (
-	linkRegexp   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	linkRegexp                   = regexp.MustCompile(`\[([\s\S]*?)\]\((.*?)\)`)
+	filenameCleanRegexp          = regexp.MustCompile(`[^\w_\s]+`)
+	filenameDuplicateSpaceRegexp = regexp.MustCompile(`\s+`)
+	emojiAproxRegexp             = regexp.MustCompile(`[\x{2194}-\x{329F}\x{1F000}-\x{1FADF}]`)
+
 	log          = logging.Logger("anytype-import")
 	articleIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔", "📒", "📝", "📄", "📑"}
+	dbIcons      = []string{"🗃", "🗂"}
 )
 
 type Import interface {
@@ -43,70 +48,133 @@ type importImpl struct {
 	ctrl Services
 }
 
+type fileInfo struct {
+	os.FileInfo
+	io.ReadCloser
+	hasInboundLinks bool
+	pageID          string
+	isRootFile      bool
+	title           string
+	parsedBlocks    []*model.Block
+}
+
 type Services interface {
 	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
+	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 }
 
 func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
 	s := imp.NewStateCtx(ctx)
 	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
 
-	files := make(map[string][]byte)
-	isPageLinked := make(map[string]bool)
-	nameToBlocks := make(map[string][]*model.Block)
-	nameToBlocksAfterCsv := make(map[string][][]*model.Block)
-
-	nameToBlocks, isPageLinked, files, err = imp.DirWithMarkdownToBlocks(req.ImportPath)
+	files, close, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
+	defer func() {
+		if close != nil {
+			_ = close()
+		}
+	}()
 
 	filesCount := len(files)
 	log.Debug("FILES COUNT:", filesCount)
-	nameToId := make(map[string]string)
 
-	for name := range nameToBlocks {
-		fileName := strings.Replace(filepath.Base(name), ".md", "", -1)
+	var pagesCreated int
 
-		if len(nameToBlocks[name]) > 0 && nameToBlocks[name][0].GetText() != nil &&
-			nameToBlocks[name][0].GetText().Text == fileName {
-			nameToBlocks[name] = nameToBlocks[name][1:]
+	for name, file := range files {
+		// index links in the root csv file
+		if !file.isRootFile || !strings.EqualFold(filepath.Ext(name), ".csv") {
+			continue
 		}
 
-		//untitled
-		if len(name) >= 8 &&
-			strings.ToLower(name)[:8] == "untitled" &&
-			len(nameToBlocks[name]) > 0 &&
-			nameToBlocks[name][0].GetText() != nil &&
-			len(nameToBlocks[name][0].GetText().Text) > 0 {
+		ext := filepath.Ext(name)
+		csvDir := strings.TrimSuffix(name, ext)
 
-			if strings.Contains(name, ".") {
-				fileName = strings.Split(name, ".")[0]
-			} else {
-				fileName = nameToBlocks[name][0].GetText().Text
+		for targetName, targetFile := range files {
+			fileExt := filepath.Ext(targetName)
+			if filepath.Dir(targetName) == csvDir && strings.EqualFold(fileExt, ".md") {
+				targetFile.hasInboundLinks = true
+			}
+		}
+	}
+
+	for name, file := range files {
+		if !strings.EqualFold(filepath.Ext(name), ".md") {
+			continue
+		}
+
+		if !file.isRootFile && !file.hasInboundLinks {
+			log.Errorf("skip non-root md files without inbound links %s", name)
+			continue
+		}
+
+		pageID, err := imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{})
+		if err != nil {
+			log.Errorf("failed to create smartblock: %s", err.Error())
+			continue
+		}
+		file.pageID = pageID
+		pagesCreated++
+	}
+
+	log.Debug("pages created:", pagesCreated)
+
+	for name, file := range files {
+		var title string
+		var emoji string
+
+		if file.pageID == "" {
+			// file is not a page
+			continue
+		}
+
+		if len(file.parsedBlocks) > 0 {
+			if text := file.parsedBlocks[0].GetText(); text != nil && text.Style == model.BlockContentText_Header1 {
+				title = text.Text
+				titleParts := strings.SplitN(title, " ", 2)
+
+				// only select the first rune to see if it looks like emoji
+				if len(titleParts) == 2 && emojiAproxRegexp.MatchString(string([]rune(titleParts[0])[0:1])) {
+					// first symbol is emoji - just use it all before the space
+					emoji = titleParts[0]
+					title = titleParts[1]
+				}
+				// remove title block
+				file.parsedBlocks = file.parsedBlocks[1:]
 			}
 		}
 
-		fArr := strings.Split(fileName, " ")
-		fileName = strings.Join(fArr[:len(fArr)-1], " ")
+		if emoji == "" {
+			emoji = slice.GetRandomString(articleIcons, name)
+		}
+
+		if title == "" {
+			title := strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
+			titleParts := strings.Split(title, " ")
+			title = strings.Join(titleParts[:len(titleParts)-1], " ")
+		}
 
 		// FIELD-BLOCK
 		fields := map[string]*types.Value{
-			"name":      pbtypes.String(fileName),
-			"iconEmoji": pbtypes.String(slice.GetRandomString(articleIcons, fileName)),
+			"name":      pbtypes.String(title),
+			"iconEmoji": pbtypes.String(emoji),
 		}
 
-		if t := nameToBlocks[name][0].GetText(); t != nil && t.Text == fileName {
-			nameToBlocks[name] = nameToBlocks[name][1:]
+		file.title = title
+
+		var details = []*pb.RpcBlockSetDetailsDetail{}
+
+		for name, val := range fields {
+			details = append(details, &pb.RpcBlockSetDetailsDetail{
+				Key:   name,
+				Value: val,
+			})
 		}
 
-		if len(nameToBlocks[name]) > 0 {
-			nameToBlocks[name], fields, isPageLinked = imp.processFieldBlockIfItIs(nameToBlocks[name], fields, isPageLinked, files, nameToId)
-		}
-
-		nameToId[name], err = imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{
-			Details: &types.Struct{
-				Fields: fields,
-			},
+		err = imp.ctrl.SetDetails(pb.RpcBlockSetDetailsRequest{
+			ContextId: file.pageID,
+			Details:   details,
 		})
 
 		if err != nil {
@@ -115,84 +183,176 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	}
 
 	log.Debug("1. ImportMarkdown: all smartBlocks created")
+	log.Debug("1. ImportMarkdown: all smartBlocks created")
+	for _, file := range files {
+		if file.pageID == "" {
+			// file is not a page
+			continue
+		}
 
-	for name := range nameToBlocks {
-		for i := range nameToBlocks[name] {
-			if link := nameToBlocks[name][i].GetLink(); link != nil && len(nameToId[name]) > 0 {
+		file.parsedBlocks = imp.processFieldBlockIfItIs(file.parsedBlocks, files)
+
+		for _, block := range file.parsedBlocks {
+			if link := block.GetLink(); link != nil {
 				target, err := url.PathUnescape(link.TargetBlockId)
 				if err != nil {
 					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, link.TargetBlockId)
 					target = link.TargetBlockId
 				}
 
-				link.TargetBlockId = nameToId[target]
+				if files[target] != nil {
+					link.TargetBlockId = files[target].pageID
+					files[target].hasInboundLinks = true
+				}
+
+			} else if text := block.GetText(); text != nil && text.Marks != nil && len(text.Marks.Marks) > 0 {
+				for _, mark := range text.Marks.Marks {
+					if mark.Type != model.BlockContentTextMark_Mention {
+						continue
+					}
+
+					if targetFile, exists := files[mark.Param]; exists {
+						mark.Param = targetFile.pageID
+					}
+				}
 			}
 		}
 	}
 
-	for name := range nameToBlocks {
-		for i, b := range nameToBlocks[name] {
-			nameToBlocksAfterCsv[name] = append(nameToBlocksAfterCsv[name], []*model.Block{nameToBlocks[name][i]})
+	for name, file := range files {
+		// wrap root-level csv files with page
+		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
+			pageID, err := imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{})
+			if err != nil {
+				log.Errorf("failed to create smartblock: %s", err.Error())
+				continue
+			}
 
-			if f := b.GetFile(); f != nil && filepath.Ext(f.Name) == ".csv" {
-				csvName := strings.Replace(f.Name, req.ImportPath+"/", "", -1)
-				nameToBlocksAfterCsv[name][i], isPageLinked = imp.convertCsvToLinks(files[csvName], b, isPageLinked, nameToId, files)
+			fields := map[string]*types.Value{
+				"name":      pbtypes.String(imp.shortPathToName(name)),
+				"iconEmoji": pbtypes.String(slice.GetRandomString(dbIcons, name)),
+			}
+
+			var details = []*pb.RpcBlockSetDetailsDetail{}
+
+			for name, val := range fields {
+				details = append(details, &pb.RpcBlockSetDetailsDetail{
+					Key:   name,
+					Value: val,
+				})
+			}
+
+			err = imp.ctrl.SetDetails(pb.RpcBlockSetDetailsRequest{
+				ContextId: pageID,
+				Details:   details,
+			})
+
+			file.pageID = pageID
+			file.parsedBlocks = imp.convertCsvToLinks(name, files)
+		}
+
+		if file.pageID == "" {
+			// file is not a page
+			continue
+		}
+
+		var blocks = make([]*model.Block, 0, len(file.parsedBlocks))
+		for i, b := range file.parsedBlocks {
+			if f := b.GetFile(); f != nil && strings.EqualFold(filepath.Ext(f.Name), ".csv") {
+				if csvFile, exists := files[f.Name]; exists {
+					csvFile.hasInboundLinks = true
+				} else {
+					continue
+				}
+
+				csvInlineBlocks := imp.convertCsvToLinks(f.Name, files)
+				blocks = append(blocks, csvInlineBlocks...)
+			} else {
+				blocks = append(blocks, file.parsedBlocks[i])
 			}
 		}
-	}
 
-	for name := range nameToBlocksAfterCsv {
-		nameToBlocks[name] = []*model.Block{}
-		for i := range nameToBlocksAfterCsv[name] {
-			for j := range nameToBlocksAfterCsv[name][i] {
-				nameToBlocks[name] = append(nameToBlocks[name], nameToBlocksAfterCsv[name][i][j])
-			}
-		}
+		file.parsedBlocks = blocks
 	}
 
 	log.Debug("2. ImportMarkdown: start to paste blocks")
-	for name := range nameToBlocks {
-		if len(nameToBlocks[name]) > 0 {
-			log.Debug("   >>> start to paste to page:", name)
-			err = imp.ctrl.SimplePaste(nameToId[name], nameToBlocks[name])
+	for name, file := range files {
+		if file.pageID == "" {
+			// file is not a page
+			continue
 		}
 
+		log.Debug("   >>> start to paste to page:", name, file.pageID)
+		if file.parsedBlocks == nil {
+			log.Errorf("parsedBlocks is nil")
+		}
+		err = imp.ctrl.SimplePaste(file.pageID, file.parsedBlocks)
 		if err != nil {
 			return rootLinks, err
 		}
 	}
 
-	log.Debug("3. ImportMarkdown: all blocks pasted. Start to convert rootLinks")
-	for name := range nameToBlocks {
-		log.Debug("   >>> current page:", name, "    |   linked: ", isPageLinked[name])
+	log.Debug("3. ImportMarkdown: all blocks pasted. Start to upload files & fetch bookmarks")
+	for name, file := range files {
+		log.Debug("   >>> current page:", name, "    |   linked: ", file.hasInboundLinks)
+		if file.pageID == "" {
+			continue
+		}
 
-		for _, b := range nameToBlocks[name] {
-			if f := b.GetFile(); f != nil {
-
+		for _, b := range file.parsedBlocks {
+			if bm := b.GetBookmark(); bm != nil {
+				err = imp.ctrl.BookmarkFetch(ctx, pb.RpcBlockBookmarkFetchRequest{
+					ContextId: file.pageID,
+					BlockId:   b.Id,
+					Url:       bm.Url,
+				})
+				if err != nil {
+					log.Errorf("failed to fetch bookmark %s: %s", bm.Url, err.Error())
+				}
+			} else if f := b.GetFile(); f != nil {
 				filesCount = filesCount - 1
 				log.Debug("          page:", name, " | start to upload file :", f.Name)
 
-				FN := strings.Split(f.Name, "/")
-				tmpFile, err := os.Create(filepath.Join(os.TempDir(), FN[len(FN)-1]))
-				fName := strings.ReplaceAll(f.Name, req.ImportPath+"/", "")
-				w := bufio.NewWriter(tmpFile)
-
-				for fn := range files {
-					if strings.Contains(fn, fName) {
-						fName = fn
+				if strings.HasPrefix(f.Name, "http://") || strings.HasPrefix(f.Name, "https://") {
+					err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
+						ContextId: file.pageID,
+						BlockId:   b.Id,
+						Url:       f.Name,
+					})
+					if err != nil {
+						return rootLinks, fmt.Errorf("can not import this file from URL: %s. error: %s", f.Name, err)
 					}
+					continue
 				}
 
-				if _, err = w.Write(files[fName]); err != nil {
-					log.Warn("Failed to write to temporary file:", err)
+				baseName := filepath.Base(f.Name)
+				tmpFile, err := os.Create(filepath.Join(os.TempDir(), baseName))
+
+				shortPath := f.Name
+
+				w := bufio.NewWriter(tmpFile)
+				targetFile, found := files[shortPath]
+				if !found {
+					log.Errorf("file %s not found", shortPath)
+					continue
+				}
+
+				_, err = w.ReadFrom(targetFile.ReadCloser)
+				if err != nil {
+					log.Errorf("failed to read file %s: %s", shortPath, err.Error())
+					continue
 				}
 
 				if err := w.Flush(); err != nil {
-					log.Fatal(err)
+					log.Errorf("failed to flush file %s: %s", shortPath, err.Error())
+					continue
 				}
 
+				targetFile.Close()
+				tmpFile.Close()
+
 				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
-					ContextId: nameToId[name],
+					ContextId: file.pageID,
 					BlockId:   b.Id,
 					FilePath:  tmpFile.Name(),
 					Url:       "",
@@ -205,21 +365,27 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				os.Remove(tmpFile.Name())
 			}
 		}
-
 	}
 
-	for name := range nameToBlocks {
-		if !isPageLinked[name] {
-			rootLinks = append(rootLinks, &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: nameToId[name],
-						Style:         model.BlockContentLink_Page,
-						Fields:        nil,
-					},
-				},
-			})
+	for _, file := range files {
+		if file.pageID == "" {
+			// not a page
+			continue
 		}
+
+		if file.hasInboundLinks {
+			continue
+		}
+
+		rootLinks = append(rootLinks, &model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: file.pageID,
+					Style:         model.BlockContentLink_Page,
+					Fields:        nil,
+				},
+			},
+		})
 	}
 
 	log.Debug("4. ImportMarkdown: everything done")
@@ -227,71 +393,69 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	return rootLinks, imp.Apply(s)
 }
 
-func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBlock map[string][]*model.Block, isPageLinked map[string]bool, files map[string][]byte, err error) {
-	log.Debug("1. DirWithMarkdownToBlocks: directory %s", directoryPath)
+func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[string]*fileInfo, fileClose func() error, err error) {
+	log.Debug("1. DirWithMarkdownToBlocks: directory %s", importPath)
 
 	anymarkConv := anymark.New()
 
-	files = make(map[string][]byte)
-	isPageLinked = make(map[string]bool)
-	nameToBlocks := make(map[string][]*model.Block)
+	files = make(map[string]*fileInfo)
+	fileClose = func() error {
+		return nil
+	}
 	allFileShortPaths := []string{}
 
-	if filepath.Ext(directoryPath) == ".zip" {
-		r, err := zip.OpenReader(directoryPath)
-		defer r.Close()
-
+	ext := filepath.Ext(importPath)
+	if strings.EqualFold(ext, ".zip") {
+		r, err := zip.OpenReader(importPath)
 		if err != nil {
-			return nameToBlocks, isPageLinked, files, fmt.Errorf("can not read zip while import: %s", err)
+			return files, fileClose, fmt.Errorf("can not read zip while import: %s", err)
 		}
+		fileClose = r.Close
 
+		zipName := strings.TrimSuffix(importPath, ext)
 		for _, f := range r.File {
-			elements := strings.Split(f.Name, "/")
-			if len(elements) > 0 &&
-				len(elements[0]) > 2 &&
-				elements[0][:2] == "__" {
-				elements = elements[1:]
-			}
-
-			if len(elements) > 0 &&
-				len(elements[len(elements)-1]) > 2 &&
-				elements[len(elements)-1][:2] == "._" {
-
+			if strings.HasPrefix(f.Name, "__MACOSX/") {
 				continue
-
 			}
-
-			shortPath := strings.Join(elements, "/")
+			shortPath := filepath.Clean(f.Name)
+			// remove zip root folder if exists
+			shortPath = strings.TrimPrefix(shortPath, zipName+"/")
 
 			allFileShortPaths = append(allFileShortPaths, shortPath)
+
 			rc, err := f.Open()
-
-			files[shortPath], err = ioutil.ReadAll(rc)
-			rc.Close()
-
 			if err != nil {
-				return nameToBlock, isPageLinked, files, fmt.Errorf("ERR while read file from zip while import: %s", err)
+				return files, fileClose, fmt.Errorf("failed to open file from zip while import: %s", err)
 			}
 
+			files[shortPath] = &fileInfo{
+				FileInfo:   f.FileInfo(),
+				ReadCloser: rc,
+			}
 		}
 
 	} else {
-		err = filepath.Walk(directoryPath,
+		err = filepath.Walk(importPath,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
 
 				if !info.IsDir() {
-					shortPath := strings.Replace(path, directoryPath+"/", "", -1)
+					shortPath, err := filepath.Rel(importPath+"/", path)
+					if err != nil {
+						return fmt.Errorf("failed to get relative path: %s", err.Error())
+					}
+
 					allFileShortPaths = append(allFileShortPaths, shortPath)
-					dat, err := ioutil.ReadFile(path)
+					f, err := os.Open(path)
 					if err != nil {
 						return err
 					}
 
-					if len(shortPath) > 0 {
-						files[shortPath] = dat
+					files[shortPath] = &fileInfo{
+						FileInfo:   info,
+						ReadCloser: f,
 					}
 				}
 
@@ -299,274 +463,323 @@ func (imp *importImpl) DirWithMarkdownToBlocks(directoryPath string) (nameToBloc
 			},
 		)
 		if err != nil {
-			return nameToBlocks, isPageLinked, files, err
+			return files, fileClose, err
 		}
 	}
 
 	log.Debug("1. DirWithMarkdownToBlocks: Get allFileShortPaths:", allFileShortPaths)
-	isFileExist := make(map[string]bool)
 
-	for shortPath := range files {
+	for shortPath, file := range files {
 		log.Debug("   >>> Current file:", shortPath)
-		if filepath.Ext(shortPath) == ".md" {
-			nameToBlocks[shortPath], err = anymarkConv.MarkdownToBlocks(files[shortPath], allFileShortPaths)
-		} else {
-			isFileExist[shortPath] = true
+		if filepath.Base(shortPath) == shortPath {
+			file.isRootFile = true
 		}
-	}
 
+		if filepath.Ext(shortPath) == ".md" {
+			b, err := ioutil.ReadAll(file)
+			if err != nil {
+				log.Errorf("failed to read file %s: %s", shortPath, err.Error())
+				continue
+			}
+
+			file.parsedBlocks, _, err = anymarkConv.MarkdownToBlocks(b, filepath.Dir(shortPath), allFileShortPaths)
+			if err != nil {
+				log.Errorf("failed to read blocks %s: %s", shortPath, err.Error())
+			}
+			// md file no longer needed
+			file.Close()
+
+			for i, block := range file.parsedBlocks {
+				log.Debug("      Block:", i)
+				//file.parsedBlocks[i].Id = bson.NewObjectId().Hex()
+
+				txt := block.GetText()
+				if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
+					txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
+
+					link := txt.Marks.Marks[0].Param
+
+					var wholeLineLink bool
+					textRunes := []rune(txt.Text)
+
+					if (txt.Marks.Marks[0].Range.From == 0 || strings.TrimSpace(string(textRunes[0:txt.Marks.Marks[0].Range.From])) == "") &&
+						(int(txt.Marks.Marks[0].Range.To) >= (len(textRunes)-1) || strings.TrimSpace(string(textRunes[txt.Marks.Marks[0].Range.To:])) == "") {
+						wholeLineLink = true
+					}
+
+					ext := filepath.Ext(link)
+
+					// todo: bug with multiple markup links in arow when the first is external
+					if file := files[link]; file != nil {
+						if strings.EqualFold(ext, ".md") {
+							// only convert if this is the only link in the row
+							if wholeLineLink {
+								imp.convertTextToPageLink(block)
+							} else {
+								imp.convertTextToPageMention(block)
+							}
+						} else {
+							imp.convertTextToFile(block)
+						}
+
+						if strings.EqualFold(ext, ".csv") {
+							csvDir := strings.TrimSuffix(link, ext)
+							for name, file := range files {
+								// set hasInboundLinks for all CSV-origin md files
+								fileExt := filepath.Ext(name)
+								if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
+									file.hasInboundLinks = true
+								}
+							}
+						}
+						file.hasInboundLinks = true
+					} else if wholeLineLink {
+						imp.convertTextToBookmark(block)
+					} else {
+						log.Debugf("")
+					}
+
+					/*if block.GetFile() != nil {
+						fileName, err := url.PathUnescape(block.GetFile().Name)
+						if err != nil {
+							log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetFile().Name)
+							fileName = txt.Marks.Marks[0].Param
+						}
+						if !strings.HasPrefix(fileName, "http://") && !strings.HasPrefix(fileName, "https://") {
+							// not a URL
+							fileName = importPath + "/" + fileName
+						}
+
+						block.GetFile().Name = fileName
+						block.GetFile().Type = model.BlockContentFile_Image
+					}*/
+				}
+			}
+
+			ext := filepath.Ext(shortPath)
+			dependentFilesDir := strings.TrimSuffix(shortPath, ext)
+			var hasUnlinkedDependentMDFiles bool
+			for targetName, targetFile := range files {
+				fileExt := filepath.Ext(targetName)
+				if filepath.Dir(targetName) == dependentFilesDir && strings.EqualFold(fileExt, ".md") {
+					if !targetFile.hasInboundLinks {
+						if !hasUnlinkedDependentMDFiles {
+							// add Unsorted header
+							file.parsedBlocks = append(file.parsedBlocks, &model.Block{
+								Id: bson.NewObjectId().Hex(),
+								Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+									Text:  "Unsorted",
+									Style: model.BlockContentText_Header3,
+								}},
+							})
+							hasUnlinkedDependentMDFiles = true
+						}
+
+						file.parsedBlocks = append(file.parsedBlocks, &model.Block{
+							Id: bson.NewObjectId().Hex(),
+							Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+								TargetBlockId: targetName,
+								Style:         model.BlockContentLink_Page,
+							}},
+						})
+
+						targetFile.hasInboundLinks = true
+					}
+				}
+			}
+		}
+
+	}
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
 
-	isPageLinked = make(map[string]bool)
-	for name, j := range nameToBlocks {
-		log.Debug("   >>> Page:", name, " Number: ", j)
-		for i, block := range nameToBlocks[name] {
-			log.Debug("      Block:", i)
-			nameToBlocks[name][i].Id = bson.NewObjectId().Hex()
-
-			txt := block.GetText()
-			if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
-				txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
-
-				linkConverted, err := url.PathUnescape(txt.Marks.Marks[0].Param)
-				if err != nil {
-					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, txt.Marks.Marks[0].Param)
-					linkConverted = txt.Marks.Marks[0].Param
-				}
-
-				if nameToBlocks[linkConverted] != nil {
-					nameToBlocks[name][i], isPageLinked = imp.convertTextToPageLink(block, isPageLinked)
-				}
-
-				if isFileExist[linkConverted] {
-					nameToBlocks[name][i] = imp.convertTextToFile(block, directoryPath)
-				}
-			}
-
-			if block.GetFile() != nil {
-
-				fileName, err := url.PathUnescape(block.GetFile().Name)
-				if err != nil {
-					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetFile().Name)
-					fileName = txt.Marks.Marks[0].Param
-				}
-
-				fileName = directoryPath + "/" + fileName
-
-				block.GetFile().Name = fileName
-				block.GetFile().Type = model.BlockContentFile_Image
-			}
-		}
-	}
-
-	log.Debug("3. DirWithMarkdownToBlocks: convertTextToPageLink, convertTextToFile completed")
-
-	return nameToBlocks, isPageLinked, files, err
+	return files, fileClose, err
 }
 
-func (imp *importImpl) convertTextToPageLink(block *model.Block, isPageLinked map[string]bool) (*model.Block, map[string]bool) {
-	targetId, err := url.PathUnescape(block.GetText().Marks.Marks[0].Param)
-	if err != nil {
-		log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetText().Marks.Marks[0].Param)
-		targetId = block.GetText().Marks.Marks[0].Param
-	}
-
-	blockOut := &model.Block{
-		Content: &model.BlockContentOfLink{
-			Link: &model.BlockContentLink{
-				TargetBlockId: targetId,
-				Style:         model.BlockContentLink_Page,
-			},
+func (imp *importImpl) convertTextToPageLink(block *model.Block) {
+	block.Content = &model.BlockContentOfLink{
+		Link: &model.BlockContentLink{
+			TargetBlockId: block.GetText().Marks.Marks[0].Param,
+			Style:         model.BlockContentLink_Page,
 		},
 	}
-
-	isPageLinked[targetId] = true
-	return blockOut, isPageLinked
 }
 
-func (imp *importImpl) convertTextToFile(block *model.Block, importPath string) *model.Block {
-	fName, err := url.PathUnescape(block.GetText().Marks.Marks[0].Param)
-	if err != nil {
-		log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, block.GetText().Marks.Marks[0].Param)
-		fName = block.GetText().Marks.Marks[0].Param
+func (imp *importImpl) convertTextToBookmark(block *model.Block) {
+	if _, err := url.Parse(block.GetText().Marks.Marks[0].Param); err != nil {
+		return
 	}
 
-	fName = importPath + "/" + fName
+	block.Content = &model.BlockContentOfBookmark{
+		Bookmark: &model.BlockContentBookmark{
+			Url: block.GetText().Marks.Marks[0].Param,
+		},
+	}
+}
 
+func (imp *importImpl) convertTextToPageMention(block *model.Block) {
+	for _, mark := range block.GetText().Marks.Marks {
+		if mark.Type != model.BlockContentTextMark_Link {
+			continue
+		}
+
+		mark.Param = mark.Param
+		mark.Type = model.BlockContentTextMark_Mention
+	}
+}
+
+func (imp *importImpl) convertTextToFile(block *model.Block) {
 	// "svg" excluded
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
 	videoFormats := []string{"mp4", "m4v"}
 
 	fileType := model.BlockContentFile_File
 	for _, ext := range imageFormats {
-		if filepath.Ext(fName)[1:] == ext {
+		if strings.EqualFold(filepath.Ext(block.GetText().Marks.Marks[0].Param)[1:], ext) {
 			fileType = model.BlockContentFile_Image
+			break
 		}
 	}
 
 	for _, ext := range videoFormats {
-		if filepath.Ext(fName)[1:] == ext {
+		if strings.EqualFold(filepath.Ext(block.GetText().Marks.Marks[0].Param)[1:], ext) {
 			fileType = model.BlockContentFile_Video
+			break
 		}
 	}
 
-	blockOut := &model.Block{
-		Id: block.Id,
-		Content: &model.BlockContentOfFile{
-			File: &model.BlockContentFile{
-				Name:  fName,
-				State: model.BlockContentFile_Empty,
-				Type:  fileType,
-			},
+	block.Content = &model.BlockContentOfFile{
+		File: &model.BlockContentFile{
+			Name:  block.GetText().Marks.Marks[0].Param,
+			State: model.BlockContentFile_Empty,
+			Type:  fileType,
 		},
 	}
-
-	return blockOut
 }
 
-func (imp *importImpl) convertCsvToLinks(csvData []byte, block *model.Block, isPageLinked map[string]bool, nameToId map[string]string, files map[string][]byte) (blocks []*model.Block, newIsPageLinked map[string]bool) {
-	var records [][]string
-
-	for _, str := range strings.Split(string(csvData), "\n") {
-		records = append(records, strings.Split(str, ","))
-	}
-
-	headers := records[0]
-	records = records[1:]
-	nameArr := strings.Split(block.GetFile().Name, "/")
-
-	headerLastElArr := strings.Split(nameArr[len(nameArr)-1], " ")
-	headerLastElArr = headerLastElArr[:len(headerLastElArr)-1]
+func (imp *importImpl) convertCsvToLinks(csvFileName string, files map[string]*fileInfo) (blocks []*model.Block) {
+	ext := filepath.Ext(csvFileName)
+	csvDir := strings.TrimSuffix(csvFileName, ext)
 
 	blocks = append(blocks, &model.Block{
 		Id: bson.NewObjectId().Hex(),
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:  strings.Join(headerLastElArr, " "),
+			Text:  imp.shortPathToName(csvFileName),
 			Style: model.BlockContentText_Header3,
 		}},
 	})
 
-	for _, record := range records {
-		fileName := record[0]
-		fileName = strings.ReplaceAll(fileName, `"`, "")
-		shortPath := ""
-		for name, _ := range files {
-			nameSects := strings.Split(name, "/")
-			if strings.Contains(nameSects[len(nameSects)-1], fileName) && filepath.Ext(nameSects[len(nameSects)-1]) == ".md" {
-				shortPath = name
+	for name, file := range files {
+		fileExt := filepath.Ext(name)
+		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
+			file.hasInboundLinks = true
+			fields := make(map[string]*types.Value)
+			fields["name"] = &types.Value{
+				Kind: &types.Value_StringValue{StringValue: file.title},
 			}
-		}
 
-		targetId := nameToId[shortPath]
-		if len(targetId) == 0 {
-			log.Warn("WARNING! target (%s) with shortpath (%s) not found (%s)\n", fileName, shortPath, nameToId[shortPath])
-		} else {
-			isPageLinked[shortPath] = true
-		}
-
-		// TODO: if no targetId
-		fields := make(map[string]*types.Value)
-
-		for h, header := range headers {
-			fields[header] = &types.Value{
-				Kind: &types.Value_StringValue{StringValue: record[h]},
-			}
-		}
-
-		fields["name"] = &types.Value{
-			Kind: &types.Value_StringValue{StringValue: record[0]},
-		}
-
-		blocks = append(blocks, &model.Block{
-			Id: bson.NewObjectId().Hex(),
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: targetId,
-					Style:         model.BlockContentLink_Page,
-					Fields: &types.Struct{
-						Fields: fields,
+			blocks = append(blocks, &model.Block{
+				Id: bson.NewObjectId().Hex(),
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: file.pageID,
+						Style:         model.BlockContentLink_Page,
+						Fields: &types.Struct{
+							Fields: fields,
+						},
 					},
 				},
-			},
-		})
+			})
+		}
 	}
 
-	return blocks, isPageLinked
+	return blocks
 }
 
-func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, fields map[string]*types.Value, isPageLinked map[string]bool, files map[string][]byte, nameToId map[string]string) (blocksOut []*model.Block, fieldsOut map[string]*types.Value, isPageLinkedOut map[string]bool) {
-	if len(blocks) < 2 || blocks[1].GetText() == nil {
-		return blocks, fields, isPageLinked
+func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, files map[string]*fileInfo) (blocksOut []*model.Block) {
+	if len(blocks) < 1 || blocks[0].GetText() == nil {
+		return blocks
 	}
 	blocksOut = blocks
 
-	txt := blocks[1].GetText().Text
-	potentialPairs := strings.Split(txt, "\n")
-	potentialFields := make(map[string]*types.Value)
-	var keyVals [][]string
-	var potentialLinks []*model.Block
+	txt := blocks[0].GetText().Text
+	if txt == "" ||
+		(blocks[0].GetText().Marks != nil && len(blocks[0].GetText().Marks.Marks) > 0) {
+		// fields can't have a markup
+		return blocks
+	}
 
+	potentialPairs := strings.Split(txt, "\n")
+
+	var text string
+	var marks []*model.BlockContentTextMark
 	for _, pair := range potentialPairs {
-		if pair[len(pair)-3:] != ".md" {
+		if text != "" {
+			text += "\n"
+		}
+		if len(pair) <= 3 || pair[len(pair)-3:] != ".md" {
+			text += pair
 			continue
 		}
 
-		keyVal := strings.Split(pair, ":")
-		keyVals = append(keyVals, keyVal)
-		if len(keyVal) != 2 {
-			return blocksOut, fields, isPageLinked
+		keyVal := strings.SplitN(pair, ":", 2)
+		if len(keyVal) < 2 {
+			text += pair
+			continue
 		}
 
-		potentialFields[keyVal[0]] = pbtypes.String(keyVal[1])
-	}
-
-	for _, keyVal := range keyVals {
-		targetId := ""
 		potentialFileNames := strings.Split(keyVal[1], ",")
-		for _, potentialFileName := range potentialFileNames {
+		text += keyVal[0] + ": "
+
+		for potentialFileNameIndex, potentialFileName := range potentialFileNames {
 			potentialFileName, _ = url.PathUnescape(potentialFileName)
 			potentialFileName = strings.ReplaceAll(potentialFileName, `"`, "")
-
+			if potentialFileNameIndex != 0 {
+				text += ", "
+			}
 			shortPath := ""
+			id := imp.getIdFromPath(potentialFileName)
 			for name, _ := range files {
-				if imp.getIdFromPath(name) == imp.getIdFromPath(potentialFileName) {
+				if imp.getIdFromPath(name) == id {
 					shortPath = name
+					break
 				}
 			}
 
-			targetId = nameToId[shortPath]
-			if len(targetId) == 0 {
+			file := files[shortPath]
+			/*for name, anytypePageId := range nameToId {
+				if imp.getIdFromPath(name) == id {
+					targetId = anytypePageId
+				}
+			}*/
 
+			if len(file.pageID) == 0 {
+				text += potentialFileName
+				log.Debug("     TARGET NOT FOUND:", shortPath, potentialFileName)
 			} else {
-				log.Debug("     TARGET FOUND:", targetId, shortPath)
-				isPageLinked[shortPath] = true
+				log.Debug("     TARGET FOUND:", file.pageID, shortPath)
+				file.hasInboundLinks = true
+				if file.title == "" {
+					// shouldn't be a case
+					file.title = shortPath
+				}
 
-				potentialLinks = append(potentialLinks, &model.Block{
-					Id: bson.NewObjectId().Hex(),
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							TargetBlockId: targetId,
-							Style:         model.BlockContentLink_Page,
-							Fields: &types.Struct{
-								Fields: fields,
-							},
-						},
-					},
+				text += file.title
+				marks = append(marks, &model.BlockContentTextMark{
+					Range: &model.Range{int32(len(text) - len(file.title)), int32(len(text))},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: file.pageID,
 				})
-
 			}
-
 		}
-
 	}
 
-	for k, _ := range potentialFields {
-		fields[k] = potentialFields[k]
+	if len(marks) > 0 {
+		blockText := blocks[0].GetText()
+		blockText.Text = text
+		blockText.Marks = &model.BlockContentTextMarks{marks}
 	}
 
-	blocksOut = append(blocksOut, potentialLinks...)
-
-	return blocksOut, fields, isPageLinked
+	return blocksOut
 }
 
 func (imp *importImpl) getIdFromPath(path string) (id string) {
@@ -576,4 +789,23 @@ func (imp *importImpl) getIdFromPath(path string) (id string) {
 		return ""
 	}
 	return b[:len(b)-3]
+}
+
+/*func (imp *importImpl) getShortPath(importPath string, ) (id string) {
+	a := strings.Split(path, " ")
+	b := a[len(a)-1]
+	if len(b) < 3 {
+		return ""
+	}
+	return b[:len(b)-3]
+}*/
+
+func (imp *importImpl) shortPathToName(path string) (name string) {
+	sArr := strings.Split(filepath.Base(path), " ")
+	if len(sArr) == 0 {
+		return path
+	}
+
+	name = strings.Join(sArr[:len(sArr)-1], " ")
+	return name
 }

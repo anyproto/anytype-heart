@@ -54,7 +54,7 @@ func (st *SmartTest) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err err
 	return
 }
 
-func (st *SmartTest) Init(_ source.Source) (err error) {
+func (st *SmartTest) Init(_ source.Source, _ bool) (err error) {
 	return
 }
 

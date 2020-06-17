@@ -783,6 +783,26 @@ func (mw *Middleware) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequ
 	return response(pb.RpcBlockListSetTextColorResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockListSetTextMark(req *pb.RpcBlockListSetTextMarkRequest) *pb.RpcBlockListSetTextMarkResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockListSetTextMarkResponseErrorCode, err error) *pb.RpcBlockListSetTextMarkResponse {
+		m := &pb.RpcBlockListSetTextMarkResponse{Error: &pb.RpcBlockListSetTextMarkResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextMark(ctx, req.ContextId, req.Mark, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListSetTextMarkResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetTextMarkResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
 	response := func(code pb.RpcBlockSetTextTextResponseErrorCode, err error) *pb.RpcBlockSetTextTextResponse {
 		m := &pb.RpcBlockSetTextTextResponse{Error: &pb.RpcBlockSetTextTextResponseError{Code: code}}

@@ -2,10 +2,10 @@ package html
 
 import (
 	"bytes"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -323,6 +323,7 @@ var ListItemAttributeFilter = GlobalAttributeFilter.Extend(
 
 func (r *Renderer) renderListItem(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	tag := model.BlockContentText_Marked
+
 	if w.GetIsNumberedList() {
 		tag = model.BlockContentText_Numbered
 	}
@@ -367,6 +368,8 @@ var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
 func (r *Renderer) renderThematicBreak(w blocksUtil.RWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		w.ForceCloseTextBlock()
+	} else {
+		w.AddDivider()
 	}
 
 	return ast.WalkContinue, nil
@@ -397,21 +400,22 @@ func (r *Renderer) renderAutoLink(w blocksUtil.RWriter, source []byte, node ast.
 
 	start := int32(utf8.RuneCountInString(w.GetText()))
 	labelLength := int32(utf8.RuneCount(label))
-	if slice.FindPos(w.GetAllFileShortPaths(), strings.Replace(string(source), "%20", " ", -1)) != -1 {
 
+	linkPath, err := url.PathUnescape(string(destination))
+	if err != nil {
+		log.Errorf("failed to unescape destination %s: %s", string(destination), err.Error())
+		linkPath = string(destination)
 	}
 
-	destinationConverted := strings.Replace(string(destination), "%20", " ", -1)
-	for _, sPath := range w.GetAllFileShortPaths() {
-		if strings.Contains(sPath, destinationConverted) {
-			destination = []byte(sPath)
-		}
+	// add basefilepath
+	if !strings.HasPrefix(strings.ToLower(linkPath), "http://") && !strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+		linkPath = filepath.Join(w.GetBaseFilepath(), linkPath)
 	}
 
 	w.AddMark(model.BlockContentTextMark{
 		Range: &model.Range{From: start, To: start + labelLength},
 		Type:  model.BlockContentTextMark_Link,
-		Param: string(n.URL(destination)),
+		Param: linkPath,
 	})
 
 	_, _ = w.Write(util.EscapeHTML(label))
@@ -481,18 +485,22 @@ func (r *Renderer) renderLink(w blocksUtil.RWriter, source []byte, node ast.Node
 		w.SetMarkStart()
 	} else {
 
-		destinationConverted := strings.Replace(string(destination), "%20", " ", -1)
-		for _, sPath := range w.GetAllFileShortPaths() {
-			if strings.Contains(sPath, destinationConverted) {
-				destination = []byte(sPath)
-			}
+		linkPath, err := url.PathUnescape(string(destination))
+		if err != nil {
+			log.Errorf("failed to unescape destination %s: %s", string(destination), err.Error())
+			linkPath = string(destination)
+		}
+
+		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") && !strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+			linkPath = filepath.Join(w.GetBaseFilepath(), linkPath)
 		}
 
 		to := int32(utf8.RuneCountInString(w.GetText()))
+
 		w.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(w.GetMarkStart()), To: to},
 			Type:  model.BlockContentTextMark_Link,
-			Param: string(destination),
+			Param: linkPath,
 		})
 	}
 	return ast.WalkContinue, nil
@@ -533,6 +541,7 @@ func (r *Renderer) renderRawHTML(w blocksUtil.RWriter, source []byte, node ast.N
 }
 
 func (r *Renderer) renderText(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+
 	if !entering {
 		return ast.WalkContinue, nil
 	}

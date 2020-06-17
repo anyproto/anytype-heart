@@ -143,6 +143,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().ReadDoc().Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.Init(fx.source)
+	err := fx.Init(fx.source, true)
 	require.NoError(fx.t, err)
 }

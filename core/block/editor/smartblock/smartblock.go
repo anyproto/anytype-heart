@@ -39,7 +39,7 @@ func New() SmartBlock {
 }
 
 type SmartBlock interface {
-	Init(s source.Source) (err error)
+	Init(s source.Source, allowEmpty bool) (err error)
 	Id() string
 	Type() pb.SmartBlockType
 	Meta() *core.SmartBlockMeta
@@ -85,7 +85,7 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source) (err error) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 	if sb.Doc, err = s.ReadDoc(); err != nil {
 		return err
 	}

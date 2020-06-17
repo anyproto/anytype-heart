@@ -28,8 +28,8 @@ type Archive struct {
 	smartblock.SmartBlock
 }
 
-func (p *Archive) Init(s source.Source) (err error) {
-	if err = p.SmartBlock.Init(s); err != nil {
+func (p *Archive) Init(s source.Source, _ bool) (err error) {
+	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
 	return p.init()
