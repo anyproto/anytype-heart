@@ -20,6 +20,7 @@ type Source interface {
 	Anytype() anytype.Service
 	Type() pb.SmartBlockType
 	ReadDoc() (doc state.Doc, err error)
+	ReadDetails() (doc state.Doc, err error)
 	PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error)
 	Close() (err error)
 }

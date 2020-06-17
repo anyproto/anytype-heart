@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -41,13 +42,15 @@ type Subscriber interface {
 	Close()
 }
 
-func newPubSub(a anytype.Service, fetcher func(id string) (m Meta, err error)) *pubSub {
+func newPubSub(a anytype.Service) *pubSub {
 	ps := &pubSub{
 		subscribers: make(map[string]map[Subscriber]struct{}),
 		collectors:  make(map[string]*collector),
 		lastUsage:   make(map[string]time.Time),
 		anytype:     a,
-		fetcher:     fetcher,
+		newSource: func(id string) (source.Source, error) {
+			return source.NewSource(a, id)
+		},
 	}
 	go ps.ticker()
 	return ps
@@ -58,7 +61,7 @@ type pubSub struct {
 	subscribers map[string]map[Subscriber]struct{}
 	collectors  map[string]*collector
 	lastUsage   map[string]time.Time
-	fetcher     func(id string) (m Meta, err error)
+	newSource   func(id string) (source.Source, error)
 	m           sync.Mutex
 	closed      bool
 }
@@ -257,113 +260,6 @@ func (s *subscriber) Callback(cb func(d Meta)) Subscriber {
 func (s *subscriber) Close() {
 	s.ps.removeAll(s)
 	return
-}
-
-func newCollector(ps *pubSub, id string) *collector {
-	c := &collector{
-		blockId: id,
-		ps:      ps,
-		ready:   make(chan struct{}),
-		quit:    make(chan struct{}),
-	}
-	go c.listener()
-	log.Infof("metaListener started: %v", id)
-	return c
-}
-
-type collector struct {
-	blockId  string
-	lastMeta Meta
-	ready    chan struct{}
-	m        sync.Mutex
-	ps       *pubSub
-	quit     chan struct{}
-	closed   bool
-}
-
-func (c *collector) GetMeta() (d Meta) {
-	<-c.ready
-	c.m.Lock()
-	defer c.m.Unlock()
-	return c.lastMeta
-}
-
-func (c *collector) setMeta(d Meta) {
-	c.m.Lock()
-	defer c.m.Unlock()
-	if !c.lastMeta.Details.Equal(d.Details) {
-		c.ps.call(d)
-		c.lastMeta = d
-	}
-}
-
-func (c *collector) fetchInitialMeta() (err error) {
-	defer func() {
-		if err == errEmpty {
-			return
-		}
-
-		select {
-		case <-c.ready:
-			return
-		default:
-			close(c.ready)
-		}
-	}()
-	setCurrentMeta := func(meta core.SmartBlockMeta) {
-		c.m.Lock()
-		c.lastMeta = Meta{
-			BlockId:        c.blockId,
-			SmartBlockMeta: meta,
-		}
-		c.m.Unlock()
-	}
-	meta, err := c.ps.fetcher(c.blockId)
-	if err != nil {
-		setCurrentMeta(*notFoundMeta)
-		return errNotFound
-	}
-	setCurrentMeta(core.SmartBlockMeta{
-		Details: meta.Details,
-	})
-	return nil
-}
-
-func (c *collector) listener() {
-	for {
-		err := c.fetchInitialMeta()
-		if err != nil {
-			if err == errNotFound {
-				log.Infof("meta: %s: block not found - listener exit", c.blockId)
-				return
-			}
-			log.Infof("meta: %s: can't fetch initial meta: %v; - retry", c.blockId, err)
-			time.Sleep(time.Second * 5)
-			continue
-		}
-		var ch = make(chan core.SmartBlockMetaChange)
-		for {
-			select {
-			case meta := <-ch:
-				c.setMeta(Meta{
-					BlockId:        c.blockId,
-					SmartBlockMeta: meta.SmartBlockMeta,
-				})
-			case <-c.quit:
-				return
-			}
-		}
-	}
-}
-
-func (c *collector) close() {
-	c.m.Lock()
-	defer c.m.Unlock()
-	if c.closed {
-		return
-	}
-	close(c.quit)
-	c.closed = true
 }
 
 func copyMeta(m Meta) Meta {

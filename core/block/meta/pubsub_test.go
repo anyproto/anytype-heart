@@ -4,7 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
 	"github.com/golang/mock/gomock"
 )
 
@@ -15,7 +18,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	var (
 		blockId = "1"
 	)
-
+	fx.source.EXPECT().ReadDetails().Return(state.NewDoc("", nil), nil)
 	s := fx.PubSub().NewSubscriber()
 	var mch = make(chan Meta, 1)
 	f := func(m Meta) {
@@ -32,19 +35,24 @@ func TestSubscriber_Subscribe(t *testing.T) {
 func newFixture(t *testing.T) (fx *fixture) {
 	ctrl := gomock.NewController(t)
 	at := testMock.NewMockService(ctrl)
-	return &fixture{
+	s := mockSource.NewMockSource(ctrl)
+	fx = &fixture{
 		ctrl:    ctrl,
 		anytype: at,
-		Service: NewService(at, func(id string) (m Meta, err error) {
-			return Meta{}, nil
-		}),
+		Service: NewService(at),
+		source:  s,
 	}
+	fx.PubSub().(*pubSub).newSource = func(id string) (source.Source, error) {
+		return s, nil
+	}
+	return fx
 }
 
 type fixture struct {
 	Service
 	ctrl    *gomock.Controller
 	anytype *testMock.MockService
+	source  *mockSource.MockSource
 }
 
 func (fx *fixture) tearDown() {

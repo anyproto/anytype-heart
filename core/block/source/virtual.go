@@ -32,7 +32,12 @@ func (v *virtual) Anytype() anytype.Service {
 func (v *virtual) Type() pb.SmartBlockType {
 	return v.sbType
 }
+
 func (v *virtual) ReadDoc() (doc state.Doc, err error) {
+	return state.NewDoc(v.id, nil), nil
+}
+
+func (v *virtual) ReadDetails() (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }
 
