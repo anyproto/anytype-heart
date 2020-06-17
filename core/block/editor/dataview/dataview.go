@@ -249,7 +249,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 
 	var msgs []*pb.EventMessage
 
-	entries, err := db.Query(database.Query{
+	entries, total, err := db.Query(database.Query{
 		Filters: activeView.Filters,
 		Sorts:   activeView.Sorts,
 		Limit:   dv.limit,
@@ -276,7 +276,8 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				Updated:        updated,
 				Removed:        removed,
 				Inserted:       firstEventInserted,
-				InsertPosition: int32(firstEventInsertedAt),
+				InsertPosition: uint32(firstEventInsertedAt),
+				Total:          uint32(total),
 			},
 		}})
 	}
@@ -290,7 +291,8 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 					Updated:        nil,
 					Removed:        nil,
 					Inserted:       insertedPortion.entries,
-					InsertPosition: int32(insertedPortion.position),
+					InsertPosition: uint32(insertedPortion.position),
+					Total:          uint32(total),
 				},
 			}})
 		}

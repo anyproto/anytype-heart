@@ -7544,7 +7544,8 @@ changed either by the view settings(filters/sort/limit/offset) or by the data it
 | updated | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | existing records updated |
 | removed | [string](#string) | repeated |  |
 | inserted | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
-| insertPosition | [int32](#int32) |  | position to insert |
+| insertPosition | [uint32](#uint32) |  | position to insert |
+| total | [uint32](#uint32) |  | total number of records |
 
 
 
@@ -7562,8 +7563,8 @@ sent when the view settings have been changed
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
 | view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
-| offset | [int32](#int32) |  | middleware will try to preserve the current aciveview&#39;s offset&amp;limit but may reset it in case it becomes invalid or not actual anymore |
-| limit | [int32](#int32) |  |  |
+| offset | [uint32](#uint32) |  | middleware will try to preserve the current aciveview&#39;s offset&amp;limit but may reset it in case it becomes invalid or not actual anymore |
+| limit | [uint32](#uint32) |  |  |
 
 
 
@@ -8582,7 +8583,7 @@ Bookmark is to keep a web-link and to preview a content.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| visible | [bool](#bool) |  |  |
+| isVisible | [bool](#bool) |  |  |
 
 
 

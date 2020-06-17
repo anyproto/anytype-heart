@@ -139,9 +139,10 @@ message Event {
                     string id = 1; // dataview block's id
                     string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
                     repeated google.protobuf.Struct updated = 3; // existing records updated
-                    repeated string removed = 6;
                     repeated google.protobuf.Struct inserted = 4; // block of new records to insert
-                    int32 insertPosition = 5; // position to insert
+                    uint32 insertPosition = 5; // position to insert
+                    repeated string removed = 6;
+                    uint32 total = 7; // total number of records
                 }
 
                 // sent when the view settings have been changed
@@ -149,8 +150,8 @@ message Event {
                     string id = 1; // dataview block's id
                     string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
                     anytype.model.Block.Content.Dataview.View view = 3;
-                    int32 offset = 4; // middleware will try to preserve the current aciveview's offset&limit but may reset it in case it becomes invalid or not actual anymore
-                    int32 limit = 5;
+                    uint32 offset = 4; // middleware will try to preserve the current aciveview's offset&limit but may reset it in case it becomes invalid or not actual anymore
+                    uint32 limit = 5;
                 }
             }
 
