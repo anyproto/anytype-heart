@@ -17,7 +17,7 @@ type Entry struct {
 }
 
 type Database interface {
-	Query(q Query) ([]Entry, error)
+	Query(q Query) (entries []Entry, total int, err error)
 	Schema() string
 }
 

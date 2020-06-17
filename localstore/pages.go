@@ -59,10 +59,10 @@ func (m *dsPageStore) Schema() string {
 	return "https://anytype.io/schemas/page"
 }
 
-func (m *dsPageStore) Query(q database.Query) ([]database.Entry, error) {
+func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+		return nil, 0, fmt.Errorf("error when creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
@@ -71,17 +71,17 @@ func (m *dsPageStore) Query(q database.Query) ([]database.Entry, error) {
 	dsq.Filters = append([]query.Filter{&filterPagesOnly{}}, dsq.Filters...)
 	res, err := txn.Query(dsq)
 	if err != nil {
-		return nil, fmt.Errorf("error when querying ds: %w", err)
+		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
 	}
 
-	entries, err := res.Rest()
+	dsEntries, err := res.Rest()
 	if err != nil {
-		return nil, fmt.Errorf("error when getting q results: %w", err)
+		return nil, 0, fmt.Errorf("error when getting q results: %w", err)
 	}
 
 	var results []database.Entry
 
-	for _, entry := range entries {
+	for _, entry := range dsEntries {
 		var details model.PageDetails
 		err = proto.Unmarshal(entry.Value, &details)
 		if err != nil {
@@ -103,7 +103,28 @@ func (m *dsPageStore) Query(q database.Query) ([]database.Entry, error) {
 		results = append(results, database.Entry{Details: details.Details})
 	}
 
-	return results, nil
+	if len(results) < q.Limit {
+		total = q.Offset + len(results)
+	} else {
+		// todo: this is super inefficient
+		// need to rewrite go-datastore and go-ds-badger to optionally return total
+		dsq.Limit = 0
+		dsq.Offset = 0
+		dsq.KeysOnly = true
+		res, err = txn.Query(dsq)
+		if err != nil {
+			return nil, 0, fmt.Errorf("error when querying ds: %w", err)
+		}
+
+		for entry := range res.Next() {
+			if entry.Error != nil {
+				continue
+			}
+			total++
+		}
+	}
+
+	return results, total, nil
 }
 
 func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {

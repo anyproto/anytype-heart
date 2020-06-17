@@ -75,14 +75,15 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://anytype.io/schemas/page", db.Schema())
 
-	results, err := db.Query(database.Query{Limit: 10, Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
+	results, total, err := db.Query(database.Query{Limit: 10, Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
 	require.NoError(t, err)
 	require.Len(t, results, 1)
+	require.Equal(t, total, 1)
 
 	require.Equal(t, details1.Fields["name"].GetStringValue(), results[0].Details.Fields["name"].GetStringValue())
 	require.Equal(t, block1.ID(), results[0].Details.Fields["id"].GetStringValue())
 
-	results, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "name",
 		Condition:  model.BlockContentDataviewFilter_Like,
@@ -92,7 +93,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, results, 1)
-
+	require.Equal(t, total, 1)
 }
 
 func TestAnytype_PredefinedBlocks(t *testing.T) {
