@@ -201,9 +201,6 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 }
 
 func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *state.Context) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	for _, dv := range d.dataviews {
 		block := d.Pick(dv.blockId)
 		if dvBlock, ok := block.(dataview.Block); !ok {
