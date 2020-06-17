@@ -15,7 +15,7 @@ require (
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/otiai10/opengraph v1.1.1
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
 	github.com/yuin/goldmark v1.1.30
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
