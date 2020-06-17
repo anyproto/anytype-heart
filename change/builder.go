@@ -67,7 +67,7 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	if err = sb.buildTree(heads, breakpoint); err != nil {
 		return fmt.Errorf("buildTree error: %v", err)
 	}
-	log.Debugf("tree build: len: %d; scanned: %d; dur: %v (lib %v)", sb.tree.Len(), len(sb.cache), time.Since(st), sb.qt)
+	log.Infof("tree build: len: %d; scanned: %d; dur: %v (lib %v)", sb.tree.Len(), len(sb.cache), time.Since(st), sb.qt)
 	sb.cache = nil
 	return
 }

@@ -348,7 +348,6 @@ func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.A
 }
 
 func (s *State) intermediateApply() {
-	st := time.Now()
 	if s.changeId != "" {
 		s.parent.changeId = s.changeId
 	}
@@ -359,7 +358,6 @@ func (s *State) intermediateApply() {
 		s.parent.details = s.details
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
-	log.Infof("middle: state intermediate apply: %d to update; for a %v", len(s.blocks), time.Since(st))
 	return
 }
 

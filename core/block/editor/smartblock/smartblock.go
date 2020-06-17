@@ -2,6 +2,7 @@ package smartblock
 
 import (
 	"errors"
+	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
@@ -237,6 +238,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
+	if len(changes) == 0 {
+		log.Infof("empty changes, but not empty history: %+v", act)
+		debug.PrintStack()
+	}
 	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes...)
 	if err != nil {
 		return

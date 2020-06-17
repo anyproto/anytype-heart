@@ -109,7 +109,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 		}
 		s = merge(toMerge...)
 	}
-	log.Debugf("build state: changes: %d; dur: %v; tree: %v", count, time.Since(st), t.String())
+	log.Infof("build state: changes: %d; dur: %v;", count, time.Since(st))
 	return
 }
 
