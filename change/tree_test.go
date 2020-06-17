@@ -24,6 +24,7 @@ func TestTree_Add(t *testing.T) {
 			newDetailsChange("one", "root", "root", "root", true),
 			newDetailsChange("two", "root", "one", "one", false),
 		))
+		assert.Equal(t, []string{"two"}, tr.Heads())
 		assert.Equal(t, Append, tr.Add(newDetailsChange("three", "root", "two", "one", false)))
 		el := tr.root
 		var ids []string
@@ -46,6 +47,7 @@ func TestTree_Add(t *testing.T) {
 			newDetailsChange("1", "root", "root", "root", false),
 			newDetailsChange("2", "root", "1", "root", true),
 		))
+		assert.Equal(t, []string{"2"}, tr.Heads())
 		assert.Equal(t, Rebuild, tr.Add(
 			newDetailsChange("1.2", "root", "1.1", "root", true),
 			newDetailsChange("1.3", "root", "1.2", "root", false),
@@ -88,11 +90,8 @@ func TestTree_Add(t *testing.T) {
 				changes = append(changes, newDetailsChange(fmt.Sprint(i), "root", fmt.Sprint(i-1), "root", false))
 			}
 		}
-		rand.Shuffle(len(changes), func(i, j int) {
-			changes[i], changes[j] = changes[j], changes[i]
-		})
 		st := time.Now()
-		tr.Add(changes...)
+		tr.AddFast(changes...)
 		t.Log(time.Since(st))
 		assert.Equal(t, []string{"9999"}, tr.Heads())
 		assert.Equal(t, []string{"root"}, tr.DetailsHeads())
@@ -155,10 +154,26 @@ func BenchmarkTree_Add(b *testing.B) {
 		newDetailsChange("1.1", "root", "1", "root", false),
 		c3,
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	b.Run("by one", func(b *testing.B) {
 		tr := new(Tree)
 		tr.Add(newSnapshot("root", "", nil))
 		tr.Add(changes...)
-	}
+		for i := 0; i < b.N; i++ {
+			tr.Add(newDetailsChange(fmt.Sprint(i+4), "root", fmt.Sprint(i+3), "root", false))
+		}
+	})
+	b.Run("add", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			tr := new(Tree)
+			tr.Add(newSnapshot("root", "", nil))
+			tr.Add(changes...)
+		}
+	})
+	b.Run("add fast", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			tr := new(Tree)
+			tr.AddFast(newSnapshot("root", "", nil))
+			tr.AddFast(changes...)
+		}
+	})
 }

@@ -78,7 +78,7 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 		return
 	}
 	sb.tree = new(Tree)
-	sb.tree.Add(ch)
+	sb.tree.AddFast(ch)
 	var changes = make([]*Change, 0, len(heads)*2)
 	var uniqMap = map[string]struct{}{breakpoint: {}}
 	for _, id := range heads {
@@ -96,7 +96,7 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 		}
 		changes = filteredChanges
 	}
-	sb.tree.Add(changes...)
+	sb.tree.AddFast(changes...)
 	return
 }
 

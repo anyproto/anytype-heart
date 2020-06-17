@@ -77,7 +77,7 @@ func (c *collector) fetchInitialMeta() (err error) {
 		return errNotFound
 	}
 
-	c.doc, err = c.s.ReadDetails()
+	c.doc, err = c.s.ReadDetails(nil)
 	if err != nil {
 		setCurrentMeta(*notFoundMeta)
 		return errNotFound

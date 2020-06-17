@@ -19,8 +19,8 @@ type Source interface {
 	Id() string
 	Anytype() anytype.Service
 	Type() pb.SmartBlockType
-	ReadDoc() (doc state.Doc, err error)
-	ReadDetails() (doc state.Doc, err error)
+	ReadDoc(onNewChange func(c *change.Change)) (doc state.Doc, err error)
+	ReadDetails(onNewChange func(c *change.Change)) (doc state.Doc, err error)
 	PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error)
 	Close() (err error)
 }
@@ -47,6 +47,10 @@ type source struct {
 	tree           *change.Tree
 	lastSnapshotId string
 	logHeads       map[string]string
+	onNewChange    func(c *change.Change)
+	unsubscribe    func()
+	detailsOnly    bool
+	closed         chan struct{}
 }
 
 func (s *source) Id() string {
@@ -61,16 +65,25 @@ func (s *source) Type() pb.SmartBlockType {
 	return anytype.SmartBlockTypeToProto(s.sb.Type())
 }
 
-func (s *source) ReadDetails() (doc state.Doc, err error) {
-	return s.readDoc(true)
+func (s *source) ReadDetails(onNewChange func(c *change.Change)) (doc state.Doc, err error) {
+	s.detailsOnly = true
+	return s.readDoc(onNewChange)
 }
 
-func (s *source) ReadDoc() (doc state.Doc, err error) {
-	return s.readDoc(false)
+func (s *source) ReadDoc(onNewChange func(c *change.Change)) (doc state.Doc, err error) {
+	return s.readDoc(onNewChange)
 }
 
-func (s *source) readDoc(detailsOnly bool) (doc state.Doc, err error) {
-	if detailsOnly {
+func (s *source) readDoc(newChange func(c *change.Change)) (doc state.Doc, err error) {
+	var ch chan core.SmartblockRecordWithLogID
+	if newChange != nil {
+		s.onNewChange = newChange
+		ch = make(chan core.SmartblockRecordWithLogID)
+		if s.unsubscribe, err = s.sb.SubscribeForRecords(ch); err != nil {
+			return
+		}
+	}
+	if s.detailsOnly {
 		s.tree, s.logHeads, err = change.BuildDetailsTree(s.sb)
 	} else {
 		s.tree, s.logHeads, err = change.BuildTree(s.sb)
@@ -94,6 +107,10 @@ func (s *source) readDoc(detailsOnly bool) (doc state.Doc, err error) {
 	}
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
+	}
+	if ch != nil {
+		s.closed = make(chan struct{})
+		go s.changeListener(ch)
 	}
 	return
 }
@@ -139,6 +156,57 @@ func (s *source) needSnapshot() bool {
 	return rand.Intn(1000) == 42
 }
 
+func (s *source) changeListener(records chan core.SmartblockRecordWithLogID) {
+	defer close(s.closed)
+	for r := range records {
+		if err := s.newChange(r); err != nil {
+			log.Warnf("can't handle change: %v; %v", r.ID, err)
+		}
+	}
+}
+
+func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
+	if record.LogID == s.a.Device() {
+		// ignore self logs
+		return
+	}
+	ch, err := change.NewChangeFromRecord(s.detailsOnly, record)
+	if err != nil {
+		return
+	}
+	if s.detailsOnly && !ch.HasDetails() {
+		return
+	}
+
+	var heads []string
+	if s.detailsOnly {
+		heads = s.tree.DetailsHeads()
+	} else {
+		heads = s.tree.Heads()
+	}
+	if len(heads) == 0 {
+		log.Warnf("unexpected empty heads while receive new change")
+		return
+	}
+	switch s.tree.Add(ch) {
+	case change.Nothing:
+		// existing or not complete
+		return
+	case change.Append:
+		s.tree.Iterate(heads[0], func(c *change.Change) (isContinue bool) {
+			if c.Id == heads[0] {
+				return true
+			}
+			return true
+		})
+	}
+	return
+}
+
 func (s *source) Close() (err error) {
+	if s.unsubscribe != nil {
+		s.unsubscribe()
+		<-s.closed
+	}
 	return nil
 }

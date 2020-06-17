@@ -38,10 +38,29 @@ func (t *Tree) Root() *Change {
 	return t.root
 }
 
+func (t *Tree) AddFast(changes ...*Change) {
+	for _, c := range changes {
+		// ignore existing
+		if _, ok := t.attached[c.Id]; ok {
+			continue
+		} else if _, ok := t.unAttached[c.Id]; ok {
+			continue
+		}
+		t.add(c)
+	}
+	t.updateHeads()
+}
+
 func (t *Tree) Add(changes ...*Change) (mode Mode) {
 	var beforeHeadIds = t.headIds
 	var attached bool
 	for _, c := range changes {
+		// ignore existing
+		if _, ok := t.attached[c.Id]; ok {
+			continue
+		} else if _, ok := t.unAttached[c.Id]; ok {
+			continue
+		}
 		if t.add(c) {
 			attached = true
 		}
@@ -50,13 +69,12 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 		return Nothing
 	}
 	t.updateHeads()
-	if l := len(beforeHeadIds); l > 0 && l < len(t.headIds) {
-		return Rebuild
-	}
-	for _, oldId := range beforeHeadIds {
-		for _, newId := range t.headIds {
-			if !t.after(oldId, newId) {
-				return Rebuild
+	for _, hid := range beforeHeadIds {
+		for _, newCh := range changes {
+			if _, ok := t.attached[newCh.Id]; ok {
+				if !t.after(newCh.Id, hid) {
+					return Rebuild
+				}
 			}
 		}
 	}
@@ -116,7 +134,7 @@ func (t *Tree) attach(c *Change, newEl bool) {
 
 func (t *Tree) after(id1, id2 string) (found bool) {
 	t.iterate(t.attached[id2], func(c *Change) (isContinue bool) {
-		if c.Id == id2 {
+		if c.Id == id1 {
 			found = true
 			return false
 		}
@@ -152,10 +170,10 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) bool 
 	if !f(start) {
 		return false
 	}
-	if len(start.Next) > 0 {
-		sort.Slice(start.Next, func(i, j int) bool {
-			return start.Next[i].Id > start.Next[j].Id
-		})
+	if l := len(start.Next); l > 0 {
+		if l > 1 {
+			sort.Sort(sortChanges(start.Next))
+		}
 		for _, n := range start.Next {
 			if len(n.PreviousIds) > 1 && start.Id != n.PreviousIds[len(n.PreviousIds)-1] {
 				continue
@@ -207,4 +225,18 @@ func (t *Tree) String() string {
 		return true
 	})
 	return buf.String()
+}
+
+type sortChanges []*Change
+
+func (s sortChanges) Len() int {
+	return len(s)
+}
+
+func (s sortChanges) Less(i, j int) bool {
+	return s[i].Id < s[j].Id
+}
+
+func (s sortChanges) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
