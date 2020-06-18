@@ -28,12 +28,6 @@ github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZ
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51/go.mod h1:SoKy+W8Mf6v7XBV30xFWkIFMs7UnXwsNGrGV12yVkEs=
 github.com/anytypeio/go-threads v0.1.18-0.20200612135054-98cf128fb49f h1:8SoiQ8XPEm8+ahpOo4DembBqTYWy3o2TmuN5oQsqnMU=
 github.com/anytypeio/go-threads v0.1.18-0.20200612135054-98cf128fb49f/go.mod h1:lpSnvxq8qz1uCCClDk3g5cnZusHsLeMmY7Xr64v7LIw=
-github.com/anytypeio/html-to-markdown v0.0.0-20200604073925-3e04de035205 h1:AN38Yo6CCO3LQI3OOH5YTPa8R4DGV/uveuAqcj029IY=
-github.com/anytypeio/html-to-markdown v0.0.0-20200604073925-3e04de035205/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
-github.com/anytypeio/html-to-markdown v0.0.0-20200617142710-40d867a787e7 h1:SJBM2iZ4PX8JwmkdtQd38rM0xNlB/dTb/N34EhsEzow=
-github.com/anytypeio/html-to-markdown v0.0.0-20200617142710-40d867a787e7/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
-github.com/anytypeio/html-to-markdown v0.0.0-20200617144359-aa754baf4270 h1:cSpwQetasuGO7A/Pj64zgoJuYepYzG4Fr0E95ncKaV8=
-github.com/anytypeio/html-to-markdown v0.0.0-20200617144359-aa754baf4270/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1 h1:g/LEIEQ0ACBOKX9MhORhlmluUKvuxvrIDbGMI0cqF5A=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
