@@ -42,6 +42,8 @@ var (
 	linkLeftEdge    = regexp.MustCompile(`(\S)\[`)
 	reEmptyLinkText = regexp.MustCompile(`\[[\s]*?\]\(([\s\S]*?)\)`)
 	reWikiCode      = regexp.MustCompile(`<span[\s\S]*?>([\s\S]*?)</span>`)
+
+	reWikiWbr = regexp.MustCompile(`<wbr[^>]*>`)
 )
 
 // Convert interprets a UTF-8
@@ -169,6 +171,7 @@ func (m *markdown) HTMLToBlocks(source []byte) (err error, blocks []*model.Block
 
 	// special wiki spaces
 	preprocessedSource = strings.ReplaceAll(preprocessedSource, "<span> </span>", " ")
+	preprocessedSource = reWikiWbr.ReplaceAllString(preprocessedSource, ``)
 
 	// Pattern: <pre> <span>\n console \n</span> <span>\n . \n</span> <span>\n log \n</span>
 	preprocessedSource = reWikiCode.ReplaceAllString(preprocessedSource, `$1`)
