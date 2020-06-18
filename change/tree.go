@@ -91,12 +91,19 @@ func (t *Tree) add(c *Change) (attached bool) {
 		t.waitList = make(map[string][]string)
 		return true
 	}
+	sort.Strings(c.PreviousIds)
 	for _, pid := range c.PreviousIds {
 		if prev, ok := t.attached[pid]; ok {
 			prev.Next = append(prev.Next, c)
 			attached = true
+			if len(prev.Next) > 1 {
+				sort.Sort(sortChanges(prev.Next))
+			}
 		} else if prev, ok := t.unAttached[pid]; ok {
 			prev.Next = append(prev.Next, c)
+			if len(prev.Next) > 1 {
+				sort.Sort(sortChanges(prev.Next))
+			}
 		} else {
 			wl := t.waitList[pid]
 			wl = append(wl, c.Id)
@@ -126,6 +133,9 @@ func (t *Tree) attach(c *Change, newEl bool) {
 				next = t.attached[wid]
 			}
 			c.Next = append(c.Next, next)
+			if len(c.Next) > 1 {
+				sort.Sort(sortChanges(c.Next))
+			}
 			t.attach(next, false)
 		}
 		delete(t.waitList, c.Id)
@@ -170,17 +180,12 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) bool 
 	if !f(start) {
 		return false
 	}
-	if l := len(start.Next); l > 0 {
-		if l > 1 {
-			sort.Sort(sortChanges(start.Next))
+	for _, n := range start.Next {
+		if len(n.PreviousIds) > 1 && start.Id != n.PreviousIds[len(n.PreviousIds)-1] {
+			continue
 		}
-		for _, n := range start.Next {
-			if len(n.PreviousIds) > 1 && start.Id != n.PreviousIds[len(n.PreviousIds)-1] {
-				continue
-			}
-			if !t.iterate(n, f) {
-				return false
-			}
+		if !t.iterate(n, f) {
+			return false
 		}
 	}
 	return true
@@ -216,12 +221,14 @@ func (t *Tree) DetailsHeads() []string {
 func (t *Tree) String() string {
 	var buf = bytes.NewBuffer(nil)
 	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
-		if len(c.PreviousIds) > 1 {
-			fmt.Fprintf(buf, "->%v->", c.PreviousIds)
-		} else {
-			buf.WriteString("->")
-		}
 		buf.WriteString(c.Id)
+		if len(c.Next) > 1 {
+			buf.WriteString("-<")
+		} else if len(c.Next) > 0 {
+			buf.WriteString("->")
+		} else {
+			buf.WriteString("-|")
+		}
 		return true
 	})
 	return buf.String()

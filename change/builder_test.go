@@ -267,7 +267,7 @@ func TestBuildDetailsTree(t *testing.T) {
 	tr, _, err := BuildDetailsTree(sb)
 	require.NoError(t, err)
 	assert.Equal(t, 3, tr.Len())
-	assert.Equal(t, "->s0->c2->c4", tr.String())
+	assert.Equal(t, "s0->c2->c4-|", tr.String())
 }
 
 func newTestSmartBlock() *smartblock {
