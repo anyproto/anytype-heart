@@ -3,6 +3,7 @@ package source
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -15,12 +16,17 @@ import (
 
 var log = logging.Logger("anytype-mw-source")
 
+type ChangeReceiver interface {
+	StateAppend(func(d state.Doc) (s *state.State, err error)) error
+	StateRebuild(d state.Doc) (err error)
+}
+
 type Source interface {
 	Id() string
 	Anytype() anytype.Service
 	Type() pb.SmartBlockType
-	ReadDoc(onNewChange func(c *change.Change)) (doc state.Doc, err error)
-	ReadDetails(onNewChange func(c *change.Change)) (doc state.Doc, err error)
+	ReadDoc(receiver ChangeReceiver) (doc state.Doc, err error)
+	ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error)
 	Close() (err error)
 }
@@ -47,10 +53,11 @@ type source struct {
 	tree           *change.Tree
 	lastSnapshotId string
 	logHeads       map[string]string
-	onNewChange    func(c *change.Change)
+	receiver       ChangeReceiver
 	unsubscribe    func()
 	detailsOnly    bool
 	closed         chan struct{}
+	mu             sync.Mutex
 }
 
 func (s *source) Id() string {
@@ -65,19 +72,23 @@ func (s *source) Type() pb.SmartBlockType {
 	return anytype.SmartBlockTypeToProto(s.sb.Type())
 }
 
-func (s *source) ReadDetails(onNewChange func(c *change.Change)) (doc state.Doc, err error) {
+func (s *source) ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.detailsOnly = true
-	return s.readDoc(onNewChange)
+	return s.readDoc(receiver)
 }
 
-func (s *source) ReadDoc(onNewChange func(c *change.Change)) (doc state.Doc, err error) {
-	return s.readDoc(onNewChange)
+func (s *source) ReadDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.readDoc(receiver)
 }
 
-func (s *source) readDoc(newChange func(c *change.Change)) (doc state.Doc, err error) {
+func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 	var ch chan core.SmartblockRecordWithLogID
-	if newChange != nil {
-		s.onNewChange = newChange
+	if receiver != nil {
+		s.receiver = receiver
 		ch = make(chan core.SmartblockRecordWithLogID)
 		if s.unsubscribe, err = s.sb.SubscribeForRecords(ch); err != nil {
 			return
@@ -90,10 +101,20 @@ func (s *source) readDoc(newChange func(c *change.Change)) (doc state.Doc, err e
 	}
 	if err == change.ErrEmpty {
 		s.tree = new(change.Tree)
-		return state.NewDoc(s.id, nil), nil
+		doc = state.NewDoc(s.id, nil)
 	} else if err != nil {
 		return nil, err
+	} else if doc, err = s.buildState(); err != nil {
+		return
 	}
+	if ch != nil {
+		s.closed = make(chan struct{})
+		go s.changeListener(ch)
+	}
+	return
+}
+
+func (s *source) buildState() (doc state.Doc, err error) {
 	root := s.tree.Root()
 	if root == nil || root.GetSnapshot() == nil {
 		return nil, fmt.Errorf("root missing or not a snapshot")
@@ -108,14 +129,12 @@ func (s *source) readDoc(newChange func(c *change.Change)) (doc state.Doc, err e
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
-	if ch != nil {
-		s.closed = make(chan struct{})
-		go s.changeListener(ch)
-	}
 	return
 }
 
 func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var c = &pb.Change{
 		PreviousIds:        s.tree.Heads(),
 		LastSnapshotId:     s.lastSnapshotId,
@@ -178,6 +197,11 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 		return
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.logHeads[record.LogID] = record.ID
+
 	var heads []string
 	if s.detailsOnly {
 		heads = s.tree.DetailsHeads()
@@ -188,17 +212,27 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 		log.Warnf("unexpected empty heads while receive new change")
 		return
 	}
+
 	switch s.tree.Add(ch) {
 	case change.Nothing:
 		// existing or not complete
 		return
 	case change.Append:
-		s.tree.Iterate(heads[0], func(c *change.Change) (isContinue bool) {
-			if c.Id == heads[0] {
-				return true
-			}
-			return true
+		if ch.Snapshot != nil {
+			s.lastSnapshotId = ch.Id
+		}
+		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
+			return change.BuildState(d.(*state.State), s.tree)
 		})
+	case change.Rebuild:
+		if ch.Snapshot != nil {
+			s.lastSnapshotId = ch.Id
+		}
+		doc, err := s.buildState()
+		if err != nil {
+			return err
+		}
+		return s.receiver.StateRebuild(doc.(*state.State))
 	}
 	return
 }

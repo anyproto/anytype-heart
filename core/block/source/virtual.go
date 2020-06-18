@@ -1,7 +1,6 @@
 package source
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -34,11 +33,11 @@ func (v *virtual) Type() pb.SmartBlockType {
 	return v.sbType
 }
 
-func (v *virtual) ReadDoc(onNewChange func(c *change.Change)) (doc state.Doc, err error) {
+func (v *virtual) ReadDoc(_ ChangeReceiver) (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }
 
-func (v *virtual) ReadDetails(onNewChange func(c *change.Change)) (doc state.Doc, err error) {
+func (v *virtual) ReadDetails(_ ChangeReceiver) (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }
 
