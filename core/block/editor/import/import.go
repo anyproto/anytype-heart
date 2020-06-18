@@ -629,27 +629,29 @@ func (imp *importImpl) convertTextToPageMention(block *model.Block) {
 
 func (imp *importImpl) convertTextToFile(block *model.Block) {
 	// "svg" excluded
+	if block.GetText().Marks.Marks[0].Param == "" {
+		return
+	}
+
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
 	videoFormats := []string{"mp4", "m4v"}
 
 	fileType := model.BlockContentFile_File
 	fileExt := filepath.Ext(block.GetText().Marks.Marks[0].Param)
-	if fileExt == "" {
-		return
-	}
-
-	fileExt = fileExt[1:]
-	for _, ext := range imageFormats {
-		if strings.EqualFold(fileExt, ext) {
-			fileType = model.BlockContentFile_Image
-			break
+	if fileExt != "" {
+		fileExt = fileExt[1:]
+		for _, ext := range imageFormats {
+			if strings.EqualFold(fileExt, ext) {
+				fileType = model.BlockContentFile_Image
+				break
+			}
 		}
-	}
 
-	for _, ext := range videoFormats {
-		if strings.EqualFold(fileExt, ext) {
-			fileType = model.BlockContentFile_Video
-			break
+		for _, ext := range videoFormats {
+			if strings.EqualFold(fileExt, ext) {
+				fileType = model.BlockContentFile_Video
+				break
+			}
 		}
 	}
 
