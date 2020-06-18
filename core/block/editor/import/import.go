@@ -633,15 +633,21 @@ func (imp *importImpl) convertTextToFile(block *model.Block) {
 	videoFormats := []string{"mp4", "m4v"}
 
 	fileType := model.BlockContentFile_File
+	fileExt := filepath.Ext(block.GetText().Marks.Marks[0].Param)
+	if fileExt == "" {
+		return
+	}
+
+	fileExt = fileExt[1:]
 	for _, ext := range imageFormats {
-		if strings.EqualFold(filepath.Ext(block.GetText().Marks.Marks[0].Param)[1:], ext) {
+		if strings.EqualFold(fileExt, ext) {
 			fileType = model.BlockContentFile_Image
 			break
 		}
 	}
 
 	for _, ext := range videoFormats {
-		if strings.EqualFold(filepath.Ext(block.GetText().Marks.Marks[0].Param)[1:], ext) {
+		if strings.EqualFold(fileExt, ext) {
 			fileType = model.BlockContentFile_Video
 			break
 		}
