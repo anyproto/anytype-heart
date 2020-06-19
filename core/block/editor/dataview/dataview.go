@@ -297,7 +297,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 			}})
 		}
 	}
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, updated: %d, removed: %d, insertedGroups: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), len(updated), len(removed), len(insertedGroupedByPosition), len(msgs))
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, updated: %d, removed: %d, insertedGroups: %d, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), len(updated), len(removed), len(insertedGroupedByPosition), total, len(msgs))
 
 	dv.entries = entries
 
