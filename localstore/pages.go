@@ -67,6 +67,8 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 	defer txn.Discard()
 
 	dsq := q.DSQuery()
+	dsq.Offset = 0
+	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	dsq.Filters = append([]query.Filter{&filterPagesOnly{}}, dsq.Filters...)
 	res, err := txn.Query(dsq)
@@ -74,14 +76,21 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
 	}
 
-	dsEntries, err := res.Rest()
-	if err != nil {
-		return nil, 0, fmt.Errorf("error when getting q results: %w", err)
-	}
-
 	var results []database.Entry
 
-	for _, entry := range dsEntries {
+	offset := q.Offset
+	for entry := range res.Next() {
+		if offset > 0 {
+			offset--
+			total++
+			continue
+		}
+
+		if q.Limit > 0 && len(results) >= q.Limit {
+			total++
+			continue
+		}
+
 		var details model.PageDetails
 		err = proto.Unmarshal(entry.Value, &details)
 		if err != nil {
@@ -101,27 +110,7 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 		details.Details.Fields["id"] = pb.ToValue(id)
 
 		results = append(results, database.Entry{Details: details.Details})
-	}
-
-	if len(results) < q.Limit {
-		total = q.Offset + len(results)
-	} else {
-		// todo: this is super inefficient
-		// need to rewrite go-datastore and go-ds-badger to optionally return total
-		dsq.Limit = 0
-		dsq.Offset = 0
-		dsq.KeysOnly = true
-		res, err = txn.Query(dsq)
-		if err != nil {
-			return nil, 0, fmt.Errorf("error when querying ds: %w", err)
-		}
-
-		for entry := range res.Next() {
-			if entry.Error != nil {
-				continue
-			}
-			total++
-		}
+		total++
 	}
 
 	return results, total, nil
