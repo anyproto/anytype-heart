@@ -241,10 +241,12 @@ message Block {
                     NotEqual = 1;
                     Greater = 2;
                     Less = 3;
-                    Like = 4;
-                    NotLike = 5;
-                    In = 6;
-                    NotIn = 7;
+                    GreaterOrEqual = 4;
+                    LessOrEqual = 5;
+                    Like = 6;
+                    NotLike = 7;
+                    In = 8;
+                    NotIn = 9;
                 }
             }
         }
