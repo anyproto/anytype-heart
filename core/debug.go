@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/anytypeio/go-anytype-middleware/lib-debug"
+	"github.com/anytypeio/go-anytype-middleware/lib-server"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
