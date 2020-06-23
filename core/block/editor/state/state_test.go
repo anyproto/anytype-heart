@@ -87,3 +87,25 @@ func TestApplyState(t *testing.T) {
 	assert.Len(t, hist.Remove, 0)
 	require.Len(t, msgs, 2)
 }
+
+func TestState_Diff(t *testing.T) {
+	s1 := NewDoc("root", map[string]simple.Block{
+		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2", "3"}}),
+		"2":    base.NewBase(&model.Block{Id: "2"}),
+		"3":    base.NewBase(&model.Block{Id: "3"}),
+	}).NewState()
+	s2 := NewDoc("root", map[string]simple.Block{
+		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2", "4"}}),
+		"2":    base.NewBase(&model.Block{Id: "2"}),
+		"4":    base.NewBase(&model.Block{Id: "4"}),
+	}).NewState()
+
+	msgs, err := s1.Diff(s2)
+	require.NoError(t, err)
+	assert.Len(t, msgs, 3)
+	assert.NotNil(t, msgs[0].GetBlockSetChildrenIds())
+	require.NotNil(t, msgs[1].GetBlockAdd())
+	assert.Len(t, msgs[1].GetBlockAdd().Blocks, 1)
+	require.NotNil(t, msgs[2].GetBlockDelete())
+	assert.Len(t, msgs[2].GetBlockDelete().BlockIds, 1)
+}

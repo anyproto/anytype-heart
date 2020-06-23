@@ -165,15 +165,6 @@ func (s *State) PickOriginParentOf(id string) (res simple.Block) {
 	return
 }
 
-func (s *State) Diff(id string) ([]*pb.EventMessage, error) {
-	if new := s.blocks[id]; new != nil && s.parent != nil {
-		if old := s.PickOrigin(id); old != nil {
-			return old.Diff(new)
-		}
-	}
-	return nil, nil
-}
-
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	var iter func(id string) (isContinue bool, err error)
 	var parentIds = s.bufIterateParentIds[:0]
@@ -358,6 +349,55 @@ func (s *State) intermediateApply() {
 		s.parent.details = s.details
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
+	return
+}
+
+func (s *State) Diff(new *State) (msgs []*pb.EventMessage, err error) {
+	var (
+		newBlocks []*model.Block
+		removeIds []string
+	)
+	new.Iterate(func(nb simple.Block) (isContinue bool) {
+		b := s.Pick(nb.Model().Id)
+		if b == nil {
+			newBlocks = append(newBlocks, nb.Copy().Model())
+		} else {
+			bdiff, e := b.Diff(nb)
+			if e != nil {
+				err = e
+				return false
+			}
+			msgs = append(msgs, bdiff...)
+		}
+		return true
+	})
+	if err != nil {
+		return
+	}
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if !new.Exists(b.Model().Id) {
+			removeIds = append(removeIds, b.Model().Id)
+		}
+		return true
+	})
+	if len(newBlocks) > 0 {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockAdd{
+				BlockAdd: &pb.EventBlockAdd{
+					Blocks: newBlocks,
+				},
+			},
+		})
+	}
+	if len(removeIds) > 0 {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockDelete{
+				BlockDelete: &pb.EventBlockDelete{
+					BlockIds: removeIds,
+				},
+			},
+		})
+	}
 	return
 }
 
