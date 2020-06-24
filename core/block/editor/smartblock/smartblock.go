@@ -288,7 +288,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
-	sb.source.Anytype().PageStore()
 	return
 }
 
