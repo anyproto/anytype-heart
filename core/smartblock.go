@@ -13,7 +13,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/cbor"
@@ -598,19 +597,6 @@ func getSnippet(snap *smartBlockSnapshot) string {
 }
 
 func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
-	fromStateM, err := block.node.localStore.Pages.GetStateByID(block.ID())
-	if err != nil && err != ds.ErrNotFound {
-		return err
-	}
-
-	var fromState vclock.VClock
-	if fromStateM != nil && fromStateM.State != nil {
-		fromState = vclock.NewFromMap(fromStateM.State)
-		if !snap.State().Compare(fromState, vclock.Ancestor) {
-			return nil
-		}
-	}
-
 	storeOutgoingLinks := func(snap *smartBlockSnapshot, linksMap map[string]struct{}) {
 		for _, block := range snap.blocks {
 			if link := block.GetLink(); link != nil {
@@ -627,55 +613,16 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 		}
 	}
 
-	prevOutgoingLinks := make(map[string]struct{})
 	newOutgoingLinks := make(map[string]struct{})
-	var oldSnippet string
-	var oldDetails *types.Struct
 	newSnippet := getSnippet(snap)
 
-	if !fromState.IsNil() {
-		prevSnaps, err := block.GetSnapshots(fromState, 1, false)
-		if err != nil && err != ErrBlockSnapshotNotFound {
-			return err
-		} else if prevSnaps != nil && len(prevSnaps) > 0 {
-			prevSnap := prevSnaps[0]
-			storeOutgoingLinks(&prevSnap, prevOutgoingLinks)
-			oldSnippet = getSnippet(&prevSnap)
-			oldDetails = prevSnaps[0].details
-		}
-	}
-
+	var newOutgoingLinksIds = []string{}
 	storeOutgoingLinks(snap, newOutgoingLinks)
-
-	var linksToRemove []string
-	var linksToAdd []string
-	for link, _ := range newOutgoingLinks {
-		if _, exists := prevOutgoingLinks[link]; !exists {
-			linksToAdd = append(linksToAdd, link)
-		}
+	for linkId := range newOutgoingLinks {
+		newOutgoingLinksIds = append(newOutgoingLinksIds, linkId)
 	}
 
-	for link, _ := range prevOutgoingLinks {
-		if _, exists := newOutgoingLinks[link]; !exists {
-			linksToRemove = append(linksToRemove, link)
-		}
-	}
-
-	var changeSnippet string
-	if oldSnippet != newSnippet {
-		if newSnippet == "" {
-			// workaround to send non-empty string
-			newSnippet = " "
-		}
-		changeSnippet = newSnippet
-	}
-
-	var changedDetails *model.PageDetails
-	if oldDetails == nil || oldDetails.Compare(snap.details) != 0 {
-		changedDetails = &model.PageDetails{snap.details}
-	}
-
-	return block.node.localStore.Pages.Update(&model.State{snap.State().Map()}, block.ID(), linksToAdd, linksToRemove, changeSnippet, changedDetails)
+	return block.node.localStore.Pages.Update(block.ID(), snap.details, newOutgoingLinksIds, &newSnippet)
 }
 
 func (block *smartBlock) index() error {

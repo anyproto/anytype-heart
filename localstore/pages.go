@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 )
@@ -165,6 +166,18 @@ func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
 	return pages, nil
 }
 
+func getOutboundLinks(txn ds.Txn, id string) ([]string, error) {
+	outboundResults, err := txn.Query(query.Query{
+		Prefix:   pagesOutboundLinksBase.String() + "/" + id + "/",
+		Limit:    0,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return GetAllKeysFromResults(outboundResults)
+}
+
 func (m *dsPageStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -246,15 +259,7 @@ func (m *dsPageStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWi
 	}
 	page := pages[0]
 
-	outboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesOutboundLinksBase.String() + "/" + id + "/",
-		Limit:    0,
-		KeysOnly: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	outboundsIds, err := GetAllKeysFromResults(outboundResults)
+	outboundsIds, err := getOutboundLinks(txn, id)
 	if err != nil {
 		return nil, err
 	}
@@ -324,45 +329,86 @@ func (m *dsPageStore) GetStateByID(id string) (*model.State, error) {
 	return &state, nil
 }
 
-func (m *dsPageStore) Update(state *model.State, id string, addedLinks []string, removedLinks []string, changeSnippet string, changedDetails *model.PageDetails) error {
+func diffSlices(a, b []string) (removed []string, added []string) {
+	var amap = map[string]struct{}{}
+	var bmap = map[string]struct{}{}
+
+	for _, item := range a {
+		amap[item] = struct{}{}
+	}
+
+	for _, item := range b {
+		if _, exists := amap[item]; !exists {
+			added = append(added, item)
+		}
+		bmap[item] = struct{}{}
+	}
+
+	for _, item := range a {
+		if _, exists := bmap[item]; !exists {
+			removed = append(removed, item)
+		}
+	}
+	return
+}
+
+func (m *dsPageStore) Update(id string, details *types.Struct, links []string, snippet *string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error when creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
+	if details != nil || snippet != nil {
+		exInfo, _ := getPageInfo(txn, id)
+		if exInfo != nil {
+			if exInfo.Details.Equal(details) {
+				details = nil
+			}
+
+			if snippet != nil && exInfo.Snippet == *snippet {
+				snippet = nil
+			}
+		}
+	}
+
+	var addedLinks, removedLinks []string
+
+	if links != nil {
+		exLinks, _ := getOutboundLinks(txn, id)
+		addedLinks, removedLinks = diffSlices(exLinks, links)
+	}
+
 	// underlying commands set the same state each time, but this shouldn't be a problem as we made it in 1 transaction
-	if changedDetails != nil {
-		err = m.updateDetails(txn, id, changedDetails)
+	if details != nil {
+		err = m.updateDetails(txn, id, &model.PageDetails{Details: details})
 		if err != nil {
 			return err
 		}
 	}
 
-	if addedLinks != nil {
+	if len(addedLinks) > 0 {
 		err = m.addLinks(txn, id, addedLinks)
 		if err != nil {
 			return err
 		}
 	}
 
-	if removedLinks != nil {
+	if len(removedLinks) > 0 {
 		err = m.removeLinks(txn, id, removedLinks)
 		if err != nil {
 			return err
 		}
 	}
 
-	if changeSnippet != "" {
-		err = m.updateSnippet(txn, id, changeSnippet)
+	if snippet != nil {
+		err = m.updateSnippet(txn, id, *snippet)
 		if err != nil {
 			return err
 		}
-	}
-
-	err = m.updateState(txn, id, state)
-	if err != nil {
-		return err
 	}
 
 	return txn.Commit()
@@ -386,26 +432,6 @@ func (m *dsPageStore) addLinks(txn ds.Txn, fromID string, targetIDs []string) er
 	return nil
 }
 
-func (m *dsPageStore) AddLinks(state *model.State, fromID string, targetIDs []string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	err = m.addLinks(txn, fromID, targetIDs)
-	if err != nil {
-		return err
-	}
-
-	err = m.updateState(txn, fromID, state)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
 func (m *dsPageStore) removeLinks(txn ds.Txn, fromID string, targetIDs []string) error {
 	for _, targetID := range targetIDs {
 		outboundKey := pagesOutboundLinksBase.ChildString(fromID).ChildString(targetID)
@@ -424,37 +450,6 @@ func (m *dsPageStore) removeLinks(txn ds.Txn, fromID string, targetIDs []string)
 	return nil
 }
 
-func (m *dsPageStore) RemoveLinks(state *model.State, fromID string, targetIDs []string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	err = m.removeLinks(txn, fromID, targetIDs)
-	if err != nil {
-		return err
-	}
-
-	err = m.updateState(txn, fromID, state)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsPageStore) updateState(txn ds.Txn, id string, state *model.State) error {
-	stateKey := pagesLastStateBase.ChildString(id)
-
-	b, err := proto.Marshal(state)
-	if err != nil {
-		return err
-	}
-
-	return txn.Put(stateKey, b)
-}
-
 func (m *dsPageStore) updateDetails(txn ds.Txn, id string, details *model.PageDetails) error {
 	detailsKey := pagesDetailsBase.ChildString(id)
 	b, err := proto.Marshal(details)
@@ -470,26 +465,6 @@ func (m *dsPageStore) updateDetails(txn ds.Txn, id string, details *model.PageDe
 	return nil
 }
 
-func (m *dsPageStore) UpdateDetails(state *model.State, id string, details *model.PageDetails) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	err = m.updateDetails(txn, id, details)
-	if err != nil {
-		return err
-	}
-
-	err = m.updateState(txn, id, state)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
 func (m *dsPageStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
 
@@ -499,26 +474,6 @@ func (m *dsPageStore) updateSnippet(txn ds.Txn, id string, snippet string) error
 	}
 
 	return nil
-}
-
-func (m *dsPageStore) UpdateSnippet(state *model.State, id string, snippet string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	err = m.updateSnippet(txn, id, snippet)
-	if err != nil {
-		return err
-	}
-
-	err = m.updateState(txn, id, state)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
 }
 
 func (m *dsPageStore) Delete(id string) error {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -49,12 +50,7 @@ type PageStore interface {
 	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)
 	List() ([]*model.PageInfo, error)
 	GetByIDs(ids ...string) ([]*model.PageInfo, error)
-	GetStateByID(id string) (*model.State, error)
-	Update(state *model.State, id string, addedLinks []string, removedLinks []string, changeSnippet string, changedDetails *model.PageDetails) error
-	AddLinks(state *model.State, from string, targetIDs []string) error
-	RemoveLinks(state *model.State, from string, targetIDs []string) error
-	UpdateDetails(state *model.State, id string, details *model.PageDetails) error
-	UpdateSnippet(state *model.State, id string, snippet string) error
+	Update(id string, details *types.Struct, links []string, snippet *string) error
 	UpdateLastOpened(id string) error
 	Delete(id string) error
 }
