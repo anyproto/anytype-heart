@@ -109,9 +109,10 @@ type Service interface {
 
 	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
 
-	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
-	PageList() ([]*model.PageInfo, error)
-	PageUpdateLastOpened(id string) error
+	PageStore() localstore.PageStore
+	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error) // deprecated, use PageStore()
+	PageList() ([]*model.PageInfo, error)                          // deprecated, use PageStore()
+	PageUpdateLastOpened(id string) error                          // deprecated, use PageStore()
 }
 
 func (a *Anytype) Account() string {

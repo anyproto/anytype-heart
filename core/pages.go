@@ -3,13 +3,20 @@ package core
 import (
 	"sort"
 
+	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 )
 
+func (a *Anytype) PageStore() localstore.PageStore {
+	return a.localStore.Pages
+}
+
+// deprecated, to be removed
 func (a *Anytype) PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error) {
 	return a.localStore.Pages.GetWithLinksInfoByID(id)
 }
 
+// deprecated, to be removed
 func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 	ids, err := a.t.Logstore().Threads()
 	if err != nil {
@@ -56,6 +63,7 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 	return pages, nil
 }
 
+// deprecated, to be removed
 func (a *Anytype) PageUpdateLastOpened(id string) error {
 	return a.localStore.Pages.UpdateLastOpened(id)
 }
