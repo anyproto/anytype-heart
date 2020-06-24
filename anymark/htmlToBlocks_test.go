@@ -38,7 +38,6 @@ func replaceFakeIds(blocks []*model.Block) {
 			block.ChildrenIds[j] = m[block.ChildrenIds[j]]
 		}
 	}
-
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {

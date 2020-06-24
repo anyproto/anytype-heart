@@ -51,7 +51,7 @@ type RWriter interface {
 	CloseTextBlock(model.BlockContentTextStyle)
 	ForceCloseTextBlock()
 
-	SetIsNumberedList(isNumbered bool)
+	SetListState(entering bool, isNumbered bool)
 	GetIsNumberedList() (isNumbered bool)
 
 	GetAllFileShortPaths() []string
@@ -81,6 +81,10 @@ type rWriter struct {
 	blocks           []*model.Block
 	rootBlockIDs     []string
 	curStyledBlock   model.BlockContentTextStyle
+
+	listParentId  string
+	listNestIsNum []bool
+	listNestLevel uint
 }
 
 func (rw *rWriter) GetAllFileShortPaths() []string {
@@ -179,16 +183,40 @@ func (rw *rWriter) GetRootBlockIDs() []string {
 	return rw.rootBlockIDs
 }
 
-func (rw *rWriter) SetIsNumberedList(isNumbered bool) {
-	rw.isNumberedList = isNumbered
+func (rw *rWriter) addChildrenId(cId string) {
+	for i, _ := range rw.blocks {
+		if rw.blocks[i].Id == rw.listParentId {
+			rw.blocks[i].ChildrenIds = append(rw.blocks[i].ChildrenIds, cId)
+		}
+	}
+}
+
+func (rw *rWriter) SetListState(entering bool, isNumbered bool) {
+	if entering {
+		rw.listNestIsNum = append(rw.listNestIsNum, isNumbered)
+		rw.listNestLevel += 1
+	} else if len(rw.listNestIsNum) > 0 {
+		rw.listNestIsNum = rw.listNestIsNum[:len(rw.listNestIsNum)-1]
+		rw.listNestLevel -= 1
+	}
+
+	if len(rw.listNestIsNum) > 1 {
+		if len(rw.blocks) > 0 {
+			rw.listParentId = rw.blocks[len(rw.blocks)-1].Id
+		} else {
+			rw.listParentId = ""
+		}
+	} else {
+		rw.listParentId = ""
+	}
 }
 
 func (rw *rWriter) GetIsNumberedList() (isNumbered bool) {
-	return rw.isNumberedList
+	return rw.listNestIsNum[len(rw.listNestIsNum)-1]
 }
 
 func NewRWriter(writer *bufio.Writer, baseFilepath string, allFileShortPaths []string) RWriter {
-	return &rWriter{Writer: writer, baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths}
+	return &rWriter{Writer: writer, baseFilepath: baseFilepath, allFileShortPaths: allFileShortPaths, listNestLevel: 0}
 }
 
 func (rw *rWriter) GetText() string {
@@ -261,6 +289,8 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 	var closingBlock *textBlock
 	var parentBlock *textBlock
 
+	id := uuid.New().String()
+
 	if len(rw.openedTextBlocks) > 0 {
 		closingBlock = rw.openedTextBlocks[len(rw.openedTextBlocks)-1]
 		rw.openedTextBlocks = rw.openedTextBlocks[:len(rw.openedTextBlocks)-1]
@@ -272,13 +302,12 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 				break
 			}
 		}
-
 	}
 
 	if closingBlock == nil {
 		closingBlock = &textBlock{
 			Block: model.Block{
-				Id: uuid.New().String(),
+				Id: id,
 				Content: &model.BlockContentOfText{
 					Text: &model.BlockContentText{},
 				},
@@ -338,7 +367,13 @@ func (rw *rWriter) CloseTextBlock(content model.BlockContentTextStyle) {
 
 	// IMPORTANT: do not create a new block if textBuffer is empty
 	if len(text.Text) > 0 || len(closingBlock.ChildrenIds) > 0 {
+		// Nested list case:
+		if len(rw.listParentId) > 0 {
+			rw.addChildrenId(id)
+		}
+
 		rw.blocks = append(rw.blocks, &(closingBlock.Block))
+
 	}
 }
 
