@@ -158,13 +158,19 @@ func (c *Online) ProfileFind(ctx context.Context, in *pb.ProfileFindRequest, opt
 	return c.client.ProfileFind(ctx, in, opts...)
 }
 
-func NewClient(url string, device wallet.Keypair, account wallet.Keypair) (Client, error) {
-	certpool, err := x509.SystemCertPool()
-	if err != nil {
-		return nil, err
-	}
+func NewClient(url string, version string, insecure bool, device wallet.Keypair, account wallet.Keypair) (Client, error) {
+	opts := []grpc.DialOption{grpc.WithUserAgent(version), grpc.WithPerRPCCredentials(thread.Credentials{})}
 
-	conn, err := grpc.Dial(url, grpc.WithUserAgent("<todo>"), grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(certpool, "")), grpc.WithPerRPCCredentials(thread.Credentials{}))
+	if insecure {
+		opts = append(opts, grpc.WithInsecure())
+	} else {
+		certpool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(certpool, "")))
+	}
+	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
 		return nil, err
 	}
