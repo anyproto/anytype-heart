@@ -2,7 +2,7 @@
   {
     "desc": "list with nested lists",
     "html": "<ol><li>Google<ul><li>JavaScript</li><li>C++</li></ul></li><li>Facebook<ul><li>Erlang</li></ul></li> <li> Stuff </li></ol>",
-    "blocks": [{"id":"1","Content":{"text":{"text":"JavaScript","style":9,"marks":{}}}},{"id":"2","Content":{"text":{"text":"C++","style":9,"marks":{}}}},{"id":"3","childrenIds":["1","2",""],"Content":{"text":{"text":"Google","style":10,"marks":{}}}},{"id":"4","Content":{"text":{"text":"Erlang","style":9,"marks":{}}}},{"id":"5","childrenIds":["4"],"Content":{"text":{"text":"Facebook","style":10,"marks":{}}}},{"id":"6","Content":{"text":{"text":"Stuff","style":10,"marks":{}}}}]
+    "blocks":  [{"id":"1","Content":{"text":{"text":"JavaScript","style":9,"marks":{}}}},{"id":"2","Content":{"text":{"text":"C++","style":9,"marks":{}}}},{"id":"3","childrenIds":["1","2"],"Content":{"text":{"text":"Google","style":10,"marks":{}}}},{"id":"4","Content":{"text":{"text":"Erlang","style":9,"marks":{}}}},{"id":"5","childrenIds":["4"],"Content":{"text":{"text":"Facebook","style":10,"marks":{}}}},{"id":"6","Content":{"text":{"text":"Stuff","style":10,"marks":{}}}}]
   },
 
   {
@@ -120,62 +120,8 @@
   {
     "desc": "Nested List without spaces",
     "html": "<ul><li>Coffee</li><li>Tea<ul><li>Black tea</li><li>Green tea</li></ul></li><li>Milk</li></ul>",
-    "blocks": [
-      {
-        "id": "1",
-        "Content": {
-          "text": {
-            "text": "Coffee",
-            "style": 9,
-            "marks": {}
-          }
-        }
-      },
-      {
-        "id": "2",
-        "Content": {
-          "text": {
-            "text": "Black tea",
-            "style": 9,
-            "marks": {}
-          }
-        }
-      },
-      {
-        "id": "3",
-        "Content": {
-          "text": {
-            "text": "Green tea",
-            "style": 9,
-            "marks": {}
-          }
-        }
-      },
-      {
-        "id": "4",
-        "childrenIds": [
-          "2",
-          "3"
-        ],
-        "Content": {
-          "text": {
-            "text": "Tea",
-            "style": 9,
-            "marks": {}
-          }
-        }
-      },
-      {
-        "id": "5",
-        "Content": {
-          "text": {
-            "text": "Milk",
-            "style": 9,
-            "marks": {}
-          }
-        }
-      }
-    ]
+    "blocks": [{"id": "1","Content": {"text": {"text": "Coffee","style": 9,"marks": {}}}},{"id": "2","Content": {"text": {"text": "Black tea","style": 9,"marks": {}}}},{"id": "3","Content": {"text": {"text": "Green tea","style": 9,"marks": {}}}},{"id": "4","childrenIds": ["2","3"],"Content": {"text": {"text": "Tea","style": 9,"marks": {}}}},{"id": "5","Content": {"text": {"text": "Milk","style": 9,"marks": {}}}}]
+
   },
   {
     "desc": "Nested List wrapped",

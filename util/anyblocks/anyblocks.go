@@ -39,6 +39,14 @@ func PreprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
 		blocksOut = append(blocksOut, CombineCodeBlocks(accum))
 	}
 
+	for _, b := range blocks {
+		for i, cId := range b.ChildrenIds {
+			if len(cId) == 0 {
+				b.ChildrenIds = append(b.ChildrenIds[:i], b.ChildrenIds[i+1:]...)
+			}
+		}
+	}
+
 	return blocksOut
 }
 

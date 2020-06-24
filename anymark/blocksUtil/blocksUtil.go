@@ -185,7 +185,7 @@ func (rw *rWriter) GetRootBlockIDs() []string {
 
 func (rw *rWriter) addChildrenId(cId string) {
 	for i, _ := range rw.blocks {
-		if rw.blocks[i].Id == rw.listParentId {
+		if rw.blocks[i].Id == rw.listParentId && len(cId) > 0 {
 			rw.blocks[i].ChildrenIds = append(rw.blocks[i].ChildrenIds, cId)
 		}
 	}
