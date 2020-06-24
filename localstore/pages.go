@@ -19,7 +19,6 @@ var (
 	pagesPrefix         = "pages"
 	pagesDetailsBase    = ds.NewKey("/" + pagesPrefix + "/details")
 	pagesSnippetBase    = ds.NewKey("/" + pagesPrefix + "/snippet")
-	pagesLastStateBase  = ds.NewKey("/" + pagesPrefix + "/state")
 	pagesLastOpenedBase = ds.NewKey("/" + pagesPrefix + "/lastopened")
 
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
@@ -43,7 +42,6 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 	detailsKey := pagesDetailsBase.ChildString(page.Id)
 	snippetKey := pagesSnippetBase.ChildString(page.Id)
 	outboundKey := pagesOutboundLinksBase.ChildString(page.Id)
-	stateKey := pagesLastStateBase.ChildString(page.Id)
 
 	exists, err := txn.Has(detailsKey)
 	if err != nil {
@@ -87,28 +85,12 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 		return err
 	}
 
-	err = txn.Put(stateKey, b)
-	if err != nil {
-		return err
-	}
-
 	return txn.Commit()
 }
 
 func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
-	val, err := txn.Get(pagesLastStateBase.ChildString(id))
+	val, err := txn.Get(pagesDetailsBase.ChildString(id))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get last state: %w", err)
-	}
-
-	var state model.State
-	err = proto.Unmarshal(val, &state)
-	if err != nil {
-		return nil, err
-	}
-
-	val, err = txn.Get(pagesDetailsBase.ChildString(id))
-	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get details: %w", err)
 	}
 
@@ -144,7 +126,7 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
-	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened, HasInboundLinks: inboundLinks == 1}, nil
+	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), LastOpened: lastOpened, HasInboundLinks: inboundLinks == 1}, nil
 }
 
 func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
@@ -282,7 +264,7 @@ func (m *dsPageStore) List() ([]*model.PageInfo, error) {
 	}
 	defer txn.Discard()
 	inboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesLastStateBase.String() + "/",
+		Prefix:   pagesDetailsBase.String() + "/",
 		Limit:    0,
 		KeysOnly: true,
 	})
@@ -306,27 +288,6 @@ func (m *dsPageStore) GetByIDs(ids ...string) ([]*model.PageInfo, error) {
 	defer txn.Discard()
 
 	return getPagesInfo(txn, ids)
-}
-
-func (m *dsPageStore) GetStateByID(id string) (*model.State, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	val, err := txn.Get(pagesLastStateBase.ChildString(id))
-	if err != nil {
-		return nil, err
-	}
-
-	var state model.State
-	err = proto.Unmarshal(val, &state)
-	if err != nil {
-		return nil, err
-	}
-
-	return &state, nil
 }
 
 func diffSlices(a, b []string) (removed []string, added []string) {
@@ -487,9 +448,8 @@ func (m *dsPageStore) Delete(id string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
 	outboundKey := pagesOutboundLinksBase.ChildString(id)
 	inboundKey := pagesInboundLinksBase.ChildString(id)
-	stateKey := pagesLastStateBase.ChildString(id)
 
-	exists, err := txn.Has(stateKey)
+	exists, err := txn.Has(detailsKey)
 	if err != nil {
 		return err
 	}
@@ -508,11 +468,6 @@ func (m *dsPageStore) Delete(id string) error {
 	}
 
 	err = txn.Delete(outboundKey)
-	if err != nil {
-		return err
-	}
-
-	err = txn.Delete(stateKey)
 	if err != nil {
 		return err
 	}
