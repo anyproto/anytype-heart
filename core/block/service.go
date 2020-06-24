@@ -196,6 +196,9 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
+	if e := s.anytype.PageStore().UpdateLastOpened(id); e != nil {
+		log.Warnf("can't update last opened id: %v", e)
+	}
 	return nil
 }
 
