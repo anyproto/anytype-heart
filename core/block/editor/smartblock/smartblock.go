@@ -88,7 +88,7 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
-	if sb.Doc, err = s.ReadDoc(nil); err != nil {
+	if sb.Doc, err = s.ReadDoc(sb); err != nil {
 		return err
 	}
 	sb.source = s
@@ -327,6 +327,35 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 		return
 	}
 	return
+}
+
+func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
+	sb.Lock()
+	defer sb.Unlock()
+	s, err := f(sb.Doc)
+	if err != nil {
+		return err
+	}
+	return sb.Apply(s, NoHistory)
+}
+
+func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
+	sb.Lock()
+	defer sb.Unlock()
+	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
+	sb.Doc = d
+	if e != nil {
+		// can't make diff - reopen doc
+		sb.Show(state.NewContext(sb.sendEvent))
+	} else {
+		if len(msgs) > 0 && sb.sendEvent != nil {
+			sb.sendEvent(&pb.Event{
+				Messages:  msgs,
+				ContextId: sb.Id(),
+			})
+		}
+	}
+	return nil
 }
 
 func (sb *smartBlock) Close() (err error) {

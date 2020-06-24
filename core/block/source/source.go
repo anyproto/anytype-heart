@@ -100,6 +100,7 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 		s.tree, s.logHeads, err = change.BuildTree(s.sb)
 	}
 	if err == change.ErrEmpty {
+		err = nil
 		s.tree = new(change.Tree)
 		doc = state.NewDoc(s.id, nil)
 	} else if err != nil {
@@ -107,7 +108,7 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 	} else if doc, err = s.buildState(); err != nil {
 		return
 	}
-	if ch != nil {
+	if s.unsubscribe != nil {
 		s.closed = make(chan struct{})
 		go s.changeListener(ch)
 	}
@@ -238,9 +239,11 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 }
 
 func (s *source) Close() (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.unsubscribe != nil {
 		s.unsubscribe()
-		<-s.closed
+		//<-s.closed
 	}
 	return nil
 }
