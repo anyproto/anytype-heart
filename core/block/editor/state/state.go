@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -13,10 +14,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("anytype-mw-state")
+
+const (
+	snippetMinSize = 50
+	snippetMaxSize = 300
+)
 
 type Doc interface {
 	RootId() string
@@ -27,6 +34,7 @@ type Doc interface {
 	Append(targetId string, id string) (ok bool)
 	Details() *types.Struct
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
+	Snippet() (snippet string)
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -410,4 +418,20 @@ func (s *State) Details() *types.Struct {
 		return s.parent.Details()
 	}
 	return s.details
+}
+
+func (s *State) Snippet() (snippet string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if text := b.Model().GetText(); text != nil {
+			if snippet != "" {
+				snippet += " "
+			}
+			snippet += text.Text
+			if utf8.RuneCountInString(snippet) >= snippetMinSize {
+				return false
+			}
+		}
+		return true
+	})
+	return text.Truncate(snippet, snippetMaxSize)
 }

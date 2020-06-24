@@ -221,6 +221,7 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
+	var beforeSnippet = sb.Doc.Snippet()
 	var sendEvent, addHistory = true, true
 	msgs, act, err := state.ApplyState(s)
 	if err != nil {
@@ -260,46 +261,55 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			})
 		}
 	}
+
+	var storeInfo struct {
+		details *types.Struct
+		snippet *string
+		links   []string
+	}
+
 	if act.Details != nil {
 		sb.meta.ReportChange(meta.Meta{
 			BlockId:        sb.Id(),
 			SmartBlockMeta: *sb.Meta(),
 		})
+		storeInfo.details = pbtypes.CopyStruct(sb.Details())
 	}
-	for _, edit := range act.Change {
-		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
-		}
-		if ls, ok := edit.Before.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
-		}
-	}
-	for _, add := range act.Add {
-		if ls, ok := add.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
+
+	if hasDepIds(act) {
+		if sb.checkSubscriptions() {
+			storeInfo.links = make([]string, len(sb.depIds))
+			copy(storeInfo.links, sb.depIds)
+			storeInfo.links = slice.Remove(storeInfo.links, sb.Id())
 		}
 	}
-	for _, rem := range act.Remove {
-		if ls, ok := rem.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
+
+	afterSnippet := sb.Doc.Snippet()
+	if beforeSnippet != afterSnippet {
+		storeInfo.snippet = &afterSnippet
+	}
+
+	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
+		if storeInfo.links != nil || storeInfo.details != nil && storeInfo.snippet != nil {
+			if e := sb.Anytype().PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet); e != nil {
+				log.Warnf("can't update pageStore info: %v", e)
+			}
+			log.Infof("pageStore: %s: %+v", sb.Id(), storeInfo)
 		}
 	}
-	sb.source.Anytype().PageStore()
 	return
 }
 
-func (sb *smartBlock) checkSubscriptions() {
-	if sb.metaSub != nil {
-		depIds := sb.dependentSmartIds()
-		if !slice.SortedEquals(sb.depIds, depIds) {
-			sb.depIds = depIds
+func (sb *smartBlock) checkSubscriptions() (changed bool) {
+	depIds := sb.dependentSmartIds()
+	if !slice.SortedEquals(sb.depIds, depIds) {
+		sb.depIds = depIds
+		if sb.metaSub != nil {
 			sb.metaSub.ReSubscribe(depIds...)
 		}
+		return true
 	}
+	return false
 }
 
 func (sb *smartBlock) History() history.History {
@@ -337,4 +347,26 @@ func (sb *smartBlock) Close() (err error) {
 	sb.source.Close()
 	log.Debugf("close smartblock %v", sb.Id())
 	return
+}
+
+func hasDepIds(act history.Action) bool {
+	for _, edit := range act.Change {
+		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+		if ls, ok := edit.Before.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+	}
+	for _, add := range act.Add {
+		if ls, ok := add.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+	}
+	for _, rem := range act.Remove {
+		if ls, ok := rem.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+	}
+	return false
 }
