@@ -47,6 +47,7 @@ type PageStore interface {
 	Add(page *model.PageInfoWithOutboundLinksIDs) error
 	GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)
+	List() ([]*model.PageInfo, error)
 	GetByIDs(ids ...string) ([]*model.PageInfo, error)
 	GetStateByID(id string) (*model.State, error)
 	Update(state *model.State, id string, addedLinks []string, removedLinks []string, changeSnippet string, changedDetails *model.PageDetails) error

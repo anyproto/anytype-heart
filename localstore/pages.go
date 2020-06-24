@@ -270,6 +270,29 @@ func (m *dsPageStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWi
 	}, nil
 }
 
+func (m *dsPageStore) List() ([]*model.PageInfo, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	inboundResults, err := txn.Query(query.Query{
+		Prefix:   pagesLastStateBase.String() + "/",
+		Limit:    0,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := GetAllKeysFromResults(inboundResults)
+	if err != nil {
+		return nil, err
+	}
+
+	return getPagesInfo(txn, ids)
+}
+
 func (m *dsPageStore) GetByIDs(ids ...string) ([]*model.PageInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -277,12 +300,7 @@ func (m *dsPageStore) GetByIDs(ids ...string) ([]*model.PageInfo, error) {
 	}
 	defer txn.Discard()
 
-	pages, err := getPagesInfo(txn, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	return pages, nil
+	return getPagesInfo(txn, ids)
 }
 
 func (m *dsPageStore) GetStateByID(id string) (*model.State, error) {
