@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/anytypeio/go-anytype-library v0.8.1-0.20200527100149-03bb5df440f1
+	github.com/anytypeio/go-anytype-library v0.8.1-0.20200624064748-3d5367260103
 	github.com/cheggaaa/mb v1.0.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gogo/protobuf v1.3.1
