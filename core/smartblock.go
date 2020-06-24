@@ -597,6 +597,10 @@ func getSnippet(snap *smartBlockSnapshot) string {
 }
 
 func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
+	if block.Type() == SmartBlockTypeArchive {
+		return nil
+	}
+
 	storeOutgoingLinks := func(snap *smartBlockSnapshot, linksMap map[string]struct{}) {
 		for _, block := range snap.blocks {
 			if link := block.GetLink(); link != nil {
