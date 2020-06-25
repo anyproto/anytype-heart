@@ -9,12 +9,10 @@
 1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../js-anytype`
 
 #### Build for iOS
-1. Install Golang 1.13.* [from here](http://golang.org/dl/)
-2. `make build-ios` to build the framework into `dist/ios` folder
-3. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
+1. `make build-ios` to build the framework into `dist/ios` folder
+2. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
 
 #### Build for Android
-1. Install Golang 1.13.* [from here](http://golang.org/dl/)
 1. `make build-android` to build the library into `dist/android` folder
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
 

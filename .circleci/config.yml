@@ -7,7 +7,7 @@ checkout-linux: &checkout-linux
 jobs:
   persist-checkout:
     docker:
-      - image: circleci/golang:1.13.10
+      - image: circleci/golang:1.13.12
     steps:
       - checkout
       - run:
@@ -25,7 +25,7 @@ jobs:
 
   unit-test:
     docker:
-      - image: circleci/golang:1.13.10
+      - image: circleci/golang:1.13.12
     steps:
       - *checkout-linux
       - add_ssh_keys:
@@ -64,7 +64,7 @@ jobs:
 
   build-lib-linux:
     docker:
-      - image: circleci/golang:1.13.10
+      - image: circleci/golang:1.13.12
     steps:
       - *checkout-linux
       - add_ssh_keys:
@@ -172,8 +172,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            curl -L -o go1.13.10.darwin-amd64.tar.gz https://dl.google.com/go/go1.13.10.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.13.10.darwin-amd64.tar.gz
+            curl -L -o go1.13.12.darwin-amd64.tar.gz https://dl.google.com/go/go1.13.12.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.13.12.darwin-amd64.tar.gz
       - restore_cache:
           keys:
             - go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
@@ -216,10 +216,7 @@ jobs:
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -buildmode=c-archive -tags nogrpcserver -ldflags="$FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/lib/clib
-            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -buildmode=c-archive -tags nogrpcserver -ldflags="$FLAGS" -cgo -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/lib/clib
-            # workaround for gox putting .exe ext
-            mv windows-amd64.a.exe windows-amd64.a
-            mv windows-amd64.a.h windows-amd64.h
+            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.exe" github.com/anytypeio/go-anytype-middleware/lib-server/server
             make protos-deps
       - save_cache:
           key: go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
@@ -240,13 +237,22 @@ jobs:
             mkdir protos
             cp ../pb/protos/*.proto protos
             cp ../vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protos
-            declare -a arr=("darwin-amd64" "windows-amd64")
+            declare -a arr=("darwin-amd64")
             for i in "${arr[@]}"
             do
                 OSARCH=${i%.*}
                 cp ../${i}.a lib.a
                 cp ../${i}.h lib.h
                 tar -czvf lib_${VERSION}_${OSARCH}.tar.gz lib.a lib.h protos
+                mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
+            done
+
+            declare -a arr=("windows-amd64")
+            for i in "${arr[@]}"
+            do
+                OSARCH=${i%.*}
+                cp ../${i}* ./
+                tar -czvf lib_${VERSION}_${OSARCH}.tar.gz ${i}* protos
                 mv lib_${VERSION}_${OSARCH}.tar.gz ${OUT}/
             done
             cd .. && rm -rf tmp
@@ -270,21 +276,6 @@ jobs:
             mv jsaddon/build addon
             tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
             mv js_${VERSION}_darwin-amd64.tar.gz ${OUT}/
-      - run:
-          name: compile addon win
-          command: |
-            VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
-            if [ "${CIRCLE_TAG}" != "" ]; then
-                VERSION=${CIRCLE_TAG}
-            fi
-            OUT=~/dist/lib
-            cp ~/project/windows-amd64.a ./dist/lib.a
-            cp ~/project/windows-amd64.h ./dist/lib.h
-            make build-js
-            rm -rf addon
-            mv jsaddon/build addon
-            tar -czvf js_${VERSION}_windows-amd64.tar.gz protobuf addon
-            mv js_${VERSION}_windows-amd64.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
           paths:
@@ -311,8 +302,8 @@ jobs:
           name: install golang
           command: |
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
-            curl -L -o go1.13.10.darwin-amd64.tar.gz https://dl.google.com/go/go1.13.10.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.13.10.darwin-amd64.tar.gz
+            curl -L -o go1.13.12.darwin-amd64.tar.gz https://dl.google.com/go/go1.13.12.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.13.12.darwin-amd64.tar.gz
           # see the https://github.com/golang/go/issues/31628
           # uncomment if go not fixes this issue and we will need to publish to the appstore
           # cd ~ && mkdir gosrc && cd gosrc
@@ -411,8 +402,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            wget https://dl.google.com/go/go1.13.10.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.13.10.linux-amd64.tar.gz
+            wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.13.12.linux-amd64.tar.gz
             mkdir -p $GOPATH/bin
       - run:
           name: install protobuf
