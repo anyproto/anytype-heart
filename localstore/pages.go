@@ -80,11 +80,6 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 		return err
 	}
 
-	b, err = proto.Marshal(page.State)
-	if err != nil {
-		return err
-	}
-
 	return txn.Commit()
 }
 
