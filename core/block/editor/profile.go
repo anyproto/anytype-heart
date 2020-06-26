@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
@@ -35,6 +36,10 @@ type Profile struct {
 	bookmark.Bookmark
 
 	sendEvent func(e *pb.Event)
+}
+
+func (p *Profile) Init(s source.Source, _ bool) (err error) {
+	return p.SmartBlock.Init(s, true)
 }
 
 func (p *Profile) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {

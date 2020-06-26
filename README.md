@@ -31,7 +31,12 @@ Then you can easily regenerate proto files:
 make protos
 ```
 
-### Run tests
+#### Run tests
+Generate mocks:
+```
+make test-deps
+```
+
 GO test:
 ```
 make test
