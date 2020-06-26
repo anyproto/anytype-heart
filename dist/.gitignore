@@ -1,8 +1,5 @@
 server
 lib.a
 lib.h
-ios/pb/*
-android/pb/*
-js/pb/*
 ios/Lib.framework
 android/mobile.aar

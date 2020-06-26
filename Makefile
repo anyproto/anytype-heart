@@ -66,13 +66,14 @@ build-android: setup-go
 	GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/android/ && mv lib.aar dist/android/
 
-setup-protoc:
+setup-protoc-go:
 	rm -rf $(GOPATH)/src/github.com/gogo
 	mkdir -p $(GOPATH)/src/github.com/gogo
 	cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/anytypeio/protobuf
 	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
 	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
 
+setup-protoc: setup-protoc-go
 	cd $(GOPATH); go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 	export PATH=$(PATH):$(GOROOT)/bin:$(GOPATH)/bin
 	git clone https://github.com/grpc/grpc-web
@@ -108,15 +109,14 @@ protos: protos-deps
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib/
 	protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
-protos-swift:
+protos-swift: protos-deps
 	protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./dist/ios/pb pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
-protos-js:
-	protoc -I ./  --js_out=import_style=commonjs:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
-	protoc -I ./  --grpc-web_out=import_style=commonjs,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
-    npm run build:protos
+protos-js: protos-deps
+	protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
+	protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
-protos-java:
+protos-java: protos-deps
 	protoc -I ./ --java_out=./dist/android/pb pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
 build-server: protos-server
@@ -126,11 +126,12 @@ build-server: protos-server
 run-server: build-server
 	./dist/server
 
-build-dev-js-addon: setup build-lib build-js protos-js
+build-dev-js-addon: setup build-lib build-js-addon protos-js
 	cp -r jsaddon/build ../js-anytype/
 	cp -r dist/js/pb/* ../js-anytype/dist/lib
 
 build-dev-js: setup-go build-server protos-js
+	echo "Run 'make install-dev-js' insted if you want to build&install into ../js-anytype"
 
 install-dev-js: build-dev-js
 	cp -r dist/server ../js-anytype/dist/server
