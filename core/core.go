@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -203,8 +205,10 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	}
 
 	if opts.CafeGrpcHost != "" {
+		isLocal := strings.HasPrefix(opts.CafeGrpcHost, "127.0.0.1") || strings.HasPrefix(opts.CafeGrpcHost, "localhost")
+
 		var err error
-		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, opts.Device, opts.Account)
+		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, "<todo>", isLocal, opts.Device, opts.Account)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get grpc client: %w", err)
 		}
@@ -251,7 +255,19 @@ func getNewConfig(rootPath string, account string) ([]ServiceOption, error) {
 		return nil, fmt.Errorf("got %s key type instead of %s", deviceKp.KeypairType(), wallet.KeypairTypeDevice)
 	}
 
-	return []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithCafeGRPCHost(DefaultCafeNodeGRPC), WithHostMultiaddr(DefaultHostAddr)}, nil
+	opts := []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithHostMultiaddr(DefaultHostAddr)}
+	cafeP2PAddr := os.Getenv("ANYTYPE_CAFE_P2P_ADDR")
+	cafeGRPCAddr := os.Getenv("ANYTYPE_CAFE_GRPC_ADDR")
+
+	if cafeP2PAddr != "" {
+		opts = append(opts, WithCafeP2PAddr(cafeP2PAddr))
+	}
+
+	if cafeGRPCAddr != "" {
+		opts = append(opts, WithCafeGRPCHost(cafeGRPCAddr))
+	}
+
+	return opts, nil
 }
 
 func (a *Anytype) runPeriodicJobsInBackground() {
