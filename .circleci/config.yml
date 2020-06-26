@@ -211,7 +211,7 @@ jobs:
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
             gox -buildmode=c-archive -tags nogrpcserver -ldflags="$FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/lib/clib
             make protos-server
-            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}.exe" github.com/anytypeio/go-anytype-middleware/lib-server/server
+            CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/lib-server/server
       - save_cache:
           key: go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
           paths:
