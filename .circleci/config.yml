@@ -240,8 +240,8 @@ jobs:
             for i in "${arr[@]}"
             do
                 OSARCH=${i%.*}
-                cp ../${i}* ./
-                zip -r js_${VERSION}_${OSARCH}.zip ${i}* protobuf
+                cp ../${i}* ./grpc-server.exe
+                zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf
                 mv js_${VERSION}_${OSARCH}.zip ${OUT}/
             done
             cd .. && rm -rf tmp
