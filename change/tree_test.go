@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTree_Add(t *testing.T) {
@@ -141,6 +142,38 @@ func TestTree_AddFuzzy(t *testing.T) {
 		assert.Equal(t, []string{"3"}, tr.Heads())
 		assert.Equal(t, []string{"1.3"}, tr.DetailsHeads())
 	}
+}
+
+func TestTree_IterateBranching(t *testing.T) {
+	tr := new(Tree)
+	tr.Add(
+		newSnapshot("0", "", nil),
+		newChange("1", "0", "0"),
+		newChange("1.1", "0", "1"),
+		newChange("1.2", "0", "1.1"),
+		newChange("1.4", "0", "1.2", "2,3", "3.3"),
+		newChange("1.5", "0", "1.4"),
+		newChange("2.1", "0", "1"),
+		newChange("2.2", "0", "1.1", "2.1"),
+		newChange("2.3", "0", "2.2"),
+		newChange("3.2", "0", "2.1"),
+		newChange("3.3", "0", "3.2"),
+	)
+	var list []string
+	var branching []int
+	tr.IterateBranching("0", func(c *Change, branchLevel int) (isContinue bool) {
+		list = append(list, c.Id)
+		branching = append(branching, branchLevel)
+		return true
+	})
+	var expectedList = []string{
+		"0", "1", "1.1", "1.2", "2.1", "2.2", "2.3", "3.2", "3.3", "1.4", "1.5",
+	}
+	require.Equal(t, expectedList, list)
+	var expectedBranching = []int{
+		0, 0, 1, 2, 2, 2, 2, 2, 2, 0, 0,
+	}
+	assert.Equal(t, expectedBranching, branching)
 }
 
 func BenchmarkTree_Add(b *testing.B) {

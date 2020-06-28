@@ -123,7 +123,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	s.lastSnapshotId = root.Id
 	doc = state.NewDocFromSnapshot(s.id, root.GetSnapshot()).(*state.State)
 	doc.(*state.State).SetChangeId(root.Id)
-	st, err := change.BuildState(doc.(*state.State), s.tree)
+	st, err := change.BuildStateSimpleCRDT(doc.(*state.State), s.tree)
 	if err != nil {
 		return
 	}
@@ -223,7 +223,7 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 			s.lastSnapshotId = ch.Id
 		}
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
-			return change.BuildState(d.(*state.State), s.tree)
+			return change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
 		})
 	case change.Rebuild:
 		if ch.Snapshot != nil {

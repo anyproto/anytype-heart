@@ -30,33 +30,54 @@ func (s *State) ChangeId() string {
 	return s.changeId
 }
 
+func (s *State) Merge(s2 *State) *State {
+	// TODO:
+	return s
+}
+
 func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
 	for _, ch := range changes {
-		switch {
-		case ch.GetBlockCreate() != nil:
-			if err = s.changeBlockCreate(ch.GetBlockCreate()); err != nil {
-				return
-			}
-		case ch.GetBlockRemove() != nil:
-			if err = s.changeBlockRemove(ch.GetBlockRemove()); err != nil {
-				return
-			}
-		case ch.GetBlockUpdate() != nil:
-			if err = s.changeBlockUpdate(ch.GetBlockUpdate()); err != nil {
-				return
-			}
-		case ch.GetBlockMove() != nil:
-			if err = s.changeBlockMove(ch.GetBlockMove()); err != nil {
-				return
-			}
-		case ch.GetDetailsSet() != nil:
-			if err = s.changeBlockDetailsSet(ch.GetDetailsSet()); err != nil {
-				return
-			}
-		case ch.GetDetailsUnset() != nil:
-			if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
-				return
-			}
+		if err = s.applyChange(ch); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
+	for _, ch := range changes {
+		if err := s.applyChange(ch); err != nil {
+			log.Infof("error while applying changes: %v; ignore", err)
+		}
+	}
+	return
+}
+
+func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
+	switch {
+	case ch.GetBlockCreate() != nil:
+		if err = s.changeBlockCreate(ch.GetBlockCreate()); err != nil {
+			return
+		}
+	case ch.GetBlockRemove() != nil:
+		if err = s.changeBlockRemove(ch.GetBlockRemove()); err != nil {
+			return
+		}
+	case ch.GetBlockUpdate() != nil:
+		if err = s.changeBlockUpdate(ch.GetBlockUpdate()); err != nil {
+			return
+		}
+	case ch.GetBlockMove() != nil:
+		if err = s.changeBlockMove(ch.GetBlockMove()); err != nil {
+			return
+		}
+	case ch.GetDetailsSet() != nil:
+		if err = s.changeBlockDetailsSet(ch.GetDetailsSet()); err != nil {
+			return
+		}
+	case ch.GetDetailsUnset() != nil:
+		if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
+			return
 		}
 	}
 	return
@@ -117,12 +138,6 @@ func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
 		s.Unlink(id)
 	}
 	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
-}
-
-func (s *State) Merge(st *State) *State {
-	result := s.NewState()
-	// TODO:
-	return result
 }
 
 func (s *State) GetChanges() []*pb.ChangeContent {

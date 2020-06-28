@@ -195,6 +195,21 @@ func (t *Tree) Iterate(startId string, f func(c *Change) (isContinue bool)) {
 	t.iterate(t.attached[startId], f)
 }
 
+func (t *Tree) IterateBranching(startId string, f func(c *Change, branchLevel int) (isContinue bool)) {
+	// branchLevel indicates the number of parallel branches
+	var bc int
+	t.iterate(t.attached[startId], func(c *Change) (isContinue bool) {
+		if pl := len(c.PreviousIds); pl > 1 {
+			bc -= pl - 1
+		}
+		bl := bc
+		if nl := len(c.Next); nl > 1 {
+			bc += nl - 1
+		}
+		return f(c, bl)
+	})
+}
+
 func (t *Tree) Hash() string {
 	h := md5.New()
 	n := 0

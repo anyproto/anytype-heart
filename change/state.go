@@ -7,7 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 )
 
-func newStateCache() *stateCache {
+func NewStateCache() *stateCache {
 	return &stateCache{
 		states: make(map[string]struct {
 			refs  int
@@ -41,9 +41,9 @@ func (sc *stateCache) Get(id string) *state.State {
 	return item.state
 }
 
-func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
+// Simple implementation hopes for CRDT and ignores errors. No merge
+func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error) {
 	var (
-		sc        = newStateCache()
 		startId   string
 		applyRoot bool
 		st        = time.Now()
@@ -54,6 +54,46 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 		applyRoot = true
 	}
 	t.Iterate(startId, func(c *Change) (isContinue bool) {
+		if root.ChangeId() == c.Id {
+			s = root
+			if applyRoot {
+				s = s.NewState()
+				s.ApplyChangeIgnoreErr(c.Change.Content...)
+				s.SetChangeId(c.Id)
+				count++
+			}
+			return true
+		}
+		ns := s.NewState()
+		ns.ApplyChangeIgnoreErr(c.Change.Content...)
+		ns.SetChangeId(c.Id)
+		_, _, err = state.ApplyStateFastOne(ns)
+		if err != nil {
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("build state (crdt): changes: %d; dur: %v;", count, time.Since(st))
+	return s, err
+}
+
+// Full version found parallel branches and proposes to resolve conflicts
+func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
+	var (
+		sc        = NewStateCache()
+		startId   string
+		applyRoot bool
+		st        = time.Now()
+		count     int
+	)
+	if startId = root.ChangeId(); startId == "" {
+		startId = t.RootId()
+		applyRoot = true
+	}
+	t.IterateBranching(startId, func(c *Change, branchLevel int) (isContinue bool) {
 		if root.ChangeId() == c.Id {
 			s = root
 			if applyRoot {
@@ -74,23 +114,35 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			}
 			count++
 			s.SetChangeId(c.Id)
-			if _, _, err = state.ApplyStateFastOne(s); err != nil {
-				return false
+			if branchLevel == 0 {
+				if _, _, err = state.ApplyStateFastOne(s); err != nil {
+					return false
+				}
+				sc.Set(c.Id, ps, len(c.Next))
+			} else {
+				sc.Set(c.Id, s, len(c.Next))
 			}
-			sc.Set(c.Id, ps, len(c.Next))
 		} else if len(c.PreviousIds) > 1 {
 			toMerge := make([]*state.State, len(c.PreviousIds))
 			sort.Strings(c.PreviousIds)
 			for i, prevId := range c.PreviousIds {
 				toMerge[i] = sc.Get(prevId)
 			}
-			s = merge(toMerge...)
+			ps := merge(t, toMerge...)
+			s := ps.NewState()
 			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
 			count++
 			s.SetChangeId(c.Id)
-			sc.Set(c.Id, s, len(c.Next))
+			if branchLevel == 0 {
+				if _, _, err = state.ApplyStateFastOne(s); err != nil {
+					return false
+				}
+				sc.Set(c.Id, ps, len(c.Next))
+			} else {
+				sc.Set(c.Id, s, len(c.Next))
+			}
 		}
 		return true
 	})
@@ -107,13 +159,13 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 				toMerge[i] = sc.Get(hid)
 			}
 		}
-		s = merge(toMerge...)
+		s = merge(t, toMerge...)
 	}
 	log.Infof("build state: changes: %d; dur: %v;", count, time.Since(st))
 	return
 }
 
-func merge(states ...*state.State) (s *state.State) {
+func merge(t *Tree, states ...*state.State) (s *state.State) {
 	for _, st := range states {
 		if s == nil {
 			s = st
