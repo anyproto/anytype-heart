@@ -2,7 +2,6 @@ package cafe
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 	"sync"
 	"time"
@@ -164,11 +163,7 @@ func NewClient(url string, version string, insecure bool, device wallet.Keypair,
 	if insecure {
 		opts = append(opts, grpc.WithInsecure())
 	} else {
-		certpool, err := x509.SystemCertPool()
-		if err != nil {
-			return nil, err
-		}
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(certpool, "")))
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
 	}
 	conn, err := grpc.Dial(url, opts...)
 	if err != nil {
