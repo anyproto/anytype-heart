@@ -261,8 +261,6 @@ func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 	return sch, nil
 }
 
-var changeSet = make(map[string][]byte)
-
 func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
@@ -282,8 +280,5 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		ch.PreviousIds = ch.PreviousDetailsIds
 	}
 	sb.cache[id] = ch
-	if sb.smartblock.ID() == "bafybapt3aap3tmkbs7mkj5jao3vhjblijkiwqq37wxlylx5nn7cqokgk" {
-		changeSet[id] = sr.Payload
-	}
 	return
 }
