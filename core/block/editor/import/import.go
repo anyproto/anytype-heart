@@ -500,8 +500,10 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 					link := txt.Marks.Marks[0].Param
 
 					var wholeLineLink bool
-					if (txt.Marks.Marks[0].Range.From == 0 || strings.TrimSpace(txt.Text[0:txt.Marks.Marks[0].Range.From]) == "") &&
-						(int(txt.Marks.Marks[0].Range.To) >= (len(txt.Text)-1) || strings.TrimSpace(txt.Text[txt.Marks.Marks[0].Range.To:]) == "") {
+					textRunes := []rune(txt.Text)
+
+					if (txt.Marks.Marks[0].Range.From == 0 || strings.TrimSpace(string(textRunes[0:txt.Marks.Marks[0].Range.From])) == "") &&
+						(int(txt.Marks.Marks[0].Range.To) >= (len(textRunes)-1) || strings.TrimSpace(string(textRunes[txt.Marks.Marks[0].Range.To:])) == "") {
 						wholeLineLink = true
 					}
 
@@ -627,21 +629,29 @@ func (imp *importImpl) convertTextToPageMention(block *model.Block) {
 
 func (imp *importImpl) convertTextToFile(block *model.Block) {
 	// "svg" excluded
+	if block.GetText().Marks.Marks[0].Param == "" {
+		return
+	}
+
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
 	videoFormats := []string{"mp4", "m4v"}
 
 	fileType := model.BlockContentFile_File
-	for _, ext := range imageFormats {
-		if strings.EqualFold(filepath.Ext(block.GetText().Marks.Marks[0].Param)[1:], ext) {
-			fileType = model.BlockContentFile_Image
-			break
+	fileExt := filepath.Ext(block.GetText().Marks.Marks[0].Param)
+	if fileExt != "" {
+		fileExt = fileExt[1:]
+		for _, ext := range imageFormats {
+			if strings.EqualFold(fileExt, ext) {
+				fileType = model.BlockContentFile_Image
+				break
+			}
 		}
-	}
 
-	for _, ext := range videoFormats {
-		if strings.EqualFold(filepath.Ext(block.GetText().Marks.Marks[0].Param)[1:], ext) {
-			fileType = model.BlockContentFile_Video
-			break
+		for _, ext := range videoFormats {
+			if strings.EqualFold(fileExt, ext) {
+				fileType = model.BlockContentFile_Video
+				break
+			}
 		}
 	}
 

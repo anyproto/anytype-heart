@@ -29,8 +29,8 @@ type Dashboard struct {
 	_import.Import
 }
 
-func (p *Dashboard) Init(s source.Source) (err error) {
-	if err = p.SmartBlock.Init(s); err != nil {
+func (p *Dashboard) Init(s source.Source, _ bool) (err error) {
+	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
 	return p.init()

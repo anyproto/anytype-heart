@@ -144,6 +144,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().Id().Return(blocks[0].Id).AnyTimes()
 	fx.snapshot.EXPECT().Blocks().Return(blocks, nil)
 
-	err := fx.Init(fx.source)
+	err := fx.Init(fx.source, true)
 	require.NoError(fx.t, err)
 }

@@ -83,11 +83,17 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
+	var firstBlockSelectionLength int32
 	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && req.Blocks[0].GetText() != nil {
 		req.SelectedTextRange.To = int32(utf8.RuneCountInString(req.Blocks[0].GetText().Text))
+		firstBlockSelectionLength = req.SelectedTextRange.To
 	}
 
-	if len(req.Blocks) == 1 && (req.SelectedTextRange == nil || req.SelectedTextRange.From == req.SelectedTextRange.To) {
+	// in case it's the only one block selected and provided selection range is full or empty just return the block from the request
+	if len(req.Blocks) == 1 &&
+		(req.SelectedTextRange == nil ||
+			req.SelectedTextRange.From == req.SelectedTextRange.To ||
+			req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == firstBlockSelectionLength) {
 		return textSlot, htmlSlot, anySlot, nil
 	}
 

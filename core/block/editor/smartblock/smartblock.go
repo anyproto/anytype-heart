@@ -44,7 +44,7 @@ type SmartblockOpenListner interface {
 }
 
 type SmartBlock interface {
-	Init(s source.Source) (err error)
+	Init(s source.Source, allowEmpty bool) (err error)
 	Id() string
 	Type() pb.SmartBlockType
 	Meta() *core.SmartBlockMeta
@@ -89,13 +89,9 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source) error {
-	ver, err := s.ReadVersion()
-	if err != nil && err != core.ErrBlockSnapshotNotFound {
-		return err
-	}
+func (sb *smartBlock) init(s source.Source, ver *core.SmartBlockVersion) error {
 	var blocks = make(map[string]simple.Block)
-	if err == nil {
+	if ver != nil {
 		models, e := ver.Snapshot.Blocks()
 		if e != nil {
 			return e
@@ -119,6 +115,15 @@ func (sb *smartBlock) Init(s source.Source) error {
 		}
 	}
 	return sb.checkRootBlock()
+}
+
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool) error {
+	ver, err := s.ReadVersion()
+	if err != nil && (err != core.ErrBlockSnapshotNotFound || !allowEmpty) {
+		return err
+	}
+
+	return sb.init(s, ver)
 }
 
 func (sb *smartBlock) checkRootBlock() (err error) {
