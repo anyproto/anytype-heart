@@ -335,7 +335,7 @@ func (m *dsPageStore) Update(id string, details *types.Struct, links []string, s
 
 	if links != nil {
 		exLinks, _ := getOutboundLinks(txn, id)
-		addedLinks, removedLinks = diffSlices(exLinks, links)
+		removedLinks, addedLinks = diffSlices(exLinks, links)
 	}
 
 	// underlying commands set the same state each time, but this shouldn't be a problem as we made it in 1 transaction
