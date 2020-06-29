@@ -134,5 +134,5 @@ build-dev-js: setup-go build-server protos-js
 	echo "Run 'make install-dev-js' insted if you want to build&install into ../js-anytype"
 
 install-dev-js: build-dev-js
-	cp -r dist/server ../js-anytype/dist/server
+	cp -r dist/server ../js-anytype/dist/anytypeHelper
 	cp -r dist/js/pb/* ../js-anytype/dist/lib

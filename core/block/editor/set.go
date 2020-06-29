@@ -34,8 +34,8 @@ type Set struct {
 	sendEvent func(e *pb.Event)
 }
 
-func (p *Set) Init(s source.Source) (err error) {
-	if err = p.SmartBlock.Init(s); err != nil {
+func (p *Set) Init(s source.Source, _ bool) (err error) {
+	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
 	return p.init()
