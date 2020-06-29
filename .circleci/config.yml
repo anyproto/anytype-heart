@@ -53,7 +53,7 @@ jobs:
           command: |
             mkdir ~/gotestsum-report
             PACKAGE_NAMES=$(go list ./... | grep -v "github.com/anytypeio/go-anytype-middleware/lib-debug" | circleci tests split --split-by=timings --timings-type=classname)
-            gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags nogrpcserver $PACKAGE_NAMES
+            gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags nogrpcserver -p 1 $PACKAGE_NAMES
       - save_cache:
           key: go-pkg-v3-{{ arch }}-{{ checksum "go.sum" }}
           paths:
