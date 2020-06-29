@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-slip21"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -46,6 +47,8 @@ const (
 	threadDerivedIndexArchive     threadDerivedIndex = 2
 	threadDerivedIndexAccount     threadDerivedIndex = 3
 
+	threadDerivedIndexSetPages threadDerivedIndex = 20
+
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
 	// derivation as described in SEP-00XX. Use with `fmt.Sprintf` and `DeriveForPath`.
@@ -62,10 +65,11 @@ var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
 	threadDerivedIndexHome:        "home",
 	threadDerivedIndexArchive:     "archive",
 }
-var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]SmartBlockType{
-	threadDerivedIndexProfilePage: SmartBlockTypeProfilePage,
-	threadDerivedIndexHome:        SmartBlockTypeHome,
-	threadDerivedIndexArchive:     SmartBlockTypeArchive,
+var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.SmartBlockType{
+	threadDerivedIndexProfilePage: smartblock.SmartBlockTypeProfilePage,
+	threadDerivedIndexHome:        smartblock.SmartBlockTypeHome,
+	threadDerivedIndexArchive:     smartblock.SmartBlockTypeArchive,
+	threadDerivedIndexSetPages:    smartblock.SmartBlockTypeSet,
 }
 
 func ProfileThreadIDFromAccountPublicKey(pubk crypto.PubKey) (thread.ID, error) {
@@ -392,7 +396,7 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 	return thrd, true, nil
 }
 
-func threadIDFromBytes(variant thread.Variant, blockType SmartBlockType, b []byte) (thread.ID, error) {
+func threadIDFromBytes(variant thread.Variant, blockType smartblock.SmartBlockType, b []byte) (thread.ID, error) {
 	blen := len(b)
 	// two 8 bytes (max) numbers plus num
 	buf := make([]byte, 2*binary.MaxVarintLen64+blen)
@@ -408,7 +412,7 @@ func threadIDFromBytes(variant thread.Variant, blockType SmartBlockType, b []byt
 	return thread.Cast(buf[:n+blen])
 }
 
-func threadCreateID(variant thread.Variant, blockType SmartBlockType) (thread.ID, error) {
+func threadCreateID(variant thread.Variant, blockType smartblock.SmartBlockType) (thread.ID, error) {
 	rnd := make([]byte, 32)
 	_, err := rand.Read(rnd)
 	if err != nil {

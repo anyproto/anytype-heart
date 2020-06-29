@@ -7,8 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
+	"github.com/anytypeio/go-anytype-library/database"
+	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 )
@@ -30,6 +34,86 @@ var (
 type dsPageStore struct {
 	ds ds.TxnDatastore
 	l  sync.Mutex
+}
+
+type filterPagesOnly struct{}
+
+func (m *filterPagesOnly) Filter(e query.Entry) bool {
+	keyParts := strings.Split(e.Key, "/")
+	id := keyParts[len(keyParts)-1]
+
+	t, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		log.Errorf("failed to detect smartblock type for %s: %s", id, err.Error())
+		return false
+	}
+
+	if t == smartblock.SmartBlockTypePage || t == smartblock.SmartBlockTypeProfilePage {
+		return true
+	}
+
+	return false
+}
+
+func (m *dsPageStore) Schema() string {
+	return "https://anytype.io/schemas/page"
+}
+
+func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total int, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	dsq := q.DSQuery()
+	dsq.Offset = 0
+	dsq.Limit = 0
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+	dsq.Filters = append([]query.Filter{&filterPagesOnly{}}, dsq.Filters...)
+	res, err := txn.Query(dsq)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	var results []database.Entry
+
+	offset := q.Offset
+	for entry := range res.Next() {
+		if offset > 0 {
+			offset--
+			total++
+			continue
+		}
+
+		if q.Limit > 0 && len(results) >= q.Limit {
+			total++
+			continue
+		}
+
+		var details model.PageDetails
+		err = proto.Unmarshal(entry.Value, &details)
+		if err != nil {
+			log.Errorf("failed to unmarshal: %s", err.Error())
+			continue
+		}
+
+		key := ds.NewKey(entry.Key)
+		keyList := key.List()
+		id := keyList[len(keyList)-1]
+		lastOpenedTS, _ := getLastOpened(txn, id)
+		if details.Details == nil || details.Details.Fields == nil {
+			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+
+		details.Details.Fields["lastOpened"] = pb.ToValue(lastOpenedTS)
+		details.Details.Fields["id"] = pb.ToValue(id)
+
+		results = append(results, database.Entry{Details: details.Details})
+		total++
+	}
+
+	return results, total, nil
 }
 
 func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {

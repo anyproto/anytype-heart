@@ -6,8 +6,8 @@ import (
 	"time"
 
 	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
+	"github.com/anytypeio/go-anytype-library/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/schema/anytype"
 )
 
 func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {

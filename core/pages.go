@@ -3,6 +3,7 @@ package core
 import (
 	"sort"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 )
 
@@ -18,8 +19,8 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 
 	var idsS = make([]string, 0, len(ids))
 	for _, id := range ids {
-		t, _ := SmartBlockTypeFromThreadID(id)
-		if t != SmartBlockTypePage {
+		t, _ := smartblock.SmartBlockTypeFromThreadID(id)
+		if t != smartblock.SmartBlockTypePage {
 			continue
 		}
 

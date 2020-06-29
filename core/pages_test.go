@@ -3,6 +3,7 @@ package core
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/anytypeio/go-anytype-library/vclock"
@@ -12,7 +13,7 @@ import (
 
 func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	s := getRunningService(t)
-	block1, err := s.CreateBlock(SmartBlockTypePage)
+	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state1 := vclock.New()
@@ -29,7 +30,7 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	block2, err := s.CreateBlock(SmartBlockTypePage)
+	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state2 := vclock.New()
@@ -113,7 +114,7 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 
 func Test_Anytype_PageList(t *testing.T) {
 	s := getRunningService(t)
-	block1, err := s.CreateBlock(SmartBlockTypePage)
+	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state1 := vclock.New()
@@ -130,7 +131,7 @@ func Test_Anytype_PageList(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	block2, err := s.CreateBlock(SmartBlockTypePage)
+	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	state2 := vclock.New()

@@ -35,11 +35,12 @@ require (
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
+	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.5.1
 	github.com/textileio/go-threads v0.1.18-0.20200513233611-948f69e7988f
 	github.com/tyler-smith/go-bip39 v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
-	google.golang.org/grpc v1.29.0
+	google.golang.org/grpc v1.31.0-dev.0.20200627230533-68098483a7af
 )
 
 replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200612135054-98cf128fb49f
