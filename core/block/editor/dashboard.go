@@ -60,10 +60,23 @@ func (p *Dashboard) init() (err error) {
 			},
 		},
 	})
-
 	s.Add(archive)
 	if err = s.InsertTo(p.RootId(), model.Block_Inner, archive.Model().Id); err != nil {
 		return fmt.Errorf("can't insert archive: %v", err)
+	}
+
+	// add pages Set
+	setPage := simple.New(&model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: p.Anytype().PredefinedBlocks().SetPages,
+				Style:         model.BlockContentLink_Dataview,
+			},
+		},
+	})
+	s.Add(setPage)
+	if err = s.InsertTo(p.RootId(), model.Block_Inner, setPage.Model().Id); err != nil {
+		return fmt.Errorf("can't insert set pages: %v", err)
 	}
 
 	err = setDetails()

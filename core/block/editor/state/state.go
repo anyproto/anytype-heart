@@ -21,6 +21,7 @@ type Doc interface {
 	NewState() *State
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
+	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Pick(id string) (b simple.Block)
 	Append(targetId string, id string) (ok bool)
 }

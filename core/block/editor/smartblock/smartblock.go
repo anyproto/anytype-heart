@@ -39,6 +39,10 @@ func New() SmartBlock {
 	return &smartBlock{}
 }
 
+type SmartblockOpenListner interface {
+	SmartblockOpened(*state.Context)
+}
+
 type SmartBlock interface {
 	Init(s source.Source, allowEmpty bool) (err error)
 	Id() string
@@ -142,7 +146,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		if err != nil {
 			return err
 		}
-		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
+		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
 					RootId:  sb.RootId(),

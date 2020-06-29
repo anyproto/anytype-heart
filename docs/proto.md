@@ -49,6 +49,11 @@
     - [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response)
     - [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error)
     - [Rpc.Block.Create](#anytype.Rpc.Block.Create)
+    - [Rpc.Block.Create.Dataview](#anytype.Rpc.Block.Create.Dataview)
+    - [Rpc.Block.Create.Dataview.View](#anytype.Rpc.Block.Create.Dataview.View)
+    - [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request)
+    - [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response)
+    - [Rpc.Block.Create.Dataview.View.Response.Error](#anytype.Rpc.Block.Create.Dataview.View.Response.Error)
     - [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request)
     - [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response)
     - [Rpc.Block.Create.Response.Error](#anytype.Rpc.Block.Create.Response.Error)
@@ -60,6 +65,12 @@
     - [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request)
     - [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response)
     - [Rpc.Block.Cut.Response.Error](#anytype.Rpc.Block.Cut.Response.Error)
+    - [Rpc.Block.Delete](#anytype.Rpc.Block.Delete)
+    - [Rpc.Block.Delete.Dataview](#anytype.Rpc.Block.Delete.Dataview)
+    - [Rpc.Block.Delete.Dataview.View](#anytype.Rpc.Block.Delete.Dataview.View)
+    - [Rpc.Block.Delete.Dataview.View.Request](#anytype.Rpc.Block.Delete.Dataview.View.Request)
+    - [Rpc.Block.Delete.Dataview.View.Response](#anytype.Rpc.Block.Delete.Dataview.View.Response)
+    - [Rpc.Block.Delete.Dataview.View.Response.Error](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error)
     - [Rpc.Block.Download](#anytype.Rpc.Block.Download)
     - [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request)
     - [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response)
@@ -111,6 +122,15 @@
     - [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response)
     - [Rpc.Block.Replace.Response.Error](#anytype.Rpc.Block.Replace.Response.Error)
     - [Rpc.Block.Set](#anytype.Rpc.Block.Set)
+    - [Rpc.Block.Set.Dataview](#anytype.Rpc.Block.Set.Dataview)
+    - [Rpc.Block.Set.Dataview.ActiveView](#anytype.Rpc.Block.Set.Dataview.ActiveView)
+    - [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request)
+    - [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response)
+    - [Rpc.Block.Set.Dataview.ActiveView.Response.Error](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error)
+    - [Rpc.Block.Set.Dataview.View](#anytype.Rpc.Block.Set.Dataview.View)
+    - [Rpc.Block.Set.Dataview.View.Request](#anytype.Rpc.Block.Set.Dataview.View.Request)
+    - [Rpc.Block.Set.Dataview.View.Response](#anytype.Rpc.Block.Set.Dataview.View.Response)
+    - [Rpc.Block.Set.Dataview.View.Response.Error](#anytype.Rpc.Block.Set.Dataview.View.Response.Error)
     - [Rpc.Block.Set.Details](#anytype.Rpc.Block.Set.Details)
     - [Rpc.Block.Set.Details.Detail](#anytype.Rpc.Block.Set.Details.Detail)
     - [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request)
@@ -341,9 +361,11 @@
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
+    - [Rpc.Block.Create.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
     - [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code)
+    - [Rpc.Block.Delete.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
     - [Rpc.Block.File.CreateAndUpload.Response.Error.Code](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error.Code)
@@ -356,6 +378,8 @@
     - [Rpc.Block.Paste.Response.Error.Code](#anytype.Rpc.Block.Paste.Response.Error.Code)
     - [Rpc.Block.Redo.Response.Error.Code](#anytype.Rpc.Block.Redo.Response.Error.Code)
     - [Rpc.Block.Replace.Response.Error.Code](#anytype.Rpc.Block.Replace.Response.Error.Code)
+    - [Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code)
+    - [Rpc.Block.Set.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Set.Details.Response.Error.Code](#anytype.Rpc.Block.Set.Details.Response.Error.Code)
     - [Rpc.Block.Set.Fields.Response.Error.Code](#anytype.Rpc.Block.Set.Fields.Response.Error.Code)
     - [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code)
@@ -418,7 +442,44 @@
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
+    - [Event.Block.Delete.Dataview](#anytype.Event.Block.Delete.Dataview)
+    - [Event.Block.Delete.Dataview.View](#anytype.Event.Block.Delete.Dataview.View)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
+    - [Event.Block.Fill](#anytype.Event.Block.Fill)
+    - [Event.Block.Fill.Align](#anytype.Event.Block.Fill.Align)
+    - [Event.Block.Fill.BackgroundColor](#anytype.Event.Block.Fill.BackgroundColor)
+    - [Event.Block.Fill.Bookmark](#anytype.Event.Block.Fill.Bookmark)
+    - [Event.Block.Fill.Bookmark.Description](#anytype.Event.Block.Fill.Bookmark.Description)
+    - [Event.Block.Fill.Bookmark.FaviconHash](#anytype.Event.Block.Fill.Bookmark.FaviconHash)
+    - [Event.Block.Fill.Bookmark.ImageHash](#anytype.Event.Block.Fill.Bookmark.ImageHash)
+    - [Event.Block.Fill.Bookmark.Title](#anytype.Event.Block.Fill.Bookmark.Title)
+    - [Event.Block.Fill.Bookmark.Type](#anytype.Event.Block.Fill.Bookmark.Type)
+    - [Event.Block.Fill.Bookmark.Url](#anytype.Event.Block.Fill.Bookmark.Url)
+    - [Event.Block.Fill.ChildrenIds](#anytype.Event.Block.Fill.ChildrenIds)
+    - [Event.Block.Fill.DatabaseRecords](#anytype.Event.Block.Fill.DatabaseRecords)
+    - [Event.Block.Fill.Details](#anytype.Event.Block.Fill.Details)
+    - [Event.Block.Fill.Div](#anytype.Event.Block.Fill.Div)
+    - [Event.Block.Fill.Div.Style](#anytype.Event.Block.Fill.Div.Style)
+    - [Event.Block.Fill.Fields](#anytype.Event.Block.Fill.Fields)
+    - [Event.Block.Fill.File](#anytype.Event.Block.Fill.File)
+    - [Event.Block.Fill.File.Hash](#anytype.Event.Block.Fill.File.Hash)
+    - [Event.Block.Fill.File.Mime](#anytype.Event.Block.Fill.File.Mime)
+    - [Event.Block.Fill.File.Name](#anytype.Event.Block.Fill.File.Name)
+    - [Event.Block.Fill.File.Size](#anytype.Event.Block.Fill.File.Size)
+    - [Event.Block.Fill.File.State](#anytype.Event.Block.Fill.File.State)
+    - [Event.Block.Fill.File.Type](#anytype.Event.Block.Fill.File.Type)
+    - [Event.Block.Fill.File.Width](#anytype.Event.Block.Fill.File.Width)
+    - [Event.Block.Fill.Link](#anytype.Event.Block.Fill.Link)
+    - [Event.Block.Fill.Link.Fields](#anytype.Event.Block.Fill.Link.Fields)
+    - [Event.Block.Fill.Link.Style](#anytype.Event.Block.Fill.Link.Style)
+    - [Event.Block.Fill.Link.TargetBlockId](#anytype.Event.Block.Fill.Link.TargetBlockId)
+    - [Event.Block.Fill.Restrictions](#anytype.Event.Block.Fill.Restrictions)
+    - [Event.Block.Fill.Text](#anytype.Event.Block.Fill.Text)
+    - [Event.Block.Fill.Text.Checked](#anytype.Event.Block.Fill.Text.Checked)
+    - [Event.Block.Fill.Text.Color](#anytype.Event.Block.Fill.Text.Color)
+    - [Event.Block.Fill.Text.Marks](#anytype.Event.Block.Fill.Text.Marks)
+    - [Event.Block.Fill.Text.Style](#anytype.Event.Block.Fill.Text.Style)
+    - [Event.Block.Fill.Text.Text](#anytype.Event.Block.Fill.Text.Text)
     - [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo)
     - [Event.Block.Set](#anytype.Event.Block.Set)
     - [Event.Block.Set.Align](#anytype.Event.Block.Set.Align)
@@ -431,6 +492,9 @@
     - [Event.Block.Set.Bookmark.Type](#anytype.Event.Block.Set.Bookmark.Type)
     - [Event.Block.Set.Bookmark.Url](#anytype.Event.Block.Set.Bookmark.Url)
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
+    - [Event.Block.Set.Dataview](#anytype.Event.Block.Set.Dataview)
+    - [Event.Block.Set.Dataview.Records](#anytype.Event.Block.Set.Dataview.Records)
+    - [Event.Block.Set.Dataview.View](#anytype.Event.Block.Set.Dataview.View)
     - [Event.Block.Set.Details](#anytype.Event.Block.Set.Details)
     - [Event.Block.Set.Div](#anytype.Event.Block.Set.Div)
     - [Event.Block.Set.Div.Style](#anytype.Event.Block.Set.Div.Style)
@@ -501,6 +565,10 @@
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
+    - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
+    - [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation)
+    - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
+    - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
@@ -517,6 +585,10 @@
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
+    - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
+    - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
+    - [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type)
+    - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
@@ -617,6 +689,9 @@
 | BlockSetVideoName | [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request) | [Rpc.Block.Set.Video.Name.Response](#anytype.Rpc.Block.Set.Video.Name.Response) |  |
 | BlockSetVideoWidth | [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request) | [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response) |  |
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
+| BlockSetDataviewView | [Rpc.Block.Set.Dataview.View.Request](#anytype.Rpc.Block.Set.Dataview.View.Request) | [Rpc.Block.Set.Dataview.View.Response](#anytype.Rpc.Block.Set.Dataview.View.Response) |  |
+| BlockSetDataviewActiveView | [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request) | [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response) |  |
+| BlockCreateDataviewView | [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request) | [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
@@ -1178,10 +1253,79 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 
 
+<a name="anytype.Rpc.Block.Create.Dataview"></a>
+
+### Rpc.Block.Create.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Create.Dataview.View"></a>
+
+### Rpc.Block.Create.Dataview.View
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Create.Dataview.View.Request"></a>
+
+### Rpc.Block.Create.Dataview.View.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to insert the new block |
+| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Create.Dataview.View.Response"></a>
+
+### Rpc.Block.Create.Dataview.View.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Create.Dataview.View.Response.Error](#anytype.Rpc.Block.Create.Dataview.View.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Create.Dataview.View.Response.Error"></a>
+
+### Rpc.Block.Create.Dataview.View.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Create.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Create.Request"></a>
 
 ### Rpc.Block.Create.Request
-
+common simple block command
 
 
 | Field | Type | Label | Description |
@@ -1346,6 +1490,85 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete"></a>
+
+### Rpc.Block.Delete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview"></a>
+
+### Rpc.Block.Delete.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.View"></a>
+
+### Rpc.Block.Delete.Dataview.View
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.View.Request"></a>
+
+### Rpc.Block.Delete.Dataview.View.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
+| blockId | [string](#string) |  | id of the dataview |
+| viewId | [string](#string) |  | id of the view to remove |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.View.Response"></a>
+
+### Rpc.Block.Delete.Dataview.View.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Delete.Dataview.View.Response.Error](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.View.Response.Error"></a>
+
+### Rpc.Block.Delete.Dataview.View.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Delete.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2105,6 +2328,137 @@ Image/Video/File blocks then:
 
 ### Rpc.Block.Set
 
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview"></a>
+
+### Rpc.Block.Set.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.ActiveView"></a>
+
+### Rpc.Block.Set.Dataview.ActiveView
+set the current active view (persisted only within a session)
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Request"></a>
+
+### Rpc.Block.Set.Dataview.ActiveView.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block |
+| viewId | [string](#string) |  | id of active view |
+| offset | [uint32](#uint32) |  |  |
+| limit | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Response"></a>
+
+### Rpc.Block.Set.Dataview.ActiveView.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Dataview.ActiveView.Response.Error](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error"></a>
+
+### Rpc.Block.Set.Dataview.ActiveView.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.View"></a>
+
+### Rpc.Block.Set.Dataview.View
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.View.Request"></a>
+
+### Rpc.Block.Set.Dataview.View.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to update |
+| viewId | [string](#string) |  | id of view to update |
+| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.View.Response"></a>
+
+### Rpc.Block.Set.Dataview.View.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Dataview.View.Response.Error](#anytype.Rpc.Block.Set.Dataview.View.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.View.Response.Error"></a>
+
+### Rpc.Block.Set.Dataview.View.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.View.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -5348,6 +5702,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code"></a>
+
+### Rpc.Block.Create.Dataview.View.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Create.Response.Error.Code"></a>
 
 ### Rpc.Block.Create.Response.Error.Code
@@ -5377,6 +5744,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Cut.Response.Error.Code"></a>
 
 ### Rpc.Block.Cut.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code"></a>
+
+### Rpc.Block.Delete.Dataview.View.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -5534,6 +5914,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Replace.Response.Error.Code"></a>
 
 ### Rpc.Block.Replace.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Dataview.View.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Dataview.View.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -6337,6 +6743,32 @@ B. Partial block load
 
 
 
+<a name="anytype.Event.Block.Delete.Dataview"></a>
+
+### Event.Block.Delete.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Event.Block.Delete.Dataview.View"></a>
+
+### Event.Block.Delete.Dataview.View
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id to remove |
+
+
+
+
+
+
 <a name="anytype.Event.Block.FilesUpload"></a>
 
 ### Event.Block.FilesUpload
@@ -6350,6 +6782,554 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  | if empty =&gt; create new blocks |
 | filePath | [string](#string) | repeated | filepaths to the files |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill"></a>
+
+### Event.Block.Fill
+
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Align"></a>
+
+### Event.Block.Fill.Align
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| align | [model.Block.Align](#anytype.model.Block.Align) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.BackgroundColor"></a>
+
+### Event.Block.Fill.BackgroundColor
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| backgroundColor | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Bookmark"></a>
+
+### Event.Block.Fill.Bookmark
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| url | [Event.Block.Fill.Bookmark.Url](#anytype.Event.Block.Fill.Bookmark.Url) |  |  |
+| title | [Event.Block.Fill.Bookmark.Title](#anytype.Event.Block.Fill.Bookmark.Title) |  |  |
+| description | [Event.Block.Fill.Bookmark.Description](#anytype.Event.Block.Fill.Bookmark.Description) |  |  |
+| imageHash | [Event.Block.Fill.Bookmark.ImageHash](#anytype.Event.Block.Fill.Bookmark.ImageHash) |  |  |
+| faviconHash | [Event.Block.Fill.Bookmark.FaviconHash](#anytype.Event.Block.Fill.Bookmark.FaviconHash) |  |  |
+| type | [Event.Block.Fill.Bookmark.Type](#anytype.Event.Block.Fill.Bookmark.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Bookmark.Description"></a>
+
+### Event.Block.Fill.Bookmark.Description
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Bookmark.FaviconHash"></a>
+
+### Event.Block.Fill.Bookmark.FaviconHash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Bookmark.ImageHash"></a>
+
+### Event.Block.Fill.Bookmark.ImageHash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Bookmark.Title"></a>
+
+### Event.Block.Fill.Bookmark.Title
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Bookmark.Type"></a>
+
+### Event.Block.Fill.Bookmark.Type
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Bookmark.Url"></a>
+
+### Event.Block.Fill.Bookmark.Url
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.ChildrenIds"></a>
+
+### Event.Block.Fill.ChildrenIds
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| childrenIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.DatabaseRecords"></a>
+
+### Event.Block.Fill.DatabaseRecords
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Details"></a>
+
+### Event.Block.Fill.Details
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Div"></a>
+
+### Event.Block.Fill.Div
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| style | [Event.Block.Fill.Div.Style](#anytype.Event.Block.Fill.Div.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Div.Style"></a>
+
+### Event.Block.Fill.Div.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Fields"></a>
+
+### Event.Block.Fill.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File"></a>
+
+### Event.Block.Fill.File
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| type | [Event.Block.Fill.File.Type](#anytype.Event.Block.Fill.File.Type) |  |  |
+| state | [Event.Block.Fill.File.State](#anytype.Event.Block.Fill.File.State) |  |  |
+| mime | [Event.Block.Fill.File.Mime](#anytype.Event.Block.Fill.File.Mime) |  |  |
+| hash | [Event.Block.Fill.File.Hash](#anytype.Event.Block.Fill.File.Hash) |  |  |
+| name | [Event.Block.Fill.File.Name](#anytype.Event.Block.Fill.File.Name) |  |  |
+| size | [Event.Block.Fill.File.Size](#anytype.Event.Block.Fill.File.Size) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.Hash"></a>
+
+### Event.Block.Fill.File.Hash
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.Mime"></a>
+
+### Event.Block.Fill.File.Mime
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.Name"></a>
+
+### Event.Block.Fill.File.Name
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.Size"></a>
+
+### Event.Block.Fill.File.Size
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.State"></a>
+
+### Event.Block.Fill.File.State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.Type"></a>
+
+### Event.Block.Fill.File.Type
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.Width"></a>
+
+### Event.Block.Fill.File.Width
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Link"></a>
+
+### Event.Block.Fill.Link
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| targetBlockId | [Event.Block.Fill.Link.TargetBlockId](#anytype.Event.Block.Fill.Link.TargetBlockId) |  |  |
+| style | [Event.Block.Fill.Link.Style](#anytype.Event.Block.Fill.Link.Style) |  |  |
+| fields | [Event.Block.Fill.Link.Fields](#anytype.Event.Block.Fill.Link.Fields) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Link.Fields"></a>
+
+### Event.Block.Fill.Link.Fields
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Link.Style"></a>
+
+### Event.Block.Fill.Link.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Link.TargetBlockId"></a>
+
+### Event.Block.Fill.Link.TargetBlockId
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Restrictions"></a>
+
+### Event.Block.Fill.Restrictions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| restrictions | [model.Block.Restrictions](#anytype.model.Block.Restrictions) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Text"></a>
+
+### Event.Block.Fill.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| text | [Event.Block.Fill.Text.Text](#anytype.Event.Block.Fill.Text.Text) |  |  |
+| style | [Event.Block.Fill.Text.Style](#anytype.Event.Block.Fill.Text.Style) |  |  |
+| marks | [Event.Block.Fill.Text.Marks](#anytype.Event.Block.Fill.Text.Marks) |  |  |
+| checked | [Event.Block.Fill.Text.Checked](#anytype.Event.Block.Fill.Text.Checked) |  |  |
+| color | [Event.Block.Fill.Text.Color](#anytype.Event.Block.Fill.Text.Color) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Text.Checked"></a>
+
+### Event.Block.Fill.Text.Checked
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Text.Color"></a>
+
+### Event.Block.Fill.Text.Color
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Text.Marks"></a>
+
+### Event.Block.Fill.Text.Marks
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Text.Style"></a>
+
+### Event.Block.Fill.Text.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.Text.Text"></a>
+
+### Event.Block.Fill.Text.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
 
 
 
@@ -6534,6 +7514,57 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | childrenIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Dataview"></a>
+
+### Event.Block.Set.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Dataview.Records"></a>
+
+### Event.Block.Set.Dataview.Records
+sent when the active view&#39;s visible records have been
+changed either by the view settings(filters/sort/limit/offset) or by the data itself
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| updated | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | existing records updated |
+| removed | [string](#string) | repeated |  |
+| inserted | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
+| insertPosition | [uint32](#uint32) |  | position to insert |
+| total | [uint32](#uint32) |  | total number of records |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Dataview.View"></a>
+
+### Event.Block.Set.Dataview.View
+sent when the view settings have been changed
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
+| offset | [uint32](#uint32) |  | middleware will try to preserve the current aciveview&#39;s offset&amp;limit but may reset it in case it becomes invalid or not actual anymore |
+| limit | [uint32](#uint32) |  |  |
 
 
 
@@ -6947,6 +7978,9 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetAlign | [Event.Block.Set.Align](#anytype.Event.Block.Set.Align) |  |  |
 | blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  |  |
 | blockSetDiv | [Event.Block.Set.Div](#anytype.Event.Block.Set.Div) |  |  |
+| blockSetDataviewRecords | [Event.Block.Set.Dataview.Records](#anytype.Event.Block.Set.Dataview.Records) |  |  |
+| blockSetDataviewView | [Event.Block.Set.Dataview.View](#anytype.Event.Block.Set.Dataview.View) |  |  |
+| blockDeleteDataviewView | [Event.Block.Delete.Dataview.View](#anytype.Event.Block.Delete.Dataview.View) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
@@ -7223,10 +8257,11 @@ Precondition: user A and user B opened the same block
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Page | 0 |  |
-| Home | 1 |  |
-| ProfilePage | 2 |  |
-| Archive | 3 |  |
-| Breadcrumbs | 4 |  |
+| Home | 1 | have only Link simpleblocks |
+| ProfilePage | 2 | just a usual page for now |
+| Archive | 3 | have only Link simpleblocks |
+| Breadcrumbs | 4 | have only Link simpleblocks |
+| Set | 5 | only have dataview simpleblock |
 
 
  
@@ -7513,6 +8548,78 @@ Bookmark is to keep a web-link and to preview a content.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | databaseId | [string](#string) |  |  |
+| views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
+| schemaURL | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Filter"></a>
+
+### Block.Content.Dataview.Filter
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  |  |
+| relationId | [string](#string) |  |  |
+| condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation"></a>
+
+### Block.Content.Dataview.Relation
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| isVisible | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Sort"></a>
+
+### Block.Content.Dataview.Sort
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationId | [string](#string) |  |  |
+| type | [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.View"></a>
+
+### Block.Content.Dataview.View
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| type | [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type) |  |  |
+| name | [string](#string) |  |  |
+| sorts | [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
+| filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+| relations | [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation) | repeated | relations fields/columns options, also used to provide the order |
 
 
 
@@ -7764,6 +8871,62 @@ General purpose structure, uses in Mark.
 | AlignLeft | 0 |  |
 | AlignCenter | 1 |  |
 | AlignRight | 2 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Filter.Condition"></a>
+
+### Block.Content.Dataview.Filter.Condition
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Equal | 0 |  |
+| NotEqual | 1 |  |
+| Greater | 2 |  |
+| Less | 3 |  |
+| Like | 4 |  |
+| NotLike | 5 |  |
+| In | 6 |  |
+| NotIn | 7 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Filter.Operator"></a>
+
+### Block.Content.Dataview.Filter.Operator
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| And | 0 |  |
+| Or | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Sort.Type"></a>
+
+### Block.Content.Dataview.Sort.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Asc | 0 |  |
+| Desc | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.View.Type"></a>
+
+### Block.Content.Dataview.View.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Table | 0 |  |
+| List | 1 |  |
+| Gallery | 2 |  |
+| Kanban | 3 |  |
 
 
 
