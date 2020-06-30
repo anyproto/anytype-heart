@@ -290,8 +290,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
-		if storeInfo.links != nil || storeInfo.details != nil && storeInfo.snippet != nil {
-			if e := sb.Anytype().PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet); e != nil {
+		if storeInfo.links != nil || storeInfo.details != nil || storeInfo.snippet != nil {
+			if e := at.PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet); e != nil {
 				log.Warnf("can't update pageStore info: %v", e)
 			}
 			log.Infof("pageStore: %s: %+v", sb.Id(), storeInfo)
