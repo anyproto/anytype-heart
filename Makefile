@@ -1,13 +1,26 @@
 export GOPRIVATE=github.com/anytypeio
 
+ifndef $(GOPATH)
+    GOPATH=$(shell go env GOPATH)
+    export GOPATH
+endif
+
+ifndef $(GOROOT)
+    GOROOT=$(shell go env GOROOT)
+    export GOROOT
+endif
+
+export PATH=$(GOPATH)/bin:$(shell echo $$PATH)
+
 all:
 	@set -e;
 .PHONY : protos-deps
 setup: setup-go
 	npm install
-
+uuu:
+	echo $(PATH)
 setup-go:
-	GOPRIVATE=github.com/anytypeio go mod download
+	go mod download
 	GO111MODULE=off go get github.com/ahmetb/govvv
 	GO111MODULE=off go get golang.org/x/mobile/cmd/...
 
@@ -73,14 +86,15 @@ setup-protoc-go:
 	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
 	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
 
-setup-protoc: setup-protoc-go
-	cd $(GOPATH); go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-	export PATH=$(PATH):$(GOROOT)/bin:$(GOPATH)/bin
+setup-protoc-jsweb:
 	git clone https://github.com/grpc/grpc-web
-	cd grpc-web
-	make install-plugin
-	cd ..
+	$(MAKE) -C grpc-web install-plugin
 	rm -rf grpc-web
+
+setup-protoc-doc:
+	go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+
+setup-protoc: setup-protoc-go setup-protoc-jsweb
 
 protos-deps:
 	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
