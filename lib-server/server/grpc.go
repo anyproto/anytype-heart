@@ -22,6 +22,9 @@ import (
 const defaultAddr = "127.0.0.1:31007"
 const defaultWebAddr = "127.0.0.1:31008"
 
+// do not change this, js client relies on this msg to ensure that server is up
+const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
+
 func main() {
 	var addr string
 	var webaddr string
@@ -87,7 +90,8 @@ func main() {
 		server.Serve(lis)
 	}()
 
-	fmt.Println("gRPC Web proxy started at: " + webaddr)
+	// do not change this, js client relies on this msg to ensure that server is up
+	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 	go func() {
 		if err := proxy.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("proxy error: %v", err)
