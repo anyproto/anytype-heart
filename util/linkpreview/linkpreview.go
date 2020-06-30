@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/mauidude/go-readability"
 	"github.com/microcosm-cc/bluemonday"
@@ -64,9 +66,14 @@ func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i model.LinkPrev
 		og.URL.RawQuery = ""
 		i.FaviconUrl = og.URL.String()
 	}
+
 	if len(og.Image) != 0 {
-		i.ImageUrl = og.Image[0].URL
+		url, err := uri.ProcessURI(og.Image[0].URL)
+		if err == nil {
+			i.ImageUrl = url
+		}
 	}
+
 	return
 }
 
