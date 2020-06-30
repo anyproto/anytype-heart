@@ -53,10 +53,14 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 		return ErrEmpty
 	}
 	sb.cache = make(map[string]*Change)
+	var nonEmptyLogs = logs[:0]
 	for _, l := range logs {
 		sb.logHeads[l.ID] = l.Head
+		if l.Head != "" {
+			nonEmptyLogs = append(nonEmptyLogs, l)
+		}
 	}
-	heads, err := sb.getActualHeads(logs)
+	heads, err := sb.getActualHeads(nonEmptyLogs)
 	if err != nil {
 		return fmt.Errorf("getActualHeads error: %v", err)
 	}
