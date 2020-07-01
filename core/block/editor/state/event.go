@@ -93,6 +93,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				if f.SetView(o.BlockSetDataviewView.Id, *o.BlockSetDataviewView.View) != nil {
 					f.AddView(*o.BlockSetDataviewView.View)
 				}
+				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -101,7 +102,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDeleteDataviewView:
 		if err = apply(o.BlockDeleteDataviewView.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				f.DeleteView(o.BlockDeleteDataviewView.Id)
+				return f.DeleteView(o.BlockDeleteDataviewView.Id)
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
