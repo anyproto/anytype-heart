@@ -14,7 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 )
 
-const defaultGatewayAddr = "127.0.0.1:47800"
+const defaultPort = 47800
 
 var log = logging.Logger("anytype-gateway")
 
@@ -27,12 +27,33 @@ type Gateway struct {
 	server *http.Server
 }
 
+func getRandomPort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
 func GatewayAddr() string {
 	if addr := os.Getenv("ANYTYPE_GATEWAY_ADDR"); addr != "" {
 		return addr
 	}
 
-	return defaultGatewayAddr
+	port, err := getRandomPort()
+	if err != nil {
+		log.Errorf("failed to get random port for gateway, go with the default %d", defaultPort)
+		port = defaultPort
+	}
+
+	return fmt.Sprintf("127.0.0.1:%d", port)
 }
 
 // Start creates a gateway server

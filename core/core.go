@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/cafe"
+	"github.com/anytypeio/go-anytype-library/core/config"
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/files"
@@ -44,10 +44,6 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 )
 
 const (
-	DefaultHostAddr              = "/ip4/0.0.0.0/tcp/4006"
-	DefaultCafeNodeP2P           = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
-	DefaultCafeNodeGRPC          = "cafe1.anytype.io:3006"
-	DefaultWebGatewayBaseUrl     = "https://anytype.page"
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
 )
 
@@ -179,7 +175,6 @@ func init() {
 
 func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	opts := ServiceOptions{}
-	opts.SetDefaults()
 
 	for _, opt := range options {
 		err := opt(&opts)
@@ -249,20 +244,25 @@ func getNewConfig(rootPath string, account string) ([]ServiceOption, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if deviceKp.KeypairType() != wallet.KeypairTypeDevice {
 		return nil, fmt.Errorf("got %s key type instead of %s", deviceKp.KeypairType(), wallet.KeypairTypeDevice)
 	}
 
-	opts := []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithHostMultiaddr(DefaultHostAddr)}
-	cafeP2PAddr := os.Getenv("ANYTYPE_CAFE_P2P_ADDR")
-	cafeGRPCAddr := os.Getenv("ANYTYPE_CAFE_GRPC_ADDR")
-
-	if cafeP2PAddr != "" {
-		opts = append(opts, WithCafeP2PAddr(cafeP2PAddr))
+	cfg, err := config.GetConfig(repoPath)
+	if err != nil {
+		return nil, err
 	}
 
-	if cafeGRPCAddr != "" {
-		opts = append(opts, WithCafeGRPCHost(cafeGRPCAddr))
+	opts := []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithHostMultiaddr(cfg.HostAddr), WithWebGatewayBaseUrl(cfg.WebGatewayBaseUrl)}
+
+	// "-" or any other single char assumes as empty for env var compatability
+	if len(cfg.CafeP2PAddr) > 1 {
+		opts = append(opts, WithCafeP2PAddr(cfg.CafeP2PAddr))
+	}
+
+	if len(cfg.CafeGRPCAddr) > 1 {
+		opts = append(opts, WithCafeGRPCHost(cfg.CafeGRPCAddr))
 	}
 
 	return opts, nil
