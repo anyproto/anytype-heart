@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore"
@@ -45,6 +46,7 @@ type FileStore interface {
 
 type PageStore interface {
 	Indexable
+	database.Database
 	Add(page *model.PageInfoWithOutboundLinksIDs) error
 	GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)

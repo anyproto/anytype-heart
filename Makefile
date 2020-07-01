@@ -13,6 +13,9 @@ lint:
 	echo 'Linting with golint...'
 	golint `go list ./... | grep -v /vendor/`
 
+generate:
+	go generate ./...
+
 protos:
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)

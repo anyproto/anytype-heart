@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	util2 "github.com/anytypeio/go-anytype-library/util"
 	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
@@ -192,6 +193,13 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	}
 	a.predefinedBlockIds.Archive = archive.ID.String()
 
+	// set pages
+	setPages, _, err := a.predefinedThreadAdd(threadDerivedIndexSetPages, accountSelect, true, false)
+	if err != nil {
+		return err
+	}
+	a.predefinedBlockIds.SetPages = setPages.ID.String()
+
 	// home
 	home, _, err := a.predefinedThreadAdd(threadDerivedIndexHome, accountSelect, true, true)
 	if err != nil {
@@ -202,7 +210,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	return nil
 }
 
-func (a *Anytype) newBlockThread(blockType SmartBlockType) (thread.Info, error) {
+func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
 	thrdId, err := threadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
