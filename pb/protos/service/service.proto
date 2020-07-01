@@ -100,6 +100,6 @@ service ClientCommands {
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);
 
-    // used only for lib-debug via grpc
+    // used only for lib-server via grpc
     rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);
 }
