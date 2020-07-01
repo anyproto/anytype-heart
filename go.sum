@@ -31,8 +31,8 @@ github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2/go.mod h1:Ju
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
-github.com/anytypeio/go-anytype-library v0.9.1-0.20200701061946-2fdf8121baed h1:3EshDfCPeN4Mm5qYpmGAPZfoblRjFEn9U7TxWau++lY=
-github.com/anytypeio/go-anytype-library v0.9.1-0.20200701061946-2fdf8121baed/go.mod h1:UlfP0hsjHqIXQD4M4EvwKAi60YavZCjDFG+s7WRfYLM=
+github.com/anytypeio/go-anytype-library v0.9.1-0.20200701095725-d636d48a0449 h1:SYSdW7HLTmdz3eAwHKrVsOrHw887FkdS0Vs0xpSxb/k=
+github.com/anytypeio/go-anytype-library v0.9.1-0.20200701095725-d636d48a0449/go.mod h1:g6DoWRPDXiBxLDUB6Te0KtTlSyc6RwwILLmYBuoEzIc=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW52i65PtLFBr5Q5k6RskIY8L70pgnBcnWo=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
@@ -440,6 +440,8 @@ github.com/jtolds/gls v4.2.1+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVY
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d/go.mod h1:P2viExyCEfeWGU259JnaQ34Inuec4R38JCyBx2edgD0=
+github.com/kelseyhightower/envconfig v1.4.0 h1:Im6hONhd3pLkfDFsbRgu68RDNkGF1r3dvMUtDTo2cv8=
+github.com/kelseyhightower/envconfig v1.4.0/go.mod h1:cccZRl6mQpaq41TPp5QxidR+Sa3axMbJDNb//FQX6Gg=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
