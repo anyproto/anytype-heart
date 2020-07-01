@@ -881,7 +881,7 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.sendEvent)
+		sb = editor.NewSet(s.meta, s.sendEvent)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:

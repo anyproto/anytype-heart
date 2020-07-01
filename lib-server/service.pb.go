@@ -2,3 +2,2874 @@
 // source: pb/protos/service/service.proto
 
 package lib
+
+import (
+	context "context"
+	fmt "fmt"
+	pb "github.com/anytypeio/go-anytype-middleware/pb"
+	proto "github.com/gogo/protobuf/proto"
+	grpc "google.golang.org/grpc"
+	math "math"
+)
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = proto.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+
+func init() { proto.RegisterFile("pb/protos/service/service.proto", fileDescriptor_93a29dc403579097) }
+
+var fileDescriptor_93a29dc403579097 = []byte{
+	// 1695 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x99, 0xdf, 0x6f, 0x1c, 0x3b,
+	0x15, 0xc7, 0xbb, 0x02, 0xd1, 0xe2, 0x86, 0x40, 0x07, 0x28, 0x6d, 0x50, 0x37, 0xfd, 0x49, 0x9b,
+	0xb4, 0x99, 0x94, 0x94, 0xf2, 0x80, 0xc4, 0x43, 0xb2, 0xf9, 0x41, 0x44, 0x9a, 0x86, 0x6c, 0x9a,
+	0x48, 0x15, 0x08, 0x66, 0x67, 0x4f, 0x76, 0xcd, 0xce, 0xda, 0xd3, 0x19, 0xef, 0xa6, 0x91, 0xe0,
+	0x05, 0x09, 0xde, 0x90, 0xfa, 0x67, 0xf1, 0xd8, 0x47, 0x1e, 0xaf, 0xda, 0xff, 0xe1, 0x3e, 0x5f,
+	0xd9, 0x73, 0xe6, 0x97, 0xd7, 0xf6, 0x4e, 0x1e, 0xee, 0xbd, 0xba, 0x73, 0x3e, 0xe7, 0xfb, 0xb5,
+	0xbd, 0xe7, 0x78, 0x3c, 0x0e, 0x59, 0x8e, 0x7b, 0xeb, 0x71, 0xc2, 0x05, 0x4f, 0xd7, 0x53, 0x48,
+	0xa6, 0x34, 0x84, 0xfc, 0xbf, 0xbe, 0x7a, 0xec, 0x5d, 0x0f, 0xd8, 0xa5, 0xb8, 0x8c, 0x61, 0xe9,
+	0x4e, 0x49, 0x86, 0x7c, 0x3c, 0x0e, 0x58, 0x3f, 0xcd, 0x90, 0xa5, 0xdb, 0x65, 0x04, 0xa6, 0xc0,
+	0x04, 0x3e, 0xdf, 0xf8, 0xf6, 0x77, 0x64, 0xb1, 0x13, 0x51, 0x60, 0xa2, 0x83, 0x09, 0xde, 0x19,
+	0x59, 0x38, 0x0b, 0xa2, 0x08, 0x44, 0x27, 0x81, 0x40, 0x80, 0xf7, 0xd0, 0x47, 0x79, 0xff, 0x38,
+	0x0e, 0xfd, 0x2c, 0xe4, 0x67, 0x31, 0xff, 0x18, 0x3e, 0x4c, 0x20, 0x15, 0x4b, 0x8f, 0x9c, 0x4c,
+	0x1a, 0x73, 0x96, 0x82, 0xf7, 0x9e, 0xfc, 0x28, 0x8b, 0x1c, 0x43, 0xc8, 0xa7, 0x90, 0x78, 0xc6,
+	0x2c, 0x0c, 0x16, 0xd2, 0x8f, 0xdd, 0x10, 0x6a, 0xff, 0x85, 0x2c, 0x6e, 0x86, 0x21, 0x9f, 0xb0,
+	0x42, 0xbc, 0x9e, 0x87, 0xc1, 0x19, 0xf5, 0x27, 0x73, 0xa8, 0x72, 0xe8, 0x18, 0xc3, 0x45, 0x79,
+	0x64, 0xcc, 0xd3, 0x56, 0xe5, 0xb1, 0x1b, 0x9a, 0xd1, 0xee, 0x42, 0x04, 0xa1, 0xb0, 0x68, 0x67,
+	0xc1, 0x39, 0xda, 0x05, 0x84, 0xda, 0x27, 0xe4, 0x66, 0xae, 0x2d, 0x78, 0xec, 0x3d, 0x30, 0x27,
+	0x09, 0x1e, 0x17, 0xba, 0x0f, 0x5d, 0x08, 0xaa, 0x86, 0x64, 0x61, 0x7f, 0x1c, 0x0c, 0x60, 0x0f,
+	0xc4, 0x56, 0xc4, 0x7b, 0xde, 0xb3, 0x5a, 0xce, 0x7e, 0x7c, 0x9e, 0xfa, 0x2a, 0xee, 0xef, 0x81,
+	0xf0, 0x25, 0x51, 0xa8, 0xaf, 0x34, 0x20, 0xd1, 0xe4, 0x4f, 0x84, 0x9c, 0x42, 0x92, 0x52, 0xce,
+	0xf6, 0x40, 0x78, 0xf7, 0x6b, 0x89, 0x18, 0x50, 0x59, 0xb9, 0xf4, 0x03, 0x07, 0x81, 0x92, 0x7f,
+	0x20, 0xd7, 0x0f, 0xf8, 0xa0, 0x0b, 0xac, 0xef, 0xdd, 0xab, 0xd1, 0x07, 0x7c, 0xe0, 0xcb, 0xc7,
+	0x85, 0x58, 0xdb, 0x16, 0x46, 0xa5, 0x43, 0xf2, 0xc3, 0x0e, 0x67, 0xe7, 0x74, 0x20, 0xc7, 0xb6,
+	0x5c, 0x83, 0xb3, 0xe7, 0xb5, 0xa1, 0xdd, 0xb7, 0x03, 0xa8, 0xb7, 0x4f, 0x6e, 0x74, 0x87, 0x13,
+	0xd1, 0xe7, 0x17, 0x4c, 0x1b, 0x5a, 0xfe, 0xd8, 0x32, 0xb4, 0x4a, 0x18, 0xa5, 0xce, 0xc9, 0xad,
+	0x9d, 0x8f, 0x02, 0x12, 0x16, 0x44, 0xdb, 0x09, 0x8f, 0x77, 0x69, 0x04, 0xa9, 0xf7, 0xb4, 0x96,
+	0x54, 0x8d, 0xfb, 0x0a, 0x28, 0xd4, 0x9f, 0xcd, 0x07, 0xd1, 0x27, 0x22, 0x3f, 0xad, 0x86, 0x3b,
+	0x9c, 0x09, 0x60, 0xc2, 0x5b, 0xb1, 0x0b, 0x20, 0x52, 0x78, 0xad, 0x36, 0x41, 0xd1, 0xed, 0x98,
+	0xdc, 0x3c, 0xa0, 0x6c, 0x74, 0x94, 0xc0, 0x94, 0xc2, 0x85, 0x56, 0x0e, 0x95, 0x88, 0xa5, 0x1c,
+	0xea, 0x04, 0x6a, 0xbe, 0x25, 0xe4, 0x5d, 0x1c, 0xf1, 0xa0, 0x2f, 0x67, 0xa6, 0xfd, 0x8a, 0x65,
+	0xc0, 0xf2, 0x2b, 0xd6, 0x80, 0xb2, 0xdb, 0xb6, 0x22, 0x1e, 0x8e, 0xb2, 0x98, 0xd6, 0x6d, 0x2a,
+	0x82, 0x69, 0x96, 0x6e, 0xd3, 0x10, 0x54, 0x3d, 0x23, 0x0b, 0x2a, 0x70, 0x0c, 0x71, 0x14, 0x84,
+	0xfa, 0x7e, 0x9c, 0xe5, 0x60, 0xcc, 0xb2, 0x1f, 0xeb, 0x4c, 0x59, 0xc4, 0x2a, 0xf2, 0x36, 0x06,
+	0xa6, 0x4d, 0x3f, 0xcb, 0x90, 0x01, 0xcb, 0xf4, 0x6b, 0x00, 0xea, 0x71, 0xf2, 0x33, 0xf5, 0x78,
+	0x0f, 0xc4, 0xd1, 0xa4, 0x17, 0xd1, 0xf0, 0x0c, 0x7a, 0xef, 0x8e, 0x0f, 0xbc, 0x55, 0x43, 0xa6,
+	0xc6, 0x14, 0x2e, 0xcf, 0x1b, 0xb1, 0x9a, 0xa1, 0x1c, 0xc6, 0x56, 0x02, 0x41, 0x3f, 0x4c, 0x26,
+	0xe3, 0x5e, 0x6a, 0x34, 0xd4, 0x18, 0xa7, 0xe1, 0x2c, 0x5b, 0xd6, 0xbc, 0x22, 0xba, 0x20, 0xaa,
+	0x7e, 0x2b, 0x06, 0x8d, 0x3a, 0x62, 0xa9, 0x79, 0x0b, 0xaa, 0x95, 0x13, 0xbe, 0x72, 0x4c, 0xe5,
+	0xa4, 0xbd, 0x70, 0x1e, 0xba, 0x10, 0x54, 0xfd, 0x1b, 0xf9, 0x71, 0x45, 0xf5, 0x28, 0x18, 0x80,
+	0xf7, 0xc4, 0x9a, 0x26, 0xc3, 0x85, 0xfa, 0xaf, 0xe6, 0x61, 0x7a, 0x1b, 0xb0, 0x88, 0xb2, 0x91,
+	0xb9, 0x0d, 0x54, 0xc8, 0xdd, 0x06, 0x39, 0x52, 0xbe, 0x0f, 0xb2, 0x71, 0x47, 0x3c, 0x05, 0xcf,
+	0x54, 0x8d, 0x2a, 0x62, 0xd9, 0x00, 0xea, 0x44, 0xf9, 0xe6, 0x55, 0xcf, 0xb7, 0xf9, 0x05, 0x53,
+	0x1d, 0x6b, 0x6a, 0x9b, 0x3c, 0x68, 0x79, 0xf3, 0xce, 0x40, 0xa8, 0xfd, 0x67, 0xd4, 0xde, 0x03,
+	0xf1, 0x26, 0x48, 0x46, 0xa9, 0xf7, 0xd8, 0x5c, 0xd9, 0xbe, 0x8a, 0x5a, 0xce, 0x23, 0xb3, 0x94,
+	0xd6, 0xba, 0xef, 0x58, 0x9f, 0x1b, 0x5b, 0x57, 0x06, 0x9c, 0xad, 0x8b, 0x80, 0xa6, 0x77, 0x0c,
+	0x16, 0x3d, 0x19, 0x70, 0xea, 0x21, 0x80, 0x7a, 0x7f, 0x25, 0x8b, 0x79, 0xa3, 0xec, 0x52, 0x88,
+	0xfa, 0xa9, 0xb1, 0xc6, 0xba, 0x20, 0xfc, 0x2c, 0xec, 0xac, 0xb1, 0x1a, 0x86, 0x06, 0x1f, 0xb0,
+	0xf5, 0xbb, 0xf2, 0x34, 0x99, 0x8a, 0x84, 0x86, 0x82, 0x72, 0x96, 0x7a, 0xcf, 0x2d, 0xf9, 0x55,
+	0xa8, 0x30, 0x7b, 0xd1, 0x0c, 0x46, 0xcb, 0x1e, 0x36, 0x4e, 0x17, 0xc4, 0x36, 0x88, 0x80, 0x46,
+	0xa9, 0x67, 0x1b, 0x2d, 0xc6, 0x0b, 0xa3, 0xa7, 0x73, 0x39, 0xf4, 0xb8, 0x24, 0xb7, 0x73, 0x0f,
+	0xd9, 0x53, 0xfb, 0xe9, 0x66, 0x12, 0x0e, 0xe9, 0x14, 0xfa, 0x9e, 0x6f, 0x91, 0x50, 0xad, 0x57,
+	0x72, 0x85, 0xe5, 0x7a, 0x63, 0x5e, 0x6b, 0x86, 0x03, 0x9a, 0x8a, 0x37, 0x7c, 0x0a, 0xa6, 0x66,
+	0x90, 0x31, 0x5f, 0x06, 0x5d, 0xcd, 0x50, 0x85, 0x50, 0x7b, 0x82, 0xd3, 0xca, 0xb5, 0x4f, 0xf8,
+	0x21, 0x5c, 0xa8, 0xad, 0xe7, 0x85, 0x23, 0xbf, 0xa0, 0x0a, 0xb7, 0xb5, 0x86, 0x34, 0xda, 0x7e,
+	0x6a, 0x91, 0xe5, 0x02, 0xea, 0x70, 0x36, 0x85, 0x44, 0x74, 0x86, 0x34, 0xea, 0x27, 0xc0, 0x4e,
+	0xb8, 0x64, 0x53, 0xef, 0xb5, 0x45, 0xd2, 0x8c, 0x17, 0x23, 0xf9, 0xed, 0x55, 0xd3, 0x70, 0x48,
+	0x23, 0xe2, 0x15, 0x70, 0xd9, 0x1c, 0x2b, 0x16, 0x35, 0x43, 0x83, 0xac, 0x36, 0x41, 0xd1, 0x6c,
+	0x4a, 0x7e, 0x5e, 0x35, 0x3b, 0x81, 0x8f, 0xa2, 0x2b, 0x2e, 0x23, 0xf0, 0xd6, 0x1c, 0x22, 0x92,
+	0xf2, 0x15, 0x56, 0x78, 0xfa, 0x4d, 0x71, 0xf4, 0xa5, 0x95, 0x49, 0x6e, 0x4f, 0xe2, 0x88, 0x86,
+	0xf2, 0xfd, 0xf5, 0xcc, 0xa2, 0x52, 0x10, 0x96, 0xaf, 0x04, 0x33, 0x89, 0x56, 0xff, 0x69, 0x91,
+	0x5f, 0x56, 0xe7, 0xb8, 0x15, 0x84, 0xa3, 0x41, 0xc2, 0x27, 0xac, 0xdf, 0xe1, 0x11, 0x4f, 0xbc,
+	0x0d, 0xc7, 0xd0, 0x35, 0xb6, 0xb0, 0x7f, 0x75, 0xa5, 0x1c, 0x1c, 0xc8, 0x90, 0xdc, 0xaa, 0x8e,
+	0x63, 0x33, 0xa2, 0x03, 0x66, 0x9d, 0xb2, 0x54, 0x52, 0xc4, 0xdc, 0x29, 0x57, 0x49, 0x74, 0x4a,
+	0x71, 0xeb, 0x43, 0xa7, 0x6d, 0x3a, 0xcd, 0x7e, 0xd4, 0x17, 0x0e, 0x89, 0x6d, 0x3a, 0xd5, 0x7e,
+	0xd3, 0xb5, 0x86, 0x34, 0x9a, 0xfe, 0xbb, 0x45, 0x96, 0xaa, 0xae, 0xda, 0xee, 0xe4, 0x5a, 0x66,
+	0xdb, 0x0e, 0xf5, 0xea, 0x4a, 0x39, 0x38, 0x0e, 0x86, 0x27, 0x30, 0x55, 0x5a, 0x10, 0x01, 0x9e,
+	0x60, 0x6c, 0x5d, 0x91, 0x21, 0x7e, 0x6d, 0x13, 0x79, 0xde, 0x88, 0x45, 0xbf, 0x01, 0xf9, 0x49,
+	0xbe, 0x21, 0xcb, 0x4a, 0x97, 0xff, 0x98, 0x7e, 0xd5, 0xb2, 0x15, 0xd4, 0xbf, 0x1c, 0xbf, 0xea,
+	0x0c, 0x89, 0x46, 0x7f, 0xc7, 0xfa, 0x41, 0xa3, 0xac, 0x7a, 0x9d, 0xf9, 0xf5, 0xa2, 0x5d, 0x6d,
+	0x82, 0xda, 0xf7, 0x85, 0xcc, 0x6f, 0xee, 0xbe, 0x50, 0xf7, 0xf4, 0x9b, 0xe2, 0xe6, 0xca, 0x95,
+	0x88, 0x3c, 0xd7, 0x38, 0x2b, 0x57, 0xe9, 0x48, 0xaa, 0x51, 0xe5, 0x56, 0x69, 0xf3, 0xc2, 0x66,
+	0xbd, 0xe2, 0x5c, 0xd8, 0x7a, 0xa3, 0xac, 0x36, 0x41, 0xd1, 0x2b, 0x2e, 0xbf, 0x0f, 0xd4, 0xa2,
+	0x0e, 0x21, 0x1c, 0x41, 0xdf, 0x7a, 0x28, 0xc9, 0xd6, 0x28, 0x83, 0xe6, 0x1e, 0x4a, 0x34, 0x58,
+	0x3b, 0x15, 0x77, 0xe3, 0x88, 0x0a, 0xe3, 0xa9, 0x58, 0x45, 0x9c, 0xa7, 0xe2, 0x9c, 0xd0, 0x24,
+	0xdf, 0x40, 0x32, 0x30, 0x1f, 0xb4, 0x55, 0xc4, 0x29, 0x99, 0x13, 0xda, 0xf1, 0xb2, 0xc3, 0xe3,
+	0x4b, 0xe3, 0xf1, 0x52, 0x06, 0x9c, 0xc7, 0x4b, 0x04, 0xb4, 0x21, 0x1e, 0x05, 0xa9, 0x30, 0x0f,
+	0x51, 0x45, 0x9c, 0x43, 0xcc, 0x09, 0x94, 0xfc, 0x23, 0xb9, 0x91, 0x0d, 0x71, 0x22, 0xbc, 0xb6,
+	0x69, 0x00, 0x93, 0x72, 0x11, 0x97, 0xad, 0x71, 0xed, 0x0b, 0x68, 0xe7, 0x63, 0xcc, 0x13, 0x61,
+	0xfc, 0x02, 0xca, 0x42, 0xce, 0x2f, 0xa0, 0x02, 0xd1, 0xbe, 0x3e, 0xf7, 0xc7, 0xf2, 0xb9, 0xac,
+	0x72, 0x75, 0x5f, 0x64, 0xaa, 0xe5, 0x3a, 0xe2, 0xac, 0xe5, 0x19, 0x74, 0x76, 0xe7, 0xdb, 0xa5,
+	0x11, 0x1c, 0x06, 0x63, 0xb0, 0xee, 0x7c, 0xea, 0x1a, 0x44, 0x12, 0x73, 0x77, 0xbe, 0x2a, 0x39,
+	0xdb, 0xa0, 0xea, 0x2e, 0x50, 0x39, 0xd9, 0xf2, 0xb3, 0xdb, 0xc2, 0x9a, 0xd5, 0x6a, 0x13, 0x14,
+	0xbd, 0xc6, 0x78, 0x32, 0xc9, 0xbd, 0xce, 0x68, 0x5f, 0x0c, 0x3d, 0xb7, 0x82, 0x62, 0x9c, 0xf7,
+	0x05, 0xb3, 0xec, 0xec, 0xd4, 0x4e, 0x69, 0x1f, 0xb8, 0x73, 0x6a, 0x8a, 0x68, 0x36, 0xb5, 0x1a,
+	0x3a, 0x3b, 0x35, 0x15, 0x76, 0x4f, 0x2d, 0x53, 0x68, 0x36, 0xb5, 0x3a, 0x8b, 0x76, 0xff, 0x6a,
+	0x91, 0xbb, 0xb9, 0xdf, 0x01, 0x65, 0xa3, 0x93, 0x20, 0x19, 0xa8, 0xeb, 0xe0, 0x70, 0xb4, 0xdf,
+	0xf7, 0x7e, 0x6d, 0x91, 0x92, 0xa4, 0x5f, 0x43, 0x0b, 0xf7, 0x8d, 0xab, 0xa4, 0x68, 0x2f, 0x14,
+	0x79, 0x0c, 0x0a, 0x44, 0x30, 0xa5, 0x70, 0x71, 0x4a, 0xe1, 0xc2, 0xb3, 0xed, 0xa1, 0x39, 0xe4,
+	0x9f, 0x56, 0xaf, 0x0a, 0xd7, 0x1a, 0xd2, 0xfa, 0x51, 0xa8, 0xe2, 0xba, 0x19, 0x0a, 0x3a, 0x05,
+	0xe5, 0xbd, 0x31, 0x4f, 0xad, 0x64, 0x5d, 0x47, 0x21, 0x47, 0x0e, 0x8e, 0xe3, 0x1f, 0xe4, 0x17,
+	0x95, 0x8b, 0x9c, 0xda, 0xfc, 0xd7, 0xed, 0xf7, 0x40, 0xe6, 0x25, 0x78, 0xd9, 0x3c, 0x41, 0xfb,
+	0x90, 0xd9, 0xe2, 0x7c, 0x34, 0x0e, 0x92, 0xd1, 0x2e, 0x88, 0x70, 0x68, 0xac, 0xed, 0x9c, 0xf0,
+	0x15, 0xe2, 0xac, 0xed, 0x19, 0x54, 0x3f, 0xe5, 0xe7, 0x40, 0x36, 0xb6, 0x4d, 0xd6, 0xcf, 0x6c,
+	0x37, 0x5c, 0x5a, 0x75, 0xd6, 0xb9, 0xe6, 0xf6, 0x1c, 0x1c, 0xc8, 0x3f, 0xc9, 0x1d, 0x45, 0xca,
+	0x6d, 0xac, 0x60, 0xf0, 0xba, 0xd7, 0xb4, 0xe8, 0x6a, 0xbb, 0xd3, 0x40, 0xe7, 0xa2, 0x5b, 0x12,
+	0xca, 0x37, 0xc0, 0x61, 0x30, 0xa5, 0x83, 0x40, 0x50, 0xce, 0xe4, 0xa1, 0x27, 0xfb, 0x86, 0xad,
+	0xaf, 0x7a, 0x49, 0xf8, 0x05, 0x62, 0x59, 0x75, 0x0b, 0x8a, 0x6e, 0xff, 0x6d, 0x91, 0x76, 0x49,
+	0xec, 0xe1, 0xa1, 0x9f, 0x9d, 0xf3, 0x33, 0x2a, 0x86, 0xb2, 0x2d, 0x53, 0xef, 0x37, 0x36, 0x39,
+	0x13, 0x5d, 0x0c, 0xe2, 0xf5, 0x15, 0xb3, 0x70, 0x3c, 0xbf, 0x27, 0xdf, 0x3f, 0xa2, 0x6c, 0xe0,
+	0xdd, 0xad, 0xa5, 0xcb, 0x47, 0x85, 0xf2, 0x92, 0x29, 0x54, 0x5e, 0x70, 0x1c, 0x25, 0x3c, 0x84,
+	0x34, 0xed, 0x04, 0x2c, 0x84, 0x48, 0xbb, 0xe0, 0xc0, 0x98, 0x9f, 0x05, 0x2d, 0x17, 0x1c, 0x33,
+	0x10, 0x6a, 0xbf, 0x24, 0x0b, 0x72, 0x01, 0x81, 0xed, 0xa8, 0x3f, 0xae, 0x7a, 0x8b, 0x45, 0xd6,
+	0xce, 0x38, 0x16, 0x97, 0x4b, 0x95, 0xff, 0x97, 0xc0, 0xcb, 0xd6, 0xd6, 0xbd, 0xff, 0x7d, 0x69,
+	0xb7, 0x3e, 0x7f, 0x69, 0xb7, 0xbe, 0xf9, 0xd2, 0x6e, 0x7d, 0xfa, 0xda, 0xbe, 0xf6, 0xf9, 0x6b,
+	0xfb, 0xda, 0xff, 0xbf, 0xb6, 0xaf, 0xbd, 0xff, 0x5e, 0x44, 0x7b, 0xbd, 0x1f, 0xa8, 0x3f, 0xcf,
+	0xbe, 0xfa, 0x2e, 0x00, 0x00, 0xff, 0xff, 0x91, 0x91, 0x08, 0xa9, 0xfc, 0x1d, 0x00, 0x00,
+}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion4
+
+// ClientCommandsClient is the client API for ClientCommands service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type ClientCommandsClient interface {
+	WalletCreate(ctx context.Context, in *pb.RpcWalletCreateRequest, opts ...grpc.CallOption) (*pb.RpcWalletCreateResponse, error)
+	WalletRecover(ctx context.Context, in *pb.RpcWalletRecoverRequest, opts ...grpc.CallOption) (*pb.RpcWalletRecoverResponse, error)
+	AccountRecover(ctx context.Context, in *pb.RpcAccountRecoverRequest, opts ...grpc.CallOption) (*pb.RpcAccountRecoverResponse, error)
+	AccountCreate(ctx context.Context, in *pb.RpcAccountCreateRequest, opts ...grpc.CallOption) (*pb.RpcAccountCreateResponse, error)
+	AccountSelect(ctx context.Context, in *pb.RpcAccountSelectRequest, opts ...grpc.CallOption) (*pb.RpcAccountSelectResponse, error)
+	AccountStop(ctx context.Context, in *pb.RpcAccountStopRequest, opts ...grpc.CallOption) (*pb.RpcAccountStopResponse, error)
+	ImageGetBlob(ctx context.Context, in *pb.RpcIpfsImageGetBlobRequest, opts ...grpc.CallOption) (*pb.RpcIpfsImageGetBlobResponse, error)
+	VersionGet(ctx context.Context, in *pb.RpcVersionGetRequest, opts ...grpc.CallOption) (*pb.RpcVersionGetResponse, error)
+	LogSend(ctx context.Context, in *pb.RpcLogSendRequest, opts ...grpc.CallOption) (*pb.RpcLogSendResponse, error)
+	ConfigGet(ctx context.Context, in *pb.RpcConfigGetRequest, opts ...grpc.CallOption) (*pb.RpcConfigGetResponse, error)
+	Shutdown(ctx context.Context, in *pb.RpcShutdownRequest, opts ...grpc.CallOption) (*pb.RpcShutdownResponse, error)
+	ExternalDropFiles(ctx context.Context, in *pb.RpcExternalDropFilesRequest, opts ...grpc.CallOption) (*pb.RpcExternalDropFilesResponse, error)
+	ExternalDropContent(ctx context.Context, in *pb.RpcExternalDropContentRequest, opts ...grpc.CallOption) (*pb.RpcExternalDropContentResponse, error)
+	LinkPreview(ctx context.Context, in *pb.RpcLinkPreviewRequest, opts ...grpc.CallOption) (*pb.RpcLinkPreviewResponse, error)
+	UploadFile(ctx context.Context, in *pb.RpcUploadFileRequest, opts ...grpc.CallOption) (*pb.RpcUploadFileResponse, error)
+	BlockUpload(ctx context.Context, in *pb.RpcBlockUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockUploadResponse, error)
+	BlockReplace(ctx context.Context, in *pb.RpcBlockReplaceRequest, opts ...grpc.CallOption) (*pb.RpcBlockReplaceResponse, error)
+	BlockOpen(ctx context.Context, in *pb.RpcBlockOpenRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenResponse, error)
+	BlockGetPublicWebURL(ctx context.Context, in *pb.RpcBlockGetPublicWebURLRequest, opts ...grpc.CallOption) (*pb.RpcBlockGetPublicWebURLResponse, error)
+	BlockOpenBreadcrumbs(ctx context.Context, in *pb.RpcBlockOpenBreadcrumbsRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenBreadcrumbsResponse, error)
+	BlockSetBreadcrumbs(ctx context.Context, in *pb.RpcBlockSetBreadcrumbsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetBreadcrumbsResponse, error)
+	BlockCreate(ctx context.Context, in *pb.RpcBlockCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateResponse, error)
+	BlockCreatePage(ctx context.Context, in *pb.RpcBlockCreatePageRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreatePageResponse, error)
+	BlockUnlink(ctx context.Context, in *pb.RpcBlockUnlinkRequest, opts ...grpc.CallOption) (*pb.RpcBlockUnlinkResponse, error)
+	BlockClose(ctx context.Context, in *pb.RpcBlockCloseRequest, opts ...grpc.CallOption) (*pb.RpcBlockCloseResponse, error)
+	BlockDownload(ctx context.Context, in *pb.RpcBlockDownloadRequest, opts ...grpc.CallOption) (*pb.RpcBlockDownloadResponse, error)
+	BlockGetMarks(ctx context.Context, in *pb.RpcBlockGetMarksRequest, opts ...grpc.CallOption) (*pb.RpcBlockGetMarksResponse, error)
+	BlockUndo(ctx context.Context, in *pb.RpcBlockUndoRequest, opts ...grpc.CallOption) (*pb.RpcBlockUndoResponse, error)
+	BlockRedo(ctx context.Context, in *pb.RpcBlockRedoRequest, opts ...grpc.CallOption) (*pb.RpcBlockRedoResponse, error)
+	BlockSetFields(ctx context.Context, in *pb.RpcBlockSetFieldsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetFieldsResponse, error)
+	BlockSetRestrictions(ctx context.Context, in *pb.RpcBlockSetRestrictionsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetRestrictionsResponse, error)
+	BlockSetDetails(ctx context.Context, in *pb.RpcBlockSetDetailsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDetailsResponse, error)
+	BlockSetPageIsArchived(ctx context.Context, in *pb.RpcBlockSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetPageIsArchivedResponse, error)
+	BlockListMove(ctx context.Context, in *pb.RpcBlockListMoveRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveResponse, error)
+	BlockListMoveToNewPage(ctx context.Context, in *pb.RpcBlockListMoveToNewPageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveToNewPageResponse, error)
+	BlockListConvertChildrenToPages(ctx context.Context, in *pb.RpcBlockListConvertChildrenToPagesRequest, opts ...grpc.CallOption) (*pb.RpcBlockListConvertChildrenToPagesResponse, error)
+	BlockListSetFields(ctx context.Context, in *pb.RpcBlockListSetFieldsRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetFieldsResponse, error)
+	BlockListSetTextStyle(ctx context.Context, in *pb.RpcBlockListSetTextStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextStyleResponse, error)
+	BlockListDuplicate(ctx context.Context, in *pb.RpcBlockListDuplicateRequest, opts ...grpc.CallOption) (*pb.RpcBlockListDuplicateResponse, error)
+	BlockListSetBackgroundColor(ctx context.Context, in *pb.RpcBlockListSetBackgroundColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetBackgroundColorResponse, error)
+	BlockListSetAlign(ctx context.Context, in *pb.RpcBlockListSetAlignRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetAlignResponse, error)
+	BlockListSetDivStyle(ctx context.Context, in *pb.RpcBlockListSetDivStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetDivStyleResponse, error)
+	BlockListSetPageIsArchived(ctx context.Context, in *pb.RpcBlockListSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetPageIsArchivedResponse, error)
+	BlockListDeletePage(ctx context.Context, in *pb.RpcBlockListDeletePageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListDeletePageResponse, error)
+	BlockSetTextText(ctx context.Context, in *pb.RpcBlockSetTextTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextTextResponse, error)
+	BlockSetTextColor(ctx context.Context, in *pb.RpcBlockSetTextColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextColorResponse, error)
+	BlockListSetTextColor(ctx context.Context, in *pb.RpcBlockListSetTextColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextColorResponse, error)
+	BlockListSetTextMark(ctx context.Context, in *pb.RpcBlockListSetTextMarkRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextMarkResponse, error)
+	BlockSetTextStyle(ctx context.Context, in *pb.RpcBlockSetTextStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextStyleResponse, error)
+	BlockSetTextChecked(ctx context.Context, in *pb.RpcBlockSetTextCheckedRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextCheckedResponse, error)
+	BlockSplit(ctx context.Context, in *pb.RpcBlockSplitRequest, opts ...grpc.CallOption) (*pb.RpcBlockSplitResponse, error)
+	BlockMerge(ctx context.Context, in *pb.RpcBlockMergeRequest, opts ...grpc.CallOption) (*pb.RpcBlockMergeResponse, error)
+	BlockCopy(ctx context.Context, in *pb.RpcBlockCopyRequest, opts ...grpc.CallOption) (*pb.RpcBlockCopyResponse, error)
+	BlockPaste(ctx context.Context, in *pb.RpcBlockPasteRequest, opts ...grpc.CallOption) (*pb.RpcBlockPasteResponse, error)
+	BlockCut(ctx context.Context, in *pb.RpcBlockCutRequest, opts ...grpc.CallOption) (*pb.RpcBlockCutResponse, error)
+	BlockExport(ctx context.Context, in *pb.RpcBlockExportRequest, opts ...grpc.CallOption) (*pb.RpcBlockExportResponse, error)
+	BlockImportMarkdown(ctx context.Context, in *pb.RpcBlockImportMarkdownRequest, opts ...grpc.CallOption) (*pb.RpcBlockImportMarkdownResponse, error)
+	BlockSetFileName(ctx context.Context, in *pb.RpcBlockSetFileNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetFileNameResponse, error)
+	BlockSetImageName(ctx context.Context, in *pb.RpcBlockSetImageNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetImageNameResponse, error)
+	BlockSetImageWidth(ctx context.Context, in *pb.RpcBlockSetImageWidthRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetImageWidthResponse, error)
+	BlockSetVideoName(ctx context.Context, in *pb.RpcBlockSetVideoNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoNameResponse, error)
+	BlockSetVideoWidth(ctx context.Context, in *pb.RpcBlockSetVideoWidthRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoWidthResponse, error)
+	BlockSetLinkTargetBlockId(ctx context.Context, in *pb.RpcBlockSetLinkTargetBlockIdRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetLinkTargetBlockIdResponse, error)
+	BlockSetDataviewView(ctx context.Context, in *pb.RpcBlockSetDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewViewResponse, error)
+	BlockSetDataviewActiveView(ctx context.Context, in *pb.RpcBlockSetDataviewActiveViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewActiveViewResponse, error)
+	BlockCreateDataviewView(ctx context.Context, in *pb.RpcBlockCreateDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewViewResponse, error)
+	BlockBookmarkFetch(ctx context.Context, in *pb.RpcBlockBookmarkFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkFetchResponse, error)
+	BlockBookmarkCreateAndFetch(ctx context.Context, in *pb.RpcBlockBookmarkCreateAndFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkCreateAndFetchResponse, error)
+	BlockFileCreateAndUpload(ctx context.Context, in *pb.RpcBlockFileCreateAndUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockFileCreateAndUploadResponse, error)
+	NavigationListPages(ctx context.Context, in *pb.RpcNavigationListPagesRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListPagesResponse, error)
+	NavigationGetPageInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetPageInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetPageInfoWithLinksResponse, error)
+	Ping(ctx context.Context, in *pb.RpcPingRequest, opts ...grpc.CallOption) (*pb.RpcPingResponse, error)
+	ProcessCancel(ctx context.Context, in *pb.RpcProcessCancelRequest, opts ...grpc.CallOption) (*pb.RpcProcessCancelResponse, error)
+	// used only for lib-server via grpc
+	ListenEvents(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (ClientCommands_ListenEventsClient, error)
+}
+
+type clientCommandsClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewClientCommandsClient(cc *grpc.ClientConn) ClientCommandsClient {
+	return &clientCommandsClient{cc}
+}
+
+func (c *clientCommandsClient) WalletCreate(ctx context.Context, in *pb.RpcWalletCreateRequest, opts ...grpc.CallOption) (*pb.RpcWalletCreateResponse, error) {
+	out := new(pb.RpcWalletCreateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/WalletCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) WalletRecover(ctx context.Context, in *pb.RpcWalletRecoverRequest, opts ...grpc.CallOption) (*pb.RpcWalletRecoverResponse, error) {
+	out := new(pb.RpcWalletRecoverResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/WalletRecover", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) AccountRecover(ctx context.Context, in *pb.RpcAccountRecoverRequest, opts ...grpc.CallOption) (*pb.RpcAccountRecoverResponse, error) {
+	out := new(pb.RpcAccountRecoverResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/AccountRecover", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) AccountCreate(ctx context.Context, in *pb.RpcAccountCreateRequest, opts ...grpc.CallOption) (*pb.RpcAccountCreateResponse, error) {
+	out := new(pb.RpcAccountCreateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/AccountCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) AccountSelect(ctx context.Context, in *pb.RpcAccountSelectRequest, opts ...grpc.CallOption) (*pb.RpcAccountSelectResponse, error) {
+	out := new(pb.RpcAccountSelectResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/AccountSelect", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) AccountStop(ctx context.Context, in *pb.RpcAccountStopRequest, opts ...grpc.CallOption) (*pb.RpcAccountStopResponse, error) {
+	out := new(pb.RpcAccountStopResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/AccountStop", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ImageGetBlob(ctx context.Context, in *pb.RpcIpfsImageGetBlobRequest, opts ...grpc.CallOption) (*pb.RpcIpfsImageGetBlobResponse, error) {
+	out := new(pb.RpcIpfsImageGetBlobResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ImageGetBlob", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) VersionGet(ctx context.Context, in *pb.RpcVersionGetRequest, opts ...grpc.CallOption) (*pb.RpcVersionGetResponse, error) {
+	out := new(pb.RpcVersionGetResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/VersionGet", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) LogSend(ctx context.Context, in *pb.RpcLogSendRequest, opts ...grpc.CallOption) (*pb.RpcLogSendResponse, error) {
+	out := new(pb.RpcLogSendResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/LogSend", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ConfigGet(ctx context.Context, in *pb.RpcConfigGetRequest, opts ...grpc.CallOption) (*pb.RpcConfigGetResponse, error) {
+	out := new(pb.RpcConfigGetResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ConfigGet", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) Shutdown(ctx context.Context, in *pb.RpcShutdownRequest, opts ...grpc.CallOption) (*pb.RpcShutdownResponse, error) {
+	out := new(pb.RpcShutdownResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/Shutdown", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ExternalDropFiles(ctx context.Context, in *pb.RpcExternalDropFilesRequest, opts ...grpc.CallOption) (*pb.RpcExternalDropFilesResponse, error) {
+	out := new(pb.RpcExternalDropFilesResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ExternalDropFiles", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ExternalDropContent(ctx context.Context, in *pb.RpcExternalDropContentRequest, opts ...grpc.CallOption) (*pb.RpcExternalDropContentResponse, error) {
+	out := new(pb.RpcExternalDropContentResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ExternalDropContent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) LinkPreview(ctx context.Context, in *pb.RpcLinkPreviewRequest, opts ...grpc.CallOption) (*pb.RpcLinkPreviewResponse, error) {
+	out := new(pb.RpcLinkPreviewResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/LinkPreview", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) UploadFile(ctx context.Context, in *pb.RpcUploadFileRequest, opts ...grpc.CallOption) (*pb.RpcUploadFileResponse, error) {
+	out := new(pb.RpcUploadFileResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/UploadFile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockUpload(ctx context.Context, in *pb.RpcBlockUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockUploadResponse, error) {
+	out := new(pb.RpcBlockUploadResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockUpload", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockReplace(ctx context.Context, in *pb.RpcBlockReplaceRequest, opts ...grpc.CallOption) (*pb.RpcBlockReplaceResponse, error) {
+	out := new(pb.RpcBlockReplaceResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockReplace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockOpen(ctx context.Context, in *pb.RpcBlockOpenRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenResponse, error) {
+	out := new(pb.RpcBlockOpenResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockOpen", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockGetPublicWebURL(ctx context.Context, in *pb.RpcBlockGetPublicWebURLRequest, opts ...grpc.CallOption) (*pb.RpcBlockGetPublicWebURLResponse, error) {
+	out := new(pb.RpcBlockGetPublicWebURLResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockGetPublicWebURL", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockOpenBreadcrumbs(ctx context.Context, in *pb.RpcBlockOpenBreadcrumbsRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenBreadcrumbsResponse, error) {
+	out := new(pb.RpcBlockOpenBreadcrumbsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockOpenBreadcrumbs", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetBreadcrumbs(ctx context.Context, in *pb.RpcBlockSetBreadcrumbsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetBreadcrumbsResponse, error) {
+	out := new(pb.RpcBlockSetBreadcrumbsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetBreadcrumbs", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockCreate(ctx context.Context, in *pb.RpcBlockCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateResponse, error) {
+	out := new(pb.RpcBlockCreateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockCreatePage(ctx context.Context, in *pb.RpcBlockCreatePageRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreatePageResponse, error) {
+	out := new(pb.RpcBlockCreatePageResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCreatePage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockUnlink(ctx context.Context, in *pb.RpcBlockUnlinkRequest, opts ...grpc.CallOption) (*pb.RpcBlockUnlinkResponse, error) {
+	out := new(pb.RpcBlockUnlinkResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockUnlink", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockClose(ctx context.Context, in *pb.RpcBlockCloseRequest, opts ...grpc.CallOption) (*pb.RpcBlockCloseResponse, error) {
+	out := new(pb.RpcBlockCloseResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockClose", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDownload(ctx context.Context, in *pb.RpcBlockDownloadRequest, opts ...grpc.CallOption) (*pb.RpcBlockDownloadResponse, error) {
+	out := new(pb.RpcBlockDownloadResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDownload", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockGetMarks(ctx context.Context, in *pb.RpcBlockGetMarksRequest, opts ...grpc.CallOption) (*pb.RpcBlockGetMarksResponse, error) {
+	out := new(pb.RpcBlockGetMarksResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockGetMarks", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockUndo(ctx context.Context, in *pb.RpcBlockUndoRequest, opts ...grpc.CallOption) (*pb.RpcBlockUndoResponse, error) {
+	out := new(pb.RpcBlockUndoResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockUndo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockRedo(ctx context.Context, in *pb.RpcBlockRedoRequest, opts ...grpc.CallOption) (*pb.RpcBlockRedoResponse, error) {
+	out := new(pb.RpcBlockRedoResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockRedo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetFields(ctx context.Context, in *pb.RpcBlockSetFieldsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetFieldsResponse, error) {
+	out := new(pb.RpcBlockSetFieldsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetFields", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetRestrictions(ctx context.Context, in *pb.RpcBlockSetRestrictionsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetRestrictionsResponse, error) {
+	out := new(pb.RpcBlockSetRestrictionsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetRestrictions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetDetails(ctx context.Context, in *pb.RpcBlockSetDetailsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDetailsResponse, error) {
+	out := new(pb.RpcBlockSetDetailsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDetails", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetPageIsArchived(ctx context.Context, in *pb.RpcBlockSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetPageIsArchivedResponse, error) {
+	out := new(pb.RpcBlockSetPageIsArchivedResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetPageIsArchived", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListMove(ctx context.Context, in *pb.RpcBlockListMoveRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveResponse, error) {
+	out := new(pb.RpcBlockListMoveResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListMove", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListMoveToNewPage(ctx context.Context, in *pb.RpcBlockListMoveToNewPageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveToNewPageResponse, error) {
+	out := new(pb.RpcBlockListMoveToNewPageResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListMoveToNewPage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListConvertChildrenToPages(ctx context.Context, in *pb.RpcBlockListConvertChildrenToPagesRequest, opts ...grpc.CallOption) (*pb.RpcBlockListConvertChildrenToPagesResponse, error) {
+	out := new(pb.RpcBlockListConvertChildrenToPagesResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListConvertChildrenToPages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetFields(ctx context.Context, in *pb.RpcBlockListSetFieldsRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetFieldsResponse, error) {
+	out := new(pb.RpcBlockListSetFieldsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetFields", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetTextStyle(ctx context.Context, in *pb.RpcBlockListSetTextStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextStyleResponse, error) {
+	out := new(pb.RpcBlockListSetTextStyleResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetTextStyle", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListDuplicate(ctx context.Context, in *pb.RpcBlockListDuplicateRequest, opts ...grpc.CallOption) (*pb.RpcBlockListDuplicateResponse, error) {
+	out := new(pb.RpcBlockListDuplicateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListDuplicate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetBackgroundColor(ctx context.Context, in *pb.RpcBlockListSetBackgroundColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetBackgroundColorResponse, error) {
+	out := new(pb.RpcBlockListSetBackgroundColorResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetBackgroundColor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetAlign(ctx context.Context, in *pb.RpcBlockListSetAlignRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetAlignResponse, error) {
+	out := new(pb.RpcBlockListSetAlignResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetAlign", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetDivStyle(ctx context.Context, in *pb.RpcBlockListSetDivStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetDivStyleResponse, error) {
+	out := new(pb.RpcBlockListSetDivStyleResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetDivStyle", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetPageIsArchived(ctx context.Context, in *pb.RpcBlockListSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetPageIsArchivedResponse, error) {
+	out := new(pb.RpcBlockListSetPageIsArchivedResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetPageIsArchived", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListDeletePage(ctx context.Context, in *pb.RpcBlockListDeletePageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListDeletePageResponse, error) {
+	out := new(pb.RpcBlockListDeletePageResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListDeletePage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetTextText(ctx context.Context, in *pb.RpcBlockSetTextTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextTextResponse, error) {
+	out := new(pb.RpcBlockSetTextTextResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetTextText", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetTextColor(ctx context.Context, in *pb.RpcBlockSetTextColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextColorResponse, error) {
+	out := new(pb.RpcBlockSetTextColorResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetTextColor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetTextColor(ctx context.Context, in *pb.RpcBlockListSetTextColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextColorResponse, error) {
+	out := new(pb.RpcBlockListSetTextColorResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetTextColor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetTextMark(ctx context.Context, in *pb.RpcBlockListSetTextMarkRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextMarkResponse, error) {
+	out := new(pb.RpcBlockListSetTextMarkResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetTextMark", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetTextStyle(ctx context.Context, in *pb.RpcBlockSetTextStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextStyleResponse, error) {
+	out := new(pb.RpcBlockSetTextStyleResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetTextStyle", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetTextChecked(ctx context.Context, in *pb.RpcBlockSetTextCheckedRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextCheckedResponse, error) {
+	out := new(pb.RpcBlockSetTextCheckedResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetTextChecked", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSplit(ctx context.Context, in *pb.RpcBlockSplitRequest, opts ...grpc.CallOption) (*pb.RpcBlockSplitResponse, error) {
+	out := new(pb.RpcBlockSplitResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSplit", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockMerge(ctx context.Context, in *pb.RpcBlockMergeRequest, opts ...grpc.CallOption) (*pb.RpcBlockMergeResponse, error) {
+	out := new(pb.RpcBlockMergeResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockMerge", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockCopy(ctx context.Context, in *pb.RpcBlockCopyRequest, opts ...grpc.CallOption) (*pb.RpcBlockCopyResponse, error) {
+	out := new(pb.RpcBlockCopyResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCopy", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockPaste(ctx context.Context, in *pb.RpcBlockPasteRequest, opts ...grpc.CallOption) (*pb.RpcBlockPasteResponse, error) {
+	out := new(pb.RpcBlockPasteResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockPaste", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockCut(ctx context.Context, in *pb.RpcBlockCutRequest, opts ...grpc.CallOption) (*pb.RpcBlockCutResponse, error) {
+	out := new(pb.RpcBlockCutResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCut", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockExport(ctx context.Context, in *pb.RpcBlockExportRequest, opts ...grpc.CallOption) (*pb.RpcBlockExportResponse, error) {
+	out := new(pb.RpcBlockExportResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockExport", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockImportMarkdown(ctx context.Context, in *pb.RpcBlockImportMarkdownRequest, opts ...grpc.CallOption) (*pb.RpcBlockImportMarkdownResponse, error) {
+	out := new(pb.RpcBlockImportMarkdownResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockImportMarkdown", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetFileName(ctx context.Context, in *pb.RpcBlockSetFileNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetFileNameResponse, error) {
+	out := new(pb.RpcBlockSetFileNameResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetFileName", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetImageName(ctx context.Context, in *pb.RpcBlockSetImageNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetImageNameResponse, error) {
+	out := new(pb.RpcBlockSetImageNameResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetImageName", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetImageWidth(ctx context.Context, in *pb.RpcBlockSetImageWidthRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetImageWidthResponse, error) {
+	out := new(pb.RpcBlockSetImageWidthResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetImageWidth", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetVideoName(ctx context.Context, in *pb.RpcBlockSetVideoNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoNameResponse, error) {
+	out := new(pb.RpcBlockSetVideoNameResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetVideoName", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetVideoWidth(ctx context.Context, in *pb.RpcBlockSetVideoWidthRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoWidthResponse, error) {
+	out := new(pb.RpcBlockSetVideoWidthResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetVideoWidth", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetLinkTargetBlockId(ctx context.Context, in *pb.RpcBlockSetLinkTargetBlockIdRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetLinkTargetBlockIdResponse, error) {
+	out := new(pb.RpcBlockSetLinkTargetBlockIdResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetLinkTargetBlockId", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetDataviewView(ctx context.Context, in *pb.RpcBlockSetDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewViewResponse, error) {
+	out := new(pb.RpcBlockSetDataviewViewResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDataviewView", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetDataviewActiveView(ctx context.Context, in *pb.RpcBlockSetDataviewActiveViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewActiveViewResponse, error) {
+	out := new(pb.RpcBlockSetDataviewActiveViewResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDataviewActiveView", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockCreateDataviewView(ctx context.Context, in *pb.RpcBlockCreateDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewViewResponse, error) {
+	out := new(pb.RpcBlockCreateDataviewViewResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCreateDataviewView", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockBookmarkFetch(ctx context.Context, in *pb.RpcBlockBookmarkFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkFetchResponse, error) {
+	out := new(pb.RpcBlockBookmarkFetchResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockBookmarkFetch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockBookmarkCreateAndFetch(ctx context.Context, in *pb.RpcBlockBookmarkCreateAndFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkCreateAndFetchResponse, error) {
+	out := new(pb.RpcBlockBookmarkCreateAndFetchResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockBookmarkCreateAndFetch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockFileCreateAndUpload(ctx context.Context, in *pb.RpcBlockFileCreateAndUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockFileCreateAndUploadResponse, error) {
+	out := new(pb.RpcBlockFileCreateAndUploadResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockFileCreateAndUpload", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) NavigationListPages(ctx context.Context, in *pb.RpcNavigationListPagesRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListPagesResponse, error) {
+	out := new(pb.RpcNavigationListPagesResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationListPages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) NavigationGetPageInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetPageInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetPageInfoWithLinksResponse, error) {
+	out := new(pb.RpcNavigationGetPageInfoWithLinksResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationGetPageInfoWithLinks", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) Ping(ctx context.Context, in *pb.RpcPingRequest, opts ...grpc.CallOption) (*pb.RpcPingResponse, error) {
+	out := new(pb.RpcPingResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ProcessCancel(ctx context.Context, in *pb.RpcProcessCancelRequest, opts ...grpc.CallOption) (*pb.RpcProcessCancelResponse, error) {
+	out := new(pb.RpcProcessCancelResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ProcessCancel", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ListenEvents(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (ClientCommands_ListenEventsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_ClientCommands_serviceDesc.Streams[0], "/anytype.ClientCommands/ListenEvents", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &clientCommandsListenEventsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ClientCommands_ListenEventsClient interface {
+	Recv() (*pb.Event, error)
+	grpc.ClientStream
+}
+
+type clientCommandsListenEventsClient struct {
+	grpc.ClientStream
+}
+
+func (x *clientCommandsListenEventsClient) Recv() (*pb.Event, error) {
+	m := new(pb.Event)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// ClientCommandsServer is the server API for ClientCommands service.
+type ClientCommandsServer interface {
+	WalletCreate(*pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
+	WalletRecover(*pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
+	AccountRecover(*pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse
+	AccountCreate(*pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse
+	AccountSelect(*pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse
+	AccountStop(*pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse
+	ImageGetBlob(*pb.RpcIpfsImageGetBlobRequest) *pb.RpcIpfsImageGetBlobResponse
+	VersionGet(*pb.RpcVersionGetRequest) *pb.RpcVersionGetResponse
+	LogSend(*pb.RpcLogSendRequest) *pb.RpcLogSendResponse
+	ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetResponse
+	Shutdown(*pb.RpcShutdownRequest) *pb.RpcShutdownResponse
+	ExternalDropFiles(*pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse
+	ExternalDropContent(*pb.RpcExternalDropContentRequest) *pb.RpcExternalDropContentResponse
+	LinkPreview(*pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse
+	UploadFile(*pb.RpcUploadFileRequest) *pb.RpcUploadFileResponse
+	BlockUpload(*pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
+	BlockReplace(*pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
+	BlockOpen(*pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse
+	BlockGetPublicWebURL(*pb.RpcBlockGetPublicWebURLRequest) *pb.RpcBlockGetPublicWebURLResponse
+	BlockOpenBreadcrumbs(*pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse
+	BlockSetBreadcrumbs(*pb.RpcBlockSetBreadcrumbsRequest) *pb.RpcBlockSetBreadcrumbsResponse
+	BlockCreate(*pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
+	BlockCreatePage(*pb.RpcBlockCreatePageRequest) *pb.RpcBlockCreatePageResponse
+	BlockUnlink(*pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnlinkResponse
+	BlockClose(*pb.RpcBlockCloseRequest) *pb.RpcBlockCloseResponse
+	BlockDownload(*pb.RpcBlockDownloadRequest) *pb.RpcBlockDownloadResponse
+	BlockGetMarks(*pb.RpcBlockGetMarksRequest) *pb.RpcBlockGetMarksResponse
+	BlockUndo(*pb.RpcBlockUndoRequest) *pb.RpcBlockUndoResponse
+	BlockRedo(*pb.RpcBlockRedoRequest) *pb.RpcBlockRedoResponse
+	BlockSetFields(*pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse
+	BlockSetRestrictions(*pb.RpcBlockSetRestrictionsRequest) *pb.RpcBlockSetRestrictionsResponse
+	BlockSetDetails(*pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse
+	BlockSetPageIsArchived(*pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse
+	BlockListMove(*pb.RpcBlockListMoveRequest) *pb.RpcBlockListMoveResponse
+	BlockListMoveToNewPage(*pb.RpcBlockListMoveToNewPageRequest) *pb.RpcBlockListMoveToNewPageResponse
+	BlockListConvertChildrenToPages(*pb.RpcBlockListConvertChildrenToPagesRequest) *pb.RpcBlockListConvertChildrenToPagesResponse
+	BlockListSetFields(*pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse
+	BlockListSetTextStyle(*pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse
+	BlockListDuplicate(*pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse
+	BlockListSetBackgroundColor(*pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse
+	BlockListSetAlign(*pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse
+	BlockListSetDivStyle(*pb.RpcBlockListSetDivStyleRequest) *pb.RpcBlockListSetDivStyleResponse
+	BlockListSetPageIsArchived(*pb.RpcBlockListSetPageIsArchivedRequest) *pb.RpcBlockListSetPageIsArchivedResponse
+	BlockListDeletePage(*pb.RpcBlockListDeletePageRequest) *pb.RpcBlockListDeletePageResponse
+	BlockSetTextText(*pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse
+	BlockSetTextColor(*pb.RpcBlockSetTextColorRequest) *pb.RpcBlockSetTextColorResponse
+	BlockListSetTextColor(*pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse
+	BlockListSetTextMark(*pb.RpcBlockListSetTextMarkRequest) *pb.RpcBlockListSetTextMarkResponse
+	BlockSetTextStyle(*pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse
+	BlockSetTextChecked(*pb.RpcBlockSetTextCheckedRequest) *pb.RpcBlockSetTextCheckedResponse
+	BlockSplit(*pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse
+	BlockMerge(*pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse
+	BlockCopy(*pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse
+	BlockPaste(*pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse
+	BlockCut(*pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse
+	BlockExport(*pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse
+	BlockImportMarkdown(*pb.RpcBlockImportMarkdownRequest) *pb.RpcBlockImportMarkdownResponse
+	BlockSetFileName(*pb.RpcBlockSetFileNameRequest) *pb.RpcBlockSetFileNameResponse
+	BlockSetImageName(*pb.RpcBlockSetImageNameRequest) *pb.RpcBlockSetImageNameResponse
+	BlockSetImageWidth(*pb.RpcBlockSetImageWidthRequest) *pb.RpcBlockSetImageWidthResponse
+	BlockSetVideoName(*pb.RpcBlockSetVideoNameRequest) *pb.RpcBlockSetVideoNameResponse
+	BlockSetVideoWidth(*pb.RpcBlockSetVideoWidthRequest) *pb.RpcBlockSetVideoWidthResponse
+	BlockSetLinkTargetBlockId(*pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse
+	BlockSetDataviewView(*pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse
+	BlockSetDataviewActiveView(*pb.RpcBlockSetDataviewActiveViewRequest) *pb.RpcBlockSetDataviewActiveViewResponse
+	BlockCreateDataviewView(*pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse
+	BlockBookmarkFetch(*pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse
+	BlockBookmarkCreateAndFetch(*pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse
+	BlockFileCreateAndUpload(*pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse
+	NavigationListPages(*pb.RpcNavigationListPagesRequest) *pb.RpcNavigationListPagesResponse
+	NavigationGetPageInfoWithLinks(*pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse
+	Ping(*pb.RpcPingRequest) *pb.RpcPingResponse
+	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
+	// used only for lib-server via grpc
+	ListenEvents(*pb.Empty, ClientCommands_ListenEventsServer)
+}
+
+// UnimplementedClientCommandsServer can be embedded to have forward compatible implementations.
+type UnimplementedClientCommandsServer struct {
+}
+
+func (*UnimplementedClientCommandsServer) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) AccountRecover(req *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIpfsImageGetBlobResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) VersionGet(req *pb.RpcVersionGetRequest) *pb.RpcVersionGetResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) LogSend(req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ConfigGet(req *pb.RpcConfigGetRequest) *pb.RpcConfigGetResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) Shutdown(req *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ExternalDropContent(req *pb.RpcExternalDropContentRequest) *pb.RpcExternalDropContentResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) UploadFile(req *pb.RpcUploadFileRequest) *pb.RpcUploadFileResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockGetPublicWebURL(req *pb.RpcBlockGetPublicWebURLRequest) *pb.RpcBlockGetPublicWebURLResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetBreadcrumbs(req *pb.RpcBlockSetBreadcrumbsRequest) *pb.RpcBlockSetBreadcrumbsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.RpcBlockCreatePageResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnlinkResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockClose(req *pb.RpcBlockCloseRequest) *pb.RpcBlockCloseResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDownload(req *pb.RpcBlockDownloadRequest) *pb.RpcBlockDownloadResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockGetMarks(req *pb.RpcBlockGetMarksRequest) *pb.RpcBlockGetMarksResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockRedo(req *pb.RpcBlockRedoRequest) *pb.RpcBlockRedoResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsRequest) *pb.RpcBlockSetRestrictionsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListMove(req *pb.RpcBlockListMoveRequest) *pb.RpcBlockListMoveResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRequest) *pb.RpcBlockListMoveToNewPageResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListConvertChildrenToPages(req *pb.RpcBlockListConvertChildrenToPagesRequest) *pb.RpcBlockListConvertChildrenToPagesResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetTextStyle(req *pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListDuplicate(req *pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetDivStyle(req *pb.RpcBlockListSetDivStyleRequest) *pb.RpcBlockListSetDivStyleResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetPageIsArchived(req *pb.RpcBlockListSetPageIsArchivedRequest) *pb.RpcBlockListSetPageIsArchivedResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListDeletePage(req *pb.RpcBlockListDeletePageRequest) *pb.RpcBlockListDeletePageResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb.RpcBlockSetTextColorResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetTextMark(req *pb.RpcBlockListSetTextMarkRequest) *pb.RpcBlockListSetTextMarkResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetTextChecked(req *pb.RpcBlockSetTextCheckedRequest) *pb.RpcBlockSetTextCheckedResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSplit(req *pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMergeResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockImportMarkdown(req *pb.RpcBlockImportMarkdownRequest) *pb.RpcBlockImportMarkdownResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetFileName(req *pb.RpcBlockSetFileNameRequest) *pb.RpcBlockSetFileNameResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetImageName(req *pb.RpcBlockSetImageNameRequest) *pb.RpcBlockSetImageNameResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetImageWidth(req *pb.RpcBlockSetImageWidthRequest) *pb.RpcBlockSetImageWidthResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetVideoName(req *pb.RpcBlockSetVideoNameRequest) *pb.RpcBlockSetVideoNameResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetVideoWidth(req *pb.RpcBlockSetVideoWidthRequest) *pb.RpcBlockSetVideoWidthResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetDataviewView(req *pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetDataviewActiveView(req *pb.RpcBlockSetDataviewActiveViewRequest) *pb.RpcBlockSetDataviewActiveViewResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockCreateDataviewView(req *pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) NavigationListPages(req *pb.RpcNavigationListPagesRequest) *pb.RpcNavigationListPagesResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) Ping(req *pb.RpcPingRequest) *pb.RpcPingResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ProcessCancel(req *pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ListenEvents(req *pb.Empty, srv ClientCommands_ListenEventsServer) {
+	return
+}
+
+func RegisterClientCommandsServer(s *grpc.Server, srv ClientCommandsServer) {
+	s.RegisterService(&_ClientCommands_serviceDesc, srv)
+}
+
+func _ClientCommands_WalletCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcWalletCreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).WalletCreate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/WalletCreate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).WalletCreate(req.(*pb.RpcWalletCreateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_WalletRecover_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcWalletRecoverRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).WalletRecover(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/WalletRecover",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).WalletRecover(req.(*pb.RpcWalletRecoverRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_AccountRecover_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcAccountRecoverRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).AccountRecover(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/AccountRecover",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).AccountRecover(req.(*pb.RpcAccountRecoverRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_AccountCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcAccountCreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).AccountCreate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/AccountCreate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).AccountCreate(req.(*pb.RpcAccountCreateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_AccountSelect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcAccountSelectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).AccountSelect(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/AccountSelect",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).AccountSelect(req.(*pb.RpcAccountSelectRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_AccountStop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcAccountStopRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).AccountStop(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/AccountStop",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).AccountStop(req.(*pb.RpcAccountStopRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ImageGetBlob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcIpfsImageGetBlobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ImageGetBlob(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ImageGetBlob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ImageGetBlob(req.(*pb.RpcIpfsImageGetBlobRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_VersionGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcVersionGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).VersionGet(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/VersionGet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).VersionGet(req.(*pb.RpcVersionGetRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_LogSend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcLogSendRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).LogSend(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/LogSend",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).LogSend(req.(*pb.RpcLogSendRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ConfigGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcConfigGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ConfigGet(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ConfigGet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ConfigGet(req.(*pb.RpcConfigGetRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcShutdownRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).Shutdown(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/Shutdown",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).Shutdown(req.(*pb.RpcShutdownRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ExternalDropFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcExternalDropFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ExternalDropFiles(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ExternalDropFiles",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ExternalDropFiles(req.(*pb.RpcExternalDropFilesRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ExternalDropContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcExternalDropContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ExternalDropContent(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ExternalDropContent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ExternalDropContent(req.(*pb.RpcExternalDropContentRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_LinkPreview_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcLinkPreviewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).LinkPreview(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/LinkPreview",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).LinkPreview(req.(*pb.RpcLinkPreviewRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_UploadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcUploadFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).UploadFile(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/UploadFile",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).UploadFile(req.(*pb.RpcUploadFileRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockUpload(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockUpload",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockUpload(req.(*pb.RpcBlockUploadRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockReplace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockReplaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockReplace(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockReplace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockReplace(req.(*pb.RpcBlockReplaceRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockOpen_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockOpenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockOpen(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockOpen",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockOpen(req.(*pb.RpcBlockOpenRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockGetPublicWebURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockGetPublicWebURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockGetPublicWebURL(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockGetPublicWebURL",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockGetPublicWebURL(req.(*pb.RpcBlockGetPublicWebURLRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockOpenBreadcrumbs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockOpenBreadcrumbsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockOpenBreadcrumbs(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockOpenBreadcrumbs",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockOpenBreadcrumbs(req.(*pb.RpcBlockOpenBreadcrumbsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetBreadcrumbs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetBreadcrumbsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetBreadcrumbs(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetBreadcrumbs",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetBreadcrumbs(req.(*pb.RpcBlockSetBreadcrumbsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockCreate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockCreate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockCreate(req.(*pb.RpcBlockCreateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockCreatePage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCreatePageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockCreatePage(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockCreatePage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockCreatePage(req.(*pb.RpcBlockCreatePageRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockUnlink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockUnlinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockUnlink(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockUnlink",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockUnlink(req.(*pb.RpcBlockUnlinkRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockClose_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCloseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockClose(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockClose",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockClose(req.(*pb.RpcBlockCloseRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDownload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDownloadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDownload(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDownload",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDownload(req.(*pb.RpcBlockDownloadRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockGetMarks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockGetMarksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockGetMarks(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockGetMarks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockGetMarks(req.(*pb.RpcBlockGetMarksRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockUndo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockUndoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockUndo(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockUndo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockUndo(req.(*pb.RpcBlockUndoRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockRedo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockRedoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockRedo(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockRedo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockRedo(req.(*pb.RpcBlockRedoRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetFields_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetFieldsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetFields(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetFields",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetFields(req.(*pb.RpcBlockSetFieldsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetRestrictions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetRestrictionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetRestrictions(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetRestrictions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetRestrictions(req.(*pb.RpcBlockSetRestrictionsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetDetailsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetDetails(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetDetails",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetDetails(req.(*pb.RpcBlockSetDetailsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetPageIsArchived_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetPageIsArchivedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetPageIsArchived(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetPageIsArchived",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetPageIsArchived(req.(*pb.RpcBlockSetPageIsArchivedRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListMove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListMoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListMove(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListMove",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListMove(req.(*pb.RpcBlockListMoveRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListMoveToNewPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListMoveToNewPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListMoveToNewPage(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListMoveToNewPage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListMoveToNewPage(req.(*pb.RpcBlockListMoveToNewPageRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListConvertChildrenToPages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListConvertChildrenToPagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListConvertChildrenToPages(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListConvertChildrenToPages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListConvertChildrenToPages(req.(*pb.RpcBlockListConvertChildrenToPagesRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetFields_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetFieldsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetFields(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetFields",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetFields(req.(*pb.RpcBlockListSetFieldsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetTextStyle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetTextStyleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetTextStyle(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetTextStyle",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetTextStyle(req.(*pb.RpcBlockListSetTextStyleRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListDuplicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListDuplicateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListDuplicate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListDuplicate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListDuplicate(req.(*pb.RpcBlockListDuplicateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetBackgroundColor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetBackgroundColorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetBackgroundColor(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetBackgroundColor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetBackgroundColor(req.(*pb.RpcBlockListSetBackgroundColorRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetAlign_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetAlignRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetAlign(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetAlign",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetAlign(req.(*pb.RpcBlockListSetAlignRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetDivStyle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetDivStyleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetDivStyle(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetDivStyle",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetDivStyle(req.(*pb.RpcBlockListSetDivStyleRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetPageIsArchived_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetPageIsArchivedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetPageIsArchived(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetPageIsArchived",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetPageIsArchived(req.(*pb.RpcBlockListSetPageIsArchivedRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListDeletePage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListDeletePageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListDeletePage(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListDeletePage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListDeletePage(req.(*pb.RpcBlockListDeletePageRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetTextText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetTextTextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetTextText(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetTextText",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetTextText(req.(*pb.RpcBlockSetTextTextRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetTextColor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetTextColorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetTextColor(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetTextColor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetTextColor(req.(*pb.RpcBlockSetTextColorRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetTextColor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetTextColorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetTextColor(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetTextColor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetTextColor(req.(*pb.RpcBlockListSetTextColorRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetTextMark_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetTextMarkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetTextMark(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetTextMark",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetTextMark(req.(*pb.RpcBlockListSetTextMarkRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetTextStyle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetTextStyleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetTextStyle(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetTextStyle",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetTextStyle(req.(*pb.RpcBlockSetTextStyleRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetTextChecked_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetTextCheckedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetTextChecked(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetTextChecked",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetTextChecked(req.(*pb.RpcBlockSetTextCheckedRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSplit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSplitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSplit(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSplit",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSplit(req.(*pb.RpcBlockSplitRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockMerge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockMergeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockMerge(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockMerge",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockMerge(req.(*pb.RpcBlockMergeRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockCopy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCopyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockCopy(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockCopy",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockCopy(req.(*pb.RpcBlockCopyRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockPaste_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockPasteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockPaste(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockPaste",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockPaste(req.(*pb.RpcBlockPasteRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockCut_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockCut(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockCut",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockCut(req.(*pb.RpcBlockCutRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockExport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockExportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockExport(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockExport",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockExport(req.(*pb.RpcBlockExportRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockImportMarkdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockImportMarkdownRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockImportMarkdown(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockImportMarkdown",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockImportMarkdown(req.(*pb.RpcBlockImportMarkdownRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetFileName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetFileNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetFileName(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetFileName",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetFileName(req.(*pb.RpcBlockSetFileNameRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetImageName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetImageNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetImageName(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetImageName",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetImageName(req.(*pb.RpcBlockSetImageNameRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetImageWidth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetImageWidthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetImageWidth(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetImageWidth",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetImageWidth(req.(*pb.RpcBlockSetImageWidthRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetVideoName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetVideoNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetVideoName(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetVideoName",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetVideoName(req.(*pb.RpcBlockSetVideoNameRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetVideoWidth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetVideoWidthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetVideoWidth(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetVideoWidth",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetVideoWidth(req.(*pb.RpcBlockSetVideoWidthRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetLinkTargetBlockId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetLinkTargetBlockIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetLinkTargetBlockId(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetLinkTargetBlockId",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetLinkTargetBlockId(req.(*pb.RpcBlockSetLinkTargetBlockIdRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetDataviewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetDataviewViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetDataviewView(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetDataviewView",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetDataviewView(req.(*pb.RpcBlockSetDataviewViewRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetDataviewActiveView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetDataviewActiveViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetDataviewActiveView(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetDataviewActiveView",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetDataviewActiveView(req.(*pb.RpcBlockSetDataviewActiveViewRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockCreateDataviewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCreateDataviewViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockCreateDataviewView(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockCreateDataviewView",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockCreateDataviewView(req.(*pb.RpcBlockCreateDataviewViewRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockBookmarkFetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockBookmarkFetchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockBookmarkFetch(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockBookmarkFetch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockBookmarkFetch(req.(*pb.RpcBlockBookmarkFetchRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockBookmarkCreateAndFetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockBookmarkCreateAndFetchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockBookmarkCreateAndFetch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(req.(*pb.RpcBlockBookmarkCreateAndFetchRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockFileCreateAndUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockFileCreateAndUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockFileCreateAndUpload",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(req.(*pb.RpcBlockFileCreateAndUploadRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_NavigationListPages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcNavigationListPagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).NavigationListPages(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/NavigationListPages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).NavigationListPages(req.(*pb.RpcNavigationListPagesRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_NavigationGetPageInfoWithLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcNavigationGetPageInfoWithLinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).NavigationGetPageInfoWithLinks(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/NavigationGetPageInfoWithLinks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).NavigationGetPageInfoWithLinks(req.(*pb.RpcNavigationGetPageInfoWithLinksRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcPingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).Ping(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).Ping(req.(*pb.RpcPingRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ProcessCancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcProcessCancelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ProcessCancel(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ProcessCancel",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ProcessCancel(req.(*pb.RpcProcessCancelRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ListenEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(pb.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	srv.(ClientCommandsServer).ListenEvents(m, &clientCommandsListenEventsServer{stream})
+	return nil
+}
+
+type ClientCommands_ListenEventsServer interface {
+	Send(*pb.Event) error
+	grpc.ServerStream
+}
+
+type clientCommandsListenEventsServer struct {
+	grpc.ServerStream
+}
+
+func (x *clientCommandsListenEventsServer) Send(m *pb.Event) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+var _ClientCommands_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "anytype.ClientCommands",
+	HandlerType: (*ClientCommandsServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "WalletCreate",
+			Handler:    _ClientCommands_WalletCreate_Handler,
+		},
+		{
+			MethodName: "WalletRecover",
+			Handler:    _ClientCommands_WalletRecover_Handler,
+		},
+		{
+			MethodName: "AccountRecover",
+			Handler:    _ClientCommands_AccountRecover_Handler,
+		},
+		{
+			MethodName: "AccountCreate",
+			Handler:    _ClientCommands_AccountCreate_Handler,
+		},
+		{
+			MethodName: "AccountSelect",
+			Handler:    _ClientCommands_AccountSelect_Handler,
+		},
+		{
+			MethodName: "AccountStop",
+			Handler:    _ClientCommands_AccountStop_Handler,
+		},
+		{
+			MethodName: "ImageGetBlob",
+			Handler:    _ClientCommands_ImageGetBlob_Handler,
+		},
+		{
+			MethodName: "VersionGet",
+			Handler:    _ClientCommands_VersionGet_Handler,
+		},
+		{
+			MethodName: "LogSend",
+			Handler:    _ClientCommands_LogSend_Handler,
+		},
+		{
+			MethodName: "ConfigGet",
+			Handler:    _ClientCommands_ConfigGet_Handler,
+		},
+		{
+			MethodName: "Shutdown",
+			Handler:    _ClientCommands_Shutdown_Handler,
+		},
+		{
+			MethodName: "ExternalDropFiles",
+			Handler:    _ClientCommands_ExternalDropFiles_Handler,
+		},
+		{
+			MethodName: "ExternalDropContent",
+			Handler:    _ClientCommands_ExternalDropContent_Handler,
+		},
+		{
+			MethodName: "LinkPreview",
+			Handler:    _ClientCommands_LinkPreview_Handler,
+		},
+		{
+			MethodName: "UploadFile",
+			Handler:    _ClientCommands_UploadFile_Handler,
+		},
+		{
+			MethodName: "BlockUpload",
+			Handler:    _ClientCommands_BlockUpload_Handler,
+		},
+		{
+			MethodName: "BlockReplace",
+			Handler:    _ClientCommands_BlockReplace_Handler,
+		},
+		{
+			MethodName: "BlockOpen",
+			Handler:    _ClientCommands_BlockOpen_Handler,
+		},
+		{
+			MethodName: "BlockGetPublicWebURL",
+			Handler:    _ClientCommands_BlockGetPublicWebURL_Handler,
+		},
+		{
+			MethodName: "BlockOpenBreadcrumbs",
+			Handler:    _ClientCommands_BlockOpenBreadcrumbs_Handler,
+		},
+		{
+			MethodName: "BlockSetBreadcrumbs",
+			Handler:    _ClientCommands_BlockSetBreadcrumbs_Handler,
+		},
+		{
+			MethodName: "BlockCreate",
+			Handler:    _ClientCommands_BlockCreate_Handler,
+		},
+		{
+			MethodName: "BlockCreatePage",
+			Handler:    _ClientCommands_BlockCreatePage_Handler,
+		},
+		{
+			MethodName: "BlockUnlink",
+			Handler:    _ClientCommands_BlockUnlink_Handler,
+		},
+		{
+			MethodName: "BlockClose",
+			Handler:    _ClientCommands_BlockClose_Handler,
+		},
+		{
+			MethodName: "BlockDownload",
+			Handler:    _ClientCommands_BlockDownload_Handler,
+		},
+		{
+			MethodName: "BlockGetMarks",
+			Handler:    _ClientCommands_BlockGetMarks_Handler,
+		},
+		{
+			MethodName: "BlockUndo",
+			Handler:    _ClientCommands_BlockUndo_Handler,
+		},
+		{
+			MethodName: "BlockRedo",
+			Handler:    _ClientCommands_BlockRedo_Handler,
+		},
+		{
+			MethodName: "BlockSetFields",
+			Handler:    _ClientCommands_BlockSetFields_Handler,
+		},
+		{
+			MethodName: "BlockSetRestrictions",
+			Handler:    _ClientCommands_BlockSetRestrictions_Handler,
+		},
+		{
+			MethodName: "BlockSetDetails",
+			Handler:    _ClientCommands_BlockSetDetails_Handler,
+		},
+		{
+			MethodName: "BlockSetPageIsArchived",
+			Handler:    _ClientCommands_BlockSetPageIsArchived_Handler,
+		},
+		{
+			MethodName: "BlockListMove",
+			Handler:    _ClientCommands_BlockListMove_Handler,
+		},
+		{
+			MethodName: "BlockListMoveToNewPage",
+			Handler:    _ClientCommands_BlockListMoveToNewPage_Handler,
+		},
+		{
+			MethodName: "BlockListConvertChildrenToPages",
+			Handler:    _ClientCommands_BlockListConvertChildrenToPages_Handler,
+		},
+		{
+			MethodName: "BlockListSetFields",
+			Handler:    _ClientCommands_BlockListSetFields_Handler,
+		},
+		{
+			MethodName: "BlockListSetTextStyle",
+			Handler:    _ClientCommands_BlockListSetTextStyle_Handler,
+		},
+		{
+			MethodName: "BlockListDuplicate",
+			Handler:    _ClientCommands_BlockListDuplicate_Handler,
+		},
+		{
+			MethodName: "BlockListSetBackgroundColor",
+			Handler:    _ClientCommands_BlockListSetBackgroundColor_Handler,
+		},
+		{
+			MethodName: "BlockListSetAlign",
+			Handler:    _ClientCommands_BlockListSetAlign_Handler,
+		},
+		{
+			MethodName: "BlockListSetDivStyle",
+			Handler:    _ClientCommands_BlockListSetDivStyle_Handler,
+		},
+		{
+			MethodName: "BlockListSetPageIsArchived",
+			Handler:    _ClientCommands_BlockListSetPageIsArchived_Handler,
+		},
+		{
+			MethodName: "BlockListDeletePage",
+			Handler:    _ClientCommands_BlockListDeletePage_Handler,
+		},
+		{
+			MethodName: "BlockSetTextText",
+			Handler:    _ClientCommands_BlockSetTextText_Handler,
+		},
+		{
+			MethodName: "BlockSetTextColor",
+			Handler:    _ClientCommands_BlockSetTextColor_Handler,
+		},
+		{
+			MethodName: "BlockListSetTextColor",
+			Handler:    _ClientCommands_BlockListSetTextColor_Handler,
+		},
+		{
+			MethodName: "BlockListSetTextMark",
+			Handler:    _ClientCommands_BlockListSetTextMark_Handler,
+		},
+		{
+			MethodName: "BlockSetTextStyle",
+			Handler:    _ClientCommands_BlockSetTextStyle_Handler,
+		},
+		{
+			MethodName: "BlockSetTextChecked",
+			Handler:    _ClientCommands_BlockSetTextChecked_Handler,
+		},
+		{
+			MethodName: "BlockSplit",
+			Handler:    _ClientCommands_BlockSplit_Handler,
+		},
+		{
+			MethodName: "BlockMerge",
+			Handler:    _ClientCommands_BlockMerge_Handler,
+		},
+		{
+			MethodName: "BlockCopy",
+			Handler:    _ClientCommands_BlockCopy_Handler,
+		},
+		{
+			MethodName: "BlockPaste",
+			Handler:    _ClientCommands_BlockPaste_Handler,
+		},
+		{
+			MethodName: "BlockCut",
+			Handler:    _ClientCommands_BlockCut_Handler,
+		},
+		{
+			MethodName: "BlockExport",
+			Handler:    _ClientCommands_BlockExport_Handler,
+		},
+		{
+			MethodName: "BlockImportMarkdown",
+			Handler:    _ClientCommands_BlockImportMarkdown_Handler,
+		},
+		{
+			MethodName: "BlockSetFileName",
+			Handler:    _ClientCommands_BlockSetFileName_Handler,
+		},
+		{
+			MethodName: "BlockSetImageName",
+			Handler:    _ClientCommands_BlockSetImageName_Handler,
+		},
+		{
+			MethodName: "BlockSetImageWidth",
+			Handler:    _ClientCommands_BlockSetImageWidth_Handler,
+		},
+		{
+			MethodName: "BlockSetVideoName",
+			Handler:    _ClientCommands_BlockSetVideoName_Handler,
+		},
+		{
+			MethodName: "BlockSetVideoWidth",
+			Handler:    _ClientCommands_BlockSetVideoWidth_Handler,
+		},
+		{
+			MethodName: "BlockSetLinkTargetBlockId",
+			Handler:    _ClientCommands_BlockSetLinkTargetBlockId_Handler,
+		},
+		{
+			MethodName: "BlockSetDataviewView",
+			Handler:    _ClientCommands_BlockSetDataviewView_Handler,
+		},
+		{
+			MethodName: "BlockSetDataviewActiveView",
+			Handler:    _ClientCommands_BlockSetDataviewActiveView_Handler,
+		},
+		{
+			MethodName: "BlockCreateDataviewView",
+			Handler:    _ClientCommands_BlockCreateDataviewView_Handler,
+		},
+		{
+			MethodName: "BlockBookmarkFetch",
+			Handler:    _ClientCommands_BlockBookmarkFetch_Handler,
+		},
+		{
+			MethodName: "BlockBookmarkCreateAndFetch",
+			Handler:    _ClientCommands_BlockBookmarkCreateAndFetch_Handler,
+		},
+		{
+			MethodName: "BlockFileCreateAndUpload",
+			Handler:    _ClientCommands_BlockFileCreateAndUpload_Handler,
+		},
+		{
+			MethodName: "NavigationListPages",
+			Handler:    _ClientCommands_NavigationListPages_Handler,
+		},
+		{
+			MethodName: "NavigationGetPageInfoWithLinks",
+			Handler:    _ClientCommands_NavigationGetPageInfoWithLinks_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _ClientCommands_Ping_Handler,
+		},
+		{
+			MethodName: "ProcessCancel",
+			Handler:    _ClientCommands_ProcessCancel_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ListenEvents",
+			Handler:       _ClientCommands_ListenEvents_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "pb/protos/service/service.proto",
+}
