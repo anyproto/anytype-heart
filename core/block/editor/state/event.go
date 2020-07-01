@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -83,6 +84,26 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				return f.ApplyEvent(o.BlockSetLink)
 			}
 			return fmt.Errorf("not a link block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockSetDataviewView:
+		if err = apply(o.BlockSetDataviewView.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok && o.BlockSetDataviewView.View != nil {
+				if f.SetView(o.BlockSetDataviewView.Id, *o.BlockSetDataviewView.View) != nil {
+					f.AddView(*o.BlockSetDataviewView.View)
+				}
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDeleteDataviewView:
+		if err = apply(o.BlockDeleteDataviewView.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				f.DeleteView(o.BlockDeleteDataviewView.Id)
+			}
+			return fmt.Errorf("not a dataview block")
 		}); err != nil {
 			return
 		}
