@@ -1,13 +1,26 @@
 export GOPRIVATE=github.com/anytypeio
 
+ifndef $(GOPATH)
+    GOPATH=$(shell go env GOPATH)
+    export GOPATH
+endif
+
+ifndef $(GOROOT)
+    GOROOT=$(shell go env GOROOT)
+    export GOROOT
+endif
+
+export PATH=$(GOPATH)/bin:$(shell echo $$PATH)
+
 all:
 	@set -e;
 .PHONY : protos-deps
 setup: setup-go
 	npm install
-
+uuu:
+	echo $(PATH)
 setup-go:
-	GOPRIVATE=github.com/anytypeio go mod download
+	go mod download
 	GO111MODULE=off go get github.com/ahmetb/govvv
 	GO111MODULE=off go get golang.org/x/mobile/cmd/...
 
@@ -37,7 +50,7 @@ build-lib:
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
 	GO111MODULE=on go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./lib/clib
 
-build-js:
+build-js-addon:
 	cp dist/lib.a jsaddon/lib.a
 	cp dist/lib.h jsaddon/lib.h
 	cp lib/clib/bridge.h jsaddon/bridge.h
@@ -55,23 +68,33 @@ build-js:
 	export npm_config_build_from_source=true
 	npm install -C ./jsaddon
 	rm jsaddon/lib.a jsaddon/lib.h jsaddon/bridge.h
-build-ios:
+
+build-ios: setup-go
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
 	GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/ios/ && mv Lib.framework dist/ios/
-build-android:
+
+build-android: setup-go
 	$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
 	GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/lib
 	mkdir -p dist/android/ && mv lib.aar dist/android/
 
-setup-protoc:
+setup-protoc-go:
 	rm -rf $(GOPATH)/src/github.com/gogo
 	mkdir -p $(GOPATH)/src/github.com/gogo
 	cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/anytypeio/protobuf
 	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
 	cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
-	cd $(GOPATH); go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-	export PATH=$(PATH):$(GOROOT)/bin:$(GOPATH)/bin
+
+setup-protoc-jsweb:
+	git clone https://github.com/grpc/grpc-web
+	$(MAKE) -C grpc-web install-plugin
+	rm -rf grpc-web
+
+setup-protoc-doc:
+	go get -u github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+
+setup-protoc: setup-protoc-go setup-protoc-jsweb
 
 protos-deps:
 	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
@@ -79,14 +102,14 @@ protos-deps:
 	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
 	chmod -R 755 ./vendor/github.com/anytypeio/go-anytype-library/pb
 
-protos-debug: protos-deps
+protos-server: protos-deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)
 	$(eval P_PROTOS2 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
 	$(eval P_PROTOS3 := Mpb/protos/events.proto=github.com/anytypeio/go-anytype-middleware/pb)
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
-	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 GOGO_GRPC_SERVER_METHOD_NO_ERROR=1 GOGO_GRPC_SERVER_METHOD_NO_CONTEXT=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=grpc:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib-debug/
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 GOGO_GRPC_SERVER_METHOD_NO_ERROR=1 GOGO_GRPC_SERVER_METHOD_NO_CONTEXT=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=grpc:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib-server/
 
 protos: protos-deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
@@ -100,26 +123,30 @@ protos: protos-deps
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib/
 	protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
-protos-swift:
-	protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./build/swift pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
+protos-swift: protos-deps
+	protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./dist/ios/pb pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
-protos-java:
-	protoc -I ./ --java_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
+protos-js: protos-deps
+	protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
+	protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
-protos-ts:
-	npm run build:ts
+protos-java: protos-deps
+	protoc -I ./ --java_out=./dist/android/pb pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
 
-build-debug: protos-debug
+build-server: protos-server
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
-	go build -i -v -o dist/debug -ldflags "$(FLAGS)" ./lib-debug/server/grpc.go
+	go build -i -v -o dist/server -ldflags "$(FLAGS)" ./lib-server/server/grpc.go
 
-run-debug: build-debug
-	./dist/debug
+run-server: build-server
+	./dist/server
 
-build-dev-js: setup protos-deps build-lib build-js protos-ts
+build-dev-js-addon: setup build-lib build-js-addon protos-js
 	cp -r jsaddon/build ../js-anytype/
-	cp build/ts/commands.js ../js-anytype/dist/commands.js
+	cp -r dist/js/pb/* ../js-anytype/dist/lib
 
-install-dev-js:
-	cp -r jsaddon/build ../js-anytype/
-	cp build/ts/commands.js ../js-anytype/dist/commands.js
+build-dev-js: setup-go build-server protos-js
+	echo "Run 'make install-dev-js' insted if you want to build&install into ../js-anytype"
+
+install-dev-js: build-dev-js
+	cp -r dist/server ../js-anytype/dist/anytypeHelper
+	cp -r dist/js/pb/* ../js-anytype/dist/lib
