@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/core"
+	smartblock2 "github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -281,6 +282,10 @@ type smartblock struct {
 	changes map[string]*core.SmartblockRecord
 }
 
+func (s *smartblock) BaseSchema() core.SmartBlockSchema {
+	panic("implement me")
+}
+
 func (s *smartblock) AddChanges(logId string, chs ...*Change) *smartblock {
 	var id string
 	for _, ch := range chs {
@@ -308,8 +313,8 @@ func (s *smartblock) ID() string {
 	return "id"
 }
 
-func (s *smartblock) Type() core.SmartBlockType {
-	return core.SmartBlockTypePage
+func (s *smartblock) Type() smartblock2.SmartBlockType {
+	return smartblock2.SmartBlockTypePage
 }
 
 func (s *smartblock) Creator() (string, error) {

@@ -2,7 +2,6 @@ package smartblock
 
 import (
 	"errors"
-	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
@@ -37,6 +36,10 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 func New(ms meta.Service) SmartBlock {
 	return &smartBlock{meta: ms}
+}
+
+type SmartblockOpenListner interface {
+	SmartblockOpened(*state.Context)
 }
 
 type SmartBlock interface {
@@ -116,7 +119,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		if err != nil {
 			return err
 		}
-		ctx.SetMessages(sb.Id(), []*pb.EventMessage{
+		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
 					RootId:  sb.RootId(),
@@ -239,10 +242,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
-	if len(changes) == 0 {
-		log.Infof("empty changes, but not empty history: %+v", act)
-		debug.PrintStack()
-	}
 	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes...)
 	if err != nil {
 		return

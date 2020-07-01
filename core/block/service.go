@@ -6,13 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anytypeio/go-anytype-library/core"
+	coresb "github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -29,6 +30,7 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -116,6 +118,11 @@ type Service interface {
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
 	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
+	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error
+	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
+	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
+	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) error
+
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
@@ -168,6 +175,10 @@ func (s *service) init() {
 	s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		return nil
 	})
+
+	s.Do(s.anytype.PredefinedBlocks().SetPages, func(b smartblock.SmartBlock) error {
+		return nil
+	})
 }
 
 func (s *service) Anytype() anytype.Service {
@@ -189,6 +200,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		}
 		s.openedBlocks[id] = ob
 	}
+
 	ob.Lock()
 	defer ob.Unlock()
 	ob.locked = true
@@ -199,6 +211,11 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if e := s.anytype.PageStore().UpdateLastOpened(id); e != nil {
 		log.Warnf("can't update last opened id: %v", e)
 	}
+
+	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
+		v.SmartblockOpened(ctx)
+	}
+
 	return nil
 }
 
@@ -345,7 +362,7 @@ func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) 
 }
 
 func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error) {
-	csm, err := s.anytype.CreateBlock(core.SmartBlockTypePage)
+	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypePage)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -561,6 +578,34 @@ func (s *service) SetDetails(req pb.RpcBlockSetDetailsRequest) (err error) {
 func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) (err error) {
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.SetFields(ctx, req.BlockFields...)
+	})
+}
+
+func (s *service) SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateView(ctx, req.BlockId, req.ViewId, *req.View, true)
+	})
+}
+
+func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.DeleteView(ctx, req.BlockId, req.ViewId, true)
+	})
+}
+
+func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.SetActiveView(ctx, req.BlockId, req.ViewId, int(req.Limit), int(req.Offset))
+	})
+}
+
+func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		if req.View == nil {
+			req.View = &model.BlockContentDataviewView{}
+		}
+		_, err := b.CreateView(ctx, req.BlockId, *req.View)
+		return err
 	})
 }
 
@@ -835,6 +880,8 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 		sb = editor.NewDashboard(s.meta, s)
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta, s)
+	case pb.SmartBlockType_Set:
+		sb = editor.NewSet(s.meta, s.sendEvent)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
@@ -966,6 +1013,20 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 	}
 
 	return fmt.Errorf("import operation not available for this block type: %T", sb)
+}
+
+func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(dataview.Dataview); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("text operation not available for this block type: %T", sb)
 }
 
 func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {

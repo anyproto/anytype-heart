@@ -26,91 +26,113 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 func init() { proto.RegisterFile("pb/protos/service/service.proto", fileDescriptor_93a29dc403579097) }
 
 var fileDescriptor_93a29dc403579097 = []byte{
-	// 1341 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x98, 0xcf, 0x73, 0xd4, 0x36,
-	0x14, 0xc7, 0xc9, 0xb4, 0x53, 0x5a, 0x91, 0xa6, 0x45, 0x6d, 0x99, 0x92, 0x0e, 0xcb, 0xef, 0x42,
-	0x02, 0x18, 0x0a, 0xe7, 0x1e, 0xc8, 0x26, 0xa4, 0x99, 0x06, 0x48, 0x77, 0x03, 0x99, 0x61, 0xda,
-	0x69, 0xbd, 0xf6, 0x63, 0xe3, 0xae, 0x57, 0x32, 0xb6, 0x76, 0x61, 0xaf, 0x3d, 0xf4, 0xdc, 0x3f,
-	0xab, 0x47, 0x4e, 0x9d, 0x1e, 0x3b, 0xe4, 0x1f, 0xe9, 0x48, 0x7e, 0x96, 0x7f, 0x49, 0x5a, 0x73,
-	0x00, 0x06, 0x7f, 0x3f, 0xef, 0xfb, 0xf4, 0x64, 0x3d, 0x49, 0x6b, 0x72, 0x31, 0x19, 0xdd, 0x4d,
-	0x52, 0x2e, 0x78, 0x76, 0x37, 0x83, 0x74, 0x1e, 0x05, 0x50, 0xfc, 0xeb, 0xa9, 0xc7, 0xf4, 0xb4,
-	0xcf, 0x16, 0x62, 0x91, 0xc0, 0xfa, 0xd7, 0x25, 0x19, 0xf0, 0xe9, 0xd4, 0x67, 0x61, 0x96, 0x23,
-	0xeb, 0xe7, 0x4a, 0x05, 0xe6, 0xc0, 0x04, 0x3e, 0xbf, 0xff, 0xcf, 0x6d, 0xb2, 0xd6, 0x8f, 0x23,
-	0x60, 0xa2, 0x8f, 0x01, 0xf4, 0x88, 0xac, 0x1e, 0xf9, 0x71, 0x0c, 0xa2, 0x9f, 0x82, 0x2f, 0x80,
-	0x5e, 0xf1, 0xd0, 0xde, 0x1b, 0x24, 0x81, 0x97, 0x4b, 0x5e, 0xae, 0x79, 0x03, 0x78, 0x35, 0x83,
-	0x4c, 0xac, 0x5f, 0x75, 0x32, 0x59, 0xc2, 0x59, 0x06, 0xf4, 0x05, 0xf9, 0x34, 0x57, 0x06, 0x10,
-	0xf0, 0x39, 0xa4, 0xd4, 0x18, 0x85, 0xa2, 0xb6, 0xbe, 0xe6, 0x86, 0xd0, 0xfb, 0x17, 0xb2, 0xf6,
-	0x30, 0x08, 0xf8, 0x8c, 0x69, 0xf3, 0x7a, 0x1c, 0x8a, 0x2d, 0xf7, 0xeb, 0x4b, 0xa8, 0x72, 0xe8,
-	0xa8, 0xe1, 0xa4, 0x5c, 0x35, 0xc6, 0x35, 0x66, 0xe5, 0x9a, 0x1b, 0x6a, 0x79, 0x0f, 0x21, 0x86,
-	0x40, 0x58, 0xbc, 0x73, 0x71, 0x89, 0xb7, 0x86, 0xd0, 0xfb, 0x90, 0x9c, 0x29, 0xbc, 0x05, 0x4f,
-	0xe8, 0x65, 0x73, 0x90, 0xe0, 0x89, 0xf6, 0xbd, 0xe2, 0x42, 0xd0, 0x35, 0x20, 0xab, 0x7b, 0x53,
-	0x7f, 0x0c, 0xbb, 0x20, 0xb6, 0x62, 0x3e, 0xa2, 0x37, 0x6b, 0x31, 0x7b, 0xc9, 0xcb, 0xcc, 0x53,
-	0xba, 0xb7, 0x0b, 0xc2, 0x93, 0x84, 0x76, 0xdf, 0xe8, 0x40, 0x62, 0x92, 0x9f, 0x08, 0x79, 0x0e,
-	0x69, 0x16, 0x71, 0xb6, 0x0b, 0x82, 0x5e, 0xaa, 0x05, 0xa2, 0xa0, 0xa2, 0x0a, 0xeb, 0xcb, 0x0e,
-	0x02, 0x2d, 0x7f, 0x20, 0xa7, 0xf7, 0xf9, 0x78, 0x08, 0x2c, 0xa4, 0x17, 0x6a, 0xf4, 0x3e, 0x1f,
-	0x7b, 0xf2, 0xb1, 0x36, 0xeb, 0xd9, 0x64, 0x74, 0x7a, 0x42, 0x3e, 0xe9, 0x73, 0xf6, 0x32, 0x1a,
-	0xcb, 0xb1, 0x5d, 0xac, 0xc1, 0xf9, 0xf3, 0xda, 0xd0, 0x2e, 0xd9, 0x01, 0xf4, 0x7b, 0x49, 0xce,
-	0xee, 0xbc, 0x11, 0x90, 0x32, 0x3f, 0xde, 0x4e, 0x79, 0xf2, 0x28, 0x8a, 0x21, 0xa3, 0x37, 0x6a,
-	0x61, 0x55, 0xdd, 0x53, 0x80, 0xf6, 0xbf, 0xb9, 0x1c, 0xc4, 0x3c, 0x31, 0xf9, 0xa2, 0x2a, 0xf7,
-	0x39, 0x13, 0xc0, 0x04, 0xdd, 0xb0, 0x1b, 0x20, 0xa2, 0x73, 0x6d, 0x76, 0x41, 0x31, 0xdb, 0x80,
-	0x9c, 0xd9, 0x8f, 0xd8, 0xe4, 0x20, 0x85, 0x79, 0x04, 0xaf, 0x1b, 0xef, 0xb0, 0xa2, 0x58, 0xde,
-	0x61, 0x9d, 0x40, 0xcf, 0xa7, 0x84, 0x3c, 0x4b, 0x62, 0xee, 0x87, 0xb2, 0xb2, 0xc6, 0xd4, 0x97,
-	0x82, 0x65, 0xea, 0x6b, 0x40, 0xd9, 0x22, 0x5b, 0x31, 0x0f, 0x26, 0xb9, 0xd6, 0x68, 0x11, 0xa5,
-	0x60, 0x98, 0xa5, 0x45, 0x1a, 0x08, 0xba, 0x1e, 0x91, 0x55, 0x25, 0x0c, 0x20, 0x89, 0xfd, 0xa0,
-	0xb9, 0x89, 0xe6, 0x31, 0xa8, 0x59, 0x36, 0xd1, 0x26, 0x53, 0xae, 0x3c, 0xa5, 0x3c, 0x4d, 0x80,
-	0x35, 0xca, 0xcf, 0x23, 0xa4, 0x60, 0x29, 0xbf, 0x06, 0xa0, 0x1f, 0x27, 0x5f, 0x6a, 0xbf, 0xad,
-	0x14, 0xfc, 0x30, 0x48, 0x67, 0xd3, 0x51, 0x46, 0x37, 0x2d, 0x91, 0x15, 0x46, 0x67, 0xb9, 0xd5,
-	0x89, 0x2d, 0x97, 0xa0, 0x22, 0x86, 0x20, 0xaa, 0xf9, 0x36, 0x0c, 0x1e, 0x75, 0xc4, 0xb2, 0x04,
-	0x2d, 0x68, 0xe3, 0xed, 0xe2, 0xb6, 0x6d, 0x7a, 0xbb, 0x8d, 0x4d, 0xfb, 0x8a, 0x0b, 0x41, 0xd7,
-	0xdf, 0xc8, 0x67, 0x15, 0xd7, 0x03, 0x7f, 0x0c, 0xf4, 0xba, 0x35, 0x4c, 0xca, 0xda, 0xfd, 0xdb,
-	0x65, 0x58, 0x73, 0x55, 0xb2, 0x38, 0x62, 0x13, 0xf3, 0xaa, 0x54, 0x92, 0x7b, 0x55, 0x16, 0x48,
-	0xb9, 0xa7, 0xe6, 0xe3, 0x8e, 0x79, 0x06, 0xd4, 0xb4, 0x38, 0x94, 0x62, 0xe9, 0xc7, 0x3a, 0x51,
-	0x9e, 0x5e, 0xea, 0xf9, 0x36, 0x7f, 0xcd, 0x54, 0x03, 0x99, 0x56, 0x71, 0x21, 0x5a, 0x4e, 0xaf,
-	0x16, 0x84, 0xde, 0x3f, 0xa3, 0xf7, 0x2e, 0x88, 0xc7, 0x7e, 0x3a, 0xc9, 0xa8, 0x29, 0x4c, 0xee,
-	0xa3, 0x4a, 0xb5, 0x9c, 0xe9, 0x6d, 0xaa, 0xd1, 0x49, 0xcf, 0x58, 0xc8, 0x8d, 0x9d, 0x24, 0x05,
-	0x67, 0x27, 0x21, 0xd0, 0xf0, 0x1b, 0x80, 0xc5, 0x4f, 0x0a, 0x4e, 0x3f, 0x04, 0xd0, 0xef, 0x57,
-	0xb2, 0x56, 0x34, 0xca, 0xa3, 0x08, 0xe2, 0x30, 0x33, 0xae, 0xb1, 0x21, 0x08, 0x2f, 0x97, 0x9d,
-	0x6b, 0xac, 0x86, 0x61, 0x82, 0x57, 0xd8, 0xfa, 0x43, 0x79, 0x23, 0xcb, 0x44, 0x1a, 0x05, 0x22,
-	0xe2, 0x2c, 0xa3, 0xb7, 0x2c, 0xf1, 0x55, 0x48, 0x27, 0xbb, 0xdd, 0x0d, 0xc6, 0x94, 0x23, 0x6c,
-	0x9c, 0x21, 0x88, 0x6d, 0x10, 0x7e, 0x14, 0x67, 0xd4, 0x36, 0x5a, 0xd4, 0x75, 0xa2, 0x1b, 0x4b,
-	0x39, 0xcc, 0xb1, 0x20, 0xe7, 0x8a, 0x1c, 0xb2, 0xa7, 0xf6, 0xb2, 0x87, 0x69, 0x70, 0x1c, 0xcd,
-	0x21, 0xa4, 0x9e, 0xc5, 0x42, 0xb5, 0x5e, 0xc9, 0xe9, 0x94, 0x77, 0x3b, 0xf3, 0x8d, 0x66, 0xd8,
-	0x8f, 0x32, 0xf1, 0x98, 0xcf, 0xc1, 0xd4, 0x0c, 0x52, 0xf3, 0xa4, 0xe8, 0x6a, 0x86, 0x2a, 0x84,
-	0xde, 0x33, 0x2c, 0xab, 0xf0, 0x3e, 0xe4, 0x4f, 0xe0, 0xb5, 0xda, 0x7a, 0x6e, 0x3b, 0xe2, 0x35,
-	0xa5, 0xb3, 0xdd, 0xe9, 0x48, 0x63, 0xda, 0x09, 0xa1, 0x9a, 0x29, 0x57, 0xe2, 0x86, 0xc5, 0xc4,
-	0xb0, 0x1a, 0x37, 0xbb, 0xa0, 0x98, 0x6c, 0x4e, 0xbe, 0xaa, 0x26, 0x3b, 0x84, 0x37, 0x62, 0x28,
-	0x16, 0x31, 0xd0, 0x3b, 0x0e, 0x13, 0x49, 0x79, 0x0a, 0xd3, 0x39, 0xbd, 0xae, 0x38, 0xe6, 0x8d,
-	0x2a, 0x45, 0x6e, 0xcf, 0x92, 0x38, 0x0a, 0xe4, 0x61, 0x71, 0xd3, 0xe2, 0xa2, 0x09, 0xcb, 0xb5,
-	0xd6, 0x4c, 0x62, 0xaa, 0x3f, 0x57, 0xc8, 0x37, 0xd5, 0x1a, 0xb7, 0xfc, 0x60, 0x32, 0x4e, 0xf9,
-	0x8c, 0x85, 0x7d, 0x1e, 0xf3, 0x94, 0xde, 0x77, 0x0c, 0xbd, 0xc1, 0xea, 0xf4, 0x0f, 0xde, 0x2b,
-	0x06, 0x07, 0x72, 0x4c, 0xce, 0x56, 0xc7, 0xf1, 0x30, 0x8e, 0xc6, 0xcc, 0x5a, 0xb2, 0x74, 0x52,
-	0xc4, 0xd2, 0x92, 0xab, 0x24, 0x66, 0x1a, 0x93, 0xcf, 0x8b, 0x86, 0x94, 0x93, 0x2f, 0xff, 0x98,
-	0x12, 0x95, 0x6f, 0x47, 0xfd, 0xe5, 0x48, 0xd4, 0x22, 0x31, 0xd1, 0xef, 0x58, 0x12, 0x26, 0xca,
-	0x27, 0xd4, 0x19, 0x5f, 0x9f, 0xc7, 0xcd, 0x2e, 0xa8, 0x7d, 0xa9, 0xe6, 0xf9, 0x96, 0x2e, 0xd5,
-	0x7a, 0x4e, 0xaf, 0x2b, 0x6e, 0xae, 0x31, 0x6f, 0x0f, 0x67, 0x8d, 0xf5, 0xd6, 0xd8, 0xec, 0x82,
-	0x62, 0xae, 0xa4, 0xbc, 0xaa, 0xa9, 0xfa, 0x8e, 0x21, 0x98, 0x40, 0x68, 0x3d, 0x1f, 0xf2, 0xe1,
-	0xe6, 0xd0, 0xd2, 0xf3, 0xa1, 0x01, 0x37, 0x2e, 0x28, 0xc3, 0x24, 0x8e, 0x84, 0xf1, 0x82, 0xa2,
-	0x14, 0xe7, 0x05, 0xa5, 0x20, 0x1a, 0x96, 0x8f, 0x21, 0x1d, 0x9b, 0xef, 0x3c, 0x4a, 0x71, 0x5a,
-	0x16, 0x44, 0xe3, 0xa4, 0xef, 0xf3, 0x64, 0x61, 0x3c, 0xe9, 0xa5, 0xe0, 0x3c, 0xe9, 0x11, 0x68,
-	0x0c, 0xf1, 0xc0, 0xcf, 0x84, 0x79, 0x88, 0x4a, 0x71, 0x0e, 0xb1, 0x20, 0xd0, 0xf2, 0x47, 0xf2,
-	0x71, 0x3e, 0xc4, 0x99, 0xa0, 0x3d, 0xd3, 0x00, 0x66, 0xe5, 0x24, 0x5e, 0xb4, 0xea, 0x8d, 0xcb,
-	0xe8, 0xce, 0x9b, 0x84, 0xa7, 0xc2, 0x78, 0x19, 0xcd, 0x25, 0xe7, 0x65, 0x54, 0x23, 0xed, 0x6d,
-	0x41, 0xfe, 0x22, 0x7b, 0xe2, 0x4f, 0xc1, 0xba, 0x2d, 0xa8, 0x9f, 0x6c, 0x92, 0x58, 0xba, 0x2d,
-	0x54, 0xc9, 0x76, 0xcb, 0xa8, 0x8f, 0x0d, 0x2a, 0x93, 0x2d, 0x3e, 0xff, 0x1c, 0x51, 0x4b, 0xb5,
-	0xd9, 0x05, 0xc5, 0x5c, 0x53, 0x3c, 0x49, 0x8a, 0x5c, 0x47, 0x51, 0x28, 0x8e, 0xa9, 0xdb, 0x41,
-	0x31, 0xce, 0x1f, 0x53, 0x6d, 0xb6, 0x5d, 0xda, 0xf3, 0x28, 0x04, 0xee, 0x2c, 0x4d, 0x11, 0xdd,
-	0x4a, 0xab, 0xa1, 0xed, 0xd2, 0x94, 0xec, 0x2e, 0x2d, 0x77, 0xe8, 0x56, 0x5a, 0x9d, 0xc5, 0x74,
-	0x7f, 0xac, 0x90, 0xf3, 0x45, 0xbe, 0xfd, 0x88, 0x4d, 0x0e, 0xfd, 0x74, 0xac, 0xbe, 0x37, 0x05,
-	0x93, 0xbd, 0x90, 0x7e, 0x67, 0xb1, 0x92, 0xa4, 0x57, 0x43, 0x75, 0xf6, 0xfb, 0xef, 0x13, 0xd2,
-	0xb8, 0xfd, 0x6c, 0x71, 0x3e, 0x99, 0xfa, 0xe9, 0xe4, 0x11, 0x88, 0xe0, 0xd8, 0x38, 0xc1, 0x05,
-	0xe1, 0x29, 0xc4, 0x39, 0xc1, 0x2d, 0x14, 0x93, 0x7d, 0x4f, 0x3e, 0x3c, 0x88, 0xd8, 0x98, 0x9e,
-	0xaf, 0xc5, 0xc8, 0x47, 0xda, 0x6e, 0xdd, 0x24, 0x95, 0x97, 0xcf, 0x83, 0x94, 0x07, 0x90, 0x65,
-	0x7d, 0x9f, 0x05, 0x10, 0x37, 0x2e, 0x9f, 0xa8, 0x79, 0xb9, 0x68, 0xb9, 0x7c, 0xb6, 0x20, 0xf4,
-	0xbe, 0x47, 0x56, 0xe5, 0xa9, 0x04, 0x6c, 0x47, 0x7d, 0x3c, 0xa6, 0x6b, 0x3a, 0x6a, 0x67, 0x9a,
-	0x88, 0xc5, 0x7a, 0xe5, 0xff, 0x12, 0xb8, 0xb7, 0xb2, 0x75, 0xe1, 0xef, 0x77, 0xbd, 0x95, 0xb7,
-	0xef, 0x7a, 0x2b, 0xff, 0xbd, 0xeb, 0xad, 0xfc, 0x75, 0xd2, 0x3b, 0xf5, 0xf6, 0xa4, 0x77, 0xea,
-	0xdf, 0x93, 0xde, 0xa9, 0x17, 0x1f, 0xc4, 0xd1, 0x68, 0xf4, 0x91, 0xfa, 0xfc, 0xfc, 0xe0, 0xff,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0x07, 0x95, 0x03, 0x0b, 0xdc, 0x16, 0x00, 0x00,
+	// 1695 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x99, 0xdf, 0x6f, 0x1c, 0x3b,
+	0x15, 0xc7, 0xbb, 0x02, 0xd1, 0xe2, 0x86, 0x40, 0x07, 0x28, 0x6d, 0x50, 0x37, 0xfd, 0x49, 0x9b,
+	0xb4, 0x99, 0x94, 0x94, 0xf2, 0x80, 0xc4, 0x43, 0xb2, 0xf9, 0x41, 0x44, 0x9a, 0x86, 0x6c, 0x9a,
+	0x48, 0x15, 0x08, 0x66, 0x67, 0x4f, 0x76, 0xcd, 0xce, 0xda, 0xd3, 0x19, 0xef, 0xa6, 0x91, 0xe0,
+	0x05, 0x09, 0xde, 0x90, 0xfa, 0x67, 0xf1, 0xd8, 0x47, 0x1e, 0xaf, 0xda, 0xff, 0xe1, 0x3e, 0x5f,
+	0xd9, 0x73, 0xe6, 0x97, 0xd7, 0xf6, 0x4e, 0x1e, 0xee, 0xbd, 0xba, 0x73, 0x3e, 0xe7, 0xfb, 0xb5,
+	0xbd, 0xe7, 0x78, 0x3c, 0x0e, 0x59, 0x8e, 0x7b, 0xeb, 0x71, 0xc2, 0x05, 0x4f, 0xd7, 0x53, 0x48,
+	0xa6, 0x34, 0x84, 0xfc, 0xbf, 0xbe, 0x7a, 0xec, 0x5d, 0x0f, 0xd8, 0xa5, 0xb8, 0x8c, 0x61, 0xe9,
+	0x4e, 0x49, 0x86, 0x7c, 0x3c, 0x0e, 0x58, 0x3f, 0xcd, 0x90, 0xa5, 0xdb, 0x65, 0x04, 0xa6, 0xc0,
+	0x04, 0x3e, 0xdf, 0xf8, 0xf6, 0x77, 0x64, 0xb1, 0x13, 0x51, 0x60, 0xa2, 0x83, 0x09, 0xde, 0x19,
+	0x59, 0x38, 0x0b, 0xa2, 0x08, 0x44, 0x27, 0x81, 0x40, 0x80, 0xf7, 0xd0, 0x47, 0x79, 0xff, 0x38,
+	0x0e, 0xfd, 0x2c, 0xe4, 0x67, 0x31, 0xff, 0x18, 0x3e, 0x4c, 0x20, 0x15, 0x4b, 0x8f, 0x9c, 0x4c,
+	0x1a, 0x73, 0x96, 0x82, 0xf7, 0x9e, 0xfc, 0x28, 0x8b, 0x1c, 0x43, 0xc8, 0xa7, 0x90, 0x78, 0xc6,
+	0x2c, 0x0c, 0x16, 0xd2, 0x8f, 0xdd, 0x10, 0x6a, 0xff, 0x85, 0x2c, 0x6e, 0x86, 0x21, 0x9f, 0xb0,
+	0x42, 0xbc, 0x9e, 0x87, 0xc1, 0x19, 0xf5, 0x27, 0x73, 0xa8, 0x72, 0xe8, 0x18, 0xc3, 0x45, 0x79,
+	0x64, 0xcc, 0xd3, 0x56, 0xe5, 0xb1, 0x1b, 0x9a, 0xd1, 0xee, 0x42, 0x04, 0xa1, 0xb0, 0x68, 0x67,
+	0xc1, 0x39, 0xda, 0x05, 0x84, 0xda, 0x27, 0xe4, 0x66, 0xae, 0x2d, 0x78, 0xec, 0x3d, 0x30, 0x27,
+	0x09, 0x1e, 0x17, 0xba, 0x0f, 0x5d, 0x08, 0xaa, 0x86, 0x64, 0x61, 0x7f, 0x1c, 0x0c, 0x60, 0x0f,
+	0xc4, 0x56, 0xc4, 0x7b, 0xde, 0xb3, 0x5a, 0xce, 0x7e, 0x7c, 0x9e, 0xfa, 0x2a, 0xee, 0xef, 0x81,
+	0xf0, 0x25, 0x51, 0xa8, 0xaf, 0x34, 0x20, 0xd1, 0xe4, 0x4f, 0x84, 0x9c, 0x42, 0x92, 0x52, 0xce,
+	0xf6, 0x40, 0x78, 0xf7, 0x6b, 0x89, 0x18, 0x50, 0x59, 0xb9, 0xf4, 0x03, 0x07, 0x81, 0x92, 0x7f,
+	0x20, 0xd7, 0x0f, 0xf8, 0xa0, 0x0b, 0xac, 0xef, 0xdd, 0xab, 0xd1, 0x07, 0x7c, 0xe0, 0xcb, 0xc7,
+	0x85, 0x58, 0xdb, 0x16, 0x46, 0xa5, 0x43, 0xf2, 0xc3, 0x0e, 0x67, 0xe7, 0x74, 0x20, 0xc7, 0xb6,
+	0x5c, 0x83, 0xb3, 0xe7, 0xb5, 0xa1, 0xdd, 0xb7, 0x03, 0xa8, 0xb7, 0x4f, 0x6e, 0x74, 0x87, 0x13,
+	0xd1, 0xe7, 0x17, 0x4c, 0x1b, 0x5a, 0xfe, 0xd8, 0x32, 0xb4, 0x4a, 0x18, 0xa5, 0xce, 0xc9, 0xad,
+	0x9d, 0x8f, 0x02, 0x12, 0x16, 0x44, 0xdb, 0x09, 0x8f, 0x77, 0x69, 0x04, 0xa9, 0xf7, 0xb4, 0x96,
+	0x54, 0x8d, 0xfb, 0x0a, 0x28, 0xd4, 0x9f, 0xcd, 0x07, 0xd1, 0x27, 0x22, 0x3f, 0xad, 0x86, 0x3b,
+	0x9c, 0x09, 0x60, 0xc2, 0x5b, 0xb1, 0x0b, 0x20, 0x52, 0x78, 0xad, 0x36, 0x41, 0xd1, 0xed, 0x98,
+	0xdc, 0x3c, 0xa0, 0x6c, 0x74, 0x94, 0xc0, 0x94, 0xc2, 0x85, 0x56, 0x0e, 0x95, 0x88, 0xa5, 0x1c,
+	0xea, 0x04, 0x6a, 0xbe, 0x25, 0xe4, 0x5d, 0x1c, 0xf1, 0xa0, 0x2f, 0x67, 0xa6, 0xfd, 0x8a, 0x65,
+	0xc0, 0xf2, 0x2b, 0xd6, 0x80, 0xb2, 0xdb, 0xb6, 0x22, 0x1e, 0x8e, 0xb2, 0x98, 0xd6, 0x6d, 0x2a,
+	0x82, 0x69, 0x96, 0x6e, 0xd3, 0x10, 0x54, 0x3d, 0x23, 0x0b, 0x2a, 0x70, 0x0c, 0x71, 0x14, 0x84,
+	0xfa, 0x7e, 0x9c, 0xe5, 0x60, 0xcc, 0xb2, 0x1f, 0xeb, 0x4c, 0x59, 0xc4, 0x2a, 0xf2, 0x36, 0x06,
+	0xa6, 0x4d, 0x3f, 0xcb, 0x90, 0x01, 0xcb, 0xf4, 0x6b, 0x00, 0xea, 0x71, 0xf2, 0x33, 0xf5, 0x78,
+	0x0f, 0xc4, 0xd1, 0xa4, 0x17, 0xd1, 0xf0, 0x0c, 0x7a, 0xef, 0x8e, 0x0f, 0xbc, 0x55, 0x43, 0xa6,
+	0xc6, 0x14, 0x2e, 0xcf, 0x1b, 0xb1, 0x9a, 0xa1, 0x1c, 0xc6, 0x56, 0x02, 0x41, 0x3f, 0x4c, 0x26,
+	0xe3, 0x5e, 0x6a, 0x34, 0xd4, 0x18, 0xa7, 0xe1, 0x2c, 0x5b, 0xd6, 0xbc, 0x22, 0xba, 0x20, 0xaa,
+	0x7e, 0x2b, 0x06, 0x8d, 0x3a, 0x62, 0xa9, 0x79, 0x0b, 0xaa, 0x95, 0x13, 0xbe, 0x72, 0x4c, 0xe5,
+	0xa4, 0xbd, 0x70, 0x1e, 0xba, 0x10, 0x54, 0xfd, 0x1b, 0xf9, 0x71, 0x45, 0xf5, 0x28, 0x18, 0x80,
+	0xf7, 0xc4, 0x9a, 0x26, 0xc3, 0x85, 0xfa, 0xaf, 0xe6, 0x61, 0x7a, 0x1b, 0xb0, 0x88, 0xb2, 0x91,
+	0xb9, 0x0d, 0x54, 0xc8, 0xdd, 0x06, 0x39, 0x52, 0xbe, 0x0f, 0xb2, 0x71, 0x47, 0x3c, 0x05, 0xcf,
+	0x54, 0x8d, 0x2a, 0x62, 0xd9, 0x00, 0xea, 0x44, 0xf9, 0xe6, 0x55, 0xcf, 0xb7, 0xf9, 0x05, 0x53,
+	0x1d, 0x6b, 0x6a, 0x9b, 0x3c, 0x68, 0x79, 0xf3, 0xce, 0x40, 0xa8, 0xfd, 0x67, 0xd4, 0xde, 0x03,
+	0xf1, 0x26, 0x48, 0x46, 0xa9, 0xf7, 0xd8, 0x5c, 0xd9, 0xbe, 0x8a, 0x5a, 0xce, 0x23, 0xb3, 0x94,
+	0xd6, 0xba, 0xef, 0x58, 0x9f, 0x1b, 0x5b, 0x57, 0x06, 0x9c, 0xad, 0x8b, 0x80, 0xa6, 0x77, 0x0c,
+	0x16, 0x3d, 0x19, 0x70, 0xea, 0x21, 0x80, 0x7a, 0x7f, 0x25, 0x8b, 0x79, 0xa3, 0xec, 0x52, 0x88,
+	0xfa, 0xa9, 0xb1, 0xc6, 0xba, 0x20, 0xfc, 0x2c, 0xec, 0xac, 0xb1, 0x1a, 0x86, 0x06, 0x1f, 0xb0,
+	0xf5, 0xbb, 0xf2, 0x34, 0x99, 0x8a, 0x84, 0x86, 0x82, 0x72, 0x96, 0x7a, 0xcf, 0x2d, 0xf9, 0x55,
+	0xa8, 0x30, 0x7b, 0xd1, 0x0c, 0x46, 0xcb, 0x1e, 0x36, 0x4e, 0x17, 0xc4, 0x36, 0x88, 0x80, 0x46,
+	0xa9, 0x67, 0x1b, 0x2d, 0xc6, 0x0b, 0xa3, 0xa7, 0x73, 0x39, 0xf4, 0xb8, 0x24, 0xb7, 0x73, 0x0f,
+	0xd9, 0x53, 0xfb, 0xe9, 0x66, 0x12, 0x0e, 0xe9, 0x14, 0xfa, 0x9e, 0x6f, 0x91, 0x50, 0xad, 0x57,
+	0x72, 0x85, 0xe5, 0x7a, 0x63, 0x5e, 0x6b, 0x86, 0x03, 0x9a, 0x8a, 0x37, 0x7c, 0x0a, 0xa6, 0x66,
+	0x90, 0x31, 0x5f, 0x06, 0x5d, 0xcd, 0x50, 0x85, 0x50, 0x7b, 0x82, 0xd3, 0xca, 0xb5, 0x4f, 0xf8,
+	0x21, 0x5c, 0xa8, 0xad, 0xe7, 0x85, 0x23, 0xbf, 0xa0, 0x0a, 0xb7, 0xb5, 0x86, 0x34, 0xda, 0x7e,
+	0x6a, 0x91, 0xe5, 0x02, 0xea, 0x70, 0x36, 0x85, 0x44, 0x74, 0x86, 0x34, 0xea, 0x27, 0xc0, 0x4e,
+	0xb8, 0x64, 0x53, 0xef, 0xb5, 0x45, 0xd2, 0x8c, 0x17, 0x23, 0xf9, 0xed, 0x55, 0xd3, 0x70, 0x48,
+	0x23, 0xe2, 0x15, 0x70, 0xd9, 0x1c, 0x2b, 0x16, 0x35, 0x43, 0x83, 0xac, 0x36, 0x41, 0xd1, 0x6c,
+	0x4a, 0x7e, 0x5e, 0x35, 0x3b, 0x81, 0x8f, 0xa2, 0x2b, 0x2e, 0x23, 0xf0, 0xd6, 0x1c, 0x22, 0x92,
+	0xf2, 0x15, 0x56, 0x78, 0xfa, 0x4d, 0x71, 0xf4, 0xa5, 0x95, 0x49, 0x6e, 0x4f, 0xe2, 0x88, 0x86,
+	0xf2, 0xfd, 0xf5, 0xcc, 0xa2, 0x52, 0x10, 0x96, 0xaf, 0x04, 0x33, 0x89, 0x56, 0xff, 0x69, 0x91,
+	0x5f, 0x56, 0xe7, 0xb8, 0x15, 0x84, 0xa3, 0x41, 0xc2, 0x27, 0xac, 0xdf, 0xe1, 0x11, 0x4f, 0xbc,
+	0x0d, 0xc7, 0xd0, 0x35, 0xb6, 0xb0, 0x7f, 0x75, 0xa5, 0x1c, 0x1c, 0xc8, 0x90, 0xdc, 0xaa, 0x8e,
+	0x63, 0x33, 0xa2, 0x03, 0x66, 0x9d, 0xb2, 0x54, 0x52, 0xc4, 0xdc, 0x29, 0x57, 0x49, 0x74, 0x4a,
+	0x71, 0xeb, 0x43, 0xa7, 0x6d, 0x3a, 0xcd, 0x7e, 0xd4, 0x17, 0x0e, 0x89, 0x6d, 0x3a, 0xd5, 0x7e,
+	0xd3, 0xb5, 0x86, 0x34, 0x9a, 0xfe, 0xbb, 0x45, 0x96, 0xaa, 0xae, 0xda, 0xee, 0xe4, 0x5a, 0x66,
+	0xdb, 0x0e, 0xf5, 0xea, 0x4a, 0x39, 0x38, 0x0e, 0x86, 0x27, 0x30, 0x55, 0x5a, 0x10, 0x01, 0x9e,
+	0x60, 0x6c, 0x5d, 0x91, 0x21, 0x7e, 0x6d, 0x13, 0x79, 0xde, 0x88, 0x45, 0xbf, 0x01, 0xf9, 0x49,
+	0xbe, 0x21, 0xcb, 0x4a, 0x97, 0xff, 0x98, 0x7e, 0xd5, 0xb2, 0x15, 0xd4, 0xbf, 0x1c, 0xbf, 0xea,
+	0x0c, 0x89, 0x46, 0x7f, 0xc7, 0xfa, 0x41, 0xa3, 0xac, 0x7a, 0x9d, 0xf9, 0xf5, 0xa2, 0x5d, 0x6d,
+	0x82, 0xda, 0xf7, 0x85, 0xcc, 0x6f, 0xee, 0xbe, 0x50, 0xf7, 0xf4, 0x9b, 0xe2, 0xe6, 0xca, 0x95,
+	0x88, 0x3c, 0xd7, 0x38, 0x2b, 0x57, 0xe9, 0x48, 0xaa, 0x51, 0xe5, 0x56, 0x69, 0xf3, 0xc2, 0x66,
+	0xbd, 0xe2, 0x5c, 0xd8, 0x7a, 0xa3, 0xac, 0x36, 0x41, 0xd1, 0x2b, 0x2e, 0xbf, 0x0f, 0xd4, 0xa2,
+	0x0e, 0x21, 0x1c, 0x41, 0xdf, 0x7a, 0x28, 0xc9, 0xd6, 0x28, 0x83, 0xe6, 0x1e, 0x4a, 0x34, 0x58,
+	0x3b, 0x15, 0x77, 0xe3, 0x88, 0x0a, 0xe3, 0xa9, 0x58, 0x45, 0x9c, 0xa7, 0xe2, 0x9c, 0xd0, 0x24,
+	0xdf, 0x40, 0x32, 0x30, 0x1f, 0xb4, 0x55, 0xc4, 0x29, 0x99, 0x13, 0xda, 0xf1, 0xb2, 0xc3, 0xe3,
+	0x4b, 0xe3, 0xf1, 0x52, 0x06, 0x9c, 0xc7, 0x4b, 0x04, 0xb4, 0x21, 0x1e, 0x05, 0xa9, 0x30, 0x0f,
+	0x51, 0x45, 0x9c, 0x43, 0xcc, 0x09, 0x94, 0xfc, 0x23, 0xb9, 0x91, 0x0d, 0x71, 0x22, 0xbc, 0xb6,
+	0x69, 0x00, 0x93, 0x72, 0x11, 0x97, 0xad, 0x71, 0xed, 0x0b, 0x68, 0xe7, 0x63, 0xcc, 0x13, 0x61,
+	0xfc, 0x02, 0xca, 0x42, 0xce, 0x2f, 0xa0, 0x02, 0xd1, 0xbe, 0x3e, 0xf7, 0xc7, 0xf2, 0xb9, 0xac,
+	0x72, 0x75, 0x5f, 0x64, 0xaa, 0xe5, 0x3a, 0xe2, 0xac, 0xe5, 0x19, 0x74, 0x76, 0xe7, 0xdb, 0xa5,
+	0x11, 0x1c, 0x06, 0x63, 0xb0, 0xee, 0x7c, 0xea, 0x1a, 0x44, 0x12, 0x73, 0x77, 0xbe, 0x2a, 0x39,
+	0xdb, 0xa0, 0xea, 0x2e, 0x50, 0x39, 0xd9, 0xf2, 0xb3, 0xdb, 0xc2, 0x9a, 0xd5, 0x6a, 0x13, 0x14,
+	0xbd, 0xc6, 0x78, 0x32, 0xc9, 0xbd, 0xce, 0x68, 0x5f, 0x0c, 0x3d, 0xb7, 0x82, 0x62, 0x9c, 0xf7,
+	0x05, 0xb3, 0xec, 0xec, 0xd4, 0x4e, 0x69, 0x1f, 0xb8, 0x73, 0x6a, 0x8a, 0x68, 0x36, 0xb5, 0x1a,
+	0x3a, 0x3b, 0x35, 0x15, 0x76, 0x4f, 0x2d, 0x53, 0x68, 0x36, 0xb5, 0x3a, 0x8b, 0x76, 0xff, 0x6a,
+	0x91, 0xbb, 0xb9, 0xdf, 0x01, 0x65, 0xa3, 0x93, 0x20, 0x19, 0xa8, 0xeb, 0xe0, 0x70, 0xb4, 0xdf,
+	0xf7, 0x7e, 0x6d, 0x91, 0x92, 0xa4, 0x5f, 0x43, 0x0b, 0xf7, 0x8d, 0xab, 0xa4, 0x68, 0x2f, 0x14,
+	0x79, 0x0c, 0x0a, 0x44, 0x30, 0xa5, 0x70, 0x71, 0x4a, 0xe1, 0xc2, 0xb3, 0xed, 0xa1, 0x39, 0xe4,
+	0x9f, 0x56, 0xaf, 0x0a, 0xd7, 0x1a, 0xd2, 0xfa, 0x51, 0xa8, 0xe2, 0xba, 0x19, 0x0a, 0x3a, 0x05,
+	0xe5, 0xbd, 0x31, 0x4f, 0xad, 0x64, 0x5d, 0x47, 0x21, 0x47, 0x0e, 0x8e, 0xe3, 0x1f, 0xe4, 0x17,
+	0x95, 0x8b, 0x9c, 0xda, 0xfc, 0xd7, 0xed, 0xf7, 0x40, 0xe6, 0x25, 0x78, 0xd9, 0x3c, 0x41, 0xfb,
+	0x90, 0xd9, 0xe2, 0x7c, 0x34, 0x0e, 0x92, 0xd1, 0x2e, 0x88, 0x70, 0x68, 0xac, 0xed, 0x9c, 0xf0,
+	0x15, 0xe2, 0xac, 0xed, 0x19, 0x54, 0x3f, 0xe5, 0xe7, 0x40, 0x36, 0xb6, 0x4d, 0xd6, 0xcf, 0x6c,
+	0x37, 0x5c, 0x5a, 0x75, 0xd6, 0xb9, 0xe6, 0xf6, 0x1c, 0x1c, 0xc8, 0x3f, 0xc9, 0x1d, 0x45, 0xca,
+	0x6d, 0xac, 0x60, 0xf0, 0xba, 0xd7, 0xb4, 0xe8, 0x6a, 0xbb, 0xd3, 0x40, 0xe7, 0xa2, 0x5b, 0x12,
+	0xca, 0x37, 0xc0, 0x61, 0x30, 0xa5, 0x83, 0x40, 0x50, 0xce, 0xe4, 0xa1, 0x27, 0xfb, 0x86, 0xad,
+	0xaf, 0x7a, 0x49, 0xf8, 0x05, 0x62, 0x59, 0x75, 0x0b, 0x8a, 0x6e, 0xff, 0x6d, 0x91, 0x76, 0x49,
+	0xec, 0xe1, 0xa1, 0x9f, 0x9d, 0xf3, 0x33, 0x2a, 0x86, 0xb2, 0x2d, 0x53, 0xef, 0x37, 0x36, 0x39,
+	0x13, 0x5d, 0x0c, 0xe2, 0xf5, 0x15, 0xb3, 0x70, 0x3c, 0xbf, 0x27, 0xdf, 0x3f, 0xa2, 0x6c, 0xe0,
+	0xdd, 0xad, 0xa5, 0xcb, 0x47, 0x85, 0xf2, 0x92, 0x29, 0x54, 0x5e, 0x70, 0x1c, 0x25, 0x3c, 0x84,
+	0x34, 0xed, 0x04, 0x2c, 0x84, 0x48, 0xbb, 0xe0, 0xc0, 0x98, 0x9f, 0x05, 0x2d, 0x17, 0x1c, 0x33,
+	0x10, 0x6a, 0xbf, 0x24, 0x0b, 0x72, 0x01, 0x81, 0xed, 0xa8, 0x3f, 0xae, 0x7a, 0x8b, 0x45, 0xd6,
+	0xce, 0x38, 0x16, 0x97, 0x4b, 0x95, 0xff, 0x97, 0xc0, 0xcb, 0xd6, 0xd6, 0xbd, 0xff, 0x7d, 0x69,
+	0xb7, 0x3e, 0x7f, 0x69, 0xb7, 0xbe, 0xf9, 0xd2, 0x6e, 0x7d, 0xfa, 0xda, 0xbe, 0xf6, 0xf9, 0x6b,
+	0xfb, 0xda, 0xff, 0xbf, 0xb6, 0xaf, 0xbd, 0xff, 0x5e, 0x44, 0x7b, 0xbd, 0x1f, 0xa8, 0x3f, 0xcf,
+	0xbe, 0xfa, 0x2e, 0x00, 0x00, 0xff, 0xff, 0x91, 0x91, 0x08, 0xa9, 0xfc, 0x1d, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -135,6 +157,7 @@ type ClientCommandsClient interface {
 	VersionGet(ctx context.Context, in *pb.RpcVersionGetRequest, opts ...grpc.CallOption) (*pb.RpcVersionGetResponse, error)
 	LogSend(ctx context.Context, in *pb.RpcLogSendRequest, opts ...grpc.CallOption) (*pb.RpcLogSendResponse, error)
 	ConfigGet(ctx context.Context, in *pb.RpcConfigGetRequest, opts ...grpc.CallOption) (*pb.RpcConfigGetResponse, error)
+	Shutdown(ctx context.Context, in *pb.RpcShutdownRequest, opts ...grpc.CallOption) (*pb.RpcShutdownResponse, error)
 	ExternalDropFiles(ctx context.Context, in *pb.RpcExternalDropFilesRequest, opts ...grpc.CallOption) (*pb.RpcExternalDropFilesResponse, error)
 	ExternalDropContent(ctx context.Context, in *pb.RpcExternalDropContentRequest, opts ...grpc.CallOption) (*pb.RpcExternalDropContentResponse, error)
 	LinkPreview(ctx context.Context, in *pb.RpcLinkPreviewRequest, opts ...grpc.CallOption) (*pb.RpcLinkPreviewResponse, error)
@@ -142,6 +165,7 @@ type ClientCommandsClient interface {
 	BlockUpload(ctx context.Context, in *pb.RpcBlockUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockUploadResponse, error)
 	BlockReplace(ctx context.Context, in *pb.RpcBlockReplaceRequest, opts ...grpc.CallOption) (*pb.RpcBlockReplaceResponse, error)
 	BlockOpen(ctx context.Context, in *pb.RpcBlockOpenRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenResponse, error)
+	BlockGetPublicWebURL(ctx context.Context, in *pb.RpcBlockGetPublicWebURLRequest, opts ...grpc.CallOption) (*pb.RpcBlockGetPublicWebURLResponse, error)
 	BlockOpenBreadcrumbs(ctx context.Context, in *pb.RpcBlockOpenBreadcrumbsRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenBreadcrumbsResponse, error)
 	BlockSetBreadcrumbs(ctx context.Context, in *pb.RpcBlockSetBreadcrumbsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetBreadcrumbsResponse, error)
 	BlockCreate(ctx context.Context, in *pb.RpcBlockCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateResponse, error)
@@ -158,14 +182,19 @@ type ClientCommandsClient interface {
 	BlockSetPageIsArchived(ctx context.Context, in *pb.RpcBlockSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetPageIsArchivedResponse, error)
 	BlockListMove(ctx context.Context, in *pb.RpcBlockListMoveRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveResponse, error)
 	BlockListMoveToNewPage(ctx context.Context, in *pb.RpcBlockListMoveToNewPageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveToNewPageResponse, error)
+	BlockListConvertChildrenToPages(ctx context.Context, in *pb.RpcBlockListConvertChildrenToPagesRequest, opts ...grpc.CallOption) (*pb.RpcBlockListConvertChildrenToPagesResponse, error)
 	BlockListSetFields(ctx context.Context, in *pb.RpcBlockListSetFieldsRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetFieldsResponse, error)
 	BlockListSetTextStyle(ctx context.Context, in *pb.RpcBlockListSetTextStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextStyleResponse, error)
 	BlockListDuplicate(ctx context.Context, in *pb.RpcBlockListDuplicateRequest, opts ...grpc.CallOption) (*pb.RpcBlockListDuplicateResponse, error)
 	BlockListSetBackgroundColor(ctx context.Context, in *pb.RpcBlockListSetBackgroundColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetBackgroundColorResponse, error)
 	BlockListSetAlign(ctx context.Context, in *pb.RpcBlockListSetAlignRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetAlignResponse, error)
+	BlockListSetDivStyle(ctx context.Context, in *pb.RpcBlockListSetDivStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetDivStyleResponse, error)
+	BlockListSetPageIsArchived(ctx context.Context, in *pb.RpcBlockListSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetPageIsArchivedResponse, error)
+	BlockListDeletePage(ctx context.Context, in *pb.RpcBlockListDeletePageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListDeletePageResponse, error)
 	BlockSetTextText(ctx context.Context, in *pb.RpcBlockSetTextTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextTextResponse, error)
 	BlockSetTextColor(ctx context.Context, in *pb.RpcBlockSetTextColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextColorResponse, error)
 	BlockListSetTextColor(ctx context.Context, in *pb.RpcBlockListSetTextColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextColorResponse, error)
+	BlockListSetTextMark(ctx context.Context, in *pb.RpcBlockListSetTextMarkRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextMarkResponse, error)
 	BlockSetTextStyle(ctx context.Context, in *pb.RpcBlockSetTextStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextStyleResponse, error)
 	BlockSetTextChecked(ctx context.Context, in *pb.RpcBlockSetTextCheckedRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextCheckedResponse, error)
 	BlockSplit(ctx context.Context, in *pb.RpcBlockSplitRequest, opts ...grpc.CallOption) (*pb.RpcBlockSplitResponse, error)
@@ -174,16 +203,24 @@ type ClientCommandsClient interface {
 	BlockPaste(ctx context.Context, in *pb.RpcBlockPasteRequest, opts ...grpc.CallOption) (*pb.RpcBlockPasteResponse, error)
 	BlockCut(ctx context.Context, in *pb.RpcBlockCutRequest, opts ...grpc.CallOption) (*pb.RpcBlockCutResponse, error)
 	BlockExport(ctx context.Context, in *pb.RpcBlockExportRequest, opts ...grpc.CallOption) (*pb.RpcBlockExportResponse, error)
+	BlockImportMarkdown(ctx context.Context, in *pb.RpcBlockImportMarkdownRequest, opts ...grpc.CallOption) (*pb.RpcBlockImportMarkdownResponse, error)
 	BlockSetFileName(ctx context.Context, in *pb.RpcBlockSetFileNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetFileNameResponse, error)
 	BlockSetImageName(ctx context.Context, in *pb.RpcBlockSetImageNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetImageNameResponse, error)
 	BlockSetImageWidth(ctx context.Context, in *pb.RpcBlockSetImageWidthRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetImageWidthResponse, error)
 	BlockSetVideoName(ctx context.Context, in *pb.RpcBlockSetVideoNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoNameResponse, error)
 	BlockSetVideoWidth(ctx context.Context, in *pb.RpcBlockSetVideoWidthRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoWidthResponse, error)
 	BlockSetLinkTargetBlockId(ctx context.Context, in *pb.RpcBlockSetLinkTargetBlockIdRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetLinkTargetBlockIdResponse, error)
+	BlockSetDataviewView(ctx context.Context, in *pb.RpcBlockSetDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewViewResponse, error)
+	BlockSetDataviewActiveView(ctx context.Context, in *pb.RpcBlockSetDataviewActiveViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewActiveViewResponse, error)
+	BlockCreateDataviewView(ctx context.Context, in *pb.RpcBlockCreateDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewViewResponse, error)
 	BlockBookmarkFetch(ctx context.Context, in *pb.RpcBlockBookmarkFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkFetchResponse, error)
+	BlockBookmarkCreateAndFetch(ctx context.Context, in *pb.RpcBlockBookmarkCreateAndFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkCreateAndFetchResponse, error)
+	BlockFileCreateAndUpload(ctx context.Context, in *pb.RpcBlockFileCreateAndUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockFileCreateAndUploadResponse, error)
+	NavigationListPages(ctx context.Context, in *pb.RpcNavigationListPagesRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListPagesResponse, error)
+	NavigationGetPageInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetPageInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetPageInfoWithLinksResponse, error)
 	Ping(ctx context.Context, in *pb.RpcPingRequest, opts ...grpc.CallOption) (*pb.RpcPingResponse, error)
 	ProcessCancel(ctx context.Context, in *pb.RpcProcessCancelRequest, opts ...grpc.CallOption) (*pb.RpcProcessCancelResponse, error)
-	// used only for lib-debug via grpc
+	// used only for lib-server via grpc
 	ListenEvents(ctx context.Context, in *pb.Empty, opts ...grpc.CallOption) (ClientCommands_ListenEventsClient, error)
 }
 
@@ -285,6 +322,15 @@ func (c *clientCommandsClient) ConfigGet(ctx context.Context, in *pb.RpcConfigGe
 	return out, nil
 }
 
+func (c *clientCommandsClient) Shutdown(ctx context.Context, in *pb.RpcShutdownRequest, opts ...grpc.CallOption) (*pb.RpcShutdownResponse, error) {
+	out := new(pb.RpcShutdownResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/Shutdown", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clientCommandsClient) ExternalDropFiles(ctx context.Context, in *pb.RpcExternalDropFilesRequest, opts ...grpc.CallOption) (*pb.RpcExternalDropFilesResponse, error) {
 	out := new(pb.RpcExternalDropFilesResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ExternalDropFiles", in, out, opts...)
@@ -342,6 +388,15 @@ func (c *clientCommandsClient) BlockReplace(ctx context.Context, in *pb.RpcBlock
 func (c *clientCommandsClient) BlockOpen(ctx context.Context, in *pb.RpcBlockOpenRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenResponse, error) {
 	out := new(pb.RpcBlockOpenResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockOpen", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockGetPublicWebURL(ctx context.Context, in *pb.RpcBlockGetPublicWebURLRequest, opts ...grpc.CallOption) (*pb.RpcBlockGetPublicWebURLResponse, error) {
+	out := new(pb.RpcBlockGetPublicWebURLResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockGetPublicWebURL", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -492,6 +547,15 @@ func (c *clientCommandsClient) BlockListMoveToNewPage(ctx context.Context, in *p
 	return out, nil
 }
 
+func (c *clientCommandsClient) BlockListConvertChildrenToPages(ctx context.Context, in *pb.RpcBlockListConvertChildrenToPagesRequest, opts ...grpc.CallOption) (*pb.RpcBlockListConvertChildrenToPagesResponse, error) {
+	out := new(pb.RpcBlockListConvertChildrenToPagesResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListConvertChildrenToPages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clientCommandsClient) BlockListSetFields(ctx context.Context, in *pb.RpcBlockListSetFieldsRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetFieldsResponse, error) {
 	out := new(pb.RpcBlockListSetFieldsResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetFields", in, out, opts...)
@@ -537,6 +601,33 @@ func (c *clientCommandsClient) BlockListSetAlign(ctx context.Context, in *pb.Rpc
 	return out, nil
 }
 
+func (c *clientCommandsClient) BlockListSetDivStyle(ctx context.Context, in *pb.RpcBlockListSetDivStyleRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetDivStyleResponse, error) {
+	out := new(pb.RpcBlockListSetDivStyleResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetDivStyle", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetPageIsArchived(ctx context.Context, in *pb.RpcBlockListSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetPageIsArchivedResponse, error) {
+	out := new(pb.RpcBlockListSetPageIsArchivedResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetPageIsArchived", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListDeletePage(ctx context.Context, in *pb.RpcBlockListDeletePageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListDeletePageResponse, error) {
+	out := new(pb.RpcBlockListDeletePageResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListDeletePage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clientCommandsClient) BlockSetTextText(ctx context.Context, in *pb.RpcBlockSetTextTextRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetTextTextResponse, error) {
 	out := new(pb.RpcBlockSetTextTextResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetTextText", in, out, opts...)
@@ -558,6 +649,15 @@ func (c *clientCommandsClient) BlockSetTextColor(ctx context.Context, in *pb.Rpc
 func (c *clientCommandsClient) BlockListSetTextColor(ctx context.Context, in *pb.RpcBlockListSetTextColorRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextColorResponse, error) {
 	out := new(pb.RpcBlockListSetTextColorResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetTextColor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockListSetTextMark(ctx context.Context, in *pb.RpcBlockListSetTextMarkRequest, opts ...grpc.CallOption) (*pb.RpcBlockListSetTextMarkResponse, error) {
+	out := new(pb.RpcBlockListSetTextMarkResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockListSetTextMark", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -636,6 +736,15 @@ func (c *clientCommandsClient) BlockExport(ctx context.Context, in *pb.RpcBlockE
 	return out, nil
 }
 
+func (c *clientCommandsClient) BlockImportMarkdown(ctx context.Context, in *pb.RpcBlockImportMarkdownRequest, opts ...grpc.CallOption) (*pb.RpcBlockImportMarkdownResponse, error) {
+	out := new(pb.RpcBlockImportMarkdownResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockImportMarkdown", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clientCommandsClient) BlockSetFileName(ctx context.Context, in *pb.RpcBlockSetFileNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetFileNameResponse, error) {
 	out := new(pb.RpcBlockSetFileNameResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetFileName", in, out, opts...)
@@ -690,9 +799,72 @@ func (c *clientCommandsClient) BlockSetLinkTargetBlockId(ctx context.Context, in
 	return out, nil
 }
 
+func (c *clientCommandsClient) BlockSetDataviewView(ctx context.Context, in *pb.RpcBlockSetDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewViewResponse, error) {
+	out := new(pb.RpcBlockSetDataviewViewResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDataviewView", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetDataviewActiveView(ctx context.Context, in *pb.RpcBlockSetDataviewActiveViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewActiveViewResponse, error) {
+	out := new(pb.RpcBlockSetDataviewActiveViewResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDataviewActiveView", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockCreateDataviewView(ctx context.Context, in *pb.RpcBlockCreateDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewViewResponse, error) {
+	out := new(pb.RpcBlockCreateDataviewViewResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCreateDataviewView", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clientCommandsClient) BlockBookmarkFetch(ctx context.Context, in *pb.RpcBlockBookmarkFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkFetchResponse, error) {
 	out := new(pb.RpcBlockBookmarkFetchResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockBookmarkFetch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockBookmarkCreateAndFetch(ctx context.Context, in *pb.RpcBlockBookmarkCreateAndFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkCreateAndFetchResponse, error) {
+	out := new(pb.RpcBlockBookmarkCreateAndFetchResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockBookmarkCreateAndFetch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockFileCreateAndUpload(ctx context.Context, in *pb.RpcBlockFileCreateAndUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockFileCreateAndUploadResponse, error) {
+	out := new(pb.RpcBlockFileCreateAndUploadResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockFileCreateAndUpload", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) NavigationListPages(ctx context.Context, in *pb.RpcNavigationListPagesRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListPagesResponse, error) {
+	out := new(pb.RpcNavigationListPagesResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationListPages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) NavigationGetPageInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetPageInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetPageInfoWithLinksResponse, error) {
+	out := new(pb.RpcNavigationGetPageInfoWithLinksResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationGetPageInfoWithLinks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -761,6 +933,7 @@ type ClientCommandsServer interface {
 	VersionGet(*pb.RpcVersionGetRequest) *pb.RpcVersionGetResponse
 	LogSend(*pb.RpcLogSendRequest) *pb.RpcLogSendResponse
 	ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetResponse
+	Shutdown(*pb.RpcShutdownRequest) *pb.RpcShutdownResponse
 	ExternalDropFiles(*pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse
 	ExternalDropContent(*pb.RpcExternalDropContentRequest) *pb.RpcExternalDropContentResponse
 	LinkPreview(*pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse
@@ -768,6 +941,7 @@ type ClientCommandsServer interface {
 	BlockUpload(*pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
 	BlockReplace(*pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
 	BlockOpen(*pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse
+	BlockGetPublicWebURL(*pb.RpcBlockGetPublicWebURLRequest) *pb.RpcBlockGetPublicWebURLResponse
 	BlockOpenBreadcrumbs(*pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse
 	BlockSetBreadcrumbs(*pb.RpcBlockSetBreadcrumbsRequest) *pb.RpcBlockSetBreadcrumbsResponse
 	BlockCreate(*pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
@@ -784,14 +958,19 @@ type ClientCommandsServer interface {
 	BlockSetPageIsArchived(*pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse
 	BlockListMove(*pb.RpcBlockListMoveRequest) *pb.RpcBlockListMoveResponse
 	BlockListMoveToNewPage(*pb.RpcBlockListMoveToNewPageRequest) *pb.RpcBlockListMoveToNewPageResponse
+	BlockListConvertChildrenToPages(*pb.RpcBlockListConvertChildrenToPagesRequest) *pb.RpcBlockListConvertChildrenToPagesResponse
 	BlockListSetFields(*pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse
 	BlockListSetTextStyle(*pb.RpcBlockListSetTextStyleRequest) *pb.RpcBlockListSetTextStyleResponse
 	BlockListDuplicate(*pb.RpcBlockListDuplicateRequest) *pb.RpcBlockListDuplicateResponse
 	BlockListSetBackgroundColor(*pb.RpcBlockListSetBackgroundColorRequest) *pb.RpcBlockListSetBackgroundColorResponse
 	BlockListSetAlign(*pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse
+	BlockListSetDivStyle(*pb.RpcBlockListSetDivStyleRequest) *pb.RpcBlockListSetDivStyleResponse
+	BlockListSetPageIsArchived(*pb.RpcBlockListSetPageIsArchivedRequest) *pb.RpcBlockListSetPageIsArchivedResponse
+	BlockListDeletePage(*pb.RpcBlockListDeletePageRequest) *pb.RpcBlockListDeletePageResponse
 	BlockSetTextText(*pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse
 	BlockSetTextColor(*pb.RpcBlockSetTextColorRequest) *pb.RpcBlockSetTextColorResponse
 	BlockListSetTextColor(*pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse
+	BlockListSetTextMark(*pb.RpcBlockListSetTextMarkRequest) *pb.RpcBlockListSetTextMarkResponse
 	BlockSetTextStyle(*pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse
 	BlockSetTextChecked(*pb.RpcBlockSetTextCheckedRequest) *pb.RpcBlockSetTextCheckedResponse
 	BlockSplit(*pb.RpcBlockSplitRequest) *pb.RpcBlockSplitResponse
@@ -800,16 +979,24 @@ type ClientCommandsServer interface {
 	BlockPaste(*pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse
 	BlockCut(*pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse
 	BlockExport(*pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse
+	BlockImportMarkdown(*pb.RpcBlockImportMarkdownRequest) *pb.RpcBlockImportMarkdownResponse
 	BlockSetFileName(*pb.RpcBlockSetFileNameRequest) *pb.RpcBlockSetFileNameResponse
 	BlockSetImageName(*pb.RpcBlockSetImageNameRequest) *pb.RpcBlockSetImageNameResponse
 	BlockSetImageWidth(*pb.RpcBlockSetImageWidthRequest) *pb.RpcBlockSetImageWidthResponse
 	BlockSetVideoName(*pb.RpcBlockSetVideoNameRequest) *pb.RpcBlockSetVideoNameResponse
 	BlockSetVideoWidth(*pb.RpcBlockSetVideoWidthRequest) *pb.RpcBlockSetVideoWidthResponse
 	BlockSetLinkTargetBlockId(*pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse
+	BlockSetDataviewView(*pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse
+	BlockSetDataviewActiveView(*pb.RpcBlockSetDataviewActiveViewRequest) *pb.RpcBlockSetDataviewActiveViewResponse
+	BlockCreateDataviewView(*pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse
 	BlockBookmarkFetch(*pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse
+	BlockBookmarkCreateAndFetch(*pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse
+	BlockFileCreateAndUpload(*pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse
+	NavigationListPages(*pb.RpcNavigationListPagesRequest) *pb.RpcNavigationListPagesResponse
+	NavigationGetPageInfoWithLinks(*pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse
 	Ping(*pb.RpcPingRequest) *pb.RpcPingResponse
 	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
-	// used only for lib-debug via grpc
+	// used only for lib-server via grpc
 	ListenEvents(*pb.Empty, ClientCommands_ListenEventsServer)
 }
 
@@ -847,6 +1034,9 @@ func (*UnimplementedClientCommandsServer) LogSend(req *pb.RpcLogSendRequest) *pb
 func (*UnimplementedClientCommandsServer) ConfigGet(req *pb.RpcConfigGetRequest) *pb.RpcConfigGetResponse {
 	return nil
 }
+func (*UnimplementedClientCommandsServer) Shutdown(req *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
+	return nil
+}
 func (*UnimplementedClientCommandsServer) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse {
 	return nil
 }
@@ -866,6 +1056,9 @@ func (*UnimplementedClientCommandsServer) BlockReplace(req *pb.RpcBlockReplaceRe
 	return nil
 }
 func (*UnimplementedClientCommandsServer) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockGetPublicWebURL(req *pb.RpcBlockGetPublicWebURLRequest) *pb.RpcBlockGetPublicWebURLResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse {
@@ -916,6 +1109,9 @@ func (*UnimplementedClientCommandsServer) BlockListMove(req *pb.RpcBlockListMove
 func (*UnimplementedClientCommandsServer) BlockListMoveToNewPage(req *pb.RpcBlockListMoveToNewPageRequest) *pb.RpcBlockListMoveToNewPageResponse {
 	return nil
 }
+func (*UnimplementedClientCommandsServer) BlockListConvertChildrenToPages(req *pb.RpcBlockListConvertChildrenToPagesRequest) *pb.RpcBlockListConvertChildrenToPagesResponse {
+	return nil
+}
 func (*UnimplementedClientCommandsServer) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
 	return nil
 }
@@ -931,6 +1127,15 @@ func (*UnimplementedClientCommandsServer) BlockListSetBackgroundColor(req *pb.Rp
 func (*UnimplementedClientCommandsServer) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
 	return nil
 }
+func (*UnimplementedClientCommandsServer) BlockListSetDivStyle(req *pb.RpcBlockListSetDivStyleRequest) *pb.RpcBlockListSetDivStyleResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetPageIsArchived(req *pb.RpcBlockListSetPageIsArchivedRequest) *pb.RpcBlockListSetPageIsArchivedResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListDeletePage(req *pb.RpcBlockListDeletePageRequest) *pb.RpcBlockListDeletePageResponse {
+	return nil
+}
 func (*UnimplementedClientCommandsServer) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.RpcBlockSetTextTextResponse {
 	return nil
 }
@@ -938,6 +1143,9 @@ func (*UnimplementedClientCommandsServer) BlockSetTextColor(req *pb.RpcBlockSetT
 	return nil
 }
 func (*UnimplementedClientCommandsServer) BlockListSetTextColor(req *pb.RpcBlockListSetTextColorRequest) *pb.RpcBlockListSetTextColorResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockListSetTextMark(req *pb.RpcBlockListSetTextMarkRequest) *pb.RpcBlockListSetTextMarkResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse {
@@ -964,6 +1172,9 @@ func (*UnimplementedClientCommandsServer) BlockCut(req *pb.RpcBlockCutRequest) *
 func (*UnimplementedClientCommandsServer) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExportResponse {
 	return nil
 }
+func (*UnimplementedClientCommandsServer) BlockImportMarkdown(req *pb.RpcBlockImportMarkdownRequest) *pb.RpcBlockImportMarkdownResponse {
+	return nil
+}
 func (*UnimplementedClientCommandsServer) BlockSetFileName(req *pb.RpcBlockSetFileNameRequest) *pb.RpcBlockSetFileNameResponse {
 	return nil
 }
@@ -982,7 +1193,28 @@ func (*UnimplementedClientCommandsServer) BlockSetVideoWidth(req *pb.RpcBlockSet
 func (*UnimplementedClientCommandsServer) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse {
 	return nil
 }
+func (*UnimplementedClientCommandsServer) BlockSetDataviewView(req *pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetDataviewActiveView(req *pb.RpcBlockSetDataviewActiveViewRequest) *pb.RpcBlockSetDataviewActiveViewResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockCreateDataviewView(req *pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse {
+	return nil
+}
 func (*UnimplementedClientCommandsServer) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockBookmarkCreateAndFetch(req *pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) NavigationListPages(req *pb.RpcNavigationListPagesRequest) *pb.RpcNavigationListPagesResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) Ping(req *pb.RpcPingRequest) *pb.RpcPingResponse {
@@ -1179,6 +1411,24 @@ func _ClientCommands_ConfigGet_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientCommands_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcShutdownRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).Shutdown(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/Shutdown",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).Shutdown(req.(*pb.RpcShutdownRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientCommands_ExternalDropFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(pb.RpcExternalDropFilesRequest)
 	if err := dec(in); err != nil {
@@ -1301,6 +1551,24 @@ func _ClientCommands_BlockOpen_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClientCommandsServer).BlockOpen(req.(*pb.RpcBlockOpenRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockGetPublicWebURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockGetPublicWebURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockGetPublicWebURL(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockGetPublicWebURL",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockGetPublicWebURL(req.(*pb.RpcBlockGetPublicWebURLRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1593,6 +1861,24 @@ func _ClientCommands_BlockListMoveToNewPage_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientCommands_BlockListConvertChildrenToPages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListConvertChildrenToPagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListConvertChildrenToPages(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListConvertChildrenToPages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListConvertChildrenToPages(req.(*pb.RpcBlockListConvertChildrenToPagesRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientCommands_BlockListSetFields_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(pb.RpcBlockListSetFieldsRequest)
 	if err := dec(in); err != nil {
@@ -1683,6 +1969,60 @@ func _ClientCommands_BlockListSetAlign_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientCommands_BlockListSetDivStyle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetDivStyleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetDivStyle(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetDivStyle",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetDivStyle(req.(*pb.RpcBlockListSetDivStyleRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetPageIsArchived_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetPageIsArchivedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetPageIsArchived(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetPageIsArchived",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetPageIsArchived(req.(*pb.RpcBlockListSetPageIsArchivedRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListDeletePage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListDeletePageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListDeletePage(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListDeletePage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListDeletePage(req.(*pb.RpcBlockListDeletePageRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientCommands_BlockSetTextText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(pb.RpcBlockSetTextTextRequest)
 	if err := dec(in); err != nil {
@@ -1733,6 +2073,24 @@ func _ClientCommands_BlockListSetTextColor_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClientCommandsServer).BlockListSetTextColor(req.(*pb.RpcBlockListSetTextColorRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockListSetTextMark_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockListSetTextMarkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockListSetTextMark(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockListSetTextMark",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockListSetTextMark(req.(*pb.RpcBlockListSetTextMarkRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1881,6 +2239,24 @@ func _ClientCommands_BlockExport_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientCommands_BlockImportMarkdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockImportMarkdownRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockImportMarkdown(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockImportMarkdown",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockImportMarkdown(req.(*pb.RpcBlockImportMarkdownRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientCommands_BlockSetFileName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(pb.RpcBlockSetFileNameRequest)
 	if err := dec(in); err != nil {
@@ -1989,6 +2365,60 @@ func _ClientCommands_BlockSetLinkTargetBlockId_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientCommands_BlockSetDataviewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetDataviewViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetDataviewView(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetDataviewView",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetDataviewView(req.(*pb.RpcBlockSetDataviewViewRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetDataviewActiveView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetDataviewActiveViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetDataviewActiveView(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetDataviewActiveView",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetDataviewActiveView(req.(*pb.RpcBlockSetDataviewActiveViewRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockCreateDataviewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCreateDataviewViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockCreateDataviewView(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockCreateDataviewView",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockCreateDataviewView(req.(*pb.RpcBlockCreateDataviewViewRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientCommands_BlockBookmarkFetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(pb.RpcBlockBookmarkFetchRequest)
 	if err := dec(in); err != nil {
@@ -2003,6 +2433,78 @@ func _ClientCommands_BlockBookmarkFetch_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClientCommandsServer).BlockBookmarkFetch(req.(*pb.RpcBlockBookmarkFetchRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockBookmarkCreateAndFetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockBookmarkCreateAndFetchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockBookmarkCreateAndFetch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockBookmarkCreateAndFetch(req.(*pb.RpcBlockBookmarkCreateAndFetchRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockFileCreateAndUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockFileCreateAndUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockFileCreateAndUpload",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockFileCreateAndUpload(req.(*pb.RpcBlockFileCreateAndUploadRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_NavigationListPages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcNavigationListPagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).NavigationListPages(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/NavigationListPages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).NavigationListPages(req.(*pb.RpcNavigationListPagesRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_NavigationGetPageInfoWithLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcNavigationGetPageInfoWithLinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).NavigationGetPageInfoWithLinks(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/NavigationGetPageInfoWithLinks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).NavigationGetPageInfoWithLinks(req.(*pb.RpcNavigationGetPageInfoWithLinksRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2110,6 +2612,10 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_ConfigGet_Handler,
 		},
 		{
+			MethodName: "Shutdown",
+			Handler:    _ClientCommands_Shutdown_Handler,
+		},
+		{
 			MethodName: "ExternalDropFiles",
 			Handler:    _ClientCommands_ExternalDropFiles_Handler,
 		},
@@ -2136,6 +2642,10 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BlockOpen",
 			Handler:    _ClientCommands_BlockOpen_Handler,
+		},
+		{
+			MethodName: "BlockGetPublicWebURL",
+			Handler:    _ClientCommands_BlockGetPublicWebURL_Handler,
 		},
 		{
 			MethodName: "BlockOpenBreadcrumbs",
@@ -2202,6 +2712,10 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockListMoveToNewPage_Handler,
 		},
 		{
+			MethodName: "BlockListConvertChildrenToPages",
+			Handler:    _ClientCommands_BlockListConvertChildrenToPages_Handler,
+		},
+		{
 			MethodName: "BlockListSetFields",
 			Handler:    _ClientCommands_BlockListSetFields_Handler,
 		},
@@ -2222,6 +2736,18 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockListSetAlign_Handler,
 		},
 		{
+			MethodName: "BlockListSetDivStyle",
+			Handler:    _ClientCommands_BlockListSetDivStyle_Handler,
+		},
+		{
+			MethodName: "BlockListSetPageIsArchived",
+			Handler:    _ClientCommands_BlockListSetPageIsArchived_Handler,
+		},
+		{
+			MethodName: "BlockListDeletePage",
+			Handler:    _ClientCommands_BlockListDeletePage_Handler,
+		},
+		{
 			MethodName: "BlockSetTextText",
 			Handler:    _ClientCommands_BlockSetTextText_Handler,
 		},
@@ -2232,6 +2758,10 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BlockListSetTextColor",
 			Handler:    _ClientCommands_BlockListSetTextColor_Handler,
+		},
+		{
+			MethodName: "BlockListSetTextMark",
+			Handler:    _ClientCommands_BlockListSetTextMark_Handler,
 		},
 		{
 			MethodName: "BlockSetTextStyle",
@@ -2266,6 +2796,10 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockExport_Handler,
 		},
 		{
+			MethodName: "BlockImportMarkdown",
+			Handler:    _ClientCommands_BlockImportMarkdown_Handler,
+		},
+		{
 			MethodName: "BlockSetFileName",
 			Handler:    _ClientCommands_BlockSetFileName_Handler,
 		},
@@ -2290,8 +2824,36 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockSetLinkTargetBlockId_Handler,
 		},
 		{
+			MethodName: "BlockSetDataviewView",
+			Handler:    _ClientCommands_BlockSetDataviewView_Handler,
+		},
+		{
+			MethodName: "BlockSetDataviewActiveView",
+			Handler:    _ClientCommands_BlockSetDataviewActiveView_Handler,
+		},
+		{
+			MethodName: "BlockCreateDataviewView",
+			Handler:    _ClientCommands_BlockCreateDataviewView_Handler,
+		},
+		{
 			MethodName: "BlockBookmarkFetch",
 			Handler:    _ClientCommands_BlockBookmarkFetch_Handler,
+		},
+		{
+			MethodName: "BlockBookmarkCreateAndFetch",
+			Handler:    _ClientCommands_BlockBookmarkCreateAndFetch_Handler,
+		},
+		{
+			MethodName: "BlockFileCreateAndUpload",
+			Handler:    _ClientCommands_BlockFileCreateAndUpload_Handler,
+		},
+		{
+			MethodName: "NavigationListPages",
+			Handler:    _ClientCommands_NavigationListPages_Handler,
+		},
+		{
+			MethodName: "NavigationGetPageInfoWithLinks",
+			Handler:    _ClientCommands_NavigationGetPageInfoWithLinks_Handler,
 		},
 		{
 			MethodName: "Ping",

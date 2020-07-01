@@ -168,6 +168,10 @@ func (s *State) fillChanges(msgs []*pb.EventMessage) {
 			updMsgs = append(updMsgs, msg)
 		case *pb.EventMessageValueOfBlockSetLink:
 			updMsgs = append(updMsgs, msg)
+		case *pb.EventMessageValueOfBlockSetDataviewView:
+			updMsgs = append(updMsgs, msg)
+		case *pb.EventMessageValueOfBlockDeleteDataviewView:
+			updMsgs = append(updMsgs, msg)
 		case *pb.EventMessageValueOfBlockDelete:
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
 		case *pb.EventMessageValueOfBlockAdd:
