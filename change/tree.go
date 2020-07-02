@@ -17,6 +17,14 @@ const (
 	Nothing
 )
 
+func NewTree() *Tree {
+	return &Tree{}
+}
+
+func NewDetailsTree() *Tree {
+	return &Tree{detailsOnly: true}
+}
+
 type Tree struct {
 	root           *Change
 	headIds        []string
@@ -24,7 +32,8 @@ type Tree struct {
 	attached       map[string]*Change
 	unAttached     map[string]*Change
 	// missed id -> list of dependency ids
-	waitList map[string][]string
+	waitList    map[string][]string
+	detailsOnly bool
 }
 
 func (t *Tree) RootId() string {
@@ -82,6 +91,9 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 }
 
 func (t *Tree) add(c *Change) (attached bool) {
+	if t.detailsOnly {
+		c.PreviousIds = c.PreviousDetailsIds
+	}
 	if t.root == nil { // first element
 		t.root = c
 		t.attached = map[string]*Change{

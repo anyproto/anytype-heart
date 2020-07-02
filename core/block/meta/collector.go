@@ -33,6 +33,44 @@ type collector struct {
 	doc      state.Doc
 }
 
+func (c *collector) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
+	c.m.Lock()
+	defer c.m.Unlock()
+	s, err := f(c.doc)
+	if err != nil {
+		return err
+	}
+	_, _, err = state.ApplyState(s)
+	if err != nil {
+		return err
+	}
+	log.Infof("changes: details stateAppend")
+	c.updateMeta()
+	return nil
+}
+
+func (c *collector) StateRebuild(doc state.Doc) (err error) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.doc = doc
+	log.Infof("changes: details stateRebuild")
+	c.updateMeta()
+	return nil
+}
+
+func (c *collector) updateMeta() {
+	d := Meta{
+		BlockId: c.blockId,
+		SmartBlockMeta: core.SmartBlockMeta{
+			Details: c.doc.Details(),
+		},
+	}
+	if !c.lastMeta.Details.Equal(d.Details) {
+		c.ps.call(d)
+		c.lastMeta = d
+	}
+}
+
 func (c *collector) GetMeta() (d Meta) {
 	<-c.ready
 	c.m.Lock()
@@ -77,7 +115,7 @@ func (c *collector) fetchInitialMeta() (err error) {
 		return errNotFound
 	}
 
-	c.doc, err = c.s.ReadDetails(nil)
+	c.doc, err = c.s.ReadDetails(c)
 	if err != nil {
 		setCurrentMeta(*notFoundMeta)
 		return errNotFound

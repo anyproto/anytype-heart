@@ -5,15 +5,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func NewChangeFromRecord(detailsOnly bool, record core.SmartblockRecordWithLogID) (*Change, error) {
+func NewChangeFromRecord(record core.SmartblockRecordWithLogID) (*Change, error) {
 	var ch = &pb.Change{}
 	if err := record.Unmarshal(ch); err != nil {
 		return nil, err
 	}
 	return &Change{
-		Id:          record.ID,
-		Change:      ch,
-		detailsOnly: detailsOnly,
+		Id:     record.ID,
+		Change: ch,
 	}, nil
 }
 

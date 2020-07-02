@@ -191,7 +191,7 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 		return
 	}
 	log.Infof("changes: received log record: %v", record.ID)
-	ch, err := change.NewChangeFromRecord(s.detailsOnly, record)
+	ch, err := change.NewChangeFromRecord(record)
 	if err != nil {
 		return
 	}
@@ -218,6 +218,7 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 	switch s.tree.Add(ch) {
 	case change.Nothing:
 		// existing or not complete
+		log.Debugf("add change to tree %v: nothing to do", ch.Id)
 		return
 	case change.Append:
 		if ch.Snapshot != nil {

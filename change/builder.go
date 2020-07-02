@@ -81,7 +81,11 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 	if err != nil {
 		return
 	}
-	sb.tree = new(Tree)
+	if sb.onlyDetails {
+		sb.tree = NewDetailsTree()
+	} else {
+		sb.tree = NewTree()
+	}
 	sb.tree.AddFast(ch)
 	var changes = make([]*Change, 0, len(heads)*2)
 	var uniqMap = map[string]struct{}{breakpoint: {}}
