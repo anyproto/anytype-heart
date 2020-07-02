@@ -90,7 +90,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockSetDataviewView:
 		if err = apply(o.BlockSetDataviewView.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok && o.BlockSetDataviewView.View != nil {
-				if f.SetView(o.BlockSetDataviewView.Id, *o.BlockSetDataviewView.View) != nil {
+				if f.SetView(o.BlockSetDataviewView.ViewId, *o.BlockSetDataviewView.View) != nil {
 					f.AddView(*o.BlockSetDataviewView.View)
 				}
 				return nil
