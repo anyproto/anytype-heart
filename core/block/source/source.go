@@ -190,7 +190,7 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 		// ignore self logs
 		return
 	}
-	log.Infof("changes: received log record: %+v", record)
+	log.Infof("changes: received log record: %v", record.ID)
 	ch, err := change.NewChangeFromRecord(s.detailsOnly, record)
 	if err != nil {
 		return

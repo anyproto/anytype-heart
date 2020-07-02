@@ -350,7 +350,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	if err != nil {
 		return err
 	}
-	log.Infof("stateAppend: %v", msgs)
+	log.Infof("changes: stateAppend: %d events", len(msgs))
 	if len(msgs) > 0 && sb.sendEvent != nil {
 		sb.sendEvent(&pb.Event{
 			Messages:  msgs,
@@ -365,7 +365,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	defer sb.Unlock()
 	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
 	sb.Doc = d
-	log.Infof("stateRebuild: %v", msgs)
+	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if e != nil {
 		// can't make diff - reopen doc
 		sb.Show(state.NewContext(sb.sendEvent))

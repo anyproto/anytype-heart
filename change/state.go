@@ -75,7 +75,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("build state (crdt): startId: %v; applyRoot: %v; changes: %d; dur: %v;", startId, applyRoot, count, time.Since(st))
+	log.Infof("build state (crdt): changes: %d; dur: %v;", count, time.Since(st))
 	return s, err
 }
 
