@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -53,6 +54,12 @@ func main() {
 		} else {
 			webaddr = defaultWebAddr
 		}
+	}
+
+	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
+		go func() {
+			http.ListenAndServe(debug, nil)
+		}()
 	}
 
 	var stopChan = make(chan os.Signal, 2)
