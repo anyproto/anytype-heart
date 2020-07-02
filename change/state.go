@@ -55,7 +55,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 	}
 	t.Iterate(startId, func(c *Change) (isContinue bool) {
 		count++
-		if root.ChangeId() == c.Id {
+		if startId == c.Id {
 			s = root
 			if applyRoot {
 				s = s.NewState()
