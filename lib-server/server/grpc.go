@@ -60,6 +60,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	addr = lis.Addr().String()
+
+	webLis, err := net.Listen("tcp", webaddr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	webaddr = webLis.Addr().String()
 
 	server := grpc.NewServer()
 	lib.RegisterClientCommandsServer(server, mw)
@@ -77,6 +84,7 @@ func main() {
 	proxy := &http.Server{
 		Addr: webaddr,
 	}
+
 	proxy.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if webrpc.IsGrpcWebRequest(r) ||
 			webrpc.IsAcceptableGrpcCorsRequest(r) ||
@@ -85,18 +93,19 @@ func main() {
 		}
 	})
 
-	fmt.Println("gRPC server started at: " + addr)
 	go func() {
 		server.Serve(lis)
 	}()
+	fmt.Println("gRPC server started at: " + addr)
 
-	// do not change this, js client relies on this msg to ensure that server is up
-	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 	go func() {
-		if err := proxy.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := proxy.Serve(webLis); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("proxy error: %v", err)
 		}
 	}()
+
+	// do not change this, js client relies on this msg to ensure that server is up and parse address
+	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
 	select {
 	case <-stopChan:
