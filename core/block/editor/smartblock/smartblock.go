@@ -261,20 +261,25 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	var storeInfo struct {
-		details *types.Struct
-		snippet *string
-		links   []string
-	}
-
 	if act.Details != nil {
 		sb.meta.ReportChange(meta.Meta{
 			BlockId:        sb.Id(),
 			SmartBlockMeta: *sb.Meta(),
 		})
+	}
+	sb.updatePageStore(beforeSnippet, &act)
+	return
+}
+
+func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action) {
+	var storeInfo struct {
+		details *types.Struct
+		snippet *string
+		links   []string
+	}
+	if act != nil && act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
 	}
-
 	if hasDepIds(act) {
 		if sb.checkSubscriptions() {
 			storeInfo.links = make([]string, len(sb.depIds))
@@ -287,16 +292,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if beforeSnippet != afterSnippet {
 		storeInfo.snippet = &afterSnippet
 	}
-
 	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
 		if storeInfo.links != nil || storeInfo.details != nil || storeInfo.snippet != nil {
 			if e := at.PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet); e != nil {
 				log.Warnf("can't update pageStore info: %v", e)
 			}
-			log.Infof("pageStore: %s: %+v", sb.Id(), storeInfo)
 		}
 	}
-	return
 }
 
 func (sb *smartBlock) checkSubscriptions() (changed bool) {
@@ -342,11 +344,12 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
 	sb.Lock()
 	defer sb.Unlock()
+	beforeSnippet := sb.Doc.Snippet()
 	s, err := f(sb.Doc)
 	if err != nil {
 		return err
 	}
-	msgs, _, err := state.ApplyState(s)
+	msgs, act, err := state.ApplyState(s)
 	if err != nil {
 		return err
 	}
@@ -357,6 +360,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 			ContextId: sb.Id(),
 		})
 	}
+	sb.updatePageStore(beforeSnippet, &act)
 	return nil
 }
 
@@ -377,6 +381,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 			})
 		}
 	}
+	sb.updatePageStore("", nil)
 	return nil
 }
 
@@ -389,7 +394,10 @@ func (sb *smartBlock) Close() (err error) {
 	return
 }
 
-func hasDepIds(act history.Action) bool {
+func hasDepIds(act *history.Action) bool {
+	if act == nil {
+		return true
+	}
 	for _, edit := range act.Change {
 		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
 			return true

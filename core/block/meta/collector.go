@@ -16,7 +16,7 @@ func newCollector(ps *pubSub, id string) *collector {
 		ready:   make(chan struct{}),
 		quit:    make(chan struct{}),
 	}
-	go c.listener()
+	go c.fetchMeta()
 	log.Infof("metaListener started: %v", id)
 	return c
 }
@@ -88,68 +88,44 @@ func (c *collector) setMeta(d Meta) {
 }
 
 func (c *collector) fetchInitialMeta() (err error) {
-	defer func() {
-		if err == errEmpty {
-			return
-		}
+	c.m.Lock()
+	defer c.m.Unlock()
 
+	c.s, err = c.ps.newSource(c.blockId)
+	if err != nil {
+		return err
+	}
+	c.doc, err = c.s.ReadDetails(c)
+	if err != nil {
+		return err
+	}
+	c.lastMeta = Meta{
+		BlockId: c.blockId,
+		SmartBlockMeta: core.SmartBlockMeta{
+			Details: c.doc.Details(),
+		},
+	}
+	return nil
+}
+
+func (c *collector) fetchMeta() {
+	var i time.Duration
+	for {
+		err := c.fetchInitialMeta()
+		if err != nil {
+			i++
+			wait := time.Second * i
+			log.Infof("meta: %s: can't fetch initial meta: %v; - retry after %v", c.blockId, err, wait)
+			time.Sleep(wait)
+			continue
+		}
 		select {
 		case <-c.ready:
 			return
 		default:
 			close(c.ready)
 		}
-	}()
-	setCurrentMeta := func(meta core.SmartBlockMeta) {
-		c.m.Lock()
-		c.lastMeta = Meta{
-			BlockId:        c.blockId,
-			SmartBlockMeta: meta,
-		}
-		c.m.Unlock()
-	}
-
-	c.s, err = c.ps.newSource(c.blockId)
-	if err != nil {
-		setCurrentMeta(*notFoundMeta)
-		return errNotFound
-	}
-
-	c.doc, err = c.s.ReadDetails(c)
-	if err != nil {
-		setCurrentMeta(*notFoundMeta)
-		return errNotFound
-	}
-	setCurrentMeta(core.SmartBlockMeta{
-		Details: c.doc.Details(),
-	})
-	return nil
-}
-
-func (c *collector) listener() {
-	for {
-		err := c.fetchInitialMeta()
-		if err != nil {
-			if err == errNotFound {
-				log.Infof("meta: %s: block not found - listener exit", c.blockId)
-				return
-			}
-			log.Infof("meta: %s: can't fetch initial meta: %v; - retry", c.blockId, err)
-			time.Sleep(time.Second * 5)
-			continue
-		}
-		var ch = make(chan core.SmartBlockMetaChange)
-		for {
-			select {
-			case meta := <-ch:
-				c.setMeta(Meta{
-					BlockId:        c.blockId,
-					SmartBlockMeta: meta.SmartBlockMeta,
-				})
-			case <-c.quit:
-				return
-			}
-		}
+		return
 	}
 }
 
