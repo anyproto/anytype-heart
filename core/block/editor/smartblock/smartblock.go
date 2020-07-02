@@ -346,7 +346,17 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	if err != nil {
 		return err
 	}
-	return sb.Apply(s, NoHistory)
+	msgs, _, err := state.ApplyState(s)
+	if err != nil {
+		return err
+	}
+	if len(msgs) > 0 && sb.sendEvent != nil {
+		sb.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: sb.Id(),
+		})
+	}
+	return nil
 }
 
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
