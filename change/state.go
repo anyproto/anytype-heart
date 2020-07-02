@@ -56,9 +56,8 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 	t.Iterate(startId, func(c *Change) (isContinue bool) {
 		count++
 		if startId == c.Id {
-			s = root
+			s = root.NewState()
 			if applyRoot {
-				s = s.NewState()
 				s.ApplyChangeIgnoreErr(c.Change.Content...)
 				s.SetChangeId(c.Id)
 			}
@@ -76,7 +75,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("build state (crdt): changes: %d; dur: %v;", count, time.Since(st))
+	log.Infof("build state (crdt): startId: %v; applyRoot: %v; changes: %d; dur: %v;", startId, applyRoot, count, time.Since(st))
 	return s, err
 }
 
