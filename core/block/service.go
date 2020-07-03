@@ -131,6 +131,8 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
+	Reindex(id string) (err error)
+
 	Close() error
 }
 
@@ -810,6 +812,12 @@ func (s *service) BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBook
 		return err
 	})
 	return
+}
+
+func (s *service) Reindex(id string) (err error) {
+	return s.Do(id, func(b smartblock.SmartBlock) error {
+		return b.Reindex()
+	})
 }
 
 func (s *service) ProcessAdd(p process.Process) (err error) {

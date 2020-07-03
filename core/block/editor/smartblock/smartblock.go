@@ -53,6 +53,7 @@ type SmartBlock interface {
 	History() history.History
 	Anytype() anytype.Service
 	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
+	Reindex() error
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -267,11 +268,17 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
-	sb.updatePageStore(beforeSnippet, &act)
+	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return
 }
 
-func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action) {
+func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *history.Action) {
+	if e := sb.updatePageStore(beforeSnippet, act); e != nil {
+		log.Warnf("can't update pageStore info: %v", e)
+	}
+}
+
+func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action) (err error) {
 	var storeInfo struct {
 		details *types.Struct
 		snippet *string
@@ -294,11 +301,10 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action)
 	}
 	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
 		if storeInfo.links != nil || storeInfo.details != nil || storeInfo.snippet != nil {
-			if e := at.PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet); e != nil {
-				log.Warnf("can't update pageStore info: %v", e)
-			}
+			return at.PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet)
 		}
 	}
+	return nil
 }
 
 func (sb *smartBlock) checkSubscriptions() (changed bool) {
@@ -360,7 +366,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 			ContextId: sb.Id(),
 		})
 	}
-	sb.updatePageStore(beforeSnippet, &act)
+	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return nil
 }
 
@@ -381,8 +387,12 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 			})
 		}
 	}
-	sb.updatePageStore("", nil)
+	sb.updatePageStoreNoErr("", nil)
 	return nil
+}
+
+func (sb *smartBlock) Reindex() (err error) {
+	return sb.updatePageStore("", nil)
 }
 
 func (sb *smartBlock) Close() (err error) {
