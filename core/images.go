@@ -18,10 +18,8 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}
 
 	if len(files) == 0 {
-		a.files.KeysCacheMutex.RLock()
-		defer a.files.KeysCacheMutex.RUnlock()
 		// info from ipfs
-		files, err = a.files.FileIndexInfo(ctx, hash, a.files.KeysCache[hash])
+		files, err = a.files.FileIndexInfo(ctx, hash)
 		if err != nil {
 			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrImageNotFound

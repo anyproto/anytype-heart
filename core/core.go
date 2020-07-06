@@ -49,7 +49,7 @@ const (
 )
 
 var BootstrapNodes = []string{
-	"/ip4/161.35.18.3/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",            // fra1
+	"/ip4/54.93.109.23/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",           // fra1
 	"/dns4/bootstrap2.anytype.io/tcp/4001/p2p/QmSxuiczQTjgj5agSoNtp4esSsj64RisDyKt2MCZQsKZUx", // sfo1
 	"/dns4/bootstrap3.anytype.io/tcp/4001/p2p/QmUdDTWzgdcf4cM4aHeihoYSUfQJJbLVLTZFZvm1b46NNT", // sgp1
 }
@@ -104,6 +104,8 @@ type Service interface {
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
 	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)     // deprecated
 	FileAddWithReader(ctx context.Context, content io.Reader, filename string) (File, error) // deprecated
+	FileGetKeys(hash string) (*FileKeys, error)
+	FileStoreKeys(fileKeys ...FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)

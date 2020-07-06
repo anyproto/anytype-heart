@@ -34,6 +34,8 @@ type LocalStore struct {
 type FileStore interface {
 	Indexable
 	Add(file *storage.FileInfo) error
+	AddFileKeys(fileKeys ...FileKeys) error
+	GetFileKeys(hash string) (map[string]string, error)
 	GetByHash(hash string) (*storage.FileInfo, error)
 	GetBySource(mill string, source string, opts string) (*storage.FileInfo, error)
 	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
@@ -42,6 +44,7 @@ type FileStore interface {
 	ListByTarget(target string) ([]*storage.FileInfo, error)
 	Count() (int, error)
 	DeleteByHash(hash string) error
+	DeleteFileKeys(hash string) error
 }
 
 type PageStore interface {

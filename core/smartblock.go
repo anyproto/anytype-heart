@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/proto"
@@ -215,13 +213,8 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 	if err != nil {
 		return
 	}
-	block.node.files.KeysCacheMutex.Lock()
-	defer block.node.files.KeysCacheMutex.Unlock()
-	for _, snapshot := range snapshotsPB {
-		for k, v := range snapshot.KeysByHash {
-			block.node.files.KeysCache[k] = v.KeysByPath
-		}
 
+	for _, snapshot := range snapshotsPB {
 		snapshots = append(snapshots, smartBlockSnapshot{
 
 			blocks:  snapshot.Blocks,
@@ -239,34 +232,6 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 	}
 
 	return
-}
-
-func (block *smartBlock) getAllFileKeys(blocks []*model.Block) map[string]*storage.FileKeys {
-	fileKeys := make(map[string]*storage.FileKeys)
-	block.node.files.KeysCacheMutex.RLock()
-	defer block.node.files.KeysCacheMutex.RUnlock()
-
-	for _, b := range blocks {
-		if file, ok := b.Content.(*model.BlockContentOfFile); ok {
-			if file.File.Hash == "" {
-				continue
-			}
-
-			if keys, exists := block.node.files.KeysCache[file.File.Hash]; exists {
-				fileKeys[file.File.Hash] = &storage.FileKeys{keys}
-			} else {
-				// in case we don't have keys cached fot this file
-				fileKeysRestored, err := block.node.files.FileRestoreKeys(context.TODO(), file.File.Hash)
-				if err != nil {
-					log.Errorf("failed to restore file keys: %w", err)
-				} else {
-					fileKeys[file.File.Hash] = &storage.FileKeys{fileKeysRestored}
-				}
-			}
-		}
-	}
-
-	return fileKeys
 }
 
 func (block *smartBlock) PushRecord(payload proto.Message) (id string, err error) {
@@ -293,92 +258,6 @@ func (block *smartBlock) PushRecord(payload proto.Message) (id string, err error
 
 	log.Debugf("SmartBlock.PushRecord: blockId = %s", block.ID())
 	return rec.Value().Cid().String(), nil
-}
-
-func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta, blocks []*model.Block) (SmartBlockSnapshot, error) {
-	// todo: we don't need to increment here
-	// temporally increment the vclock until we don't have changes implemented
-	state.Increment(block.thread.GetOwnLog().ID.String())
-
-	model := &storage.SmartBlockSnapshot{
-		State:      state.Map(),
-		ClientTime: time.Now().Unix(),
-		KeysByHash: block.getAllFileKeys(blocks),
-	}
-
-	if meta != nil && meta.Details != nil {
-		model.Details = meta.Details
-	}
-
-	if blocks != nil {
-		model.Blocks = blocks
-	}
-
-	var err error
-	recID, user, date, err := block.pushSnapshot(model)
-	if err != nil {
-		return nil, err
-	}
-
-	snapshot := &smartBlockSnapshot{
-		blocks:  model.Blocks,
-		details: model.Details,
-
-		state:    state,
-		threadID: block.thread.ID,
-		recordID: recID,
-
-		eventID: cid.Cid{}, // todo: extract eventId
-		key:     block.thread.Key.Read(),
-		creator: user,
-		date:    date,
-		node:    block.node,
-	}
-
-	err = block.indexSnapshot(snapshot)
-	if err != nil {
-		return nil, err
-	}
-
-	return snapshot, nil
-}
-
-func (block *smartBlock) pushSnapshot(newSnapshot *storage.SmartBlockSnapshot) (recID cid.Cid, user string, date *types.Timestamp, err error) {
-	var newSnapshotB []byte
-	newSnapshotB, err = proto.Marshal(newSnapshot)
-	if err != nil {
-		return
-	}
-
-	payload, err2 := newSignedPayload(newSnapshotB, block.node.opts.Account)
-	if err2 != nil {
-		err = err2
-		return
-	}
-
-	body, err2 := cbornode.WrapObject(payload, mh.SHA2_256, -1)
-	if err2 != nil {
-		err = err2
-		return
-	}
-
-	_, err = block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
-	if err != nil {
-		log.Errorf("failed to create record: %w", err)
-		return
-	}
-
-	log.Debugf("SmartBlock.addSnapshot: blockId = %s", block.ID())
-	return
-}
-
-func (block *smartBlock) EmptySnapshot() SmartBlockSnapshot {
-	return &smartBlockSnapshot{
-		blocks: []*model.Block{},
-
-		threadID: block.thread.ID,
-		node:     block.node,
-	}
 }
 
 func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordWithLogID) (cancel func(), err error) {

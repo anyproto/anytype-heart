@@ -499,6 +499,7 @@ func (LinkPreviewType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_47d1277a02da26d7, []int{5, 0}
 }
 
+// deprecated
 type SmartBlockSnapshotBase struct {
 	Blocks   []*Block      `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
 	Details  *types.Struct `protobuf:"bytes,2,opt,name=details,proto3" json:"details,omitempty"`
