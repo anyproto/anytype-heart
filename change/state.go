@@ -60,12 +60,14 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 			if applyRoot {
 				s.ApplyChangeIgnoreErr(c.Change.Content...)
 				s.SetChangeId(c.Id)
+				s.AddFileKeys(c.FileKeys...)
 			}
 			return true
 		}
 		ns := s.NewState()
 		ns.ApplyChangeIgnoreErr(c.Change.Content...)
 		ns.SetChangeId(c.Id)
+		s.AddFileKeys(c.FileKeys...)
 		_, _, err = state.ApplyStateFastOne(ns)
 		if err != nil {
 			return false
@@ -100,6 +102,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 				if err = s.ApplyChange(c.Change.Content...); err != nil {
 					return false
 				}
+				s.AddFileKeys(c.FileKeys...)
 				count++
 			}
 			sc.Set(c.Id, s, len(c.Next))
@@ -111,6 +114,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
+			s.AddFileKeys(c.FileKeys...)
 			count++
 			s.SetChangeId(c.Id)
 			if branchLevel == 0 {
@@ -132,6 +136,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
+			s.AddFileKeys(c.FileKeys...)
 			count++
 			s.SetChangeId(c.Id)
 			if branchLevel == 0 {

@@ -20,6 +20,8 @@
     - [Change.Content](#anytype.Change.Content)
     - [Change.DetailsSet](#anytype.Change.DetailsSet)
     - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
+    - [Change.FileKeys](#anytype.Change.FileKeys)
+    - [Change.FileKeys.KeysEntry](#anytype.Change.FileKeys.KeysEntry)
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
@@ -742,6 +744,7 @@ the element of change tree used to store and internal apply smartBlock history
 | previous_details_ids | [string](#string) | repeated | ids of the last changes with details content |
 | content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
 | snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the content will ignoring |
+| fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | file keys related to changes content |
 
 
 
@@ -881,6 +884,38 @@ the element of change tree used to store and internal apply smartBlock history
 
 
 
+<a name="anytype.Change.FileKeys"></a>
+
+### Change.FileKeys
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| hash | [string](#string) |  |  |
+| keys | [Change.FileKeys.KeysEntry](#anytype.Change.FileKeys.KeysEntry) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Change.FileKeys.KeysEntry"></a>
+
+### Change.FileKeys.KeysEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Change.Snapshot"></a>
 
 ### Change.Snapshot
@@ -891,6 +926,7 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | logHeads | [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry) | repeated | logId -&gt; lastChangeId |
 | data | [model.SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase) |  | snapshot data |
+| fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | all file keys related to doc |
 
 
 
@@ -9062,7 +9098,7 @@ General purpose structure, uses in Mark.
 <a name="anytype.model.SmartBlockSnapshotBase"></a>
 
 ### SmartBlockSnapshotBase
-
+deprecated
 
 
 | Field | Type | Label | Description |

@@ -41,7 +41,7 @@ func (v *virtual) ReadDetails(_ ChangeReceiver) (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }
 
-func (v *virtual) PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error) {
+func (v *virtual) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string) (id string, err error) {
 	return "", nil
 }
 

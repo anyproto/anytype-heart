@@ -1,6 +1,8 @@
 package state
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -44,6 +46,25 @@ func (s *State) ApplyChange(changes ...*pb.ChangeContent) (err error) {
 	return
 }
 
+func (s *State) AddFileKeys(keys ...*pb.ChangeFileKeys) {
+	for _, k := range keys {
+		if k != nil {
+			s.fileKeys = append(s.fileKeys, *k)
+		}
+	}
+}
+
+func (s *State) GetFileKeys() (keys []pb.ChangeFileKeys) {
+	if s.parent != nil {
+		keys = s.parent.GetFileKeys()
+	}
+	if len(s.fileKeys) > 0 {
+		keys = append(keys, s.fileKeys...)
+		s.fileKeys = s.fileKeys[:0]
+	}
+	return
+}
+
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
@@ -79,6 +100,8 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
 			return
 		}
+	default:
+		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
 	return
 }

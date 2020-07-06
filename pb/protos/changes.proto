@@ -19,12 +19,21 @@ message Change {
     repeated Content content = 3;
     // snapshot - when not null, the content will ignoring
     Snapshot snapshot = 4;
+    // file keys related to changes content
+    repeated FileKeys fileKeys = 6;
 
     message Snapshot {
         // logId -> lastChangeId
         map<string, string> logHeads = 1;
         // snapshot data
         anytype.model.SmartBlockSnapshotBase data = 2;
+        // all file keys related to doc
+        repeated FileKeys fileKeys = 3;
+    }
+
+    message FileKeys {
+        string hash = 1;
+        map<string, string> keys = 2;
     }
 
     message Content {

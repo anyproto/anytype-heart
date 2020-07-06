@@ -97,6 +97,7 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 	}
 	sb.source = s
 	sb.hist = history.NewHistory(0)
+	sb.storeFileKeys()
 	return sb.checkRootBlock()
 }
 
@@ -243,7 +244,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
-	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes...)
+	fileHashes := getChangedFileHashes(act)
+	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes)
 	if err != nil {
 		return
 	}
@@ -366,6 +368,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 			ContextId: sb.Id(),
 		})
 	}
+	sb.storeFileKeys()
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return nil
 }
@@ -387,6 +390,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 			})
 		}
 	}
+	sb.storeFileKeys()
 	sb.updatePageStoreNoErr("", nil)
 	return nil
 }
@@ -427,4 +431,35 @@ func hasDepIds(act *history.Action) bool {
 		}
 	}
 	return false
+}
+
+func getChangedFileHashes(act history.Action) (hashes []string) {
+	for _, nb := range act.Add {
+		if fh, ok := nb.(simple.FileHashes); ok {
+			hashes = fh.FillFileHashes(hashes)
+		}
+	}
+	for _, eb := range act.Change {
+		if fh, ok := eb.After.(simple.FileHashes); ok {
+			hashes = fh.FillFileHashes(hashes)
+		}
+	}
+	return
+}
+
+func (sb *smartBlock) storeFileKeys() {
+	keys := sb.Doc.GetFileKeys()
+	if len(keys) == 0 {
+		return
+	}
+	fileKeys := make([]core.FileKeys, len(keys))
+	for i, k := range keys {
+		fileKeys[i] = core.FileKeys{
+			Hash: k.Hash,
+			Keys: k.Keys,
+		}
+	}
+	if err := sb.Anytype().FileStoreKeys(fileKeys...); err != nil {
+		log.Warnf("can't ctore file keys: %v", err)
+	}
 }

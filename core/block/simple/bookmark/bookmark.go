@@ -33,6 +33,7 @@ func NewBookmark(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
+	simple.FileHashes
 	Fetch(params FetchParams) (err error)
 	SetLinkPreview(data model.LinkPreview)
 	SetImageHash(hash string)
@@ -201,6 +202,16 @@ func fetcher(id string, params FetchParams) {
 			}
 		}()
 	}
+}
+
+func (f *Bookmark) FillFileHashes(hashes []string) []string {
+	if f.content.ImageHash != "" {
+		hashes = append(hashes, f.content.ImageHash)
+	}
+	if f.content.FaviconHash != "" {
+		hashes = append(hashes, f.content.FaviconHash)
+	}
+	return hashes
 }
 
 func loadImage(stor anytype.Service, url string) (hash string, err error) {

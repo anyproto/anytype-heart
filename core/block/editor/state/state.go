@@ -35,6 +35,7 @@ type Doc interface {
 	Details() *types.Struct
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
+	GetFileKeys() []pb.ChangeFileKeys
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -55,6 +56,7 @@ type State struct {
 	newIds   []string
 	changeId string
 	changes  []*pb.ChangeContent
+	fileKeys []pb.ChangeFileKeys
 	details  *types.Struct
 
 	changesStructureIgnoreIds []string
@@ -342,6 +344,9 @@ func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.A
 			s.parent.details = s.details
 		}
 	}
+	if s.parent != nil && len(s.fileKeys) > 0 {
+		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -355,6 +360,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.details != nil {
 		s.parent.details = s.details
+	}
+	if len(s.fileKeys) > 0 {
+		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
 	return
@@ -474,4 +482,14 @@ func (s *State) Snippet() (snippet string) {
 		return true
 	})
 	return text.Truncate(snippet, snippetMaxSize)
+}
+
+func (s *State) GetAllFileHashes() (hashes []string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if fh, ok := b.(simple.FileHashes); ok {
+			hashes = fh.FillFileHashes(hashes)
+		}
+		return true
+	})
+	return
 }

@@ -28,6 +28,10 @@ type Block interface {
 	Copy() Block
 }
 
+type FileHashes interface {
+	FillFileHashes(hashes []string) []string
+}
+
 func New(block *model.Block) (b Block) {
 	if block.Id == "" {
 		block.Id = bson.NewObjectId().Hex()

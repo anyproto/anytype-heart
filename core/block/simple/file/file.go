@@ -29,6 +29,7 @@ func NewFile(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
+	simple.FileHashes
 	Upload(stor anytype.Service, updater Updater, localPath, url string) (err error)
 	SetFileData(hash string, meta core.FileMeta)
 	SetImage(hash, name string)
@@ -164,4 +165,11 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 		f.content.Size_ = e.Size_.GetValue()
 	}
 	return nil
+}
+
+func (f *File) FillFileHashes(hashes []string) []string {
+	if f.content.Hash != "" {
+		return append(hashes, f.content.Hash)
+	}
+	return hashes
 }

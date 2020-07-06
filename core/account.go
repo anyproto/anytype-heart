@@ -162,7 +162,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	anytypeService, err := core.New(mw.rootPath, account.Address())
+	anytypeService, err := core.New(mw.rootPath, account.Address(), mw.reindexDoc)
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -333,7 +333,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	mw.accountsRecoveryInProgress = ch
 	defer close(ch)
 
-	c, err := core.New(mw.rootPath, zeroAccount.Address())
+	c, err := core.New(mw.rootPath, zeroAccount.Address(), mw.reindexDoc)
 	if err != nil {
 		mw.m.Unlock()
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -511,7 +511,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			}
 		}
 
-		anytype, err := core.New(mw.rootPath, req.Id)
+		anytype, err := core.New(mw.rootPath, req.Id, mw.reindexDoc)
 		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}

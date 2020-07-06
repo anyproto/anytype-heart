@@ -27,7 +27,7 @@ type Source interface {
 	Type() pb.SmartBlockType
 	ReadDoc(receiver ChangeReceiver) (doc state.Doc, err error)
 	ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
-	PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error)
+	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string) (id string, err error)
 	Close() (err error)
 }
 
@@ -133,7 +133,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	return
 }
 
-func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id string, err error) {
+func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string) (id string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var c = &pb.Change{
@@ -148,9 +148,11 @@ func (s *source) PushChange(st *state.State, changes ...*pb.ChangeContent) (id s
 				Blocks:  st.Blocks(),
 				Details: st.Details(),
 			},
+			FileKeys: s.getFileKeysByHashes(st.GetAllFileHashes()),
 		}
 	}
 	c.Content = changes
+	c.FileKeys = s.getFileKeysByHashes(fileChangedHashes)
 
 	if id, err = s.sb.PushRecord(c); err != nil {
 		return
@@ -238,6 +240,22 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 		return s.receiver.StateRebuild(doc.(*state.State))
 	}
 	return
+}
+
+func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
+	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
+	for _, h := range hashes {
+		fk, err := s.a.FileGetKeys(h)
+		if err != nil {
+			log.Warnf("can't get file key for hash: %v: %v", h, err)
+			continue
+		}
+		fileKeys = append(fileKeys, &pb.ChangeFileKeys{
+			Hash: fk.Hash,
+			Keys: fk.Keys,
+		})
+	}
+	return fileKeys
 }
 
 func (s *source) Close() (err error) {
