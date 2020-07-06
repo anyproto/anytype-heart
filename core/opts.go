@@ -22,6 +22,7 @@ type ServiceOptions struct {
 	Offline               bool
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
+	ReindexFunc           func(smartblockId string) error
 	WebGatewaySnapshotUri string
 }
 
@@ -114,6 +115,13 @@ func WithIPFSNode(node ipfs.IPFS) ServiceOption {
 func WithNetBootstrapper(n net.NetBoostrapper) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.NetBootstraper = n
+		return nil
+	}
+}
+
+func WithReindexFunc(f func(smartblockId string) error) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.ReindexFunc = f
 		return nil
 	}
 }

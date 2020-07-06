@@ -221,12 +221,13 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	return a, nil
 }
 
-func New(rootPath string, account string) (Service, error) {
+func New(rootPath string, account string, reIndexFunc func(id string) error) (Service, error) {
 	opts, err := getNewConfig(rootPath, account)
 	if err != nil {
 		return nil, err
 	}
 
+	opts = append(opts, WithReindexFunc(reIndexFunc))
 	return NewFromOptions(opts...)
 }
 
