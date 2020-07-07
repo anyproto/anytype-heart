@@ -25,6 +25,8 @@ const (
 	snippetMaxSize = 300
 )
 
+var DetailsFileFields = [...]string{"coverId", "iconImage"}
+
 type Doc interface {
 	RootId() string
 	NewState() *State
@@ -491,5 +493,14 @@ func (s *State) GetAllFileHashes() (hashes []string) {
 		}
 		return true
 	})
+	det := s.Details()
+	if det == nil || det.Fields == nil {
+		return
+	}
+	for _, field := range DetailsFileFields {
+		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
+			hashes = append(hashes, v.GetStringValue())
+		}
+	}
 	return
 }

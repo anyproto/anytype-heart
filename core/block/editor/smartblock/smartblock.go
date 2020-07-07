@@ -444,6 +444,16 @@ func getChangedFileHashes(act history.Action) (hashes []string) {
 			hashes = fh.FillFileHashes(hashes)
 		}
 	}
+	if act.Details != nil {
+		det := act.Details.After
+		if det != nil && det.Fields != nil {
+			for _, field := range state.DetailsFileFields {
+				if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
+					hashes = append(hashes, v.GetStringValue())
+				}
+			}
+		}
+	}
 	return
 }
 
