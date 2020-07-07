@@ -12,6 +12,7 @@ import (
 )
 
 func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_ListenEventsServer) {
+	mw.m.Lock()
 	mw.debugGrpcEventSenderMutex.Lock()
 	if mw.debugGrpcEventSender != nil {
 		close(mw.debugGrpcEventSender)
@@ -22,6 +23,7 @@ func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_Listen
 	mw.SendEvent = func(event *pb.Event) {
 		server.Send(event)
 	}
+	mw.m.Unlock()
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
