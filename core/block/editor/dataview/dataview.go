@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/schema"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -14,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/santhosh-tekuri/jsonschema/v2"
 )
 
 const defaultViewName = "Untitled"
@@ -180,7 +180,7 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	}
 
 	if len(view.Relations) == 0 {
-		sch, err := d.Anytype().GetSchema(tb.Model().GetDataview().SchemaURL)
+		sch, err := schema.Get(tb.Model().GetDataview().SchemaURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get schema %s for dataview: %s", tb.Model().GetDataview().SchemaURL, err.Error())
 		}
@@ -250,10 +250,11 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	var msgs []*pb.EventMessage
 
 	entries, total, err := db.Query(database.Query{
-		Filters: activeView.Filters,
-		Sorts:   activeView.Sorts,
-		Limit:   dv.limit,
-		Offset:  dv.offset,
+		Relations: activeView.Relations,
+		Filters:   activeView.Filters,
+		Sorts:     activeView.Sorts,
+		Limit:     dv.limit,
+		Offset:    dv.offset,
 	})
 
 	updated, removed, insertedGroupedByPosition := calculateEntriesDiff(dv.entries, entries)
@@ -304,28 +305,17 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	return msgs, nil
 }
 
-func getDefaultRelations(schema *jsonschema.Schema) []*model.BlockContentDataviewRelation {
+func getDefaultRelations(schema *schema.Schema) []*model.BlockContentDataviewRelation {
 	var relations []*model.BlockContentDataviewRelation
 
-	if defaults, ok := schema.Default.([]interface{}); ok {
-		for _, def := range defaults {
-			if v, ok := def.(map[string]interface{}); ok {
-				if isHidden, exists := v["isHidden"]; exists {
-					if v, ok := isHidden.(bool); ok {
-						if v {
-							continue
-						}
-					}
-				}
-
-				relations = append(relations,
-					&model.BlockContentDataviewRelation{
-						Id:        v["id"].(string),
-						IsVisible: true,
-					})
-			}
-		}
+	for _, rel := range schema.Default {
+		relations = append(relations,
+			&model.BlockContentDataviewRelation{
+				Id:        rel.ID,
+				IsVisible: !rel.IsHidden,
+			})
 	}
+
 	return relations
 }
 

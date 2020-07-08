@@ -54,6 +54,7 @@ func (p *Set) init() (err error) {
 		return
 	}
 	// add archive link
+	relations := []*model.BlockContentDataviewRelation{{Id: "id", IsVisible: false}, {Id: "name", IsVisible: true}, {Id: "lastOpened", IsVisible: true}, {Id: "lastModified", IsVisible: true}, {Id: "isArchived", IsVisible: false}}
 	dataview := simple.New(&model.Block{
 		Content: &model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
@@ -70,7 +71,7 @@ func (p *Set) init() (err error) {
 								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
+						Relations: relations,
 						Filters:   nil,
 					},
 					{
@@ -83,7 +84,7 @@ func (p *Set) init() (err error) {
 								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
+						Relations: relations,
 						Filters:   nil,
 					},
 					{
@@ -96,7 +97,7 @@ func (p *Set) init() (err error) {
 								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
+						Relations: relations,
 						Filters:   nil,
 					},
 					{
@@ -109,7 +110,7 @@ func (p *Set) init() (err error) {
 								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
+						Relations: relations,
 						Filters:   nil,
 					},
 				},
