@@ -152,3 +152,7 @@ build-js: setup-go build-server protos-js
 install-dev-js: build-js
 	cp -r dist/server ../js-anytype/dist/anytypeHelper
 	cp -r dist/js/pb/* ../js-anytype/dist/lib
+	cp -r dist/js/pb/* ../js-anytype/dist/lib
+	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
+	cp -R $(LIBRARY_PATH)/schema/* ../js-anytype/src/json/schema
+	chmod -R 755 ../js-anytype/src/json/schema/*
