@@ -60,3 +60,7 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 func (a *Anytype) PageUpdateLastOpened(id string) error {
 	return a.localStore.Pages.UpdateLastOpened(id)
 }
+
+func (a *Anytype) PageUpdateLastModified(id string) error {
+	return a.localStore.Pages.UpdateLastModified(id)
+}

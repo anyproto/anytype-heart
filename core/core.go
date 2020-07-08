@@ -115,6 +115,7 @@ type Service interface {
 	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
 	PageList() ([]*model.PageInfo, error)
 	PageUpdateLastOpened(id string) error
+	PageUpdateLastModified(id string) error
 
 	DatabaseByID(id string) (database.Database, error)
 }

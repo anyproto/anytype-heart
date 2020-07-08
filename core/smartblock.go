@@ -279,6 +279,10 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 	// todo: we don't need to increment here
 	// temporally increment the vclock until we don't have changes implemented
 	state.Increment(block.thread.GetOwnLog().ID.String())
+	err := block.node.PageUpdateLastModified(block.ID())
+	if err != nil {
+		log.Errorf("failed to update last modified for the page %s: %s", block.ID(), err.Error())
+	}
 
 	model := &storage.SmartBlockSnapshot{
 		State:      state.Map(),
@@ -294,7 +298,6 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		model.Blocks = blocks
 	}
 
-	var err error
 	recID, user, date, err := block.pushSnapshot(model)
 	if err != nil {
 		return nil, err

@@ -57,6 +57,7 @@ type PageStore interface {
 	UpdateDetails(state *model.State, id string, details *model.PageDetails) error
 	UpdateSnippet(state *model.State, id string, snippet string) error
 	UpdateLastOpened(id string) error
+	UpdateLastModified(id string) error
 	Delete(id string) error
 }
 
