@@ -322,15 +322,18 @@ func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.A
 	s.fillChanges(msgs)
 
 	// apply to parent
-	for _, b := range s.blocks {
+	for _, id := range toRemove {
 		if s.parent != nil {
-			s.parent.blocks[b.Model().Id] = b
+			action.Remove = append(action.Remove, s.PickOrigin(id).Copy())
+			delete(s.parent.blocks, id)
 		}
 	}
-	for _, id := range toRemove {
-		action.Remove = append(action.Remove, s.Pick(id))
+	for _, b := range s.blocks {
 		if s.parent != nil {
-			delete(s.parent.blocks, id)
+			id := b.Model().Id
+			if _, ok := inUse[id]; ok {
+				s.parent.blocks[id] = b
+			}
 		}
 	}
 	if s.parent != nil {
