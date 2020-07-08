@@ -2,7 +2,10 @@ package change
 
 import (
 	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 )
 
 func NewChangeFromRecord(record core.SmartblockRecordWithLogID) (*Change, error) {
@@ -43,4 +46,23 @@ func (ch *Change) HasDetails() bool {
 		}
 	}
 	return false
+}
+
+func NewSnapshotChange(blocks []*model.Block, details *types.Struct, fileKeys []*core.FileKeys) proto.Marshaler {
+	fkeys := make([]*pb.ChangeFileKeys, 0, len(fileKeys))
+	for i, k := range fileKeys {
+		fkeys[i] = &pb.ChangeFileKeys{
+			Hash: k.Hash,
+			Keys: k.Keys,
+		}
+	}
+	return &pb.Change{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks:  blocks,
+				Details: details,
+			},
+			FileKeys: fkeys,
+		},
+	}
 }
