@@ -233,7 +233,8 @@ func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 		}
 		sh, err := sb.getNearSnapshot(l.Head)
 		if err != nil {
-			return nil, err
+			log.Warnf("can't get near snapshot: %v; ignore", err)
+			continue
 		}
 		if sh.Snapshot.LogHeads != nil {
 			for _, headId := range sh.Snapshot.LogHeads {
@@ -247,6 +248,9 @@ func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 		} else {
 			heads = append(heads, l.Head)
 		}
+	}
+	if len(heads) == 0 {
+		return nil, fmt.Errorf("no usable logs in head")
 	}
 	return
 }
