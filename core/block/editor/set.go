@@ -74,45 +74,6 @@ func (p *Set) init() (err error) {
 						Relations: relations,
 						Filters:   nil,
 					},
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Gallery,
-						Name: "Gallery",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: relations,
-						Filters:   nil,
-					},
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Kanban,
-						Name: "Kanban",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: relations,
-						Filters:   nil,
-					},
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_List,
-						Name: "List",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: relations,
-						Filters:   nil,
-					},
 				},
 			},
 		},
