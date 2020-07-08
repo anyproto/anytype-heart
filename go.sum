@@ -37,6 +37,8 @@ github.com/anytypeio/go-anytype-library v0.9.1-0.20200708074120-eba5f638c60b h1:
 github.com/anytypeio/go-anytype-library v0.9.1-0.20200708074120-eba5f638c60b/go.mod h1:UlfP0hsjHqIXQD4M4EvwKAi60YavZCjDFG+s7WRfYLM=
 github.com/anytypeio/go-anytype-library v0.9.1-0.20200708082533-70661e5a60ba h1:KArn0NmZDvZKEtEcKlATDOzHzlft08nu2yMJv0I/fQc=
 github.com/anytypeio/go-anytype-library v0.9.1-0.20200708082533-70661e5a60ba/go.mod h1:UlfP0hsjHqIXQD4M4EvwKAi60YavZCjDFG+s7WRfYLM=
+github.com/anytypeio/go-anytype-library v0.9.1-0.20200708093242-264a8eef640f h1:44GXWs4V5pohg/Q88qtq5OG482TcDNFguyq2k9IasKc=
+github.com/anytypeio/go-anytype-library v0.9.1-0.20200708093242-264a8eef640f/go.mod h1:UlfP0hsjHqIXQD4M4EvwKAi60YavZCjDFG+s7WRfYLM=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW52i65PtLFBr5Q5k6RskIY8L70pgnBcnWo=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
