@@ -26,7 +26,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/santhosh-tekuri/jsonschema/v2"
 	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/db"
 	net2 "github.com/textileio/go-threads/net"
@@ -117,7 +116,6 @@ type Service interface {
 	PageList() ([]*model.PageInfo, error)
 	PageUpdateLastOpened(id string) error
 
-	GetSchema(url string) (*jsonschema.Schema, error)
 	DatabaseByID(id string) (database.Database, error)
 }
 
@@ -388,10 +386,6 @@ func (a *Anytype) Stop() error {
 	}
 
 	return nil
-}
-
-func (a *Anytype) GetSchema(url string) (*jsonschema.Schema, error) {
-	return jsonSchemaCompiler.Compile(url)
 }
 
 func (a *Anytype) DatabaseByID(id string) (database.Database, error) {

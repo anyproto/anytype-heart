@@ -19,11 +19,12 @@ import (
 
 var (
 	// PageInfo is stored in db key pattern:
-	pagesPrefix         = "pages"
-	pagesDetailsBase    = ds.NewKey("/" + pagesPrefix + "/details")
-	pagesSnippetBase    = ds.NewKey("/" + pagesPrefix + "/snippet")
-	pagesLastStateBase  = ds.NewKey("/" + pagesPrefix + "/state")
-	pagesLastOpenedBase = ds.NewKey("/" + pagesPrefix + "/lastopened")
+	pagesPrefix           = "pages"
+	pagesDetailsBase      = ds.NewKey("/" + pagesPrefix + "/details")
+	pagesSnippetBase      = ds.NewKey("/" + pagesPrefix + "/snippet")
+	pagesLastStateBase    = ds.NewKey("/" + pagesPrefix + "/state")
+	pagesLastOpenedBase   = ds.NewKey("/" + pagesPrefix + "/lastopened")
+	pagesLastModifiedBase = ds.NewKey("/" + pagesPrefix + "/lastmodified")
 
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
@@ -66,7 +67,7 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 	}
 	defer txn.Discard()
 
-	dsq := q.DSQuery()
+	dsq := q.DSQuery(m.Schema())
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
@@ -102,10 +103,13 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
 		lastOpenedTS, _ := getLastOpened(txn, id)
+		lastModifiedTS, _ := getLastModified(txn, id)
+
 		if details.Details == nil || details.Details.Fields == nil {
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		}
 
+		details.Details.Fields["lastModified"] = pb.ToValue(lastModifiedTS)
 		details.Details.Fields["lastOpened"] = pb.ToValue(lastOpenedTS)
 		details.Details.Fields["id"] = pb.ToValue(id)
 
@@ -213,6 +217,11 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, fmt.Errorf("failed to get last opened: %w", err)
 	}
 
+	lastModified, err := getLastModified(txn, id)
+	if err != nil && err != ds.ErrNotFound {
+		return nil, fmt.Errorf("failed to get last opened: %w", err)
+	}
+
 	inboundResults, err := txn.Query(query.Query{
 		Prefix:   pagesInboundLinksBase.String() + "/" + id + "/",
 		Limit:    1, // we only need to know if there is at least 1 inbound link
@@ -227,7 +236,7 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
-	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened, HasInboundLinks: inboundLinks == 1}, nil
+	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), State: &state, LastOpened: lastOpened, LastModified: lastModified, HasInboundLinks: inboundLinks == 1}, nil
 }
 
 func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
@@ -659,7 +668,15 @@ func (m *dsPageStore) Delete(id string) error {
 	return txn.Commit()
 }
 
+func (m *dsPageStore) UpdateLastModified(id string) error {
+	return m.updateTime(pagesLastModifiedBase.ChildString(id), time.Now())
+}
+
 func (m *dsPageStore) UpdateLastOpened(id string) error {
+	return m.updateTime(pagesLastOpenedBase.ChildString(id), time.Now())
+}
+
+func (m *dsPageStore) updateTime(key ds.Key, time time.Time) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error when creating txn in datastore: %w", err)
@@ -667,18 +684,26 @@ func (m *dsPageStore) UpdateLastOpened(id string) error {
 	defer txn.Discard()
 
 	var b = make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(time.Now().Unix()))
+	binary.LittleEndian.PutUint64(b, uint64(time.Unix()))
 
-	err = txn.Put(pagesLastOpenedBase.ChildString(id), b)
-	if err != nil {
-		return err
-	}
-
+	err = txn.Put(key, b)
 	return txn.Commit()
+
 }
 
 func getLastOpened(txn ds.Txn, id string) (int64, error) {
 	b, err := txn.Get(pagesLastOpenedBase.ChildString(id))
+	if err != nil {
+		return 0, err
+	}
+
+	ts := binary.LittleEndian.Uint64(b)
+
+	return int64(ts), nil
+}
+
+func getLastModified(txn ds.Txn, id string) (int64, error) {
+	b, err := txn.Get(pagesLastModifiedBase.ChildString(id))
 	if err != nil {
 		return 0, err
 	}

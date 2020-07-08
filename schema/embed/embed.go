@@ -28,9 +28,9 @@ func getSchemaIDFromReader(r io.Reader) (string, error) {
 }
 
 // Reads all .json files in the current folder
-// and encodes them as strings literals in schemas.go
+// and encodes them as strings literals in schemas.gen.go
 func main() {
-	out, err := os.OpenFile("schemas.go", os.O_WRONLY, 0644)
+	out, err := os.OpenFile("schemas.gen.go", os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
