@@ -43,11 +43,19 @@ var SchemaByURL = map[string]string{
     {
       "id": "isArchived",
       "name": "Archived",
+      "isHidden": true,
       "type": "https://anytype.io/schemas/types/checkbox"
     },
     {
       "id": "lastOpened",
-      "name": "Last opened date",
+      "name": "Last opened",
+      "isHidden": false,
+      "isReadonly": true,
+      "type": "https://anytype.io/schemas/types/date"
+    },
+    {
+      "id": "lastModified",
+      "name": "Last modified",
       "isHidden": false,
       "isReadonly": true,
       "type": "https://anytype.io/schemas/types/date"

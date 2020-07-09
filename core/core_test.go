@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/database"
@@ -103,11 +104,75 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 		Condition:  model.BlockContentDataviewFilter_Like,
 		Value:      structs.String("lock1"),
 	}},
+
 		Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
 
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.Equal(t, total, 1)
+
+	n := time.Now()
+	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
+
+	s.PageUpdateLastOpened(block1.ID())
+	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:   model.BlockContentDataviewFilter_And,
+		RelationId: "lastOpened",
+		Condition:  model.BlockContentDataviewFilter_Equal,
+		Value:      structs.Float64(float64(nowTruncatedToDay.Unix())),
+	}},
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.Equal(t, total, 1)
+
+	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:   model.BlockContentDataviewFilter_And,
+		RelationId: "lastModified",
+		Condition:  model.BlockContentDataviewFilter_Equal,
+		Value:      structs.Float64(float64(nowTruncatedToDay.Unix())),
+	}},
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	require.Equal(t, total, 2)
+
+	nextDay := time.Date(n.Year(), n.Month(), n.Day()+1, 0, 0, 0, 0, time.UTC)
+
+	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:   model.BlockContentDataviewFilter_And,
+		RelationId: "lastModified",
+		Condition:  model.BlockContentDataviewFilter_Less,
+		Value:      structs.Float64(float64(nextDay.Unix())),
+	}},
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	require.Equal(t, total, 2)
+
+	prevDay := time.Date(n.Year(), n.Month(), n.Day()-1, 0, 0, 0, 0, time.UTC)
+
+	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:   model.BlockContentDataviewFilter_And,
+		RelationId: "lastModified",
+		Condition:  model.BlockContentDataviewFilter_Greater,
+		Value:      structs.Float64(float64(prevDay.Unix())),
+	}},
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	require.Equal(t, total, 2)
+
+	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:   model.BlockContentDataviewFilter_And,
+		RelationId: "lastModified",
+		Condition:  model.BlockContentDataviewFilter_Greater,
+		Value:      structs.Float64(float64(nextDay.Unix())),
+	}},
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 0)
+	require.Equal(t, total, 0)
 }
 
 func TestAnytype_PredefinedBlocks(t *testing.T) {
