@@ -17,7 +17,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultViewName = "Untitled"
 const defaultLimit = 20
 
 var log = logging.Logger("anytype-mw-editor")
@@ -173,10 +172,6 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	tb, err := getDataviewBlock(s, id)
 	if err != nil {
 		return nil, err
-	}
-
-	if view.Name == "" {
-		view.Name = defaultViewName
 	}
 
 	if len(view.Relations) == 0 {
