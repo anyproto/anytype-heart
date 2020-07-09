@@ -64,7 +64,7 @@ func (p *Set) init() (err error) {
 					{
 						Id:   uuid.New().String(),
 						Type: model.BlockContentDataviewView_Table,
-						Name: "Table",
+						Name: "All pages",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationId: "name",
