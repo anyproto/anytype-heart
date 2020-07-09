@@ -137,6 +137,7 @@ func (s *Dataview) DeleteView(viewID string) error {
 	var found bool
 	for i, v := range s.content.Views {
 		if v.Id == viewID {
+			found = true
 			s.content.Views = append(s.content.Views[:i], s.content.Views[i+1:]...)
 			break
 		}
