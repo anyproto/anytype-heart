@@ -24,21 +24,31 @@ type TestCase struct {
 	Desc   string                   `json:"desc"`
 }
 
-func replaceFakeIds(blocks []*model.Block) {
-	var m = make(map[string]string, len(blocks))
+func replaceFakeIds(anySlot []*model.Block) (anySlotConverted []*model.Block) {
+	var oldToNew map[string]string
+	oldToNew = make(map[string]string)
 
-	for i, block := range blocks {
+	for i, _ := range anySlot {
+		var oldId = make([]byte, len(anySlot[i].Id))
+
 		newId := fmt.Sprintf("%d", i+1)
-		m[block.Id] = newId
-		block.Id = newId
+
+		copy(oldId, anySlot[i].Id)
+		oldToNew[string(oldId)] = newId
+		anySlot[i].Id = newId
 	}
 
-	for _, block := range blocks {
-		for j := range block.ChildrenIds {
-			block.ChildrenIds[j] = m[block.ChildrenIds[j]]
+	for i, _ := range anySlot {
+		cIds := []string{}
+		for _, cId := range anySlot[i].ChildrenIds {
+			if len(oldToNew[cId]) > 0 {
+				cIds = append(cIds, oldToNew[cId])
+			}
 		}
+		anySlot[i].ChildrenIds = cIds
 	}
 
+	return anySlot
 }
 
 func TestConvertHTMLToBlocks(t *testing.T) {
@@ -62,7 +72,7 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 		t.Run(testCase.Desc, func(t *testing.T) {
 			mdToBlocksConverter := New()
 			_, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(testCase.HTML))
-			replaceFakeIds(blocks)
+			blocks = replaceFakeIds(blocks)
 
 			actualJson, err := json.Marshal(blocks)
 			require.NoError(t, err)
@@ -75,7 +85,8 @@ func TestConvertHTMLToBlocks(t *testing.T) {
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(testCase.Blocks, actual) {
-				fmt.Println("expected:\n", string(actualJson))
+				fmt.Println("real output:\n", string(actualJson))
+				fmt.Println("expected:\n", testCase.Blocks)
 				require.Equal(t, testCase.Blocks, actual)
 			}
 		})
