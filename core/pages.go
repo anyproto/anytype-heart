@@ -83,12 +83,12 @@ func (a *Anytype) PageUpdateLastOpened(id string) error {
 	defer a.lock.Unlock()
 
 	details, err := a.localStore.Pages.GetDetails(id)
-	if err != nil {
-		if err == ds.ErrNotFound {
-			details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
-		} else {
-			return err
-		}
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+
+	if details == nil || details.Details == nil || details.Details.Fields == nil {
+		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
 	}
 
 	details.Details.Fields["lastOpened"] = structs.Float64(float64(time.Now().Unix()))
