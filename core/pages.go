@@ -24,7 +24,9 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 	var idsS = make([]string, 0, len(ids))
 	for _, id := range ids {
 		t, _ := smartblock.SmartBlockTypeFromThreadID(id)
-		if t != smartblock.SmartBlockTypePage {
+		if t != smartblock.SmartBlockTypePage &&
+			t != smartblock.SmartBlockTypeProfilePage &&
+			t != smartblock.SmartBlockTypeHome {
 			continue
 		}
 
