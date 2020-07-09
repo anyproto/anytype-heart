@@ -213,7 +213,7 @@ type ClientCommandsHandler interface {
 	NavigationGetPageInfoWithLinks(*pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse
 	Ping(*pb.RpcPingRequest) *pb.RpcPingResponse
 	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
-	// used only for lib-debug via grpc
+	// used only for lib-server via grpc
 	// Streams not supported ### ListenEvents(*pb.Empty)
 }
 

@@ -53,8 +53,8 @@ func (p *Set) init() (err error) {
 	if len(root.Model().ChildrenIds) > 0 {
 		return
 	}
-	// add archive link
-	relations := []*model.BlockContentDataviewRelation{{Id: "id", IsVisible: false}, {Id: "name", IsVisible: true}, {Id: "lastOpened", IsVisible: true}, {Id: "lastModified", IsVisible: true}, {Id: "isArchived", IsVisible: false}}
+	// init dataview
+	relations := []*model.BlockContentDataviewRelation{{Id: "id", IsVisible: false}, {Id: "name", IsVisible: true}, {Id: "lastOpened", IsVisible: true}, {Id: "lastModified", IsVisible: true}}
 	dataview := simple.New(&model.Block{
 		Content: &model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
