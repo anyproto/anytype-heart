@@ -284,10 +284,13 @@ func getDefaultRelations(schema *schema.Schema) []*model.BlockContentDataviewRel
 	var relations []*model.BlockContentDataviewRelation
 
 	for _, rel := range schema.Default {
+		if rel.IsHidden {
+			continue
+		}
 		relations = append(relations,
 			&model.BlockContentDataviewRelation{
 				Id:        rel.ID,
-				IsVisible: !rel.IsHidden,
+				IsVisible: true,
 			})
 	}
 

@@ -525,24 +525,32 @@ workflows:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-lib-linux:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-ios-framework:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-android-aar:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - release:
