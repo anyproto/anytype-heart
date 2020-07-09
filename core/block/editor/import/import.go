@@ -63,8 +63,8 @@ type Services interface {
 	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
-	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
-	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
+	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	ProcessAdd(p process.Process) (err error)
 }
 
@@ -356,7 +356,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 
 		for _, b := range file.parsedBlocks {
 			if bm := b.GetBookmark(); bm != nil {
-				err = imp.ctrl.BookmarkFetch(ctx, pb.RpcBlockBookmarkFetchRequest{
+				err = imp.ctrl.BookmarkFetchSync(ctx, pb.RpcBlockBookmarkFetchRequest{
 					ContextId: file.pageID,
 					BlockId:   b.Id,
 					Url:       bm.Url,
@@ -369,7 +369,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				log.Debug("          page:", name, " | start to upload file :", f.Name)
 
 				if strings.HasPrefix(f.Name, "http://") || strings.HasPrefix(f.Name, "https://") {
-					err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
+					err = imp.ctrl.UploadBlockFileSync(ctx, pb.RpcBlockUploadRequest{
 						ContextId: file.pageID,
 						BlockId:   b.Id,
 						Url:       f.Name,
@@ -406,7 +406,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				targetFile.Close()
 				tmpFile.Close()
 
-				err = imp.ctrl.UploadBlockFile(ctx, pb.RpcBlockUploadRequest{
+				err = imp.ctrl.UploadBlockFileSync(ctx, pb.RpcBlockUploadRequest{
 					ContextId: file.pageID,
 					BlockId:   b.Id,
 					FilePath:  tmpFile.Name(),

@@ -44,7 +44,7 @@ func TestUploader_Do(t *testing.T) {
 		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
-		err := f.Upload(fx.anytype, fx, testFilepath, "")
+		err := f.Upload(fx.anytype, fx, testFilepath, "", false)
 		fx.mu.Unlock()
 		require.NoError(t, err)
 
@@ -76,7 +76,7 @@ func TestUploader_Do(t *testing.T) {
 		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
-		err := f.Upload(fx.anytype, fx, "", ts.URL+"/http.txt")
+		err := f.Upload(fx.anytype, fx, "", ts.URL+"/http.txt", false)
 		fx.mu.Unlock()
 		require.NoError(t, err)
 
@@ -105,7 +105,7 @@ func TestUploader_Do(t *testing.T) {
 		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
-		err := f.Upload(fx.anytype, fx, testFilepath, "")
+		err := f.Upload(fx.anytype, fx, testFilepath, "", false)
 		fx.mu.Unlock()
 		require.NoError(t, err)
 
@@ -130,7 +130,7 @@ func TestUploader_Do(t *testing.T) {
 		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(file, nil)
 
 		fx.mu.Lock()
-		err := f.Upload(fx.anytype, fx, testFilepath, "")
+		err := f.Upload(fx.anytype, fx, testFilepath, "", false)
 		fx.mu.Unlock()
 		require.NoError(t, err)
 
