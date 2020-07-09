@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/anymark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -64,9 +65,14 @@ type Services interface {
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
+	ProcessAdd(p process.Process) (err error)
 }
 
 func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
+	progress := process.NewProgress(pb.ModelProcess_Import)
+	defer progress.Finish()
+	imp.ctrl.ProcessAdd(progress)
+	progress.SetProgressMessage("read dir")
 	s := imp.NewStateCtx(ctx)
 	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
 
@@ -80,9 +86,17 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	filesCount := len(files)
 	log.Debug("FILES COUNT:", filesCount)
 
+	progress.SetTotal(int64(filesCount) * 8) // 8 loops
 	var pagesCreated int
 
+	progress.SetProgressMessage("process links (1)")
 	for name, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		// index links in the root csv file
 		if !file.isRootFile || !strings.EqualFold(filepath.Ext(name), ".csv") {
 			continue
@@ -99,7 +113,14 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
+	progress.SetProgressMessage("creating documents")
 	for name, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		if !strings.EqualFold(filepath.Ext(name), ".md") {
 			continue
 		}
@@ -120,7 +141,14 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 
 	log.Debug("pages created:", pagesCreated)
 
+	progress.SetProgressMessage("set documents names")
 	for name, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		var title string
 		var emoji string
 
@@ -183,8 +211,14 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	}
 
 	log.Debug("1. ImportMarkdown: all smartBlocks created")
-	log.Debug("1. ImportMarkdown: all smartBlocks created")
+	progress.SetProgressMessage("process links (2)")
 	for _, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		if file.pageID == "" {
 			// file is not a page
 			continue
@@ -219,7 +253,14 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		}
 	}
 
+	progress.SetProgressMessage("process csv")
 	for name, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		// wrap root-level csv files with page
 		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
 			pageID, err := imp.ctrl.CreateSmartBlock(pb.RpcBlockCreatePageRequest{})
@@ -276,7 +317,14 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	}
 
 	log.Debug("2. ImportMarkdown: start to paste blocks")
+	progress.SetProgressMessage("create content")
 	for name, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		if file.pageID == "" {
 			// file is not a page
 			continue
@@ -293,7 +341,14 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	}
 
 	log.Debug("3. ImportMarkdown: all blocks pasted. Start to upload files & fetch bookmarks")
+	progress.SetProgressMessage("upload files")
 	for name, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		log.Debug("   >>> current page:", name, "    |   linked: ", file.hasInboundLinks)
 		if file.pageID == "" {
 			continue
@@ -357,17 +412,21 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 					FilePath:  tmpFile.Name(),
 					Url:       "",
 				})
-
+				os.Remove(tmpFile.Name())
 				if err != nil {
 					return rootLinks, fmt.Errorf("can not import this file: %s. error: %s", f.Name, err)
 				}
-
-				os.Remove(tmpFile.Name())
 			}
 		}
 	}
-
+	progress.SetProgressMessage("process links (3)")
 	for _, file := range files {
+		select {
+		case <-progress.Canceled():
+			return nil, fmt.Errorf("canceled")
+		default:
+		}
+		progress.AddDone(1)
 		if file.pageID == "" {
 			// not a page
 			continue
