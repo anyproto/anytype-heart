@@ -455,7 +455,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		mw.accountSearchCancel()
 	}
 
-	if mw.Anytype == nil || req.Id != mw.Anytype.Account() {
+	if mw.Anytype == nil || req.Id != mw.Anytype.Account() || !mw.Anytype.IsStarted() {
 		// in case user selected account other than the first one(used to perform search)
 		// or this is the first time in this session we run the Anytype node
 		if mw.Anytype != nil {

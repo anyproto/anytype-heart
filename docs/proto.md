@@ -567,6 +567,8 @@
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
     - [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation)
+    - [Block.Content.Dataview.Relation.DateOptions](#anytype.model.Block.Content.Dataview.Relation.DateOptions)
+    - [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions)
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
@@ -587,6 +589,8 @@
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
+    - [Block.Content.Dataview.Relation.DateFormat](#anytype.model.Block.Content.Dataview.Relation.DateFormat)
+    - [Block.Content.Dataview.Relation.TimeFormat](#anytype.model.Block.Content.Dataview.Relation.TimeFormat)
     - [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type)
     - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
@@ -692,6 +696,7 @@
 | BlockSetDataviewView | [Rpc.Block.Set.Dataview.View.Request](#anytype.Rpc.Block.Set.Dataview.View.Request) | [Rpc.Block.Set.Dataview.View.Response](#anytype.Rpc.Block.Set.Dataview.View.Response) |  |
 | BlockSetDataviewActiveView | [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request) | [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response) |  |
 | BlockCreateDataviewView | [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request) | [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response) |  |
+| BlockDeleteDataviewView | [Rpc.Block.Delete.Dataview.View.Request](#anytype.Rpc.Block.Delete.Dataview.View.Request) | [Rpc.Block.Delete.Dataview.View.Response](#anytype.Rpc.Block.Delete.Dataview.View.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
@@ -699,7 +704,7 @@
 | NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
-| ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-debug via grpc |
+| ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
 
  
 
@@ -1300,6 +1305,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Create.Dataview.View.Response.Error](#anytype.Rpc.Block.Create.Dataview.View.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| viewId | [string](#string) |  |  |
 
 
 
@@ -7542,9 +7548,9 @@ changed either by the view settings(filters/sort/limit/offset) or by the data it
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
 | updated | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | existing records updated |
-| removed | [string](#string) | repeated |  |
 | inserted | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
 | insertPosition | [uint32](#uint32) |  | position to insert |
+| removed | [string](#string) | repeated |  |
 | total | [uint32](#uint32) |  | total number of records |
 
 
@@ -8306,7 +8312,6 @@ Precondition: user A and user B opened the same block
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | snippet | [string](#string) |  |  |
 | state | [State](#anytype.model.State) |  |  |
-| lastOpened | [int64](#int64) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
 
 
@@ -8566,6 +8571,7 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  |  |
 | relationId | [string](#string) |  |  |
+| relationProperty | [string](#string) |  |  |
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
 | value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 
@@ -8584,6 +8590,36 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
+| width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
+| emptyOptions | [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions) |  |  |
+| dateOptions | [Block.Content.Dataview.Relation.DateOptions](#anytype.model.Block.Content.Dataview.Relation.DateOptions) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.DateOptions"></a>
+
+### Block.Content.Dataview.Relation.DateOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| includeTime | [bool](#bool) |  |  |
+| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype.model.Block.Content.Dataview.Relation.TimeFormat) |  |  |
+| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype.model.Block.Content.Dataview.Relation.DateFormat) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.EmptyOptions"></a>
+
+### Block.Content.Dataview.Relation.EmptyOptions
+
 
 
 
@@ -8885,10 +8921,14 @@ General purpose structure, uses in Mark.
 | NotEqual | 1 |  |
 | Greater | 2 |  |
 | Less | 3 |  |
-| Like | 4 |  |
-| NotLike | 5 |  |
-| In | 6 |  |
-| NotIn | 7 |  |
+| GreaterOrEqual | 4 |  |
+| LessOrEqual | 5 |  |
+| Like | 6 |  |
+| NotLike | 7 |  |
+| In | 8 |  |
+| NotIn | 9 |  |
+| Empty | 10 |  |
+| NotEmpty | 11 |  |
 
 
 
@@ -8901,6 +8941,33 @@ General purpose structure, uses in Mark.
 | ---- | ------ | ----------- |
 | And | 0 |  |
 | Or | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.DateFormat"></a>
+
+### Block.Content.Dataview.Relation.DateFormat
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| MonthAbbrBeforeDay | 0 | Jul 30, 2020 |
+| MonthAbbrAfterDay | 1 | 30 Jul 2020 |
+| Short | 2 | 30/07/2020 |
+| ShortUS | 3 | 07/30/2020 |
+| ISO | 4 | 2020-07-30 |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.TimeFormat"></a>
+
+### Block.Content.Dataview.Relation.TimeFormat
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Format12 | 0 |  |
+| Format24 | 1 |  |
 
 
 

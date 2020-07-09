@@ -100,7 +100,9 @@ protos-deps:
 	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
 	mkdir -p vendor/github.com/anytypeio/go-anytype-library/
 	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
-	chmod -R 755 ./vendor/github.com/anytypeio/go-anytype-library/pb
+	cp -R $(LIBRARY_PATH)/schema vendor/github.com/anytypeio/go-anytype-library/
+
+	chmod -R 755 ./vendor/github.com/anytypeio/go-anytype-library/
 
 protos-server: protos-deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
@@ -140,13 +142,17 @@ build-server: protos-server
 run-server: build-server
 	./dist/server
 
-build-dev-js-addon: setup build-lib build-js-addon protos-js
+install-dev-js-addon: setup build-lib build-js-addon protos-js
 	cp -r jsaddon/build ../js-anytype/
 	cp -r dist/js/pb/* ../js-anytype/dist/lib
 
-build-dev-js: setup-go build-server protos-js
+build-js: setup-go build-server protos-js
 	echo "Run 'make install-dev-js' insted if you want to build&install into ../js-anytype"
 
-install-dev-js: build-dev-js
+install-dev-js: build-js
 	cp -r dist/server ../js-anytype/dist/anytypeHelper
 	cp -r dist/js/pb/* ../js-anytype/dist/lib
+	cp -r dist/js/pb/* ../js-anytype/dist/lib
+	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
+	cp -R $(LIBRARY_PATH)/schema/* ../js-anytype/src/json/schema
+	chmod -R 755 ../js-anytype/src/json/schema/*

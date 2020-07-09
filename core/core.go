@@ -87,12 +87,13 @@ func (mw *Middleware) start() error {
 		Node: mw.Anytype,
 	}
 
-	err = gateway.Host.Start(gateway.GatewayAddr())
+	gwAddr := gateway.GatewayAddr()
+	mw.gatewayAddr = "http://" + gwAddr
+	err = gateway.Host.Start(gwAddr)
 	if err != nil {
 		return err
 	}
 
-	mw.gatewayAddr = "http://" + gateway.GatewayAddr()
 	log.Debug("Gateway started: " + mw.gatewayAddr)
 
 	mw.linkPreview = linkpreview.NewWithCache()

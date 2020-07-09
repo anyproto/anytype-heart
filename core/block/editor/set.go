@@ -53,7 +53,8 @@ func (p *Set) init() (err error) {
 	if len(root.Model().ChildrenIds) > 0 {
 		return
 	}
-	// add archive link
+	// init dataview
+	relations := []*model.BlockContentDataviewRelation{{Id: "id", IsVisible: false}, {Id: "name", IsVisible: true}, {Id: "lastOpened", IsVisible: true}, {Id: "lastModified", IsVisible: true}}
 	dataview := simple.New(&model.Block{
 		Content: &model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
@@ -63,53 +64,14 @@ func (p *Set) init() (err error) {
 					{
 						Id:   uuid.New().String(),
 						Type: model.BlockContentDataviewView_Table,
-						Name: "Table",
+						Name: "All pages",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationId: "name",
 								Type:       model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
-						Filters:   nil,
-					},
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Gallery,
-						Name: "Gallery",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
-						Filters:   nil,
-					},
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Kanban,
-						Name: "Kanban",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
-						Filters:   nil,
-					},
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_List,
-						Name: "List",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
-							},
-						},
-						Relations: []*model.BlockContentDataviewRelation{{"name", true}, {"isArchived", true}},
+						Relations: relations,
 						Filters:   nil,
 					},
 				},
