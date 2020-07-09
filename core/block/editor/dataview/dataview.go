@@ -257,49 +257,29 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		Offset:    dv.offset,
 	})
 
-	updated, removed, insertedGroupedByPosition := calculateEntriesDiff(dv.entries, entries)
-
-	var firstEventInserted []*types.Struct
-	var firstEventInsertedAt int
-	if len(insertedGroupedByPosition) > 0 {
-		firstEventInserted = insertedGroupedByPosition[0].entries
-		firstEventInsertedAt = insertedGroupedByPosition[0].position
+	var currentEntriesIds []string
+	for _, entry := range dv.entries {
+		currentEntriesIds = append(currentEntriesIds, getEntryID(entry))
 	}
 
-	if len(insertedGroupedByPosition) > 0 ||
-		len(updated) > 0 ||
-		len(removed) > 0 {
-
-		msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-			&pb.EventBlockSetDataviewRecords{
-				Id:             dv.blockId,
-				ViewId:         activeView.Id,
-				Updated:        updated,
-				Removed:        removed,
-				Inserted:       firstEventInserted,
-				InsertPosition: uint32(firstEventInsertedAt),
-				Total:          uint32(total),
-			},
-		}})
+	var records []*types.Struct
+	for _, entry := range entries {
+		records = append(records, entry.Details)
 	}
 
-	if len(insertedGroupedByPosition) > 1 {
-		for _, insertedPortion := range insertedGroupedByPosition[1:] {
-			msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-				&pb.EventBlockSetDataviewRecords{
-					Id:             dv.blockId,
-					ViewId:         activeView.Id,
-					Updated:        nil,
-					Removed:        nil,
-					Inserted:       insertedPortion.entries,
-					InsertPosition: uint32(insertedPortion.position),
-					Total:          uint32(total),
-				},
-			}})
-		}
-	}
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, updated: %d, removed: %d, insertedGroups: %d, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), len(updated), len(removed), len(insertedGroupedByPosition), total, len(msgs))
+	msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
+		&pb.EventBlockSetDataviewRecords{
+			Id:             dv.blockId,
+			ViewId:         activeView.Id,
+			Updated:        nil,
+			Removed:        currentEntriesIds,
+			Inserted:       records,
+			InsertPosition: 0,
+			Total:          uint32(total),
+		},
+	}})
 
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.entries = entries
 
 	return msgs, nil
