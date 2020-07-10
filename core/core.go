@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
@@ -29,15 +30,14 @@ type Middleware struct {
 	foundAccounts              []*model.Account // found local&remote account for the current mnemonic
 	accountsRecoveryInProgress chan struct{}
 
-	SendEvent     func(event *pb.Event)
+	EventSender event.Sender
+
 	blocksService block.Service
 	linkPreview   linkpreview.LinkPreview
 
 	Anytype libCore.Service
 
-	debugGrpcEventSender      chan struct{}
-	debugGrpcEventSenderMutex sync.Mutex
-	m                         sync.RWMutex
+	m sync.RWMutex
 }
 
 func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {

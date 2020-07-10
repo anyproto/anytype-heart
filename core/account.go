@@ -182,7 +182,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc.Name = req.Name
 
-	bs := block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	bs := block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.EventSender.Send)
 	var details []*pb.RpcBlockSetDetailsDetail
 	details = append(details, &pb.RpcBlockSetDetailsDetail{
 		Key:   "name",
@@ -250,9 +250,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		log.Debugf("sendAccountAddEvent set sentAccounts for %s", account.Id)
 		sentAccounts[account.Id] = struct{}{}
 		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
-		if mw.SendEvent != nil {
-			mw.SendEvent(m)
-		}
+		mw.EventSender.Send(m)
 	}
 
 	if mw.mnemonic == "" {
@@ -534,7 +532,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
 	}
 
-	mw.setBlockService(block.NewService(acc.Id, mw.Anytype, mw.linkPreview, mw.SendEvent))
+	mw.setBlockService(block.NewService(acc.Id, mw.Anytype, mw.linkPreview, mw.EventSender.Send))
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 

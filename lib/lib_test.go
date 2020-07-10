@@ -29,7 +29,7 @@ func TestEventHandler(t *testing.T) {
 	})
 
 	eventSent := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: 0, Account: &model.Account{Id: "1", Name: "name"}}}}}}
-	mw.SendEvent(eventSent)
+	mw.EventSender.Send(eventSent)
 
 	require.Equal(t, eventSent, eventReceived, "eventReceived not equal to eventSent: %s %s", eventSent, eventReceived)
 }
