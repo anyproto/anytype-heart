@@ -104,7 +104,7 @@ protos-deps:
 
 	chmod -R 755 ./vendor/github.com/anytypeio/go-anytype-library/
 
-protos-server:
+protos-server: protos-deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)

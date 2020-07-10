@@ -238,7 +238,7 @@ jobs:
             cp ../pb/protos/*.proto ./protobuf/protos
             cp ../vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto ./protobuf/protos
             cp ../vendor/github.com/anytypeio/go-anytype-library/schema/*.json ./schemas
-            cp -R ../dist/js/pb ./protobuf
+            cp -R ../dist/js/pb/* ./protobuf
 
             declare -a arr=("windows-amd64")
             for i in "${arr[@]}"
