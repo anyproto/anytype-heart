@@ -1,3 +1,5 @@
+// +build !nogrpcserver,!_test
+
 package event
 
 import (
