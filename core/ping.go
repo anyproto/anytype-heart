@@ -32,7 +32,7 @@ func (mw *Middleware) Ping(req *pb.RpcPingRequest) *pb.RpcPingResponse {
 		n = time.Now()
 		fmt.Printf("%d.%d go send ping event %d\n", n.Unix(), nsToMs(n.UnixNano()), i)
 
-		mw.SendEvent(&pb.Event{
+		mw.EventSender.Send(&pb.Event{
 			Messages: []*pb.EventMessage{
 				&pb.EventMessage{
 					Value: &pb.EventMessageValueOfPing{

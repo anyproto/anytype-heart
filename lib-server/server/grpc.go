@@ -4,13 +4,14 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"google.golang.org/grpc"
@@ -24,6 +25,8 @@ const defaultWebAddr = "127.0.0.1:31008"
 
 // do not change this, js client relies on this msg to ensure that server is up
 const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
+
+var log = logging.Logger("anytype-grpc-server")
 
 func main() {
 	var addr string
@@ -56,6 +59,8 @@ func main() {
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	var mw = &core.Middleware{}
+	mw.EventSender = event.NewGrpcSender()
+
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

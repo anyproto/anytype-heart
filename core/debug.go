@@ -7,30 +7,27 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/lib-server"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_ListenEventsServer) {
-	mw.m.Lock()
-	mw.debugGrpcEventSenderMutex.Lock()
-	if mw.debugGrpcEventSender != nil {
-		close(mw.debugGrpcEventSender)
+	var sender *event.GrpcSender
+	var ok bool
+	if sender, ok = mw.EventSender.(*event.GrpcSender); ok {
+		sender.SetServer(server)
+	} else {
+		log.Fatal("failed to ListenEvents: has a wrong Sender")
+		return
 	}
-	mw.debugGrpcEventSender = make(chan struct{})
-	mw.debugGrpcEventSenderMutex.Unlock()
 
-	mw.SendEvent = func(event *pb.Event) {
-		server.Send(event)
-	}
-	mw.m.Unlock()
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-
 	select {
 	case <-stopChan:
 		return
-	case <-mw.debugGrpcEventSender:
+	case <-sender.ServerCh:
 		return
 	}
 }
