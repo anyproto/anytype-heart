@@ -10,25 +10,6 @@
     - [ClientCommands](#anytype.ClientCommands)
   
 
-- [pb/protos/changes.proto](#pb/protos/changes.proto)
-    - [Change](#anytype.Change)
-    - [Change.BlockCreate](#anytype.Change.BlockCreate)
-    - [Change.BlockDuplicate](#anytype.Change.BlockDuplicate)
-    - [Change.BlockMove](#anytype.Change.BlockMove)
-    - [Change.BlockRemove](#anytype.Change.BlockRemove)
-    - [Change.BlockUpdate](#anytype.Change.BlockUpdate)
-    - [Change.Content](#anytype.Change.Content)
-    - [Change.DetailsSet](#anytype.Change.DetailsSet)
-    - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
-    - [Change.FileKeys](#anytype.Change.FileKeys)
-    - [Change.FileKeys.KeysEntry](#anytype.Change.FileKeys.KeysEntry)
-    - [Change.Snapshot](#anytype.Change.Snapshot)
-    - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
-  
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -586,6 +567,8 @@
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
     - [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation)
+    - [Block.Content.Dataview.Relation.DateOptions](#anytype.model.Block.Content.Dataview.Relation.DateOptions)
+    - [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions)
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
@@ -606,6 +589,8 @@
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
+    - [Block.Content.Dataview.Relation.DateFormat](#anytype.model.Block.Content.Dataview.Relation.DateFormat)
+    - [Block.Content.Dataview.Relation.TimeFormat](#anytype.model.Block.Content.Dataview.Relation.TimeFormat)
     - [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type)
     - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
@@ -711,6 +696,7 @@
 | BlockSetDataviewView | [Rpc.Block.Set.Dataview.View.Request](#anytype.Rpc.Block.Set.Dataview.View.Request) | [Rpc.Block.Set.Dataview.View.Response](#anytype.Rpc.Block.Set.Dataview.View.Response) |  |
 | BlockSetDataviewActiveView | [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request) | [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response) |  |
 | BlockCreateDataviewView | [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request) | [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response) |  |
+| BlockDeleteDataviewView | [Rpc.Block.Delete.Dataview.View.Request](#anytype.Rpc.Block.Delete.Dataview.View.Request) | [Rpc.Block.Delete.Dataview.View.Response](#anytype.Rpc.Block.Delete.Dataview.View.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
@@ -719,240 +705,6 @@
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
-
- 
-
-
-
-<a name="pb/protos/changes.proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## pb/protos/changes.proto
-
-
-
-<a name="anytype.Change"></a>
-
-### Change
-the element of change tree used to store and internal apply smartBlock history
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| previous_ids | [string](#string) | repeated | ids of previous changes |
-| last_snapshot_id | [string](#string) |  | id of the last snapshot |
-| previous_details_ids | [string](#string) | repeated | ids of the last changes with details content |
-| content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
-| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the content will ignoring |
-| fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | file keys related to changes content |
-
-
-
-
-
-
-<a name="anytype.Change.BlockCreate"></a>
-
-### Change.BlockCreate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
-| blocks | [model.Block](#anytype.model.Block) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.BlockDuplicate"></a>
-
-### Change.BlockDuplicate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
-| ids | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.BlockMove"></a>
-
-### Change.BlockMove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
-| ids | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.BlockRemove"></a>
-
-### Change.BlockRemove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| ids | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.BlockUpdate"></a>
-
-### Change.BlockUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| events | [Event.Message](#anytype.Event.Message) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.Content"></a>
-
-### Change.Content
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| blockCreate | [Change.BlockCreate](#anytype.Change.BlockCreate) |  |  |
-| blockUpdate | [Change.BlockUpdate](#anytype.Change.BlockUpdate) |  |  |
-| blockRemove | [Change.BlockRemove](#anytype.Change.BlockRemove) |  |  |
-| blockMove | [Change.BlockMove](#anytype.Change.BlockMove) |  |  |
-| blockDuplicate | [Change.BlockDuplicate](#anytype.Change.BlockDuplicate) |  |  |
-| detailsSet | [Change.DetailsSet](#anytype.Change.DetailsSet) |  |  |
-| detailsUnset | [Change.DetailsUnset](#anytype.Change.DetailsUnset) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.DetailsSet"></a>
-
-### Change.DetailsSet
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.DetailsUnset"></a>
-
-### Change.DetailsUnset
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.FileKeys"></a>
-
-### Change.FileKeys
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| hash | [string](#string) |  |  |
-| keys | [Change.FileKeys.KeysEntry](#anytype.Change.FileKeys.KeysEntry) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Change.FileKeys.KeysEntry"></a>
-
-### Change.FileKeys.KeysEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.Snapshot"></a>
-
-### Change.Snapshot
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| logHeads | [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry) | repeated | logId -&gt; lastChangeId |
-| data | [model.SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase) |  | snapshot data |
-| fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | all file keys related to doc |
-
-
-
-
-
-
-<a name="anytype.Change.Snapshot.LogHeadsEntry"></a>
-
-### Change.Snapshot.LogHeadsEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [string](#string) |  |  |
-
-
-
-
-
- 
-
- 
-
- 
 
  
 
@@ -1553,6 +1305,7 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Create.Dataview.View.Response.Error](#anytype.Rpc.Block.Create.Dataview.View.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| viewId | [string](#string) |  |  |
 
 
 
@@ -8559,7 +8312,6 @@ Precondition: user A and user B opened the same block
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | snippet | [string](#string) |  |  |
 | state | [State](#anytype.model.State) |  |  |
-| lastOpened | [int64](#int64) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
 
 
@@ -8819,6 +8571,7 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  |  |
 | relationId | [string](#string) |  |  |
+| relationProperty | [string](#string) |  |  |
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
 | value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 
@@ -8837,6 +8590,36 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
+| width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
+| emptyOptions | [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions) |  |  |
+| dateOptions | [Block.Content.Dataview.Relation.DateOptions](#anytype.model.Block.Content.Dataview.Relation.DateOptions) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.DateOptions"></a>
+
+### Block.Content.Dataview.Relation.DateOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| includeTime | [bool](#bool) |  |  |
+| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype.model.Block.Content.Dataview.Relation.TimeFormat) |  |  |
+| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype.model.Block.Content.Dataview.Relation.DateFormat) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.EmptyOptions"></a>
+
+### Block.Content.Dataview.Relation.EmptyOptions
+
 
 
 
@@ -9098,7 +8881,7 @@ General purpose structure, uses in Mark.
 <a name="anytype.model.SmartBlockSnapshotBase"></a>
 
 ### SmartBlockSnapshotBase
-deprecated
+
 
 
 | Field | Type | Label | Description |
@@ -9144,6 +8927,8 @@ deprecated
 | NotLike | 7 |  |
 | In | 8 |  |
 | NotIn | 9 |  |
+| Empty | 10 |  |
+| NotEmpty | 11 |  |
 
 
 
@@ -9156,6 +8941,33 @@ deprecated
 | ---- | ------ | ----------- |
 | And | 0 |  |
 | Or | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.DateFormat"></a>
+
+### Block.Content.Dataview.Relation.DateFormat
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| MonthAbbrBeforeDay | 0 | Jul 30, 2020 |
+| MonthAbbrAfterDay | 1 | 30 Jul 2020 |
+| Short | 2 | 30/07/2020 |
+| ShortUS | 3 | 07/30/2020 |
+| ISO | 4 | 2020-07-30 |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.Relation.TimeFormat"></a>
+
+### Block.Content.Dataview.Relation.TimeFormat
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Format12 | 0 |  |
+| Format24 | 1 |  |
 
 
 
@@ -9333,21 +9145,21 @@ deprecated
 
 ## Scalar Value Types
 
-| .proto Type | Notes | C++ | Java | Python | Go | C# | PHP | Ruby |
-| ----------- | ----- | --- | ---- | ------ | -- | -- | --- | ---- |
-| <a name="double" /> double |  | double | double | float | float64 | double | float | Float |
-| <a name="float" /> float |  | float | float | float | float32 | float | float | Float |
-| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long | uint32 | uint | integer | Bignum or Fixnum (as required) |
-| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum or Fixnum (as required) |
-| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int | uint32 | uint | integer | Bignum or Fixnum (as required) |
-| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum |
-| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
-| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
-| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
+| .proto Type | Notes | C++ Type | Java Type | Python Type |
+| ----------- | ----- | -------- | --------- | ----------- |
+| <a name="double" /> double |  | double | double | float |
+| <a name="float" /> float |  | float | float | float |
+| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int |
+| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long |
+| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long |
+| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long |
+| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int |
+| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long |
+| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int |
+| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long |
+| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int |
+| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long |
+| <a name="bool" /> bool |  | bool | boolean | boolean |
+| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode |
+| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str |
 

@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -162,7 +163,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	anytypeService, err := core.New(mw.rootPath, account.Address(), mw.reindexDoc)
+	anytypeService, err := core.New(mw.rootPath, account.Address(), mw.reindexDoc, change.NewSnapshotChange)
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -182,7 +183,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc.Name = req.Name
 
-	bs := block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.SendEvent)
+	bs := block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, mw.EventSender.Send)
 	var details []*pb.RpcBlockSetDetailsDetail
 	details = append(details, &pb.RpcBlockSetDetailsDetail{
 		Key:   "name",
@@ -250,9 +251,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		log.Debugf("sendAccountAddEvent set sentAccounts for %s", account.Id)
 		sentAccounts[account.Id] = struct{}{}
 		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
-		if mw.SendEvent != nil {
-			mw.SendEvent(m)
-		}
+		mw.EventSender.Send(m)
 	}
 
 	if mw.mnemonic == "" {
@@ -333,7 +332,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	mw.accountsRecoveryInProgress = ch
 	defer close(ch)
 
-	c, err := core.New(mw.rootPath, zeroAccount.Address(), mw.reindexDoc)
+	c, err := core.New(mw.rootPath, zeroAccount.Address(), mw.reindexDoc, change.NewSnapshotChange)
 	if err != nil {
 		mw.m.Unlock()
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -455,7 +454,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		mw.accountSearchCancel()
 	}
 
-	if mw.Anytype == nil || req.Id != mw.Anytype.Account() {
+	if mw.Anytype == nil || req.Id != mw.Anytype.Account() || !mw.Anytype.IsStarted() {
 		// in case user selected account other than the first one(used to perform search)
 		// or this is the first time in this session we run the Anytype node
 		if mw.Anytype != nil {
@@ -511,7 +510,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			}
 		}
 
-		anytype, err := core.New(mw.rootPath, req.Id, mw.reindexDoc)
+		anytype, err := core.New(mw.rootPath, req.Id, mw.reindexDoc, change.NewSnapshotChange)
 		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}
@@ -534,7 +533,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
 	}
 
-	mw.setBlockService(block.NewService(acc.Id, mw.Anytype, mw.linkPreview, mw.SendEvent))
+	mw.setBlockService(block.NewService(acc.Id, mw.Anytype, mw.linkPreview, mw.EventSender.Send))
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 

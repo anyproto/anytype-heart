@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/schema"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -14,10 +15,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/santhosh-tekuri/jsonschema/v2"
 )
 
-const defaultViewName = "Untitled"
 const defaultLimit = 20
 
 var log = logging.Logger("anytype-mw-editor")
@@ -175,12 +174,8 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 		return nil, err
 	}
 
-	if view.Name == "" {
-		view.Name = defaultViewName
-	}
-
 	if len(view.Relations) == 0 {
-		sch, err := d.Anytype().GetSchema(tb.Model().GetDataview().SchemaURL)
+		sch, err := schema.Get(tb.Model().GetDataview().SchemaURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get schema %s for dataview: %s", tb.Model().GetDataview().SchemaURL, err.Error())
 		}
@@ -250,82 +245,55 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	var msgs []*pb.EventMessage
 
 	entries, total, err := db.Query(database.Query{
-		Filters: activeView.Filters,
-		Sorts:   activeView.Sorts,
-		Limit:   dv.limit,
-		Offset:  dv.offset,
+		Relations: activeView.Relations,
+		Filters:   activeView.Filters,
+		Sorts:     activeView.Sorts,
+		Limit:     dv.limit,
+		Offset:    dv.offset,
 	})
 
-	updated, removed, insertedGroupedByPosition := calculateEntriesDiff(dv.entries, entries)
-
-	var firstEventInserted []*types.Struct
-	var firstEventInsertedAt int
-	if len(insertedGroupedByPosition) > 0 {
-		firstEventInserted = insertedGroupedByPosition[0].entries
-		firstEventInsertedAt = insertedGroupedByPosition[0].position
+	var currentEntriesIds []string
+	for _, entry := range dv.entries {
+		currentEntriesIds = append(currentEntriesIds, getEntryID(entry))
 	}
 
-	if len(insertedGroupedByPosition) > 0 ||
-		len(updated) > 0 ||
-		len(removed) > 0 {
-
-		msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-			&pb.EventBlockSetDataviewRecords{
-				Id:             dv.blockId,
-				ViewId:         activeView.Id,
-				Updated:        updated,
-				Removed:        removed,
-				Inserted:       firstEventInserted,
-				InsertPosition: uint32(firstEventInsertedAt),
-				Total:          uint32(total),
-			},
-		}})
+	var records []*types.Struct
+	for _, entry := range entries {
+		records = append(records, entry.Details)
 	}
 
-	if len(insertedGroupedByPosition) > 1 {
-		for _, insertedPortion := range insertedGroupedByPosition[1:] {
-			msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-				&pb.EventBlockSetDataviewRecords{
-					Id:             dv.blockId,
-					ViewId:         activeView.Id,
-					Updated:        nil,
-					Removed:        nil,
-					Inserted:       insertedPortion.entries,
-					InsertPosition: uint32(insertedPortion.position),
-					Total:          uint32(total),
-				},
-			}})
-		}
-	}
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, updated: %d, removed: %d, insertedGroups: %d, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), len(updated), len(removed), len(insertedGroupedByPosition), total, len(msgs))
+	msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
+		&pb.EventBlockSetDataviewRecords{
+			Id:             dv.blockId,
+			ViewId:         activeView.Id,
+			Updated:        nil,
+			Removed:        currentEntriesIds,
+			Inserted:       records,
+			InsertPosition: 0,
+			Total:          uint32(total),
+		},
+	}})
 
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.entries = entries
 
 	return msgs, nil
 }
 
-func getDefaultRelations(schema *jsonschema.Schema) []*model.BlockContentDataviewRelation {
+func getDefaultRelations(schema *schema.Schema) []*model.BlockContentDataviewRelation {
 	var relations []*model.BlockContentDataviewRelation
 
-	if defaults, ok := schema.Default.([]interface{}); ok {
-		for _, def := range defaults {
-			if v, ok := def.(map[string]interface{}); ok {
-				if isHidden, exists := v["isHidden"]; exists {
-					if v, ok := isHidden.(bool); ok {
-						if v {
-							continue
-						}
-					}
-				}
-
-				relations = append(relations,
-					&model.BlockContentDataviewRelation{
-						Id:        v["id"].(string),
-						IsVisible: true,
-					})
-			}
+	for _, rel := range schema.Default {
+		if rel.IsHidden {
+			continue
 		}
+		relations = append(relations,
+			&model.BlockContentDataviewRelation{
+				Id:        rel.ID,
+				IsVisible: true,
+			})
 	}
+
 	return relations
 }
 

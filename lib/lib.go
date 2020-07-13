@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/core"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -26,7 +27,7 @@ func init() {
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
-	mw.SendEvent = eh
+	mw.EventSender = event.NewCallbackSender(eh)
 }
 
 func SetEventHandlerMobile(eh MessageHandler) {

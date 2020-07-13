@@ -100,7 +100,9 @@ protos-deps:
 	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
 	mkdir -p vendor/github.com/anytypeio/go-anytype-library/
 	cp -R $(LIBRARY_PATH)/pb vendor/github.com/anytypeio/go-anytype-library/
-	chmod -R 755 ./vendor/github.com/anytypeio/go-anytype-library/pb
+	cp -R $(LIBRARY_PATH)/schema vendor/github.com/anytypeio/go-anytype-library/
+
+	chmod -R 755 ./vendor/github.com/anytypeio/go-anytype-library/
 
 protos-server: protos-deps
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
@@ -111,7 +113,19 @@ protos-server: protos-deps
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 GOGO_GRPC_SERVER_METHOD_NO_ERROR=1 GOGO_GRPC_SERVER_METHOD_NO_CONTEXT=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=grpc:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib-server/
 
-protos: protos-deps
+protos-go: protos-deps
+	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
+	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
+	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS))
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc -I . --gogofaster_out=$(PKGMAP):. ./pb/protos/*.proto; mv ./pb/protos/*.pb.go ./pb/
+	$(eval P_PROTOS2 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
+	$(eval P_PROTOS3 := Mpb/protos/events.proto=github.com/anytypeio/go-anytype-middleware/pb)
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./lib/
+	protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
+
+protos: protos-go protos-server
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	$(eval P_PROTOS := Mvendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-library/pb/model)
@@ -140,13 +154,17 @@ build-server: protos-server
 run-server: build-server
 	./dist/server
 
-build-dev-js-addon: setup build-lib build-js-addon protos-js
+install-dev-js-addon: setup build-lib build-js-addon protos-js
 	cp -r jsaddon/build ../js-anytype/
 	cp -r dist/js/pb/* ../js-anytype/dist/lib
 
-build-dev-js: setup-go build-server protos-js
+build-js: setup-go build-server protos-js
 	echo "Run 'make install-dev-js' insted if you want to build&install into ../js-anytype"
 
-install-dev-js: build-dev-js
+install-dev-js: build-js
 	cp -r dist/server ../js-anytype/dist/anytypeHelper
 	cp -r dist/js/pb/* ../js-anytype/dist/lib
+	cp -r dist/js/pb/* ../js-anytype/dist/lib
+	$(eval LIBRARY_PATH = $(shell go list -m -json all | jq -r 'select(.Path == "github.com/anytypeio/go-anytype-library") | .Dir'))
+	cp -R $(LIBRARY_PATH)/schema/* ../js-anytype/src/json/schema
+	chmod -R 755 ../js-anytype/src/json/schema/*

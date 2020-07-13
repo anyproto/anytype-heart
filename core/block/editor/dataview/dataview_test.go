@@ -1,7 +1,6 @@
 package dataview
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/database"
@@ -15,13 +14,7 @@ import (
 func Test_getDefaultRelations(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
 	compiler.ExtractAnnotations = true
-	err := compiler.AddResource("https://anytype.io/schemas/relation", strings.NewReader(schema.SchemaByURL["https://anytype.io/schemas/relation"]))
-	require.NoError(t, err)
-
-	err = compiler.AddResource("https://anytype.io/schemas/page", strings.NewReader(schema.SchemaByURL["https://anytype.io/schemas/page"]))
-	require.NoError(t, err)
-
-	sch := compiler.MustCompile("https://anytype.io/schemas/page")
+	sch, err := schema.Get("https://anytype.io/schemas/page")
 	require.NoError(t, err)
 
 	relations := getDefaultRelations(sch)
@@ -29,10 +22,10 @@ func Test_getDefaultRelations(t *testing.T) {
 
 	require.Equal(t, relations[0].Id, "name")
 	require.Equal(t, relations[0].IsVisible, true)
-	require.Equal(t, relations[1].Id, "isArchived")
+	require.Equal(t, relations[1].Id, "lastOpened")
 	require.Equal(t, relations[1].IsVisible, true)
 
-	require.Equal(t, relations[2].Id, "lastOpened")
+	require.Equal(t, relations[2].Id, "lastModified")
 	require.Equal(t, relations[1].IsVisible, true)
 }
 
