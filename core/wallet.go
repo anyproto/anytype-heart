@@ -36,7 +36,6 @@ func (mw *Middleware) WalletCreate(req *pb.RpcWalletCreateRequest) *pb.RpcWallet
 	}
 
 	mw.mnemonic = mnemonic
-	mw.accountsRecoveryInProgress = nil
 
 	return response(mnemonic, pb.RpcWalletCreateResponseError_NULL, nil)
 }
@@ -51,16 +50,17 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 		return m
 	}
 
+	mw.accountSearchCancelAndWait()
+
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
-	if mw.mnemonic != req.Mnemonic {
-		mw.foundAccounts = nil
+	if mw.mnemonic == req.Mnemonic {
+		return response(pb.RpcWalletRecoverResponseError_NULL, nil)
 	}
 
 	mw.mnemonic = req.Mnemonic
 	mw.rootPath = req.RootPath
-	mw.accountsRecoveryInProgress = nil
 
 	err := os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {

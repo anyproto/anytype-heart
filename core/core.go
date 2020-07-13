@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"runtime"
 	"sync"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
@@ -26,9 +27,9 @@ type Middleware struct {
 	pin                        string
 	mnemonic                   string
 	gatewayAddr                string
-	accountSearchCancel        context.CancelFunc
-	foundAccounts              []*model.Account // found local&remote account for the current mnemonic
-	accountsRecoveryInProgress chan struct{}
+	accountSearchCancelAndWait context.CancelFunc
+
+	foundAccounts []*model.Account // found local&remote account for the current mnemonic
 
 	EventSender event.Sender
 
@@ -38,6 +39,10 @@ type Middleware struct {
 	Anytype libCore.Service
 
 	m sync.RWMutex
+}
+
+func New() *Middleware {
+	return &Middleware{accountSearchCancelAndWait: func() {}}
 }
 
 func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
@@ -102,6 +107,11 @@ func (mw *Middleware) start() error {
 
 // Stop stops the anytype node and HTTP gateway
 func (mw *Middleware) stop() error {
+	_, file, no, ok := runtime.Caller(1)
+	if ok {
+		log.Debugf("mw.stop() called from %s#%d", file, no)
+	}
+
 	if gateway.Host != nil {
 		err := gateway.Host.Stop()
 		if err != nil {
@@ -122,11 +132,7 @@ func (mw *Middleware) stop() error {
 		}
 
 		mw.Anytype = nil
-		if mw.accountSearchCancel != nil {
-			mw.accountSearchCancel()
-		}
-
-		mw.accountSearchCancel = nil
+		mw.accountSearchCancelAndWait()
 	}
 	return nil
 }
