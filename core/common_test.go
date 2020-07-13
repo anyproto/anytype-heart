@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/config"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -20,7 +21,7 @@ func Benchmark_ConnectCafe(t *testing.B) {
 	pnet, err := pnet.DecodeV1PSK(r)
 	require.NoError(t, err)
 
-	cafeAddr, err := ma.NewMultiaddr(DefaultCafeNodeP2P)
+	cafeAddr, err := ma.NewMultiaddr(config.DefaultConfig.CafeP2PAddr)
 	require.NoError(t, err)
 
 	cafeAddrInfo, err := peer.AddrInfoFromP2pAddr(cafeAddr)
