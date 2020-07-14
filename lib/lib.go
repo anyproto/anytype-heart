@@ -15,7 +15,7 @@ import (
 
 var log = logging.Logger("anytype-mw")
 
-var mw = &core.Middleware{}
+var mw = core.New()
 
 func init() {
 	registerClientCommandsHandler(mw)
