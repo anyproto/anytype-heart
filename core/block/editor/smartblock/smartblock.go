@@ -174,12 +174,12 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 	})
 
 	defer func() {
-		subscriber.Callback(sb.onMetaChange)
 		go func() {
 			for d := range ch {
 				sb.onMetaChange(d)
 			}
 		}()
+		subscriber.Callback(sb.onMetaChange)
 		close(ch)
 	}()
 
