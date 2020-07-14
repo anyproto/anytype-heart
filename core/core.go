@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"errors"
-	"runtime"
 	"sync"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
@@ -107,11 +106,6 @@ func (mw *Middleware) start() error {
 
 // Stop stops the anytype node and HTTP gateway
 func (mw *Middleware) stop() error {
-	_, file, no, ok := runtime.Caller(1)
-	if ok {
-		log.Debugf("mw.stop() called from %s#%d", file, no)
-	}
-
 	if gateway.Host != nil {
 		err := gateway.Host.Stop()
 		if err != nil {
