@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultLimit = 20
+const defaultLimit = 100
 
 var log = logging.Logger("anytype-mw-editor")
 
