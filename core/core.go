@@ -26,9 +26,9 @@ type Middleware struct {
 	pin                        string
 	mnemonic                   string
 	gatewayAddr                string
-	accountSearchCancel        context.CancelFunc
-	foundAccounts              []*model.Account // found local&remote account for the current mnemonic
-	accountsRecoveryInProgress chan struct{}
+	accountSearchCancelAndWait context.CancelFunc
+
+	foundAccounts []*model.Account // found local&remote account for the current mnemonic
 
 	EventSender event.Sender
 
@@ -38,6 +38,10 @@ type Middleware struct {
 	Anytype libCore.Service
 
 	m sync.RWMutex
+}
+
+func New() *Middleware {
+	return &Middleware{accountSearchCancelAndWait: func() {}}
 }
 
 func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
@@ -122,11 +126,7 @@ func (mw *Middleware) stop() error {
 		}
 
 		mw.Anytype = nil
-		if mw.accountSearchCancel != nil {
-			mw.accountSearchCancel()
-		}
-
-		mw.accountSearchCancel = nil
+		mw.accountSearchCancelAndWait()
 	}
 	return nil
 }

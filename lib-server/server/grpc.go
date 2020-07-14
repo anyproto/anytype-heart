@@ -58,7 +58,7 @@ func main() {
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
-	var mw = &core.Middleware{}
+	var mw = core.New()
 	mw.EventSender = event.NewGrpcSender()
 
 	lis, err := net.Listen("tcp", addr)
