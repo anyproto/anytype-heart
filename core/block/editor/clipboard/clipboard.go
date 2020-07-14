@@ -318,7 +318,6 @@ func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*m
 		anySlot[i].Id = newId
 	}
 
-	return anySlotreplacedIds
 	for i, _ := range anySlot {
 		cIds := []string{}
 		for _, cId := range anySlot[i].ChildrenIds {
