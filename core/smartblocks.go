@@ -9,6 +9,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	util2 "github.com/anytypeio/go-anytype-library/util"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
@@ -80,39 +82,43 @@ func (a *Anytype) DeleteBlock(id string) error {
 	}
 }*/
 func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
-	if sb, err := a.GetSmartBlock(id.String()); err == nil {
-		snap, err := sb.GetLastSnapshot()
-		if err != nil {
-			if err == ErrBlockSnapshotNotFound {
-				log.Infof("pullThread %s before: empty", id.String())
-			} else {
-				log.Errorf("pullThread %s before: %s", id.String(), err.Error())
-			}
-		} else {
-			log.Infof("pullThread %s before: %s", id.String(), snap.State().String())
-		}
-	}
-
-	err := a.t.PullThread(ctx, id)
+	thrd, err := a.t.GetThread(context.Background(), id)
 	if err != nil {
 		return err
 	}
 
-	if sb, err := a.GetSmartBlock(id.String()); err == nil {
-		snap, err := sb.GetLastSnapshot()
-		if err != nil {
-			if err == ErrBlockSnapshotNotFound {
-				log.Infof("pullThread %s after: empty", id.String())
-			} else {
-				log.Errorf("pullThread %s after: %s", id.String(), err.Error())
-			}
+	var headPerLog = make(map[peer.ID]cid.Cid, len(thrd.Logs))
+	for _, log := range thrd.Logs {
+		headPerLog[log.ID] = log.Head
+	}
+
+	err = a.t.PullThread(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	thrd, err = a.t.GetThread(context.Background(), id)
+	if err != nil {
+		return err
+	}
+
+	var headsChanged bool
+	for _, log := range thrd.Logs {
+		if v, exists := headPerLog[log.ID]; !exists {
+			headsChanged = true
+			break
 		} else {
-			log.Infof("pullThread %s after: %s", id.String(), snap.State().String())
-			ls := snap.(smartBlockSnapshot)
-			err := sb.indexSnapshot(&ls)
-			if err != nil {
-				log.Errorf("pullThread: failed to index the new snapshot for %s: %s", id.String(), err.Error())
+			if !log.Head.Equals(v) {
+				headsChanged = true
+				break
 			}
+		}
+	}
+
+	if headsChanged {
+		err = a.opts.ReindexFunc(id.String())
+		if err != nil {
+			log.Error("failed to reindex page after pullThread")
 		}
 	}
 
@@ -135,6 +141,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	if err != nil {
 		return err
 	}
+
 	a.predefinedBlockIds.Account = account.ID.String()
 	if a.db == nil {
 		d, err := db.NewDB(context.Background(), a.t, account.ID, db.WithNewDBRepoPath(filepath.Join(a.opts.Repo, "collections")))

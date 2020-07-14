@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/localstore"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 )
@@ -28,6 +30,8 @@ var migrations = []migration{
 	alterThreadsDbSchema, // 2
 	skipMigration,        // 3
 	indexLinks,           // 4
+	snapshotToChanges,    // 5
+
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -162,6 +166,49 @@ func indexLinks(a *Anytype) error {
 		}
 
 		log.Infof("migration indexLinks: %d pages indexed", migrated)
+		return nil
+	})
+}
+
+func snapshotToChanges(a *Anytype) error {
+	return doWithOfflineNode(a, func() error {
+		threadsIDs, err := a.t.Logstore().Threads()
+		if err != nil {
+			return err
+		}
+
+		threadsIDs = append(threadsIDs)
+		migrated := 0
+		for _, threadID := range threadsIDs {
+			snapshotsPB, err := a.snapshotTraverseLogs(context.TODO(), threadID, vclock.Undef, 1)
+			if err != nil {
+				log.Errorf("snapshotToChanges failed to get sb last snapshot %s: %s", threadID.String(), err.Error())
+				continue
+			}
+
+			if len(snapshotsPB) == 0 {
+				log.Errorf("snapshotToChanges no snapshots found for %s", threadID.String())
+				continue
+			}
+
+			snap := snapshotsPB[0]
+			var keys []*FileKeys
+			for fileHash, fileKeys := range snap.KeysByHash {
+				keys = append(keys, &FileKeys{
+					Hash: fileHash,
+					Keys: fileKeys.KeysByPath,
+				})
+			}
+
+			record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)
+			sb, _ := a.GetSmartBlock(threadID.String())
+			_, err = sb.PushRecord(record)
+			if err != nil {
+				return err
+			}
+			migrated++
+		}
+		log.Infof("migration snapshotToChanges: %d pages migrated", migrated)
 		return nil
 	})
 }

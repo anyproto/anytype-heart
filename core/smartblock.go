@@ -86,7 +86,7 @@ type SmartBlock interface {
 
 	GetLogs() ([]SmartblockLog, error)
 	GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error)
-	PushRecord(payload proto.Message) (id string, err error)
+	PushRecord(payload proto.Marshaler) (id string, err error)
 
 	SubscribeForRecords(ch chan SmartblockRecordWithLogID) (cancel func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
@@ -234,8 +234,8 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 	return
 }
 
-func (block *smartBlock) PushRecord(payload proto.Message) (id string, err error) {
-	payloadB, err := proto.Marshal(payload)
+func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err error) {
+	payloadB, err := payload.Marshal()
 	if err != nil {
 		return "", err
 	}

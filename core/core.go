@@ -23,6 +23,8 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -220,13 +222,13 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	return a, nil
 }
 
-func New(rootPath string, account string, reIndexFunc func(id string) error) (Service, error) {
+func New(rootPath string, account string, reIndexFunc func(id string) error, snapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler) (Service, error) {
 	opts, err := getNewConfig(rootPath, account)
 	if err != nil {
 		return nil, err
 	}
 
-	opts = append(opts, WithReindexFunc(reIndexFunc))
+	opts = append(opts, WithReindexFunc(reIndexFunc), WithSnapshotMarshalerFunc(snapshotMarshalerFunc))
 	return NewFromOptions(opts...)
 }
 
