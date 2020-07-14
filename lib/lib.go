@@ -19,9 +19,9 @@ var mw = core.New()
 
 func init() {
 	registerClientCommandsHandler(mw)
-	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "0" {
+	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {
-			http.ListenAndServe(":6060", nil)
+			http.ListenAndServe(debug, nil)
 		}()
 	}
 }

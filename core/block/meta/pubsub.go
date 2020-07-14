@@ -225,9 +225,12 @@ func (p *pubSub) setMeta(d Meta) {
 type subscriber struct {
 	ps *pubSub
 	cb func(d Meta)
+	m  sync.Mutex
 }
 
 func (s *subscriber) call(m Meta) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	if s.cb != nil {
 		s.cb(m)
 	}
@@ -249,6 +252,8 @@ func (s *subscriber) Unsubscribe(ids ...string) Subscriber {
 }
 
 func (s *subscriber) Callback(cb func(d Meta)) Subscriber {
+	s.m.Lock()
+	defer s.m.Unlock()
 	s.cb = cb
 	return s
 }
