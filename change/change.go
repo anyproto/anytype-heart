@@ -49,7 +49,7 @@ func (ch *Change) HasDetails() bool {
 }
 
 func NewSnapshotChange(blocks []*model.Block, details *types.Struct, fileKeys []*core.FileKeys) proto.Marshaler {
-	fkeys := make([]*pb.ChangeFileKeys, 0, len(fileKeys))
+	fkeys := make([]*pb.ChangeFileKeys, len(fileKeys))
 	for i, k := range fileKeys {
 		fkeys[i] = &pb.ChangeFileKeys{
 			Hash: k.Hash,
