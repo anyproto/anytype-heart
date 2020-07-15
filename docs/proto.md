@@ -5617,6 +5617,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_RUN_NODE | 105 |  |
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 107 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 
 
 
@@ -5637,6 +5638,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET | 105 |  |
 | FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
 | FAILED_TO_RECOVER_PREDEFINED_BLOCKS | 107 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 
 
 

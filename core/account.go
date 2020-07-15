@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,9 @@ import (
 
 const cafeUrl = "https://cafe1.anytype.io"
 const cafePeerId = "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+
+// we cannot check the constant error from badger because they hardcoded it there
+const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
 
 type AlphaInviteRequest struct {
 	Code    string `json:"code"`
@@ -292,6 +296,9 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 	err = mw.start()
 	if err != nil {
+		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
+			return response(pb.RpcAccountRecoverResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
+		}
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
@@ -469,6 +476,10 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		if err != nil {
 			if err == core.ErrRepoCorrupted {
 				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+			}
+
+			if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
+				return response(nil, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
 			}
 
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
