@@ -1400,7 +1400,7 @@ message Rpc {
                         Error error = 1;
                         ResponseEvent event = 2;
                         string viewId = 3;
-                        
+
                         message Error {
                             Code code = 1;
                             string description = 2;
@@ -1696,7 +1696,7 @@ message Rpc {
                         FAILED_TO_RUN_NODE = 105;
                         WALLET_RECOVER_NOT_PERFORMED = 106;
                         FAILED_TO_STOP_RUNNING_NODE = 107;
-
+                        ANOTHER_ANYTYPE_PROCESS_IS_RUNNING = 108;
                     }
                 }
             }
@@ -1735,6 +1735,8 @@ message Rpc {
                         LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET = 105;
                         FAILED_TO_STOP_SEARCHER_NODE = 106;
                         FAILED_TO_RECOVER_PREDEFINED_BLOCKS = 107;
+                        ANOTHER_ANYTYPE_PROCESS_IS_RUNNING = 108;
+
                     }
                 }
             }
