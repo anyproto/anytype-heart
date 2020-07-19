@@ -319,7 +319,20 @@ func (a *Anytype) start() error {
 			litenet.WithNetDebug(false),
 			litenet.WithOffline(a.opts.Offline))
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "address already in use") {
+				// start on random port in case saved port is already used by some other app
+				a.t, err = litenet.DefaultNetwork(
+					a.opts.Repo,
+					a.opts.Device,
+					[]byte(ipfsPrivateNetworkKey),
+					litenet.WithNetHostAddr(nil),
+					litenet.WithNetDebug(false),
+					litenet.WithOffline(a.opts.Offline))
+			}
+
+			if err != nil {
+				return err
+			}
 		}
 	}
 
