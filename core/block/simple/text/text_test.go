@@ -262,3 +262,40 @@ func TestText_SetMarkForAllText(t *testing.T) {
 	})
 	assert.Len(t, tb.Model().GetText().Marks.Marks, 2)
 }
+
+func TestText_RemoveMarkType(t *testing.T) {
+	b := NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "1234567890",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{Type: model.BlockContentTextMark_Bold, Range: &model.Range{To: 10}},
+						{Type: model.BlockContentTextMark_Italic, Range: &model.Range{To: 5}},
+					},
+				},
+			},
+		},
+	}).(Block)
+	b.RemoveMarkType(model.BlockContentTextMark_Bold)
+	assert.Len(t, b.Model().GetText().Marks.Marks, 1)
+	assert.Equal(t, model.BlockContentTextMark_Italic, b.Model().GetText().Marks.Marks[0].Type)
+}
+
+func TestText_HasMarkForAllText(t *testing.T) {
+	b := NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "1234567890",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{Type: model.BlockContentTextMark_Bold, Range: &model.Range{To: 10}},
+						{Type: model.BlockContentTextMark_Italic, Range: &model.Range{To: 5}},
+					},
+				},
+			},
+		},
+	}).(Block)
+	assert.False(t, b.HasMarkForAllText(&model.BlockContentTextMark{Type: model.BlockContentTextMark_Italic}))
+	assert.True(t, b.HasMarkForAllText(&model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}))
+}

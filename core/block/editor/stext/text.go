@@ -14,6 +14,7 @@ type Text interface {
 	Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error)
 	RangeSplit(ctx *state.Context, id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error)
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
+	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 }
 
 func NewText(sb smartblock.SmartBlock) Text {
@@ -99,6 +100,33 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	}
 	s.Unlink(second.Model().Id)
 	first.Model().ChildrenIds = append(first.Model().ChildrenIds, second.Model().ChildrenIds...)
+	return t.Apply(s)
+}
+
+func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) (err error) {
+	s := t.NewStateCtx(ctx)
+	var reverse = true
+	for _, id := range blockIds {
+		tb, err := getText(s, id)
+		if err != nil {
+			continue
+		}
+		if !tb.HasMarkForAllText(mark) {
+			reverse = false
+			break
+		}
+	}
+	for _, id := range blockIds {
+		tb, err := getText(s, id)
+		if err != nil {
+			continue
+		}
+		if reverse {
+			tb.RemoveMarkType(mark.Type)
+		} else {
+			tb.SetMarkForAllText(mark)
+		}
+	}
 	return t.Apply(s)
 }
 

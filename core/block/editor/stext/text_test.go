@@ -74,3 +74,50 @@ func TestTextImpl_Merge(t *testing.T) {
 	assert.Equal(t, "onetwo", r.Pick("1").Model().GetText().Text)
 	assert.Equal(t, []string{"ch1", "ch2"}, r.Pick("1").Model().ChildrenIds)
 }
+
+func TestTextImpl_SetMark(t *testing.T) {
+	t.Run("set mark for empty", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "one")).
+			AddBlock(newTextBlock("2", "two"))
+		mark := &model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}
+		tb := NewText(sb)
+		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
+		r := sb.NewState()
+		tb1, _ := getText(r, "1")
+		assert.True(t, tb1.HasMarkForAllText(mark))
+		tb2, _ := getText(r, "2")
+		assert.True(t, tb2.HasMarkForAllText(mark))
+	})
+	t.Run("set mark reverse", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "one")).
+			AddBlock(newTextBlock("2", "two"))
+		mark := &model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}
+		tb := NewText(sb)
+		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
+		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
+		r := sb.NewState()
+		tb1, _ := getText(r, "1")
+		assert.False(t, tb1.HasMarkForAllText(mark))
+		tb2, _ := getText(r, "2")
+		assert.False(t, tb2.HasMarkForAllText(mark))
+	})
+	t.Run("set mark partial", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "one")).
+			AddBlock(newTextBlock("2", "two"))
+		mark := &model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}
+		tb := NewText(sb)
+		require.NoError(t, tb.SetMark(nil, mark, "1"))
+		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
+		r := sb.NewState()
+		tb1, _ := getText(r, "1")
+		assert.True(t, tb1.HasMarkForAllText(mark))
+		tb2, _ := getText(r, "2")
+		assert.True(t, tb2.HasMarkForAllText(mark))
+	})
+}
