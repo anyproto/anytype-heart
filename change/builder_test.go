@@ -332,7 +332,7 @@ func (s *smartblock) GetRecord(ctx context.Context, recordID string) (*core.Smar
 	return nil, fmt.Errorf("record %v not found", recordID)
 }
 
-func (s *smartblock) PushRecord(payload proto.Message) (id string, err error) {
+func (s *smartblock) PushRecord(payload proto.Marshaler) (id string, err error) {
 	panic("implement me")
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
@@ -25,19 +26,22 @@ type Middleware struct {
 	pin                        string
 	mnemonic                   string
 	gatewayAddr                string
-	accountSearchCancel        context.CancelFunc
-	foundAccounts              []*model.Account // found local&remote account for the current mnemonic
-	accountsRecoveryInProgress chan struct{}
+	accountSearchCancelAndWait context.CancelFunc
 
-	SendEvent     func(event *pb.Event)
+	foundAccounts []*model.Account // found local&remote account for the current mnemonic
+
+	EventSender event.Sender
+
 	blocksService block.Service
 	linkPreview   linkpreview.LinkPreview
 
 	Anytype libCore.Service
 
-	debugGrpcEventSender      chan struct{}
-	debugGrpcEventSenderMutex sync.Mutex
-	m                         sync.RWMutex
+	m sync.RWMutex
+}
+
+func New() *Middleware {
+	return &Middleware{accountSearchCancelAndWait: func() {}}
 }
 
 func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
@@ -122,11 +126,7 @@ func (mw *Middleware) stop() error {
 		}
 
 		mw.Anytype = nil
-		if mw.accountSearchCancel != nil {
-			mw.accountSearchCancel()
-		}
-
-		mw.accountSearchCancel = nil
+		mw.accountSearchCancelAndWait()
 	}
 	return nil
 }

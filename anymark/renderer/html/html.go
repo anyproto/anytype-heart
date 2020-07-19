@@ -307,11 +307,7 @@ var ListAttributeFilter = GlobalAttributeFilter.Extend(
 func (r *Renderer) renderList(w blocksUtil.RWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.List)
 
-	if n.IsOrdered() && entering {
-		w.SetIsNumberedList(true)
-	} else {
-		w.SetIsNumberedList(false)
-	}
+	w.SetListState(entering, n.IsOrdered())
 
 	return ast.WalkContinue, nil
 }

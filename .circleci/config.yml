@@ -126,10 +126,12 @@ jobs:
             make build-js-addon
             mv dist/js/pb protobuf
             mkdir protobuf/protos
+            mkdir schemas
             mv pb/protos/*.proto ./protobuf/protos
+            cp vendor/github.com/anytypeio/go-anytype-library/schema/*.json schemas
             cp vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
             mv jsaddon/build addon
-            tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon
+            tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon schemas
             mv js_${VERSION}_linux-amd64.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
@@ -231,17 +233,19 @@ jobs:
             make protos-js
             cd tmp
             mkdir -p protobuf/protos
+            mkdir -p schemas
 
             cp ../pb/protos/*.proto ./protobuf/protos
             cp ../vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto ./protobuf/protos
-            cp -R ../dist/js/pb ./protobuf
+            cp ../vendor/github.com/anytypeio/go-anytype-library/schema/*.json ./schemas
+            cp -R ../dist/js/pb/* ./protobuf
 
             declare -a arr=("windows-amd64")
             for i in "${arr[@]}"
             do
                 OSARCH=${i%.*}
                 cp ../${i}* ./grpc-server.exe
-                zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf
+                zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf schemas
                 mv js_${VERSION}_${OSARCH}.zip ${OUT}/
             done
             cd .. && rm -rf tmp
@@ -260,11 +264,14 @@ jobs:
             cp ~/project/darwin-amd64.h ./dist/lib.h
             make build-js-addon
             mv dist/js/pb protobuf
-            mkdir protobuf/protos
+            mkdir -p protobuf/protos
+            mkdir -p schemas
             mv pb/protos/*.proto ./protobuf/protos
             cp vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto ./protobuf/protos
+            cp vendor/github.com/anytypeio/go-anytype-library/schema/*.json ./schemas
+
             mv jsaddon/build addon
-            tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
+            tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon schemas
             mv js_${VERSION}_darwin-amd64.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
@@ -352,9 +359,12 @@ jobs:
           command: |
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
+            mkdir -p schemas
             cp ./pb/protos/*.proto protobuf/protos
             cp ./pb/protos/service/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
+            cp ./vendor/github.com/anytypeio/go-anytype-library/schema/*.json schemas
+
             protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
       - run:
           name: collect artifacts
@@ -366,7 +376,7 @@ jobs:
             OUT=~/dist/ios_framework
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf
+            tar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf schemas
             mv ios_framework_${VERSION}.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
@@ -447,9 +457,11 @@ jobs:
           command: |
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
+            mkdir -p schemas
             cp ./pb/protos/*.proto protobuf/protos
             cp ./pb/protos/service/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
+            cp ./vendor/github.com/anytypeio/go-anytype-library/schema/*.json schemas
             protoc -I ./ --java_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto
       - run:
           name: collect artifacts
@@ -461,7 +473,7 @@ jobs:
             OUT=~/dist/android_aar
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
+            tar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf schemas
             mv android_lib_${VERSION}.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/go/src/github.com/anytypeio/go-anytype-middleware
@@ -513,24 +525,32 @@ workflows:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-lib-linux:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-ios-framework:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - build-android-aar:
           requires:
             - unit-test
           filters:
+            branches:
+              only: master
             tags:
               only: /.*/
       - release:

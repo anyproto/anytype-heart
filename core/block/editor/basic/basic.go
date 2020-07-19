@@ -25,6 +25,8 @@ type Basic interface {
 	InternalPaste(blocks []simple.Block) (err error)
 }
 
+var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
+
 func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
 	s := bs.NewStateCtx(ctx)
 
@@ -83,6 +85,10 @@ type basic struct {
 }
 
 func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
+	if bs.Type() == pb.SmartBlockType_Set {
+		return "", ErrNotSupported
+	}
+
 	s := bs.NewStateCtx(ctx)
 	block := simple.New(req.Block)
 	s.Add(block)
@@ -96,6 +102,10 @@ func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id st
 }
 
 func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
+	if bs.Type() == pb.SmartBlockType_Set {
+		return nil, ErrNotSupported
+	}
+
 	s := bs.NewStateCtx(ctx)
 	pos := req.Position
 	targetId := req.TargetId
@@ -135,6 +145,10 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 }
 
 func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
+	if bs.Type() == pb.SmartBlockType_Set {
+		return ErrNotSupported
+	}
+
 	s := bs.NewStateCtx(ctx)
 	for _, id := range ids {
 		if !s.Unlink(id) {
@@ -145,6 +159,10 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 }
 
 func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
+	if bs.Type() == pb.SmartBlockType_Set {
+		return ErrNotSupported
+	}
+
 	s := bs.NewStateCtx(ctx)
 	for _, id := range req.BlockIds {
 		if b := s.Pick(id); b != nil {
@@ -158,6 +176,10 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 }
 
 func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error) {
+	if bs.Type() == pb.SmartBlockType_Set {
+		return "", ErrNotSupported
+	}
+
 	s := bs.NewStateCtx(ctx)
 	new := simple.New(block)
 	newId = new.Model().Id

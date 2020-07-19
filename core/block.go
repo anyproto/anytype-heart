@@ -1084,8 +1084,8 @@ func (mw *Middleware) BlockSetDataviewView(req *pb.RpcBlockSetDataviewViewReques
 
 func (mw *Middleware) BlockCreateDataviewView(req *pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockCreateDataviewViewResponseErrorCode, err error) *pb.RpcBlockCreateDataviewViewResponse {
-		m := &pb.RpcBlockCreateDataviewViewResponse{Error: &pb.RpcBlockCreateDataviewViewResponseError{Code: code}}
+	response := func(viewId string, code pb.RpcBlockCreateDataviewViewResponseErrorCode, err error) *pb.RpcBlockCreateDataviewViewResponse {
+		m := &pb.RpcBlockCreateDataviewViewResponse{ViewId: viewId, Error: &pb.RpcBlockCreateDataviewViewResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -1093,13 +1093,15 @@ func (mw *Middleware) BlockCreateDataviewView(req *pb.RpcBlockCreateDataviewView
 		}
 		return m
 	}
+	var viewId string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.CreateDataviewView(ctx, *req)
+		viewId, err = bs.CreateDataviewView(ctx, *req)
+		return err
 	})
 	if err != nil {
-		return response(pb.RpcBlockCreateDataviewViewResponseError_UNKNOWN_ERROR, err)
+		return response("", pb.RpcBlockCreateDataviewViewResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockCreateDataviewViewResponseError_NULL, nil)
+	return response(viewId, pb.RpcBlockCreateDataviewViewResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockDeleteDataviewView(req *pb.RpcBlockDeleteDataviewViewRequest) *pb.RpcBlockDeleteDataviewViewResponse {

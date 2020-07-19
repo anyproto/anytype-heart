@@ -67,14 +67,13 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds           []string
-	sendEvent        func(e *pb.Event)
-	hist             history.History
-	source           source.Source
-	meta             meta.Service
-	metaSub          meta.Subscriber
-	metaFetchResults chan meta.Meta
-	metaFetchMu      sync.Mutex
+	depIds    []string
+	sendEvent func(e *pb.Event)
+	hist      history.History
+	source    source.Source
+	meta      meta.Service
+	metaSub   meta.Subscriber
+	metaData  *core.SmartBlockMeta
 }
 
 func (sb *smartBlock) Id() string {
@@ -136,40 +135,36 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 }
 
 func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err error) {
-	sb.metaFetchMu.Lock()
-	sb.metaFetchResults = make(chan meta.Meta)
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
 	sb.metaSub = sb.meta.PubSub().NewSubscriber()
 	sb.depIds = sb.dependentSmartIds()
-	sb.metaSub.Callback(sb.onMetaChange).Subscribe(sb.depIds...)
-	sb.metaFetchMu.Unlock()
-	defer func() {
-		sb.metaFetchMu.Lock()
-		ch := sb.metaFetchResults
-		sb.metaFetchResults = nil
-		sb.metaFetchMu.Unlock()
-		timeout := time.After(time.Millisecond * 10)
-		for {
-			select {
-			case d := <-ch:
-				sb.onMetaChange(d)
-			case <-timeout:
-				return
-			}
-		}
-	}()
+	var ch = make(chan meta.Meta)
+	subscriber := sb.metaSub.Callback(func(d meta.Meta) {
+		ch <- d
+	}).Subscribe(sb.depIds...)
 	sb.meta.ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
 		SmartBlockMeta: *sb.Meta(),
 	})
+
+	defer func() {
+		go func() {
+			for d := range ch {
+				sb.onMetaChange(d)
+			}
+		}()
+		subscriber.Callback(sb.onMetaChange)
+		close(ch)
+	}()
+
 	timeout := time.After(time.Second)
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
 		case <-timeout:
 			return
-		case d := <-sb.metaFetchResults:
+		case d := <-ch:
 			details = append(details, &pb.EventBlockSetDetails{
 				Id:      d.BlockId,
 				Details: d.SmartBlockMeta.Details,
@@ -180,13 +175,6 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 }
 
 func (sb *smartBlock) onMetaChange(d meta.Meta) {
-	sb.metaFetchMu.Lock()
-	if sb.metaFetchResults != nil {
-		sb.metaFetchResults <- d
-		sb.metaFetchMu.Unlock()
-		return
-	}
-	sb.metaFetchMu.Unlock()
 	sb.Lock()
 	defer sb.Unlock()
 	if sb.sendEvent != nil {

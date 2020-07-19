@@ -122,7 +122,7 @@ type Service interface {
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error
 	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
-	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) error
+	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
@@ -212,7 +212,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
-	if e := s.anytype.PageStore().UpdateLastOpened(id); e != nil {
+	if e := s.anytype.PageUpdateLastOpened(id); e != nil {
 		log.Warnf("can't update last opened id: %v", e)
 	}
 
@@ -398,6 +398,16 @@ func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId str
 }
 
 func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+	var contextBlockType pb.SmartBlockType
+	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		contextBlockType = b.Type()
+		return nil
+	})
+
+	if contextBlockType == pb.SmartBlockType_Set {
+		return "", "", basic.ErrNotSupported
+	}
+
 	pageId, err = s.CreateSmartBlock(req)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
@@ -603,14 +613,17 @@ func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDa
 	})
 }
 
-func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) error {
-	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		if req.View == nil {
 			req.View = &model.BlockContentDataviewView{}
 		}
-		_, err := b.CreateView(ctx, req.BlockId, *req.View)
+		view, err := b.CreateView(ctx, req.BlockId, *req.View)
+		id = view.Id
 		return err
 	})
+
+	return
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
