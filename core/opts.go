@@ -117,30 +117,3 @@ func WithNetBootstrapper(n net.NetBoostrapper) ServiceOption {
 		return nil
 	}
 }
-
-func (opts *ServiceOptions) SetDefaults() {
-	if opts.HostAddr == nil {
-		addr, err := ma.NewMultiaddr(DefaultHostAddr)
-		if err != nil {
-			log.Fatal("failed to parse DefaultHostAddr: %s", err.Error())
-		}
-		opts.HostAddr = addr
-	}
-
-	if opts.WebGatewayBaseUrl == "" {
-		opts.WebGatewayBaseUrl = DefaultWebGatewayBaseUrl
-	}
-
-	if opts.CafeGrpcHost == "" {
-		opts.CafeGrpcHost = DefaultCafeNodeGRPC
-	}
-
-	if opts.CafeP2PAddr == nil {
-		addr, err := ma.NewMultiaddr(DefaultCafeNodeP2P)
-		if err != nil {
-			log.Fatal("failed to parse DefaultCafeNodeP2P: %s", err.Error())
-		}
-
-		opts.CafeP2PAddr = addr
-	}
-}

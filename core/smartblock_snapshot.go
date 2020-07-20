@@ -98,7 +98,7 @@ func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		DefaultWebGatewayBaseUrl+DefaultWebGatewaySnapshotURI,
+		snapshot.node.opts.WebGatewayBaseUrl+snapshot.node.opts.WebGatewaySnapshotUri,
 		snapshot.threadID.String(),
 		event.BodyID().String(),
 		base64.RawURLEncoding.EncodeToString(bodyKeyBin),

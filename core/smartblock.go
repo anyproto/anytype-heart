@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/proto"
@@ -294,7 +295,6 @@ func (block *smartBlock) PushSnapshot(state vclock.VClock, meta *SmartBlockMeta,
 		model.Blocks = blocks
 	}
 
-	var err error
 	recID, user, date, err := block.pushSnapshot(model)
 	if err != nil {
 		return nil, err
@@ -468,6 +468,10 @@ func getSnippet(snap *smartBlockSnapshot) string {
 }
 
 func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
+	// lock here for the concurrent details changes
+	block.node.lock.Lock()
+	defer block.node.lock.Unlock()
+
 	if block.Type() == smartblock.SmartBlockTypeArchive {
 		return nil
 	}
@@ -504,7 +508,6 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 	prevOutgoingLinks := make(map[string]struct{})
 	newOutgoingLinks := make(map[string]struct{})
 	var oldSnippet string
-	var oldDetails *types.Struct
 	newSnippet := getSnippet(snap)
 
 	if !fromState.IsNil() {
@@ -515,7 +518,6 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 			prevSnap := prevSnaps[0]
 			storeOutgoingLinks(&prevSnap, prevOutgoingLinks)
 			oldSnippet = getSnippet(&prevSnap)
-			oldDetails = prevSnaps[0].details
 		}
 	}
 
@@ -544,9 +546,16 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 		changeSnippet = newSnippet
 	}
 
-	var changedDetails *model.PageDetails
-	if oldDetails == nil || oldDetails.Compare(snap.details) != 0 {
-		changedDetails = &model.PageDetails{snap.details}
+	changedDetails := &model.PageDetails{snap.details}
+	if snap.details == nil {
+		changedDetails.Details = &types.Struct{Fields: make(map[string]*types.Value)}
+	}
+	changedDetails.Details.Fields["lastModified"] = structs.Float64(float64(time.Now().Unix()))
+
+	// todo: rewrite temp workaround after changes will get merged
+	oldDetails, _ := block.node.localStore.Pages.GetDetails(block.ID())
+	if oldDetails != nil && oldDetails.Details != nil && oldDetails.Details.Fields != nil && oldDetails.Details.Fields["lastOpened"] != nil {
+		changedDetails.Details.Fields["lastOpened"] = oldDetails.Details.Fields["lastOpened"]
 	}
 
 	return block.node.localStore.Pages.Update(&model.State{snap.State().Map()}, block.ID(), linksToAdd, linksToRemove, changeSnippet, changedDetails)
