@@ -110,5 +110,5 @@ func getText(s *state.State, id string) (text.Block, error) {
 	if tb, ok := b.(text.Block); ok {
 		return tb, nil
 	}
-	return nil, fmt.Errorf("block '%s' not a text block", id)
+	return nil, fmt.Errorf("block is not a text block")
 }
