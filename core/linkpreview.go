@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -11,8 +12,7 @@ import (
 func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-	url, _ := uri.ProcessURI(req.Url)
-	data, err := mw.linkPreview.Fetch(ctx, url)
+	url, err := uri.ProcessURI(req.Url)
 	if err != nil {
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
@@ -21,6 +21,29 @@ func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPrev
 			},
 		}
 	}
+
+	if !strings.HasPrefix(req.Url, "http") {
+		// only http/https supported
+		// todo: fixed linkpreview for email/tel?
+		return &pb.RpcLinkPreviewResponse{
+			Error: &pb.RpcLinkPreviewResponseError{
+				Code: pb.RpcLinkPreviewResponseError_NULL,
+			},
+		}
+	}
+
+	data, err := mw.linkPreview.Fetch(ctx, url)
+	if err != nil {
+		// trim the actual url from the error
+		errTrimmed := strings.Replace(err.Error(), url, "<url>", -1)
+		return &pb.RpcLinkPreviewResponse{
+			Error: &pb.RpcLinkPreviewResponseError{
+				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
+				Description: errTrimmed,
+			},
+		}
+	}
+
 	return &pb.RpcLinkPreviewResponse{
 		Error: &pb.RpcLinkPreviewResponseError{
 			Code: pb.RpcLinkPreviewResponseError_NULL,
