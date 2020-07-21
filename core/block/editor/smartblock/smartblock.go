@@ -291,7 +291,7 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action)
 	}
 	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
 		if storeInfo.links != nil || storeInfo.details != nil || storeInfo.snippet != nil {
-			return at.PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet)
+			return at.PageStore().UpdatePage(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet)
 		}
 	}
 	return nil

@@ -39,7 +39,7 @@ type dataviewImpl struct {
 	activeViewId string
 	offset       int
 	limit        int
-	entries      []database.Entry
+	records      []database.Record
 	mu           sync.Mutex
 }
 
@@ -149,8 +149,8 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 	}
 
 	if dv.activeViewId != activeViewId {
-		dv.entries = []database.Entry{}
 		dv.activeViewId = activeViewId
+		dv.records = nil
 	}
 
 	dv.limit = limit
@@ -225,7 +225,7 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 			// reset state after block was reopened
 			// getDataviewImpl will also set activeView to the fist one in case the smartblock wasn't opened in this session before
 			dv := d.getDataviewImpl(dvBlock)
-			dv.entries = []database.Entry{}
+			dv.records = nil
 		}
 		return true
 	})
@@ -253,7 +253,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	})
 
 	var currentEntriesIds []string
-	for _, entry := range dv.entries {
+	for _, entry := range dv.records {
 		currentEntriesIds = append(currentEntriesIds, getEntryID(entry))
 	}
 
@@ -274,8 +274,8 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		},
 	}})
 
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
-	dv.entries = entries
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
+	dv.records = entries
 
 	return msgs, nil
 }
@@ -308,7 +308,7 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func getEntryID(entry database.Entry) string {
+func getEntryID(entry database.Record) string {
 	if entry.Details == nil {
 		return ""
 	}
@@ -326,7 +326,7 @@ type recordsInsertedAtPosition struct {
 	entries  []*types.Struct
 }
 
-func calculateEntriesDiff(a []database.Entry, b []database.Entry) (updated []*types.Struct, removed []string, insertedGroupedByPosition []recordsInsertedAtPosition) {
+func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, removed []string, insertedGroupedByPosition []recordsInsertedAtPosition) {
 	var inserted []recordInsertedAtPosition
 
 	var existing = make(map[string]*types.Struct, len(a))
