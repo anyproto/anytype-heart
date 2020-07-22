@@ -269,6 +269,9 @@ func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *history.Ac
 }
 
 func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action) (err error) {
+	if sb.Type() == pb.SmartBlockType_Archive {
+		return
+	}
 	var storeInfo struct {
 		details *types.Struct
 		snippet *string
