@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/structs"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -535,6 +537,58 @@ func (m *dsPageStore) updateSnippet(txn ds.Txn, id string, snippet string) error
 	}
 
 	return nil
+}
+
+func (m *dsPageStore) UpdateLastOpened(id string, time time.Time) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	details, err := getDetails(txn, id)
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+
+	if details == nil || details.Details == nil || details.Details.Fields == nil {
+		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
+	}
+
+	details.Details.Fields["lastOpened"] = structs.Float64(float64(time.Unix()))
+
+	err = m.updateDetails(txn, id, details)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsPageStore) UpdateLastModified(id string, time time.Time) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	details, err := getDetails(txn, id)
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+
+	if details == nil || details.Details == nil || details.Details.Fields == nil {
+		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
+	}
+
+	details.Details.Fields["lastModified"] = structs.Float64(float64(time.Unix()))
+
+	err = m.updateDetails(txn, id, details)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
 }
 
 func (m *dsPageStore) Delete(id string) error {

@@ -7,9 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/structs"
-	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
 )
 
 func (a *Anytype) PageStore() localstore.PageStore {
@@ -90,16 +87,5 @@ func (a *Anytype) PageUpdateLastOpened(id string) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	details, err := a.localStore.Pages.GetDetails(id)
-	if err != nil && err != ds.ErrNotFound {
-		return err
-	}
-
-	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
-	}
-
-	details.Details.Fields["lastOpened"] = structs.Float64(float64(time.Now().Unix()))
-
-	return a.localStore.Pages.UpdateDetails(id, details)
+	return a.localStore.Pages.UpdateLastModified(id, time.Now())
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -58,6 +59,8 @@ type PageStore interface {
 	GetByIDs(ids ...string) ([]*model.PageInfo, error)
 	Update(id string, details *types.Struct, links []string, snippet *string) error
 	UpdateDetails(id string, details *model.PageDetails) error
+	UpdateLastModified(id string, time time.Time) error
+	UpdateLastOpened(id string, time time.Time) error
 	Delete(id string) error
 }
 
