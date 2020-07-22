@@ -227,6 +227,7 @@ func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 		return logs[i].ID < logs[j].ID
 	})
 	var knownHeads []string
+	var validLogs = logs[:0]
 	for _, l := range logs {
 		if slice.FindPos(knownHeads, l.Head) != -1 { // do not scan known heads
 			continue
@@ -241,8 +242,9 @@ func (sb *stateBuilder) getActualHeads(logs []core.SmartblockLog) (heads []strin
 				knownHeads = append(knownHeads, headId)
 			}
 		}
+		validLogs = append(validLogs, l)
 	}
-	for _, l := range logs {
+	for _, l := range validLogs {
 		if slice.FindPos(knownHeads, l.Head) != -1 { // do not scan known heads
 			continue
 		} else {
