@@ -119,6 +119,18 @@ func (a *Anytype) Account() string {
 	return a.opts.Account.Address()
 }
 
+func (a *Anytype) ThreadsNet() net.NetBoostrapper {
+	return a.t
+}
+
+func (a *Anytype) ThreadsCollection() *db.Collection {
+	return a.threadsCollection
+}
+
+func (a *Anytype) ThreadsDB() *db.DB {
+	return a.db
+}
+
 func (a *Anytype) Ipfs() ipfs.IPFS {
 	return a.t.GetIpfs()
 }

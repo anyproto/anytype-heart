@@ -109,10 +109,12 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 		} else {
 			log.Infof("pullThread %s after: %s", id.String(), snap.State().String())
 			ls := snap.(smartBlockSnapshot)
-			err := sb.indexSnapshot(&ls)
-			if err != nil {
-				log.Errorf("pullThread: failed to index the new snapshot for %s: %s", id.String(), err.Error())
-			}
+			go func() {
+				err := sb.indexSnapshot(&ls)
+				if err != nil {
+					log.Errorf("pullThread: failed to index the new snapshot for %s: %s", id.String(), err.Error())
+				}
+			}()
 		}
 	}
 
@@ -143,11 +145,12 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 		}
 
 		a.db = d
+
+		a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
 		err = a.listenExternalNewThreads()
 		if err != nil {
 			return fmt.Errorf("failed to listen external new threads: %w", err)
 		}
-		a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
 
 		if a.threadsCollection == nil {
 			a.threadsCollection, err = a.db.NewCollection(threadInfoCollection)
@@ -155,6 +158,18 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 				return err
 			}
 		}
+
+		err = a.handleAllMissingDbRecords(account.ID.String())
+		if err != nil {
+			return fmt.Errorf("handleAllMissingDbRecords failed: %w", err)
+		}
+
+		go func() {
+			err = a.addMissingReplicators()
+			if err != nil {
+				log.Errorf("addMissingReplicators: %s", err.Error())
+			}
+		}()
 	}
 
 	accountThreadPullDone := make(chan struct{})
