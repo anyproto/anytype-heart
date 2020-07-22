@@ -34,7 +34,7 @@ type Source interface {
 func NewSource(a anytype.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
-		err = fmt.Errorf("anytype.GetBlock(%v) error: %v", id, err)
+		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return
 	}
 	s = &source{
