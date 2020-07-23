@@ -277,7 +277,7 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action)
 		snippet *string
 		links   []string
 	}
-	if act != nil && act.Details != nil {
+	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
 	}
 	if hasDepIds(act) {
