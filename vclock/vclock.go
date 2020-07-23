@@ -131,11 +131,15 @@ func (vc VClock) String() string {
 }
 
 func (vc VClock) Compare(other VClock, cond Condition) bool {
-	vc.mutex.RLock()
-	defer vc.mutex.RUnlock()
+	if !vc.IsNil() {
+		vc.mutex.RLock()
+		defer vc.mutex.RUnlock()
+	}
 
-	other.mutex.RLock()
-	defer other.mutex.RUnlock()
+	if !other.IsNil() {
+		other.mutex.RLock()
+		defer other.mutex.RUnlock()
+	}
 
 	var otherIs Condition
 	// Preliminary qualification based on length
