@@ -123,13 +123,32 @@ addrsLoop:
 	if !atleastOneNodeAdded {
 		return fmt.Errorf("failed to add thread from any provided remote address")
 	} else {
-		err = a.pullThread(context.Background(), tid)
+		_, err = a.pullThread(context.Background(), tid)
 		if err != nil {
-			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
+			log.Errorf("processNewExternalThread: pull thread %s failed: %s", tid.String(), err.Error())
 		}
 	}
+	err = a.migratePageToChanges(tid)
+	if err != nil {
+		if err != ErrAlreadyMigrated {
+			log.Errorf("processNewExternalThread migratePageToChanges %s failed: %s", tid.String(), err.Error())
+		} else {
+			log.Debugf("processNewExternalThread migratePageToChanges %s: thread already migrated", tid.String())
+		}
+	} else {
+		log.Debugf("processNewExternalThread: thread %s migrated", tid.String())
+	}
+
+	go func() {
+		// reindex after migration
+		err = a.opts.ReindexFunc(tid.String())
+		if err != nil {
+			log.Errorf("processNewExternalThread: failed to reindex page %s: %s", tid.String(), err.Error())
+		}
+	}()
 
 	return nil
+
 }
 
 type threadRecord struct {

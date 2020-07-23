@@ -298,6 +298,7 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 	}()
 
 	pullDone := make(chan struct{})
+	var headsChanged bool
 	if mustConnectToCafe {
 		select {
 		case <-replicatorAddFinished:
@@ -317,7 +318,7 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 		go func() {
 			defer close(pullDone)
 			defer close(syncDone)
-			err = a.pullThread(ctx, thrd.ID)
+			headsChanged, err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return
@@ -343,13 +344,31 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 				return
 			}
 
-			err = a.pullThread(ctx, thrd.ID)
+			headsChanged, err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return
 			}
 		}()
 	}
+
+	go func() {
+		<-pullDone
+		if headsChanged {
+			err = a.migratePageToChanges(thrd.ID)
+			if err != nil && err != ErrAlreadyMigrated {
+				log.Errorf("syncThread migratePageToChanges failed: %s", err.Error())
+			}
+
+			if a.opts.ReindexFunc != nil {
+				err = a.opts.ReindexFunc(thrd.ID.String())
+				if err != nil {
+					log.Errorf("syncThread ReindexFunc failed: %s", err.Error())
+				}
+			}
+		}
+
+	}()
 
 	if mustConnectToCafe && pullAfterConnect && waitForPull {
 		log.Debugf("syncThread wait for pull")

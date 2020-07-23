@@ -81,10 +81,10 @@ func (a *Anytype) DeleteBlock(id string) error {
 		}
 	}
 }*/
-func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
+func (a *Anytype) pullThread(ctx context.Context, id thread.ID) (headsChanged bool, err error) {
 	thrd, err := a.t.GetThread(context.Background(), id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	var headPerLog = make(map[peer.ID]cid.Cid, len(thrd.Logs))
@@ -94,15 +94,14 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 
 	err = a.t.PullThread(ctx, id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	thrd, err = a.t.GetThread(context.Background(), id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	var headsChanged bool
 	for _, log := range thrd.Logs {
 		if v, exists := headPerLog[log.ID]; !exists {
 			headsChanged = true
@@ -115,13 +114,6 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 		}
 	}
 
-	if headsChanged {
-		err = a.opts.ReindexFunc(id.String())
-		if err != nil {
-			log.Error("failed to reindex page after pullThread")
-		}
-	}
-
 	go func() {
 		// todo: do we need timeout here?
 		err := a.smartBlockChanges.SendWithTimeout(id, time.Second*30)
@@ -130,7 +122,7 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 		}
 	}()
 
-	return nil
+	return
 }
 
 func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
@@ -183,7 +175,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 		go func() {
 			defer close(accountThreadPullDone)
 			// pull only after adding collection to handle all events
-			err = a.pullThread(context.TODO(), account.ID)
+			_, err = a.pullThread(context.TODO(), account.ID)
 			if err != nil {
 				log.Errorf("failed to pull accountThread")
 			}
