@@ -6,11 +6,13 @@ import (
 	"time"
 
 	net3 "github.com/anytypeio/go-anytype-library/net"
+	util2 "github.com/anytypeio/go-anytype-library/util"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/cbor"
+	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -150,6 +152,64 @@ func (t threadRecord) LogID() peer.ID {
 	return t.logID
 }
 
+func (a *Anytype) addMissingThreadsInCollection() error {
+	threadsCollection := a.ThreadsCollection()
+	instancesBytes, err := threadsCollection.Find(&db.Query{})
+	if err != nil {
+		return err
+	}
+
+	var threadsInCollection = make(map[string]struct{})
+	for _, instanceBytes := range instancesBytes {
+		ti := threadInfo{}
+		util.InstanceFromJSON(instanceBytes, &ti)
+
+		tid, err := thread.Decode(ti.ID.String())
+		if err != nil {
+			log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+			continue
+		}
+		threadsInCollection[tid.String()] = struct{}{}
+	}
+
+	log.Debugf("%d threads in collection", len(threadsInCollection))
+
+	threadsIds, err := a.ThreadsNet().Logstore().Threads()
+	if err != nil {
+		return err
+	}
+
+	var missingThreads int
+	for _, threadId := range threadsIds {
+		if _, exists := threadsInCollection[threadId.String()]; !exists {
+			thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
+			if err != nil {
+				log.Errorf("addMissingThreadsInCollection migration: error getting info: %s\n", err.Error())
+				continue
+			}
+			threadInfo := threadInfo{
+				ID:    db2.InstanceID(thrd.ID.String()),
+				Key:   thrd.Key.String(),
+				Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
+			}
+
+			_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+			if err != nil {
+				log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+			} else {
+				missingThreads++
+			}
+		}
+	}
+
+	if missingThreads > 0 {
+		log.Errorf("addMissingThreadsInCollection migration: added %d missing threads", missingThreads)
+	} else {
+		log.Debugf("addMissingThreadsInCollection migration: no missing threads found")
+	}
+
+	return nil
+}
 func (a *Anytype) addMissingReplicators() error {
 	threadsIds, err := a.ThreadsNet().Logstore().Threads()
 	if err != nil {

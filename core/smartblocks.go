@@ -130,6 +130,38 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 	return nil
 }
 
+func (a *Anytype) initThreadsDB() error {
+	if a.db != nil {
+		return nil
+	}
+
+	accountID, err := a.threadDeriveID(threadDerivedIndexAccount)
+	if err != nil {
+		return err
+	}
+
+	d, err := db.NewDB(context.Background(), a.t, accountID, db.WithNewDBRepoPath(filepath.Join(a.opts.Repo, "collections")))
+	if err != nil {
+		return err
+	}
+
+	a.db = d
+
+	a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
+	err = a.listenExternalNewThreads()
+	if err != nil {
+		return fmt.Errorf("failed to listen external new threads: %w", err)
+	}
+
+	if a.threadsCollection == nil {
+		a.threadsCollection, err = a.db.NewCollection(threadInfoCollection)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	// account
 	a.lock.Lock()
@@ -140,24 +172,9 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	}
 	a.predefinedBlockIds.Account = account.ID.String()
 	if a.db == nil {
-		d, err := db.NewDB(context.Background(), a.t, account.ID, db.WithNewDBRepoPath(filepath.Join(a.opts.Repo, "collections")))
+		err = a.initThreadsDB()
 		if err != nil {
-			return err
-		}
-
-		a.db = d
-
-		a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
-		err = a.listenExternalNewThreads()
-		if err != nil {
-			return fmt.Errorf("failed to listen external new threads: %w", err)
-		}
-
-		if a.threadsCollection == nil {
-			a.threadsCollection, err = a.db.NewCollection(threadInfoCollection)
-			if err != nil {
-				return err
-			}
+			return fmt.Errorf("initThreadsDB failed: %w", err)
 		}
 
 		err = a.handleAllMissingDbRecords(account.ID.String())
@@ -169,6 +186,13 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 			err = a.addMissingReplicators()
 			if err != nil {
 				log.Errorf("addMissingReplicators: %s", err.Error())
+			}
+		}()
+
+		go func() {
+			err = a.addMissingThreadsInCollection()
+			if err != nil {
+				log.Errorf("addMissingThreadsInCollection: %s", err.Error())
 			}
 		}()
 	}
