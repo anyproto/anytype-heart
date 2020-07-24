@@ -15,14 +15,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewSet(ms meta.Service, sendEvent func(e *pb.Event)) *Set {
+func NewSet(ms meta.Service) *Set {
 	sb := smartblock.New(ms)
 	return &Set{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
-		Dataview:   dataview.NewDataview(sb, sendEvent),
-		sendEvent:  sendEvent,
+		Dataview:   dataview.NewDataview(sb),
 	}
 }
 
@@ -31,8 +30,6 @@ type Set struct {
 	basic.Basic
 	basic.IHistory
 	dataview.Dataview
-
-	sendEvent func(e *pb.Event)
 }
 
 func (p *Set) Init(s source.Source, _ bool) (err error) {

@@ -30,8 +30,8 @@ type Dataview interface {
 	smartblock.SmartblockOpenListner
 }
 
-func NewDataview(sb smartblock.SmartBlock, sendEvent func(e *pb.Event)) Dataview {
-	return &dataviewCollectionImpl{SmartBlock: sb, sendEvent: sendEvent}
+func NewDataview(sb smartblock.SmartBlock) Dataview {
+	return &dataviewCollectionImpl{SmartBlock: sb}
 }
 
 type dataviewImpl struct {
@@ -46,11 +46,8 @@ type dataviewImpl struct {
 type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
 	dataviews []*dataviewImpl
-	mu        sync.Mutex
-	sendEvent func(e *pb.Event)
 }
 
-// This method is not thread-safe
 func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataviewImpl {
 	for _, dv := range d.dataviews {
 		if dv.blockId == block.Model().Id {
@@ -69,8 +66,6 @@ func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataview
 }
 
 func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -104,8 +99,6 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -134,8 +127,6 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, activeViewId string, limit int, offset int) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	var dvBlock dataview.Block
 	var ok bool
 	if dvBlock, ok = d.Pick(id).(dataview.Block); !ok {
@@ -164,9 +155,6 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 }
 
 func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, id)
@@ -216,8 +204,6 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 }
 
 func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	d.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {
 			return true
