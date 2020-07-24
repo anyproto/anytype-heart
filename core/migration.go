@@ -135,6 +135,11 @@ func doWithOfflineNode(a *Anytype, f func() error) error {
 
 func addMissingThreadsInCollection(a *Anytype) error {
 	return doWithOfflineNode(a, func() error {
+		err := a.InitPredefinedBlocks(false)
+		if err != nil {
+			return err
+		}
+
 		threadsCollection := a.ThreadsCollection()
 		instancesBytes, err := threadsCollection.Find(&db.Query{})
 		if err != nil {
