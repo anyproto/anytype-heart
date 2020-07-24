@@ -162,10 +162,10 @@ func addMissingThreadsInCollection(a *Anytype) error {
 		var missingThreads int
 		for _, threadId := range threadsIds {
 			if _, exists := threadsInCollection[threadId.String()]; !exists {
-				missingThreads++
 				thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
 				if err != nil {
-					fmt.Printf("error getting info: %s\n", err.Error())
+					log.Errorf("addMissingThreadsInCollection migration: error getting info: %s\n", err.Error())
+					continue
 				}
 				threadInfo := threadInfo{
 					ID:    db2.InstanceID(thrd.ID.String()),
@@ -176,6 +176,8 @@ func addMissingThreadsInCollection(a *Anytype) error {
 				_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
 				if err != nil {
 					log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+				} else {
+					missingThreads++
 				}
 			}
 		}
