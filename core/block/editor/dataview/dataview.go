@@ -27,6 +27,10 @@ type Dataview interface {
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
 
+	CreateRecord(ctx *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error)
+	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.PageDetails) error
+	DeleteRecord(ctx *state.Context, blockId string, recID string) error
+
 	smartblock.SmartblockOpenListner
 }
 
@@ -200,7 +204,64 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 			}
 		}
 	}
+}
 
+func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error) {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return nil, err
+	}
+
+	dbId := tb.Model().GetDataview().GetDatabaseId()
+	db, err := d.Anytype().DatabaseByID(dbId)
+	if err != nil {
+		return nil, err
+	}
+
+	createdRec, err := db.Create(database.Record{Details: rec.Details})
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.PageDetails{Details: createdRec.Details}, nil
+}
+
+func (d *dataviewCollectionImpl) UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.PageDetails) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	dbId := tb.Model().GetDataview().GetDatabaseId()
+	db, err := d.Anytype().DatabaseByID(dbId)
+	if err != nil {
+		return err
+	}
+
+	return db.Update(recID, database.Record{Details: rec.Details})
+}
+
+func (d *dataviewCollectionImpl) DeleteRecord(ctx *state.Context, blockId string, recID string) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	dbId := tb.Model().GetDataview().GetDatabaseId()
+	db, err := d.Anytype().DatabaseByID(dbId)
+	if err != nil {
+		return err
+	}
+
+	if err := db.Delete(recID); err != nil {
+		return err
+	}
+
+	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
+	return nil
 }
 
 func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
