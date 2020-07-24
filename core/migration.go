@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,8 +11,13 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-library/localstore"
+	util2 "github.com/anytypeio/go-anytype-library/util"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
+	db2 "github.com/textileio/go-threads/core/db"
+	"github.com/textileio/go-threads/core/thread"
+	"github.com/textileio/go-threads/db"
+	"github.com/textileio/go-threads/util"
 )
 
 const versionFileName = "anytype_version"
@@ -24,10 +30,11 @@ var skipMigration = func(a *Anytype) error {
 
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
-	skipMigration,        // 1
-	alterThreadsDbSchema, // 2
-	skipMigration,        // 3
-	indexLinks,           // 4
+	skipMigration,                 // 1
+	alterThreadsDbSchema,          // 2
+	skipMigration,                 // 3
+	indexLinks,                    // 4
+	addMissingThreadsInCollection, // 5
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -124,6 +131,63 @@ func doWithOfflineNode(a *Anytype, f func() error) error {
 		return err
 	}
 	return nil
+}
+
+func addMissingThreadsInCollection(a *Anytype) error {
+	return doWithOfflineNode(a, func() error {
+		threadsCollection := a.ThreadsCollection()
+		instancesBytes, err := threadsCollection.Find(&db.Query{})
+		if err != nil {
+			return err
+		}
+
+		var threadsInCollection = make(map[string]struct{})
+		for _, instanceBytes := range instancesBytes {
+			ti := threadInfo{}
+			util.InstanceFromJSON(instanceBytes, &ti)
+
+			tid, err := thread.Decode(ti.ID.String())
+			if err != nil {
+				log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+				continue
+			}
+			threadsInCollection[tid.String()] = struct{}{}
+		}
+
+		threadsIds, err := a.ThreadsNet().Logstore().Threads()
+		if err != nil {
+			return err
+		}
+
+		var missingThreads int
+		for _, threadId := range threadsIds {
+			if _, exists := threadsInCollection[threadId.String()]; !exists {
+				missingThreads++
+				thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
+				if err != nil {
+					fmt.Printf("error getting info: %s\n", err.Error())
+				}
+				threadInfo := threadInfo{
+					ID:    db2.InstanceID(thrd.ID.String()),
+					Key:   thrd.Key.String(),
+					Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
+				}
+
+				_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+				if err != nil {
+					log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+				}
+			}
+		}
+
+		if missingThreads > 0 {
+			log.Errorf("addMissingThreadsInCollection migration: added %d missing threads", missingThreads)
+		} else {
+			log.Debugf("addMissingThreadsInCollection migration: no missing threads found")
+		}
+
+		return nil
+	})
 }
 
 func indexLinks(a *Anytype) error {
