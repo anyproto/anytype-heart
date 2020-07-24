@@ -119,6 +119,10 @@ type Service interface {
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
 	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
 
+	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (*types.Struct, error)
+	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) error
+	DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) error
+
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
@@ -620,6 +624,35 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDa
 	return
 }
 
+func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (rec *types.Struct, err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		cr, err := b.CreateRecord(ctx, req.BlockId, model.PageDetails{Details: req.Record})
+		if err != nil {
+			return err
+		}
+		rec = cr.Details
+		return nil
+	})
+
+	return
+}
+
+func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) (err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateRecord(ctx, req.BlockId, req.RecordId, model.PageDetails{Details: req.Record})
+	})
+
+	return
+}
+
+func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) (err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.DeleteRecord(ctx, req.BlockId, req.RecordId)
+	})
+
+	return
+}
+
 func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		textSlot, htmlSlot, anySlot, err = cb.Copy(req, images)
@@ -898,7 +931,7 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta, s.sendEvent)
+		sb = editor.NewSet(s.meta)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
