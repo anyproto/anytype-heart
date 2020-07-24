@@ -28,7 +28,6 @@ var migrations = []migration{
 	alterThreadsDbSchema, // 2
 	skipMigration,        // 3
 	indexLinks,           // 4
-	skipMigration,        // 5
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
