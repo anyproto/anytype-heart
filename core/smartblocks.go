@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	util2 "github.com/anytypeio/go-anytype-library/util"
+	ma "github.com/multiformats/go-multiaddr"
 	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
@@ -245,6 +246,32 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 		return thread.Info{}, err
 	}
 
+	hasCafeAddress := false
+	var multiAddrs []ma.Multiaddr
+	for _, addr := range thrd.Addrs {
+		if addr.Equal(a.opts.CafeP2PAddr) {
+			hasCafeAddress = true
+		}
+
+		multiAddrs = append(multiAddrs, addr)
+	}
+
+	if !hasCafeAddress && a.opts.CafeP2PAddr != nil {
+		multiAddrs = append(multiAddrs, a.opts.CafeP2PAddr)
+	}
+
+	threadInfo := threadInfo{
+		ID:    db2.InstanceID(thrd.ID.String()),
+		Key:   thrd.Key.String(),
+		Addrs: util2.MultiAddressesToStrings(multiAddrs),
+	}
+
+	// todo: wait for threadsCollection to push?
+	_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+	if err != nil {
+		log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+	}
+
 	if a.opts.CafeP2PAddr != nil {
 		a.replicationWG.Add(1)
 		go func() {
@@ -264,17 +291,6 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 				}
 
 				log.With("thread", thrd.ID.String()).Infof("added log replicator: %s", p.String())
-				threadInfo := threadInfo{
-					ID:    db2.InstanceID(thrd.ID.String()),
-					Key:   thrd.Key.String(),
-					Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
-				}
-
-				// todo: wait for threadsCollection to push?
-				_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
-				if err != nil {
-					log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
-				}
 				return
 			}
 		}()
