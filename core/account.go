@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	net3 "github.com/anytypeio/go-anytype-library/net"
 	util2 "github.com/anytypeio/go-anytype-library/util"
 	"github.com/ipfs/go-cid"
@@ -181,6 +182,11 @@ func (a *Anytype) addMissingThreadsInCollection() error {
 
 	var missingThreads int
 	for _, threadId := range threadsIds {
+		t, _ := smartblock.SmartBlockTypeFromThreadID(threadId)
+		if t != smartblock.SmartBlockTypePage {
+			continue
+		}
+
 		if _, exists := threadsInCollection[threadId.String()]; !exists {
 			thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
 			if err != nil {
