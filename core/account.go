@@ -20,7 +20,7 @@ import (
 const nodeConnectionTimeout = time.Second * 15
 
 func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
-	log.Infof("got new thread Id: %s, addrs: %+v", ti.ID.String(), ti.Addrs)
+	log.Infof("got new thread %s, addrs: %+v", ti.ID.String(), ti.Addrs)
 
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
@@ -46,7 +46,7 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	}
 
 	if !hasCafeAddress {
-		log.Warn("processNewExternalThread cafe addr not found among thread addresses, will add it")
+		log.Warn("processNewExternalThread %s: cafe addr not found among thread addresses, will add it", ti.ID.String())
 		threadComp, err := ma.NewComponent(thread.Name, tid.String())
 		if err != nil {
 			return err
@@ -83,14 +83,14 @@ addrsLoop:
 
 		threadComp, err := ma.NewComponent(thread.Name, tid.String())
 		if err != nil {
-			log.Errorf("processNewExternalThread: failed to parse addr %s: %s", addr.String(), err.Error())
+			log.Errorf("processNewExternalThread %s: failed to parse addr %s: %s", ti.ID.String(), addr.String(), err.Error())
 			continue
 		}
 
 		peerAddr := addr.Decapsulate(threadComp)
 		addri, err := peer.AddrInfoFromP2pAddr(peerAddr)
 		if err != nil {
-			log.Errorf("processNewExternalThread: failed to parse addr %s: %s", addr.String(), err.Error())
+			log.Errorf("processNewExternalThread %s: failed to parse addr %s: %s", ti.ID.String(), addr.String(), err.Error())
 			continue
 		}
 
@@ -98,7 +98,7 @@ addrsLoop:
 		defer cancel()
 
 		if err = a.t.Host().Connect(ctx, *addri); err != nil {
-			log.Errorf("processNewExternalThread: failed to connect addr %s: %s", addri, err.Error())
+			log.Errorf("processNewExternalThread %s: failed to connect addr %s: %s", ti.ID.String(), addri, err.Error())
 			continue
 		}
 
@@ -108,7 +108,7 @@ addrsLoop:
 			if err != nil {
 				return fmt.Errorf("failed to add the remote thread %s: %s", ti.ID.String(), err.Error())
 			}
-			log.Infof("processNewExternalThread: thread successfully added from %s", addri)
+			log.Infof("processNewExternalThread %s: thread successfully added from %s", ti.ID.String(), addri)
 			atleastOneNodeAdded = true
 		} else {
 			// todo: add addr directly?
@@ -125,7 +125,7 @@ addrsLoop:
 	} else {
 		err = a.pullThread(context.Background(), tid)
 		if err != nil {
-			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
+			log.Errorf("processNewExternalThread %s: pull thread failed: %s", ti.ID.String(), err.Error())
 		}
 	}
 

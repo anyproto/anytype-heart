@@ -30,6 +30,7 @@ import (
 	"github.com/textileio/go-threads/db"
 	net2 "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
+	"google.golang.org/grpc"
 )
 
 var log = logging.Logger("anytype-core")
@@ -116,6 +117,10 @@ type Service interface {
 }
 
 func (a *Anytype) Account() string {
+	if a.opts.Account == nil {
+		return ""
+	}
+
 	return a.opts.Account.Address()
 }
 
@@ -317,7 +322,7 @@ func (a *Anytype) Start() error {
 func (a *Anytype) start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
-
+	litenet.WithNetGRPCOptions()
 	if a.opts.NetBootstraper != nil {
 		a.t = a.opts.NetBootstraper
 	} else {
@@ -329,7 +334,9 @@ func (a *Anytype) start() error {
 			[]byte(ipfsPrivateNetworkKey),
 			litenet.WithNetHostAddr(a.opts.HostAddr),
 			litenet.WithNetDebug(false),
-			litenet.WithOffline(a.opts.Offline))
+			litenet.WithOffline(a.opts.Offline),
+			litenet.WithNetGRPCOptions(grpc.MaxRecvMsgSize(1024*1024*20)),
+		)
 		if err != nil {
 			if strings.Contains(err.Error(), "address already in use") {
 				// start on random port in case saved port is already used by some other app
@@ -339,7 +346,8 @@ func (a *Anytype) start() error {
 					[]byte(ipfsPrivateNetworkKey),
 					litenet.WithNetHostAddr(nil),
 					litenet.WithNetDebug(false),
-					litenet.WithOffline(a.opts.Offline))
+					litenet.WithOffline(a.opts.Offline),
+					litenet.WithNetGRPCOptions(grpc.MaxRecvMsgSize(1024*1024*20)))
 			}
 
 			if err != nil {
@@ -363,7 +371,8 @@ func (a *Anytype) start() error {
 	}()
 
 	log.Info("Anytype device: " + a.opts.Device.Address())
-	log.Info("Anytype account: " + a.opts.Account.Address())
+
+	log.Info("Anytype account: " + a.Account())
 
 	return nil
 }
