@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	net3 "github.com/anytypeio/go-anytype-library/net"
+	util2 "github.com/anytypeio/go-anytype-library/util"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/cbor"
+	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -20,7 +23,7 @@ import (
 const nodeConnectionTimeout = time.Second * 15
 
 func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
-	log.Infof("got new thread Id: %s, addrs: %+v", ti.ID.String(), ti.Addrs)
+	log.Infof("got new thread %s, addrs: %+v", ti.ID.String(), ti.Addrs)
 
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
@@ -46,7 +49,7 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	}
 
 	if !hasCafeAddress {
-		log.Warn("processNewExternalThread cafe addr not found among thread addresses, will add it")
+		log.Warn("processNewExternalThread %s: cafe addr not found among thread addresses, will add it", ti.ID.String())
 		threadComp, err := ma.NewComponent(thread.Name, tid.String())
 		if err != nil {
 			return err
@@ -83,14 +86,14 @@ addrsLoop:
 
 		threadComp, err := ma.NewComponent(thread.Name, tid.String())
 		if err != nil {
-			log.Errorf("processNewExternalThread: failed to parse addr %s: %s", addr.String(), err.Error())
+			log.Errorf("processNewExternalThread %s: failed to parse addr %s: %s", ti.ID.String(), addr.String(), err.Error())
 			continue
 		}
 
 		peerAddr := addr.Decapsulate(threadComp)
 		addri, err := peer.AddrInfoFromP2pAddr(peerAddr)
 		if err != nil {
-			log.Errorf("processNewExternalThread: failed to parse addr %s: %s", addr.String(), err.Error())
+			log.Errorf("processNewExternalThread %s: failed to parse addr %s: %s", ti.ID.String(), addr.String(), err.Error())
 			continue
 		}
 
@@ -98,7 +101,7 @@ addrsLoop:
 		defer cancel()
 
 		if err = a.t.Host().Connect(ctx, *addri); err != nil {
-			log.Errorf("processNewExternalThread: failed to connect addr %s: %s", addri, err.Error())
+			log.Errorf("processNewExternalThread %s: failed to connect addr %s: %s", ti.ID.String(), addri, err.Error())
 			continue
 		}
 
@@ -108,7 +111,7 @@ addrsLoop:
 			if err != nil {
 				return fmt.Errorf("failed to add the remote thread %s: %s", ti.ID.String(), err.Error())
 			}
-			log.Infof("processNewExternalThread: thread successfully added from %s", addri)
+			log.Infof("processNewExternalThread %s: thread successfully added from %s", ti.ID.String(), addri)
 			atleastOneNodeAdded = true
 		} else {
 			// todo: add addr directly?
@@ -125,7 +128,7 @@ addrsLoop:
 	} else {
 		err = a.pullThread(context.Background(), tid)
 		if err != nil {
-			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
+			log.Errorf("processNewExternalThread %s: pull thread failed: %s", ti.ID.String(), err.Error())
 		}
 	}
 
@@ -150,6 +153,69 @@ func (t threadRecord) LogID() peer.ID {
 	return t.logID
 }
 
+func (a *Anytype) addMissingThreadsInCollection() error {
+	threadsCollection := a.ThreadsCollection()
+	instancesBytes, err := threadsCollection.Find(&db.Query{})
+	if err != nil {
+		return err
+	}
+
+	var threadsInCollection = make(map[string]struct{})
+	for _, instanceBytes := range instancesBytes {
+		ti := threadInfo{}
+		util.InstanceFromJSON(instanceBytes, &ti)
+
+		tid, err := thread.Decode(ti.ID.String())
+		if err != nil {
+			log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+			continue
+		}
+		threadsInCollection[tid.String()] = struct{}{}
+	}
+
+	log.Debugf("%d threads in collection", len(threadsInCollection))
+
+	threadsIds, err := a.ThreadsNet().Logstore().Threads()
+	if err != nil {
+		return err
+	}
+
+	var missingThreads int
+	for _, threadId := range threadsIds {
+		t, _ := smartblock.SmartBlockTypeFromThreadID(threadId)
+		if t != smartblock.SmartBlockTypePage {
+			continue
+		}
+
+		if _, exists := threadsInCollection[threadId.String()]; !exists {
+			thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
+			if err != nil {
+				log.Errorf("addMissingThreadsInCollection migration: error getting info: %s\n", err.Error())
+				continue
+			}
+			threadInfo := threadInfo{
+				ID:    db2.InstanceID(thrd.ID.String()),
+				Key:   thrd.Key.String(),
+				Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
+			}
+
+			_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+			if err != nil {
+				log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+			} else {
+				missingThreads++
+			}
+		}
+	}
+
+	if missingThreads > 0 {
+		log.Errorf("addMissingThreadsInCollection migration: added %d missing threads", missingThreads)
+	} else {
+		log.Debugf("addMissingThreadsInCollection migration: no missing threads found")
+	}
+
+	return nil
+}
 func (a *Anytype) addMissingReplicators() error {
 	threadsIds, err := a.ThreadsNet().Logstore().Threads()
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	util2 "github.com/anytypeio/go-anytype-library/util"
+	ma "github.com/multiformats/go-multiaddr"
 	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
@@ -129,6 +130,38 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
 	return nil
 }
 
+func (a *Anytype) initThreadsDB() error {
+	if a.db != nil {
+		return nil
+	}
+
+	accountID, err := a.threadDeriveID(threadDerivedIndexAccount)
+	if err != nil {
+		return err
+	}
+
+	d, err := db.NewDB(context.Background(), a.t, accountID, db.WithNewDBRepoPath(filepath.Join(a.opts.Repo, "collections")))
+	if err != nil {
+		return err
+	}
+
+	a.db = d
+
+	a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
+	err = a.listenExternalNewThreads()
+	if err != nil {
+		return fmt.Errorf("failed to listen external new threads: %w", err)
+	}
+
+	if a.threadsCollection == nil {
+		a.threadsCollection, err = a.db.NewCollection(threadInfoCollection)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	// account
 	a.lock.Lock()
@@ -139,24 +172,9 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	}
 	a.predefinedBlockIds.Account = account.ID.String()
 	if a.db == nil {
-		d, err := db.NewDB(context.Background(), a.t, account.ID, db.WithNewDBRepoPath(filepath.Join(a.opts.Repo, "collections")))
+		err = a.initThreadsDB()
 		if err != nil {
-			return err
-		}
-
-		a.db = d
-
-		a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
-		err = a.listenExternalNewThreads()
-		if err != nil {
-			return fmt.Errorf("failed to listen external new threads: %w", err)
-		}
-
-		if a.threadsCollection == nil {
-			a.threadsCollection, err = a.db.NewCollection(threadInfoCollection)
-			if err != nil {
-				return err
-			}
+			return fmt.Errorf("initThreadsDB failed: %w", err)
 		}
 
 		err = a.handleAllMissingDbRecords(account.ID.String())
@@ -168,6 +186,13 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 			err = a.addMissingReplicators()
 			if err != nil {
 				log.Errorf("addMissingReplicators: %s", err.Error())
+			}
+		}()
+
+		go func() {
+			err = a.addMissingThreadsInCollection()
+			if err != nil {
+				log.Errorf("addMissingThreadsInCollection: %s", err.Error())
 			}
 		}()
 	}
@@ -245,6 +270,32 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 		return thread.Info{}, err
 	}
 
+	hasCafeAddress := false
+	var multiAddrs []ma.Multiaddr
+	for _, addr := range thrd.Addrs {
+		if addr.Equal(a.opts.CafeP2PAddr) {
+			hasCafeAddress = true
+		}
+
+		multiAddrs = append(multiAddrs, addr)
+	}
+
+	if !hasCafeAddress && a.opts.CafeP2PAddr != nil {
+		multiAddrs = append(multiAddrs, a.opts.CafeP2PAddr)
+	}
+
+	threadInfo := threadInfo{
+		ID:    db2.InstanceID(thrd.ID.String()),
+		Key:   thrd.Key.String(),
+		Addrs: util2.MultiAddressesToStrings(multiAddrs),
+	}
+
+	// todo: wait for threadsCollection to push?
+	_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+	if err != nil {
+		log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+	}
+
 	if a.opts.CafeP2PAddr != nil {
 		a.replicationWG.Add(1)
 		go func() {
@@ -264,17 +315,6 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 				}
 
 				log.With("thread", thrd.ID.String()).Infof("added log replicator: %s", p.String())
-				threadInfo := threadInfo{
-					ID:    db2.InstanceID(thrd.ID.String()),
-					Key:   thrd.Key.String(),
-					Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
-				}
-
-				// todo: wait for threadsCollection to push?
-				_, err = a.threadsCollection.Create(util.JSONFromInstance(threadInfo))
-				if err != nil {
-					log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
-				}
 				return
 			}
 		}()

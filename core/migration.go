@@ -95,13 +95,13 @@ func (a *Anytype) RunMigrations() error {
 	return err
 }
 
-func doWithOfflineNode(a *Anytype, f func() error) error {
+func doWithRunningNode(a *Anytype, offline bool, f func() error) error {
 	offlineWas := a.opts.Offline
 	defer func() {
 		a.opts.Offline = offlineWas
 	}()
 
-	a.opts.Offline = true
+	a.opts.Offline = offline
 	err := a.start()
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func doWithOfflineNode(a *Anytype, f func() error) error {
 }
 
 func indexLinks(a *Anytype) error {
-	return doWithOfflineNode(a, func() error {
+	return doWithRunningNode(a, true, func() error {
 		threadsIDs, err := a.t.Logstore().Threads()
 		if err != nil {
 			return err

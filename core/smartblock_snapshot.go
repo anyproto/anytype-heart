@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -27,6 +28,8 @@ type SmartBlockSnapshot interface {
 	Meta() (*SmartBlockMeta, error)
 	PublicWebURL() (string, error)
 }
+
+var ErrFailedToDecodeSnapshot = fmt.Errorf("failed to decode pb block snapshot")
 
 type smartBlockSnapshot struct {
 	blocks  []*model.Block
@@ -156,7 +159,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		var snapshot = storage.SmartBlockSnapshot{}
 		err = m.Unmarshal(&snapshot)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode pb block snapshot: %w", err)
+			return nil, fmt.Errorf("%s %w", ErrFailedToDecodeSnapshot.Error(), err)
 		}
 
 		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Ancestor) {
@@ -201,6 +204,9 @@ func (a *Anytype) snapshotTraverseLogs(ctx context.Context, thrdId thread.ID, be
 	for _, log := range thrd.Logs {
 		snapshots, err := a.snapshotTraverseFromCid(ctx, thrd, log, before, limit)
 		if err != nil {
+			if strings.HasPrefix(err.Error(), ErrFailedToDecodeSnapshot.Error()) {
+				return nil, ErrFailedToDecodeSnapshot
+			}
 			continue
 		}
 

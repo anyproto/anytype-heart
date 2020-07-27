@@ -547,7 +547,7 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 	}
 
 	changedDetails := &model.PageDetails{snap.details}
-	if snap.details == nil {
+	if snap.details == nil || snap.details.Fields == nil {
 		changedDetails.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
 	changedDetails.Details.Fields["lastModified"] = structs.Float64(float64(time.Now().Unix()))
