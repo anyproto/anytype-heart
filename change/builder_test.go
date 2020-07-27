@@ -186,6 +186,28 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, 2, b.tree.Len())
 		assert.Equal(t, []string{"c4"}, b.tree.headIds)
 	})
+	t.Run("invalid logs", func(t *testing.T) {
+		sb := newTestSmartBlock()
+		sb.AddChanges(
+			"a",
+			newSnapshot("s0", "", nil),
+		)
+		sb.AddChanges(
+			"b",
+			newChange("c1", "s0", "s0"),
+		)
+		sb.changes["c1"] = &core.SmartblockRecord{
+			ID:      "c1",
+			Payload: []byte("invalid pb"),
+		}
+		b := new(stateBuilder)
+		err := b.Build(sb)
+		require.NoError(t, err)
+		require.NotNil(t, b.tree)
+		assert.Equal(t, "s0", b.tree.RootId())
+		assert.Equal(t, 1, b.tree.Len())
+		assert.Equal(t, []string{"s0"}, b.tree.headIds)
+	})
 }
 
 func TestStateBuilder_findCommonSnapshot(t *testing.T) {
