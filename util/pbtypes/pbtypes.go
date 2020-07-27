@@ -19,3 +19,13 @@ func Bool(v bool) *types.Value {
 		Kind: &types.Value_BoolValue{BoolValue: v},
 	}
 }
+
+func GetFloat64(s *types.Struct, name string) float64 {
+	if s == nil || s.Fields == nil {
+		return 0
+	}
+	if v, ok := s.Fields[name]; ok {
+		return v.GetNumberValue()
+	}
+	return 0
+}

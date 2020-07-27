@@ -2,11 +2,17 @@ package html
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"fmt"
 	"html"
+	"io/ioutil"
+	"strconv"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 const (
@@ -44,21 +50,39 @@ const (
 			</head>
 			<body>
 				<div class="anytype-container">`
-	wrpaExportEnd = `</div>
+	wrapExportEnd = `</div>
 			</body>
 		</html>`
 )
 
+func NewHTMLConverter(a anytype.Service, s *state.State) *HTML {
+	return &HTML{a: a, s: s}
+}
+
 type HTML struct {
+	a   anytype.Service
 	s   *state.State
 	buf *bytes.Buffer
 }
 
 func (h *HTML) Convert() (result string) {
+	if len(h.s.Pick(h.s.RootId()).Model().ChildrenIds) == 0 {
+		return ""
+	}
 	h.buf = bytes.NewBuffer(nil)
 	h.buf.WriteString(wrapCopyStart)
 	h.renderChilds(h.s.Pick(h.s.RootId()).Model())
 	h.buf.WriteString(wrapCopyEnd)
+	result = h.buf.String()
+	h.buf.Reset()
+	return
+}
+
+func (h *HTML) Export() (result string) {
+	h.buf = bytes.NewBuffer(nil)
+	h.buf.WriteString(wrapExportStart)
+	h.renderChilds(h.s.Pick(h.s.RootId()).Model())
+	h.buf.WriteString(wrapExportEnd)
 	return h.buf.String()
 }
 
@@ -83,11 +107,14 @@ func (h *HTML) render(rs *renderState, b *model.Block) {
 	case *model.BlockContentOfLink:
 		rs.Close()
 		h.renderLink(b)
+	default:
+		rs.Close()
+		h.renderLayout(b)
 	}
 }
 
 func (h *HTML) renderChilds(parent *model.Block) {
-	var rs = &renderState{}
+	var rs = &renderState{h: h}
 	for _, chId := range parent.ChildrenIds {
 		b := h.s.Pick(chId)
 		if b == nil {
@@ -171,11 +198,11 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		for i, r := range text.Text {
 			if _, ok := breakpoints[i]; ok {
 				for _, m := range text.Marks.Marks {
-					if int(m.Range.From) == i {
-						writeMark(m, true)
-					}
 					if int(m.Range.To) == i {
 						writeMark(m, false)
+					}
+					if int(m.Range.From) == i {
+						writeMark(m, true)
 					}
 				}
 			}
@@ -184,12 +211,6 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 	}
 
 	switch text.Style {
-	case model.BlockContentText_Paragraph:
-		rs.Close()
-		h.buf.WriteString(`<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">`)
-		renderText()
-		h.renderChilds(b)
-		h.buf.WriteString(`</div>`)
 	case model.BlockContentText_Header1:
 		rs.Close()
 		h.buf.WriteString(`<h1 style="` + styleHeader1 + `">`)
@@ -256,6 +277,12 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		renderText()
 		h.renderChilds(b)
 		h.buf.WriteString(`</div>`)
+	default:
+		rs.Close()
+		h.buf.WriteString(`<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">`)
+		renderText()
+		h.renderChilds(b)
+		h.buf.WriteString(`</div>`)
 	}
 }
 
@@ -278,7 +305,7 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.renderChilds(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
-		baseImg := "" // TODO:
+		baseImg := h.getImageBase64(file.Hash)
 		fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
 		h.renderChilds(b)
 		h.buf.WriteString("</div>")
@@ -293,7 +320,89 @@ func (h *HTML) renderFile(b *model.Block) {
 }
 
 func (h *HTML) renderBookmark(b *model.Block) {
-	
+	bm := b.GetBookmark()
+	if bm.Url != "" {
+		fmt.Fprintf(h.buf, `<div class="bookmark"><a href="%s">%s</a><div class="description">%s</div>`, bm.Url, html.EscapeString(bm.Title), html.EscapeString(bm.Description))
+	} else {
+		h.buf.WriteString("<div>")
+	}
+	h.renderChilds(b)
+	h.buf.WriteString("</div>")
+}
+
+func (h *HTML) renderDiv(b *model.Block) {
+	switch b.GetDiv().Style {
+	case model.BlockContentDiv_Dots:
+		h.buf.WriteString(`<hr class="dots">`)
+	case model.BlockContentDiv_Line:
+		h.buf.WriteString(`<hr class="line">`)
+	}
+	h.renderChilds(b)
+}
+
+func (h *HTML) renderLayout(b *model.Block) {
+	style := model.BlockContentLayoutStyle(-1)
+	layout := b.GetLayout()
+	if layout != nil {
+		style = layout.Style
+	}
+
+	switch style {
+	case model.BlockContentLayout_Column:
+		style := ""
+		fields := b.Fields
+		if fields != nil && fields.Fields != nil && fields.Fields["width"] != nil {
+			width := pbtypes.GetFloat64(fields, "width")
+			if width > 0 {
+				style = `style="width: ` + strconv.Itoa(int(width*100)) + `%">`
+			}
+		}
+		h.buf.WriteString(`<div class="column" ` + style + `>`)
+		h.renderChilds(b)
+		h.buf.WriteString("</div>")
+	case model.BlockContentLayout_Row:
+		h.buf.WriteString(`<div class="row" style="display: flex">`)
+		h.renderChilds(b)
+		h.buf.WriteString("</div>")
+	case model.BlockContentLayout_Div:
+		h.renderChilds(b)
+	default:
+		h.buf.WriteString(`<div>`)
+		h.renderChilds(b)
+		h.buf.WriteString("</div>")
+	}
+}
+
+func (h *HTML) renderLink(b *model.Block) {
+	if len(b.ChildrenIds) > 0 {
+		h.buf.WriteString("<div>")
+	}
+	h.buf.WriteString(`<div class="message">
+		<div class="header">This content is available in Anytype.</div>
+		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
+	</div>`)
+	if len(b.ChildrenIds) > 0 {
+		h.renderChilds(b)
+		h.buf.WriteString("</div>")
+	}
+}
+
+func (h *HTML) getImageBase64(hash string) (res string) {
+	im, err := h.a.ImageByHash(context.TODO(), hash)
+	if err != nil {
+		return
+	}
+	f, err := im.GetFileForWidth(context.TODO(), 1024)
+	if err != nil {
+		return
+	}
+	rd, err := f.Reader()
+	if err != nil {
+		return
+	}
+	data, _ := ioutil.ReadAll(rd)
+	dataBase64 := base64.StdEncoding.EncodeToString(data)
+	return fmt.Sprintf("data:%s;base64, %s", f.Meta().Media, dataBase64)
 }
 
 type renderState struct {
@@ -310,6 +419,7 @@ func (rs *renderState) OpenUL() {
 		rs.Close()
 	}
 	rs.h.buf.WriteString(`<ul style="font-size:15px;">`)
+	rs.ulOpened = true
 }
 
 func (rs *renderState) OpenOL() {
@@ -320,6 +430,7 @@ func (rs *renderState) OpenOL() {
 		rs.Close()
 	}
 	rs.h.buf.WriteString("<ol style=\"font-size:15px;\">")
+	rs.olOpened = true
 }
 
 func (rs *renderState) Close() {
