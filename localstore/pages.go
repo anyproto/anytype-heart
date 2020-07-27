@@ -551,8 +551,8 @@ func (m *dsPageStore) Indexes() []Index {
 /* internal */
 
 func checkRecord(rec database.Record) database.Record {
-	if rec.Details == nil {
-		rec.Details = new(types.Struct)
+	if rec.Details == nil || rec.Details.Fields == nil {
+		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
 	return rec
 }
