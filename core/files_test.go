@@ -1,9 +1,7 @@
 package core
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -35,6 +33,7 @@ func TestAnytype_FileByHash(t *testing.T) {
 	require.Equal(t, int64(3), f.Meta().Size)
 }
 
+/* FIXME
 func Test_smartBlock_FileKeysRestore(t *testing.T) {
 	s := getRunningService(t)
 
@@ -54,3 +53,4 @@ func Test_smartBlock_FileKeysRestore(t *testing.T) {
 	keysActualJson, _ := json.Marshal(keysActual)
 	require.Equal(t, keysExpectedJson, keysActualJson)
 }
+*/
