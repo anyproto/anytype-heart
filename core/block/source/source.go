@@ -26,6 +26,8 @@ type Source interface {
 	Close() (err error)
 }
 
+var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
+
 func NewSource(a anytype.Service, m meta.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
@@ -69,7 +71,9 @@ func (s *source) Type() pb.SmartBlockType {
 func (s *source) ReadVersion() (*core.SmartBlockVersion, error) {
 	v, err := s.sb.GetLastDownloadedVersion()
 	if err != nil {
-		if err != core.ErrBlockSnapshotNotFound {
+		if err == core.ErrFailedToDecodeSnapshot {
+			err = ErrUnknownDataFormat
+		} else if err != core.ErrBlockSnapshotNotFound {
 			err = fmt.Errorf("anytype.GetLastDownloadedVersion error: %v", err)
 		}
 		return nil, err

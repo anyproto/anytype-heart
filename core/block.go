@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -67,6 +68,9 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return bs.OpenBlock(ctx, req.BlockId)
 	})
 	if err != nil {
+		if err == source.ErrUnknownDataFormat {
+			return response(pb.RpcBlockOpenResponseError_ANYTYPE_NEEDS_UPGRADE, err)
+		}
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
