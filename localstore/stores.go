@@ -7,15 +7,14 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/database"
+	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/multiformats/go-base32"
-
-	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var ErrDuplicateKey = fmt.Errorf("duplicate key")
@@ -50,18 +49,20 @@ type FileStore interface {
 
 type PageStore interface {
 	Indexable
-	database.Database
-	Add(page *model.PageInfoWithOutboundLinksIDs) error
+	database.Reader
+
+	AddPage(page *model.PageInfoWithOutboundLinksIDs) error
+	UpdatePage(id string, details *types.Struct, links []string, snippet *string) error
+	UpdateLastModified(id string, time time.Time) error
+	UpdateLastOpened(id string, time time.Time) error
+	DeletePage(id string) error
+
 	GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.PageDetails, error)
+	GetByIDs(ids ...string) ([]*model.PageInfo, error)
 	List() ([]*model.PageInfo, error)
 	GetByIDs(ids ...string) ([]*model.PageInfo, error)
-	Update(id string, details *types.Struct, links []string, snippet *string) error
-	UpdateDetails(id string, details *model.PageDetails) error
-	UpdateLastModified(id string, time time.Time) error
-	UpdateLastOpened(id string, time time.Time) error
-	Delete(id string) error
 }
 
 func NewLocalStore(store ds.Batching) LocalStore {

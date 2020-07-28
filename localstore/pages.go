@@ -56,19 +56,13 @@ func (m *filterPagesOnly) Filter(e query.Entry) bool {
 	return false
 }
 
-func NewPageStore(ds ds.TxnDatastore, cs func() (id string, err error)) PageStore {
-	return &dsPageStore{
-		ds: ds,
-		cs: cs,
-	}
+func NewPageStore(ds ds.TxnDatastore) PageStore {
+	return &dsPageStore{ds: ds}
 }
 
 type dsPageStore struct {
 	// underlying storage
 	ds ds.TxnDatastore
-
-	// external constructor
-	cs func() (id string, err error)
 
 	// serializing page updates
 	l sync.Mutex
@@ -133,103 +127,6 @@ func (m *dsPageStore) Query(q database.Query) (records []database.Record, total 
 	return results, total, nil
 }
 
-func (m *dsPageStore) Create(rec database.Record) (database.Record, error) {
-	// External constructor should create an entity and provide
-	// ID of the latter in order to connect it with the record.
-	id, err := m.cs()
-	if err != nil {
-		return rec, fmt.Errorf("error calling external constructor: %w", err)
-	}
-
-	var current = time.Now().Unix()
-
-	// initialize record metadata
-	rec = checkRecord(rec)
-	rec.Details.Fields[fieldID] = pb.ToValue(id)
-	rec.Details.Fields[fieldLastOpened] = structs.Float64(float64(current))
-	rec.Details.Fields[fieldLastOpened] = structs.Float64(float64(current))
-
-	pageInfo := model.PageInfoWithOutboundLinksIDs{
-		Id: id,
-		Info: &model.PageInfo{
-			Id:              id,
-			Details:         rec.Details,
-			HasInboundLinks: false,
-		},
-	}
-
-	return rec, m.AddPage(&pageInfo)
-}
-
-func (m *dsPageStore) Update(id string, rec database.Record) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	rec = checkRecord(rec)
-	if details, err := getDetails(txn, id); err != nil {
-		return err
-	} else if details.Details.Equal(rec.Details) {
-		return nil
-	}
-
-	// store ID in updated record
-	rec.Details.Fields[fieldID] = pb.ToValue(id)
-
-	b, err := proto.Marshal(rec.Details)
-	if err != nil {
-		return fmt.Errorf("error encoding record: %w", err)
-	}
-
-	// update details
-	if err := txn.Put(pagesDetailsBase.ChildString(id), b); err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsPageStore) Delete(id string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	for _, k := range []ds.Key{
-		pagesDetailsBase.ChildString(id),
-		pagesSnippetBase.ChildString(id),
-	} {
-		if err = txn.Delete(k); err != nil {
-			return err
-		}
-	}
-
-	inLinks, err := findInboundLinks(txn, id)
-	if err != nil {
-		return err
-	}
-
-	outLinks, err := findOutboundLinks(txn, id)
-	if err != nil {
-		return err
-	}
-
-	for _, k := range pageLinkKeys(id, inLinks, outLinks) {
-		if err := txn.Delete(k); err != nil {
-			return err
-		}
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsPageStore) ID() string {
-	return fieldID
-}
-
 func (m *dsPageStore) Schema() string {
 	return pageSchema
 }
@@ -267,6 +164,41 @@ func (m *dsPageStore) AddPage(page *model.PageInfoWithOutboundLinksIDs) error {
 
 	if err = txn.Put(snippetKey, []byte(page.Info.Snippet)); err != nil {
 		return err
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsPageStore) DeletePage(id string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	for _, k := range []ds.Key{
+		pagesDetailsBase.ChildString(id),
+		pagesSnippetBase.ChildString(id),
+	} {
+		if err = txn.Delete(k); err != nil {
+			return err
+		}
+	}
+
+	inLinks, err := findInboundLinks(txn, id)
+	if err != nil {
+		return err
+	}
+
+	outLinks, err := findOutboundLinks(txn, id)
+	if err != nil {
+		return err
+	}
+
+	for _, k := range pageLinkKeys(id, inLinks, outLinks) {
+		if err := txn.Delete(k); err != nil {
+			return err
+		}
 	}
 
 	return txn.Commit()
@@ -549,13 +481,6 @@ func (m *dsPageStore) Indexes() []Index {
 }
 
 /* internal */
-
-func checkRecord(rec database.Record) database.Record {
-	if rec.Details == nil || rec.Details.Fields == nil {
-		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
-	}
-	return rec
-}
 
 func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
 	val, err := txn.Get(pagesDetailsBase.ChildString(id))
