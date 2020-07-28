@@ -9,7 +9,7 @@ import (
 )
 
 // increasing this version allows old clients that trying to read the newer version of payload to force user to upgrade
-const payloadVersion = 0
+const payloadVersion = 1
 
 type SmartblockLog struct {
 	ID   string
@@ -35,28 +35,17 @@ type SignedPbPayload struct {
 	Ver       uint16
 }
 
-// deprecated, to be removed in the next version
-//
-// SignedPbPayloadWithoutVersion used in this transition for the new records in order to not break the prev versions without the Ver field
-type SignedPbPayloadWithoutVersion struct {
-	DeviceSig []byte // deprecated
-	AccSig    []byte
-	AccAddr   string
-	Data      []byte
-}
-
 func init() {
 	cbornode.RegisterCborType(SignedPbPayload{})
-	cbornode.RegisterCborType(SignedPbPayloadWithoutVersion{})
 }
 
-func newSignedPayload(payload []byte, accountKey wallet.Keypair) (*SignedPbPayloadWithoutVersion, error) {
+func newSignedPayload(payload []byte, accountKey wallet.Keypair) (*SignedPbPayload, error) {
 	accSig, err := accountKey.Sign(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SignedPbPayloadWithoutVersion{AccAddr: accountKey.Address(), AccSig: accSig, Data: payload}, nil
+	return &SignedPbPayload{AccAddr: accountKey.Address(), AccSig: accSig, Data: payload, Ver: payloadVersion}, nil
 }
 
 func (p *SignedPbPayload) Unmarshal(out proto.Message) error {
