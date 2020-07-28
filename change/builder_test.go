@@ -269,7 +269,8 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 		)
 		b := new(stateBuilder)
 		err := b.Build(sb)
-		require.Error(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, "s0.1", b.tree.RootId())
 	})
 }
 
