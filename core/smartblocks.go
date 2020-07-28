@@ -48,7 +48,7 @@ func (a *Anytype) DeleteBlock(id string) error {
 		return err
 	}
 
-	err = a.localStore.Pages.Delete(id)
+	err = a.localStore.Pages.DeletePage(id)
 	if err != nil {
 		return err
 	}

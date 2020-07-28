@@ -10,29 +10,28 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 const versionFileName = "anytype_version"
 
-type migration func(a *Anytype, lastMigration bool) error
+type migration func(a *Anytype) error
 
-var skipMigration = func(a *Anytype, _ bool) error {
+var skipMigration = func(a *Anytype) error {
 	return nil
 }
-
-var ErrAlreadyMigrated = fmt.Errorf("thread already migrated")
 
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
 	skipMigration,        // 1
 	alterThreadsDbSchema, // 2
 	skipMigration,        // 3
-	skipMigration,        // 4
+	indexLinks,           // 4
 	snapshotToChanges,    // 5
+
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -58,7 +57,6 @@ func (a *Anytype) saveCurrentRepoVersion() error {
 
 func (a *Anytype) runMigrationsUnsafe() error {
 	if _, err := os.Stat(filepath.Join(a.opts.Repo, "ipfslite")); os.IsNotExist(err) {
-		log.Debugf("repo is not inited, save all migrations as done")
 		return a.saveCurrentRepoVersion()
 	}
 
@@ -77,7 +75,7 @@ func (a *Anytype) runMigrationsUnsafe() error {
 	log.Debugf("migrating from %d to %d", version, len(migrations))
 
 	for i := version; i < len(migrations); i++ {
-		err := migrations[i](a, i == len(migrations)-1)
+		err := migrations[i](a)
 		if err != nil {
 			return fmt.Errorf("failed to execute migration %d: %s", i+1, err.Error())
 		}
@@ -101,31 +99,29 @@ func (a *Anytype) RunMigrations() error {
 	return err
 }
 
-func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error) error {
+func doWithOfflineNode(a *Anytype, f func() error) error {
 	offlineWas := a.opts.Offline
 	defer func() {
 		a.opts.Offline = offlineWas
 	}()
 
-	a.opts.Offline = offline
+	a.opts.Offline = true
 	err := a.start()
 	if err != nil {
 		return err
 	}
 
-	if stopAfter {
-		defer func() {
-			err = a.Stop()
-			if err != nil {
-				log.Errorf("migration failed to stop the running node: %s", err.Error())
-			}
-			a.lock.Lock()
-			defer a.lock.Unlock()
-			// @todo: possible race condition here. These chans not assumed to be replaced
-			a.shutdownStartsCh = make(chan struct{})
-			a.onlineCh = make(chan struct{})
-		}()
-	}
+	defer func() {
+		err = a.Stop()
+		if err != nil {
+			log.Errorf("migration failed to stop the offline node node: %s", err.Error())
+		}
+		a.lock.Lock()
+		defer a.lock.Unlock()
+		// @todo: possible race condition here. These chans not assumed to be replaced
+		a.shutdownStartsCh = make(chan struct{})
+		a.onlineCh = make(chan struct{})
+	}()
 
 	err = f()
 	if err != nil {
@@ -134,66 +130,90 @@ func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error)
 	return nil
 }
 
-func (a *Anytype) migratePageToChanges(id thread.ID) error {
-	snapshotsPB, err := a.snapshotTraverseLogs(context.TODO(), id, vclock.Undef, 1)
-	if err != nil {
-		if err == ErrFailedToDecodeSnapshot {
-			// already migrated
-			return ErrAlreadyMigrated
+func indexLinks(a *Anytype) error {
+	return doWithOfflineNode(a, func() error {
+		threadsIDs, err := a.t.Logstore().Threads()
+		if err != nil {
+			return err
 		}
 
-		return fmt.Errorf("snapshotToChanges failed to get sb last snapshot %s: %s", id.String(), err.Error())
-	}
+		archive, _ := a.threadDeriveID(threadDerivedIndexArchive)
+		home, _ := a.threadDeriveID(threadDerivedIndexHome)
+		profile, _ := a.threadDeriveID(threadDerivedIndexProfilePage)
 
-	if len(snapshotsPB) == 0 {
-		return fmt.Errorf("snapshotToChanges no snapshots found for %s", id.String())
-	}
+		threadsIDs = append(threadsIDs, archive, home, profile)
+		migrated := 0
+		for _, threadID := range threadsIDs {
+			err := a.localStore.Pages.DeletePage(threadID.String())
+			if err != nil && err != localstore.ErrNotFound {
+				return err
+			}
+		}
 
-	snap := snapshotsPB[0]
-	var keys []*FileKeys
-	for fileHash, fileKeys := range snap.KeysByHash {
-		keys = append(keys, &FileKeys{
-			Hash: fileHash,
-			Keys: fileKeys.KeysByPath,
-		})
-	}
+		for _, threadID := range threadsIDs {
+			block, err := a.GetSmartBlock(threadID.String())
+			if err != nil {
+				log.Errorf("failed to get smartblock %s: %s", threadID.String(), err.Error())
+				continue
+			}
 
-	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)
-	sb, _ := a.GetSmartBlock(id.String())
-
-	log.Debugf("migratePageToChanges %s", id.String())
-	_, err = sb.PushRecord(record)
-	return err
-}
-
-func runSnapshotToChangesMigration(a *Anytype) error {
-	threadsIDs, err := a.t.Logstore().Threads()
-	if err != nil {
-		return err
-	}
-
-	threadsIDs = append(threadsIDs)
-	migrated := 0
-	for _, threadID := range threadsIDs {
-		err = a.migratePageToChanges(threadID)
-		if err != nil {
-			log.Errorf(err.Error())
-		} else {
+			err = block.index()
+			if err != nil {
+				log.Errorf("failed to index page %s: %s", threadID.String(), err.Error())
+				continue
+			}
 			migrated++
 		}
-	}
 
-	log.Infof("migration snapshotToChanges: %d pages migrated", migrated)
-	return nil
-}
-
-func snapshotToChanges(a *Anytype, lastMigration bool) error {
-	return doWithRunningNode(a, false, !lastMigration, func() error {
-		return runSnapshotToChangesMigration(a)
+		log.Infof("migration indexLinks: %d pages indexed", migrated)
+		return nil
 	})
 }
 
-func alterThreadsDbSchema(a *Anytype, _ bool) error {
+func snapshotToChanges(a *Anytype) error {
+	return doWithOfflineNode(a, func() error {
+		threadsIDs, err := a.t.Logstore().Threads()
+		if err != nil {
+			return err
+		}
+
+		threadsIDs = append(threadsIDs)
+		migrated := 0
+		for _, threadID := range threadsIDs {
+			snapshotsPB, err := a.snapshotTraverseLogs(context.TODO(), threadID, vclock.Undef, 1)
+			if err != nil {
+				log.Errorf("snapshotToChanges failed to get sb last snapshot %s: %s", threadID.String(), err.Error())
+				continue
+			}
+
+			if len(snapshotsPB) == 0 {
+				log.Errorf("snapshotToChanges no snapshots found for %s", threadID.String())
+				continue
+			}
+
+			snap := snapshotsPB[0]
+			var keys []*FileKeys
+			for fileHash, fileKeys := range snap.KeysByHash {
+				keys = append(keys, &FileKeys{
+					Hash: fileHash,
+					Keys: fileKeys.KeysByPath,
+				})
+			}
+
+			record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)
+			sb, _ := a.GetSmartBlock(threadID.String())
+			_, err = sb.PushRecord(record)
+			if err != nil {
+				return err
+			}
+			migrated++
+		}
+		log.Infof("migration snapshotToChanges: %d pages migrated", migrated)
+		return nil
+	})
+}
+
+func alterThreadsDbSchema(a *Anytype) error {
 	path := filepath.Join(a.opts.Repo, "collections", "eventstore")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Info("migration alterThreadsDbSchema skipped because collections db not yet created")

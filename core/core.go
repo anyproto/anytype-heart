@@ -21,16 +21,17 @@ import (
 	"github.com/anytypeio/go-anytype-library/net"
 	"github.com/anytypeio/go-anytype-library/net/litenet"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/db"
 	net2 "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
-	"google.golang.org/grpc"
 )
 
 var log = logging.Logger("anytype-core")
@@ -75,12 +76,12 @@ type Anytype struct {
 
 	logLevels map[string]string
 
-	opts ServiceOptions
+	opts              ServiceOptions
+	smartBlockChanges *broadcast.Broadcaster
 
 	replicationWG    sync.WaitGroup
 	migrationOnce    sync.Once
 	lock             sync.Mutex
-	isStarted        bool          // use under the lock
 	shutdownStartsCh chan struct{} // closed when node shutdown starts
 	onlineCh         chan struct{} // closed when became online
 }
@@ -153,10 +154,7 @@ func (a *Anytype) Ipfs() ipfs.IPFS {
 }
 
 func (a *Anytype) IsStarted() bool {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
-	return a.isStarted
+	return a.t != nil && a.t.GetIpfs() != nil
 }
 
 func (a *Anytype) BecameOnline(ch chan<- error) {
@@ -178,7 +176,10 @@ func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 		return nil, err
 	}
 	sb := &smartBlock{thread: thrd, node: a}
-	err = sb.indexSnapshot(nil, nil)
+	err = sb.indexSnapshot(&smartBlockSnapshot{
+		state:    vclock.New(),
+		threadID: thrd.ID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to index new block %s: %s", thrd.ID.String(), err.Error())
 	}
@@ -221,8 +222,9 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 		replicationWG: sync.WaitGroup{},
 		migrationOnce: sync.Once{},
 
-		shutdownStartsCh: make(chan struct{}),
-		onlineCh:         make(chan struct{}),
+		shutdownStartsCh:  make(chan struct{}),
+		onlineCh:          make(chan struct{}),
+		smartBlockChanges: broadcast.NewBroadcaster(0),
 	}
 
 	if opts.CafeGrpcHost != "" {
@@ -335,10 +337,6 @@ func (a *Anytype) start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	if a.isStarted {
-		return nil
-	}
-
 	if a.opts.NetBootstraper != nil {
 		a.t = a.opts.NetBootstraper
 	} else {
@@ -350,9 +348,7 @@ func (a *Anytype) start() error {
 			[]byte(ipfsPrivateNetworkKey),
 			litenet.WithNetHostAddr(a.opts.HostAddr),
 			litenet.WithNetDebug(false),
-			litenet.WithOffline(a.opts.Offline),
-			litenet.WithNetGRPCOptions(grpc.MaxRecvMsgSize(1024*1024*20)),
-		)
+			litenet.WithOffline(a.opts.Offline))
 		if err != nil {
 			if strings.Contains(err.Error(), "address already in use") {
 				// start on random port in case saved port is already used by some other app
@@ -362,8 +358,7 @@ func (a *Anytype) start() error {
 					[]byte(ipfsPrivateNetworkKey),
 					litenet.WithNetHostAddr(nil),
 					litenet.WithNetDebug(false),
-					litenet.WithOffline(a.opts.Offline),
-					litenet.WithNetGRPCOptions(grpc.MaxRecvMsgSize(1024*1024*20)))
+					litenet.WithOffline(a.opts.Offline))
 			}
 
 			if err != nil {
@@ -373,24 +368,23 @@ func (a *Anytype) start() error {
 	}
 
 	a.localStore = localstore.NewLocalStore(a.t.Datastore())
+
 	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
 
-	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
-		if offline {
+	go func() {
+		if a.opts.Offline {
 			return
 		}
 
-		net.Bootstrap(DefaultBoostrapPeers())
+		a.t.Bootstrap(DefaultBoostrapPeers())
 		// todo: init mdns discovery and register notifee
 		// discovery.NewMdnsService
-		close(onlineCh)
-	}(a.t, a.opts.Offline, a.onlineCh)
+		close(a.onlineCh)
+	}()
 
 	log.Info("Anytype device: " + a.opts.Device.Address())
+	log.Info("Anytype account: " + a.opts.Account.Address())
 
-	log.Info("Anytype account: " + a.Account())
-
-	a.isStarted = true
 	return nil
 }
 
@@ -405,11 +399,9 @@ func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
 }
 
 func (a *Anytype) Stop() error {
-	fmt.Printf("stopping the library...\n")
-	defer fmt.Println("library has been successfully stopped")
+	fmt.Printf("stopping the service %p\n", a.t)
 	a.lock.Lock()
 	defer a.lock.Unlock()
-	a.isStarted = false
 
 	if a.shutdownStartsCh != nil {
 		close(a.shutdownStartsCh)

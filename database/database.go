@@ -35,9 +35,6 @@ type Database interface {
 	Reader
 	Writer
 
-	// Return name of the field containing record ID.
-	ID() string
-
 	Schema() string
 }
 
