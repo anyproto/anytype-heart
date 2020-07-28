@@ -750,6 +750,7 @@ the element of change tree used to store and internal apply smartBlock history
 | content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
 | snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the content will ignoring |
 | fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | file keys related to changes content |
+| timestamp | [int64](#int64) |  | creation timestamp |
 
 
 

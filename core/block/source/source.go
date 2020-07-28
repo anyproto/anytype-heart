@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -140,6 +141,7 @@ func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileCh
 		PreviousIds:        s.tree.Heads(),
 		LastSnapshotId:     s.lastSnapshotId,
 		PreviousDetailsIds: s.tree.DetailsHeads(),
+		Timestamp:          time.Now().Unix(),
 	}
 	if s.needSnapshot() || len(changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
