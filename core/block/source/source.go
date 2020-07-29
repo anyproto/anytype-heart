@@ -94,6 +94,12 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 		if s.unsubscribe, err = s.sb.SubscribeForRecords(ch); err != nil {
 			return
 		}
+		defer func() {
+			if err != nil {
+				s.unsubscribe()
+				s.unsubscribe = nil
+			}
+		}()
 	}
 	if s.detailsOnly {
 		s.tree, s.logHeads, err = change.BuildDetailsTree(s.sb)
