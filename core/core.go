@@ -77,12 +77,13 @@ type Anytype struct {
 
 	logLevels map[string]string
 
-	opts              ServiceOptions
 	smartBlockChanges *broadcast.Broadcaster
+	opts ServiceOptions
 
 	replicationWG    sync.WaitGroup
 	migrationOnce    sync.Once
 	lock             sync.Mutex
+	isStarted        bool          // use under the lock
 	shutdownStartsCh chan struct{} // closed when node shutdown starts
 	onlineCh         chan struct{} // closed when became online
 }
@@ -155,7 +156,10 @@ func (a *Anytype) Ipfs() ipfs.IPFS {
 }
 
 func (a *Anytype) IsStarted() bool {
-	return a.t != nil && a.t.GetIpfs() != nil
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	return a.isStarted
 }
 
 func (a *Anytype) BecameOnline(ch chan<- error) {
@@ -338,6 +342,10 @@ func (a *Anytype) start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
+	if a.isStarted {
+		return nil
+	}
+
 	if a.opts.NetBootstraper != nil {
 		a.t = a.opts.NetBootstraper
 	} else {
@@ -374,21 +382,22 @@ func (a *Anytype) start() error {
 	a.localStore = localstore.NewLocalStore(a.t.Datastore())
 	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
 
-	go func() {
-		if a.opts.Offline {
+	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
+		if offline {
 			return
 		}
 
-		a.t.Bootstrap(DefaultBoostrapPeers())
+		net.Bootstrap(DefaultBoostrapPeers())
 		// todo: init mdns discovery and register notifee
 		// discovery.NewMdnsService
-		close(a.onlineCh)
-	}()
+		close(onlineCh)
+	}(a.t, a.opts.Offline, a.onlineCh)
 
 	log.Info("Anytype device: " + a.opts.Device.Address())
 
 	log.Info("Anytype account: " + a.Account())
 
+	a.isStarted = true
 	return nil
 }
 
@@ -403,9 +412,11 @@ func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
 }
 
 func (a *Anytype) Stop() error {
-	fmt.Printf("stopping the service %p\n", a.t)
+	fmt.Printf("stopping the library...\n")
+	defer fmt.Println("library has been successfully stopped")
 	a.lock.Lock()
 	defer a.lock.Unlock()
+	a.isStarted = false
 
 	if a.shutdownStartsCh != nil {
 		close(a.shutdownStartsCh)

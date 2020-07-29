@@ -41,7 +41,7 @@ func getRunningService(t *testing.T) Service {
 
 func TestAnytype_IsStarted(t *testing.T) {
 	s := getRunningService(t)
-	require.True(t, s.IsStarted())
+	require.True(t, s.(*Anytype).isStarted)
 }
 
 func TestAnytype_DeviceKeyEquals(t *testing.T) {

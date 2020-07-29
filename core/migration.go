@@ -19,9 +19,9 @@ import (
 
 const versionFileName = "anytype_version"
 
-type migration func(a *Anytype) error
+type migration func(a *Anytype, lastMigration bool) error
 
-var skipMigration = func(a *Anytype) error {
+var skipMigration = func(a *Anytype, _ bool) error {
 	return nil
 }
 
@@ -78,7 +78,7 @@ func (a *Anytype) runMigrationsUnsafe() error {
 	log.Debugf("migrating from %d to %d", version, len(migrations))
 
 	for i := version; i < len(migrations); i++ {
-		err := migrations[i](a)
+		err := migrations[i](a, i == len(migrations)-1)
 		if err != nil {
 			return fmt.Errorf("failed to execute migration %d: %s", i+1, err.Error())
 		}
@@ -102,7 +102,7 @@ func (a *Anytype) RunMigrations() error {
 	return err
 }
 
-func doWithRunningNode(a *Anytype, offline bool, f func() error) error {
+func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error) error {
 	offlineWas := a.opts.Offline
 	defer func() {
 		a.opts.Offline = offlineWas
@@ -114,17 +114,19 @@ func doWithRunningNode(a *Anytype, offline bool, f func() error) error {
 		return err
 	}
 
-	defer func() {
-		err = a.Stop()
-		if err != nil {
-			log.Errorf("migration failed to stop the offline node node: %s", err.Error())
-		}
-		a.lock.Lock()
-		defer a.lock.Unlock()
-		// @todo: possible race condition here. These chans not assumed to be replaced
-		a.shutdownStartsCh = make(chan struct{})
-		a.onlineCh = make(chan struct{})
-	}()
+	if stopAfter {
+		defer func() {
+			err = a.Stop()
+			if err != nil {
+				log.Errorf("migration failed to stop the running node: %s", err.Error())
+			}
+			a.lock.Lock()
+			defer a.lock.Unlock()
+			// @todo: possible race condition here. These chans not assumed to be replaced
+			a.shutdownStartsCh = make(chan struct{})
+			a.onlineCh = make(chan struct{})
+		}()
+	}
 
 	err = f()
 	if err != nil {
@@ -133,8 +135,8 @@ func doWithRunningNode(a *Anytype, offline bool, f func() error) error {
 	return nil
 }
 
-func indexLinks(a *Anytype) error {
-	return doWithRunningNode(a, true, func() error {
+func indexLinks(a *Anytype, _ bool) error {
+	return doWithRunningNode(a, true, true, func() error {
 		threadsIDs, err := a.t.Logstore().Threads()
 		if err != nil {
 			return err
@@ -200,7 +202,7 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)
 	sb, _ := a.GetSmartBlock(id.String())
 
-	log.Debugf("migratePageToChanges %s: %+v", id.String(), record)
+	log.Debugf("migratePageToChanges %s", id.String())
 	_, err = sb.PushRecord(record)
 	return err
 }
@@ -221,17 +223,18 @@ func runSnapshotToChangesMigration(a *Anytype) error {
 			migrated++
 		}
 	}
+
 	log.Infof("migration snapshotToChanges: %d pages migrated", migrated)
 	return nil
 }
 
-func snapshotToChanges(a *Anytype) error {
-	return doWithRunningNode(a, false, func() error {
+func snapshotToChanges(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, false, !lastMigration, func() error {
 		return runSnapshotToChangesMigration(a)
 	})
 }
 
-func alterThreadsDbSchema(a *Anytype) error {
+func alterThreadsDbSchema(a *Anytype, _ bool) error {
 	path := filepath.Join(a.opts.Repo, "collections", "eventstore")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Info("migration alterThreadsDbSchema skipped because collections db not yet created")
