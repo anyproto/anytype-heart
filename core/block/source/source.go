@@ -265,7 +265,7 @@ func (s *source) Close() (err error) {
 	defer s.mu.Unlock()
 	if s.unsubscribe != nil {
 		s.unsubscribe()
-		//<-s.closed
+		<-s.closed
 	}
 	return nil
 }
