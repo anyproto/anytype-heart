@@ -91,7 +91,7 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
-	if sb.Doc, err = s.ReadDoc(sb); err != nil {
+	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return err
 	}
 	sb.source = s
