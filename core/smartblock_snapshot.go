@@ -151,6 +151,10 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 			return nil, fmt.Errorf("%s: cbor decode error: %w", ErrFailedToDecodeSnapshot.Error(), err)
 		}
 
+		if m.Ver > payloadVersion {
+			return nil, fmt.Errorf("%s: cbor node version is higher than current (%d>%d)", ErrFailedToDecodeSnapshot.Error(), m.Ver, payloadVersion)
+		}
+
 		err = m.Verify()
 		if err != nil {
 			return nil, err
