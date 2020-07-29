@@ -179,11 +179,15 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 		}()
 
 		go func() {
-			err = a.addMissingThreadsInCollection()
+			err = a.addMissingThreadsToCollection()
 			if err != nil {
-				log.Errorf("addMissingThreadsInCollection: %s", err.Error())
+				log.Errorf("addMissingThreadsToCollection: %s", err.Error())
 			}
 		}()
+		err = a.addMissingThreadsFromCollection()
+		if err != nil {
+			return fmt.Errorf("addMissingThreadsFromCollection failed: %w", err)
+		}
 	}
 
 	accountThreadPullDone := make(chan struct{})
