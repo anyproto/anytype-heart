@@ -177,7 +177,7 @@ func (s *source) needSnapshot() bool {
 		return true
 	}
 	// TODO: think about a more smart way
-	return rand.Intn(1000) == 42
+	return rand.Intn(500) == 42
 }
 
 func (s *source) changeListener(records chan core.SmartblockRecordWithLogID) {
