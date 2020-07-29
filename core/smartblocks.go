@@ -259,18 +259,28 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 		return thread.Info{}, err
 	}
 
+	threadComp, err := ma.NewComponent(thread.Name, thrd.ID.String())
+	if err != nil {
+		return thread.Info{}, err
+	}
+
 	hasCafeAddress := false
+	var cafeAddrWithThread ma.Multiaddr
+	if a.opts.CafeP2PAddr != nil {
+		cafeAddrWithThread = a.opts.CafeP2PAddr.Encapsulate(threadComp)
+	}
+
 	var multiAddrs []ma.Multiaddr
 	for _, addr := range thrd.Addrs {
-		if addr.Equal(a.opts.CafeP2PAddr) {
+		if cafeAddrWithThread != nil && addr.Equal(cafeAddrWithThread) {
 			hasCafeAddress = true
 		}
 
 		multiAddrs = append(multiAddrs, addr)
 	}
 
-	if !hasCafeAddress && a.opts.CafeP2PAddr != nil {
-		multiAddrs = append(multiAddrs, a.opts.CafeP2PAddr)
+	if !hasCafeAddress && cafeAddrWithThread != nil {
+		multiAddrs = append(multiAddrs, cafeAddrWithThread)
 	}
 
 	threadInfo := threadInfo{

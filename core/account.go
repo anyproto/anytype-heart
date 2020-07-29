@@ -32,13 +32,15 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 
 	threadAdded := false
 	hasCafeAddress := false
-	var cafeAddrWithThread ma.Multiaddr
 	var multiAddrs []ma.Multiaddr
 	threadComp, err := ma.NewComponent(thread.Name, tid.String())
 	if err != nil {
 		return err
 	}
-	cafeAddrWithThread = a.opts.CafeP2PAddr.Encapsulate(threadComp)
+	var cafeAddrWithThread ma.Multiaddr
+	if a.opts.CafeP2PAddr != nil {
+		cafeAddrWithThread = a.opts.CafeP2PAddr.Encapsulate(threadComp)
+	}
 
 	for _, addrS := range ti.Addrs {
 		addr, err := ma.NewMultiaddr(addrS)
@@ -54,7 +56,7 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 		multiAddrs = append(multiAddrs, addr)
 	}
 
-	if !hasCafeAddress {
+	if !hasCafeAddress && cafeAddrWithThread != nil {
 		log.Warn("processNewExternalThread %s: cafe addr not found among thread addresses, will add it", ti.ID.String())
 		multiAddrs = append(multiAddrs, cafeAddrWithThread)
 	}
@@ -248,6 +250,15 @@ func (a *Anytype) addMissingReplicators() error {
 		return fmt.Errorf("failed to list threads: %s", err.Error())
 	}
 
+	if a.opts.CafeP2PAddr == nil {
+		return nil
+	}
+
+	cafeP2PAddr, err := a.opts.CafeP2PAddr.ValueForProtocol(ma.P_P2P)
+	if err != nil {
+		return err
+	}
+
 	for _, threadId := range threadsIds {
 		thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
 		if err != nil {
@@ -258,7 +269,7 @@ func (a *Anytype) addMissingReplicators() error {
 		for _, addr := range thrd.Addrs {
 			p2paddr, err := addr.ValueForProtocol(ma.P_P2P)
 			if err == nil {
-				if p2paddr == "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw" {
+				if p2paddr == cafeP2PAddr {
 					exists = true
 					break
 				}
@@ -266,9 +277,15 @@ func (a *Anytype) addMissingReplicators() error {
 		}
 
 		if !exists {
+			threadComp, err := ma.NewComponent(thread.Name, threadId.String())
+			if err != nil {
+				return err
+			}
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 			defer cancel()
-			_, err := a.ThreadsNet().AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr)
+
+			_, err = a.ThreadsNet().AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr.Encapsulate(threadComp))
 			if err != nil {
 				log.Errorf("failed to add missing replicator for %s: %s", thrd.ID, err.Error())
 			} else {
