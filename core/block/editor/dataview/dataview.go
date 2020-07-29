@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/schema"
+	blockDB "github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -45,6 +46,7 @@ type dataviewImpl struct {
 	limit        int
 	records      []database.Record
 	mu           sync.Mutex
+	database.Database
 }
 
 type dataviewCollectionImpl struct {
@@ -206,62 +208,69 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 	}
 }
 
-func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error) {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
+func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error) {
+	var databaseId string
+	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+		return nil, fmt.Errorf("not a dataview block")
+	} else {
+		databaseId = dvBlock.Model().GetDataview().DatabaseId
+	}
+
+	var db database.Writer
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
+		return nil, err
+	} else {
+		db = target
+	}
+
+	created, err := db.Create(database.Record{Details: rec.Details})
 	if err != nil {
 		return nil, err
 	}
 
-	dbId := tb.Model().GetDataview().GetDatabaseId()
-	db, err := d.Anytype().DatabaseByID(dbId)
-	if err != nil {
-		return nil, err
-	}
-
-	createdRec, err := db.Create(database.Record{Details: rec.Details})
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.PageDetails{Details: createdRec.Details}, nil
+	return &model.PageDetails{Details: created.Details}, nil
 }
 
-func (d *dataviewCollectionImpl) UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.PageDetails) error {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
-	if err != nil {
-		return err
+func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.PageDetails) error {
+	var databaseId string
+	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+		return fmt.Errorf("not a dataview block")
+	} else {
+		databaseId = dvBlock.Model().GetDataview().DatabaseId
 	}
 
-	dbId := tb.Model().GetDataview().GetDatabaseId()
-	db, err := d.Anytype().DatabaseByID(dbId)
-	if err != nil {
+	var db database.Writer
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
 		return err
+	} else {
+		db = target
 	}
 
 	return db.Update(recID, database.Record{Details: rec.Details})
 }
 
-func (d *dataviewCollectionImpl) DeleteRecord(ctx *state.Context, blockId string, recID string) error {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
-	if err != nil {
-		return err
+func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {
+	var databaseId string
+	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+		return fmt.Errorf("not a dataview block")
+	} else {
+		databaseId = dvBlock.Model().GetDataview().DatabaseId
 	}
 
-	dbId := tb.Model().GetDataview().GetDatabaseId()
-	db, err := d.Anytype().DatabaseByID(dbId)
-	if err != nil {
+	var db database.Writer
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
 		return err
+	} else {
+		db = target
 	}
 
-	if err := db.Delete(recID); err != nil {
-		return err
-	}
-
-	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
-	return nil
+	return db.Delete(recID)
 }
 
 func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
@@ -284,12 +293,14 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	databaseId := dvBlock.Model().GetDataview().DatabaseId
 	activeView := dvBlock.GetView(dv.activeViewId)
 
-	db, err := d.Anytype().DatabaseByID(databaseId)
-	if err != nil {
+	var db database.Reader
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
 		return nil, err
+	} else {
+		db = target
 	}
-
-	var msgs []*pb.EventMessage
 
 	entries, total, err := db.Query(database.Query{
 		Relations: activeView.Relations,
@@ -298,6 +309,9 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		Limit:     dv.limit,
 		Offset:    dv.offset,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	var currentEntriesIds []string
 	for _, entry := range dv.records {
@@ -309,17 +323,19 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		records = append(records, entry.Details)
 	}
 
-	msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-		&pb.EventBlockSetDataviewRecords{
-			Id:             dv.blockId,
-			ViewId:         activeView.Id,
-			Updated:        nil,
-			Removed:        currentEntriesIds,
-			Inserted:       records,
-			InsertPosition: 0,
-			Total:          uint32(total),
-		},
-	}})
+	var msgs = []*pb.EventMessage{
+		{Value: &pb.EventMessageValueOfBlockSetDataviewRecords{
+			BlockSetDataviewRecords: &pb.EventBlockSetDataviewRecords{
+				Id:             dv.blockId,
+				ViewId:         activeView.Id,
+				Updated:        nil,
+				Removed:        currentEntriesIds,
+				Inserted:       records,
+				InsertPosition: 0,
+				Total:          uint32(total),
+			},
+		}},
+	}
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries

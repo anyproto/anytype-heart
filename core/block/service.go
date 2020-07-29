@@ -6,14 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
-
-	"github.com/anytypeio/go-anytype-library/files"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/gogo/protobuf/types"
-
 	coresb "github.com/anytypeio/go-anytype-library/core/smartblock"
+	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -21,8 +15,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -30,13 +27,13 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -351,7 +348,6 @@ func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrum
 		} else {
 			return ErrUnexpectedBlockType
 		}
-		return nil
 	})
 }
 
@@ -925,7 +921,7 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
+		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview, s)
 	case pb.SmartBlockType_Home:
 		sb = editor.NewDashboard(s.meta, s)
 	case pb.SmartBlockType_Archive:
@@ -938,9 +934,7 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
-	if err = sb.Init(sc, initEmpty); err != nil {
-		return
-	}
+	err = sb.Init(sc, initEmpty)
 	return
 }
 

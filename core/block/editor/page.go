@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -12,7 +13,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
-func NewPage(m meta.Service, fileSource file.FileSource, bCtrl bookmark.DoBookmark, importServices _import.Services, lp linkpreview.LinkPreview) *Page {
+func NewPage(
+	m meta.Service,
+	fileSource file.FileSource,
+	bCtrl bookmark.DoBookmark,
+	importServices _import.Services,
+	lp linkpreview.LinkPreview,
+	dbCtrl database.Ctrl,
+) *Page {
 	sb := smartblock.New(m)
 	return &Page{
 		SmartBlock: sb,
@@ -23,6 +31,7 @@ func NewPage(m meta.Service, fileSource file.FileSource, bCtrl bookmark.DoBookma
 		Clipboard:  clipboard.NewClipboard(sb),
 		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
 		Import:     _import.NewImport(sb, importServices),
+		Router:     database.New(dbCtrl),
 	}
 }
 
@@ -35,4 +44,5 @@ type Page struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	_import.Import
+	database.Router
 }
