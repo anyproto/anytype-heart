@@ -267,12 +267,9 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 }
 
 func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordWithLogID) (cancel func(), err error) {
-	doneCh := make(chan struct{})
-	chCloseFn := func() {
-		doneCh <- struct{}{}
-	}
+	var ctx context.Context
+	ctx, cancel = context.WithCancel(context.Background())
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
 	// todo: this is not effective, need to make a single subscribe point for all subscribed threads
 	threadsCh, err := block.node.t.Subscribe(ctx, net.WithSubFilter(block.thread.ID))
 	if err != nil {
@@ -280,11 +277,9 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordWithLogID) 
 	}
 
 	go func() {
+		defer close(ch)
 		for {
 			select {
-			case <-doneCh:
-				ctxCancel()
-				return
 			case val, ok := <-threadsCh:
 				if !ok {
 					return
@@ -295,88 +290,35 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordWithLogID) 
 					log.Errorf("failed to decode thread record: %s", err.Error())
 					continue
 				}
+				select {
 
-				ch <- SmartblockRecordWithLogID{
+				case ch <- SmartblockRecordWithLogID{
 					SmartblockRecord: *rec,
 					LogID:            val.LogID().String(),
+				}:
+					// everything is ok
+				case <-ctx.Done():
+					// no need to cancel, continue to read the rest msgs from the channel
+					continue
+				case <-block.node.shutdownStartsCh:
+					// cancel first, then we should read ok == false from the threadsCh
+					cancel()
 				}
-
+			case <-ctx.Done():
+				continue
+			case <-block.node.shutdownStartsCh:
+				cancel()
 			}
 		}
 	}()
 
-	return chCloseFn, nil
+	return cancel, nil
 }
 
 func (block *smartBlock) SubscribeForChanges(since vclock.VClock, ch chan SmartBlockChange) (cancel func(), err error) {
 	chCloseFn := func() { close(ch) }
 
 	//todo: to be implemented
-	return chCloseFn, nil
-}
-
-func (block *smartBlock) SubscribeForMetaChanges(since vclock.VClock, ch chan SmartBlockMetaChange) (cancel func(), err error) {
-	doneCh := make(chan struct{})
-	chCloseFn := func() {
-		doneCh <- struct{}{}
-	}
-
-	log.Infof("SubscribeForMetaChanges %s", block.ID())
-
-	go func() {
-		listener := block.node.smartBlockChanges.Listen()
-
-		var lastDetails *types.Struct
-		lastSnap, _ := block.GetLastSnapshot()
-		if lastSnap != nil {
-			lastMeta, _ := lastSnap.Meta()
-			if lastMeta != nil {
-				lastDetails = lastMeta.Details
-				if lastSnap.State().Compare(since, vclock.Ancestor) {
-					ch <- SmartBlockMetaChange{
-						SmartBlockMeta: *lastMeta,
-						state:          lastSnap.State()}
-				}
-			}
-		}
-
-		for {
-			select {
-			case <-doneCh:
-				listener.Discard()
-				close(ch)
-				return
-			case val, ok := <-listener.Channel():
-				if !ok {
-					close(ch)
-					return
-				}
-
-				if tid, ok := val.(thread.ID); ok {
-					if tid != block.thread.ID {
-						continue
-					}
-					log.Infof("got thread update... %s", tid.String())
-
-					newSnap, _ := block.GetLastSnapshot()
-					if newSnap != nil {
-						newMeta, _ := newSnap.Meta()
-						if newMeta != nil && newMeta.Details != nil {
-							if newMeta.Details.Compare(lastDetails) != 0 {
-								log.Infof("details changed! %s", tid.String())
-								ch <- SmartBlockMetaChange{
-									SmartBlockMeta: *newMeta,
-									state:          newSnap.State()}
-
-								lastDetails = newMeta.Details
-							}
-						}
-					}
-				}
-			}
-		}
-	}()
-
 	return chCloseFn, nil
 }
 

@@ -28,7 +28,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/textileio/go-threads/broadcast"
 	"github.com/textileio/go-threads/db"
 	net2 "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
@@ -77,7 +76,6 @@ type Anytype struct {
 
 	logLevels map[string]string
 
-	smartBlockChanges *broadcast.Broadcaster
 	opts ServiceOptions
 
 	replicationWG    sync.WaitGroup
@@ -227,9 +225,8 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 		replicationWG: sync.WaitGroup{},
 		migrationOnce: sync.Once{},
 
-		shutdownStartsCh:  make(chan struct{}),
-		onlineCh:          make(chan struct{}),
-		smartBlockChanges: broadcast.NewBroadcaster(0),
+		shutdownStartsCh: make(chan struct{}),
+		onlineCh:         make(chan struct{}),
 	}
 
 	if opts.CafeGrpcHost != "" {

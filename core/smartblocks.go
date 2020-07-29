@@ -115,14 +115,6 @@ func (a *Anytype) pullThread(ctx context.Context, id thread.ID) (headsChanged bo
 		}
 	}
 
-	go func() {
-		// todo: do we need timeout here?
-		err := a.smartBlockChanges.SendWithTimeout(id, time.Second*30)
-		if err != nil {
-			log.Errorf("processNewExternalThread: smartBlockChanges send failed: %s", err.Error())
-		}
-	}()
-
 	return
 }
 
