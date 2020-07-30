@@ -921,13 +921,13 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview, s)
+		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
 	case pb.SmartBlockType_Home:
 		sb = editor.NewDashboard(s.meta, s)
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta)
+		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
