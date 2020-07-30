@@ -148,7 +148,11 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		m := new(SignedPbPayload)
 		err = cbornode.DecodeInto(node.RawData(), m)
 		if err != nil {
-			return nil, fmt.Errorf("incorrect record type: %w", err)
+			return nil, fmt.Errorf("%s: cbor decode error: %w", ErrFailedToDecodeSnapshot.Error(), err)
+		}
+
+		if m.Ver > payloadVersion {
+			return nil, fmt.Errorf("%s: cbor node version is higher than current (%d>%d)", ErrFailedToDecodeSnapshot.Error(), m.Ver, payloadVersion)
 		}
 
 		err = m.Verify()
@@ -159,7 +163,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		var snapshot = storage.SmartBlockSnapshot{}
 		err = m.Unmarshal(&snapshot)
 		if err != nil {
-			return nil, fmt.Errorf("%s %w", ErrFailedToDecodeSnapshot.Error(), err)
+			return nil, fmt.Errorf("%s: pb decode error: %w", ErrFailedToDecodeSnapshot.Error(), err)
 		}
 
 		if !before.IsNil() && vclock.NewFromMap(snapshot.State).Compare(before, vclock.Ancestor) {
