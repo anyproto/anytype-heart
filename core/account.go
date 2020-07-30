@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/cbor"
 	db2 "github.com/textileio/go-threads/core/db"
+	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -153,7 +155,7 @@ func (t threadRecord) LogID() peer.ID {
 	return t.logID
 }
 
-func (a *Anytype) addMissingThreadsInCollection() error {
+func (a *Anytype) addMissingThreadsToCollection() error {
 	threadsCollection := a.ThreadsCollection()
 	instancesBytes, err := threadsCollection.Find(&db.Query{})
 	if err != nil {
@@ -190,7 +192,7 @@ func (a *Anytype) addMissingThreadsInCollection() error {
 		if _, exists := threadsInCollection[threadId.String()]; !exists {
 			thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
 			if err != nil {
-				log.Errorf("addMissingThreadsInCollection migration: error getting info: %s\n", err.Error())
+				log.Errorf("addMissingThreadsToCollection migration: error getting info: %s\n", err.Error())
 				continue
 			}
 			threadInfo := threadInfo{
@@ -209,13 +211,50 @@ func (a *Anytype) addMissingThreadsInCollection() error {
 	}
 
 	if missingThreads > 0 {
-		log.Errorf("addMissingThreadsInCollection migration: added %d missing threads", missingThreads)
+		log.Errorf("addMissingThreadsToCollection migration: added %d missing threads", missingThreads)
 	} else {
-		log.Debugf("addMissingThreadsInCollection migration: no missing threads found")
+		log.Debugf("addMissingThreadsToCollection migration: no missing threads found")
 	}
 
 	return nil
 }
+
+func (a *Anytype) addMissingThreadsFromCollection() error {
+	threadsCollection := a.ThreadsCollection()
+	instancesBytes, err := threadsCollection.Find(&db.Query{})
+	if err != nil {
+		return err
+	}
+
+	var missingThreadsAdded int
+	for _, instanceBytes := range instancesBytes {
+		ti := threadInfo{}
+		util.InstanceFromJSON(instanceBytes, &ti)
+
+		tid, err := thread.Decode(ti.ID.String())
+		if err != nil {
+			log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+			continue
+		}
+
+		if _, err = a.ThreadsNet().GetThread(context.Background(), tid); err != nil && errors.Is(err, logstore.ErrThreadNotFound) {
+			go func() {
+				err = a.processNewExternalThread(tid, ti)
+				if err != nil {
+					log.Errorf("addMissingThreadsFromCollection processNewExternalThread failed to add %s: %s", ti.ID, err.Error())
+					return
+				}
+				missingThreadsAdded++
+			}()
+		}
+	}
+
+	if missingThreadsAdded > 0 {
+		log.Errorf("addMissingThreadsFromCollection: added %d missing threads", missingThreadsAdded)
+	}
+	return nil
+}
+
 func (a *Anytype) addMissingReplicators() error {
 	threadsIds, err := a.ThreadsNet().Logstore().Threads()
 	if err != nil {
