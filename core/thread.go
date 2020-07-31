@@ -354,6 +354,9 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 
 	go func() {
 		<-pullDone
+		if err != nil {
+			return
+		}
 		if headsChanged {
 			err = a.migratePageToChanges(thrd.ID)
 			if err != nil && err != ErrAlreadyMigrated {
@@ -374,6 +377,8 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 		log.Debugf("syncThread wait for pull")
 		<-pullDone
 		log.Debugf("syncThread pull done")
+		// return the pull error
+		return err
 	}
 
 	return nil
@@ -409,6 +414,14 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 	err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, pullAfterConnect, waitForPull)
 	if err != nil {
+		if mustSyncSnapshotIfNotExist {
+			// remove the thread we have just created because we've supposed to successfully pull it from the replicator
+			log.Warnf("predefinedThreadAdd failed to pull the just created thread %d: delete it", index)
+			err = a.t.DeleteThread(context.TODO(), id)
+			if err != nil {
+				return thread.Info{}, true, err
+			}
+		}
 		return thread.Info{}, true, err
 	}
 
