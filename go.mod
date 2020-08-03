@@ -9,7 +9,7 @@ require (
 	github.com/cheggaaa/mb v1.0.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.4.4
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/h2non/filetype v1.1.0
