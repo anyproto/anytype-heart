@@ -32,6 +32,8 @@ type Source interface {
 	Close() (err error)
 }
 
+var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
+
 func NewSource(a anytype.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
