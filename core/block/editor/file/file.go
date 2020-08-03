@@ -43,7 +43,7 @@ type FileSource interface {
 
 type File interface {
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
-	Upload(ctx *state.Context, id, localPath, url string) (err error)
+	Upload(ctx *state.Context, id, localPath, url string, isSync bool) (err error)
 	UpdateFile(id string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 
@@ -55,9 +55,9 @@ type sfile struct {
 	fileSource FileSource
 }
 
-func (sf *sfile) Upload(ctx *state.Context, id, localPath, url string) (err error) {
+func (sf *sfile) Upload(ctx *state.Context, id, localPath, url string, isSync bool) (err error) {
 	s := sf.NewStateCtx(ctx)
-	if err = sf.upload(s, id, localPath, url); err != nil {
+	if err = sf.upload(s, id, localPath, url, isSync); err != nil {
 		return
 	}
 	return sf.Apply(s)
@@ -77,7 +77,7 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 	if err = s.InsertTo(req.TargetId, req.Position, newId); err != nil {
 		return
 	}
-	if err = sf.upload(s, newId, req.LocalPath, req.Url); err != nil {
+	if err = sf.upload(s, newId, req.LocalPath, req.Url, false); err != nil {
 		return
 	}
 	if err = sf.Apply(s); err != nil {
@@ -86,7 +86,7 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 	return
 }
 
-func (sf *sfile) upload(s *state.State, id, localPath, url string) (err error) {
+func (sf *sfile) upload(s *state.State, id, localPath, url string, isSync bool) (err error) {
 	url, _ = uri.ProcessURI(url)
 	b := s.Get(id)
 	f, ok := b.(file.Block)
@@ -96,7 +96,9 @@ func (sf *sfile) upload(s *state.State, id, localPath, url string) (err error) {
 	if err = f.Upload(sf.Anytype(), &updater{
 		smartId: sf.Id(),
 		source:  sf.fileSource,
-	}, localPath, url); err != nil {
+		isSync:  isSync,
+		f:       f,
+	}, localPath, url, isSync); err != nil {
 		return
 	}
 	return
@@ -118,9 +120,18 @@ func (sf *sfile) UpdateFile(id string, apply func(b file.Block) error) (err erro
 type updater struct {
 	smartId string
 	source  FileSource
+	f       file.Block
+	isSync  bool
+	mu      sync.Mutex
 }
 
 func (u *updater) UpdateFileBlock(id string, apply func(f file.Block)) error {
+	if u.isSync {
+		u.mu.Lock()
+		defer u.mu.Unlock()
+		apply(u.f)
+		return nil
+	}
 	return u.source.DoFile(u.smartId, func(f File) error {
 		return f.UpdateFile(id, func(b file.Block) error {
 			apply(b)

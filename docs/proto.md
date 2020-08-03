@@ -8479,6 +8479,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | total | [int64](#int64) |  |  |
 | done | [int64](#int64) |  |  |
+| message | [string](#string) |  |  |
 
 
 
@@ -8526,6 +8527,7 @@ Precondition: user A and user B opened the same block
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | DropFiles | 0 |  |
+| Import | 1 |  |
 
 
 

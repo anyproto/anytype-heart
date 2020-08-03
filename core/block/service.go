@@ -104,6 +104,7 @@ type Service interface {
 
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error)
 	CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
@@ -120,6 +121,7 @@ type Service interface {
 	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
+	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	ProcessAdd(p process.Process) (err error)
@@ -759,7 +761,16 @@ func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadReque
 	<-uploadFilesLimiter
 	defer func() { uploadFilesLimiter <- struct{}{} }()
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url)
+		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url, false)
+		return err
+	})
+}
+
+func (s *service) UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
+	<-uploadFilesLimiter
+	defer func() { uploadFilesLimiter <- struct{}{} }()
+	return s.DoFile(req.ContextId, func(b file.File) error {
+		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url, true)
 		return err
 	})
 }
@@ -811,7 +822,13 @@ func (s *service) Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (err erro
 
 func (s *service) BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
 	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url)
+		return b.Fetch(ctx, req.BlockId, req.Url, false)
+	})
+}
+
+func (s *service) BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
+	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
+		return b.Fetch(ctx, req.BlockId, req.Url, true)
 	})
 }
 
