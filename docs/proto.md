@@ -2426,6 +2426,7 @@ Image/Video/File blocks then:
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype.model.Block) | repeated |  |
+| fileSlot | [bytes](#bytes) | repeated |  |
 
 
 
