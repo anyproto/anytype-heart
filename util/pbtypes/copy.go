@@ -27,6 +27,9 @@ func CopyBlock(in *model.Block) (out *model.Block) {
 }
 
 func CopyStruct(in *types.Struct) (out *types.Struct) {
+	if in == nil {
+		return nil
+	}
 	buf := bytesPool.Get().([]byte)
 	size := in.Size()
 	if cap(buf) < size {
@@ -35,6 +38,9 @@ func CopyStruct(in *types.Struct) (out *types.Struct) {
 	size, _ = in.MarshalToSizedBuffer(buf[:size])
 	out = &types.Struct{}
 	_ = out.Unmarshal(buf[:size])
+	if out.Fields == nil && in.Fields != nil {
+		out.Fields = make(map[string]*types.Value)
+	}
 	bytesPool.Put(buf)
 	return
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -18,14 +19,19 @@ type Change struct {
 	Before, After simple.Block
 }
 
+type Details struct {
+	Before, After *types.Struct
+}
+
 type Action struct {
-	Add    []simple.Block
-	Change []Change
-	Remove []simple.Block
+	Add     []simple.Block
+	Change  []Change
+	Remove  []simple.Block
+	Details *Details
 }
 
 func (a Action) IsEmpty() bool {
-	return len(a.Add)+len(a.Change)+len(a.Remove) == 0
+	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil
 }
 
 type History interface {

@@ -20,8 +20,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 )
 
 var (
@@ -491,7 +491,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 
 			for i, block := range file.parsedBlocks {
 				log.Debug("      Block:", i)
-				//file.parsedBlocks[i].Id = uuid.New().String()
+				//file.parsedBlocks[i].Id = bson.NewObjectId().Hex()
 
 				txt := block.GetText()
 				if txt != nil && txt.Marks != nil && len(txt.Marks.Marks) == 1 &&
@@ -566,7 +566,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 						if !hasUnlinkedDependentMDFiles {
 							// add Unsorted header
 							file.parsedBlocks = append(file.parsedBlocks, &model.Block{
-								Id: uuid.New().String(),
+								Id: bson.NewObjectId().Hex(),
 								Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 									Text:  "Unsorted",
 									Style: model.BlockContentText_Header3,
@@ -576,7 +576,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 						}
 
 						file.parsedBlocks = append(file.parsedBlocks, &model.Block{
-							Id: uuid.New().String(),
+							Id: bson.NewObjectId().Hex(),
 							Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 								TargetBlockId: targetName,
 								Style:         model.BlockContentLink_Page,
@@ -669,7 +669,7 @@ func (imp *importImpl) convertCsvToLinks(csvFileName string, files map[string]*f
 	csvDir := strings.TrimSuffix(csvFileName, ext)
 
 	blocks = append(blocks, &model.Block{
-		Id: uuid.New().String(),
+		Id: bson.NewObjectId().Hex(),
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:  imp.shortPathToName(csvFileName),
 			Style: model.BlockContentText_Header3,
@@ -686,7 +686,7 @@ func (imp *importImpl) convertCsvToLinks(csvFileName string, files map[string]*f
 			}
 
 			blocks = append(blocks, &model.Block{
-				Id: uuid.New().String(),
+				Id: bson.NewObjectId().Hex(),
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
 						TargetBlockId: file.pageID,

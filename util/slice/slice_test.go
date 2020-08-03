@@ -15,14 +15,16 @@ func Test_FindPos(t *testing.T) {
 
 func Test_Insert(t *testing.T) {
 	var s []string
-	s = Insert(s, "1", 0)
+	s = Insert(s, 0, "1")
 	assert.Equal(t, []string{"1"}, s)
-	s = Insert(s, "0", 0)
+	s = Insert(s, 0, "0")
 	assert.Equal(t, []string{"0", "1"}, s)
-	s = Insert(s, "3", 2)
+	s = Insert(s, 2, "3")
 	assert.Equal(t, []string{"0", "1", "3"}, s)
-	s = Insert(s, "2", 2)
+	s = Insert(s, 2, "2")
 	assert.Equal(t, []string{"0", "1", "2", "3"}, s)
+	s = Insert(s, 3, "2.1", "2.2", "2.3")
+	assert.Equal(t, []string{"0", "1", "2", "2.1", "2.2", "2.3", "3"}, s)
 }
 
 func Test_Remove(t *testing.T) {

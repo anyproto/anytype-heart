@@ -3,7 +3,7 @@ package simple
 import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/google/uuid"
+	"github.com/globalsign/mgo/bson"
 )
 
 type BlockCreator = func(m *model.Block) Block
@@ -28,9 +28,13 @@ type Block interface {
 	Copy() Block
 }
 
+type FileHashes interface {
+	FillFileHashes(hashes []string) []string
+}
+
 func New(block *model.Block) (b Block) {
 	if block.Id == "" {
-		block.Id = uuid.New().String()
+		block.Id = bson.NewObjectId().Hex()
 	}
 	for _, c := range registry {
 		if b = c(block); b != nil {

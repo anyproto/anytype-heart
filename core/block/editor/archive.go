@@ -5,16 +5,17 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewArchive(ctrl ArchiveCtrl) *Archive {
+func NewArchive(m meta.Service, ctrl ArchiveCtrl) *Archive {
 	return &Archive{
 		ctrl:       ctrl,
-		SmartBlock: smartblock.New(),
+		SmartBlock: smartblock.New(m),
 	}
 }
 
@@ -104,7 +105,7 @@ func (p *Archive) UnArchive(id string) (err error) {
 	if err = p.ctrl.MarkArchived(id, false); err != nil {
 		return
 	}
-	s.Remove(linkId)
+	s.Unlink(linkId)
 	return p.Apply(s, smartblock.NoHistory)
 }
 
@@ -130,6 +131,6 @@ func (p *Archive) Delete(id string) (err error) {
 	if err = p.ctrl.DeletePage(id); err != nil {
 		return
 	}
-	s.Remove(linkId)
+	s.Unlink(linkId)
 	return p.Apply(s, smartblock.NoHistory)
 }

@@ -1,10 +1,14 @@
 package state
 
 import (
+	"crypto/md5"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -21,7 +25,7 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	} else {
 		target = s.Get(targetId)
 		if target == nil {
-			return fmt.Errorf("target block not found")
+			return fmt.Errorf("target block (%v) not found", targetId)
 		}
 		if reqPos != model.Block_Inner {
 			if pv := s.GetParentOf(targetId); pv != nil {
@@ -45,22 +49,15 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	}
 
 	var pos int
-	insertPos := func() {
-		for _, id := range ids {
-			targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, id, pos)
-			pos++
-		}
-	}
-
 	switch reqPos {
 	case model.Block_Bottom:
 		pos = targetPos + 1
-		insertPos()
+		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
 	case model.Block_Top:
 		pos = targetPos
-		insertPos()
+		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
 	case model.Block_Left, model.Block_Right:
-		if err = s.moveFromSide(target, reqPos, ids...); err != nil {
+		if err = s.moveFromSide(target, s.Get(targetParentM.Id), reqPos, ids...); err != nil {
 			return
 		}
 	case model.Block_Inner:
@@ -70,26 +67,52 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 		if len(ids) > 0 && len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
 			s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
 		}
-		insertPos()
-		s.Remove(target.Model().Id)
+		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
+		s.Unlink(target.Model().Id)
 	default:
 		return fmt.Errorf("unexpected position")
 	}
 	return
 }
 
-func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids ...string) (err error) {
-	row := s.GetParentOf(target.Model().Id)
+func makeOpId(target simple.Block, pos model.BlockPosition, ids ...string) string {
+	var del = [...]byte{'-'}
+	h := md5.New()
+	h.Write([]byte(target.Model().Id))
+	h.Write(del[:])
+	binary.Write(h, binary.LittleEndian, pos)
+	h.Write(del[:])
+	for _, id := range ids {
+		h.Write([]byte(id))
+		h.Write(del[:])
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPosition, ids ...string) (err error) {
+	change := &pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfBlockMove{
+			BlockMove: &pb.ChangeBlockMove{
+				TargetId: target.Model().Id,
+				Position: pos,
+				Ids:      ids,
+			},
+		},
+	}
+	opId := makeOpId(target, pos, ids...)
+	row := parent
 	if row == nil {
 		return fmt.Errorf("target block has not parent")
 	}
 	if row.Model().GetLayout() == nil || row.Model().GetLayout().Style != model.BlockContentLayout_Row {
-		if row, err = s.wrapToRow(row, target); err != nil {
+		s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, row.Model().Id)
+		if row, err = s.wrapToRow(opId, row, target); err != nil {
 			return
 		}
 		target = s.Get(row.Model().ChildrenIds[0])
 	}
 	column := simple.New(&model.Block{
+		Id:          "cd-" + opId,
 		ChildrenIds: ids,
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -108,12 +131,15 @@ func (s *State) moveFromSide(target simple.Block, pos model.BlockPosition, ids .
 	if pos == model.Block_Right {
 		columnPos += 1
 	}
-	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, column.Model().Id, columnPos)
+	row.Model().ChildrenIds = slice.Insert(row.Model().ChildrenIds, columnPos, column.Model().Id)
+	s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, "cd-"+opId, "ct-"+opId, "r-"+opId, row.Model().Id)
+	s.changes = append(s.changes, change)
 	return
 }
 
-func (s *State) wrapToRow(parent, b simple.Block) (row simple.Block, err error) {
+func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block, err error) {
 	column := simple.New(&model.Block{
+		Id:          "ct-" + opId,
 		ChildrenIds: []string{b.Model().Id},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
@@ -123,6 +149,7 @@ func (s *State) wrapToRow(parent, b simple.Block) (row simple.Block, err error) 
 	})
 	s.Add(column)
 	row = simple.New(&model.Block{
+		Id:          "r-" + opId,
 		ChildrenIds: []string{column.Model().Id},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{

@@ -5,25 +5,39 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
+	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("anytype-mw-state")
+
+const (
+	snippetMinSize = 50
+	snippetMaxSize = 300
+)
+
+var DetailsFileFields = [...]string{"coverId", "iconImage"}
 
 type Doc interface {
 	RootId() string
 	NewState() *State
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
-	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Pick(id string) (b simple.Block)
 	Append(targetId string, id string) (ok bool)
+	Details() *types.Struct
+	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
+	Snippet() (snippet string)
+	GetFileKeys() []pb.ChangeFileKeys
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -41,8 +55,15 @@ type State struct {
 	parent   *State
 	blocks   map[string]simple.Block
 	rootId   string
-	toRemove []string
 	newIds   []string
+	changeId string
+	changes  []*pb.ChangeContent
+	fileKeys []pb.ChangeFileKeys
+	details  *types.Struct
+
+	changesStructureIgnoreIds []string
+
+	bufIterateParentIds []string
 }
 
 func (s *State) RootId() string {
@@ -82,14 +103,11 @@ func (s *State) Set(b simple.Block) {
 }
 
 func (s *State) Get(id string) (b simple.Block) {
-	if slice.FindPos(s.toRemove, id) != -1 {
-		return nil
-	}
 	if b = s.blocks[id]; b != nil {
 		return
 	}
 	if s.parent != nil {
-		if b = s.parent.Get(id); b != nil {
+		if b = s.Pick(id); b != nil {
 			b = b.Copy()
 			s.blocks[id] = b
 			return
@@ -99,14 +117,15 @@ func (s *State) Get(id string) (b simple.Block) {
 }
 
 func (s *State) Pick(id string) (b simple.Block) {
-	if slice.FindPos(s.toRemove, id) != -1 {
-		return nil
-	}
-	if b = s.blocks[id]; b != nil {
-		return
-	}
-	if s.parent != nil {
-		return s.parent.Pick(id)
+	var (
+		t  = s
+		ok bool
+	)
+	for t != nil {
+		if b, ok = t.blocks[id]; ok {
+			return
+		}
+		t = t.parent
 	}
 	return
 }
@@ -114,24 +133,6 @@ func (s *State) Pick(id string) (b simple.Block) {
 func (s *State) PickOrigin(id string) (b simple.Block) {
 	if s.parent != nil {
 		return s.parent.Pick(id)
-	}
-	return
-}
-
-func (s *State) Remove(id string) (ok bool) {
-	if slice.FindPos(s.toRemove, id) != -1 {
-		return false
-	}
-	if s.Pick(id) != nil {
-		s.Unlink(id)
-		if _, ok = s.blocks[id]; ok {
-			delete(s.blocks, id)
-		}
-		s.toRemove = append(s.toRemove, id)
-		if slice.FindPos(s.newIds, id) != -1 {
-			s.newIds = slice.Remove(s.newIds, id)
-		}
-		return true
 	}
 	return
 }
@@ -169,9 +170,16 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 	return
 }
 
+func (s *State) PickOriginParentOf(id string) (res simple.Block) {
+	if s.parent != nil {
+		return s.parent.PickParentOf(id)
+	}
+	return
+}
+
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	var iter func(id string) (isContinue bool, err error)
-	var parentIds []string
+	var parentIds = s.bufIterateParentIds[:0]
 	iter = func(id string) (isContinue bool, err error) {
 		if slice.FindPos(parentIds, id) != -1 {
 			return false, fmt.Errorf("cycle reference: %v %s", parentIds, id)
@@ -201,54 +209,198 @@ func (s *State) Exists(id string) (ok bool) {
 }
 
 func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
-	return s.apply()
+	return s.apply(false, false)
 }
 
-func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err error) {
-	st := time.Now()
-	if err = s.normalize(); err != nil {
+func ApplyStateFast(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
+	return s.apply(true, false)
+}
+
+func ApplyStateFastOne(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
+	return s.apply(true, true)
+}
+
+func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.Action, err error) {
+	if s.parent != nil && (s.parent.parent != nil || fast) {
+		s.intermediateApply()
+		if one {
+			return
+		}
+		return s.parent.apply(fast, one)
+	}
+	if fast {
 		return
 	}
-
-	var toSave []*model.Block
-	var newBlocks []*model.Block
-	for id, b := range s.blocks {
-		if slice.FindPos(s.toRemove, id) != -1 {
-			continue
-		}
-		orig := s.PickOrigin(id)
-		if orig == nil {
-			newBlocks = append(newBlocks, b.Model())
-			toSave = append(toSave, b.Model())
-			action.Add = append(action.Add, b.Copy())
-			continue
-		}
-
-		diff, err := orig.Diff(b)
-		if err != nil {
-			return nil, history.Action{}, err
-		}
-		if len(diff) > 0 {
-			toSave = append(toSave, b.Model())
-			msgs = append(msgs, diff...)
-			if file := orig.Model().GetFile(); file != nil {
-				if file.State == model.BlockContentFile_Uploading {
-					file.State = model.BlockContentFile_Empty
-				}
-			}
-			action.Change = append(action.Change, history.Change{
-				Before: orig.Copy(),
-				After:  b.Copy(),
-			})
+	st := time.Now()
+	if !fast {
+		if err = s.normalize(); err != nil {
+			return
 		}
 	}
-	if len(s.toRemove) > 0 {
+	var (
+		inUse       = make(map[string]struct{})
+		affectedIds = make([]string, 0, len(s.blocks))
+		newBlocks   []*model.Block
+	)
+
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		id := b.Model().Id
+		inUse[id] = struct{}{}
+		if _, ok := s.blocks[id]; ok {
+			affectedIds = append(affectedIds, id)
+		}
+		return true
+	})
+
+	flushNewBlocks := func() {
+		if len(newBlocks) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfBlockAdd{
+					BlockAdd: &pb.EventBlockAdd{
+						Blocks: newBlocks,
+					},
+				},
+			})
+		}
+		newBlocks = nil
+	}
+
+	// new and changed blocks
+	// we need to create events with affectedIds order for correct changes generation
+	for _, id := range affectedIds {
+		orig := s.PickOrigin(id)
+		if orig == nil {
+			bc := s.blocks[id].Copy()
+			newBlocks = append(newBlocks, bc.Model())
+			action.Add = append(action.Add, bc)
+		} else {
+			flushNewBlocks()
+			b := s.blocks[id]
+			diff, err := orig.Diff(b)
+			if err != nil {
+				return nil, history.Action{}, err
+			}
+			if len(diff) > 0 {
+				msgs = append(msgs, diff...)
+				if file := orig.Model().GetFile(); file != nil {
+					if file.State == model.BlockContentFile_Uploading {
+						file.State = model.BlockContentFile_Empty
+					}
+				}
+				action.Change = append(action.Change, history.Change{
+					Before: orig.Copy(),
+					After:  b.Copy(),
+				})
+			}
+		}
+	}
+	flushNewBlocks()
+
+	// removed blocks
+	var (
+		toRemove []string
+		bm       map[string]simple.Block
+	)
+	if s.parent != nil {
+		bm = s.parent.blocks
+	} else {
+		bm = s.blocks
+	}
+	for id := range bm {
+		if _, ok := inUse[id]; !ok {
+			toRemove = append(toRemove, id)
+		}
+	}
+	if len(toRemove) > 0 {
 		msgs = append(msgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockDelete{
-				BlockDelete: &pb.EventBlockDelete{BlockIds: s.toRemove},
+				BlockDelete: &pb.EventBlockDelete{BlockIds: toRemove},
 			},
 		})
 	}
+	// generate changes
+	s.fillChanges(msgs)
+
+	// apply to parent
+	for _, id := range toRemove {
+		if s.parent != nil {
+			action.Remove = append(action.Remove, s.PickOrigin(id).Copy())
+			delete(s.parent.blocks, id)
+		}
+	}
+	for _, b := range s.blocks {
+		if s.parent != nil {
+			id := b.Model().Id
+			if _, ok := inUse[id]; ok {
+				s.parent.blocks[id] = b
+			}
+		}
+	}
+	if s.parent != nil {
+		s.parent.changes = s.changes
+	}
+	if s.parent != nil && s.changeId != "" {
+		s.parent.changeId = s.changeId
+	}
+	if s.parent != nil && s.details != nil {
+		prev := s.parent.Details()
+		if !prev.Equal(s.details) {
+			action.Details = &history.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
+			s.parent.details = s.details
+		}
+	}
+	if s.parent != nil && len(s.fileKeys) > 0 {
+		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
+	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
+	return
+}
+
+func (s *State) intermediateApply() {
+	if s.changeId != "" {
+		s.parent.changeId = s.changeId
+	}
+	for _, b := range s.blocks {
+		s.parent.Set(b)
+	}
+	if s.details != nil {
+		s.parent.details = s.details
+	}
+	if len(s.fileKeys) > 0 {
+		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
+	s.parent.changes = append(s.parent.changes, s.changes...)
+	return
+}
+
+func (s *State) Diff(new *State) (msgs []*pb.EventMessage, err error) {
+	var (
+		newBlocks []*model.Block
+		removeIds []string
+	)
+	new.Iterate(func(nb simple.Block) (isContinue bool) {
+		b := s.Pick(nb.Model().Id)
+		if b == nil {
+			newBlocks = append(newBlocks, nb.Copy().Model())
+		} else {
+			bdiff, e := b.Diff(nb)
+			if e != nil {
+				err = e
+				return false
+			}
+			msgs = append(msgs, bdiff...)
+		}
+		return true
+	})
+	if err != nil {
+		return
+	}
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if !new.Exists(b.Model().Id) {
+			removeIds = append(removeIds, b.Model().Id)
+		}
+		return true
+	})
 	if len(newBlocks) > 0 {
 		msgs = append(msgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockAdd{
@@ -258,20 +410,15 @@ func (s *State) apply() (msgs []*pb.EventMessage, action history.Action, err err
 			},
 		})
 	}
-	for _, b := range s.blocks {
-		if s.parent != nil {
-			s.parent.blocks[b.Model().Id] = b
-		}
+	if len(removeIds) > 0 {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockDelete{
+				BlockDelete: &pb.EventBlockDelete{
+					BlockIds: removeIds,
+				},
+			},
+		})
 	}
-	for _, id := range s.toRemove {
-		if old := s.PickOrigin(id); old != nil {
-			action.Remove = append(action.Remove, old.Copy())
-		}
-		if s.parent != nil {
-			delete(s.parent.blocks, id)
-		}
-	}
-	log.Infof("middle: state apply: %d for save; %d for remove; %d copied; for a %v", len(toSave), len(s.toRemove), len(s.blocks), time.Since(st))
 	return
 }
 
@@ -312,4 +459,51 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 			s.writeString(buf, l+1, cid)
 		}
 	}
+}
+
+func (s *State) SetDetails(d *types.Struct) *State {
+	s.details = d
+	return s
+}
+
+func (s *State) Details() *types.Struct {
+	if s.details == nil && s.parent != nil {
+		return s.parent.Details()
+	}
+	return s.details
+}
+
+func (s *State) Snippet() (snippet string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if text := b.Model().GetText(); text != nil {
+			if snippet != "" {
+				snippet += " "
+			}
+			snippet += text.Text
+			if utf8.RuneCountInString(snippet) >= snippetMinSize {
+				return false
+			}
+		}
+		return true
+	})
+	return text.Truncate(snippet, snippetMaxSize)
+}
+
+func (s *State) GetAllFileHashes() (hashes []string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if fh, ok := b.(simple.FileHashes); ok {
+			hashes = fh.FillFileHashes(hashes)
+		}
+		return true
+	})
+	det := s.Details()
+	if det == nil || det.Fields == nil {
+		return
+	}
+	for _, field := range DetailsFileFields {
+		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
+			hashes = append(hashes, v.GetStringValue())
+		}
+	}
+	return
 }

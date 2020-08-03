@@ -25,7 +25,7 @@ func (s *State) normalize() (err error) {
 	for _, b := range s.blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
 			if len(b.Model().ChildrenIds) == 0 {
-				s.Remove(b.Model().Id)
+				s.Unlink(b.Model().Id)
 			}
 			// load parent for checking
 			s.GetParentOf(b.Model().Id)
@@ -54,7 +54,7 @@ func (s *State) normalizeChildren(b simple.Block) {
 func (s *State) normalizeLayoutRow(b simple.Block) {
 	// remove empty layout
 	if len(b.Model().ChildrenIds) == 0 {
-		s.Remove(b.Model().Id)
+		s.Unlink(b.Model().Id)
 		return
 	}
 	if b.Model().GetLayout().Style != model.BlockContentLayout_Row {
@@ -73,20 +73,11 @@ func (s *State) normalizeLayoutRow(b simple.Block) {
 		} else {
 			contentIds = append(contentIds, column.Model().Id)
 		}
-		if parent := s.GetParentOf(b.Model().Id); parent != nil {
-			rowPos := slice.FindPos(parent.Model().ChildrenIds, b.Model().Id)
-			if rowPos != -1 {
-				parent.Model().ChildrenIds = slice.Remove(parent.Model().ChildrenIds, b.Model().Id)
-				for _, id := range contentIds {
-					parent.Model().ChildrenIds = slice.Insert(parent.Model().ChildrenIds, id, rowPos)
-					rowPos++
-				}
-				if removeColumn {
-					s.Remove(column.Model().Id)
-				}
-				s.Remove(b.Model().Id)
-			}
+		s.InsertTo(b.Model().Id, model.Block_Replace, contentIds...)
+		if removeColumn {
+			s.Unlink(column.Model().Id)
 		}
+		s.Unlink(b.Model().Id)
 		return
 	}
 
@@ -144,7 +135,7 @@ func (s *State) checkDividedLists(id string) {
 				if !s.canDivide(parent.ChildrenIds[len(parent.ChildrenIds)-1]) && !s.canDivide(nextDivM.ChildrenIds[0]) {
 					parent = s.Get(id).Model()
 					parent.ChildrenIds = append(parent.ChildrenIds, nextDivM.ChildrenIds...)
-					s.Remove(nextDivM.Id)
+					s.Unlink(nextDivM.Id)
 					s.checkDividedLists(id)
 					return
 				}

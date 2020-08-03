@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -156,7 +157,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	anytypeService, err := core.New(mw.rootPath, account.Address())
+	anytypeService, err := core.New(mw.rootPath, account.Address(), mw.reindexDoc, change.NewSnapshotChange)
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -277,7 +278,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
 	// it is ok to unlock just after we've started with the 1st account
 
-	c, err := core.New(mw.rootPath, zeroAccount.Address())
+	c, err := core.New(mw.rootPath, zeroAccount.Address(), mw.reindexDoc, change.NewSnapshotChange)
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 	}
@@ -464,7 +465,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			}
 		}
 
-		anytype, err := core.New(mw.rootPath, req.Id)
+		anytype, err := core.New(mw.rootPath, req.Id, mw.reindexDoc, change.NewSnapshotChange)
 		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}

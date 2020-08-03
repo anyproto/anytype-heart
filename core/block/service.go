@@ -127,6 +127,8 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
+	Reindex(id string) (err error)
+
 	Close() error
 }
 
@@ -140,8 +142,8 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		openedBlocks: make(map[string]*openedBlock),
 		linkPreview:  lp,
 		process:      process.NewService(sendEvent),
-		meta:         meta.NewService(a),
 	}
+	s.meta = meta.NewService(a)
 	go s.cleanupTicker()
 	s.init()
 	log.Info("block service started")
@@ -204,6 +206,9 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
+	if e := s.anytype.PageUpdateLastOpened(id); e != nil {
+		log.Warnf("can't update last opened id: %v", e)
+	}
 
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
@@ -215,8 +220,8 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	bs := editor.NewBreadcrumbs()
-	if err = bs.Init(source.NewVirtual(s.anytype, s.meta, pb.SmartBlockType_Breadcrumbs), true); err != nil {
+	bs := editor.NewBreadcrumbs(s.meta)
+	if err = bs.Init(source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs), true); err != nil {
 		return
 	}
 	bs.Lock()
@@ -818,6 +823,12 @@ func (s *service) BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBook
 	return
 }
 
+func (s *service) Reindex(id string) (err error) {
+	return s.Do(id, func(b smartblock.SmartBlock) error {
+		return b.Reindex()
+	})
+}
+
 func (s *service) ProcessAdd(p process.Process) (err error) {
 	return s.process.Add(p)
 }
@@ -875,21 +886,21 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, s.meta, id)
+	sc, err := source.NewSource(s.anytype, id)
 	if err != nil {
 		return
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s, s, s, s.linkPreview)
+		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
 	case pb.SmartBlockType_Home:
-		sb = editor.NewDashboard(s)
+		sb = editor.NewDashboard(s.meta, s)
 	case pb.SmartBlockType_Archive:
-		sb = editor.NewArchive(s)
+		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.sendEvent)
+		sb = editor.NewSet(s.meta, s.sendEvent)
 	case pb.SmartBlockType_ProfilePage:
-		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -897,7 +908,6 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	if err = sb.Init(sc, initEmpty); err != nil {
 		return
 	}
-
 	return
 }
 

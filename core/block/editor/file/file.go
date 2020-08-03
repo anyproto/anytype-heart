@@ -194,7 +194,7 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 	if info.err == context.Canceled {
 		s := sf.NewState()
-		s.Remove(info.blockId)
+		s.Unlink(info.blockId)
 		return sf.Apply(s, smartblock.NoHistory)
 	}
 	return sf.UpdateFile(info.blockId, func(f file.Block) error {

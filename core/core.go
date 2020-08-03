@@ -130,3 +130,11 @@ func (mw *Middleware) stop() error {
 	}
 	return nil
 }
+
+func (mw *Middleware) reindexDoc(id string) error {
+	bs, err := mw.getBlockService()
+	if err != nil {
+		return err
+	}
+	return bs.Reindex(id)
+}

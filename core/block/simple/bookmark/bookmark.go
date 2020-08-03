@@ -33,10 +33,12 @@ func NewBookmark(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
+	simple.FileHashes
 	Fetch(params FetchParams) (err error)
 	SetLinkPreview(data model.LinkPreview)
 	SetImageHash(hash string)
 	SetFaviconHash(hash string)
+	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
 }
 
 type FetchParams struct {
@@ -126,6 +128,28 @@ func (f *Bookmark) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	return
 }
 
+func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
+	if e.Type != nil {
+		b.content.Type = e.Type.GetValue()
+	}
+	if e.Description != nil {
+		b.content.Description = e.Description.GetValue()
+	}
+	if e.FaviconHash != nil {
+		b.content.FaviconHash = e.FaviconHash.GetValue()
+	}
+	if e.ImageHash != nil {
+		b.content.ImageHash = e.ImageHash.GetValue()
+	}
+	if e.Title != nil {
+		b.content.Title = e.Title.GetValue()
+	}
+	if e.Url != nil {
+		b.content.Url = e.Url.GetValue()
+	}
+	return
+}
+
 func fetcher(id string, params FetchParams) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	data, err := params.LinkPreview.Fetch(ctx, params.Url)
@@ -178,6 +202,16 @@ func fetcher(id string, params FetchParams) {
 			}
 		}()
 	}
+}
+
+func (f *Bookmark) FillFileHashes(hashes []string) []string {
+	if f.content.ImageHash != "" {
+		hashes = append(hashes, f.content.ImageHash)
+	}
+	if f.content.FaviconHash != "" {
+		hashes = append(hashes, f.content.FaviconHash)
+	}
+	return hashes
 }
 
 func loadImage(stor anytype.Service, url string) (hash string, err error) {

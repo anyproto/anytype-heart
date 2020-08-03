@@ -19,7 +19,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("", 0, "first", "second")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -38,7 +38,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Bottom, "first", "second")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -55,7 +55,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Top, "first", "second")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -72,7 +72,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Inner, "first", "second")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Add, 2)
@@ -91,7 +91,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", model.Block_Replace, "first", "second")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 3)
 		assert.Len(t, hist.Remove, 1)
@@ -111,9 +111,9 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "second"}))
 		s.InsertTo("target", pos, "first", "second")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
-		assert.Len(t, msgs, 2)
+		assert.NotEmpty(t, msgs)
 		assert.Len(t, hist.Remove, 0)
 		assert.Len(t, hist.Add, 5) // 2 new + 2 columns + 1 row
 		assert.Len(t, hist.Change, 1)
@@ -144,7 +144,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c1.Model().Id, model.Block_Left, "third")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Remove, 0)
@@ -157,7 +157,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c2.Model().Id, model.Block_Left, "third")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Remove, 0)
@@ -170,7 +170,7 @@ func TestState_InsertTo(t *testing.T) {
 		s.Add(simple.New(&model.Block{Id: "third"}))
 		s.InsertTo(c2.Model().Id, model.Block_Right, "third")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 		assert.Len(t, hist.Remove, 0)
@@ -189,5 +189,29 @@ func TestState_InsertTo(t *testing.T) {
 
 		_, _, err := ApplyState(s)
 		assert.Error(t, err)
+	})
+
+	t.Run("determinate layout ids", func(t *testing.T) {
+		r, c1, c2 := moveFromSide(t, model.Block_Left)
+		row := r.PickParentOf(c1.Model().Id)
+		c1Id := c1.Model().Id
+		c2Id := c2.Model().Id
+		rowId := row.Model().Id
+
+		assert.NotEqual(t, c1Id, c2Id)
+		assert.NotEqual(t, c1Id, rowId)
+
+		r, c1, c2 = moveFromSide(t, model.Block_Left)
+		row = r.PickParentOf(c1.Model().Id)
+
+		assert.Equal(t, rowId, row.Model().Id)
+		assert.Equal(t, c1Id, c1.Model().Id)
+		assert.Equal(t, c2Id, c2.Model().Id)
+
+		r, c1, c2 = moveFromSide(t, model.Block_Right)
+		row = r.PickParentOf(c1.Model().Id)
+		assert.NotEqual(t, rowId, row.Model().Id)
+		assert.NotEqual(t, c1Id, c1.Model().Id)
+		assert.NotEqual(t, c2Id, c2.Model().Id)
 	})
 }

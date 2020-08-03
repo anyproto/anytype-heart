@@ -26,8 +26,7 @@ func NewService(a anytype.Service) Service {
 
 type service struct {
 	ps *pubSub
-
-	m sync.Mutex
+	m  sync.Mutex
 }
 
 func (s *service) PubSub() PubSub {

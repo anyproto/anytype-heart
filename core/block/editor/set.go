@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -14,8 +15,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewSet(sendEvent func(e *pb.Event)) *Set {
-	sb := smartblock.New()
+func NewSet(ms meta.Service, sendEvent func(e *pb.Event)) *Set {
+	sb := smartblock.New(ms)
 	return &Set{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),

@@ -40,7 +40,7 @@ func TestState_Normalize(t *testing.T) {
 		r := NewDoc("1", nil)
 		r.(*State).Add(simple.New(&model.Block{Id: "1"}))
 		s := r.NewState()
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
 		assert.Empty(t, hist)
@@ -53,7 +53,7 @@ func TestState_Normalize(t *testing.T) {
 		}).(*State)
 		s := r.NewState()
 		s.Get("one")
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 1)
 		assert.Len(t, hist.Change, 1)
@@ -72,7 +72,7 @@ func TestState_Normalize(t *testing.T) {
 		s.Get("c1")
 		s.Get("c2")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -95,7 +95,7 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.Get("c1")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -117,12 +117,12 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "t3"}))
 
 		s := r.NewState()
-		s.Remove("c2")
+		s.Unlink("c2")
 
-		msgs, hist, err := s.apply()
+		msgs, hist, err := ApplyState(s)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 4) // 1 row change + 1 remove + 2 width reset
-		assert.Len(t, hist.Remove, 1)
+		assert.Len(t, hist.Remove, 2)
 		assert.Len(t, hist.Change, 3)
 		assert.Equal(t, []string{"r1"}, r.Pick("root").Model().ChildrenIds)
 		assert.Nil(t, r.Pick("c2"))

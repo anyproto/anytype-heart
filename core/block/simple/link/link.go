@@ -28,6 +28,7 @@ type Block interface {
 	simple.Block
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
+	ApplyEvent(e *pb.EventBlockSetLink) error
 }
 
 type Link struct {
@@ -80,4 +81,14 @@ func (l *Link) FillSmartIds(ids []string) []string {
 
 func (l *Link) HasSmartIds() bool {
 	return l.content.TargetBlockId != ""
+}
+
+func (l *Link) ApplyEvent(e *pb.EventBlockSetLink) error {
+	if e.Style != nil {
+		l.content.Style = e.Style.GetValue()
+	}
+	if e.TargetBlockId != nil {
+		l.content.TargetBlockId = e.TargetBlockId.GetValue()
+	}
+	return nil
 }

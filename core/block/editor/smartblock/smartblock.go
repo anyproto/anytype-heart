@@ -2,7 +2,6 @@ package smartblock
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -35,8 +34,8 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New() SmartBlock {
-	return &smartBlock{}
+func New(ms meta.Service) SmartBlock {
+	return &smartBlock{meta: ms}
 }
 
 type SmartblockOpenListner interface {
@@ -54,6 +53,7 @@ type SmartBlock interface {
 	History() history.History
 	Anytype() anytype.Service
 	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
+	Reindex() error
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -71,6 +71,7 @@ type smartBlock struct {
 	sendEvent func(e *pb.Event)
 	hist      history.History
 	source    source.Source
+	meta      meta.Service
 	metaSub   meta.Subscriber
 	metaData  *core.SmartBlockMeta
 }
@@ -80,48 +81,23 @@ func (sb *smartBlock) Id() string {
 }
 
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
-	return sb.metaData
+	return &core.SmartBlockMeta{
+		Details: sb.Details(),
+	}
 }
 
 func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) init(s source.Source, ver *core.SmartBlockVersion) error {
-	var blocks = make(map[string]simple.Block)
-	if ver != nil {
-		models, e := ver.Snapshot.Blocks()
-		if e != nil {
-			return e
-		}
-		for _, m := range models {
-			blocks[m.Id] = simple.New(m)
-		}
-		sb.metaData, e = ver.Snapshot.Meta()
-		if e != nil {
-			return fmt.Errorf("can't get meta from snapshot: %v", e)
-		}
-	}
-	sb.Doc = state.NewDoc(s.Id(), blocks)
-	sb.source = s
-	sb.hist = history.NewHistory(0)
-	if sb.metaData == nil {
-		sb.metaData = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			},
-		}
-	}
-	return sb.checkRootBlock()
-}
-
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool) error {
-	ver, err := s.ReadVersion()
-	if err != nil && (err != core.ErrBlockSnapshotNotFound || !allowEmpty) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
+	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return err
 	}
-
-	return sb.init(s, ver)
+	sb.source = s
+	sb.hist = history.NewHistory(0)
+	sb.storeFileKeys()
+	return sb.checkRootBlock()
 }
 
 func (sb *smartBlock) checkRootBlock() (err error) {
@@ -162,15 +138,15 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
-	sb.metaSub = sb.source.Meta().PubSub().NewSubscriber()
+	sb.metaSub = sb.meta.PubSub().NewSubscriber()
 	sb.depIds = sb.dependentSmartIds()
 	var ch = make(chan meta.Meta)
 	subscriber := sb.metaSub.Callback(func(d meta.Meta) {
 		ch <- d
 	}).Subscribe(sb.depIds...)
-	sb.source.Meta().ReportChange(meta.Meta{
+	sb.meta.ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.metaData,
+		SmartBlockMeta: *sb.Meta(),
 	})
 
 	defer func() {
@@ -238,10 +214,14 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
+	var beforeSnippet = sb.Doc.Snippet()
 	var sendEvent, addHistory = true, true
 	msgs, act, err := state.ApplyState(s)
 	if err != nil {
 		return
+	}
+	if act.IsEmpty() {
+		return nil
 	}
 	for _, f := range flags {
 		switch f {
@@ -251,18 +231,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			addHistory = false
 		}
 	}
-
-	if err = sb.source.WriteVersion(source.Version{
-		Meta:   sb.metaData,
-		Blocks: sb.Blocks(),
-	}); err != nil {
+	changes := sb.Doc.(*state.State).GetChanges()
+	fileHashes := getChangedFileHashes(act)
+	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes)
+	if err != nil {
 		return
 	}
-
-	if len(msgs) == 0 {
-		return
-	}
-
+	sb.Doc.(*state.State).SetChangeId(id)
 	if sb.hist != nil && addHistory {
 		sb.hist.Add(act)
 	}
@@ -276,39 +251,65 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			})
 		}
 	}
-	for _, edit := range act.Change {
-		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
-		}
-		if ls, ok := edit.Before.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
-		}
+
+	if act.Details != nil {
+		sb.meta.ReportChange(meta.Meta{
+			BlockId:        sb.Id(),
+			SmartBlockMeta: *sb.Meta(),
+		})
 	}
-	for _, add := range act.Add {
-		if ls, ok := add.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
-		}
-	}
-	for _, rem := range act.Remove {
-		if ls, ok := rem.(linkSource); ok && ls.HasSmartIds() {
-			sb.checkSubscriptions()
-			return
-		}
-	}
+	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return
 }
 
-func (sb *smartBlock) checkSubscriptions() {
-	if sb.metaSub != nil {
-		depIds := sb.dependentSmartIds()
-		if !slice.SortedEquals(sb.depIds, depIds) {
-			sb.depIds = depIds
-			sb.metaSub.ReSubscribe(depIds...)
+func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *history.Action) {
+	if e := sb.updatePageStore(beforeSnippet, act); e != nil {
+		log.Warnf("can't update pageStore info: %v", e)
+	}
+}
+
+func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action) (err error) {
+	if sb.Type() == pb.SmartBlockType_Archive {
+		return
+	}
+	var storeInfo struct {
+		details *types.Struct
+		snippet *string
+		links   []string
+	}
+	if act == nil || act.Details != nil {
+		storeInfo.details = pbtypes.CopyStruct(sb.Details())
+	}
+	if hasDepIds(act) {
+		if sb.checkSubscriptions() {
+			storeInfo.links = make([]string, len(sb.depIds))
+			copy(storeInfo.links, sb.depIds)
+			storeInfo.links = slice.Remove(storeInfo.links, sb.Id())
 		}
 	}
+
+	afterSnippet := sb.Doc.Snippet()
+	if beforeSnippet != afterSnippet {
+		storeInfo.snippet = &afterSnippet
+	}
+	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
+		if storeInfo.links != nil || storeInfo.details != nil || storeInfo.snippet != nil {
+			return at.PageStore().Update(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet)
+		}
+	}
+	return nil
+}
+
+func (sb *smartBlock) checkSubscriptions() (changed bool) {
+	depIds := sb.dependentSmartIds()
+	if !slice.SortedEquals(sb.depIds, depIds) {
+		sb.depIds = depIds
+		if sb.metaSub != nil {
+			sb.metaSub.ReSubscribe(depIds...)
+		}
+		return true
+	}
+	return false
 }
 
 func (sb *smartBlock) History() history.History {
@@ -320,33 +321,73 @@ func (sb *smartBlock) Anytype() anytype.Service {
 }
 
 func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	if sb.metaData == nil {
-		sb.metaData = &core.SmartBlockMeta{}
-	}
-	if sb.metaData.Details == nil || sb.metaData.Details.Fields == nil {
-		sb.metaData.Details = &types.Struct{
+	copy := pbtypes.CopyStruct(sb.Details())
+	if copy == nil || copy.Fields == nil {
+		copy = &types.Struct{
 			Fields: make(map[string]*types.Value),
 		}
-	}
-	var copy = pbtypes.CopyStruct(sb.metaData.Details)
-	if copy.Fields == nil {
-		copy.Fields = make(map[string]*types.Value)
 	}
 	for _, detail := range details {
 		copy.Fields[detail.Key] = detail.Value
 	}
-	if copy.Equal(sb.metaData) {
+	if copy.Equal(sb.Details()) {
 		return
 	}
-	sb.metaData.Details = copy
-	if err = sb.Apply(sb.NewState(), NoHistory, NoEvent); err != nil {
+	s := sb.NewState().SetDetails(copy)
+	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
-	sb.source.Meta().ReportChange(meta.Meta{
-		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.metaData,
-	})
 	return
+}
+
+func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
+	sb.Lock()
+	defer sb.Unlock()
+	beforeSnippet := sb.Doc.Snippet()
+	s, err := f(sb.Doc)
+	if err != nil {
+		return err
+	}
+	msgs, act, err := state.ApplyState(s)
+	if err != nil {
+		return err
+	}
+	log.Infof("changes: stateAppend: %d events", len(msgs))
+	if len(msgs) > 0 && sb.sendEvent != nil {
+		sb.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: sb.Id(),
+		})
+	}
+	sb.storeFileKeys()
+	sb.updatePageStoreNoErr(beforeSnippet, &act)
+	return nil
+}
+
+func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
+	sb.Lock()
+	defer sb.Unlock()
+	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
+	sb.Doc = d
+	log.Infof("changes: stateRebuild: %d events", len(msgs))
+	if e != nil {
+		// can't make diff - reopen doc
+		sb.Show(state.NewContext(sb.sendEvent))
+	} else {
+		if len(msgs) > 0 && sb.sendEvent != nil {
+			sb.sendEvent(&pb.Event{
+				Messages:  msgs,
+				ContextId: sb.Id(),
+			})
+		}
+	}
+	sb.storeFileKeys()
+	sb.updatePageStoreNoErr("", nil)
+	return nil
+}
+
+func (sb *smartBlock) Reindex() (err error) {
+	return sb.updatePageStore("", nil)
 }
 
 func (sb *smartBlock) Close() (err error) {
@@ -356,4 +397,70 @@ func (sb *smartBlock) Close() (err error) {
 	sb.source.Close()
 	log.Debugf("close smartblock %v", sb.Id())
 	return
+}
+
+func hasDepIds(act *history.Action) bool {
+	if act == nil {
+		return true
+	}
+	for _, edit := range act.Change {
+		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+		if ls, ok := edit.Before.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+	}
+	for _, add := range act.Add {
+		if ls, ok := add.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+	}
+	for _, rem := range act.Remove {
+		if ls, ok := rem.(linkSource); ok && ls.HasSmartIds() {
+			return true
+		}
+	}
+	return false
+}
+
+func getChangedFileHashes(act history.Action) (hashes []string) {
+	for _, nb := range act.Add {
+		if fh, ok := nb.(simple.FileHashes); ok {
+			hashes = fh.FillFileHashes(hashes)
+		}
+	}
+	for _, eb := range act.Change {
+		if fh, ok := eb.After.(simple.FileHashes); ok {
+			hashes = fh.FillFileHashes(hashes)
+		}
+	}
+	if act.Details != nil {
+		det := act.Details.After
+		if det != nil && det.Fields != nil {
+			for _, field := range state.DetailsFileFields {
+				if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
+					hashes = append(hashes, v.GetStringValue())
+				}
+			}
+		}
+	}
+	return
+}
+
+func (sb *smartBlock) storeFileKeys() {
+	keys := sb.Doc.GetFileKeys()
+	if len(keys) == 0 {
+		return
+	}
+	fileKeys := make([]core.FileKeys, len(keys))
+	for i, k := range keys {
+		fileKeys[i] = core.FileKeys{
+			Hash: k.Hash,
+			Keys: k.Keys,
+		}
+	}
+	if err := sb.Anytype().FileStoreKeys(fileKeys...); err != nil {
+		log.Warnf("can't ctore file keys: %v", err)
+	}
 }

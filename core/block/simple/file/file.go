@@ -29,10 +29,12 @@ func NewFile(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
+	simple.FileHashes
 	Upload(stor anytype.Service, updater Updater, localPath, url string) (err error)
 	SetFileData(hash string, meta core.FileMeta)
 	SetImage(hash, name string)
 	SetState(state model.BlockContentFileState)
+	ApplyEvent(e *pb.EventBlockSetFile) error
 }
 
 type Updater interface {
@@ -141,4 +143,33 @@ func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}})
 	}
 	return
+}
+
+func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
+	if e.Type != nil {
+		f.content.Type = e.Type.GetValue()
+	}
+	if e.State != nil {
+		f.content.State = e.State.GetValue()
+	}
+	if e.Hash != nil {
+		f.content.Hash = e.Hash.GetValue()
+	}
+	if e.Name != nil {
+		f.content.Name = e.Name.GetValue()
+	}
+	if e.Mime != nil {
+		f.content.Mime = e.Mime.GetValue()
+	}
+	if e.Size_ != nil {
+		f.content.Size_ = e.Size_.GetValue()
+	}
+	return nil
+}
+
+func (f *File) FillFileHashes(hashes []string) []string {
+	if f.content.Hash != "" {
+		return append(hashes, f.content.Hash)
+	}
+	return hashes
 }

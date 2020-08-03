@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/google/uuid"
+	"github.com/globalsign/mgo/bson"
 )
 
 type Basic interface {
@@ -35,7 +35,7 @@ func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 		if b != nil {
 			descendants := bs.getAllDescendants(b.Copy(), []simple.Block{})
 			blocks = append(blocks, descendants...)
-			s.Remove(b.Model().Id)
+			s.Unlink(b.Model().Id)
 		}
 	}
 
@@ -52,7 +52,7 @@ func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
 	childIdsRewrite := make(map[string]string)
 	for _, b := range blocks {
 		for i, cId := range b.Model().ChildrenIds {
-			newId := uuid.New().String()
+			newId := bson.NewObjectId().Hex()
 			childIdsRewrite[cId] = newId
 			b.Model().ChildrenIds[i] = newId
 		}
@@ -63,7 +63,7 @@ func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
 			b.Model().Id = newId
 			child = true
 		} else {
-			b.Model().Id = uuid.New().String()
+			b.Model().Id = bson.NewObjectId().Hex()
 		}
 		s.Add(b)
 		if !child {
@@ -151,7 +151,7 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 
 	s := bs.NewStateCtx(ctx)
 	for _, id := range ids {
-		if !s.Remove(id) {
+		if !s.Unlink(id) {
 			return smartblock.ErrSimpleBlockNotFound
 		}
 	}
@@ -165,7 +165,9 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 
 	s := bs.NewStateCtx(ctx)
 	for _, id := range req.BlockIds {
-		s.Unlink(id)
+		if b := s.Pick(id); b != nil {
+			s.Unlink(id)
+		}
 	}
 	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
 		return
@@ -179,7 +181,6 @@ func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (new
 	}
 
 	s := bs.NewStateCtx(ctx)
-
 	new := simple.New(block)
 	newId = new.Model().Id
 	s.Add(new)
