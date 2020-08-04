@@ -195,7 +195,7 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 			}
 		}
 
-		for i, r := range text.Text {
+		for i, r := range []rune(text.Text) {
 			if _, ok := breakpoints[i]; ok {
 				for _, m := range text.Marks.Marks {
 					if int(m.Range.To) == i {
