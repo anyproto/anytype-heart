@@ -151,6 +151,10 @@ build-server: protos-server
 	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
 	go build -i -v -o dist/server -ldflags "$(FLAGS)" ./lib-server/server/grpc.go
 
+build-server-debug: protos-server
+	$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anytypeio/go-anytype-middleware/core))
+	go build -v -o dist/server -gcflags "all=-N -l" -ldflags "$(FLAGS)" ./lib-server/server/grpc.go
+
 run-server: build-server
 	./dist/server
 
