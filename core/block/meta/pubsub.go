@@ -211,13 +211,6 @@ func (p *pubSub) createCollector(id string) {
 	p.collectors[id] = newCollector(p, id)
 }
 
-func (p *pubSub) removeCollector(id string) {
-	if c, ok := p.collectors[id]; ok {
-		c.close()
-		delete(p.collectors, id)
-	}
-}
-
 func (p *pubSub) setMeta(d Meta) {
 	p.m.Lock()
 	defer p.m.Unlock()

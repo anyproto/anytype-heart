@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
@@ -25,11 +26,13 @@ type Source interface {
 	Id() string
 	Anytype() anytype.Service
 	Type() pb.SmartBlockType
-	ReadDoc(receiver ChangeReceiver) (doc state.Doc, err error)
+	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string) (id string, err error)
 	Close() (err error)
 }
+
+var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
 func NewSource(a anytype.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
@@ -76,16 +79,16 @@ func (s *source) ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.detailsOnly = true
-	return s.readDoc(receiver)
+	return s.readDoc(receiver, false)
 }
 
-func (s *source) ReadDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
+func (s *source) ReadDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.readDoc(receiver)
+	return s.readDoc(receiver, allowEmpty)
 }
 
-func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
+func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	var ch chan core.SmartblockRecordWithLogID
 	if receiver != nil {
 		s.receiver = receiver
@@ -93,13 +96,19 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 		if s.unsubscribe, err = s.sb.SubscribeForRecords(ch); err != nil {
 			return
 		}
+		defer func() {
+			if err != nil {
+				s.unsubscribe()
+				s.unsubscribe = nil
+			}
+		}()
 	}
 	if s.detailsOnly {
 		s.tree, s.logHeads, err = change.BuildDetailsTree(s.sb)
 	} else {
 		s.tree, s.logHeads, err = change.BuildTree(s.sb)
 	}
-	if err == change.ErrEmpty {
+	if allowEmpty && err == change.ErrEmpty {
 		err = nil
 		s.tree = new(change.Tree)
 		doc = state.NewDoc(s.id, nil)
@@ -140,6 +149,7 @@ func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileCh
 		PreviousIds:        s.tree.Heads(),
 		LastSnapshotId:     s.lastSnapshotId,
 		PreviousDetailsIds: s.tree.DetailsHeads(),
+		Timestamp:          time.Now().Unix(),
 	}
 	if s.needSnapshot() || len(changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
@@ -175,7 +185,7 @@ func (s *source) needSnapshot() bool {
 		return true
 	}
 	// TODO: think about a more smart way
-	return rand.Intn(1000) == 42
+	return rand.Intn(500) == 42
 }
 
 func (s *source) changeListener(records chan core.SmartblockRecordWithLogID) {
@@ -263,7 +273,7 @@ func (s *source) Close() (err error) {
 	defer s.mu.Unlock()
 	if s.unsubscribe != nil {
 		s.unsubscribe()
-		//<-s.closed
+		<-s.closed
 	}
 	return nil
 }
