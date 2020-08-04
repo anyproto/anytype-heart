@@ -243,10 +243,10 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		h.buf.WriteString(`</quote>`)
 	case model.BlockContentText_Code:
 		rs.Close()
-		h.buf.WriteString(`<code style="` + styleCode + `">`)
+		h.buf.WriteString(`<code style="` + styleCode + `"><pre>`)
 		renderText()
 		h.renderChilds(b)
-		h.buf.WriteString(`</code>`)
+		h.buf.WriteString(`</pre></code>`)
 	case model.BlockContentText_Title:
 		rs.Close()
 		h.buf.WriteString(`<h1 style="` + styleTitle + `">`)
