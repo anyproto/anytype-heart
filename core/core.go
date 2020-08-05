@@ -21,7 +21,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/net"
 	"github.com/anytypeio/go-anytype-library/net/litenet"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -179,10 +178,7 @@ func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 		return nil, err
 	}
 	sb := &smartBlock{thread: thrd, node: a}
-	err = sb.indexSnapshot(&smartBlockSnapshot{
-		state:    vclock.New(),
-		threadID: thrd.ID,
-	})
+	err = sb.indexSnapshot(nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to index new block %s: %s", thrd.ID.String(), err.Error())
 	}

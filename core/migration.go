@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -32,7 +31,7 @@ var migrations = []migration{
 	skipMigration,        // 1
 	alterThreadsDbSchema, // 2
 	skipMigration,        // 3
-	indexLinks,           // 4
+	skipMigration,        // 4
 	snapshotToChanges,    // 5
 }
 
@@ -133,46 +132,6 @@ func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error)
 		return err
 	}
 	return nil
-}
-
-func indexLinks(a *Anytype, _ bool) error {
-	return doWithRunningNode(a, true, true, func() error {
-		threadsIDs, err := a.t.Logstore().Threads()
-		if err != nil {
-			return err
-		}
-
-		archive, _ := a.threadDeriveID(threadDerivedIndexArchive)
-		home, _ := a.threadDeriveID(threadDerivedIndexHome)
-		profile, _ := a.threadDeriveID(threadDerivedIndexProfilePage)
-
-		threadsIDs = append(threadsIDs, archive, home, profile)
-		migrated := 0
-		for _, threadID := range threadsIDs {
-			err := a.localStore.Pages.Delete(threadID.String())
-			if err != nil && err != localstore.ErrNotFound {
-				return err
-			}
-		}
-
-		for _, threadID := range threadsIDs {
-			block, err := a.GetSmartBlock(threadID.String())
-			if err != nil {
-				log.Errorf("failed to get smartblock %s: %s", threadID.String(), err.Error())
-				continue
-			}
-
-			err = block.index()
-			if err != nil {
-				log.Errorf("failed to index page %s: %s", threadID.String(), err.Error())
-				continue
-			}
-			migrated++
-		}
-
-		log.Infof("migration indexLinks: %d pages indexed", migrated)
-		return nil
-	})
 }
 
 func (a *Anytype) migratePageToChanges(id thread.ID) error {

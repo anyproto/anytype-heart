@@ -168,8 +168,8 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 
 func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
 	val, err := txn.Get(pagesDetailsBase.ChildString(id))
-	if err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get details: %w", err)
+	if err != nil {
+		return nil, err
 	}
 
 	var details model.PageDetails
@@ -185,9 +185,9 @@ func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
 func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 	var page = &model.PageInfo{Id: id}
 	details, err := getDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
+	if err != nil {
 		return nil, fmt.Errorf("failed to get details: %w", err)
-	} else if details != nil {
+	} else if details != nil && details.Details != nil {
 		page.Details = details.Details
 	}
 

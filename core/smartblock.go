@@ -401,9 +401,9 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	return block.decodeRecord(ctx, rec)
 }
 
-func getSnippet(snap *smartBlockSnapshot) string {
+func getSnippet(blocks []*model.Block) string {
 	var s string
-	for _, block := range snap.blocks {
+	for _, block := range blocks {
 		if text := block.GetText(); text != nil {
 			if s != "" {
 				s += " "
@@ -418,17 +418,13 @@ func getSnippet(snap *smartBlockSnapshot) string {
 	return util.TruncateText(s, snippetMaxSize)
 }
 
-func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
-	// lock here for the concurrent details changes
-	block.node.lock.Lock()
-	defer block.node.lock.Unlock()
-
+func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Block) error {
 	if block.Type() == smartblock.SmartBlockTypeArchive {
 		return nil
 	}
 
-	storeOutgoingLinks := func(snap *smartBlockSnapshot, linksMap map[string]struct{}) {
-		for _, block := range snap.blocks {
+	storeOutgoingLinks := func(blocks []*model.Block, linksMap map[string]struct{}) {
+		for _, block := range blocks {
 			if link := block.GetLink(); link != nil {
 				linksMap[link.TargetBlockId] = struct{}{}
 			}
@@ -444,30 +440,13 @@ func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
 	}
 
 	newOutgoingLinks := make(map[string]struct{})
-	newSnippet := getSnippet(snap)
+	newSnippet := getSnippet(blocks)
 
 	var newOutgoingLinksIds = []string{}
-	storeOutgoingLinks(snap, newOutgoingLinks)
+	storeOutgoingLinks(blocks, newOutgoingLinks)
 	for linkId := range newOutgoingLinks {
 		newOutgoingLinksIds = append(newOutgoingLinksIds, linkId)
 	}
 
-	return block.node.localStore.Pages.Update(block.ID(), snap.details, newOutgoingLinksIds, &newSnippet)
-}
-
-func (block *smartBlock) index() error {
-	versions, err := block.GetSnapshots(vclock.Undef, 1, false)
-	if err != nil {
-		return err
-	}
-
-	if len(versions) == 0 {
-		return block.indexSnapshot(&smartBlockSnapshot{
-			state:    vclock.New(),
-			threadID: block.thread.ID,
-		})
-	}
-
-	lastVersion := versions[0]
-	return block.indexSnapshot(&lastVersion)
+	return block.node.PageStore().Update(block.ID(), details, newOutgoingLinksIds, &newSnippet)
 }
