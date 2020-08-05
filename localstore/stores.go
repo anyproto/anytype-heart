@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -33,6 +35,8 @@ type LocalStore struct {
 type FileStore interface {
 	Indexable
 	Add(file *storage.FileInfo) error
+	AddFileKeys(fileKeys ...FileKeys) error
+	GetFileKeys(hash string) (map[string]string, error)
 	GetByHash(hash string) (*storage.FileInfo, error)
 	GetBySource(mill string, source string, opts string) (*storage.FileInfo, error)
 	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
@@ -41,6 +45,7 @@ type FileStore interface {
 	ListByTarget(target string) ([]*storage.FileInfo, error)
 	Count() (int, error)
 	DeleteByHash(hash string) error
+	DeleteFileKeys(hash string) error
 }
 
 type PageStore interface {
@@ -50,13 +55,12 @@ type PageStore interface {
 	GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.PageDetails, error)
+	List() ([]*model.PageInfo, error)
 	GetByIDs(ids ...string) ([]*model.PageInfo, error)
-	GetStateByID(id string) (*model.State, error)
-	Update(state *model.State, id string, addedLinks []string, removedLinks []string, changeSnippet string, changedDetails *model.PageDetails) error
-	AddLinks(state *model.State, from string, targetIDs []string) error
-	RemoveLinks(state *model.State, from string, targetIDs []string) error
-	UpdateDetails(state *model.State, id string, details *model.PageDetails) error
-	UpdateSnippet(state *model.State, id string, snippet string) error
+	Update(id string, details *types.Struct, links []string, snippet *string) error
+	UpdateDetails(id string, details *model.PageDetails) error
+	UpdateLastModified(id string, time time.Time) error
+	UpdateLastOpened(id string, time time.Time) error
 	Delete(id string) error
 }
 

@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
-	"github.com/anytypeio/go-anytype-library/vclock"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +40,7 @@ func getRunningService(t *testing.T) Service {
 
 func TestAnytype_IsStarted(t *testing.T) {
 	s := getRunningService(t)
-	require.True(t, s.IsStarted())
+	require.True(t, s.(*Anytype).isStarted)
 }
 
 func TestAnytype_DeviceKeyEquals(t *testing.T) {
@@ -62,30 +61,26 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	state1 := vclock.New()
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
-	_, err = block1.PushSnapshot(
-		state1,
-		&SmartBlockMeta{Details: details1},
-		[]*model.Block{
-			{
-				Id:      "test_id1",
-				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. A virtual or overlay network is formed by the participant nodes. Each node is identified by a number or node ID. The node ID serves not only as identification, but the Kademlia algorithm uses the node ID to locate values (usually file hashes or keywords). In fact, the node ID provides a direct map to file hashes and that node stores information on where to obtain the file or resource."}},
-			},
+	blocks1 := []*model.Block{
+		{
+			Id:      "test_id1",
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. A virtual or overlay network is formed by the participant nodes. Each node is identified by a number or node ID. The node ID serves not only as identification, but the Kademlia algorithm uses the node ID to locate values (usually file hashes or keywords). In fact, the node ID provides a direct map to file hashes and that node stores information on where to obtain the file or resource."}},
 		},
-	)
+	}
+	err = block1.(*smartBlock).indexSnapshot(details1, blocks1)
+	require.NoError(t, err)
 
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
-	_, err = block2.PushSnapshot(
-		state1,
-		&SmartBlockMeta{Details: details2},
-		[]*model.Block{
-			{
-				Id:      "test_id2",
-				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. A virtual or overlay network is formed by the participant nodes. Each node is identified by a number or node ID. The node ID serves not only as identification, but the Kademlia algorithm uses the node ID to locate values (usually file hashes or keywords). In fact, the node ID provides a direct map to file hashes and that node stores information on where to obtain the file or resource."}},
-			},
+	blocks2 := []*model.Block{
+		{
+			Id:      "test_id2",
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. A virtual or overlay network is formed by the participant nodes. Each node is identified by a number or node ID. The node ID serves not only as identification, but the Kademlia algorithm uses the node ID to locate values (usually file hashes or keywords). In fact, the node ID provides a direct map to file hashes and that node stores information on where to obtain the file or resource."}},
 		},
-	)
+	}
+
+	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
+	require.NoError(t, err)
 
 	db, err := s.DatabaseByID("pages")
 	require.NoError(t, err)
@@ -114,7 +109,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	n := time.Now()
 	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 
-	s.PageUpdateLastOpened(block1.ID())
+	s.PageStore().UpdateLastOpened(block1.ID(), time.Now())
 	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "lastOpened",
@@ -125,6 +120,9 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.Equal(t, total, 1)
+
+	s.PageStore().UpdateLastModified(block1.ID(), time.Now())
+	s.PageStore().UpdateLastModified(block2.ID(), time.Now())
 
 	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,

@@ -10,6 +10,9 @@ import (
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/core/config"
 	"github.com/anytypeio/go-anytype-library/net"
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -66,7 +69,11 @@ func main() {
 		log.Fatal("you should provide -account")
 	}
 
-	lib, err := core.New(*repo, *account)
+	lib, err := core.New(*repo, *account, func(id string) error {
+		return nil
+	}, func(blocks []*model.Block, details *types.Struct, fileKeys []*core.FileKeys) proto.Marshaler {
+		return nil
+	})
 	if err != nil {
 		log.Fatal(err.Error())
 	}

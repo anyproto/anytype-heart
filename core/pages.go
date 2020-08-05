@@ -5,16 +5,20 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
+	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/structs"
-	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
 )
 
+func (a *Anytype) PageStore() localstore.PageStore {
+	return a.localStore.Pages
+}
+
+// deprecated, to be removed
 func (a *Anytype) PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error) {
 	return a.localStore.Pages.GetWithLinksInfoByID(id)
 }
 
+// deprecated, to be removed
 func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 	ids, err := a.t.Logstore().Threads()
 	if err != nil {
@@ -77,21 +81,11 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 	return pages, nil
 }
 
+// deprecated, to be removed
 func (a *Anytype) PageUpdateLastOpened(id string) error {
 	// lock here for the concurrent details changes
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	details, err := a.localStore.Pages.GetDetails(id)
-	if err != nil && err != ds.ErrNotFound {
-		return err
-	}
-
-	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
-	}
-
-	details.Details.Fields["lastOpened"] = structs.Float64(float64(time.Now().Unix()))
-
-	return a.localStore.Pages.UpdateDetails(nil, id, details)
+	return a.localStore.Pages.UpdateLastModified(id, time.Now())
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-slip21"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	ma "github.com/multiformats/go-multiaddr"
 	db2 "github.com/textileio/go-threads/core/db"
 	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
@@ -252,8 +253,15 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 	go func() {
 		attempts := 0
 		defer close(replicatorAddFinished)
+		threadComp, err := ma.NewComponent(thread.Name, thrd.ID.String())
+		if err != nil {
+			log.Errorf("syncThread %s: failed to get threadComp for %s: %s", thrd.ID.String(), err.Error())
+			return
+		}
+
 		for _, addr := range thrd.Addrs {
-			if addr.Equal(a.opts.CafeP2PAddr) {
+			peerAddr := addr.Decapsulate(threadComp)
+			if peerAddr.Equal(a.opts.CafeP2PAddr) {
 				log.Warnf("syncThread %s already has replicator")
 				return
 			}
@@ -298,6 +306,7 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 	}()
 
 	pullDone := make(chan struct{})
+	var headsChanged bool
 	if mustConnectToCafe {
 		select {
 		case <-replicatorAddFinished:
@@ -317,7 +326,7 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 		go func() {
 			defer close(pullDone)
 			defer close(syncDone)
-			err = a.pullThread(ctx, thrd.ID)
+			headsChanged, err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return
@@ -343,7 +352,7 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 				return
 			}
 
-			err = a.pullThread(ctx, thrd.ID)
+			headsChanged, err = a.pullThread(ctx, thrd.ID)
 			if err != nil {
 				log.Errorf("syncThread failed to pullThread: %s", err.Error())
 				return
@@ -351,10 +360,33 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 		}()
 	}
 
+	go func() {
+		<-pullDone
+		if err != nil {
+			return
+		}
+		if headsChanged {
+			err = a.migratePageToChanges(thrd.ID)
+			if err != nil && err != ErrAlreadyMigrated {
+				log.Errorf("syncThread migratePageToChanges failed: %s", err.Error())
+			}
+
+			if a.opts.ReindexFunc != nil {
+				err = a.opts.ReindexFunc(thrd.ID.String())
+				if err != nil {
+					log.Errorf("syncThread ReindexFunc failed: %s", err.Error())
+				}
+			}
+		}
+
+	}()
+
 	if mustConnectToCafe && pullAfterConnect && waitForPull {
 		log.Debugf("syncThread wait for pull")
 		<-pullDone
 		log.Debugf("syncThread pull done")
+		// return the pull error
+		return err
 	}
 
 	return nil
@@ -390,6 +422,14 @@ func (a *Anytype) predefinedThreadAdd(index threadDerivedIndex, mustSyncSnapshot
 
 	err = a.syncThread(thrd, mustSyncSnapshotIfNotExist, pullAfterConnect, waitForPull)
 	if err != nil {
+		if mustSyncSnapshotIfNotExist {
+			// remove the thread we have just created because we've supposed to successfully pull it from the replicator
+			log.Warnf("predefinedThreadAdd failed to pull the just created thread %d: delete it", index)
+			err = a.t.DeleteThread(context.TODO(), id)
+			if err != nil {
+				return thread.Info{}, true, err
+			}
+		}
 		return thread.Info{}, true, err
 	}
 

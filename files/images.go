@@ -2,10 +2,12 @@ package files
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"time"
 
 	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
+	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
@@ -28,9 +30,13 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 
 	nodeHash := node.Cid().String()
 
-	s.KeysCacheMutex.Lock()
-	defer s.KeysCacheMutex.Unlock()
-	s.KeysCache[nodeHash] = keys.KeysByPath
+	err = s.store.AddFileKeys(localstore.FileKeys{
+		Hash: nodeHash,
+		Keys: keys.KeysByPath,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to save file keys: %w", err)
+	}
 
 	err = s.fileIndexData(ctx, node, nodeHash)
 	if err != nil {

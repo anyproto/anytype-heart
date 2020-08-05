@@ -115,6 +115,7 @@ type SnapshotWithMetadata struct {
 	EventID  cid.Cid
 }
 
+// deprecated, used only for migrating the data from version 0 to 1
 func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info, li thread.LogInfo, before vclock.VClock, limit int) ([]SnapshotWithMetadata, error) {
 	var snapshots []SnapshotWithMetadata
 	// todo: filter by record type
@@ -151,8 +152,9 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 			return nil, fmt.Errorf("%s: cbor decode error: %w", ErrFailedToDecodeSnapshot.Error(), err)
 		}
 
-		if m.Ver > payloadVersion {
-			return nil, fmt.Errorf("%s: cbor node version is higher than current (%d>%d)", ErrFailedToDecodeSnapshot.Error(), m.Ver, payloadVersion)
+		if m.Ver > 0 {
+			// looks like we've got the migrated data, we need to return explicit error here, because it is forbidden to work with already migrated log
+			return nil, fmt.Errorf("%s: cbor node version is higher than 0 (%d)", ErrFailedToDecodeSnapshot.Error(), m.Ver)
 		}
 
 		err = m.Verify()

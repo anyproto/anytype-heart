@@ -28,6 +28,11 @@ type FileMeta struct {
 	Added time.Time
 }
 
+type FileKeys struct {
+	Hash string
+	Keys map[string]string
+}
+
 func (file *file) Meta() *FileMeta {
 	return &FileMeta{
 		Media: file.info.Media,

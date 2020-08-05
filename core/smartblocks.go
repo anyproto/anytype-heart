@@ -9,6 +9,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	util2 "github.com/anytypeio/go-anytype-library/util"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	db2 "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/net"
@@ -80,54 +82,40 @@ func (a *Anytype) DeleteBlock(id string) error {
 		}
 	}
 }*/
-func (a *Anytype) pullThread(ctx context.Context, id thread.ID) error {
-	if sb, err := a.GetSmartBlock(id.String()); err == nil {
-		snap, err := sb.GetLastSnapshot()
-		if err != nil {
-			if err == ErrBlockSnapshotNotFound {
-				log.Infof("pullThread %s before: empty", id.String())
-			} else {
-				log.Errorf("pullThread %s before: %s", id.String(), err.Error())
-			}
-		} else {
-			log.Infof("pullThread %s before: %s", id.String(), snap.State().String())
-		}
-	}
-
-	err := a.t.PullThread(ctx, id)
+func (a *Anytype) pullThread(ctx context.Context, id thread.ID) (headsChanged bool, err error) {
+	thrd, err := a.t.GetThread(context.Background(), id)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	if sb, err := a.GetSmartBlock(id.String()); err == nil {
-		snap, err := sb.GetLastSnapshot()
-		if err != nil {
-			if err == ErrBlockSnapshotNotFound {
-				log.Infof("pullThread %s after: empty", id.String())
-			} else {
-				log.Errorf("pullThread %s after: %s", id.String(), err.Error())
-			}
+	var headPerLog = make(map[peer.ID]cid.Cid, len(thrd.Logs))
+	for _, log := range thrd.Logs {
+		headPerLog[log.ID] = log.Head
+	}
+
+	err = a.t.PullThread(ctx, id)
+	if err != nil {
+		return false, err
+	}
+
+	thrd, err = a.t.GetThread(context.Background(), id)
+	if err != nil {
+		return false, err
+	}
+
+	for _, log := range thrd.Logs {
+		if v, exists := headPerLog[log.ID]; !exists {
+			headsChanged = true
+			break
 		} else {
-			log.Infof("pullThread %s after: %s", id.String(), snap.State().String())
-			ls := snap.(smartBlockSnapshot)
-			go func() {
-				err := sb.indexSnapshot(&ls)
-				if err != nil {
-					log.Errorf("pullThread: failed to index the new snapshot for %s: %s", id.String(), err.Error())
-				}
-			}()
+			if !log.Head.Equals(v) {
+				headsChanged = true
+				break
+			}
 		}
 	}
 
-	go func() {
-		// todo: do we need timeout here?
-		err := a.smartBlockChanges.SendWithTimeout(id, time.Second*30)
-		if err != nil {
-			log.Errorf("processNewExternalThread: smartBlockChanges send failed: %s", err.Error())
-		}
-	}()
-
-	return nil
+	return
 }
 
 func (a *Anytype) initThreadsDB() error {
@@ -170,6 +158,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 	if err != nil {
 		return err
 	}
+
 	a.predefinedBlockIds.Account = account.ID.String()
 	if a.db == nil {
 		err = a.initThreadsDB()
@@ -207,7 +196,7 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 		go func() {
 			defer close(accountThreadPullDone)
 			// pull only after adding collection to handle all events
-			err = a.pullThread(context.TODO(), account.ID)
+			_, err = a.pullThread(context.TODO(), account.ID)
 			if err != nil {
 				log.Errorf("failed to pull accountThread")
 			}
@@ -274,18 +263,28 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 		return thread.Info{}, err
 	}
 
+	threadComp, err := ma.NewComponent(thread.Name, thrd.ID.String())
+	if err != nil {
+		return thread.Info{}, err
+	}
+
 	hasCafeAddress := false
+	var cafeAddrWithThread ma.Multiaddr
+	if a.opts.CafeP2PAddr != nil {
+		cafeAddrWithThread = a.opts.CafeP2PAddr.Encapsulate(threadComp)
+	}
+
 	var multiAddrs []ma.Multiaddr
 	for _, addr := range thrd.Addrs {
-		if addr.Equal(a.opts.CafeP2PAddr) {
+		if cafeAddrWithThread != nil && addr.Equal(cafeAddrWithThread) {
 			hasCafeAddress = true
 		}
 
 		multiAddrs = append(multiAddrs, addr)
 	}
 
-	if !hasCafeAddress && a.opts.CafeP2PAddr != nil {
-		multiAddrs = append(multiAddrs, a.opts.CafeP2PAddr)
+	if !hasCafeAddress && cafeAddrWithThread != nil {
+		multiAddrs = append(multiAddrs, cafeAddrWithThread)
 	}
 
 	threadInfo := threadInfo{
@@ -305,20 +304,22 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 		go func() {
 			defer a.replicationWG.Done()
 
+			attempt := 0
 			// todo: rewrite to job queue in badger
 			for {
+				attempt++
 				p, err := a.t.AddReplicator(context.TODO(), thrd.ID, a.opts.CafeP2PAddr)
 				if err != nil {
-					log.Errorf("failed to add log replicator: %s", err.Error())
+					log.Errorf("failed to add log replicator after %d attempt: %s", attempt, err.Error())
 					select {
-					case <-time.After(time.Second * 30):
+					case <-time.After(time.Second * 3 * time.Duration(attempt)):
 					case <-a.shutdownStartsCh:
 						return
 					}
 					continue
 				}
 
-				log.With("thread", thrd.ID.String()).Infof("added log replicator: %s", p.String())
+				log.With("thread", thrd.ID.String()).Infof("added log replicator after %d attempt: %s", attempt, p.String())
 				return
 			}
 		}()

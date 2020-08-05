@@ -41,8 +41,12 @@ func Test_smartBlock_FileKeysRestore(t *testing.T) {
 	f, err := s.FileAddWithReader(context.Background(), bytes.NewReader([]byte("123")), "test")
 	require.NoError(t, err)
 
-	keysExpectedJson, _ := json.Marshal(s.(*Anytype).files.KeysCache[f.Hash()])
-	s.(*Anytype).files.KeysCache = make(map[string]map[string]string)
+	keys, err := s.(*Anytype).localStore.Files.GetFileKeys(f.Hash())
+	require.NoError(t, err)
+
+	keysExpectedJson, _ := json.Marshal(keys)
+	err = s.(*Anytype).localStore.Files.DeleteFileKeys(f.Hash())
+	require.NoError(t, err)
 
 	keysActual, err := s.(*Anytype).files.FileRestoreKeys(context.Background(), f.Hash())
 	require.NoError(t, err)

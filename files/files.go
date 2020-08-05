@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/cafe"
@@ -38,18 +37,13 @@ type Service struct {
 	store localstore.FileStore
 	ipfs  ipfs.IPFS
 	cafe  cafe.Client
-
-	KeysCache      map[string]map[string]string
-	KeysCacheMutex sync.RWMutex
 }
 
 func New(store localstore.FileStore, ipfs ipfs.IPFS, cafe cafe.Client) *Service {
 	return &Service{
-		store:          store,
-		ipfs:           ipfs,
-		cafe:           cafe,
-		KeysCache:      make(map[string]map[string]string),
-		KeysCacheMutex: sync.RWMutex{},
+		store: store,
+		ipfs:  ipfs,
+		cafe:  cafe,
 	}
 }
 
@@ -82,9 +76,13 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
-	s.KeysCacheMutex.Lock()
-	defer s.KeysCacheMutex.Unlock()
-	s.KeysCache[nodeHash] = keys.KeysByPath
+	err = s.store.AddFileKeys(localstore.FileKeys{
+		Hash: nodeHash,
+		Keys: keys.KeysByPath,
+	})
+	if err != nil {
+		return "", nil, err
+	}
 
 	if s.cafe != nil {
 		go func() {
@@ -149,6 +147,14 @@ func (s *Service) FileRestoreKeys(ctx context.Context, hash string) (map[string]
 				}
 			}
 		}
+	}
+
+	err = s.store.AddFileKeys(localstore.FileKeys{
+		Hash: hash,
+		Keys: fileKeys,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
 	return fileKeys, nil
@@ -592,10 +598,15 @@ func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filena
 	return dir, nil
 }
 
-func (s *Service) FileIndexInfo(ctx context.Context, hash string, keys map[string]string) ([]*storage.FileInfo, error) {
+func (s *Service) FileIndexInfo(ctx context.Context, hash string) ([]*storage.FileInfo, error) {
 	links, err := helpers.LinksAtCid(ctx, s.ipfs, hash)
 	if err != nil {
 		return nil, err
+	}
+
+	keys, err := s.store.GetFileKeys(hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file keys from cache: %w", err)
 	}
 
 	var files []*storage.FileInfo

@@ -87,8 +87,12 @@ func TestAnytype_ImageFileKeysRestore(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, nf.Hash(), 59)
 
-	keysExpectedJson, _ := json.Marshal(s.(*Anytype).files.KeysCache[nf.Hash()])
-	s.(*Anytype).files.KeysCache = make(map[string]map[string]string)
+	keys, err := s.(*Anytype).localStore.Files.GetFileKeys(nf.Hash())
+	require.NoError(t, err)
+
+	keysExpectedJson, _ := json.Marshal(keys)
+	err = s.(*Anytype).localStore.Files.DeleteFileKeys(nf.Hash())
+	require.NoError(t, err)
 
 	keysActual, err := s.(*Anytype).files.FileRestoreKeys(context.Background(), nf.Hash())
 	require.NoError(t, err)

@@ -4,11 +4,54 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/files"
+	"github.com/anytypeio/go-anytype-library/localstore"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
+
+func (a *Anytype) FileGetKeys(hash string) (*FileKeys, error) {
+	m, err := a.localStore.Files.GetFileKeys(hash)
+	if err != nil {
+		if err != localstore.ErrNotFound {
+			return nil, err
+		}
+	} else {
+		return &FileKeys{
+			Hash: hash,
+			Keys: m,
+		}, nil
+	}
+
+	// in case we don't have keys cached fot this file
+	// we should have all the CIDs locally, so 5s is more than enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	fileKeysRestored, err := a.files.FileRestoreKeys(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to restore file keys: %w", err)
+	}
+
+	return &FileKeys{
+		Hash: hash,
+		Keys: fileKeysRestored,
+	}, nil
+}
+
+func (a *Anytype) FileStoreKeys(fileKeys ...FileKeys) error {
+	var fks []localstore.FileKeys
+
+	for _, fk := range fileKeys {
+		fks = append(fks, localstore.FileKeys{
+			Hash: fk.Hash,
+			Keys: fk.Keys,
+		})
+	}
+
+	return a.localStore.Files.AddFileKeys(fks...)
+}
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	fileList, err := a.localStore.Files.ListByTarget(hash)
@@ -17,10 +60,8 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 	}
 
 	if len(fileList) == 0 {
-		a.files.KeysCacheMutex.RLock()
-		defer a.files.KeysCacheMutex.RUnlock()
 		// info from ipfs
-		fileList, err = a.files.FileIndexInfo(ctx, hash, a.files.KeysCache[hash])
+		fileList, err = a.files.FileIndexInfo(ctx, hash)
 		if err != nil {
 			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound

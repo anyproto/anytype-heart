@@ -6,7 +6,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/net"
+	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -22,6 +25,8 @@ type ServiceOptions struct {
 	Offline               bool
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
+	ReindexFunc           func(smartblockId string) error
+	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler
 	WebGatewaySnapshotUri string
 }
 
@@ -114,6 +119,20 @@ func WithIPFSNode(node ipfs.IPFS) ServiceOption {
 func WithNetBootstrapper(n net.NetBoostrapper) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.NetBootstraper = n
+		return nil
+	}
+}
+
+func WithReindexFunc(f func(smartblockId string) error) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.ReindexFunc = f
+		return nil
+	}
+}
+
+func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.SnapshotMarshalerFunc = f
 		return nil
 	}
 }

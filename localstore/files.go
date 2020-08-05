@@ -13,9 +13,11 @@ import (
 var (
 	// FileInfo is stored in db key pattern:
 	// /files/info/<hash>
-	filesPrefix             = "files"
-	filesInfoBase           = ds.NewKey("/" + filesPrefix + "/info")
-	_             FileStore = (*dsFileStore)(nil)
+	filesPrefix   = "files"
+	filesInfoBase = ds.NewKey("/" + filesPrefix + "/info")
+	filesKeysBase = ds.NewKey("/" + filesPrefix + "/keys")
+
+	_ FileStore = (*dsFileStore)(nil)
 
 	indexMillSourceOpts = Index{
 		Prefix: filesPrefix,
@@ -62,6 +64,11 @@ var (
 type dsFileStore struct {
 	ds ds.TxnDatastore
 	l  sync.Mutex
+}
+
+type FileKeys struct {
+	Hash string
+	Keys map[string]string
 }
 
 func NewFileStore(ds ds.TxnDatastore) FileStore {
@@ -114,6 +121,88 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 	}
 
 	return txn.Commit()
+}
+
+func (m *dsFileStore) AddFileKeys(fileKeys ...FileKeys) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	for _, fk := range fileKeys {
+		err = m.addSingleFileKeys(txn, fk.Hash, fk.Keys)
+		if err != nil {
+			if err == ErrDuplicateKey {
+				continue
+			}
+			return err
+		}
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsFileStore) DeleteFileKeys(hash string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	fileKeysKey := filesKeysBase.ChildString(hash)
+	err = txn.Delete(fileKeysKey)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsFileStore) addSingleFileKeys(txn ds.Txn, hash string, keys map[string]string) error {
+	fileKeysKey := filesKeysBase.ChildString(hash)
+
+	exists, err := txn.Has(fileKeysKey)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ErrDuplicateKey
+	}
+
+	b, err := proto.Marshal(&storage.FileKeys{
+		KeysByPath: keys,
+	})
+	if err != nil {
+		return err
+	}
+
+	return txn.Put(fileKeysKey, b)
+}
+
+func (m *dsFileStore) GetFileKeys(hash string) (map[string]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	fileKeysKey := filesKeysBase.ChildString(hash)
+
+	b, err := txn.Get(fileKeysKey)
+	if err != nil {
+		if err == ds.ErrNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	var fileKeys = storage.FileKeys{}
+	err = proto.Unmarshal(b, &fileKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	return fileKeys.KeysByPath, nil
 }
 
 func (m *dsFileStore) AddTarget(hash string, target string) error {

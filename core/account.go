@@ -24,18 +24,48 @@ import (
 
 const nodeConnectionTimeout = time.Second * 15
 
-func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
+// processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
+// supposed to be run in goroutine
+func (a *Anytype) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) {
 	log.Infof("got new thread %s, addrs: %+v", ti.ID.String(), ti.Addrs)
 
+	var attempt int
+	for {
+		attempt++
+		err := a.processNewExternalThread(tid, ti)
+		if err != nil {
+			log.Errorf("processNewExternalThread %s failed after %d attempt: %s", tid.String(), err.Error())
+		} else {
+			log.Debugf("processNewExternalThread %s succeed after %d attempt", tid.String())
+			return
+		}
+		select {
+		case <-a.shutdownStartsCh:
+			return
+		case <-time.After(time.Duration(5*attempt) * time.Second):
+			continue
+		}
+	}
+}
+
+func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
 		return fmt.Errorf("failed to parse thread keys %s: %s", tid.String(), err.Error())
 	}
 
 	threadAdded := false
-	atleastOneNodeAdded := false
 	hasCafeAddress := false
 	var multiAddrs []ma.Multiaddr
+	threadComp, err := ma.NewComponent(thread.Name, tid.String())
+	if err != nil {
+		return err
+	}
+	var cafeAddrWithThread ma.Multiaddr
+	if a.opts.CafeP2PAddr != nil {
+		cafeAddrWithThread = a.opts.CafeP2PAddr.Encapsulate(threadComp)
+	}
+
 	for _, addrS := range ti.Addrs {
 		addr, err := ma.NewMultiaddr(addrS)
 		if err != nil {
@@ -43,21 +73,16 @@ func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			continue
 		}
 
-		if addr.Equal(a.opts.CafeP2PAddr) {
+		if addr.Decapsulate(threadComp).Equal(a.opts.CafeP2PAddr) {
 			hasCafeAddress = true
 		}
 
 		multiAddrs = append(multiAddrs, addr)
 	}
 
-	if !hasCafeAddress {
+	if !hasCafeAddress && cafeAddrWithThread != nil {
 		log.Warn("processNewExternalThread %s: cafe addr not found among thread addresses, will add it", ti.ID.String())
-		threadComp, err := ma.NewComponent(thread.Name, tid.String())
-		if err != nil {
-			return err
-		}
-
-		multiAddrs = append(multiAddrs, a.opts.CafeP2PAddr.Encapsulate(threadComp))
+		multiAddrs = append(multiAddrs, cafeAddrWithThread)
 	}
 
 addrsLoop:
@@ -103,38 +128,63 @@ addrsLoop:
 		defer cancel()
 
 		if err = a.t.Host().Connect(ctx, *addri); err != nil {
-			log.Errorf("processNewExternalThread %s: failed to connect addr %s: %s", ti.ID.String(), addri, err.Error())
+			log.Errorf("processNewExternalThread %s: failed to connect addr %s: %s", ti.ID.String(), addr.String(), err.Error())
 			continue
 		}
 
-		if !threadAdded {
-			threadAdded = true
-			_, err = a.t.AddThread(context.Background(), addr, net.WithThreadKey(key), net.WithLogKey(a.opts.Device))
-			if err != nil {
-				return fmt.Errorf("failed to add the remote thread %s: %s", ti.ID.String(), err.Error())
-			}
-			log.Infof("processNewExternalThread %s: thread successfully added from %s", ti.ID.String(), addri)
-			atleastOneNodeAdded = true
-		} else {
-			// todo: add addr directly?
-			_, err = a.t.AddReplicator(context.Background(), tid, addr)
-			if err != nil {
-				return fmt.Errorf("failed to add the remote thread %s: %s", ti.ID.String(), err.Error())
-			}
-			atleastOneNodeAdded = true
+		threadID, _ := addr.ValueForProtocol(thread.Code)
+		if threadID == "" {
+			// in case we have thread comp missing just add it
+			addr = addr.Encapsulate(threadComp)
 		}
+
+		_, err = a.t.AddThread(context.Background(), addr, net.WithThreadKey(key), net.WithLogKey(a.opts.Device))
+		if err != nil {
+			log.Errorf("processNewExternalThread %s: failed to add from %s: %s", ti.ID.String(), addr.String(), err.Error())
+			continue
+		}
+
+		log.Infof("processNewExternalThread %s: thread successfully added from %s", ti.ID.String(), addri)
+
+		_, err = a.t.AddReplicator(context.Background(), tid, cafeAddrWithThread)
+		if err != nil {
+			log.Errorf("processNewExternalThread failed to add the replicator for %s: %s", ti.ID.String(), err.Error())
+		}
+
+		threadAdded = true
+		break
 	}
 
-	if !atleastOneNodeAdded {
+	if !threadAdded {
 		return fmt.Errorf("failed to add thread from any provided remote address")
 	} else {
-		err = a.pullThread(context.Background(), tid)
+		_, err = a.pullThread(context.Background(), tid)
 		if err != nil {
-			log.Errorf("processNewExternalThread %s: pull thread failed: %s", ti.ID.String(), err.Error())
+			log.Errorf("processNewExternalThread: pull thread %s failed: %s", tid.String(), err.Error())
 		}
 	}
 
+	err = a.migratePageToChanges(tid)
+	if err != nil {
+		if err != ErrAlreadyMigrated {
+			log.Errorf("processNewExternalThread migratePageToChanges %s failed: %s", tid.String(), err.Error())
+		} else {
+			log.Debugf("processNewExternalThread migratePageToChanges %s: thread already migrated", tid.String())
+		}
+	} else {
+		log.Debugf("processNewExternalThread: thread %s migrated", tid.String())
+	}
+
+	go func() {
+		// reindex after migration
+		err = a.opts.ReindexFunc(tid.String())
+		if err != nil {
+			log.Errorf("processNewExternalThread: failed to reindex page %s: %s", tid.String(), err.Error())
+		}
+	}()
+
 	return nil
+
 }
 
 type threadRecord struct {
@@ -238,19 +288,15 @@ func (a *Anytype) addMissingThreadsFromCollection() error {
 		}
 
 		if _, err = a.ThreadsNet().GetThread(context.Background(), tid); err != nil && errors.Is(err, logstore.ErrThreadNotFound) {
+			missingThreadsAdded++
 			go func() {
-				err = a.processNewExternalThread(tid, ti)
-				if err != nil {
-					log.Errorf("addMissingThreadsFromCollection processNewExternalThread failed to add %s: %s", ti.ID, err.Error())
-					return
-				}
-				missingThreadsAdded++
+				a.processNewExternalThreadUntilSuccess(tid, ti)
 			}()
 		}
 	}
 
 	if missingThreadsAdded > 0 {
-		log.Errorf("addMissingThreadsFromCollection: added %d missing threads", missingThreadsAdded)
+		log.Errorf("addMissingThreadsFromCollection: adding %d missing threads in background...", missingThreadsAdded)
 	}
 	return nil
 }
@@ -259,6 +305,15 @@ func (a *Anytype) addMissingReplicators() error {
 	threadsIds, err := a.ThreadsNet().Logstore().Threads()
 	if err != nil {
 		return fmt.Errorf("failed to list threads: %s", err.Error())
+	}
+
+	if a.opts.CafeP2PAddr == nil {
+		return nil
+	}
+
+	cafeP2PAddr, err := a.opts.CafeP2PAddr.ValueForProtocol(ma.P_P2P)
+	if err != nil {
+		return err
 	}
 
 	for _, threadId := range threadsIds {
@@ -271,7 +326,7 @@ func (a *Anytype) addMissingReplicators() error {
 		for _, addr := range thrd.Addrs {
 			p2paddr, err := addr.ValueForProtocol(ma.P_P2P)
 			if err == nil {
-				if p2paddr == "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw" {
+				if p2paddr == cafeP2PAddr {
 					exists = true
 					break
 				}
@@ -279,9 +334,15 @@ func (a *Anytype) addMissingReplicators() error {
 		}
 
 		if !exists {
+			threadComp, err := ma.NewComponent(thread.Name, threadId.String())
+			if err != nil {
+				return err
+			}
+
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 			defer cancel()
-			_, err := a.ThreadsNet().AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr)
+
+			_, err = a.ThreadsNet().AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr.Encapsulate(threadComp))
 			if err != nil {
 				log.Errorf("failed to add missing replicator for %s: %s", thrd.ID, err.Error())
 			} else {
@@ -410,10 +471,7 @@ func (a *Anytype) listenExternalNewThreads() error {
 					}
 
 					go func() {
-						err := a.processNewExternalThread(tid, ti)
-						if err != nil {
-							log.Errorf("processNewExternalThread failed: %s", err.Error())
-						}
+						a.processNewExternalThreadUntilSuccess(tid, ti)
 					}()
 				}
 			}
