@@ -24,9 +24,31 @@ import (
 
 const nodeConnectionTimeout = time.Second * 15
 
-func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
+// processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
+// supposed to be run in goroutine
+func (a *Anytype) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) {
 	log.Infof("got new thread %s, addrs: %+v", ti.ID.String(), ti.Addrs)
 
+	var attempt int
+	for {
+		attempt++
+		err := a.processNewExternalThread(tid, ti)
+		if err != nil {
+			log.Errorf("processNewExternalThread %s failed after %d attempt: %s", tid.String(), err.Error())
+		} else {
+			log.Debugf("processNewExternalThread %s succeed after %d attempt", tid.String(), err.Error())
+			return
+		}
+		select {
+		case <-a.shutdownStartsCh:
+			return
+		case <-time.After(time.Duration(5*attempt) * time.Second):
+			continue
+		}
+	}
+}
+
+func (a *Anytype) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
 		return fmt.Errorf("failed to parse thread keys %s: %s", tid.String(), err.Error())
@@ -266,19 +288,15 @@ func (a *Anytype) addMissingThreadsFromCollection() error {
 		}
 
 		if _, err = a.ThreadsNet().GetThread(context.Background(), tid); err != nil && errors.Is(err, logstore.ErrThreadNotFound) {
+			missingThreadsAdded++
 			go func() {
-				err = a.processNewExternalThread(tid, ti)
-				if err != nil {
-					log.Errorf("addMissingThreadsFromCollection processNewExternalThread failed to add %s: %s", ti.ID, err.Error())
-					return
-				}
-				missingThreadsAdded++
+				a.processNewExternalThreadUntilSuccess(tid, ti)
 			}()
 		}
 	}
 
 	if missingThreadsAdded > 0 {
-		log.Errorf("addMissingThreadsFromCollection: added %d missing threads", missingThreadsAdded)
+		log.Errorf("addMissingThreadsFromCollection: adding %d missing threads in background...", missingThreadsAdded)
 	}
 	return nil
 }
@@ -453,10 +471,7 @@ func (a *Anytype) listenExternalNewThreads() error {
 					}
 
 					go func() {
-						err := a.processNewExternalThread(tid, ti)
-						if err != nil {
-							log.Errorf("processNewExternalThread failed: %s", err.Error())
-						}
+						a.processNewExternalThreadUntilSuccess(tid, ti)
 					}()
 				}
 			}
