@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/wallet"
 	"github.com/anytypeio/go-slip21"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	ma "github.com/multiformats/go-multiaddr"
 	db2 "github.com/textileio/go-threads/core/db"
 	corenet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
@@ -252,8 +253,15 @@ func (a *Anytype) syncThread(thrd thread.Info, mustConnectToCafe bool, pullAfter
 	go func() {
 		attempts := 0
 		defer close(replicatorAddFinished)
+		threadComp, err := ma.NewComponent(thread.Name, thrd.ID.String())
+		if err != nil {
+			log.Errorf("syncThread %s: failed to get threadComp for %s: %s", thrd.ID.String(), err.Error())
+			return
+		}
+
 		for _, addr := range thrd.Addrs {
-			if addr.Equal(a.opts.CafeP2PAddr) {
+			peerAddr := addr.Decapsulate(threadComp)
+			if peerAddr.Equal(a.opts.CafeP2PAddr) {
 				log.Warnf("syncThread %s already has replicator")
 				return
 			}
