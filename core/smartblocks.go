@@ -304,20 +304,22 @@ func (a *Anytype) newBlockThread(blockType smartblock.SmartBlockType) (thread.In
 		go func() {
 			defer a.replicationWG.Done()
 
+			attempt := 0
 			// todo: rewrite to job queue in badger
 			for {
+				attempt++
 				p, err := a.t.AddReplicator(context.TODO(), thrd.ID, a.opts.CafeP2PAddr)
 				if err != nil {
-					log.Errorf("failed to add log replicator: %s", err.Error())
+					log.Errorf("failed to add log replicator after %d attempt: %s", attempt, err.Error())
 					select {
-					case <-time.After(time.Second * 30):
+					case <-time.After(time.Second * 3 * time.Duration(attempt)):
 					case <-a.shutdownStartsCh:
 						return
 					}
 					continue
 				}
 
-				log.With("thread", thrd.ID.String()).Infof("added log replicator: %s", p.String())
+				log.With("thread", thrd.ID.String()).Infof("added log replicator after %d attempt: %s", attempt, p.String())
 				return
 			}
 		}()
