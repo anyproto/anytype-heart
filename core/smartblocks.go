@@ -150,11 +150,12 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 		}
 
 		a.db = d
+
+		a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
 		err = a.listenExternalNewThreads()
 		if err != nil {
 			return fmt.Errorf("failed to listen external new threads: %w", err)
 		}
-		a.threadsCollection = a.db.GetCollection(threadInfoCollectionName)
 
 		if a.threadsCollection == nil {
 			a.threadsCollection, err = a.db.NewCollection(threadInfoCollection)
@@ -162,6 +163,18 @@ func (a *Anytype) createPredefinedBlocksIfNotExist(accountSelect bool) error {
 				return err
 			}
 		}
+
+		err = a.handleAllMissingDbRecords(account.ID.String())
+		if err != nil {
+			return fmt.Errorf("handleAllMissingDbRecords failed: %w", err)
+		}
+
+		go func() {
+			err = a.addMissingReplicators()
+			if err != nil {
+				log.Errorf("addMissingReplicators: %s", err.Error())
+			}
+		}()
 	}
 
 	accountThreadPullDone := make(chan struct{})

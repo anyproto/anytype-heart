@@ -181,25 +181,19 @@ func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
 }
 
 func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
-	val, err := txn.Get(pagesDetailsBase.ChildString(id))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get last state: %w", err)
+	var page = &model.PageInfo{Id: id}
+	details, err := getDetails(txn, id)
+	if err != nil && err != ds.ErrNotFound {
+		return nil, fmt.Errorf("failed to get details: %w", err)
+	} else if details != nil {
+		page.Details = details.Details
 	}
 
-	val, err = txn.Get(pagesSnippetBase.ChildString(id))
+	val, err := txn.Get(pagesSnippetBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
-	}
-
-	var state model.State
-	err = proto.Unmarshal(val, &state)
-	if err != nil {
-		return nil, err
-	}
-
-	val, err = txn.Get(pagesSnippetBase.ChildString(id))
-	if err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get snippet: %w", err)
+	} else if val != nil {
+		page.Snippet = string(val)
 	}
 
 	inboundResults, err := txn.Query(query.Query{
@@ -215,8 +209,9 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
+	page.HasInboundLinks = inboundLinks == 1
 
-	return &model.PageInfo{Id: id, Snippet: string(val), HasInboundLinks: inboundLinks == 1}, nil
+	return page, nil
 }
 
 func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
