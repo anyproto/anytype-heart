@@ -36,7 +36,7 @@ func (a *Anytype) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 		if err != nil {
 			log.Errorf("processNewExternalThread %s failed after %d attempt: %s", tid.String(), err.Error())
 		} else {
-			log.Debugf("processNewExternalThread %s succeed after %d attempt", tid.String(), err.Error())
+			log.Debugf("processNewExternalThread %s succeed after %d attempt", tid.String())
 			return
 		}
 		select {
