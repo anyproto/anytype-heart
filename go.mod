@@ -30,4 +30,4 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200804142156-037240f28ec0
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200805204901-9c9a659b6cd9
