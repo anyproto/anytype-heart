@@ -2,10 +2,14 @@ package core
 
 import (
 	"sort"
+	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-library/structs"
+	"github.com/gogo/protobuf/types"
+	ds "github.com/ipfs/go-datastore"
 )
 
 func (a *Anytype) PageStore() localstore.PageStore {
@@ -27,7 +31,9 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 	var idsS = make([]string, 0, len(ids))
 	for _, id := range ids {
 		t, _ := smartblock.SmartBlockTypeFromThreadID(id)
-		if t != smartblock.SmartBlockTypePage {
+		if t != smartblock.SmartBlockTypePage &&
+			t != smartblock.SmartBlockTypeProfilePage &&
+			t != smartblock.SmartBlockTypeHome {
 			continue
 		}
 
@@ -50,11 +56,25 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 		}
 
 		// then sort by Last Opened date
-		if pages[i].LastOpened > pages[j].LastOpened {
+		var lastOpenedI, lastOpenedJ int64
+
+		if pages[i].Details != nil {
+			if pages[i].Details.Fields["lastOpened"] != nil {
+				lastOpenedI = int64(pages[i].Details.Fields["lastOpened"].GetNumberValue())
+			}
+		}
+
+		if pages[j].Details != nil {
+			if pages[j].Details.Fields["lastOpened"] != nil {
+				lastOpenedJ = int64(pages[j].Details.Fields["lastOpened"].GetNumberValue())
+			}
+		}
+
+		if lastOpenedI > lastOpenedJ {
 			return true
 		}
 
-		if pages[i].LastOpened < pages[j].LastOpened {
+		if lastOpenedI < lastOpenedJ {
 			return false
 		}
 
@@ -66,5 +86,20 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 
 // deprecated, to be removed
 func (a *Anytype) PageUpdateLastOpened(id string) error {
-	return a.localStore.Pages.UpdateLastOpened(id)
+	// lock here for the concurrent details changes
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	details, err := a.localStore.Pages.GetDetails(id)
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+
+	if details == nil || details.Details == nil || details.Details.Fields == nil {
+		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
+	}
+
+	details.Details.Fields["lastOpened"] = structs.Float64(float64(time.Now().Unix()))
+
+	return a.localStore.Pages.UpdateDetails(id, details)
 }

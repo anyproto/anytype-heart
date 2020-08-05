@@ -1,11 +1,9 @@
 package localstore
 
 import (
-	"encoding/binary"
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/database"
@@ -19,10 +17,11 @@ import (
 
 var (
 	// PageInfo is stored in db key pattern:
-	pagesPrefix         = "pages"
-	pagesDetailsBase    = ds.NewKey("/" + pagesPrefix + "/details")
-	pagesSnippetBase    = ds.NewKey("/" + pagesPrefix + "/snippet")
-	pagesLastOpenedBase = ds.NewKey("/" + pagesPrefix + "/lastopened")
+	pagesPrefix           = "pages"
+	pagesDetailsBase      = ds.NewKey("/" + pagesPrefix + "/details")
+	pagesSnippetBase      = ds.NewKey("/" + pagesPrefix + "/snippet")
+	pagesLastOpenedBase   = ds.NewKey("/" + pagesPrefix + "/lastopened")   // deprecated
+	pagesLastModifiedBase = ds.NewKey("/" + pagesPrefix + "/lastmodified") // deprecated
 
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
@@ -65,7 +64,7 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 	}
 	defer txn.Discard()
 
-	dsq := q.DSQuery()
+	dsq := q.DSQuery(m.Schema())
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
@@ -100,12 +99,11 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 		key := ds.NewKey(entry.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
-		lastOpenedTS, _ := getLastOpened(txn, id)
+
 		if details.Details == nil || details.Details.Fields == nil {
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		}
 
-		details.Details.Fields["lastOpened"] = pb.ToValue(lastOpenedTS)
 		details.Details.Fields["id"] = pb.ToValue(id)
 
 		results = append(results, database.Entry{Details: details.Details})
@@ -166,9 +164,9 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 	return txn.Commit()
 }
 
-func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
+func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
 	val, err := txn.Get(pagesDetailsBase.ChildString(id))
-	if err != nil {
+	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get details: %w", err)
 	}
 
@@ -179,15 +177,29 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 			return nil, err
 		}
 	}
+	return &details, nil
+}
+
+func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
+	val, err := txn.Get(pagesDetailsBase.ChildString(id))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get last state: %w", err)
+	}
 
 	val, err = txn.Get(pagesSnippetBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
-	lastOpened, err := getLastOpened(txn, id)
+	var state model.State
+	err = proto.Unmarshal(val, &state)
+	if err != nil {
+		return nil, err
+	}
+
+	val, err = txn.Get(pagesSnippetBase.ChildString(id))
 	if err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get last opened: %w", err)
+		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
 	inboundResults, err := txn.Query(query.Query{
@@ -204,7 +216,7 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
-	return &model.PageInfo{Id: id, Details: details.Details, Snippet: string(val), LastOpened: lastOpened, HasInboundLinks: inboundLinks == 1}, nil
+	return &model.PageInfo{Id: id, Snippet: string(val), HasInboundLinks: inboundLinks == 1}, nil
 }
 
 func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
@@ -504,6 +516,21 @@ func (m *dsPageStore) updateDetails(txn ds.Txn, id string, details *model.PageDe
 	return nil
 }
 
+func (m *dsPageStore) UpdateDetails(id string, details *model.PageDetails) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	err = m.updateDetails(txn, id, details)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
 func (m *dsPageStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
 
@@ -581,33 +608,14 @@ func (m *dsPageStore) Delete(id string) error {
 	return txn.Commit()
 }
 
-func (m *dsPageStore) UpdateLastOpened(id string) error {
-	txn, err := m.ds.NewTransaction(false)
+func (m *dsPageStore) GetDetails(id string) (*model.PageDetails, error) {
+	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	var b = make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(time.Now().Unix()))
-
-	err = txn.Put(pagesLastOpenedBase.ChildString(id), b)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func getLastOpened(txn ds.Txn, id string) (int64, error) {
-	b, err := txn.Get(pagesLastOpenedBase.ChildString(id))
-	if err != nil {
-		return 0, err
-	}
-
-	ts := binary.LittleEndian.Uint64(b)
-
-	return int64(ts), nil
+	return getDetails(txn, id)
 }
 
 func NewPageStore(ds ds.TxnDatastore) PageStore {

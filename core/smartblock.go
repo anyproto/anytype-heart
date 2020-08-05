@@ -471,6 +471,10 @@ func getSnippet(snap *smartBlockSnapshot) string {
 }
 
 func (block *smartBlock) indexSnapshot(snap *smartBlockSnapshot) error {
+	// lock here for the concurrent details changes
+	block.node.lock.Lock()
+	defer block.node.lock.Unlock()
+
 	if block.Type() == smartblock.SmartBlockTypeArchive {
 		return nil
 	}

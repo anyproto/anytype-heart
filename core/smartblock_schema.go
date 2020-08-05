@@ -1,8 +1,6 @@
 package core
 
 import (
-	"strings"
-
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/schema"
 	"github.com/santhosh-tekuri/jsonschema/v2"
@@ -17,32 +15,6 @@ type SmartBlockSchema interface {
 }
 
 type smartBlockBaseSchema smartblock.SmartBlockType
-
-var jsonSchemaCompiler *jsonschema.Compiler
-
-func init() {
-	jsonSchemaCompiler = jsonschema.NewCompiler()
-	jsonSchemaCompiler.ExtractAnnotations = true
-
-	// compile page first because others depends on it
-	var keys = []string{"https://anytype.io/schemas/relation", "https://anytype.io/schemas/page"}
-loop:
-	for schemaURL, _ := range schema.SchemaByURL {
-		for _, key := range keys {
-			if schemaURL == key {
-				continue loop
-			}
-		}
-		keys = append(keys, schemaURL)
-	}
-
-	for _, schemaURL := range keys {
-		err := jsonSchemaCompiler.AddResource(schemaURL, strings.NewReader(schema.SchemaByURL[schemaURL]))
-		if err != nil {
-			log.Fatalf("failed to compile %s: %s", schemaURL, err.Error())
-		}
-	}
-}
 
 func (s smartBlockBaseSchema) URL() string {
 	switch smartblock.SmartBlockType(s) {
