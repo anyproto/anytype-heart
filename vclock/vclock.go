@@ -54,7 +54,7 @@ func (vc VClock) IsNil() bool {
 //Merge takes the max of all clock values in other and updates the
 //values of the callee
 func (vc VClock) Merge(other VClock) {
-	if vc.m == nil {
+	if vc.IsNil() {
 		// Undef is used only for indicating of non-set vclock
 		// need to use New() instead
 		log.Errorf("can't merge into undef")
@@ -74,7 +74,7 @@ func (vc VClock) Merge(other VClock) {
 
 //MarshalBinary returns an encoded vector clock
 func (vc VClock) MarshalBinary() ([]byte, error) {
-	if vc.m == nil {
+	if vc.IsNil() {
 		// vclock is Undef
 		return []byte{}, nil
 	}
@@ -101,7 +101,7 @@ func UnmarshalBinary(data []byte) (vc VClock, err error) {
 }
 
 func (vc VClock) String() string {
-	if vc.m == nil {
+	if vc.IsNil() {
 		// vclock is Undef
 		return "{}"
 	}
@@ -157,6 +157,10 @@ func (vc VClock) Compare(other VClock, cond Condition) bool {
 		otherIs = Equal
 	}
 
+	if other.IsNil() || vc.IsNil() {
+		return cond&otherIs != 0
+	}
+
 	//Compare matching items
 	for id := range other.m {
 		if _, found := vc.m[id]; found {
@@ -195,6 +199,10 @@ func (vc VClock) Compare(other VClock, cond Condition) bool {
 }
 
 func (vc VClock) Copy() VClock {
+	if vc.IsNil() {
+		return Undef
+	}
+
 	vc.mutex.RLock()
 	defer vc.mutex.RUnlock()
 
@@ -206,6 +214,11 @@ func (vc VClock) Copy() VClock {
 }
 
 func (vc VClock) Increment(s string) {
+	if vc.IsNil() {
+		log.Errorf("trying to increment Undef vclock")
+		return
+	}
+
 	vc.mutex.RLock()
 	defer vc.mutex.RUnlock()
 
@@ -213,6 +226,10 @@ func (vc VClock) Increment(s string) {
 }
 
 func (vc VClock) Map() map[string]uint64 {
+	if vc.IsNil() {
+		return make(map[string]uint64, 0)
+	}
+
 	vc.mutex.RLock()
 	defer vc.mutex.RUnlock()
 

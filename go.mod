@@ -44,4 +44,4 @@ require (
 	google.golang.org/grpc v1.31.0-dev.0.20200627230533-68098483a7af
 )
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200720141612-1b2582b69aaf
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200724145834-51a8e3b47d27
