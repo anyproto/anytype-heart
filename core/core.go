@@ -337,7 +337,7 @@ func (a *Anytype) Start() error {
 func (a *Anytype) start() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
-	litenet.WithNetGRPCOptions()
+
 	if a.opts.NetBootstraper != nil {
 		a.t = a.opts.NetBootstraper
 	} else {
