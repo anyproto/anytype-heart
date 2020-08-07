@@ -539,7 +539,7 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 			continue
 		}
 
-		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
+		children := s.AllDescendantIds(blockId, blocks)
 		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,
@@ -1072,18 +1072,22 @@ func (s *service) cleanupBlocks() (closed bool) {
 	return s.closed
 }
 
-func (s *service) fillSlice(id string, ids []string, allBlocks map[string]*model.Block) []string {
-	ids = append(ids, id)
-	for _, chId := range allBlocks[id].ChildrenIds {
-		ids = s.fillSlice(chId, ids, allBlocks)
-	}
-	return ids
-}
+func (s *service) AllDescendantIds(rootBlockId string, allBlocks map[string]*model.Block) []string {
+	var (
+		// traversal queue
+		queue = []string{rootBlockId}
+		// traversed IDs collected (including root)
+		traversed = []string{rootBlockId}
+	)
 
-func (s *service) AllDescendantIds(targetBlockIds []string, allBlocks map[string]*model.Block) (outputIds []string) {
-	for _, tId := range targetBlockIds {
-		outputIds = s.fillSlice(tId, outputIds, allBlocks)
+	for len(queue) > 0 {
+		next := queue[0]
+		queue = queue[1:]
+
+		chIDs := allBlocks[next].ChildrenIds
+		traversed = append(traversed, chIDs...)
+		queue = append(queue, chIDs...)
 	}
 
-	return outputIds
+	return traversed
 }
