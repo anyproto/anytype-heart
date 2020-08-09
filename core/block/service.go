@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -29,8 +30,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -51,17 +50,6 @@ var (
 	blockCacheTTL       = time.Minute
 	blockCleanupTimeout = time.Second * 30
 )
-
-var (
-	// quick fix for limiting file upload goroutines
-	uploadFilesLimiter = make(chan struct{}, 8)
-)
-
-func init() {
-	for i := 0; i < cap(uploadFilesLimiter); i++ {
-		uploadFilesLimiter <- struct{}{}
-	}
-}
 
 type Service interface {
 	OpenBlock(ctx *state.Context, id string) error
@@ -758,8 +746,6 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 }
 
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
-	<-uploadFilesLimiter
-	defer func() { uploadFilesLimiter <- struct{}{} }()
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url, false)
 		return err
@@ -767,8 +753,6 @@ func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadReque
 }
 
 func (s *service) UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
-	<-uploadFilesLimiter
-	defer func() { uploadFilesLimiter <- struct{}{} }()
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url, true)
 		return err
@@ -784,22 +768,20 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 }
 
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
-	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
-	var opts []files.AddOption
+	upl := file.NewUploader(s)
 	if req.DisableEncryption {
-		opts = append(opts, files.WithPlaintext(true))
+		upl.AddOptions(files.WithPlaintext(true))
 	}
-	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
-		f(tempFile)
-	}, opts...)
-	if err = u.DoType(req.LocalPath, req.Url, req.Type); err != nil {
-		return
+	if req.Type != model.BlockContentFile_None {
+		upl.SetType(req.Type)
+	} else {
+		upl.AutoType(true)
 	}
-	result := tempFile.Model().GetFile()
-	if result.State != model.BlockContentFile_Done {
-		return "", fmt.Errorf("unexpected upload error")
+	res := upl.SetFile(req.LocalPath).Upload(context.TODO())
+	if res.Err != nil {
+		return "", res.Err
 	}
-	return result.Hash, nil
+	return res.Hash, nil
 }
 
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {

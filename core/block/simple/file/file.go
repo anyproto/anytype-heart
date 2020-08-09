@@ -2,11 +2,9 @@ package file
 
 import (
 	"fmt"
-	"strings"
+	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -30,10 +28,14 @@ func NewFile(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	simple.FileHashes
-	Upload(stor anytype.Service, updater Updater, localPath, url string, sync bool) (err error)
-	SetFileData(hash string, meta core.FileMeta)
-	SetImage(hash, name string)
-	SetState(state model.BlockContentFileState)
+	SetHash(hash string) Block
+	SetName(name string) Block
+	SetState(state model.BlockContentFileState) Block
+	SetType(tp model.BlockContentFileType) Block
+	SetSize(size int64) Block
+	SetMIME(mime string) Block
+	SetTime(tm time.Time) Block
+	SetModel(m *model.BlockContentFile) Block
 	ApplyEvent(e *pb.EventBlockSetFile) error
 }
 
@@ -46,34 +48,50 @@ type File struct {
 	content *model.BlockContentFile
 }
 
-func (f *File) Upload(stor anytype.Service, updater Updater, localPath, url string, isSync bool) (err error) {
-	if f.content.State != model.BlockContentFile_Empty && f.content.State != model.BlockContentFile_Error {
-		return fmt.Errorf("block is not empty")
-	}
-	f.content.State = model.BlockContentFile_Uploading
-	id := f.Id
-	up := &uploader{
-		updateFile: func(apply func(file Block)) {
-			if e := updater.UpdateFileBlock(id, apply); e != nil {
-				log.Warnf("can't update file block: %v", e)
-			}
-		},
-		storage: stor,
-	}
-	if f.content.Type == model.BlockContentFile_Image {
-		if !isSync {
-			go up.DoImage(localPath, url)
-		} else {
-			up.DoImage(localPath, url)
-		}
-	} else {
-		if !isSync {
-			go up.Do(localPath, url)
-		} else {
-			up.Do(localPath, url)
-		}
-	}
-	return
+func (f *File) SetHash(hash string) Block {
+	f.content.Hash = hash
+	return f
+}
+
+func (f *File) SetName(name string) Block {
+	f.content.Name = name
+	return f
+}
+
+func (f *File) SetState(state model.BlockContentFileState) Block {
+	f.content.State = state
+	return f
+}
+
+func (f *File) SetType(tp model.BlockContentFileType) Block {
+	f.content.Type = tp
+	return f
+}
+
+func (f *File) SetSize(size int64) Block {
+	f.content.Size_ = size
+	return f
+}
+
+func (f *File) SetMIME(mime string) Block {
+	f.content.Mime = mime
+	return f
+}
+
+func (f *File) SetTime(tm time.Time) Block {
+	f.content.AddedAt = tm.Unix()
+	return f
+}
+
+func (f *File) SetModel(m *model.BlockContentFile) Block {
+	f.content.Hash = m.Hash
+	f.content.Type = m.Type
+	f.content.Name = m.Name
+	f.content.AddedAt = m.AddedAt
+	f.content.Mime = m.Mime
+	f.content.Size_ = m.Size_
+	f.content.State = m.State
+	return f
 }
 
 func (f *File) Copy() simple.Block {
@@ -82,31 +100,6 @@ func (f *File) Copy() simple.Block {
 		Base:    base.NewBase(copy).(*base.Base),
 		content: copy.GetFile(),
 	}
-}
-
-func (f *File) SetState(state model.BlockContentFileState) {
-	f.content.State = state
-}
-
-func (f *File) SetFileData(hash string, meta core.FileMeta) {
-	f.content.Size_ = meta.Size
-	isVideoCT := strings.HasPrefix(meta.Media, "video/")
-	if f.content.Type == model.BlockContentFile_Video && !isVideoCT {
-		f.content.Type = model.BlockContentFile_File
-	} else if f.content.Type == model.BlockContentFile_None {
-		f.content.Type = model.BlockContentFile_File
-	}
-	f.content.State = model.BlockContentFile_Done
-	f.content.Name = meta.Name
-	f.content.Hash = hash
-	f.content.Mime = meta.Media
-}
-
-func (f *File) SetImage(hash, name string) {
-	f.content.Type = model.BlockContentFile_Image
-	f.content.State = model.BlockContentFile_Done
-	f.content.Name = name
-	f.content.Hash = hash
 }
 
 func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {

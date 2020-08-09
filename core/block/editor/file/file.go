@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
@@ -57,7 +56,7 @@ type sfile struct {
 
 func (sf *sfile) Upload(ctx *state.Context, id, localPath, url string, isSync bool) (err error) {
 	s := sf.NewStateCtx(ctx)
-	if err = sf.upload(s, id, localPath, url, isSync); err != nil {
+	if err = sf.upload(s, id, localPath, url, nil, isSync); err != nil {
 		return
 	}
 	return sf.Apply(s)
@@ -77,7 +76,7 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 	if err = s.InsertTo(req.TargetId, req.Position, newId); err != nil {
 		return
 	}
-	if err = sf.upload(s, newId, req.LocalPath, req.Url, false); err != nil {
+	if err = sf.upload(s, newId, req.LocalPath, req.Url, nil, false); err != nil {
 		return
 	}
 	if err = sf.Apply(s); err != nil {
@@ -86,22 +85,33 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 	return
 }
 
-func (sf *sfile) upload(s *state.State, id, localPath, url string, isSync bool) (err error) {
-	url, _ = uri.ProcessURI(url)
+func (sf *sfile) upload(s *state.State, id, localPath, url string, bytes []byte, isSync bool) (err error) {
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
 		return fmt.Errorf("not a file block")
 	}
-	if err = f.Upload(sf.Anytype(), &updater{
-		smartId: sf.Id(),
-		source:  sf.fileSource,
-		isSync:  isSync,
-		f:       f,
-	}, localPath, url, isSync); err != nil {
-		return
+	upl := sf.newUploader().SetBlock(f)
+	if localPath != "" {
+		upl.SetFile(localPath)
+	} else if url != "" {
+		upl.SetUrl(url)
+	} else if len(bytes) > 0 {
+		upl.SetBytes(bytes)
+	}
+	if isSync {
+		return upl.Upload(context.TODO()).Err
+	} else {
+		upl.AsyncUpdates(sf.Id()).UploadAsync(context.TODO())
 	}
 	return
+}
+
+func (sf *sfile) newUploader() Uploader {
+	return &uploader{
+		service: sf.fileSource,
+		anytype: sf.Anytype(),
+	}
 }
 
 func (sf *sfile) UpdateFile(id string, apply func(b file.Block) error) (err error) {
@@ -115,29 +125,6 @@ func (sf *sfile) UpdateFile(id string, apply func(b file.Block) error) (err erro
 		return
 	}
 	return sf.Apply(s, smartblock.NoHistory)
-}
-
-type updater struct {
-	smartId string
-	source  FileSource
-	f       file.Block
-	isSync  bool
-	mu      sync.Mutex
-}
-
-func (u *updater) UpdateFileBlock(id string, apply func(f file.Block)) error {
-	if u.isSync {
-		u.mu.Lock()
-		defer u.mu.Unlock()
-		apply(u.f)
-		return nil
-	}
-	return u.source.DoFile(u.smartId, func(f File) error {
-		return f.UpdateFile(id, func(b file.Block) error {
-			apply(b)
-			return nil
-		})
-	})
 }
 
 func (sf *sfile) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
@@ -214,13 +201,7 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 			f.SetState(model.BlockContentFile_Error)
 			return nil
 		}
-		fc := f.Model().GetFile()
-		fc.Type = info.file.Type
-		fc.Mime = info.file.Mime
-		fc.Hash = info.file.Hash
-		fc.Name = info.file.Name
-		fc.State = info.file.State
-		fc.Size_ = info.file.Size_
+		f.SetModel(info.file)
 		return nil
 	})
 }
@@ -243,6 +224,7 @@ type dropFileInfo struct {
 type dropFilesHandler interface {
 	dropFilesCreateStructure(targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error)
 	dropFilesSetInfo(info dropFileInfo) (err error)
+	newUploader() Uploader
 }
 
 type dropFilesProcess struct {
@@ -461,17 +443,16 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 }
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
-	var tempFile = file.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(file.Block)
-	u := file.NewUploader(dp.s.Anytype(), func(f func(file file.Block)) {
-		f(tempFile)
-	})
-	u.DoAuto(f.path)
-	fc := tempFile.Model().GetFile()
-	if fc.State != model.BlockContentFile_Done {
+	upl := &uploader{
+		service: dp.s,
+		anytype: dp.s.Anytype(),
+	}
+	res := upl.SetName(f.name).AutoType(true).SetFile(f.path).Upload(context.TODO())
+	if res.Err != nil {
 		f.err = fmt.Errorf("upload error")
 		return
 	}
-	f.file = fc
+	f.file = res.ToBlock().Model().GetFile()
 	return
 }
 

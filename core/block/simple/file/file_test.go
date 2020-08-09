@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -29,18 +28,8 @@ func TestFile_Diff(t *testing.T) {
 		b1 := testBlock()
 		b2 := testBlock()
 		tm := time.Now()
-		b1.SetFileData("1", core.FileMeta{
-			Media: "2",
-			Name:  "3",
-			Size:  4,
-			Added: tm,
-		})
-		b2.SetFileData("1", core.FileMeta{
-			Media: "2",
-			Name:  "3",
-			Size:  4,
-			Added: tm,
-		})
+		b1.SetHash("1").SetMIME("2").SetName("3").SetSize(4).SetTime(tm)
+		b2.SetHash("1").SetMIME("2").SetName("3").SetSize(4).SetTime(tm)
 		d, err := b1.Diff(b2)
 		require.NoError(t, err)
 		assert.Len(t, d, 0)
@@ -58,12 +47,7 @@ func TestFile_Diff(t *testing.T) {
 		b2 := testBlock()
 
 		b2.SetState(model.BlockContentFile_Done)
-		b2.SetFileData("hash", core.FileMeta{
-			Media: "video/mpeg",
-			Name:  "image.mpg",
-			Size:  3,
-			Added: time.Now(),
-		})
+		b2.SetHash("hash").SetMIME("video/mpeg").SetName("image.mpg").SetSize(3).SetTime(time.Now()).SetType(model.BlockContentFile_Video)
 
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
