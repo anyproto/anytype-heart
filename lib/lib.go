@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -18,6 +19,7 @@ var log = logging.Logger("anytype-mw")
 var mw = core.New()
 
 func init() {
+	fmt.Printf("mw jsaddon: %s\n", core.GetVersionDescription())
 	registerClientCommandsHandler(mw)
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {

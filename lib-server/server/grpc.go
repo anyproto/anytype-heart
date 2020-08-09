@@ -33,6 +33,7 @@ func main() {
 	var addr string
 	var webaddr string
 
+	fmt.Printf("mw grpc: %s\n", core.GetVersionDescription())
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
 		if len(os.Args) > 2 {
