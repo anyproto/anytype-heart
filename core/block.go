@@ -191,7 +191,7 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 	var textSlot, htmlSlot string
 	var anySlot []*model.Block
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		textSlot, htmlSlot, anySlot, err = bs.Copy(*req, mw.getImages(req.Blocks))
+		textSlot, htmlSlot, anySlot, err = bs.Copy(*req)
 		return
 	})
 	if err != nil {
@@ -199,22 +199,6 @@ func (mw *Middleware) BlockCopy(req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyRes
 	}
 
 	return response(pb.RpcBlockCopyResponseError_NULL, textSlot, htmlSlot, anySlot, nil)
-}
-
-func (mw *Middleware) getImages(blocks []*model.Block) map[string][]byte {
-	images := make(map[string][]byte)
-	for _, b := range blocks {
-		if file := b.GetFile(); file != nil && file.State == model.BlockContentFile_Done {
-			getBlobReq := &pb.RpcIpfsImageGetBlobRequest{
-				Hash:      file.Hash,
-				WantWidth: 1024,
-			}
-			resp := mw.ImageGetBlob(getBlobReq)
-			images[file.Hash] = resp.Blob
-		}
-	}
-
-	return images
 }
 
 func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
@@ -276,7 +260,7 @@ func (mw *Middleware) BlockCut(req *pb.RpcBlockCutRequest) *pb.RpcBlockCutRespon
 		anySlot            []*model.Block
 	)
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		textSlot, htmlSlot, anySlot, err = bs.Cut(ctx, *req, mw.getImages(req.Blocks))
+		textSlot, htmlSlot, anySlot, err = bs.Cut(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -331,7 +315,7 @@ func (mw *Middleware) BlockExport(req *pb.RpcBlockExportRequest) *pb.RpcBlockExp
 	}
 	var path string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		path, err = bs.Export(*req, mw.getImages(req.Blocks))
+		path, err = bs.Export(*req)
 		return
 	})
 	if err != nil {

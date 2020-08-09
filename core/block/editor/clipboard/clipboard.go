@@ -17,8 +17,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
-	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
 	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/globalsign/mgo/bson"
 
@@ -34,10 +35,10 @@ var (
 )
 
 type Clipboard interface {
-	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
-	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
+	Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
 func NewClipboard(sb smartblock.SmartBlock, file file.File) Clipboard {
@@ -73,8 +74,7 @@ func (cb *clipboard) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blo
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 }
 
-func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
-	s := cb.NewState()
+func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	anySlot = req.Blocks
 	textSlot = ""
 	htmlSlot = ""
@@ -83,19 +83,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
-	var firstBlockSelectionLength int32
-	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && req.Blocks[0].GetText() != nil {
-		req.SelectedTextRange.To = int32(utf8.RuneCountInString(req.Blocks[0].GetText().Text))
-		firstBlockSelectionLength = req.SelectedTextRange.To
-	}
-
-	// in case it's the only one block selected and provided selection range is full or empty just return the block from the request
-	if len(req.Blocks) == 1 &&
-		(req.SelectedTextRange == nil ||
-			req.SelectedTextRange.From == req.SelectedTextRange.To ||
-			req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == firstBlockSelectionLength) {
-		return textSlot, htmlSlot, anySlot, nil
-	}
+	s := cb.blocksToState(req.Blocks)
 
 	var texts []string
 	for _, b := range req.Blocks {
@@ -109,7 +97,6 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 	}
 
 	firstBlock := s.Get(req.Blocks[0].Id)
-	conv := converter.New()
 
 	// scenario: rangeCopy
 	if firstBlockText, isText := firstBlock.(text.Block); isText &&
@@ -117,7 +104,6 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
 		len(req.Blocks) == 1 {
 		cutBlock, _, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
-
 		if err != nil {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
@@ -130,23 +116,22 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) 
 		}
 
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
-		anySlot = []*model.Block{cutBlock}
-		htmlSlot = conv.Convert(anySlot, images)
+		s.Set(simple.New(cutBlock))
+		htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
 		textSlot = cutBlock.GetText().Text
 
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
-	htmlSlot = conv.Convert(anySlot, images)
+	htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
 
 	return textSlot, htmlSlot, anySlot, nil
 }
 
-func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewStateCtx(ctx)
 
-	conv := converter.New()
 	textSlot = ""
 
 	if len(req.Blocks) == 0 || req.Blocks[0].Id == "" {
@@ -187,7 +172,9 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 
 		textSlot = cutBlock.GetText().Text
 		anySlot = []*model.Block{cutBlock}
-		htmlSlot = conv.Convert(anySlot, images)
+		cbs := cb.blocksToState(req.Blocks)
+		cbs.Set(simple.New(cutBlock))
+		htmlSlot = html.NewHTMLConverter(cb.Anytype(), cbs).Convert()
 
 		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
@@ -202,7 +189,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images m
 		ids = append(ids, b.Id)
 	}
 
-	htmlSlot = conv.Convert(req.Blocks, images)
+	htmlSlot = html.NewHTMLConverter(cb.Anytype(), cb.blocksToState(req.Blocks)).Convert()
 	anySlot = req.Blocks
 
 	for i, _ := range req.Blocks {
@@ -237,16 +224,14 @@ func (cb *clipboard) getImages(blocks map[string]*model.Block) (images map[strin
 	return images, nil
 }
 
-func (cb *clipboard) Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error) {
-
-	blocks := req.Blocks
-	conv := converter.New()
-	html := conv.Export(blocks, images)
+func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
+	s := cb.blocksToState(req.Blocks)
+	htmlData := html.NewHTMLConverter(cb.Anytype(), s).Export()
 
 	dir := os.TempDir()
 	fileName := "export-" + cb.Id() + ".html"
 	filePath := filepath.Join(dir, fileName)
-	err = ioutil.WriteFile(filePath, []byte(html), 0644)
+	err = ioutil.WriteFile(filePath, []byte(htmlData), 0644)
 
 	if err != nil {
 		return "", err
@@ -584,6 +569,24 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 	}
 
 	return blockIds, uploadArr, targetId, nil
+}
+
+func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
+	cbs = state.NewDoc("cbRoot", nil).(*state.State)
+	cbs.Add(simple.New(&model.Block{Id: "cbRoot"}))
+
+	var inChildrens, rootIds []string
+	for _, b := range blocks {
+		inChildrens = append(inChildrens, b.ChildrenIds...)
+	}
+	for _, b := range blocks {
+		if slice.FindPos(inChildrens, b.Id) == -1 {
+			rootIds = append(rootIds, b.Id)
+		}
+		cbs.Add(simple.New(b))
+	}
+	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
+	return
 }
 
 func (cb *clipboard) pasteFiles(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
