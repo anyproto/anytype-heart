@@ -102,17 +102,17 @@ func newFixture(t *testing.T) *uplFixture {
 		ctrl: gomock.NewController(t),
 	}
 	fx.anytype = testMock.NewMockService(fx.ctrl)
-	fx.fileSource = mockFile.NewMockFileSource(fx.ctrl)
-	fx.fileSource.EXPECT().Anytype().Return(fx.anytype).AnyTimes()
-	fx.Uploader = file.NewUploader(fx.fileSource)
+	fx.fileService = mockFile.NewMockBlockService(fx.ctrl)
+	fx.fileService.EXPECT().Anytype().Return(fx.anytype).AnyTimes()
+	fx.Uploader = file.NewUploader(fx.fileService)
 	return fx
 }
 
 type uplFixture struct {
 	file.Uploader
-	fileSource *mockFile.MockFileSource
-	anytype    *testMock.MockService
-	ctrl       *gomock.Controller
+	fileService *mockFile.MockBlockService
+	anytype     *testMock.MockService
+	ctrl        *gomock.Controller
 }
 
 func (fx *uplFixture) newImage(hash string) *testMock.MockImage {
