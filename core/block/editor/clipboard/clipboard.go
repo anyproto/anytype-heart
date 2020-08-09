@@ -12,6 +12,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/anymark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -39,20 +40,22 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
 }
 
-func NewClipboard(sb smartblock.SmartBlock) Clipboard {
-	return &clipboard{sb}
+func NewClipboard(sb smartblock.SmartBlock, file file.File) Clipboard {
+	return &clipboard{SmartBlock: sb, file: file}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
+	file file.File
 }
 
 func (cb *clipboard) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	caretPosition = -1
-
-	if len(req.AnySlot) > 0 {
+	if len(req.FileSlot) > 0 {
+		blockIds, err = cb.pasteFiles(ctx, req)
+		return
+	} else if len(req.AnySlot) > 0 {
 		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteAny(ctx, req)
-
 	} else if len(req.HtmlSlot) > 0 {
 		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteHtml(ctx, req)
 
@@ -581,4 +584,29 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 	}
 
 	return blockIds, uploadArr, targetId, nil
+}
+
+func (cb *clipboard) pasteFiles(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+	s := cb.NewStateCtx(ctx)
+	for _, fs := range req.FileSlot {
+		b := simple.New(&model.Block{
+			Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{
+					Name: fs.Name,
+				},
+			},
+		})
+		s.Add(b)
+		if err = cb.file.UploadState(s, b.Model().Id, file.FileSource{
+			Bytes: fs.Data,
+			Name:  fs.Name,
+		}, true); err != nil {
+			return
+		}
+		blockIds = append(blockIds, b.Model().Id)
+	}
+	if err = s.InsertTo(req.FocusedBlockId, model.Block_Bottom, blockIds...); err != nil {
+		return
+	}
+	return blockIds, cb.Apply(s)
 }
