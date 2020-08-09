@@ -747,14 +747,20 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url, false)
+		err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path: req.FilePath,
+			Url:  req.Url,
+		}, false)
 		return err
 	})
 }
 
 func (s *service) UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url, true)
+		err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path: req.FilePath,
+			Url:  req.Url,
+		}, true)
 		return err
 	})
 }

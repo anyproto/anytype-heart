@@ -29,11 +29,11 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, source FileSource) File {
+func NewFile(sb smartblock.SmartBlock, source BlockService) File {
 	return &sfile{SmartBlock: sb, fileSource: source}
 }
 
-type FileSource interface {
+type BlockService interface {
 	DoFile(id string, apply func(f File) error) error
 	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	ProcessAdd(p process.Process) (err error)
@@ -42,24 +42,36 @@ type FileSource interface {
 
 type File interface {
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
-	Upload(ctx *state.Context, id, localPath, url string, isSync bool) (err error)
+	Upload(ctx *state.Context, id string, source FileSource, isSync bool) (err error)
+	UploadState(s *state.State, id string, source FileSource, isSync bool) (err error)
 	UpdateFile(id string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 
 	dropFilesHandler
 }
 
-type sfile struct {
-	smartblock.SmartBlock
-	fileSource FileSource
+type FileSource struct {
+	Path  string
+	Url   string
+	Bytes []byte
+	Name  string
 }
 
-func (sf *sfile) Upload(ctx *state.Context, id, localPath, url string, isSync bool) (err error) {
+type sfile struct {
+	smartblock.SmartBlock
+	fileSource BlockService
+}
+
+func (sf *sfile) Upload(ctx *state.Context, id string, source FileSource, isSync bool) (err error) {
 	s := sf.NewStateCtx(ctx)
-	if err = sf.upload(s, id, localPath, url, nil, isSync); err != nil {
+	if err = sf.upload(s, id, source, isSync); err != nil {
 		return
 	}
 	return sf.Apply(s)
+}
+
+func (sf *sfile) UploadState(s *state.State, id string, source FileSource, isSync bool) (err error) {
+	return sf.upload(s, id, source, isSync)
 }
 
 func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
@@ -76,7 +88,10 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 	if err = s.InsertTo(req.TargetId, req.Position, newId); err != nil {
 		return
 	}
-	if err = sf.upload(s, newId, req.LocalPath, req.Url, nil, false); err != nil {
+	if err = sf.upload(s, newId, FileSource{
+		Path: req.LocalPath,
+		Url:  req.Url,
+	}, false); err != nil {
 		return
 	}
 	if err = sf.Apply(s); err != nil {
@@ -85,19 +100,19 @@ func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAn
 	return
 }
 
-func (sf *sfile) upload(s *state.State, id, localPath, url string, bytes []byte, isSync bool) (err error) {
+func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync bool) (err error) {
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
 		return fmt.Errorf("not a file block")
 	}
 	upl := sf.newUploader().SetBlock(f)
-	if localPath != "" {
-		upl.SetFile(localPath)
-	} else if url != "" {
-		upl.SetUrl(url)
-	} else if len(bytes) > 0 {
-		upl.SetBytes(bytes)
+	if source.Path != "" {
+		upl.SetFile(source.Path)
+	} else if source.Url != "" {
+		upl.SetUrl(source.Url)
+	} else if len(source.Bytes) > 0 {
+		upl.SetBytes(source.Bytes).SetName(source.Name)
 	}
 	if isSync {
 		return upl.Upload(context.TODO()).Err
@@ -229,7 +244,7 @@ type dropFilesHandler interface {
 
 type dropFilesProcess struct {
 	id          string
-	s           FileSource
+	s           BlockService
 	root        *dropFileEntry
 	total, done int64
 	cancel      chan struct{}

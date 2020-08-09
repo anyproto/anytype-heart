@@ -34,7 +34,7 @@ func init() {
 	}
 }
 
-func NewUploader(s FileSource) Uploader {
+func NewUploader(s BlockService) Uploader {
 	return &uploader{
 		service: s,
 		anytype: s.Anytype(),
@@ -87,7 +87,7 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
-	service      FileSource
+	service      BlockService
 	anytype      anytype.Service
 	block        file.Block
 	getReader    func(ctx context.Context) (*bufioClose, error)
