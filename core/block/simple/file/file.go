@@ -85,7 +85,7 @@ func (f *File) SetFileData(hash string, meta core.FileMeta) {
 	isVideoCT := strings.HasPrefix(meta.Media, "video/")
 	if f.content.Type == model.BlockContentFile_Video && !isVideoCT {
 		f.content.Type = model.BlockContentFile_File
-	} else if f.content.Type == model.BlockContentFile_None {
+	} else if f.content.Type == model.BlockContentFile_None || f.content.Type == model.BlockContentFile_Image {
 		f.content.Type = model.BlockContentFile_File
 	}
 	f.content.State = model.BlockContentFile_Done
