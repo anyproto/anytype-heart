@@ -2,8 +2,8 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,8 @@ func createAccount(t require.TestingT) Service {
 	fmt.Printf("account 0: %s\n", account.Address())
 
 	require.NoError(t, err)
-	rootPath := filepath.Join(os.TempDir(), "anytype")
+	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
+	require.NoError(t, err)
 
 	rawSeed, err := account.Raw()
 	require.NoError(t, err)

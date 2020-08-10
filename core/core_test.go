@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
+	"github.com/anytypeio/go-anytype-library/core/threads"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
@@ -187,7 +188,7 @@ func TestAnytype_PredefinedBlocks(t *testing.T) {
 	require.Len(t, s.PredefinedBlocks().Profile, 57)
 	require.Len(t, s.PredefinedBlocks().Archive, 57)
 
-	tid, err := ProfileThreadIDFromAccountAddress(s.Account())
+	tid, err := threads.ProfileThreadIDFromAccountAddress(s.Account())
 	require.NoError(t, err)
 
 	require.Equal(t, s.PredefinedBlocks().Profile, tid.String())

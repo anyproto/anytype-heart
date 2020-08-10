@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/cafe"
 	"github.com/anytypeio/go-anytype-library/core/config"
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
+	"github.com/anytypeio/go-anytype-library/core/threads"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/ipfs"
@@ -27,7 +28,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/textileio/go-threads/db"
+	"github.com/textileio/go-threads/core/thread"
 	net2 "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
 	"google.golang.org/grpc"
@@ -69,9 +70,8 @@ type Anytype struct {
 	cafe               cafe.Client
 	mdns               discovery.Service
 	localStore         localstore.LocalStore
-	predefinedBlockIds PredefinedBlockIds
-	db                 *db.DB
-	threadsCollection  *db.Collection
+	predefinedBlockIds threads.DerivedSmartblockIds
+	threadService      threads.Service
 
 	logLevels map[string]string
 
@@ -95,7 +95,7 @@ type Service interface {
 	BecameOnline(ch chan<- error)
 
 	InitPredefinedBlocks(mustSyncFromRemote bool) error
-	PredefinedBlocks() PredefinedBlockIds
+	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	DeleteBlock(blockId string) error
 	CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error)
@@ -140,14 +140,6 @@ func (a *Anytype) ThreadsNet() net.NetBoostrapper {
 	return a.t
 }
 
-func (a *Anytype) ThreadsCollection() *db.Collection {
-	return a.threadsCollection
-}
-
-func (a *Anytype) ThreadsDB() *db.DB {
-	return a.db
-}
-
 func (a *Anytype) Ipfs() ipfs.IPFS {
 	return a.t.GetIpfs()
 }
@@ -173,7 +165,7 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 }
 
 func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
-	thrd, err := a.newBlockThread(t)
+	thrd, err := a.threadService.CreateThread(t)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +180,7 @@ func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 
 // PredefinedBlocks returns default blocks like home and archive
 // ⚠️ Will return empty struct in case it runs before Anytype.Start()
-func (a *Anytype) PredefinedBlocks() PredefinedBlockIds {
+func (a *Anytype) PredefinedBlocks() threads.DerivedSmartblockIds {
 	return a.predefinedBlockIds
 }
 
@@ -374,6 +366,17 @@ func (a *Anytype) start() error {
 
 	a.localStore = localstore.NewLocalStore(a.t.Datastore())
 	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
+	a.threadService = threads.New(a.t, a.t.Logstore(), a.opts.Repo, a.opts.Device, a.opts.Account, func(id thread.ID) error {
+		err := a.migratePageToChanges(id)
+		if err != nil && err != ErrAlreadyMigrated {
+			return err
+		}
+		err = a.opts.ReindexFunc(id.String())
+		if err != nil {
+			return err
+		}
+		return nil
+	}, a.opts.CafeP2PAddr)
 
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {
@@ -387,18 +390,32 @@ func (a *Anytype) start() error {
 	}(a.t, a.opts.Offline, a.onlineCh)
 
 	log.Info("Anytype device: " + a.opts.Device.Address())
-
 	log.Info("Anytype account: " + a.Account())
 
 	a.isStarted = true
 	return nil
 }
 
-func (a *Anytype) InitPredefinedBlocks(mustSyncFromRemote bool) error {
-	err := a.createPredefinedBlocksIfNotExist(mustSyncFromRemote)
+func (a *Anytype) InitPredefinedBlocks(accountSelect bool) error {
+	// todo: do we need to globally limit time to init predefind thread?
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-a.shutdownStartsCh:
+			cancel()
+		}
+	}()
+
+	ids, err := a.threadService.EnsurePredefinedThreads(ctx, !accountSelect)
 	if err != nil {
 		return err
 	}
+
+	a.predefinedBlockIds = ids
 
 	//a.runPeriodicJobsInBackground()
 	return nil
@@ -431,8 +448,8 @@ func (a *Anytype) Stop() error {
 		}
 	}
 
-	if a.db != nil {
-		err := a.db.Close()
+	if a.threadService != nil {
+		err := a.threadService.Close()
 		if err != nil {
 			return err
 		}
