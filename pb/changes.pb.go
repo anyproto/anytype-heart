@@ -24,7 +24,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-// the element of change tree used to store and internal apply smartBlock undo
+// the element of change tree used to store and internal apply smartBlock history
 type Change struct {
 	// ids of previous changes
 	PreviousIds []string `protobuf:"bytes,1,rep,name=previous_ids,json=previousIds,proto3" json:"previous_ids,omitempty"`
