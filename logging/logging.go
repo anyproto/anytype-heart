@@ -1,34 +1,79 @@
 package logging
 
 import (
+	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/gobwas/glob"
-	logging "github.com/ipfs/go-log"
-	log2 "github.com/ipfs/go-log/v2"
+	logging "github.com/ipfs/go-log/v2"
+	"go.uber.org/zap"
+	"gopkg.in/Graylog2/go-gelf.v2/gelf"
 )
+
+const graylogHost = "graylog.anytype.io:6888"
+const graylogScheme = "gelf+ssl"
 
 var log = logging.Logger("anytype-logger")
 
 var DefaultLogLevel = logging.LevelError
 var logLevelsStr string
 
+var tlsWriter *gelf.TLSWriter
 var m = sync.Mutex{}
 
-func Logger(system string) *logging.ZapEventLogger {
-	logger := logging.Logger(system)
-	setSubsystemLevels()
+var defaultCfg = logging.Config{
+	Format: logging.JSONOutput,
+	Level:  logging.LevelDebug,
+	Stderr: false,
+	Stdout: true,
+	URL:    graylogScheme + "://" + graylogHost,
+}
 
-	return logger
+type gelfSink struct {
+	io.WriteCloser
+}
+
+func (gs *gelfSink) Sync() error {
+	return nil
+}
+
+func init() {
+	var err error
+	tlsWriter, err = gelf.NewTLSWriter(graylogHost, nil)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
+		// init tlsWriter outside to make sure it is available
+		return &gelfSink{tlsWriter}, nil
+	})
+
+	if err != nil {
+		log.Error("failed to register zap sink", err.Error())
+	}
+
+	logging.SetupLogging(defaultCfg)
+}
+
+func Logger(system string) zap.SugaredLogger {
+	logger := logging.Logger(system)
+
+	return logger.SugaredLogger
 }
 
 func SetLoggingFilepath(logPath string) {
-	_ = os.Setenv("GOLOG_LOG_FMT", "color")
-	_ = os.Setenv("GOLOG_FILE", filepath.Join(logPath, "anytype.log"))
-	logging.SetupLogging()
+	cfg := defaultCfg
+
+	cfg.Format = logging.PlaintextOutput
+	cfg.File = filepath.Join(logPath, "anytype.log")
+
+	logging.SetupLogging(defaultCfg)
 }
 
 func ApplyLevels(str string) {
@@ -78,10 +123,16 @@ func setSubsystemLevels() {
 	for subsystem, level := range logLevels {
 		err := logging.SetLogLevel(subsystem, level)
 		if err != nil {
-			if err != log2.ErrNoSuchLogger {
+			if err != logging.ErrNoSuchLogger {
 				// it returns ErrNoSuchLogger when we don't initialised this subsystem yet
 				log.Errorf("subsystem %s has incorrect log level '%s': %w", subsystem, level, err)
 			}
 		}
 	}
+}
+
+func SetDeviceId(id string) {
+	m.Lock()
+	defer m.Unlock()
+	tlsWriter.Facility = id
 }
