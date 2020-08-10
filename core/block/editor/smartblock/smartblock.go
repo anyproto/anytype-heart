@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/history"
+	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -50,7 +50,7 @@ type SmartBlock interface {
 	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
-	History() history.History
+	History() undo.History
 	Anytype() anytype.Service
 	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Reindex() error
@@ -69,7 +69,7 @@ type smartBlock struct {
 	sync.Mutex
 	depIds    []string
 	sendEvent func(e *pb.Event)
-	hist      history.History
+	hist      undo.History
 	source    source.Source
 	meta      meta.Service
 	metaSub   meta.Subscriber
@@ -95,7 +95,7 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 		return err
 	}
 	sb.source = s
-	sb.hist = history.NewHistory(0)
+	sb.hist = undo.NewHistory(0)
 	sb.storeFileKeys()
 	return sb.checkRootBlock()
 }
@@ -262,13 +262,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	return
 }
 
-func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *history.Action) {
+func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *undo.Action) {
 	if e := sb.updatePageStore(beforeSnippet, act); e != nil {
 		log.Warnf("can't update pageStore info: %v", e)
 	}
 }
 
-func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action) (err error) {
+func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (err error) {
 	if sb.Type() == pb.SmartBlockType_Archive {
 		return
 	}
@@ -312,7 +312,7 @@ func (sb *smartBlock) checkSubscriptions() (changed bool) {
 	return false
 }
 
-func (sb *smartBlock) History() history.History {
+func (sb *smartBlock) History() undo.History {
 	return sb.hist
 }
 
@@ -399,7 +399,7 @@ func (sb *smartBlock) Close() (err error) {
 	return
 }
 
-func hasDepIds(act *history.Action) bool {
+func hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
@@ -424,7 +424,7 @@ func hasDepIds(act *history.Action) bool {
 	return false
 }
 
-func getChangedFileHashes(act history.Action) (hashes []string) {
+func getChangedFileHashes(act undo.Action) (hashes []string) {
 	for _, nb := range act.Add {
 		if fh, ok := nb.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)

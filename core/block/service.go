@@ -1011,7 +1011,7 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("history operation not available for this block type: %T", sb)
+	return fmt.Errorf("undo operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
