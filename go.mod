@@ -9,7 +9,7 @@ require (
 	github.com/cheggaaa/mb v1.0.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.4.4
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/h2non/filetype v1.1.0
@@ -19,7 +19,7 @@ require (
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.3
-	github.com/otiai10/opengraph v1.1.1
+	github.com/otiai10/opengraph v1.1.2
 	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
 	github.com/yosssi/gohtml v0.0.0-20190915184251-7ff6f235ecaf
