@@ -341,7 +341,7 @@ func diffSlices(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []string, snippet *string) error {
+func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 
@@ -351,15 +351,17 @@ func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []strin
 	}
 	defer txn.Discard()
 
-	if details != nil || snippet != nil {
+	if details != nil || len(snippet) > 0 {
 		exInfo, _ := getPageInfo(txn, id)
 		if exInfo != nil {
 			if exInfo.Details.Equal(details) {
+				// skip updating details
 				details = nil
 			}
 
-			if snippet != nil && exInfo.Snippet == *snippet {
-				snippet = nil
+			if exInfo.Snippet == snippet {
+				// skip updating snippet
+				snippet = ""
 			}
 		}
 	}
@@ -373,8 +375,7 @@ func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []strin
 
 	// underlying commands set the same state each time, but this shouldn't be a problem as we made it in 1 transaction
 	if details != nil {
-		err = m.updateDetails(txn, id, &model.PageDetails{Details: details})
-		if err != nil {
+		if err = m.updateDetails(txn, id, &model.PageDetails{Details: details}); err != nil {
 			return err
 		}
 	}
@@ -395,9 +396,8 @@ func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []strin
 		}
 	}
 
-	if snippet != nil {
-		err = m.updateSnippet(txn, id, *snippet)
-		if err != nil {
+	if len(snippet) > 0 {
+		if err = m.updateSnippet(txn, id, snippet); err != nil {
 			return err
 		}
 	}
@@ -482,23 +482,18 @@ func (m *dsPageStore) Indexes() []Index {
 /* internal */
 
 func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
-	val, err := txn.Get(pagesDetailsBase.ChildString(id))
-	if err != nil && err != ds.ErrNotFound {
+	var details model.PageDetails
+	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get details: %w", err)
+	} else if err := proto.Unmarshal(val, &details); err != nil {
+		return nil, err
 	}
 
-	var details model.PageDetails
-	if val != nil {
-		err = proto.Unmarshal(val, &details)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return &details, nil
 }
 
 func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
-	var details types.Struct
+	var details model.PageDetails
 	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
 		return nil, fmt.Errorf("failed to get details: %w", err)
 	} else if err := proto.Unmarshal(val, &details); err != nil {
@@ -513,7 +508,6 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 	}
 
 	// omit decoding page state
-
 	hasInbound, err := hasInboundLinks(txn, id)
 	if err != nil {
 		return nil, err
@@ -521,7 +515,7 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 
 	return &model.PageInfo{
 		Id:              id,
-		Details:         &details,
+		Details:         details.Details,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
 	}, nil
