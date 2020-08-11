@@ -14,6 +14,8 @@ import (
 
 var log = logging.Logger("anytype-database")
 
+const RecordIDField = "id"
+
 type Record struct {
 	Details *types.Struct
 }

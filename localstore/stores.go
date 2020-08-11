@@ -62,7 +62,6 @@ type PageStore interface {
 	GetDetails(id string) (*model.PageDetails, error)
 	GetByIDs(ids ...string) ([]*model.PageInfo, error)
 	List() ([]*model.PageInfo, error)
-	GetByIDs(ids ...string) ([]*model.PageInfo, error)
 }
 
 func NewLocalStore(store ds.Batching) LocalStore {

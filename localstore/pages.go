@@ -30,7 +30,6 @@ var (
 
 const (
 	// special record fields
-	fieldID           = "id"
 	fieldLastOpened   = "lastOpened"
 	fieldLastModified = "lastModified"
 
@@ -120,7 +119,7 @@ func (m *dsPageStore) Query(q database.Query) (records []database.Record, total 
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		}
 
-		details.Details.Fields[fieldID] = pb.ToValue(id)
+		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
 		results = append(results, database.Record{Details: details.Details})
 	}
 
