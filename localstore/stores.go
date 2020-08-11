@@ -52,7 +52,7 @@ type PageStore interface {
 	database.Reader
 
 	AddPage(page *model.PageInfoWithOutboundLinksIDs) error
-	UpdatePage(id string, details *types.Struct, links []string, snippet *string) error
+	UpdatePage(id string, details *types.Struct, links []string, snippet string) error
 	UpdateLastModified(id string, time time.Time) error
 	UpdateLastOpened(id string, time time.Time) error
 	DeletePage(id string) error
