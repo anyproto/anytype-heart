@@ -43,18 +43,15 @@ func (a *Anytype) DeleteBlock(id string) error {
 		return fmt.Errorf("incorrect block id: %w", err)
 	}
 
-	err = a.t.DeleteThread(context.Background(), tid)
-	if err != nil {
+	if err = a.t.DeleteThread(context.Background(), tid); err != nil {
 		return err
 	}
 
-	err = a.localStore.Pages.DeletePage(id)
-	if err != nil {
+	if err = a.localStore.Pages.DeletePage(id); err != nil {
 		return err
 	}
 
-	err = a.threadsCollection.Delete(db2.InstanceID(id))
-	if err != nil {
+	if err = a.threadsCollection.Delete(db2.InstanceID(id)); err != nil {
 		// todo: here we can get an error if we didn't yet added thead keys into DB
 		log.With("thread", id).Error("DeleteBlock failed to remove thread from collection: %s", err.Error())
 	}

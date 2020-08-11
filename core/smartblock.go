@@ -401,6 +401,44 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	return block.decodeRecord(ctx, rec)
 }
 
+func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Block) error {
+	if block.Type() == smartblock.SmartBlockTypeArchive {
+		return nil
+	}
+
+	outgoingLinks := findOutgoingLinks(blocks)
+	snippet := getSnippet(blocks)
+
+	return block.node.PageStore().UpdatePage(block.ID(), details, outgoingLinks, snippet)
+}
+
+func findOutgoingLinks(blocks []*model.Block) []string {
+	var (
+		linksMap = make(map[string]struct{})
+		linkIDs  []string
+	)
+
+	for _, block := range blocks {
+		if link := block.GetLink(); link != nil {
+			linksMap[link.TargetBlockId] = struct{}{}
+		}
+
+		if text := block.GetText(); text != nil && text.Marks != nil {
+			for _, m := range text.Marks.Marks {
+				if m.Type == model.BlockContentTextMark_Mention {
+					linksMap[m.Param] = struct{}{}
+				}
+			}
+		}
+	}
+
+	for id := range linksMap {
+		linkIDs = append(linkIDs, id)
+	}
+
+	return linkIDs
+}
+
 func getSnippet(blocks []*model.Block) string {
 	var s string
 	for _, block := range blocks {
@@ -416,37 +454,4 @@ func getSnippet(blocks []*model.Block) string {
 	}
 
 	return util.TruncateText(s, snippetMaxSize)
-}
-
-func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Block) error {
-	if block.Type() == smartblock.SmartBlockTypeArchive {
-		return nil
-	}
-
-	storeOutgoingLinks := func(blocks []*model.Block, linksMap map[string]struct{}) {
-		for _, block := range blocks {
-			if link := block.GetLink(); link != nil {
-				linksMap[link.TargetBlockId] = struct{}{}
-			}
-
-			if text := block.GetText(); text != nil && text.Marks != nil {
-				for _, m := range text.Marks.Marks {
-					if m.Type == model.BlockContentTextMark_Mention {
-						linksMap[m.Param] = struct{}{}
-					}
-				}
-			}
-		}
-	}
-
-	newOutgoingLinks := make(map[string]struct{})
-	newSnippet := getSnippet(blocks)
-
-	var newOutgoingLinksIds = []string{}
-	storeOutgoingLinks(blocks, newOutgoingLinks)
-	for linkId := range newOutgoingLinks {
-		newOutgoingLinksIds = append(newOutgoingLinksIds, linkId)
-	}
-
-	return block.node.PageStore().Update(block.ID(), details, newOutgoingLinksIds, &newSnippet)
 }
