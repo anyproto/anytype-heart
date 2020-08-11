@@ -61,7 +61,6 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	state1 := vclock.New()
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
 	blocks1 := []*model.Block{
 		{

@@ -15,7 +15,6 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	state1 := vclock.New()
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
 	blocks1 := []*model.Block{
 		{
@@ -28,7 +27,6 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	state2 := vclock.New()
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
 	blocks2 := []*model.Block{
 		{
@@ -54,7 +52,6 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 
 	require.Equal(t, block1.ID(), info2.Links.Outbound[0].Id)
 	require.True(t, info2.Links.Outbound[0].Details.Compare(details1) == 0)
-	require.Equal(t, snap1.State().Map(), info2.Links.Outbound[0].State.State)
 
 	info1, err := s.PageInfoWithLinks(block1.ID())
 	require.NoError(t, err)
@@ -64,7 +61,6 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 
 	require.Equal(t, block2.ID(), info1.Links.Inbound[0].Id)
 	require.True(t, info1.Links.Inbound[0].Details.Compare(details2) == 0)
-	require.Equal(t, snap2.State().Map(), info1.Links.Inbound[0].State.State)
 	require.Equal(t, "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. …", info1.Info.Snippet)
 
 	// test change of existing page index
@@ -107,7 +103,6 @@ func Test_Anytype_PageList(t *testing.T) {
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	state1 := vclock.New()
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
 	blocks1 := []*model.Block{
 		{
@@ -121,7 +116,6 @@ func Test_Anytype_PageList(t *testing.T) {
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
-	state2 := vclock.New()
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
 	blocks2 := []*model.Block{
 		{
@@ -147,11 +141,9 @@ func Test_Anytype_PageList(t *testing.T) {
 
 	require.NotNil(t, pageById[block1.ID()])
 	require.Equal(t, details1, pageById[block1.ID()].Details)
-	require.Equal(t, snap1.State().Map(), pageById[block1.ID()].State.State)
 	require.Equal(t, "test", pageById[block1.ID()].Snippet)
 
 	require.Equal(t, block2.ID(), pageById[block2.ID()].Id)
 	require.Equal(t, details2, pageById[block2.ID()].Details)
-	require.Equal(t, snap2.State().Map(), pageById[block2.ID()].State.State)
 	require.Equal(t, "test", pageById[block2.ID()].Snippet)
 }
