@@ -13,15 +13,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
-func NewProfile(m meta.Service, fileSource file.FileSource, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
+func NewProfile(m meta.Service, fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
 	sb := smartblock.New(m)
+	f := file.NewFile(sb, fileSource)
 	return &Profile{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
 		Text:       stext.NewText(sb),
-		File:       file.NewFile(sb, fileSource),
-		Clipboard:  clipboard.NewClipboard(sb),
+		File:       f,
+		Clipboard:  clipboard.NewClipboard(sb, f),
 		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
 		sendEvent:  sendEvent,
 	}

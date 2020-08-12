@@ -130,6 +130,7 @@
     - [Rpc.Block.OpenBreadcrumbs.Response.Error](#anytype.Rpc.Block.OpenBreadcrumbs.Response.Error)
     - [Rpc.Block.Paste](#anytype.Rpc.Block.Paste)
     - [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request)
+    - [Rpc.Block.Paste.Request.File](#anytype.Rpc.Block.Paste.Request.File)
     - [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response)
     - [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error)
     - [Rpc.Block.Redo](#anytype.Rpc.Block.Redo)
@@ -2426,6 +2427,23 @@ Image/Video/File blocks then:
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype.model.Block) | repeated |  |
+| fileSlot | [Rpc.Block.Paste.Request.File](#anytype.Rpc.Block.Paste.Request.File) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Paste.Request.File"></a>
+
+### Rpc.Block.Paste.Request.File
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| data | [bytes](#bytes) |  |  |
 
 
 
@@ -8462,6 +8480,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | total | [int64](#int64) |  |  |
 | done | [int64](#int64) |  |  |
+| message | [string](#string) |  |  |
 
 
 
@@ -8509,6 +8528,7 @@ Precondition: user A and user B opened the same block
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | DropFiles | 0 |  |
+| Import | 1 |  |
 
 
 

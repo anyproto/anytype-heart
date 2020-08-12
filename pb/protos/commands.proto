@@ -532,6 +532,12 @@ message Rpc {
                 string textSlot = 6;
                 string htmlSlot = 7;
                 repeated anytype.model.Block anySlot = 8;
+                repeated File fileSlot = 9;
+
+                message File {
+                    string name = 1;
+                    bytes data = 2;
+                }
             }
 
             message Response {
@@ -1501,8 +1507,8 @@ message Rpc {
         }
 
         message Delete {
-            message Dataview{
-                message View{
+            message Dataview {
+                message View {
                     message Request {
                         string contextId = 1; // id of the context block
                         string blockId = 2; // id of the dataview
