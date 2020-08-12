@@ -26,6 +26,37 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+type PinStatus int32
+
+const (
+	PinStatus_Queued     PinStatus = 0
+	PinStatus_InProgress PinStatus = 1
+	PinStatus_Failed     PinStatus = 2
+	PinStatus_Done       PinStatus = 3
+)
+
+var PinStatus_name = map[int32]string{
+	0: "Queued",
+	1: "InProgress",
+	2: "Failed",
+	3: "Done",
+}
+
+var PinStatus_value = map[string]int32{
+	"Queued":     0,
+	"InProgress": 1,
+	"Failed":     2,
+	"Done":       3,
+}
+
+func (x PinStatus) String() string {
+	return proto.EnumName(PinStatus_name, int32(x))
+}
+
+func (PinStatus) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_9c15031a0ec80478, []int{0}
+}
+
 // this login flow used to verify that requests initiated by specific user & device address
 type WithSignature struct {
 	AccountAddress   string `protobuf:"bytes,1,opt,name=accountAddress,proto3" json:"accountAddress,omitempty"`
@@ -566,21 +597,21 @@ func (m *ProfileFindResponse) GetIconColor() string {
 	return ""
 }
 
-type ListPinnedFilesRequest struct {
+type GetFilePinsRequest struct {
 }
 
-func (m *ListPinnedFilesRequest) Reset()         { *m = ListPinnedFilesRequest{} }
-func (m *ListPinnedFilesRequest) String() string { return proto.CompactTextString(m) }
-func (*ListPinnedFilesRequest) ProtoMessage()    {}
-func (*ListPinnedFilesRequest) Descriptor() ([]byte, []int) {
+func (m *GetFilePinsRequest) Reset()         { *m = GetFilePinsRequest{} }
+func (m *GetFilePinsRequest) String() string { return proto.CompactTextString(m) }
+func (*GetFilePinsRequest) ProtoMessage()    {}
+func (*GetFilePinsRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9c15031a0ec80478, []int{9}
 }
-func (m *ListPinnedFilesRequest) XXX_Unmarshal(b []byte) error {
+func (m *GetFilePinsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *ListPinnedFilesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *GetFilePinsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_ListPinnedFilesRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_GetFilePinsRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -590,34 +621,34 @@ func (m *ListPinnedFilesRequest) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *ListPinnedFilesRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListPinnedFilesRequest.Merge(m, src)
+func (m *GetFilePinsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetFilePinsRequest.Merge(m, src)
 }
-func (m *ListPinnedFilesRequest) XXX_Size() int {
+func (m *GetFilePinsRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *ListPinnedFilesRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListPinnedFilesRequest.DiscardUnknown(m)
+func (m *GetFilePinsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetFilePinsRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListPinnedFilesRequest proto.InternalMessageInfo
+var xxx_messageInfo_GetFilePinsRequest proto.InternalMessageInfo
 
-type ListPinnedFilesResponse struct {
-	Cids []string `protobuf:"bytes,1,rep,name=cids,proto3" json:"cids,omitempty"`
+type GetFilePinsResponse struct {
+	Pins []*GetFilePinsResponseFilePinStatus `protobuf:"bytes,1,rep,name=pins,proto3" json:"pins,omitempty"`
 }
 
-func (m *ListPinnedFilesResponse) Reset()         { *m = ListPinnedFilesResponse{} }
-func (m *ListPinnedFilesResponse) String() string { return proto.CompactTextString(m) }
-func (*ListPinnedFilesResponse) ProtoMessage()    {}
-func (*ListPinnedFilesResponse) Descriptor() ([]byte, []int) {
+func (m *GetFilePinsResponse) Reset()         { *m = GetFilePinsResponse{} }
+func (m *GetFilePinsResponse) String() string { return proto.CompactTextString(m) }
+func (*GetFilePinsResponse) ProtoMessage()    {}
+func (*GetFilePinsResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9c15031a0ec80478, []int{10}
 }
-func (m *ListPinnedFilesResponse) XXX_Unmarshal(b []byte) error {
+func (m *GetFilePinsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *ListPinnedFilesResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *GetFilePinsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_ListPinnedFilesResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_GetFilePinsResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -627,26 +658,79 @@ func (m *ListPinnedFilesResponse) XXX_Marshal(b []byte, deterministic bool) ([]b
 		return b[:n], nil
 	}
 }
-func (m *ListPinnedFilesResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ListPinnedFilesResponse.Merge(m, src)
+func (m *GetFilePinsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetFilePinsResponse.Merge(m, src)
 }
-func (m *ListPinnedFilesResponse) XXX_Size() int {
+func (m *GetFilePinsResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *ListPinnedFilesResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_ListPinnedFilesResponse.DiscardUnknown(m)
+func (m *GetFilePinsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetFilePinsResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ListPinnedFilesResponse proto.InternalMessageInfo
+var xxx_messageInfo_GetFilePinsResponse proto.InternalMessageInfo
 
-func (m *ListPinnedFilesResponse) GetCids() []string {
+func (m *GetFilePinsResponse) GetPins() []*GetFilePinsResponseFilePinStatus {
 	if m != nil {
-		return m.Cids
+		return m.Pins
 	}
 	return nil
 }
 
+type GetFilePinsResponseFilePinStatus struct {
+	Cid    string    `protobuf:"bytes,1,opt,name=cid,proto3" json:"cid,omitempty"`
+	Status PinStatus `protobuf:"varint,2,opt,name=status,proto3,enum=pb.PinStatus" json:"status,omitempty"`
+}
+
+func (m *GetFilePinsResponseFilePinStatus) Reset()         { *m = GetFilePinsResponseFilePinStatus{} }
+func (m *GetFilePinsResponseFilePinStatus) String() string { return proto.CompactTextString(m) }
+func (*GetFilePinsResponseFilePinStatus) ProtoMessage()    {}
+func (*GetFilePinsResponseFilePinStatus) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9c15031a0ec80478, []int{10, 0}
+}
+func (m *GetFilePinsResponseFilePinStatus) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetFilePinsResponseFilePinStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetFilePinsResponseFilePinStatus.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GetFilePinsResponseFilePinStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetFilePinsResponseFilePinStatus.Merge(m, src)
+}
+func (m *GetFilePinsResponseFilePinStatus) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetFilePinsResponseFilePinStatus) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetFilePinsResponseFilePinStatus.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetFilePinsResponseFilePinStatus proto.InternalMessageInfo
+
+func (m *GetFilePinsResponseFilePinStatus) GetCid() string {
+	if m != nil {
+		return m.Cid
+	}
+	return ""
+}
+
+func (m *GetFilePinsResponseFilePinStatus) GetStatus() PinStatus {
+	if m != nil {
+		return m.Status
+	}
+	return PinStatus_Queued
+}
+
 func init() {
+	proto.RegisterEnum("pb.PinStatus", PinStatus_name, PinStatus_value)
 	proto.RegisterType((*WithSignature)(nil), "pb.WithSignature")
 	proto.RegisterType((*AuthGetTokenRequest)(nil), "pb.AuthGetTokenRequest")
 	proto.RegisterType((*AuthGetTokenResponse)(nil), "pb.AuthGetTokenResponse")
@@ -657,52 +741,58 @@ func init() {
 	proto.RegisterType((*FilePinResponse)(nil), "pb.FilePinResponse")
 	proto.RegisterType((*ProfileFindRequest)(nil), "pb.ProfileFindRequest")
 	proto.RegisterType((*ProfileFindResponse)(nil), "pb.ProfileFindResponse")
-	proto.RegisterType((*ListPinnedFilesRequest)(nil), "pb.ListPinnedFilesRequest")
-	proto.RegisterType((*ListPinnedFilesResponse)(nil), "pb.ListPinnedFilesResponse")
+	proto.RegisterType((*GetFilePinsRequest)(nil), "pb.GetFilePinsRequest")
+	proto.RegisterType((*GetFilePinsResponse)(nil), "pb.GetFilePinsResponse")
+	proto.RegisterType((*GetFilePinsResponseFilePinStatus)(nil), "pb.GetFilePinsResponse.FilePinStatus")
 }
 
 func init() { proto.RegisterFile("cafe/pb/api.proto", fileDescriptor_9c15031a0ec80478) }
 
 var fileDescriptor_9c15031a0ec80478 = []byte{
-	// 604 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x54, 0xcd, 0x6e, 0xd3, 0x4e,
-	0x1c, 0xf4, 0x26, 0xfd, 0xff, 0x21, 0xbf, 0xa4, 0x5f, 0xdb, 0xaa, 0x09, 0xa6, 0xb2, 0xaa, 0x15,
-	0x42, 0x11, 0x12, 0x69, 0x55, 0x38, 0x20, 0x2e, 0x28, 0xad, 0x94, 0xb6, 0xd0, 0x43, 0xe4, 0x56,
-	0x42, 0xe2, 0x66, 0x7b, 0x37, 0xcd, 0x0a, 0xd7, 0x6b, 0xec, 0x0d, 0x85, 0x27, 0xe0, 0xca, 0xbb,
-	0xf0, 0x02, 0x1c, 0x39, 0xf6, 0xc8, 0x11, 0x35, 0x3c, 0x08, 0xda, 0xf5, 0x77, 0x9c, 0xde, 0x76,
-	0x67, 0x67, 0xe6, 0xb7, 0xe3, 0x1d, 0x19, 0x36, 0x3d, 0x67, 0xc2, 0xf6, 0x43, 0x77, 0xdf, 0x09,
-	0xf9, 0x20, 0x8c, 0x84, 0x14, 0xb8, 0x11, 0xba, 0xe4, 0x07, 0x82, 0xd5, 0xf7, 0x5c, 0x4e, 0x2f,
-	0xf8, 0x55, 0xe0, 0xc8, 0x59, 0xc4, 0xf0, 0x53, 0x58, 0x73, 0x3c, 0x4f, 0xcc, 0x02, 0x39, 0xa4,
-	0x34, 0x62, 0x71, 0xdc, 0x43, 0x7b, 0xa8, 0xdf, 0xb2, 0x17, 0x50, 0xfc, 0x04, 0x56, 0x29, 0xfb,
-	0xcc, 0x3d, 0x96, 0xd1, 0x1a, 0x9a, 0x56, 0x05, 0xf1, 0x33, 0xd8, 0x48, 0x75, 0xf9, 0x84, 0x5e,
-	0x53, 0x13, 0x6b, 0x38, 0xee, 0xc3, 0x7a, 0x22, 0x2e, 0xa8, 0x2b, 0x9a, 0xba, 0x08, 0x13, 0x17,
-	0xb6, 0x86, 0x33, 0x39, 0x3d, 0x61, 0xf2, 0x52, 0x7c, 0x64, 0x81, 0xcd, 0x3e, 0xcd, 0x58, 0x2c,
-	0xb1, 0x09, 0x0f, 0x9d, 0x99, 0x9c, 0x1e, 0x0b, 0xca, 0xd2, 0x4b, 0xe7, 0x7b, 0xbc, 0x0f, 0xad,
-	0x38, 0xb7, 0xa5, 0x7b, 0xa8, 0xdf, 0x3e, 0xdc, 0x1c, 0x84, 0xee, 0xa0, 0x12, 0xde, 0x2e, 0x38,
-	0xe4, 0x27, 0x82, 0xed, 0xea, 0x90, 0x38, 0x14, 0x41, 0xcc, 0xf0, 0xee, 0xe2, 0x94, 0x53, 0xa3,
-	0x34, 0xe7, 0x35, 0xfc, 0x27, 0x15, 0x5d, 0x7f, 0x8e, 0xf6, 0x21, 0x51, 0x33, 0x96, 0xd9, 0x0c,
-	0xf4, 0xee, 0x2c, 0x98, 0x88, 0x53, 0xc3, 0x4e, 0x24, 0xe6, 0x1b, 0x68, 0xe5, 0x28, 0xde, 0xce,
-	0x8c, 0x92, 0x24, 0xc9, 0x06, 0xef, 0x42, 0x8b, 0x7d, 0x09, 0x79, 0xc4, 0xe2, 0xa1, 0xd4, 0x23,
-	0x9a, 0x76, 0x01, 0x1c, 0xad, 0x42, 0x5b, 0xde, 0x88, 0x0b, 0xc9, 0xc2, 0x91, 0x2f, 0x6e, 0xc8,
-	0x5b, 0xd8, 0xb9, 0x9c, 0x46, 0xcc, 0xa1, 0xe7, 0xe2, 0x6a, 0x24, 0x7c, 0x5f, 0xdc, 0x64, 0x5f,
-	0x0a, 0xc3, 0x8a, 0x43, 0x69, 0xa4, 0xbd, 0x3b, 0xb6, 0x5e, 0x2b, 0xeb, 0x89, 0x26, 0xbd, 0x63,
-	0x5f, 0xb5, 0x75, 0xc7, 0x2e, 0x00, 0xf2, 0x08, 0xba, 0x35, 0xaf, 0x24, 0x09, 0x21, 0xb0, 0x36,
-	0xe2, 0x3e, 0x1b, 0xf3, 0xfc, 0x21, 0x36, 0xa0, 0xe9, 0x71, 0x9a, 0xde, 0x5c, 0x2d, 0xc9, 0x26,
-	0xac, 0xe7, 0x9c, 0x54, 0xf6, 0x0a, 0xf0, 0x38, 0x12, 0x13, 0xee, 0xb3, 0x11, 0x0f, 0x68, 0x26,
-	0x25, 0xd0, 0x29, 0x15, 0x4d, 0x95, 0xaf, 0xd9, 0x6f, 0xd9, 0x15, 0x8c, 0x7c, 0x43, 0xb0, 0x55,
-	0x91, 0xa6, 0x2f, 0xb3, 0x07, 0xed, 0x12, 0x2f, 0x1d, 0x5f, 0x86, 0x54, 0xee, 0xc0, 0xb9, 0x66,
-	0x69, 0x57, 0xf5, 0x5a, 0xe5, 0xe6, 0x9e, 0x08, 0xce, 0xae, 0x9d, 0xab, 0xac, 0x9b, 0x05, 0x90,
-	0x9d, 0x1e, 0x0b, 0x5f, 0x44, 0x69, 0x1d, 0x0b, 0x80, 0xf4, 0x60, 0xe7, 0x9c, 0xc7, 0x72, 0xcc,
-	0x83, 0x80, 0x51, 0x15, 0x30, 0x4e, 0x73, 0x90, 0xe7, 0xd0, 0xad, 0x9d, 0xa4, 0xd7, 0xc4, 0xb0,
-	0xe2, 0x71, 0x9a, 0x45, 0xd3, 0xeb, 0xc3, 0xbf, 0x0d, 0x68, 0x0e, 0xc7, 0x67, 0xf8, 0x04, 0x3a,
-	0xe5, 0xb6, 0xe0, 0x6e, 0xbd, 0x3f, 0xda, 0xdf, 0xec, 0xdd, 0x57, 0x2c, 0x62, 0xf4, 0xd1, 0x01,
-	0xc2, 0xe7, 0xb0, 0xbe, 0xf0, 0x5e, 0xd8, 0x54, 0x92, 0xe5, 0x85, 0x30, 0x1f, 0x2f, 0x3d, 0xcb,
-	0x1c, 0x95, 0xdb, 0x42, 0x9a, 0xc4, 0x6d, 0x79, 0xf8, 0xc4, 0xed, 0x9e, 0xf8, 0xc4, 0xc0, 0x2f,
-	0xe1, 0x41, 0x5a, 0x06, 0x8c, 0x15, 0xb3, 0xda, 0x1e, 0x73, 0xab, 0x82, 0xe5, 0xaa, 0x23, 0x68,
-	0x97, 0x1e, 0x1d, 0xef, 0x28, 0x56, 0xbd, 0x40, 0x66, 0xb7, 0x86, 0x67, 0x0e, 0x07, 0xe8, 0x68,
-	0xf7, 0xd7, 0x9d, 0x85, 0x6e, 0xef, 0x2c, 0xf4, 0xe7, 0xce, 0x42, 0xdf, 0xe7, 0x96, 0x71, 0x3b,
-	0xb7, 0x8c, 0xdf, 0x73, 0xcb, 0xf8, 0xd0, 0x08, 0x5d, 0xf7, 0x7f, 0xfd, 0x5f, 0x7c, 0xf1, 0x2f,
-	0x00, 0x00, 0xff, 0xff, 0xa2, 0xc4, 0xa8, 0x75, 0x2c, 0x05, 0x00, 0x00,
+	// 683 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x54, 0xcd, 0x6e, 0xd3, 0x4c,
+	0x14, 0xf5, 0x24, 0xf9, 0xfa, 0x35, 0x37, 0x3f, 0x4d, 0x27, 0x55, 0x5b, 0x4c, 0x15, 0x55, 0x23,
+	0x8a, 0xa2, 0x2e, 0xd2, 0x2a, 0xb0, 0x00, 0x24, 0x04, 0x69, 0x51, 0xda, 0x40, 0x17, 0xc1, 0xad,
+	0x84, 0xc4, 0xce, 0x89, 0x27, 0x89, 0x85, 0xeb, 0x31, 0xf6, 0x98, 0xc2, 0x13, 0xb0, 0x65, 0xcd,
+	0x6b, 0xf0, 0x02, 0x2c, 0x59, 0x76, 0xd9, 0x25, 0x6a, 0x5f, 0x04, 0xcd, 0x78, 0xfc, 0x97, 0xa4,
+	0xbb, 0x99, 0x73, 0xcf, 0x3d, 0x77, 0xce, 0xcd, 0x71, 0x60, 0x7d, 0x6c, 0x4e, 0xe8, 0x81, 0x37,
+	0x3a, 0x30, 0x3d, 0xbb, 0xe3, 0xf9, 0x8c, 0x33, 0x5c, 0xf0, 0x46, 0xe4, 0x17, 0x82, 0xda, 0x07,
+	0x9b, 0xcf, 0xce, 0xed, 0xa9, 0x6b, 0xf2, 0xd0, 0xa7, 0xf8, 0x31, 0xd4, 0xcd, 0xf1, 0x98, 0x85,
+	0x2e, 0xef, 0x59, 0x96, 0x4f, 0x83, 0x60, 0x1b, 0xed, 0xa2, 0x76, 0xd9, 0x98, 0x43, 0xf1, 0x23,
+	0xa8, 0x59, 0xf4, 0x8b, 0x3d, 0xa6, 0x31, 0xad, 0x20, 0x69, 0x79, 0x10, 0xef, 0x43, 0x43, 0xf5,
+	0x25, 0x13, 0xb6, 0x8b, 0x92, 0xb8, 0x80, 0xe3, 0x36, 0xac, 0x45, 0xcd, 0x29, 0xb5, 0x24, 0xa9,
+	0xf3, 0x30, 0x19, 0x41, 0xb3, 0x17, 0xf2, 0xd9, 0x09, 0xe5, 0x17, 0xec, 0x13, 0x75, 0x0d, 0xfa,
+	0x39, 0xa4, 0x01, 0xc7, 0x3a, 0xac, 0x9a, 0x21, 0x9f, 0x1d, 0x33, 0x8b, 0xaa, 0x47, 0x27, 0x77,
+	0x7c, 0x00, 0xe5, 0x20, 0x91, 0xb5, 0x76, 0x51, 0xbb, 0xd2, 0x5d, 0xef, 0x78, 0xa3, 0x4e, 0xce,
+	0xbc, 0x91, 0x72, 0xc8, 0x6f, 0x04, 0x1b, 0xf9, 0x21, 0x81, 0xc7, 0xdc, 0x80, 0xe2, 0x9d, 0xf9,
+	0x29, 0xa7, 0x5a, 0x66, 0xce, 0x0b, 0xf8, 0x8f, 0x0b, 0xba, 0x5c, 0x47, 0xa5, 0x4b, 0xc4, 0x8c,
+	0x65, 0x32, 0x1d, 0x79, 0x1b, 0xb8, 0x13, 0x76, 0xaa, 0x19, 0x51, 0x8b, 0xfe, 0x0a, 0xca, 0x09,
+	0x8a, 0x37, 0x62, 0xa1, 0xc8, 0x49, 0x74, 0xc1, 0x3b, 0x50, 0xa6, 0x5f, 0x3d, 0xdb, 0xa7, 0x41,
+	0x8f, 0xcb, 0x11, 0x45, 0x23, 0x05, 0x8e, 0x6a, 0x50, 0xe1, 0x57, 0xec, 0x9c, 0x53, 0xaf, 0xef,
+	0xb0, 0x2b, 0xf2, 0x16, 0x36, 0x2f, 0x66, 0x3e, 0x35, 0xad, 0x33, 0x36, 0xed, 0x33, 0xc7, 0x61,
+	0x57, 0xf1, 0xa6, 0x30, 0x94, 0x4c, 0xcb, 0xf2, 0xa5, 0x76, 0xd5, 0x90, 0x67, 0x21, 0x3d, 0x91,
+	0xa4, 0x77, 0xf4, 0x9b, 0x94, 0xae, 0x1a, 0x29, 0x40, 0x1e, 0xc0, 0xd6, 0x82, 0x56, 0xe4, 0x84,
+	0x10, 0xa8, 0xf7, 0x6d, 0x87, 0x0e, 0xed, 0xe4, 0x87, 0x68, 0x40, 0x71, 0x6c, 0x5b, 0xea, 0xe5,
+	0xe2, 0x48, 0xd6, 0x61, 0x2d, 0xe1, 0xa8, 0xb6, 0x67, 0x80, 0x87, 0x3e, 0x9b, 0xd8, 0x0e, 0xed,
+	0xdb, 0xae, 0x15, 0xb7, 0x12, 0xa8, 0x66, 0x82, 0x26, 0xc2, 0x57, 0x6c, 0x97, 0x8d, 0x1c, 0x46,
+	0xbe, 0x23, 0x68, 0xe6, 0x5a, 0xd5, 0x2f, 0xb3, 0x0b, 0x95, 0x0c, 0x4f, 0x8d, 0xcf, 0x42, 0xc2,
+	0xb7, 0x6b, 0x5e, 0x52, 0x95, 0x55, 0x79, 0x16, 0xbe, 0xed, 0x31, 0x73, 0x07, 0x97, 0xe6, 0x34,
+	0xce, 0x66, 0x0a, 0xc4, 0xd5, 0x63, 0xe6, 0x30, 0x5f, 0xc5, 0x31, 0x05, 0xc8, 0x06, 0xe0, 0x13,
+	0xca, 0x95, 0xb3, 0x40, 0x79, 0x20, 0x3f, 0x11, 0x34, 0x73, 0xb0, 0x7a, 0xdf, 0x73, 0x28, 0x79,
+	0xb6, 0x1b, 0x79, 0xaa, 0x74, 0xf7, 0x44, 0x34, 0x96, 0xd0, 0x3a, 0x0a, 0x38, 0xe7, 0x26, 0x0f,
+	0x03, 0x43, 0xb6, 0xe8, 0xa7, 0x50, 0xcb, 0xc1, 0x8b, 0x2b, 0xc6, 0x7b, 0xb0, 0x12, 0xc8, 0x9a,
+	0x74, 0x57, 0xef, 0xd6, 0x84, 0x7e, 0xaa, 0xa3, 0x8a, 0xfb, 0x2f, 0xa1, 0x9c, 0xaa, 0x00, 0xac,
+	0xbc, 0x0f, 0x69, 0x48, 0xad, 0x86, 0x86, 0xeb, 0x00, 0x03, 0x77, 0xe8, 0xb3, 0xa9, 0xf8, 0x70,
+	0x1b, 0x48, 0xd4, 0xfa, 0xa6, 0xed, 0x50, 0xab, 0x51, 0xc0, 0xab, 0x50, 0x7a, 0xc3, 0x5c, 0xda,
+	0x28, 0x76, 0x6f, 0x0a, 0x50, 0xec, 0x0d, 0x07, 0xf8, 0x04, 0xaa, 0xd9, 0x58, 0xe3, 0xad, 0xc5,
+	0xa0, 0xcb, 0x65, 0xe8, 0xdb, 0xf7, 0x7d, 0x01, 0x44, 0x6b, 0xa3, 0x43, 0x84, 0xcf, 0x60, 0x6d,
+	0x2e, 0x58, 0x58, 0x17, 0x2d, 0xcb, 0x93, 0xab, 0x3f, 0x5c, 0x5a, 0x8b, 0x15, 0xf1, 0x6b, 0xa8,
+	0x64, 0x56, 0x8a, 0x37, 0x17, 0x76, 0x1c, 0xa9, 0x6c, 0xdd, 0xb3, 0x7b, 0xa2, 0xe1, 0xa7, 0xf0,
+	0xbf, 0x42, 0x31, 0x16, 0xac, 0x7c, 0xb4, 0xf5, 0x66, 0x0e, 0x4b, 0xba, 0x8e, 0xa0, 0x92, 0x49,
+	0x64, 0x34, 0x77, 0x31, 0xdd, 0xd1, 0xdc, 0x25, 0xd1, 0x25, 0xda, 0x21, 0x3a, 0xda, 0xf9, 0x73,
+	0xdb, 0x42, 0xd7, 0xb7, 0x2d, 0xf4, 0xf7, 0xb6, 0x85, 0x7e, 0xdc, 0xb5, 0xb4, 0xeb, 0xbb, 0x96,
+	0x76, 0x73, 0xd7, 0xd2, 0x3e, 0x16, 0xbc, 0xd1, 0x68, 0x45, 0xfe, 0x69, 0x3f, 0xf9, 0x17, 0x00,
+	0x00, 0xff, 0xff, 0xf0, 0xab, 0xc4, 0x91, 0xc9, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -719,7 +809,7 @@ const _ = grpc.SupportPackageIsVersion4
 type APIClient interface {
 	AuthGetToken(ctx context.Context, opts ...grpc.CallOption) (API_AuthGetTokenClient, error)
 	ThreadLogFollow(ctx context.Context, in *ThreadLogFollowRequest, opts ...grpc.CallOption) (*ThreadLogFollowResponse, error)
-	ListPinnedFiles(ctx context.Context, in *ListPinnedFilesRequest, opts ...grpc.CallOption) (*ListPinnedFilesResponse, error)
+	GetFilePins(ctx context.Context, in *GetFilePinsRequest, opts ...grpc.CallOption) (*GetFilePinsResponse, error)
 	FilePin(ctx context.Context, in *FilePinRequest, opts ...grpc.CallOption) (*FilePinResponse, error)
 	ProfileFind(ctx context.Context, in *ProfileFindRequest, opts ...grpc.CallOption) (API_ProfileFindClient, error)
 }
@@ -772,9 +862,9 @@ func (c *aPIClient) ThreadLogFollow(ctx context.Context, in *ThreadLogFollowRequ
 	return out, nil
 }
 
-func (c *aPIClient) ListPinnedFiles(ctx context.Context, in *ListPinnedFilesRequest, opts ...grpc.CallOption) (*ListPinnedFilesResponse, error) {
-	out := new(ListPinnedFilesResponse)
-	err := c.cc.Invoke(ctx, "/pb.API/ListPinnedFiles", in, out, opts...)
+func (c *aPIClient) GetFilePins(ctx context.Context, in *GetFilePinsRequest, opts ...grpc.CallOption) (*GetFilePinsResponse, error) {
+	out := new(GetFilePinsResponse)
+	err := c.cc.Invoke(ctx, "/pb.API/GetFilePins", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -826,7 +916,7 @@ func (x *aPIProfileFindClient) Recv() (*ProfileFindResponse, error) {
 type APIServer interface {
 	AuthGetToken(API_AuthGetTokenServer) error
 	ThreadLogFollow(context.Context, *ThreadLogFollowRequest) (*ThreadLogFollowResponse, error)
-	ListPinnedFiles(context.Context, *ListPinnedFilesRequest) (*ListPinnedFilesResponse, error)
+	GetFilePins(context.Context, *GetFilePinsRequest) (*GetFilePinsResponse, error)
 	FilePin(context.Context, *FilePinRequest) (*FilePinResponse, error)
 	ProfileFind(*ProfileFindRequest, API_ProfileFindServer) error
 }
@@ -841,8 +931,8 @@ func (*UnimplementedAPIServer) AuthGetToken(srv API_AuthGetTokenServer) error {
 func (*UnimplementedAPIServer) ThreadLogFollow(ctx context.Context, req *ThreadLogFollowRequest) (*ThreadLogFollowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ThreadLogFollow not implemented")
 }
-func (*UnimplementedAPIServer) ListPinnedFiles(ctx context.Context, req *ListPinnedFilesRequest) (*ListPinnedFilesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListPinnedFiles not implemented")
+func (*UnimplementedAPIServer) GetFilePins(ctx context.Context, req *GetFilePinsRequest) (*GetFilePinsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFilePins not implemented")
 }
 func (*UnimplementedAPIServer) FilePin(ctx context.Context, req *FilePinRequest) (*FilePinResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FilePin not implemented")
@@ -899,20 +989,20 @@ func _API_ThreadLogFollow_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_ListPinnedFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListPinnedFilesRequest)
+func _API_GetFilePins_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFilePinsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).ListPinnedFiles(ctx, in)
+		return srv.(APIServer).GetFilePins(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.API/ListPinnedFiles",
+		FullMethod: "/pb.API/GetFilePins",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).ListPinnedFiles(ctx, req.(*ListPinnedFilesRequest))
+		return srv.(APIServer).GetFilePins(ctx, req.(*GetFilePinsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -965,8 +1055,8 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_ThreadLogFollow_Handler,
 		},
 		{
-			MethodName: "ListPinnedFiles",
-			Handler:    _API_ListPinnedFiles_Handler,
+			MethodName: "GetFilePins",
+			Handler:    _API_GetFilePins_Handler,
 		},
 		{
 			MethodName: "FilePin",
@@ -1382,7 +1472,7 @@ func (m *ProfileFindResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *ListPinnedFilesRequest) Marshal() (dAtA []byte, err error) {
+func (m *GetFilePinsRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1392,12 +1482,12 @@ func (m *ListPinnedFilesRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ListPinnedFilesRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *GetFilePinsRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ListPinnedFilesRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *GetFilePinsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1405,7 +1495,7 @@ func (m *ListPinnedFilesRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *ListPinnedFilesResponse) Marshal() (dAtA []byte, err error) {
+func (m *GetFilePinsResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1415,24 +1505,64 @@ func (m *ListPinnedFilesResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ListPinnedFilesResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *GetFilePinsResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *ListPinnedFilesResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *GetFilePinsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Cids) > 0 {
-		for iNdEx := len(m.Cids) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.Cids[iNdEx])
-			copy(dAtA[i:], m.Cids[iNdEx])
-			i = encodeVarintApi(dAtA, i, uint64(len(m.Cids[iNdEx])))
+	if len(m.Pins) > 0 {
+		for iNdEx := len(m.Pins) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Pins[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintApi(dAtA, i, uint64(size))
+			}
 			i--
 			dAtA[i] = 0xa
 		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GetFilePinsResponseFilePinStatus) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetFilePinsResponseFilePinStatus) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GetFilePinsResponseFilePinStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Status != 0 {
+		i = encodeVarintApi(dAtA, i, uint64(m.Status))
+		i--
+		dAtA[i] = 0x10
+	}
+	if len(m.Cid) > 0 {
+		i -= len(m.Cid)
+		copy(dAtA[i:], m.Cid)
+		i = encodeVarintApi(dAtA, i, uint64(len(m.Cid)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -1628,7 +1758,7 @@ func (m *ProfileFindResponse) Size() (n int) {
 	return n
 }
 
-func (m *ListPinnedFilesRequest) Size() (n int) {
+func (m *GetFilePinsRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1637,17 +1767,33 @@ func (m *ListPinnedFilesRequest) Size() (n int) {
 	return n
 }
 
-func (m *ListPinnedFilesResponse) Size() (n int) {
+func (m *GetFilePinsResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if len(m.Cids) > 0 {
-		for _, s := range m.Cids {
-			l = len(s)
+	if len(m.Pins) > 0 {
+		for _, e := range m.Pins {
+			l = e.Size()
 			n += 1 + l + sovApi(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *GetFilePinsResponseFilePinStatus) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Cid)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
+	if m.Status != 0 {
+		n += 1 + sovApi(uint64(m.Status))
 	}
 	return n
 }
@@ -2762,7 +2908,7 @@ func (m *ProfileFindResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ListPinnedFilesRequest) Unmarshal(dAtA []byte) error {
+func (m *GetFilePinsRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2785,10 +2931,10 @@ func (m *ListPinnedFilesRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListPinnedFilesRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetFilePinsRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListPinnedFilesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetFilePinsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -2815,7 +2961,7 @@ func (m *ListPinnedFilesRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ListPinnedFilesResponse) Unmarshal(dAtA []byte) error {
+func (m *GetFilePinsResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2838,15 +2984,102 @@ func (m *ListPinnedFilesResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListPinnedFilesResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetFilePinsResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListPinnedFilesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetFilePinsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Cids", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Pins", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthApi
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Pins = append(m.Pins, &GetFilePinsResponseFilePinStatus{})
+			if err := m.Pins[len(m.Pins)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetFilePinsResponseFilePinStatus) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FilePinStatus: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FilePinStatus: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Cid", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -2874,8 +3107,27 @@ func (m *ListPinnedFilesResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Cids = append(m.Cids, string(dAtA[iNdEx:postIndex]))
+			m.Cid = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Status |= PinStatus(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipApi(dAtA[iNdEx:])
