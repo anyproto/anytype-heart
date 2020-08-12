@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/schema"
+	blockDB "github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -27,11 +28,15 @@ type Dataview interface {
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
 
+	CreateRecord(ctx *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error)
+	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.PageDetails) error
+	DeleteRecord(ctx *state.Context, blockId string, recID string) error
+
 	smartblock.SmartblockOpenListner
 }
 
-func NewDataview(sb smartblock.SmartBlock, sendEvent func(e *pb.Event)) Dataview {
-	return &dataviewCollectionImpl{SmartBlock: sb, sendEvent: sendEvent}
+func NewDataview(sb smartblock.SmartBlock) Dataview {
+	return &dataviewCollectionImpl{SmartBlock: sb}
 }
 
 type dataviewImpl struct {
@@ -39,18 +44,16 @@ type dataviewImpl struct {
 	activeViewId string
 	offset       int
 	limit        int
-	entries      []database.Entry
+	records      []database.Record
 	mu           sync.Mutex
+	database.Database
 }
 
 type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
 	dataviews []*dataviewImpl
-	mu        sync.Mutex
-	sendEvent func(e *pb.Event)
 }
 
-// This method is not thread-safe
 func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataviewImpl {
 	for _, dv := range d.dataviews {
 		if dv.blockId == block.Model().Id {
@@ -69,8 +72,6 @@ func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataview
 }
 
 func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -104,8 +105,6 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -134,8 +133,6 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, activeViewId string, limit int, offset int) error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	var dvBlock dataview.Block
 	var ok bool
 	if dvBlock, ok = d.Pick(id).(dataview.Block); !ok {
@@ -149,8 +146,8 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 	}
 
 	if dv.activeViewId != activeViewId {
-		dv.entries = []database.Entry{}
 		dv.activeViewId = activeViewId
+		dv.records = nil
 	}
 
 	dv.limit = limit
@@ -164,9 +161,6 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 }
 
 func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, id)
@@ -212,12 +206,74 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 			}
 		}
 	}
+}
 
+func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error) {
+	var databaseId string
+	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+		return nil, fmt.Errorf("not a dataview block")
+	} else {
+		databaseId = dvBlock.Model().GetDataview().DatabaseId
+	}
+
+	var db database.Writer
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
+		return nil, err
+	} else {
+		db = target
+	}
+
+	created, err := db.Create(database.Record{Details: rec.Details})
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.PageDetails{Details: created.Details}, nil
+}
+
+func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.PageDetails) error {
+	var databaseId string
+	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+		return fmt.Errorf("not a dataview block")
+	} else {
+		databaseId = dvBlock.Model().GetDataview().DatabaseId
+	}
+
+	var db database.Writer
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
+		return err
+	} else {
+		db = target
+	}
+
+	return db.Update(recID, database.Record{Details: rec.Details})
+}
+
+func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {
+	var databaseId string
+	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+		return fmt.Errorf("not a dataview block")
+	} else {
+		databaseId = dvBlock.Model().GetDataview().DatabaseId
+	}
+
+	var db database.Writer
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
+		return err
+	} else {
+		db = target
+	}
+
+	return db.Delete(recID)
 }
 
 func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	d.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {
 			return true
@@ -225,7 +281,7 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 			// reset state after block was reopened
 			// getDataviewImpl will also set activeView to the fist one in case the smartblock wasn't opened in this session before
 			dv := d.getDataviewImpl(dvBlock)
-			dv.entries = []database.Entry{}
+			dv.records = nil
 		}
 		return true
 	})
@@ -237,12 +293,14 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	databaseId := dvBlock.Model().GetDataview().DatabaseId
 	activeView := dvBlock.GetView(dv.activeViewId)
 
-	db, err := d.Anytype().DatabaseByID(databaseId)
-	if err != nil {
+	var db database.Reader
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(databaseId); err != nil {
 		return nil, err
+	} else {
+		db = target
 	}
-
-	var msgs []*pb.EventMessage
 
 	entries, total, err := db.Query(database.Query{
 		Relations: activeView.Relations,
@@ -251,9 +309,12 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		Limit:     dv.limit,
 		Offset:    dv.offset,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	var currentEntriesIds []string
-	for _, entry := range dv.entries {
+	for _, entry := range dv.records {
 		currentEntriesIds = append(currentEntriesIds, getEntryID(entry))
 	}
 
@@ -262,20 +323,22 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		records = append(records, entry.Details)
 	}
 
-	msgs = append(msgs, &pb.EventMessage{&pb.EventMessageValueOfBlockSetDataviewRecords{
-		&pb.EventBlockSetDataviewRecords{
-			Id:             dv.blockId,
-			ViewId:         activeView.Id,
-			Updated:        nil,
-			Removed:        currentEntriesIds,
-			Inserted:       records,
-			InsertPosition: 0,
-			Total:          uint32(total),
-		},
-	}})
+	var msgs = []*pb.EventMessage{
+		{Value: &pb.EventMessageValueOfBlockSetDataviewRecords{
+			BlockSetDataviewRecords: &pb.EventBlockSetDataviewRecords{
+				Id:             dv.blockId,
+				ViewId:         activeView.Id,
+				Updated:        nil,
+				Removed:        currentEntriesIds,
+				Inserted:       records,
+				InsertPosition: 0,
+				Total:          uint32(total),
+			},
+		}},
+	}
 
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d entries, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
-	dv.entries = entries
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
+	dv.records = entries
 
 	return msgs, nil
 }
@@ -308,7 +371,7 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	return nil, fmt.Errorf("not a dataview block")
 }
 
-func getEntryID(entry database.Entry) string {
+func getEntryID(entry database.Record) string {
 	if entry.Details == nil {
 		return ""
 	}
@@ -326,7 +389,7 @@ type recordsInsertedAtPosition struct {
 	entries  []*types.Struct
 }
 
-func calculateEntriesDiff(a []database.Entry, b []database.Entry) (updated []*types.Struct, removed []string, insertedGroupedByPosition []recordsInsertedAtPosition) {
+func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, removed []string, insertedGroupedByPosition []recordsInsertedAtPosition) {
 	var inserted []recordInsertedAtPosition
 
 	var existing = make(map[string]*types.Struct, len(a))
