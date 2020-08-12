@@ -216,6 +216,8 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 		return nil, fmt.Errorf("no device keypair provided")
 	}
 
+	logging.SetDeviceId(opts.Device.Address())
+
 	a := &Anytype{
 		opts:          opts,
 		replicationWG: sync.WaitGroup{},
