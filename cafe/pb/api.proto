@@ -60,9 +60,16 @@ message ProfileFindResponse {
     string iconColor = 4;
 }
 
+message ListPinnedFilesRequest {}
+
+message ListPinnedFilesResponse {
+    repeated string cids = 1;
+}
+
 service API {
     rpc AuthGetToken(stream AuthGetTokenRequest) returns (stream AuthGetTokenResponse) {}
     rpc ThreadLogFollow(ThreadLogFollowRequest) returns (ThreadLogFollowResponse) {}
+    rpc ListPinnedFiles(ListPinnedFilesRequest) returns (ListPinnedFilesResponse) {}
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
     rpc ProfileFind(ProfileFindRequest) returns (stream ProfileFindResponse) {}
 }
