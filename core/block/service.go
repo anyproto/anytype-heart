@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -29,7 +30,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -672,17 +672,17 @@ func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockI
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 }
 
-func (s *service) Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *service) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		textSlot, htmlSlot, anySlot, err = cb.Cut(ctx, req, images)
+		textSlot, htmlSlot, anySlot, err = cb.Cut(ctx, req)
 		return err
 	})
 	return textSlot, htmlSlot, anySlot, err
 }
 
-func (s *service) Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error) {
+func (s *service) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		path, err = cb.Export(req, images)
+		path, err = cb.Export(req)
 		return err
 	})
 	return path, err

@@ -14,19 +14,20 @@ import (
 
 func NewPage(
 	m meta.Service,
-	fileSource file.FileSource,
+	fileSource file.BlockService,
 	bCtrl bookmark.DoBookmark,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
 ) *Page {
 	sb := smartblock.New(m)
+	f := file.NewFile(sb, fileSource)
 	return &Page{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
 		IHistory:   basic.NewHistory(sb),
 		Text:       stext.NewText(sb),
-		File:       file.NewFile(sb, fileSource),
-		Clipboard:  clipboard.NewClipboard(sb),
+		File:       f,
+		Clipboard:  clipboard.NewClipboard(sb, f),
 		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
 		Import:     _import.NewImport(sb, importServices),
 	}
