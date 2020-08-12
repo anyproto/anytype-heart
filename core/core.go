@@ -13,7 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/cafe"
 	"github.com/anytypeio/go-anytype-library/core/config"
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
-	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
@@ -118,8 +117,6 @@ type Service interface {
 	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
 	PageList() ([]*model.PageInfo, error)
 	PageUpdateLastOpened(id string) error
-
-	DatabaseByID(id string) (database.Database, error)
 }
 
 func (a *Anytype) Account() string {
@@ -389,7 +386,6 @@ func (a *Anytype) start() error {
 	}(a.t, a.opts.Offline, a.onlineCh)
 
 	log.Info("Anytype device: " + a.opts.Device.Address())
-
 	log.Info("Anytype account: " + a.Account())
 
 	a.isStarted = true
@@ -441,13 +437,4 @@ func (a *Anytype) Stop() error {
 	}
 
 	return nil
-}
-
-func (a *Anytype) DatabaseByID(id string) (database.Database, error) {
-	switch id {
-	case "pages":
-		return a.localStore.Pages, nil
-	default:
-		return nil, fmt.Errorf("database not found")
-	}
 }

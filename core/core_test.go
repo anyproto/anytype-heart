@@ -82,18 +82,16 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
 	require.NoError(t, err)
 
-	db, err := s.DatabaseByID("pages")
-	require.NoError(t, err)
-	require.Equal(t, "https://anytype.io/schemas/page", db.Schema())
+	var ps = s.PageStore()
 
-	results, total, err := db.Query(database.Query{Limit: 1, Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
+	results, total, err := ps.Query(database.Query{Limit: 1, Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.Equal(t, 2, total)
 	require.Equal(t, details1.Fields["name"].GetStringValue(), results[0].Details.Fields["name"].GetStringValue())
 	require.Equal(t, block1.ID(), results[0].Details.Fields["id"].GetStringValue())
 
-	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "name",
 		Condition:  model.BlockContentDataviewFilter_Like,
@@ -109,8 +107,8 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	n := time.Now()
 	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 
-	s.PageStore().UpdateLastOpened(block1.ID(), time.Now())
-	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+	ps.UpdateLastOpened(block1.ID(), time.Now())
+	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "lastOpened",
 		Condition:  model.BlockContentDataviewFilter_Equal,
@@ -121,10 +119,10 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.Len(t, results, 1)
 	require.Equal(t, total, 1)
 
-	s.PageStore().UpdateLastModified(block1.ID(), time.Now())
-	s.PageStore().UpdateLastModified(block2.ID(), time.Now())
+	ps.UpdateLastModified(block1.ID(), time.Now())
+	ps.UpdateLastModified(block2.ID(), time.Now())
 
-	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "lastModified",
 		Condition:  model.BlockContentDataviewFilter_Equal,
@@ -137,7 +135,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	nextDay := time.Date(n.Year(), n.Month(), n.Day()+1, 0, 0, 0, 0, time.UTC)
 
-	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "lastModified",
 		Condition:  model.BlockContentDataviewFilter_Less,
@@ -150,7 +148,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	prevDay := time.Date(n.Year(), n.Month(), n.Day()-1, 0, 0, 0, 0, time.UTC)
 
-	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "lastModified",
 		Condition:  model.BlockContentDataviewFilter_Greater,
@@ -161,7 +159,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.Len(t, results, 2)
 	require.Equal(t, total, 2)
 
-	results, total, err = db.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:   model.BlockContentDataviewFilter_And,
 		RelationId: "lastModified",
 		Condition:  model.BlockContentDataviewFilter_Greater,
