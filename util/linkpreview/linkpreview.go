@@ -49,6 +49,12 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 	if len(res.Description) == 0 {
 		res.Description = l.findContent(rt.lastBody)
 	}
+	if !utf8.ValidString(res.Title) {
+		res.Title = ""
+	}
+	if !utf8.ValidString(res.Description) {
+		res.Description = ""
+	}
 	return res, nil
 }
 
