@@ -9,12 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
-
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/h2non/filetype"
 )
 
@@ -64,7 +63,7 @@ func (u *uploader) DoImage(localPath, url string) {
 		err = u.do(localPath, url)
 	}
 	if err != nil {
-		log.Warningf("upload file error: %v", err)
+		log.Warnf("upload file error: %v", err)
 		u.updateFile(func(file Block) {
 			file.SetState(model.BlockContentFile_Error)
 		})

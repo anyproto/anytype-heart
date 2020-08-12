@@ -272,14 +272,17 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action)
 	if sb.Type() == pb.SmartBlockType_Archive {
 		return
 	}
+
 	var storeInfo struct {
 		details *types.Struct
-		snippet *string
+		snippet string
 		links   []string
 	}
+
 	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
 	}
+
 	if hasDepIds(act) {
 		if sb.checkSubscriptions() {
 			storeInfo.links = make([]string, len(sb.depIds))
@@ -288,15 +291,16 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action)
 		}
 	}
 
-	afterSnippet := sb.Doc.Snippet()
-	if beforeSnippet != afterSnippet {
-		storeInfo.snippet = &afterSnippet
+	if afterSnippet := sb.Doc.Snippet(); beforeSnippet != afterSnippet {
+		storeInfo.snippet = afterSnippet
 	}
+
 	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
-		if storeInfo.links != nil || storeInfo.details != nil || storeInfo.snippet != nil {
+		if storeInfo.links != nil || storeInfo.details != nil || len(storeInfo.snippet) > 0 {
 			return at.PageStore().UpdatePage(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet)
 		}
 	}
+
 	return nil
 }
 
