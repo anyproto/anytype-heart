@@ -21,6 +21,8 @@ message Change {
     Snapshot snapshot = 4;
     // file keys related to changes content
     repeated FileKeys fileKeys = 6;
+    // creation timestamp
+    int64 timestamp = 7;
 
     message Snapshot {
         // logId -> lastChangeId

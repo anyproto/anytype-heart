@@ -49,11 +49,20 @@ func TestState_Unlink(t *testing.T) {
 }
 
 func TestState_GetParentOf(t *testing.T) {
-	s := NewDoc("1", map[string]simple.Block{
-		"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
-		"2": base.NewBase(&model.Block{Id: "2"}),
-	}).NewState()
-	assert.Equal(t, "1", s.GetParentOf("2").Model().Id)
+	t.Run("generic", func(t *testing.T) {
+		s := NewDoc("1", map[string]simple.Block{
+			"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+			"2": base.NewBase(&model.Block{Id: "2"}),
+		}).NewState()
+		assert.Equal(t, "1", s.GetParentOf("2").Model().Id)
+	})
+	t.Run("direct", func(t *testing.T) {
+		s := NewDoc("1", map[string]simple.Block{
+			"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+			"2": base.NewBase(&model.Block{Id: "2"}),
+		}).(*State)
+		assert.Equal(t, "1", s.GetParentOf("2").Model().Id)
+	})
 }
 
 func TestApplyState(t *testing.T) {

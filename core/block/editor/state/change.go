@@ -17,10 +17,15 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	for _, b := range snapshot.Data.Blocks {
 		blocks[b.Id] = simple.New(b)
 	}
+	fileKeys := make([]pb.ChangeFileKeys, 0, len(snapshot.FileKeys))
+	for _, fk := range snapshot.FileKeys {
+		fileKeys = append(fileKeys, *fk)
+	}
 	return &State{
-		rootId:  rootId,
-		blocks:  blocks,
-		details: snapshot.Data.Details,
+		rootId:   rootId,
+		blocks:   blocks,
+		details:  snapshot.Data.Details,
+		fileKeys: fileKeys,
 	}
 }
 

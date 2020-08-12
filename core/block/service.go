@@ -6,8 +6,14 @@ import (
 	"sync"
 	"time"
 
-	coresb "github.com/anytypeio/go-anytype-library/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+
 	"github.com/anytypeio/go-anytype-library/files"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/gogo/protobuf/types"
+
+	coresb "github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -15,11 +21,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -27,13 +30,13 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -82,9 +85,9 @@ type Service interface {
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
-	Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Cut(ctx *state.Context, req pb.RpcBlockCutRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Export(req pb.RpcBlockExportRequest, images map[string][]byte) (path string, err error)
+	Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Export(req pb.RpcBlockExportRequest) (path string, err error)
 	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinkIds []string, err error)
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
@@ -101,6 +104,7 @@ type Service interface {
 
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error)
 	CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
@@ -121,6 +125,7 @@ type Service interface {
 	DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) error
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
+	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	ProcessAdd(p process.Process) (err error)
@@ -539,7 +544,7 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 			continue
 		}
 
-		children := s.AllDescendantIds(blocks[blockId].ChildrenIds, blocks)
+		children := s.AllDescendantIds(blockId, blocks)
 		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,
@@ -649,9 +654,9 @@ func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDelete
 	return
 }
 
-func (s *service) Copy(req pb.RpcBlockCopyRequest, images map[string][]byte) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		textSlot, htmlSlot, anySlot, err = cb.Copy(req, images)
+		textSlot, htmlSlot, anySlot, err = cb.Copy(req)
 		return err
 	})
 
@@ -759,10 +764,7 @@ func (s *service) SetTextColor(ctx *state.Context, contextId string, color strin
 
 func (s *service) SetTextMark(ctx *state.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
-			t.SetMarkForAllText(mark)
-			return nil
-		})
+		return b.SetMark(ctx, mark, blockIds...)
 	})
 }
 
@@ -785,10 +787,21 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 }
 
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
-	<-uploadFilesLimiter
-	defer func() { uploadFilesLimiter <- struct{}{} }()
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url)
+		err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path: req.FilePath,
+			Url:  req.Url,
+		}, false)
+		return err
+	})
+}
+
+func (s *service) UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
+	return s.DoFile(req.ContextId, func(b file.File) error {
+		err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path: req.FilePath,
+			Url:  req.Url,
+		}, true)
 		return err
 	})
 }
@@ -802,22 +815,20 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 }
 
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
-	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
-	var opts []files.AddOption
+	upl := file.NewUploader(s)
 	if req.DisableEncryption {
-		opts = append(opts, files.WithPlaintext(true))
+		upl.AddOptions(files.WithPlaintext(true))
 	}
-	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
-		f(tempFile)
-	}, opts...)
-	if err = u.DoType(req.LocalPath, req.Url, req.Type); err != nil {
-		return
+	if req.Type != model.BlockContentFile_None {
+		upl.SetType(req.Type)
+	} else {
+		upl.AutoType(true)
 	}
-	result := tempFile.Model().GetFile()
-	if result.State != model.BlockContentFile_Done {
-		return "", fmt.Errorf("unexpected upload error")
+	res := upl.SetFile(req.LocalPath).Upload(context.TODO())
+	if res.Err != nil {
+		return "", res.Err
 	}
-	return result.Hash, nil
+	return res.Hash, nil
 }
 
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
@@ -840,7 +851,13 @@ func (s *service) Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (err erro
 
 func (s *service) BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
 	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url)
+		return b.Fetch(ctx, req.BlockId, req.Url, false)
+	})
+}
+
+func (s *service) BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
+	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
+		return b.Fetch(ctx, req.BlockId, req.Url, true)
 	})
 }
 
@@ -1102,18 +1119,22 @@ func (s *service) cleanupBlocks() (closed bool) {
 	return s.closed
 }
 
-func (s *service) fillSlice(id string, ids []string, allBlocks map[string]*model.Block) []string {
-	ids = append(ids, id)
-	for _, chId := range allBlocks[id].ChildrenIds {
-		ids = s.fillSlice(chId, ids, allBlocks)
-	}
-	return ids
-}
+func (s *service) AllDescendantIds(rootBlockId string, allBlocks map[string]*model.Block) []string {
+	var (
+		// traversal queue
+		queue = []string{rootBlockId}
+		// traversed IDs collected (including root)
+		traversed = []string{rootBlockId}
+	)
 
-func (s *service) AllDescendantIds(targetBlockIds []string, allBlocks map[string]*model.Block) (outputIds []string) {
-	for _, tId := range targetBlockIds {
-		outputIds = s.fillSlice(tId, outputIds, allBlocks)
+	for len(queue) > 0 {
+		next := queue[0]
+		queue = queue[1:]
+
+		chIDs := allBlocks[next].ChildrenIds
+		traversed = append(traversed, chIDs...)
+		queue = append(queue, chIDs...)
 	}
 
-	return outputIds
+	return traversed
 }

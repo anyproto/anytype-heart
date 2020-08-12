@@ -423,18 +423,21 @@ func (s *State) Diff(new *State) (msgs []*pb.EventMessage, err error) {
 }
 
 func (s *State) Blocks() []*model.Block {
-	if s.Pick(s.RootId()) == nil {
-		return nil
-	}
-	return s.fillSlice(s.RootId(), make([]*model.Block, 0, len(s.blocks)))
-}
+	var (
+		ids    = []string{s.RootId()}
+		blocks = make([]*model.Block, 0, len(s.blocks))
+	)
 
-func (s *State) fillSlice(id string, blocks []*model.Block) []*model.Block {
-	b := s.Pick(id)
-	blocks = append(blocks, b.Copy().Model())
-	for _, chId := range b.Model().ChildrenIds {
-		blocks = s.fillSlice(chId, blocks)
+	for len(ids) > 0 {
+		next := ids[0]
+		ids = ids[1:]
+
+		if b := s.Pick(next); b != nil {
+			blocks = append(blocks, b.Copy().Model())
+			ids = append(ids, b.Model().ChildrenIds...)
+		}
 	}
+
 	return blocks
 }
 

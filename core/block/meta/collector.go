@@ -90,7 +90,9 @@ func (c *collector) setMeta(d Meta) {
 func (c *collector) fetchInitialMeta() (err error) {
 	c.m.Lock()
 	defer c.m.Unlock()
-
+	if c.s != nil {
+		c.s.Close()
+	}
 	c.s, err = c.ps.newSource(c.blockId)
 	if err != nil {
 		return err
@@ -137,4 +139,7 @@ func (c *collector) close() {
 	}
 	close(c.quit)
 	c.closed = true
+	if c.s != nil {
+		c.s.Close()
+	}
 }

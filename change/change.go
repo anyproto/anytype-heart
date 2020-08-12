@@ -1,6 +1,8 @@
 package change
 
 import (
+	"time"
+
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -64,5 +66,6 @@ func NewSnapshotChange(blocks []*model.Block, details *types.Struct, fileKeys []
 			},
 			FileKeys: fkeys,
 		},
+		Timestamp: time.Now().Unix(),
 	}
 }

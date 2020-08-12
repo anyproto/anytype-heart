@@ -203,11 +203,16 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 				t2 = append(t2, l2.LastSnapshotId)
 			}
 			if lid1 == "" && lid2 == "" {
-				// unexpected behavior - just return lesser id
 				break
 			}
 		}
-		return "", fmt.Errorf("unexpected: possible versions split")
+
+		// unexpected behavior - just return lesser id
+		log.Warnf("changes build tree: possible versions split")
+		if s1 < s2 {
+			return s1, nil
+		}
+		return s2, nil
 	}
 
 	for len(snapshotIds) > 1 {

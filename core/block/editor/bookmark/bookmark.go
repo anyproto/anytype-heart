@@ -2,6 +2,7 @@ package bookmark
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
@@ -19,7 +20,7 @@ func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBo
 }
 
 type Bookmark interface {
-	Fetch(ctx *state.Context, id string, url string) (err error)
+	Fetch(ctx *state.Context, id string, url string, isSync bool) (err error)
 	CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(id string, apply func(b bookmark.Block) error) (err error)
 }
@@ -34,15 +35,15 @@ type sbookmark struct {
 	ctrl DoBookmark
 }
 
-func (b *sbookmark) Fetch(ctx *state.Context, id string, url string) (err error) {
+func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
 	s := b.NewStateCtx(ctx)
-	if err = b.fetch(s, id, url); err != nil {
+	if err = b.fetch(s, id, url, isSync); err != nil {
 		return
 	}
 	return b.Apply(s)
 }
 
-func (b *sbookmark) fetch(s *state.State, id, url string) (err error) {
+func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err error) {
 	bb := s.Get(id)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
@@ -52,17 +53,23 @@ func (b *sbookmark) fetch(s *state.State, id, url string) (err error) {
 	if err != nil {
 		// Do nothing
 	}
-
+	var updMu sync.Mutex
 	if bm, ok := bb.(bookmark.Block); ok {
 		return bm.Fetch(bookmark.FetchParams{
 			Url:     url,
 			Anytype: b.Anytype(),
 			Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
+				if isSync {
+					updMu.Lock()
+					defer updMu.Unlock()
+					return apply(bm)
+				}
 				return b.ctrl.DoBookmark(b.Id(), func(b Bookmark) error {
 					return b.UpdateBookmark(id, apply)
 				})
 			},
 			LinkPreview: b.lp,
+			Sync:        isSync,
 		})
 	}
 	return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
@@ -82,7 +89,7 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	if err = s.InsertTo(req.TargetId, req.Position, newId); err != nil {
 		return
 	}
-	if err = b.fetch(s, newId, req.Url); err != nil {
+	if err = b.fetch(s, newId, req.Url, false); err != nil {
 		return
 	}
 	if err = b.Apply(s); err != nil {

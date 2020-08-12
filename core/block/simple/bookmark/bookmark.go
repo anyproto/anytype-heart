@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/files"
@@ -46,6 +47,7 @@ type FetchParams struct {
 	Anytype     anytype.Service
 	Updater     Updater
 	LinkPreview linkpreview.LinkPreview
+	Sync        bool
 }
 
 type Updater func(id string, apply func(b Block) error) (err error)
@@ -72,7 +74,9 @@ func (f *Bookmark) SetFaviconHash(hash string) {
 
 func (f *Bookmark) Fetch(params FetchParams) (err error) {
 	f.content.Url = params.Url
-	go fetcher(f.Id, params)
+	if !params.Sync {
+		go fetcher(f.Id, params)
+	}
 	return
 }
 
@@ -167,9 +171,11 @@ func fetcher(id string, params FetchParams) {
 		fmt.Println("can't set linkpreview data:", id, err)
 		return
 	}
-
+	var wg sync.WaitGroup
 	if data.ImageUrl != "" {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			hash, err := loadImage(params.Anytype, data.ImageUrl)
 			if err != nil {
 				fmt.Println("can't load image url:", data.ImageUrl, err)
@@ -186,7 +192,9 @@ func fetcher(id string, params FetchParams) {
 		}()
 	}
 	if data.FaviconUrl != "" {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			hash, err := loadImage(params.Anytype, data.FaviconUrl)
 			if err != nil {
 				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
@@ -202,6 +210,7 @@ func fetcher(id string, params FetchParams) {
 			}
 		}()
 	}
+	wg.Wait()
 }
 
 func (f *Bookmark) FillFileHashes(hashes []string) []string {
