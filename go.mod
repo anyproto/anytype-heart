@@ -18,7 +18,7 @@ require (
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipld-cbor v0.0.4
 	github.com/ipfs/go-ipld-format v0.2.0
-	github.com/ipfs/go-log/v2 v2.1.1
+	github.com/ipfs/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
@@ -47,4 +47,4 @@ require (
 
 replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200804142156-037240f28ec0
 
-replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810210635-270af4805fd6
+replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
