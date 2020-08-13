@@ -10,7 +10,7 @@ import (
 )
 
 func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	url, err := uri.ProcessURI(req.Url)
 	if err != nil {
@@ -21,7 +21,7 @@ func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPrev
 			},
 		}
 	}
-	
+
 	data, err := mw.linkPreview.Fetch(ctx, url)
 	if err != nil {
 		// trim the actual url from the error
