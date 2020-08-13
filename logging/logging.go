@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -21,8 +20,7 @@ var log = logging.Logger("anytype-logger")
 
 var DefaultLogLevel = logging.LevelError
 var logLevelsStr string
-
-var tlsWriter *gelf.TLSWriter
+var gelfSinkWrapper *gelfSink
 var m = sync.Mutex{}
 
 var defaultCfg = logging.Config{
@@ -34,24 +32,62 @@ var defaultCfg = logging.Config{
 }
 
 type gelfSink struct {
-	io.WriteCloser
+	sync.RWMutex
+	gelfWriter gelf.Writer
+
+	version string
+	host    string
+}
+
+func (gs *gelfSink) Write(b []byte) (int, error) {
+	gs.RLock()
+	defer gs.RUnlock()
+
+	msg := gelf.Message{
+		Version:  gs.version,
+		Host:     gs.host,
+		Short:    "",
+		Full:     string(b),
+		TimeUnix: 0,
+		Level:    0,
+		Facility: "",
+	}
+
+	return len(b), gs.gelfWriter.WriteMessage(&msg)
+}
+
+func (gs *gelfSink) Close() error {
+	return gs.gelfWriter.Close()
 }
 
 func (gs *gelfSink) Sync() error {
 	return nil
 }
 
+func (gs *gelfSink) SetHost(host string) {
+	gs.Lock()
+	defer gs.Unlock()
+	gs.host = host
+}
+
+func (gs *gelfSink) SetVersion(version string) {
+	gs.Lock()
+	defer gs.Unlock()
+	gs.version = version
+}
+
 func init() {
 	var err error
-	tlsWriter, err = gelf.NewTLSWriter(graylogHost, nil)
+	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
 		log.Error(err)
 		return
 	}
+	gelfSinkWrapper.gelfWriter = tlsWriter
 
 	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
 		// init tlsWriter outside to make sure it is available
-		return &gelfSink{tlsWriter}, nil
+		return gelfSinkWrapper, nil
 	})
 
 	if err != nil {
@@ -131,8 +167,10 @@ func setSubsystemLevels() {
 	}
 }
 
-func SetDeviceId(id string) {
-	m.Lock()
-	defer m.Unlock()
-	tlsWriter.Facility = id
+func SetVersion(version string) {
+	gelfSinkWrapper.SetVersion(version)
+}
+
+func SetHost(host string) {
+	gelfSinkWrapper.SetHost(host)
 }
