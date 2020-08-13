@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/anytypeio/go-anytype-library v0.11.4
+	github.com/anytypeio/go-anytype-library v0.11.5-0.20200813223945-04fde6c44417
 	github.com/cheggaaa/mb v1.0.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gogo/protobuf v1.3.1
@@ -23,6 +23,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
 	github.com/yuin/goldmark v1.1.30
+	go.uber.org/zap v1.15.0
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b // indirect
 	golang.org/x/text v0.3.3
 	google.golang.org/grpc v1.31.0-dev.0.20200627230533-68098483a7af
