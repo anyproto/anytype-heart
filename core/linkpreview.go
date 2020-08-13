@@ -21,17 +21,7 @@ func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPrev
 			},
 		}
 	}
-
-	if !strings.HasPrefix(req.Url, "http") {
-		// only http/https supported
-		// todo: fixed linkpreview for email/tel?
-		return &pb.RpcLinkPreviewResponse{
-			Error: &pb.RpcLinkPreviewResponseError{
-				Code: pb.RpcLinkPreviewResponseError_NULL,
-			},
-		}
-	}
-
+	
 	data, err := mw.linkPreview.Fetch(ctx, url)
 	if err != nil {
 		// trim the actual url from the error
