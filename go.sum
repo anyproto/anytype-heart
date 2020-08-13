@@ -35,8 +35,8 @@ github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRF
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
-github.com/anytypeio/go-anytype-library v0.11.2 h1:w/BTyNWQzR9MG9+f1dr7v85EN5FrNeQLUe1h/e04teE=
-github.com/anytypeio/go-anytype-library v0.11.2/go.mod h1:0A+/DyFhusiV5Ivnp62jafwuWQhjDxF8O4zjKyqn8so=
+github.com/anytypeio/go-anytype-library v0.11.4 h1:OXOW1E7kRQaFJL1OK3FQRJMMcsPI1V/vIgh6PYnhFrg=
+github.com/anytypeio/go-anytype-library v0.11.4/go.mod h1:0A+/DyFhusiV5Ivnp62jafwuWQhjDxF8O4zjKyqn8so=
 github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f h1:aeyycLTPbhwjW2x/EkmuAgRzdX0bdwy+RStmevhQbhM=
 github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f/go.mod h1:2v2nsGfZsvvAJz13SyFzf9ObaqwHiHxsPLEHntrv9KM=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW52i65PtLFBr5Q5k6RskIY8L70pgnBcnWo=
