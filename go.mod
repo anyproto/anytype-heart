@@ -47,4 +47,6 @@ require (
 
 replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200804142156-037240f28ec0
 
+replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20200813115635-198b2af80f88
+
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f

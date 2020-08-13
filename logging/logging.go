@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -20,7 +21,7 @@ var log = logging.Logger("anytype-logger")
 
 var DefaultLogLevel = logging.LevelError
 var logLevelsStr string
-var gelfSinkWrapper *gelfSink
+var gelfSinkWrapper gelfSink
 var m = sync.Mutex{}
 
 var defaultCfg = logging.Config{
@@ -42,6 +43,10 @@ type gelfSink struct {
 func (gs *gelfSink) Write(b []byte) (int, error) {
 	gs.RLock()
 	defer gs.RUnlock()
+
+	if gs.gelfWriter == nil {
+		return 0, fmt.Errorf("gelfWriter is nil")
+	}
 
 	msg := gelf.Message{
 		Version:  gs.version,
@@ -87,7 +92,7 @@ func init() {
 
 	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
 		// init tlsWriter outside to make sure it is available
-		return gelfSinkWrapper, nil
+		return &gelfSinkWrapper, nil
 	})
 
 	if err != nil {
