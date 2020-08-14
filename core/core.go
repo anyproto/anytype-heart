@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/gateway"
