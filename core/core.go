@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	libCore "github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/gateway"
@@ -38,6 +39,10 @@ type Middleware struct {
 	Anytype libCore.Service
 
 	m sync.RWMutex
+}
+
+func init() {
+	logging.SetVersion(GitSummary)
 }
 
 func New() *Middleware {
