@@ -45,6 +45,8 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 
 const (
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
+
+	pullInterval = 3 * time.Minute
 )
 
 var BootstrapNodes = []string{
@@ -194,7 +196,7 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 }
 
 func init() {
-	net2.PullInterval = time.Minute * 3
+	net2.PullInterval = pullInterval
 	// apply log levels in go-threads and go-ipfs deps
 	logging.ApplyLevelsFromEnv()
 }
@@ -373,6 +375,9 @@ func (a *Anytype) start() error {
 
 	a.localStore = localstore.NewLocalStore(a.t.Datastore())
 	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
+
+	// find and retry failed pins
+	go a.checkPins()
 
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {
