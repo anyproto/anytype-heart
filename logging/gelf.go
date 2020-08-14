@@ -24,11 +24,12 @@ func (gs *gelfSink) Write(b []byte) (int, error) {
 	}
 
 	msg := gelf.Message{
-		Version:  gs.version,
+		Version:  "1.1",
 		Host:     gs.host,
 		Short:    string(b),
-		TimeUnix: float64(time.Now().Unix()),
+		TimeUnix: float64(time.Now().UnixNano()) / float64(time.Second),
 		Level:    0,
+		Extra:    map[string]interface{}{"_mwver": gs.version},
 	}
 
 	go func() {
