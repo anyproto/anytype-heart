@@ -76,8 +76,9 @@ func (f *Bookmark) Fetch(params FetchParams) (err error) {
 	f.content.Url = params.Url
 	if !params.Sync {
 		go fetcher(f.Id, params)
+	} else {
+		fetcher(f.Id, params)
 	}
-	fetcher(f.Id, params)
 	return
 }
 
