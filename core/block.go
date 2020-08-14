@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/gogo/protobuf/types"
 )
 
 func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
@@ -1130,4 +1131,67 @@ func (mw *Middleware) BlockSetDataviewActiveView(req *pb.RpcBlockSetDataviewActi
 		return response(pb.RpcBlockSetDataviewActiveViewResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetDataviewActiveViewResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockCreateDataviewRecord(req *pb.RpcBlockCreateDataviewRecordRequest) *pb.RpcBlockCreateDataviewRecordResponse {
+	ctx := state.NewContext(nil)
+	response := func(details *types.Struct, code pb.RpcBlockCreateDataviewRecordResponseErrorCode, err error) *pb.RpcBlockCreateDataviewRecordResponse {
+		m := &pb.RpcBlockCreateDataviewRecordResponse{Record: details, Error: &pb.RpcBlockCreateDataviewRecordResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		// no events generated
+		return m
+	}
+
+	var details *types.Struct
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		details, err = bs.CreateDataviewRecord(ctx, *req)
+		return err
+	}); err != nil {
+		return response(nil, pb.RpcBlockCreateDataviewRecordResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(details, pb.RpcBlockCreateDataviewRecordResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockUpdateDataviewRecord(req *pb.RpcBlockUpdateDataviewRecordRequest) *pb.RpcBlockUpdateDataviewRecordResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockUpdateDataviewRecordResponseErrorCode, err error) *pb.RpcBlockUpdateDataviewRecordResponse {
+		m := &pb.RpcBlockUpdateDataviewRecordResponse{Error: &pb.RpcBlockUpdateDataviewRecordResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		// no events generated
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.UpdateDataviewRecord(ctx, *req)
+	}); err != nil {
+		return response(pb.RpcBlockUpdateDataviewRecordResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockUpdateDataviewRecordResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockDeleteDataviewRecord(req *pb.RpcBlockDeleteDataviewRecordRequest) *pb.RpcBlockDeleteDataviewRecordResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockDeleteDataviewRecordResponseErrorCode, err error) *pb.RpcBlockDeleteDataviewRecordResponse {
+		m := &pb.RpcBlockDeleteDataviewRecordResponse{Error: &pb.RpcBlockDeleteDataviewRecordResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.DeleteDataviewRecord(ctx, *req)
+	}); err != nil {
+		return response(pb.RpcBlockDeleteDataviewRecordResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockDeleteDataviewRecordResponseError_NULL, nil)
 }

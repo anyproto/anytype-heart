@@ -1421,6 +1421,31 @@ message Rpc {
                         }
                     }
                 }
+
+                message Record {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        google.protobuf.Struct record = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+                        google.protobuf.Struct record = 2;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
             }
 
             // common simple block command
@@ -1506,6 +1531,35 @@ message Rpc {
             }
         }
 
+        message Update {
+            message Dataview{
+                message Record {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        string recordId = 3;
+                        google.protobuf.Struct record = 4;
+                    }
+
+                    message Response {
+                        Error error = 1;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         message Delete {
             message Dataview {
                 message View {
@@ -1513,6 +1567,31 @@ message Rpc {
                         string contextId = 1; // id of the context block
                         string blockId = 2; // id of the dataview
                         string viewId = 4; // id of the view to remove
+                    }
+
+                    message Response {
+                        Error error = 1;
+                        ResponseEvent event = 2;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+
+                message Record {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        string recordId = 3;
                     }
 
                     message Response {

@@ -12,7 +12,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
-func NewPage(m meta.Service, fileSource file.BlockService, bCtrl bookmark.DoBookmark, importServices _import.Services, lp linkpreview.LinkPreview) *Page {
+func NewPage(
+	m meta.Service,
+	fileSource file.BlockService,
+	bCtrl bookmark.DoBookmark,
+	importServices _import.Services,
+	lp linkpreview.LinkPreview,
+) *Page {
 	sb := smartblock.New(m)
 	f := file.NewFile(sb, fileSource)
 	return &Page{

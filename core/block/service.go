@@ -30,6 +30,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -50,6 +51,17 @@ var (
 	blockCacheTTL       = time.Minute
 	blockCleanupTimeout = time.Second * 30
 )
+
+var (
+	// quick fix for limiting file upload goroutines
+	uploadFilesLimiter = make(chan struct{}, 8)
+)
+
+func init() {
+	for i := 0; i < cap(uploadFilesLimiter); i++ {
+		uploadFilesLimiter <- struct{}{}
+	}
+}
 
 type Service interface {
 	OpenBlock(ctx *state.Context, id string) error
@@ -107,6 +119,10 @@ type Service interface {
 	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
 	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
+
+	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (*types.Struct, error)
+	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) error
+	DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) error
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
@@ -337,7 +353,6 @@ func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrum
 		} else {
 			return ErrUnexpectedBlockType
 		}
-		return nil
 	})
 }
 
@@ -605,6 +620,35 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDa
 		view, err := b.CreateView(ctx, req.BlockId, *req.View)
 		id = view.Id
 		return err
+	})
+
+	return
+}
+
+func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (rec *types.Struct, err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		cr, err := b.CreateRecord(ctx, req.BlockId, model.PageDetails{Details: req.Record})
+		if err != nil {
+			return err
+		}
+		rec = cr.Details
+		return nil
+	})
+
+	return
+}
+
+func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) (err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateRecord(ctx, req.BlockId, req.RecordId, model.PageDetails{Details: req.Record})
+	})
+
+	return
+}
+
+func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) (err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.DeleteRecord(ctx, req.BlockId, req.RecordId)
 	})
 
 	return
@@ -900,16 +944,14 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta, s.sendEvent)
+		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
-	if err = sb.Init(sc, initEmpty); err != nil {
-		return
-	}
+	err = sb.Init(sc, initEmpty)
 	return
 }
 

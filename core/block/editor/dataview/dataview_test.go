@@ -30,7 +30,7 @@ func Test_getDefaultRelations(t *testing.T) {
 }
 
 func Test_calculateEntriesDiff(t *testing.T) {
-	a := []database.Entry{
+	a := []database.Record{
 		{Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				"id":   pbtypes.String("id1"),
@@ -51,7 +51,7 @@ func Test_calculateEntriesDiff(t *testing.T) {
 		}},
 	}
 
-	b := []database.Entry{
+	b := []database.Record{
 		{Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				"id":   pbtypes.String("id1"),
@@ -82,5 +82,4 @@ func Test_calculateEntriesDiff(t *testing.T) {
 	require.Equal(t, "id3", removed[0])
 	require.Equal(t, 2, inserted[0].position)
 	require.Equal(t, []*types.Struct{b[2].Details}, inserted[0].entries)
-
 }
