@@ -24,7 +24,7 @@ func (mw *Middleware) LogSend(req *pb.RpcLogSendRequest) *pb.RpcLogSendResponse 
 	case pb.RpcLogSendRequest_INFO:
 		log.Info(req.Message)
 	case pb.RpcLogSendRequest_WARNING:
-		log.Warning(req.Message)
+		log.Warn(req.Message)
 	case pb.RpcLogSendRequest_ERROR:
 		log.Error(req.Message)
 	}

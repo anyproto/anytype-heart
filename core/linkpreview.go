@@ -10,7 +10,7 @@ import (
 )
 
 func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPreviewResponse {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	url, err := uri.ProcessURI(req.Url)
 	if err != nil {
@@ -18,16 +18,6 @@ func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPrev
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
-			},
-		}
-	}
-
-	if !strings.HasPrefix(req.Url, "http") {
-		// only http/https supported
-		// todo: fixed linkpreview for email/tel?
-		return &pb.RpcLinkPreviewResponse{
-			Error: &pb.RpcLinkPreviewResponseError{
-				Code: pb.RpcLinkPreviewResponseError_NULL,
 			},
 		}
 	}
