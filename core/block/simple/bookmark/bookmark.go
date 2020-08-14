@@ -76,6 +76,8 @@ func (f *Bookmark) Fetch(params FetchParams) (err error) {
 	f.content.Url = params.Url
 	if !params.Sync {
 		go fetcher(f.Id, params)
+	} else {
+		fetcher(f.Id, params)
 	}
 	return
 }
@@ -155,7 +157,7 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 }
 
 func fetcher(id string, params FetchParams) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	data, err := params.LinkPreview.Fetch(ctx, params.Url)
 	cancel()
 	if err != nil {

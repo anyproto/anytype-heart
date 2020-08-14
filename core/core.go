@@ -40,6 +40,10 @@ type Middleware struct {
 	m sync.RWMutex
 }
 
+func init() {
+	logging.SetVersion(GitSummary)
+}
+
 func New() *Middleware {
 	return &Middleware{accountSearchCancelAndWait: func() {}}
 }
