@@ -136,6 +136,15 @@ func (c *Online) ThreadLogFollow(ctx context.Context, in *pb.ThreadLogFollowRequ
 	return c.client.ThreadLogFollow(ctx, in, opts...)
 }
 
+func (c *Online) GetFilePins(ctx context.Context, in *pb.GetFilePinsRequest, opts ...grpc.CallOption) (*pb.GetFilePinsResponse, error) {
+	ctx, err := c.withToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.client.GetFilePins(ctx, in, opts...)
+}
+
 func (c *Online) FilePin(ctx context.Context, in *pb.FilePinRequest, opts ...grpc.CallOption) (*pb.FilePinResponse, error) {
 	<-c.limiter
 	defer func() { c.limiter <- struct{}{} }()

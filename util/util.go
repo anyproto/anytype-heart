@@ -1,6 +1,8 @@
 package util
 
 import (
+	"sync"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -46,4 +48,36 @@ func TruncateText(text string, length int) string {
 	}
 
 	return text
+}
+
+func NewImmediateTicker(d time.Duration) *immediateTicker {
+	c := make(chan time.Time)
+	s := make(chan struct{})
+
+	ticker := time.NewTicker(d)
+	c <- time.Now()
+
+	go func() {
+		for {
+			select {
+			case t := <-ticker.C:
+				c <- t
+			case <-s:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
+	return &immediateTicker{C: c, s: s}
+}
+
+type immediateTicker struct {
+	C    chan time.Time
+	s    chan struct{}
+	stop sync.Once
+}
+
+func (t *immediateTicker) Stop() {
+	t.stop.Do(func() { close(t.s) })
 }
