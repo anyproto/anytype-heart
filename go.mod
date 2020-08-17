@@ -18,8 +18,7 @@ require (
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipld-cbor v0.0.4
 	github.com/ipfs/go-ipld-format v0.2.0
-	github.com/ipfs/go-log v1.0.4
-	github.com/ipfs/go-log/v2 v2.1.1
+	github.com/ipfs/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
@@ -41,7 +40,13 @@ require (
 	github.com/textileio/go-threads v0.1.18-0.20200513233611-948f69e7988f
 	github.com/tyler-smith/go-bip39 v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
+	go.uber.org/zap v1.15.0
 	google.golang.org/grpc v1.31.0-dev.0.20200627230533-68098483a7af
+	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 )
 
 replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.18-0.20200804142156-037240f28ec0
+
+replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20200813115635-198b2af80f88
+
+replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f

@@ -250,7 +250,7 @@ func reverseOrientation(img image.Image, orientation string) *image.NRGBA {
 		return imaging.Rotate90(img)
 	}
 
-	log.Warningf("unknown orientation %s, expected 1-8", orientation)
+	log.Warnf("unknown orientation %s, expected 1-8", orientation)
 	return imaging.Clone(img)
 }
 

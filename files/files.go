@@ -71,16 +71,14 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 
 	nodeHash := node.Cid().String()
 
-	err = s.fileIndexData(ctx, node, nodeHash)
-	if err != nil {
+	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
 		return "", nil, err
 	}
 
-	err = s.store.AddFileKeys(localstore.FileKeys{
+	if err = s.store.AddFileKeys(localstore.FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
-	})
-	if err != nil {
+	}); err != nil {
 		return "", nil, err
 	}
 
@@ -94,7 +92,7 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 					continue
 				}
 
-				log.Debugf("file %s pinned on the cafe", nodeHash)
+				log.Debugf("pinning file %s started on the cafe", nodeHash)
 				break
 			}
 		}()

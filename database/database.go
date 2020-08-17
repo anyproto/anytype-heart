@@ -14,12 +14,29 @@ import (
 
 var log = logging.Logger("anytype-database")
 
-type Entry struct {
+const RecordIDField = "id"
+
+type Record struct {
 	Details *types.Struct
 }
 
+type Reader interface {
+	Query(q Query) (records []Record, total int, err error)
+}
+
+type Writer interface {
+	// Creating record involves some additional operations that may change
+	// the record. So we return potentially modified record as a result.
+	Create(rec Record) (Record, error)
+
+	Update(id string, rec Record) error
+	Delete(id string) error
+}
+
 type Database interface {
-	Query(q Query) (entries []Entry, total int, err error)
+	Reader
+	Writer
+
 	Schema() string
 }
 

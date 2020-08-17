@@ -15,37 +15,45 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
+	blockID := "test_id1"
+
+	blockContent1 := "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by" +
+		" Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange " +
+		"of information through node lookups. Kademlia nodes communicate among themselves using UDP. A virtual or overlay" +
+		" network is formed by the participant nodes. Each node is identified by a number or node ID. The node ID serves " +
+		"not only as identification, but the Kademlia algorithm uses the node ID to locate values (usually file hashes " +
+		"or keywords). In fact, the node ID provides a direct map to file hashes and that node stores information on " +
+		"where to obtain the file or resource."
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
 	blocks1 := []*model.Block{
 		{
-			Id:      "test_id1",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. A virtual or overlay network is formed by the participant nodes. Each node is identified by a number or node ID. The node ID serves not only as identification, but the Kademlia algorithm uses the node ID to locate values (usually file hashes or keywords). In fact, the node ID provides a direct map to file hashes and that node stores information on where to obtain the file or resource."}},
+			Id:      blockID,
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: blockContent1}},
 		},
 	}
 	err = block1.(*smartBlock).indexSnapshot(details1, blocks1)
 	require.NoError(t, err)
+
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
 	blocks2 := []*model.Block{
 		{
-			Id:      "test_id1",
+			Id:      blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
 		},
 		{
-			Id:      "test_id1",
+			Id:      blockID,
 			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: block1.ID()}},
 		},
 	}
 
 	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
-
 	require.NoError(t, err)
 
 	info2, err := s.PageInfoWithLinks(block2.ID())
 	require.NoError(t, err)
-
 	require.NotNil(t, info2.Links)
 	require.NotNil(t, info2.Links.Outbound)
 	require.Len(t, info2.Links.Outbound, 1)
@@ -55,24 +63,24 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 
 	info1, err := s.PageInfoWithLinks(block1.ID())
 	require.NoError(t, err)
-
 	require.NotNil(t, info1.Links)
 	require.Len(t, info1.Links.Inbound, 1)
 
 	require.Equal(t, block2.ID(), info1.Links.Inbound[0].Id)
 	require.True(t, info1.Links.Inbound[0].Details.Compare(details2) == 0)
-	require.Equal(t, "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. …", info1.Info.Snippet)
+	require.Equal(t, getSnippet(blocks1), info1.Info.Snippet)
 
 	// test change of existing page index
+	blockContent2 := "newtext"
 	details2Modified := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name_modified")}}
-
-	err = block2.(*smartBlock).indexSnapshot(details2Modified, []*model.Block{
+	blocks2Modified := []*model.Block{
 		{
-			Id:      "test_id1",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "newtext"}},
+			Id:      blockID,
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: blockContent2}},
 		},
-	})
+	}
 
+	err = block2.(*smartBlock).indexSnapshot(details2Modified, blocks2Modified)
 	require.NoError(t, err)
 
 	info2Modified, err := s.PageInfoWithLinks(block2.ID())
@@ -81,9 +89,9 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	info1Modified, err := s.PageInfoWithLinks(block1.ID())
 	require.NoError(t, err)
 
-	require.Len(t, info1Modified.Links.Inbound, 0)
-	require.Len(t, info2Modified.Links.Outbound, 0)
-	require.Equal(t, "newtext", info2Modified.Info.Snippet)
+	require.Len(t, info1Modified.Links.Inbound, 1)
+	require.Len(t, info2Modified.Links.Outbound, 1)
+	require.Equal(t, getSnippet(blocks2Modified), info2Modified.Info.Snippet)
 	require.True(t, details2Modified.Compare(info2Modified.Info.Details) == 0)
 
 	err = s.DeleteBlock(block1.ID())
@@ -103,10 +111,12 @@ func Test_Anytype_PageList(t *testing.T) {
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
 
+	blockID := "test_id1"
+
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
 	blocks1 := []*model.Block{
 		{
-			Id:      "test_id1",
+			Id:      blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
 		},
 	}
@@ -119,11 +129,11 @@ func Test_Anytype_PageList(t *testing.T) {
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
 	blocks2 := []*model.Block{
 		{
-			Id:      "test_id1",
+			Id:      blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
 		},
 		{
-			Id:      "test_id1",
+			Id:      blockID,
 			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: block1.ID()}},
 		},
 	}

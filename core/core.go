@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/core/config"
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-library/core/threads"
-	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-library/ipfs"
 	"github.com/anytypeio/go-anytype-library/localstore"
@@ -47,6 +46,8 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 
 const (
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
+
+	pullInterval = 3 * time.Minute
 )
 
 var BootstrapNodes = []string{
@@ -118,8 +119,6 @@ type Service interface {
 	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
 	PageList() ([]*model.PageInfo, error)
 	PageUpdateLastOpened(id string) error
-
-	DatabaseByID(id string) (database.Database, error)
 }
 
 func (a *Anytype) Account() string {
@@ -189,7 +188,7 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 }
 
 func init() {
-	net2.PullInterval = time.Minute * 3
+	net2.PullInterval = pullInterval
 	// apply log levels in go-threads and go-ipfs deps
 	logging.ApplyLevelsFromEnv()
 }
@@ -207,6 +206,8 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	if opts.Device == nil {
 		return nil, fmt.Errorf("no device keypair provided")
 	}
+
+	logging.SetHost(opts.Device.Address())
 
 	a := &Anytype{
 		opts:          opts,
@@ -378,6 +379,9 @@ func (a *Anytype) start() error {
 		return nil
 	}, a.opts.CafeP2PAddr)
 
+	// find and retry failed pins
+	go a.checkPins()
+
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {
 			return
@@ -456,13 +460,4 @@ func (a *Anytype) Stop() error {
 	}
 
 	return nil
-}
-
-func (a *Anytype) DatabaseByID(id string) (database.Database, error) {
-	switch id {
-	case "pages":
-		return a.localStore.Pages, nil
-	default:
-		return nil, fmt.Errorf("database not found")
-	}
 }

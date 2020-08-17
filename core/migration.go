@@ -15,6 +15,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/textileio/go-threads/core/thread"
+	"go.uber.org/zap"
 )
 
 const versionFileName = "anytype_version"
@@ -157,6 +158,21 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 			Hash: fileHash,
 			Keys: fileKeys.KeysByPath,
 		})
+	}
+	var detailsFileFields = [...]string{"coverId", "iconImage"}
+
+	if snap.Details != nil && snap.Details.Fields != nil {
+		for _, fileField := range detailsFileFields {
+			if v, exists := snap.Details.Fields[fileField]; exists {
+				hash := v.GetStringValue()
+				keysForFile, err := a.FileGetKeys(hash)
+				if err != nil {
+					log.With(zap.String("hash", hash)).Error("failed to get file key", err.Error())
+				} else {
+					keys = append(keys, keysForFile)
+				}
+			}
+		}
 	}
 
 	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)

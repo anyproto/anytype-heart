@@ -19,22 +19,22 @@ import (
 
 var (
 	// PageInfo is stored in db key pattern:
-	pagesPrefix           = "pages"
-	pagesDetailsBase      = ds.NewKey("/" + pagesPrefix + "/details")
-	pagesSnippetBase      = ds.NewKey("/" + pagesPrefix + "/snippet")
-	pagesLastOpenedBase   = ds.NewKey("/" + pagesPrefix + "/lastopened")   // deprecated
-	pagesLastModifiedBase = ds.NewKey("/" + pagesPrefix + "/lastmodified") // deprecated
-
+	pagesPrefix            = "pages"
+	pagesDetailsBase       = ds.NewKey("/" + pagesPrefix + "/details")
+	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
 
 	_ PageStore = (*dsPageStore)(nil)
 )
 
-type dsPageStore struct {
-	ds ds.TxnDatastore
-	l  sync.Mutex
-}
+const (
+	// special record fields
+	fieldLastOpened   = "lastOpened"
+	fieldLastModified = "lastModified"
+
+	pageSchema = "https://anytype.io/schemas/page"
+)
 
 type filterPagesOnly struct{}
 
@@ -55,14 +55,22 @@ func (m *filterPagesOnly) Filter(e query.Entry) bool {
 	return false
 }
 
-func (m *dsPageStore) Schema() string {
-	return "https://anytype.io/schemas/page"
+func NewPageStore(ds ds.TxnDatastore) PageStore {
+	return &dsPageStore{ds: ds}
 }
 
-func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total int, err error) {
+type dsPageStore struct {
+	// underlying storage
+	ds ds.TxnDatastore
+
+	// serializing page updates
+	l sync.Mutex
+}
+
+func (m *dsPageStore) Query(q database.Query) (records []database.Record, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, 0, fmt.Errorf("error when creating txn in datastore: %w", err)
+		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
@@ -76,29 +84,34 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
 	}
 
-	var results []database.Entry
+	var (
+		results []database.Record
+		offset  = q.Offset
+	)
 
-	offset := q.Offset
-	for entry := range res.Next() {
+	// We use own limit/offset implementation in order to find out
+	// total number of records matching specified filters. Query
+	// returns this number for handy pagination on clients.
+	for rec := range res.Next() {
+		total++
+
 		if offset > 0 {
 			offset--
-			total++
 			continue
 		}
 
 		if q.Limit > 0 && len(results) >= q.Limit {
-			total++
 			continue
 		}
 
 		var details model.PageDetails
-		err = proto.Unmarshal(entry.Value, &details)
-		if err != nil {
+		if err = proto.Unmarshal(rec.Value, &details); err != nil {
 			log.Errorf("failed to unmarshal: %s", err.Error())
+			total--
 			continue
 		}
 
-		key := ds.NewKey(entry.Key)
+		key := ds.NewKey(rec.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
 
@@ -106,31 +119,30 @@ func (m *dsPageStore) Query(q database.Query) (entries []database.Entry, total i
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		}
 
-		details.Details.Fields["id"] = pb.ToValue(id)
-
-		results = append(results, database.Entry{Details: details.Details})
-		total++
+		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
+		results = append(results, database.Record{Details: details.Details})
 	}
 
 	return results, total, nil
 }
 
-func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
+func (m *dsPageStore) Schema() string {
+	return pageSchema
+}
+
+func (m *dsPageStore) AddPage(page *model.PageInfoWithOutboundLinksIDs) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
+		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
 	detailsKey := pagesDetailsBase.ChildString(page.Id)
 	snippetKey := pagesSnippetBase.ChildString(page.Id)
-	outboundKey := pagesOutboundLinksBase.ChildString(page.Id)
 
-	exists, err := txn.Has(detailsKey)
-	if err != nil {
+	if exists, err := txn.Has(detailsKey); err != nil {
 		return err
-	}
-	if exists {
+	} else if exists {
 		return ErrDuplicateKey
 	}
 
@@ -139,118 +151,62 @@ func (m *dsPageStore) Add(page *model.PageInfoWithOutboundLinksIDs) error {
 		return err
 	}
 
-	err = txn.Put(detailsKey, b)
-	if err != nil {
+	if err = txn.Put(detailsKey, b); err != nil {
 		return err
 	}
 
-	for _, targetPageId := range page.OutboundLinks {
-		err = txn.Put(outboundKey.ChildString(targetPageId), nil)
-		if err != nil {
-			return err
-		}
-
-		// add inbound link for the target page
-		inboundKey := pagesInboundLinksBase.ChildString(targetPageId)
-		err = txn.Put(inboundKey.ChildString(page.Id), nil)
-		if err != nil {
+	for _, key := range pageLinkKeys(page.Id, nil, page.OutboundLinks) {
+		if err = txn.Put(key, nil); err != nil {
 			return err
 		}
 	}
 
-	err = txn.Put(snippetKey, []byte(page.Info.Snippet))
-	if err != nil {
+	if err = txn.Put(snippetKey, []byte(page.Info.Snippet)); err != nil {
 		return err
 	}
 
 	return txn.Commit()
 }
 
-func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
-	val, err := txn.Get(pagesDetailsBase.ChildString(id))
+func (m *dsPageStore) DeletePage(id string) error {
+	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
+	defer txn.Discard()
 
-	var details model.PageDetails
-	if val != nil {
-		err = proto.Unmarshal(val, &details)
-		if err != nil {
-			return nil, err
+	for _, k := range []ds.Key{
+		pagesDetailsBase.ChildString(id),
+		pagesSnippetBase.ChildString(id),
+	} {
+		if err = txn.Delete(k); err != nil {
+			return err
 		}
 	}
-	return &details, nil
-}
 
-func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
-	var page = &model.PageInfo{Id: id}
-	details, err := getDetails(txn, id)
+	inLinks, err := findInboundLinks(txn, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get details: %w", err)
-	} else if details != nil && details.Details != nil {
-		page.Details = details.Details
+		return err
 	}
 
-	val, err := txn.Get(pagesSnippetBase.ChildString(id))
-	if err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get snippet: %w", err)
-	} else if val != nil {
-		page.Snippet = string(val)
+	outLinks, err := findOutboundLinks(txn, id)
+	if err != nil {
+		return err
 	}
 
-	inboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesInboundLinksBase.String() + "/" + id + "/",
-		Limit:    1, // we only need to know if there is at least 1 inbound link
-		KeysOnly: true,
-	})
-
-	// max is 1
-	inboundLinks, err := CountAllKeysFromResults(inboundResults)
-
-	val, err = txn.Get(pagesSnippetBase.ChildString(id))
-	if err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get snippet: %w", err)
-	}
-	page.HasInboundLinks = inboundLinks == 1
-
-	return page, nil
-}
-
-func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
-	var pages []*model.PageInfo
-	for _, id := range ids {
-		var val *model.PageInfo
-		val, err := getPageInfo(txn, id)
-		if err != nil {
-			if strings.HasSuffix(err.Error(), "key not found") {
-				continue
-			}
-
-			return nil, err
+	for _, k := range pageLinkKeys(id, inLinks, outLinks) {
+		if err := txn.Delete(k); err != nil {
+			return err
 		}
-
-		pages = append(pages, val)
 	}
 
-	return pages, nil
-}
-
-func getOutboundLinks(txn ds.Txn, id string) ([]string, error) {
-	outboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesOutboundLinksBase.String() + "/" + id + "/",
-		Limit:    0,
-		KeysOnly: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return GetAllKeysFromResults(outboundResults)
+	return txn.Commit()
 }
 
 func (m *dsPageStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
@@ -264,29 +220,12 @@ func (m *dsPageStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks,
 	}
 	page := pages[0]
 
-	inboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesInboundLinksBase.String() + "/" + id + "/",
-		Limit:    0,
-		KeysOnly: true,
-	})
+	inboundIds, err := findInboundLinks(txn, id)
 	if err != nil {
 		return nil, err
 	}
 
-	inboundIds, err := GetAllKeysFromResults(inboundResults)
-	if err != nil {
-		return nil, err
-	}
-
-	outboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesOutboundLinksBase.String() + "/" + id + "/",
-		Limit:    0,
-		KeysOnly: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	outboundsIds, err := GetAllKeysFromResults(outboundResults)
+	outboundsIds, err := findOutboundLinks(txn, id)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +253,7 @@ func (m *dsPageStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks,
 func (m *dsPageStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
@@ -328,7 +267,7 @@ func (m *dsPageStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWi
 	}
 	page := pages[0]
 
-	outboundsIds, err := getOutboundLinks(txn, id)
+	outboundsIds, err := findOutboundLinks(txn, id)
 	if err != nil {
 		return nil, err
 	}
@@ -344,22 +283,24 @@ func (m *dsPageStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWi
 	}, nil
 }
 
+func (m *dsPageStore) GetDetails(id string) (*model.PageDetails, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return getDetails(txn, id)
+}
+
 func (m *dsPageStore) List() ([]*model.PageInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
-	inboundResults, err := txn.Query(query.Query{
-		Prefix:   pagesDetailsBase.String() + "/",
-		Limit:    0,
-		KeysOnly: true,
-	})
-	if err != nil {
-		return nil, err
-	}
 
-	ids, err := GetAllKeysFromResults(inboundResults)
+	ids, err := findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +311,7 @@ func (m *dsPageStore) List() ([]*model.PageInfo, error) {
 func (m *dsPageStore) GetByIDs(ids ...string) ([]*model.PageInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
@@ -400,25 +341,27 @@ func diffSlices(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func (m *dsPageStore) Update(id string, details *types.Struct, links []string, snippet *string) error {
+func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
+		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	if details != nil || snippet != nil {
+	if details != nil || len(snippet) > 0 {
 		exInfo, _ := getPageInfo(txn, id)
 		if exInfo != nil {
 			if exInfo.Details.Equal(details) {
+				// skip updating details
 				details = nil
 			}
 
-			if snippet != nil && exInfo.Snippet == *snippet {
-				snippet = nil
+			if exInfo.Snippet == snippet {
+				// skip updating snippet
+				snippet = ""
 			}
 		}
 	}
@@ -426,123 +369,46 @@ func (m *dsPageStore) Update(id string, details *types.Struct, links []string, s
 	var addedLinks, removedLinks []string
 
 	if links != nil {
-		exLinks, _ := getOutboundLinks(txn, id)
+		exLinks, _ := findOutboundLinks(txn, id)
 		removedLinks, addedLinks = diffSlices(exLinks, links)
 	}
 
 	// underlying commands set the same state each time, but this shouldn't be a problem as we made it in 1 transaction
 	if details != nil {
-		err = m.updateDetails(txn, id, &model.PageDetails{Details: details})
-		if err != nil {
+		if err = m.updateDetails(txn, id, &model.PageDetails{Details: details}); err != nil {
 			return err
 		}
 	}
 
 	if len(addedLinks) > 0 {
-		err = m.addLinks(txn, id, addedLinks)
-		if err != nil {
-			return err
+		for _, k := range pageLinkKeys(id, nil, addedLinks) {
+			if err := txn.Put(k, nil); err != nil {
+				return err
+			}
 		}
 	}
 
 	if len(removedLinks) > 0 {
-		err = m.removeLinks(txn, id, removedLinks)
-		if err != nil {
-			return err
+		for _, k := range pageLinkKeys(id, nil, removedLinks) {
+			if err := txn.Delete(k); err != nil {
+				return err
+			}
 		}
 	}
 
-	if snippet != nil {
-		err = m.updateSnippet(txn, id, *snippet)
-		if err != nil {
+	if len(snippet) > 0 {
+		if err = m.updateSnippet(txn, id, snippet); err != nil {
 			return err
 		}
 	}
 
 	return txn.Commit()
-}
-
-func (m *dsPageStore) addLinks(txn ds.Txn, fromID string, targetIDs []string) error {
-	for _, targetID := range targetIDs {
-		outboundKey := pagesOutboundLinksBase.ChildString(fromID).ChildString(targetID)
-		inboundKey := pagesInboundLinksBase.ChildString(targetID).ChildString(fromID)
-		err := txn.Put(outboundKey, nil)
-		if err != nil {
-			return err
-		}
-
-		err = txn.Put(inboundKey, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m *dsPageStore) removeLinks(txn ds.Txn, fromID string, targetIDs []string) error {
-	for _, targetID := range targetIDs {
-		outboundKey := pagesOutboundLinksBase.ChildString(fromID).ChildString(targetID)
-		inboundKey := pagesInboundLinksBase.ChildString(targetID).ChildString(fromID)
-		err := txn.Delete(outboundKey)
-		if err != nil {
-			return err
-		}
-
-		err = txn.Delete(inboundKey)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m *dsPageStore) updateDetails(txn ds.Txn, id string, details *model.PageDetails) error {
-	detailsKey := pagesDetailsBase.ChildString(id)
-	b, err := proto.Marshal(details)
-	if err != nil {
-		return err
-	}
-
-	err = txn.Put(detailsKey, b)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *dsPageStore) UpdateDetails(id string, details *model.PageDetails) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	err = m.updateDetails(txn, id, details)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsPageStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
-	snippetKey := pagesSnippetBase.ChildString(id)
-
-	err := txn.Put(snippetKey, []byte(snippet))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (m *dsPageStore) UpdateLastOpened(id string, time time.Time) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
+		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
@@ -555,10 +421,9 @@ func (m *dsPageStore) UpdateLastOpened(id string, time time.Time) error {
 		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
 	}
 
-	details.Details.Fields["lastOpened"] = structs.Float64(float64(time.Unix()))
+	details.Details.Fields[fieldLastOpened] = structs.Float64(float64(time.Unix()))
 
-	err = m.updateDetails(txn, id, details)
-	if err != nil {
+	if err := m.updateDetails(txn, id, details); err != nil {
 		return err
 	}
 
@@ -568,7 +433,7 @@ func (m *dsPageStore) UpdateLastOpened(id string, time time.Time) error {
 func (m *dsPageStore) UpdateLastModified(id string, time time.Time) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
+		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
@@ -581,7 +446,7 @@ func (m *dsPageStore) UpdateLastModified(id string, time time.Time) error {
 		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
 	}
 
-	details.Details.Fields["lastModified"] = structs.Float64(float64(time.Unix()))
+	details.Details.Fields[fieldLastModified] = structs.Float64(float64(time.Unix()))
 
 	err = m.updateDetails(txn, id, details)
 	if err != nil {
@@ -591,92 +456,145 @@ func (m *dsPageStore) UpdateLastModified(id string, time time.Time) error {
 	return txn.Commit()
 }
 
-func (m *dsPageStore) Delete(id string) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
+func (m *dsPageStore) updateDetails(txn ds.Txn, id string, details *model.PageDetails) error {
 	detailsKey := pagesDetailsBase.ChildString(id)
+	b, err := proto.Marshal(details)
+	if err != nil {
+		return err
+	}
+
+	return txn.Put(detailsKey, b)
+}
+
+func (m *dsPageStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
-	outboundKey := pagesOutboundLinksBase.ChildString(id)
-	inboundKey := pagesInboundLinksBase.ChildString(id)
-
-	exists, err := txn.Has(detailsKey)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return ErrNotFound
-	}
-
-	err = txn.Delete(detailsKey)
-	if err != nil {
-		return err
-	}
-
-	err = txn.Delete(snippetKey)
-	if err != nil {
-		return err
-	}
-
-	err = txn.Delete(outboundKey)
-	if err != nil {
-		return err
-	}
-
-	inboundResults, err := txn.Query(query.Query{
-		Prefix:   inboundKey.String(),
-		Limit:    0,
-		KeysOnly: true,
-	})
-	if err != nil {
-		return err
-	}
-
-	inboundIds, err := GetAllKeysFromResults(inboundResults)
-	if err != nil {
-		return err
-	}
-
-	// remove indexed outbound links from the source pages
-	// todo: we have ghost links left
-	for _, inboundLinkPageId := range inboundIds {
-		err = txn.Delete(pagesOutboundLinksBase.ChildString(inboundLinkPageId).ChildString(id))
-		if err != nil {
-			return err
-		}
-	}
-
-	err = txn.Delete(inboundKey)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsPageStore) GetDetails(id string) (*model.PageDetails, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return getDetails(txn, id)
-}
-
-func NewPageStore(ds ds.TxnDatastore) PageStore {
-	return &dsPageStore{
-		ds: ds,
-	}
+	return txn.Put(snippetKey, []byte(snippet))
 }
 
 func (m *dsPageStore) Prefix() string {
-	return "pages"
+	return pagesPrefix
 }
 
 func (m *dsPageStore) Indexes() []Index {
-	return []Index{}
+	return nil
+}
+
+/* internal */
+
+func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
+	var details model.PageDetails
+	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil && err != ds.ErrNotFound {
+		return nil, fmt.Errorf("failed to get details: %w", err)
+	} else if err := proto.Unmarshal(val, &details); err != nil {
+		return nil, err
+	}
+
+	return &details, nil
+}
+
+func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
+	var details model.PageDetails
+	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
+		return nil, fmt.Errorf("failed to get details: %w", err)
+	} else if err := proto.Unmarshal(val, &details); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
+	}
+
+	var snippet string
+	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err != nil && err != ds.ErrNotFound {
+		return nil, fmt.Errorf("failed to get snippet: %w", err)
+	} else {
+		snippet = string(val)
+	}
+
+	// omit decoding page state
+	hasInbound, err := hasInboundLinks(txn, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.PageInfo{
+		Id:              id,
+		Details:         details.Details,
+		Snippet:         snippet,
+		HasInboundLinks: hasInbound,
+	}, nil
+}
+
+func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
+	var pages []*model.PageInfo
+	for _, id := range ids {
+		info, err := getPageInfo(txn, id)
+		if err != nil {
+			if strings.HasSuffix(err.Error(), "key not found") {
+				continue
+			}
+			return nil, err
+		}
+		pages = append(pages, info)
+	}
+
+	return pages, nil
+}
+
+func hasInboundLinks(txn ds.Txn, id string) (bool, error) {
+	inboundResults, err := txn.Query(query.Query{
+		Prefix:   pagesInboundLinksBase.String() + "/" + id + "/",
+		Limit:    1, // we only need to know if there is at least 1 inbound link
+		KeysOnly: true,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	// max is 1
+	inboundLinks, err := CountAllKeysFromResults(inboundResults)
+	return inboundLinks > 0, err
+}
+
+// Find to which IDs specified one has outbound links.
+func findOutboundLinks(txn ds.Txn, id string) ([]string, error) {
+	return findByPrefix(txn, pagesOutboundLinksBase.String()+"/"+id+"/", 0)
+}
+
+// Find from which IDs specified one has inbound links.
+func findInboundLinks(txn ds.Txn, id string) ([]string, error) {
+	return findByPrefix(txn, pagesInboundLinksBase.String()+"/"+id+"/", 0)
+}
+
+func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
+	results, err := txn.Query(query.Query{
+		Prefix:   prefix,
+		Limit:    limit,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return GetAllKeysFromResults(results)
+}
+
+func pageLinkKeys(id string, in []string, out []string) []ds.Key {
+	var keys = make([]ds.Key, 0, len(in)+len(out))
+
+	// links incoming into specified node id
+	for _, from := range in {
+		keys = append(keys, inboundLinkKey(from, id), outgoingLinkKey(from, id))
+	}
+
+	// links outgoing from specified node id
+	for _, to := range out {
+		keys = append(keys, outgoingLinkKey(id, to), inboundLinkKey(id, to))
+	}
+
+	return keys
+}
+
+func outgoingLinkKey(from, to string) ds.Key {
+	return pagesOutboundLinksBase.ChildString(from).ChildString(to)
+}
+
+func inboundLinkKey(from, to string) ds.Key {
+	return pagesInboundLinksBase.ChildString(to).ChildString(from)
 }
