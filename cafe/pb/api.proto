@@ -73,7 +73,7 @@ message GetFilePinsResponse {
 
 enum PinStatus {
     Queued = 0;
-    InProgress = 1;
+    InProgress = 1; // TODO remove status
     Failed = 2;
     Done = 3;
 }

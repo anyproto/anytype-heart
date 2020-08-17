@@ -38,25 +38,22 @@ func (a *Anytype) checkPins() {
 		}
 
 		var (
-			failedCIDs                 []string
-			queued, inProgress, pinned int
+			failedCIDs     []string
+			queued, pinned int
 		)
 
 		for _, pin := range resp.GetPins() {
 			switch pin.GetStatus() {
-			case cafepb.PinStatus_Failed:
-				failedCIDs = append(failedCIDs, pin.GetCid())
 			case cafepb.PinStatus_Queued:
 				queued++
-			case cafepb.PinStatus_InProgress:
-				inProgress++
 			case cafepb.PinStatus_Done:
 				pinned++
+			case cafepb.PinStatus_Failed:
+				failedCIDs = append(failedCIDs, pin.GetCid())
 			}
 		}
 
-		log.Debugf("cafe status: queued for pinning: %d, in progress: %d, pinned: %d, failed: %d",
-			queued, inProgress, pinned, len(failedCIDs))
+		log.Debugf("cafe status: queued for pinning: %d, pinned: %d, failed: %d", queued, pinned, len(failedCIDs))
 
 		if len(failedCIDs) > 0 {
 			log.Infof("retrying to pin %d failed files", len(failedCIDs))
