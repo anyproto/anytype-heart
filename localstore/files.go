@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/pb/storage"
 	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
-
-	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var (
@@ -326,6 +325,15 @@ func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*sto
 	}
 
 	return &file, nil
+}
+
+func (m *dsFileStore) ListHashes() ([]string, error) {
+	res, err := GetAllKeys(m.ds, filesInfoBase.String(), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetAllKeysFromResults(res)
 }
 
 func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {

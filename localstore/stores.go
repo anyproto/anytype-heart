@@ -41,6 +41,7 @@ type FileStore interface {
 	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
 	AddTarget(hash string, target string) error
 	RemoveTarget(hash string, target string) error
+	ListHashes() ([]string, error)
 	ListByTarget(target string) ([]*storage.FileInfo, error)
 	Count() (int, error)
 	DeleteByHash(hash string) error
@@ -260,6 +261,14 @@ func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int)
 
 	return ds.Query(query.Query{
 		Prefix:   key.String() + "/",
+		Limit:    limit,
+		KeysOnly: true,
+	})
+}
+
+func GetAllKeys(ds ds.TxnDatastore, prefix string, limit int) (query.Results, error) {
+	return ds.Query(query.Query{
+		Prefix:   prefix + "/",
 		Limit:    limit,
 		KeysOnly: true,
 	})
