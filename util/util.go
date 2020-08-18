@@ -51,7 +51,7 @@ func TruncateText(text string, length int) string {
 }
 
 func NewImmediateTicker(d time.Duration) *immediateTicker {
-	c := make(chan time.Time)
+	c := make(chan time.Time, 1)
 	s := make(chan struct{})
 
 	ticker := time.NewTicker(d)
