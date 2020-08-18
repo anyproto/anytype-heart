@@ -6,6 +6,7 @@ import (
 
 	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
 	"github.com/anytypeio/go-anytype-library/util"
+	"github.com/anytypeio/go-anytype-library/util/hashset"
 )
 
 func (a *Anytype) checkPins() {
@@ -22,6 +23,12 @@ func (a *Anytype) checkPins() {
 	defer t.Stop()
 
 	for {
+		var (
+			failedCIDs     []string
+			queued, pinned int
+			onlyLocal      = hashset.New()
+		)
+
 		select {
 		case <-a.shutdownStartsCh:
 			return
@@ -37,10 +44,14 @@ func (a *Anytype) checkPins() {
 			continue
 		}
 
-		var (
-			failedCIDs     []string
-			queued, pinned int
-		)
+		if cids, err := a.localStore.Files.ListHashes(); err != nil {
+			log.Warnf("retrieving local files failed: %v", err)
+			continue
+		} else {
+			for _, cid := range cids {
+				onlyLocal.Add(cid)
+			}
+		}
 
 		for _, pin := range resp.GetPins() {
 			switch pin.GetStatus() {
@@ -51,12 +62,20 @@ func (a *Anytype) checkPins() {
 			case cafepb.PinStatus_Failed:
 				failedCIDs = append(failedCIDs, pin.GetCid())
 			}
+
+			onlyLocal.Remove(pin.GetCid())
 		}
 
-		log.Debugf("cafe status: queued for pinning: %d, pinned: %d, failed: %d", queued, pinned, len(failedCIDs))
+		log.Debugf("cafe status: queued for pinning: %d, pinned: %d, failed: %d, local: %d",
+			queued, pinned, len(failedCIDs), onlyLocal.Len())
+
+		// add local files for the sync
+		for _, cid := range onlyLocal.List() {
+			failedCIDs = append(failedCIDs, cid.(string))
+		}
 
 		if len(failedCIDs) > 0 {
-			log.Infof("retrying to pin %d failed files", len(failedCIDs))
+			log.Infof("retrying to pin %d files", len(failedCIDs))
 
 			var reqCtx = a.deriveContext(cafeRequestTimeout)
 			for _, failedCID := range failedCIDs {
