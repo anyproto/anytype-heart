@@ -6,7 +6,7 @@ import (
 
 	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
 	"github.com/anytypeio/go-anytype-library/util"
-	"github.com/anytypeio/go-anytype-library/util/hashset"
+	"github.com/dgtony/collections/hashset"
 )
 
 func (a *Anytype) checkPins() {
