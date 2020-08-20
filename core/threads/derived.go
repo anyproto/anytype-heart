@@ -326,7 +326,7 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 	if err == nil && thrd.Key.Service() != nil {
 		// we already have the thread locally, we can safely pull it in background
 		go addReplicatorAnPullAfter(thrd)
-		return
+		return thrd, false, nil
 	}
 
 	serviceKey, readKey, err := s.derivedThreadKeyByIndex(index)
