@@ -222,7 +222,7 @@ func GetLeavesFromResults(results query.Results) ([]string, error) {
 		return nil, err
 	}
 
-	var leaves = make([]string, 0, len(keys))
+	var leaves = make([]string, len(keys))
 	for i, key := range keys {
 		leaf, err := CarveKeyParts(key, -1, 0)
 		if err != nil {
@@ -258,11 +258,14 @@ func CarveKeyParts(key string, from, to int) (string, error) {
 		return "", err
 	}
 
-	if len(carved) == 0 {
+	switch len(carved) {
+	case 0:
 		return "", nil
+	case 1:
+		return carved[0].(string), nil
+	default:
+		return strings.Join(polymorph.ToStrings(carved), "/"), nil
 	}
-
-	return strings.Join(append([]string{"/"}, polymorph.ToStrings(carved)...), "/"), nil
 }
 
 func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int) (query.Results, error) {
