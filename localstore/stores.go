@@ -10,6 +10,9 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
+	"github.com/dgtony/collections/polymorph"
+	"github.com/dgtony/collections/slices"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
@@ -213,42 +216,53 @@ func CountAllKeysFromResults(results query.Results) (int, error) {
 	return count, nil
 }
 
-func GetAllKeysFromResults(results query.Results) ([]string, error) {
-	return getAllKeysFromResults(results, true, -1)
+func GetLeavesFromResults(results query.Results) ([]string, error) {
+	keys, err := ExtractKeysFromResults(results, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var leaves = make([]string, 0, len(keys))
+	for i, key := range keys {
+		leaf, err := CarveKeyParts(key, -1, 0)
+		if err != nil {
+			return nil, err
+		}
+		leaves[i] = leaf
+	}
+
+	return leaves, nil
 }
 
-// in case trimPrefix is false the full keys will be returned
-// in case trimPrefix is true use trimOffset to choose the part of the key. -1 means the last part
-func getAllKeysFromResults(results query.Results, trimPrefix bool, trimOffset int) ([]string, error) {
+func ExtractKeysFromResults(results query.Results, unique bool) ([]string, error) {
 	var keys []string
-	for {
-		res, ok := <-results.Next()
-		if !ok {
-			break
-		}
+	for res := range results.Next() {
 		if res.Error != nil {
 			return nil, res.Error
 		}
+		keys = append(keys, res.Key)
+	}
 
-		key := datastore.RawKey(res.Key)
-		if !trimPrefix {
-			keys = append(keys, key.String())
-			continue
-		}
-
-		keyParts := key.List()
-		index := trimOffset
-		if index < 0 {
-			index = len(keyParts) + index
-		}
-		if index < 0 || index >= len(keyParts) {
-			return nil, fmt.Errorf("bad key offset")
-		}
-
-		keys = append(keys, keyParts[index])
+	if unique {
+		keys = util.UniqueStrings(keys)
 	}
 
 	return keys, nil
+}
+
+func CarveKeyParts(key string, from, to int) (string, error) {
+	var keyParts = datastore.RawKey(key).List()
+
+	carved, err := slices.Carve(polymorph.FromStrings(keyParts), from, to)
+	if err != nil {
+		return "", err
+	}
+
+	if len(carved) == 0 {
+		return "", nil
+	}
+
+	return strings.Join(append([]string{"/"}, polymorph.ToStrings(carved)...), "/"), nil
 }
 
 func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int) (query.Results, error) {

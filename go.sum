@@ -114,8 +114,8 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZm
 github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 h1:tdlZCpZ/P9DhczCTSixgIKmwPv6+wP5DGjqLYw5SUiA=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
-github.com/dgtony/collections v0.1.1 h1:SHSmEHyO129ns3RuBPHsncNQjK9ZT1v6KUSbXh/pJGY=
-github.com/dgtony/collections v0.1.1/go.mod h1:SK/v+w9XVqk0KTLoppgU8dIU9gptYdkU1r/apAdIRJA=
+github.com/dgtony/collections v0.1.3 h1:jID0yM7JTu03sL8qgkgQ1Y2Oe+7N4/pm65jsW1exl5Q=
+github.com/dgtony/collections v0.1.3/go.mod h1:SK/v+w9XVqk0KTLoppgU8dIU9gptYdkU1r/apAdIRJA=
 github.com/disintegration/imaging v1.6.0 h1:nVPXRUUQ36Z7MNf0O77UzgnOb1mkMMor7lmJMJXc/mA=
 github.com/disintegration/imaging v1.6.0/go.mod h1:xuIt+sRxDFrHS0drzXUlCJthkJ8k7lkkUojDSR247MQ=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
