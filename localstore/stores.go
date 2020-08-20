@@ -214,6 +214,12 @@ func CountAllKeysFromResults(results query.Results) (int, error) {
 }
 
 func GetAllKeysFromResults(results query.Results) ([]string, error) {
+	return getAllKeysFromResults(results, true, -1)
+}
+
+// in case trimPrefix is false the full keys will be returned
+// in case trimPrefix is true use trimOffset to choose the part of the key. -1 means the last part
+func getAllKeysFromResults(results query.Results, trimPrefix bool, trimOffset int) ([]string, error) {
 	var keys []string
 	for {
 		res, ok := <-results.Next()
@@ -225,8 +231,21 @@ func GetAllKeysFromResults(results query.Results) ([]string, error) {
 		}
 
 		key := datastore.RawKey(res.Key)
+		if !trimPrefix {
+			keys = append(keys, key.String())
+			continue
+		}
+
 		keyParts := key.List()
-		keys = append(keys, keyParts[len(keyParts)-1])
+		index := trimOffset
+		if index < 0 {
+			index = len(keyParts) + index
+		}
+		if index < 0 || index >= len(keyParts) {
+			return nil, fmt.Errorf("bad key offset")
+		}
+
+		keys = append(keys, keyParts[index])
 	}
 
 	return keys, nil

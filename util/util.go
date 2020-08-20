@@ -72,6 +72,23 @@ func NewImmediateTicker(d time.Duration) *immediateTicker {
 	return &immediateTicker{C: c, s: s}
 }
 
+func UniqueStrings(items []string) []string {
+	var (
+		uniqueItemsMap = make(map[string]struct{}, len(items))
+		uniqueItems    []string
+	)
+
+	for _, item := range items {
+		if _, exists := uniqueItemsMap[item]; exists {
+			continue
+		}
+		uniqueItems = append(uniqueItems, item)
+		uniqueItemsMap[item] = struct{}{}
+	}
+
+	return uniqueItems
+}
+
 type immediateTicker struct {
 	C    chan time.Time
 	s    chan struct{}
