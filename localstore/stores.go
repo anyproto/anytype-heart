@@ -258,14 +258,7 @@ func CarveKeyParts(key string, from, to int) (string, error) {
 		return "", err
 	}
 
-	switch len(carved) {
-	case 0:
-		return "", nil
-	case 1:
-		return carved[0].(string), nil
-	default:
-		return strings.Join(polymorph.ToStrings(carved), "/"), nil
-	}
+	return strings.Join(polymorph.ToStrings(carved), "/"), nil
 }
 
 func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int) (query.Results, error) {
