@@ -327,8 +327,10 @@ func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*sto
 	return &file, nil
 }
 
-func (m *dsFileStore) ListHashes() ([]string, error) {
-	res, err := GetAllKeys(m.ds, filesInfoBase.String(), 0)
+func (m *dsFileStore) ListTargets() ([]string, error) {
+	targetPrefix := indexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
+
+	res, err := GetKeys(m.ds, targetPrefix, 0)
 	if err != nil {
 		return nil, err
 	}

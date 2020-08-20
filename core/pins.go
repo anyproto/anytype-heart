@@ -44,7 +44,7 @@ func (a *Anytype) checkPins() {
 			continue
 		}
 
-		if cids, err := a.localStore.Files.ListHashes(); err != nil {
+		if cids, err := a.localStore.Files.ListTargets(); err != nil {
 			log.Warnf("retrieving local files failed: %v", err)
 			continue
 		} else {
