@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
 )
@@ -335,7 +336,7 @@ func (m *dsFileStore) ListTargets() ([]string, error) {
 		return nil, err
 	}
 
-	keys, err := ExtractKeysFromResults(res, true)
+	keys, err := ExtractKeysFromResults(res)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +350,7 @@ func (m *dsFileStore) ListTargets() ([]string, error) {
 		targets[i] = target
 	}
 
-	return targets, nil
+	return util.UniqueStrings(targets), nil
 }
 
 func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {

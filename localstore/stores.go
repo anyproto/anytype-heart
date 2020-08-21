@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	"github.com/gogo/protobuf/types"
@@ -217,7 +216,7 @@ func CountAllKeysFromResults(results query.Results) (int, error) {
 }
 
 func GetLeavesFromResults(results query.Results) ([]string, error) {
-	keys, err := ExtractKeysFromResults(results, false)
+	keys, err := ExtractKeysFromResults(results)
 	if err != nil {
 		return nil, err
 	}
@@ -234,17 +233,13 @@ func GetLeavesFromResults(results query.Results) ([]string, error) {
 	return leaves, nil
 }
 
-func ExtractKeysFromResults(results query.Results, unique bool) ([]string, error) {
+func ExtractKeysFromResults(results query.Results) ([]string, error) {
 	var keys []string
 	for res := range results.Next() {
 		if res.Error != nil {
 			return nil, res.Error
 		}
 		keys = append(keys, res.Key)
-	}
-
-	if unique {
-		keys = util.UniqueStrings(keys)
 	}
 
 	return keys, nil
