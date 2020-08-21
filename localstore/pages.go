@@ -572,7 +572,7 @@ func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
 		return nil, err
 	}
 
-	return GetAllKeysFromResults(results)
+	return GetLeavesFromResults(results)
 }
 
 func pageLinkKeys(id string, in []string, out []string) []ds.Key {

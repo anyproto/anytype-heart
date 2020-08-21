@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-library/util"
 	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
-
-	"github.com/anytypeio/go-anytype-library/pb/storage"
 )
 
 var (
@@ -328,13 +328,38 @@ func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*sto
 	return &file, nil
 }
 
+func (m *dsFileStore) ListTargets() ([]string, error) {
+	targetPrefix := indexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
+
+	res, err := GetKeys(m.ds, targetPrefix, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := ExtractKeysFromResults(res)
+	if err != nil {
+		return nil, err
+	}
+
+	var targets = make([]string, len(keys))
+	for i, key := range keys {
+		target, err := CarveKeyParts(key, -2, -1)
+		if err != nil {
+			return nil, err
+		}
+		targets[i] = target
+	}
+
+	return util.UniqueStrings(targets), nil
+}
+
 func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
 	results, err := GetKeysByIndexParts(m.ds, indexTargets.Prefix, indexTargets.Name, []string{target}, indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := GetAllKeysFromResults(results)
+	keys, err := GetLeavesFromResults(results)
 	if err != nil {
 		return nil, err
 	}

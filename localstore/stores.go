@@ -10,6 +10,8 @@ import (
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/dgtony/collections/polymorph"
+	"github.com/dgtony/collections/slices"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
@@ -41,6 +43,7 @@ type FileStore interface {
 	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
 	AddTarget(hash string, target string) error
 	RemoveTarget(hash string, target string) error
+	ListTargets() ([]string, error)
 	ListByTarget(target string) ([]*storage.FileInfo, error)
 	Count() (int, error)
 	DeleteByHash(hash string) error
@@ -192,12 +195,7 @@ func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string,
 	}
 
 	key := indexBase.ChildString(prefix).ChildString(keyIndexName).ChildString(keyStr)
-
-	return ds.Query(query.Query{
-		Prefix:   key.String() + "/",
-		Limit:    limit,
-		KeysOnly: true,
-	})
+	return GetKeys(ds, key.String(), limit)
 }
 
 func CountAllKeysFromResults(results query.Results) (int, error) {
@@ -217,23 +215,45 @@ func CountAllKeysFromResults(results query.Results) (int, error) {
 	return count, nil
 }
 
-func GetAllKeysFromResults(results query.Results) ([]string, error) {
-	var keys []string
-	for {
-		res, ok := <-results.Next()
-		if !ok {
-			break
+func GetLeavesFromResults(results query.Results) ([]string, error) {
+	keys, err := ExtractKeysFromResults(results)
+	if err != nil {
+		return nil, err
+	}
+
+	var leaves = make([]string, len(keys))
+	for i, key := range keys {
+		leaf, err := CarveKeyParts(key, -1, 0)
+		if err != nil {
+			return nil, err
 		}
+		leaves[i] = leaf
+	}
+
+	return leaves, nil
+}
+
+func ExtractKeysFromResults(results query.Results) ([]string, error) {
+	var keys []string
+	for res := range results.Next() {
 		if res.Error != nil {
 			return nil, res.Error
 		}
-
-		key := datastore.RawKey(res.Key)
-		keyParts := key.List()
-		keys = append(keys, keyParts[len(keyParts)-1])
+		keys = append(keys, res.Key)
 	}
 
 	return keys, nil
+}
+
+func CarveKeyParts(key string, from, to int) (string, error) {
+	var keyParts = datastore.RawKey(key).List()
+
+	carved, err := slices.Carve(polymorph.FromStrings(keyParts), from, to)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.Join(polymorph.ToStrings(carved), "/"), nil
 }
 
 func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int) (query.Results, error) {
@@ -258,8 +278,12 @@ func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int)
 		limit = 1
 	}
 
+	return GetKeys(ds, key.String(), limit)
+}
+
+func GetKeys(ds ds.TxnDatastore, prefix string, limit int) (query.Results, error) {
 	return ds.Query(query.Query{
-		Prefix:   key.String() + "/",
+		Prefix:   prefix + "/",
 		Limit:    limit,
 		KeysOnly: true,
 	})
