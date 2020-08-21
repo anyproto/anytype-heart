@@ -57,10 +57,6 @@ func getLoggingConfig() logging.Config {
 		cfg.Format = logging.JSONOutput
 	}
 
-	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" {
-		return cfg
-	}
-
 	return cfg
 }
 
