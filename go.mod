@@ -39,17 +39,16 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
-	github.com/textileio/go-threads v0.1.24-0.20200821144644-9c779ea6e601
+	github.com/textileio/go-threads v0.1.23-forked
 	github.com/tyler-smith/go-bip39 v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
-	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299 // indirect
 	google.golang.org/grpc v1.31.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 )
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.24-0.20200821144644-9c779ea6e601
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.23-forked
 
 replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20200813115635-198b2af80f88
 
