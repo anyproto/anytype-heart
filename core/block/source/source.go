@@ -28,7 +28,7 @@ type Source interface {
 	Type() pb.SmartBlockType
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
-	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string) (id string, err error)
+	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error)
 	Close() (err error)
 }
 
@@ -142,7 +142,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	return
 }
 
-func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string) (id string, err error) {
+func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var c = &pb.Change{
@@ -151,7 +151,7 @@ func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileCh
 		PreviousDetailsIds: s.tree.DetailsHeads(),
 		Timestamp:          time.Now().Unix(),
 	}
-	if s.needSnapshot() || len(changes) == 0 {
+	if doSnapshot || s.needSnapshot() || len(changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.logHeads,
 			Data: &model.SmartBlockSnapshotBase{

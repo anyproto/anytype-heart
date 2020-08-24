@@ -294,6 +294,29 @@ func TestBuildDetailsTree(t *testing.T) {
 	assert.Equal(t, "s0->c2->c4-|", tr.String())
 }
 
+func TestBuildTreeBefore(t *testing.T) {
+	t.Run("linear", func(t *testing.T) {
+		sb := newTestSmartBlock()
+		sb.AddChanges(
+			"a",
+			newSnapshot("s0", "", nil),
+			newChange("c0", "s0", "s0"),
+			newSnapshot("s1", "s0", nil, "c0"),
+			newChange("c1", "s1", "s1"),
+		)
+		tr, err := BuildTreeBefore(sb, "c1")
+		require.NoError(t, err)
+		require.NotNil(t, tr)
+		assert.Equal(t, "s1", tr.RootId())
+		assert.Equal(t, 2, tr.Len())
+		tr, err = BuildTreeBefore(sb, "c0")
+		require.NoError(t, err)
+		require.NotNil(t, tr)
+		assert.Equal(t, "s0", tr.RootId())
+		assert.Equal(t, 2, tr.Len())
+	})
+}
+
 func newTestSmartBlock() *smartblock {
 	return &smartblock{
 		changes: make(map[string]*core.SmartblockRecord),

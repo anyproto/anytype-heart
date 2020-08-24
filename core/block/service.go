@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	"github.com/anytypeio/go-anytype-middleware/core/history"
 
 	"github.com/anytypeio/go-anytype-library/files"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -129,6 +130,8 @@ type Service interface {
 
 	Reindex(id string) (err error)
 
+	History() history.History
+
 	Close() error
 }
 
@@ -144,6 +147,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		process:      process.NewService(sendEvent),
 	}
 	s.meta = meta.NewService(a)
+	s.history = history.NewHistory(a, s)
 	go s.cleanupTicker()
 	s.init()
 	log.Info("block service started")
@@ -166,6 +170,7 @@ type service struct {
 	closed       bool
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
+	history      history.History
 	m            sync.RWMutex
 }
 
@@ -1090,4 +1095,14 @@ func (s *service) AllDescendantIds(rootBlockId string, allBlocks map[string]*mod
 	}
 
 	return traversed
+}
+
+func (s *service) ResetToState(pageId string, state *state.State) (err error) {
+	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
+		return sb.ResetToVersion(state)
+	})
+}
+
+func (s *service) History() history.History {
+	return s.history
 }

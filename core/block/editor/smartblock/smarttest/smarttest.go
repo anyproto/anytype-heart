@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/gogo/protobuf/types"
@@ -124,6 +124,10 @@ func (st *SmartTest) MockAnytype() *testMock.MockService {
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 	st.Doc.(*state.State).Add(b)
 	return st
+}
+
+func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
+	return nil
 }
 
 func (st *SmartTest) Close() (err error) {

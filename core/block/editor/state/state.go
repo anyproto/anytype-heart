@@ -9,8 +9,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -509,4 +509,8 @@ func (s *State) GetAllFileHashes() (hashes []string) {
 		}
 	}
 	return
+}
+
+func (s *State) SetParent(parent *State) {
+	s.parent = parent
 }

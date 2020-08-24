@@ -11,10 +11,10 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -30,6 +30,7 @@ var (
 const (
 	NoHistory ApplyFlag = iota
 	NoEvent
+	DoSnapshot
 )
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -54,6 +55,7 @@ type SmartBlock interface {
 	Anytype() anytype.Service
 	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Reindex() error
+	ResetToVersion(s *state.State) (err error)
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -69,7 +71,7 @@ type smartBlock struct {
 	sync.Mutex
 	depIds    []string
 	sendEvent func(e *pb.Event)
-	hist      undo.History
+	undo      undo.History
 	source    source.Source
 	meta      meta.Service
 	metaSub   meta.Subscriber
@@ -95,7 +97,7 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 		return err
 	}
 	sb.source = s
-	sb.hist = undo.NewHistory(0)
+	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
 	return sb.checkRootBlock()
 }
@@ -215,7 +217,7 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var beforeSnippet = sb.Doc.Snippet()
-	var sendEvent, addHistory = true, true
+	var sendEvent, addHistory, doSnapshot = true, true, false
 	msgs, act, err := state.ApplyState(s)
 	if err != nil {
 		return
@@ -229,17 +231,19 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			sendEvent = false
 		case NoHistory:
 			addHistory = false
+		case DoSnapshot:
+			doSnapshot = true
 		}
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
 	fileHashes := getChangedFileHashes(act)
-	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes)
+	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes, doSnapshot)
 	if err != nil {
 		return
 	}
 	sb.Doc.(*state.State).SetChangeId(id)
-	if sb.hist != nil && addHistory {
-		sb.hist.Add(act)
+	if sb.undo != nil && addHistory {
+		sb.undo.Add(act)
 	}
 	if sendEvent {
 		if ctx := s.Context(); ctx != nil {
@@ -259,6 +263,17 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		})
 	}
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
+	return
+}
+
+func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
+	s.SetParent(sb.Doc.(*state.State))
+	if err = sb.Apply(s, NoHistory, DoSnapshot); err != nil {
+		return
+	}
+	if sb.undo != nil {
+		sb.undo.Reset()
+	}
 	return
 }
 
@@ -313,7 +328,7 @@ func (sb *smartBlock) checkSubscriptions() (changed bool) {
 }
 
 func (sb *smartBlock) History() undo.History {
-	return sb.hist
+	return sb.undo
 }
 
 func (sb *smartBlock) Anytype() anytype.Service {
