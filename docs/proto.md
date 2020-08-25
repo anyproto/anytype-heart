@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -21,6 +25,10 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -423,6 +431,7 @@
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
     - [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code)
+    - [Rpc.Block.Split.Request.Mode](#anytype.Rpc.Block.Split.Request.Mode)
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
@@ -460,6 +469,9 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -566,6 +578,9 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
+  
+  
+
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto)
     - [PageDetails](#anytype.model.PageDetails)
     - [PageInfo](#anytype.model.PageInfo)
@@ -577,6 +592,10 @@
     - [State](#anytype.model.State)
     - [State.StateEntry](#anytype.model.State.StateEntry)
   
+  
+  
+  
+
 - [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -622,6 +641,9 @@
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -3835,6 +3857,7 @@ set the current active view (persisted only within a session)
 | blockId | [string](#string) |  |  |
 | range | [model.Range](#anytype.model.Range) |  |  |
 | style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+| mode | [Rpc.Block.Split.Request.Mode](#anytype.Rpc.Block.Split.Request.Mode) |  |  |
 
 
 
@@ -6645,6 +6668,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Split.Request.Mode"></a>
+
+### Rpc.Block.Split.Request.Mode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BOTTOM | 0 |  |
+| TOP | 1 |  |
+| INNER | 2 |  |
 
 
 
