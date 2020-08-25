@@ -55,9 +55,10 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		if tree.Len() == 1 && tree.RootId() == lastVersionId {
 			return
 		}
+		var data []*pb.RpcHistoryVersionsVersion
 		tree.Iterate(tree.RootId(), func(c *change.Change) (isContinue bool) {
 			if c.Id != lastVersionId {
-				resp = append(resp, &pb.RpcHistoryVersionsVersion{
+				data = append(data, &pb.RpcHistoryVersionsVersion{
 					Id:          c.Id,
 					PreviousIds: c.PreviousIds,
 					Time:        c.Timestamp,
@@ -65,6 +66,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 			}
 			return true
 		})
+		resp = append(data, resp...)
 		lastVersionId = tree.RootId()
 	}
 	return
