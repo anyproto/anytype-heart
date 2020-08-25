@@ -169,14 +169,16 @@ func printAllRecords(net net.NetBoostrapper, thrd thread.Info, li thread.LogInfo
 }
 
 func catchAllRecords(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info, li thread.LogInfo) {
-	rid := li.Head
-	total := 0
-	var records []threadRecord
-	ownLog := thrd.GetOwnLog()
+	var (
+		rid     = li.Head
+		total   = 0
+		records []threadRecord
+	)
 
 	defer func() {
 		for i := len(records) - 1; i >= 0; i-- {
-			err := tdb.HandleNetRecord(records[i], thrd.Key, ownLog.ID, time.Second*5)
+			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+			err := tdb.HandleNetRecord(ctx, records[i], thrd.Key)
 			if err != nil {
 				fmt.Printf("failed to handle record: %s\n", err.Error())
 			}

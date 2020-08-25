@@ -298,6 +298,7 @@ func (a *Anytype) addMissingThreadsFromCollection() error {
 	if missingThreadsAdded > 0 {
 		log.Errorf("addMissingThreadsFromCollection: adding %d missing threads in background...", missingThreadsAdded)
 	}
+
 	return nil
 }
 
@@ -317,15 +318,17 @@ func (a *Anytype) addMissingReplicators() error {
 	}
 
 	for _, threadId := range threadsIds {
-		thrd, err := a.ThreadsNet().GetThread(context.Background(), threadId)
+		ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+
+		thrd, err := a.ThreadsNet().GetThread(ctx, threadId)
 		if err != nil {
 			log.Errorf("error getting thread info: %s", err.Error())
+			continue
 		}
 
-		exists := false
+		var exists = false
 		for _, addr := range thrd.Addrs {
-			p2paddr, err := addr.ValueForProtocol(ma.P_P2P)
-			if err == nil {
+			if p2paddr, err := addr.ValueForProtocol(ma.P_P2P); err == nil {
 				if p2paddr == cafeP2PAddr {
 					exists = true
 					break
@@ -339,18 +342,14 @@ func (a *Anytype) addMissingReplicators() error {
 				return err
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-			defer cancel()
-
-			_, err = a.ThreadsNet().AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr.Encapsulate(threadComp))
-			if err != nil {
+			if _, err = a.ThreadsNet().AddReplicator(ctx, thrd.ID, a.opts.CafeP2PAddr.Encapsulate(threadComp)); err != nil {
 				log.Errorf("failed to add missing replicator for %s: %s", thrd.ID, err.Error())
 			} else {
 				log.Infof("added missing replicator for %s", thrd.ID)
 			}
 		}
-
 	}
+
 	return nil
 }
 
@@ -398,14 +397,16 @@ func getRecord(net net3.NetBoostrapper, thrd thread.Info, rid cid.Cid) (net.Reco
 }
 
 func handleAllRecordsInLog(tdb *db.DB, net net3.NetBoostrapper, thrd thread.Info, li thread.LogInfo) {
-	rid := li.Head
-	total := 0
-	var records []threadRecord
-	ownLog := thrd.GetOwnLog()
+	var (
+		rid     = li.Head
+		total   = 0
+		records []threadRecord
+	)
 
 	defer func() {
 		for i := len(records) - 1; i >= 0; i-- {
-			err := tdb.HandleNetRecord(records[i], thrd.Key, ownLog.ID, time.Second*5)
+			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+			err := tdb.HandleNetRecord(ctx, records[i], thrd.Key)
 			if err != nil {
 				log.Errorf("failed to handle record: %s", err.Error())
 			}

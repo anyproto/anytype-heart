@@ -125,7 +125,7 @@ func (a *Anytype) initThreadsDB() error {
 		return err
 	}
 
-	d, err := db.NewDB(context.Background(), a.t, accountID, db.WithNewDBRepoPath(filepath.Join(a.opts.Repo, "collections")))
+	d, err := db.NewDB(context.Background(), a.t, accountID, db.WithNewRepoPath(filepath.Join(a.opts.Repo, "collections")))
 	if err != nil {
 		return err
 	}
