@@ -34,8 +34,6 @@ type collector struct {
 }
 
 func (c *collector) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
-	c.m.Lock()
-	defer c.m.Unlock()
 	s, err := f(c.doc)
 	if err != nil {
 		return err
@@ -50,8 +48,6 @@ func (c *collector) StateAppend(f func(d state.Doc) (s *state.State, err error))
 }
 
 func (c *collector) StateRebuild(doc state.Doc) (err error) {
-	c.m.Lock()
-	defer c.m.Unlock()
 	c.doc = doc
 	log.Infof("changes: details stateRebuild")
 	c.updateMeta()
@@ -142,4 +138,12 @@ func (c *collector) close() {
 	if c.s != nil {
 		c.s.Close()
 	}
+}
+
+func (c *collector) Lock() {
+	c.m.Lock()
+}
+
+func (c *collector) Unlock() {
+	c.m.Unlock()
 }
