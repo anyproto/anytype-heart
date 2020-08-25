@@ -31,8 +31,36 @@ var defaultCfg = logging.Config{
 	URL:    graylogScheme + "://" + graylogHost,
 }
 
+func getLoggingConfig() logging.Config {
+	cfg := defaultCfg
+
+	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" {
+		// set default format to colored text
+		cfg.Format = logging.ColorizedOutput
+		cfg.URL = ""
+	}
+
+	var format string
+	if v := os.Getenv("ANYTYPE_LOG_FMT"); v != "" {
+		format = v
+	} else if v := os.Getenv("GO_LOG_FMT"); v != "" {
+		// support native ipfs logger env var
+		format = v
+	}
+
+	switch format {
+	case "color":
+		cfg.Format = logging.ColorizedOutput
+	case "nocolor":
+		cfg.Format = logging.PlaintextOutput
+	case "json":
+		cfg.Format = logging.JSONOutput
+	}
+
+	return cfg
+}
+
 func init() {
-	var err error
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
 		log.Error(err)
@@ -49,7 +77,8 @@ func init() {
 		log.Error("failed to register zap sink", err.Error())
 	}
 
-	logging.SetupLogging(defaultCfg)
+	cfg := getLoggingConfig()
+	logging.SetupLogging(cfg)
 }
 
 func Logger(system string) zap.SugaredLogger {
@@ -64,7 +93,14 @@ func SetLoggingFilepath(logPath string) {
 	cfg.Format = logging.PlaintextOutput
 	cfg.File = filepath.Join(logPath, "anytype.log")
 
-	logging.SetupLogging(defaultCfg)
+	logging.SetupLogging(cfg)
+}
+
+func SetLoggingFormat(format logging.LogFormat) {
+	cfg := getLoggingConfig()
+	cfg.Format = format
+
+	logging.SetupLogging(cfg)
 }
 
 func ApplyLevels(str string) {

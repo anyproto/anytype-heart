@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,4 +76,43 @@ func Test_AddIndex(t *testing.T) {
 
 	require.NoError(t, res.Error)
 	require.Equal(t, "/idx/items/slice/s1/primkey1", res.Key)
+}
+
+func TestCarveKeyParts(t *testing.T) {
+	cases := []struct {
+		key      string
+		from, to int
+		expected string
+	}{
+		{
+			key:      "/a/b/c/d",
+			from:     -1,
+			to:       0,
+			expected: "d",
+		},
+		{
+			key:      "/a/b/c/d",
+			from:     -2,
+			to:       0,
+			expected: "c/d",
+		},
+		{
+			key:      "/a/b/c/d",
+			from:     -2,
+			to:       -1,
+			expected: "c",
+		},
+		{
+			key:      "/a/b/c/d",
+			from:     1,
+			to:       -1,
+			expected: "b/c",
+		},
+	}
+
+	for _, tt := range cases {
+		result, err := CarveKeyParts(tt.key, tt.from, tt.to)
+		assert.NoError(t, err)
+		assert.Equal(t, tt.expected, result)
+	}
 }

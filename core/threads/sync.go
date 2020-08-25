@@ -83,7 +83,8 @@ func (s *service) addMissingReplicators() error {
 	}
 
 	for _, threadId := range threadsIds {
-		thrd, err := s.t.GetThread(context.Background(), threadId)
+		ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+		thrd, err := s.t.GetThread(ctx, threadId)
 		if err != nil {
 			log.Errorf("failed to get thread %s: %s", threadId.String(), err.Error())
 			continue

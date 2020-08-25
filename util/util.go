@@ -101,8 +101,22 @@ func TruncateText(text string, length int) string {
 	return text
 }
 
+func UniqueStrings(items []string) []string {
+	var um = make(map[string]struct{}, len(items))
+	for _, item := range items {
+		um[item] = struct{}{}
+	}
+
+	var unique = make([]string, 0, len(um))
+	for item := range um {
+		unique = append(unique, item)
+	}
+
+	return unique
+}
+
 func NewImmediateTicker(d time.Duration) *immediateTicker {
-	c := make(chan time.Time)
+	c := make(chan time.Time, 1)
 	s := make(chan struct{})
 
 	ticker := time.NewTicker(d)

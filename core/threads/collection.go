@@ -42,7 +42,7 @@ func (s *service) threadsDbInit() error {
 		return err
 	}
 
-	d, err := db.NewDB(context.Background(), s.t, accountID, db.WithNewDBRepoPath(filepath.Join(s.repoRootPath, "collections")))
+	d, err := db.NewDB(context.Background(), s.t, accountID, db.WithNewRepoPath(filepath.Join(s.repoRootPath, "collections")))
 	if err != nil {
 		return err
 	}

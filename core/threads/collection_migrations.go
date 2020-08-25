@@ -32,14 +32,14 @@ func (s *service) threadsDbMigration(accountThreadId string) error {
 	}
 
 	go func() {
-		err = s.addMissingReplicators()
+		err := s.addMissingReplicators()
 		if err != nil {
 			log.Errorf("addMissingReplicators: %s", err.Error())
 		}
 	}()
 
 	go func() {
-		err = s.addMissingThreadsToCollection()
+		err := s.addMissingThreadsToCollection()
 		if err != nil {
 			log.Errorf("addMissingThreadsToCollection: %s", err.Error())
 		}
@@ -161,14 +161,16 @@ func (s *service) handleAllMissingDbRecords(threadId string) error {
 }
 
 func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info, li thread.LogInfo) {
-	rid := li.Head
-	total := 0
-	var records []threadRecord
-	ownLog := thrd.GetOwnLog()
+	var (
+		rid     = li.Head
+		total   = 0
+		records []threadRecord
+	)
 
 	defer func() {
 		for i := len(records) - 1; i >= 0; i-- {
-			err := tdb.HandleNetRecord(records[i], thrd.Key, ownLog.ID, time.Second*5)
+			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+			err := tdb.HandleNetRecord(ctx, records[i], thrd.Key)
 			if err != nil {
 				log.Errorf("failed to handle record: %s", err.Error())
 			}
