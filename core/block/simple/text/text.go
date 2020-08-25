@@ -47,7 +47,7 @@ type Block interface {
 	HasMarkForAllText(mark *model.BlockContentTextMark) bool
 	SetTextColor(color string)
 	Split(pos int32) (simple.Block, error)
-	RangeSplit(from int32, to int32) (newBlock simple.Block, err error)
+	RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error)
 	RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error)
 	RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error)
 	Merge(b simple.Block) error
@@ -344,9 +344,8 @@ func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlo
 	return cutBlock, initialBlock, nil
 }
 
-func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err error) {
+func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
-		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
 		return nil, ErrOutOfRange
 	}
 	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
@@ -373,21 +372,36 @@ func (t *Text) RangeSplit(from int32, to int32) (newBlock simple.Block, err erro
 		m.Range.To = m.Range.To - r.From
 	}
 
-	newBlock = simple.New(&model.Block{
-		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:    string(runes[:from]),
-			Style:   t.content.Style,
-			Marks:   oldMarks,
-			Checked: t.content.Checked,
-			Color:   t.content.Color,
-		}},
-		BackgroundColor: t.BackgroundColor,
-		Align:           t.Align,
-	})
+	if top {
+		newBlock = simple.New(&model.Block{
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:    string(runes[:from]),
+				Style:   t.content.Style,
+				Marks:   oldMarks,
+				Checked: t.content.Checked,
+				Color:   t.content.Color,
+			}},
+			BackgroundColor: t.BackgroundColor,
+			Align:           t.Align,
+		})
 
-	t.content.Text = string(runes[to:])
-	t.content.Marks = newMarks
-
+		t.content.Text = string(runes[to:])
+		t.content.Marks = newMarks
+	} else {
+		newBlock = simple.New(&model.Block{
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:    string(runes[to:]),
+				Style:   t.content.Style,
+				Marks:   newMarks,
+				Checked: t.content.Checked,
+				Color:   t.content.Color,
+			}},
+			BackgroundColor: t.BackgroundColor,
+			Align:           t.Align,
+		})
+		t.content.Text = string(runes[:from])
+		t.content.Marks = oldMarks
+	}
 	return newBlock, nil
 }
 

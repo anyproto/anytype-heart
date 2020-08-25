@@ -7,12 +7,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
 type Text interface {
 	UpdateTextBlocks(ctx *state.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
-	Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error)
-	RangeSplit(ctx *state.Context, id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error)
+	Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 }
@@ -48,7 +48,7 @@ func (t *textImpl) RangeSplit(ctx *state.Context, id string, rangeFrom int32, ra
 	if err != nil {
 		return
 	}
-	newBlock, err := tb.RangeSplit(rangeFrom, rangeTo)
+	newBlock, err := tb.RangeSplit(rangeFrom, rangeTo, false)
 	if err != nil {
 		return
 	}
@@ -63,20 +63,39 @@ func (t *textImpl) RangeSplit(ctx *state.Context, id string, rangeFrom int32, ra
 	return newBlock.Model().Id, nil
 }
 
-func (t *textImpl) Split(id string, pos int32, style model.BlockContentTextStyle) (newId string, err error) {
+func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
 	s := t.NewState()
-	tb, err := getText(s, id)
+	tb, err := getText(s, req.BlockId)
 	if err != nil {
 		return
 	}
-	new, err := tb.Split(pos)
+	var from, to int32
+	if req.Range != nil {
+		from = req.Range.From
+		to = req.Range.To
+	}
+	createTop := req.Mode == pb.RpcBlockSplitRequest_TOP
+	new, err := tb.RangeSplit(from, to, createTop)
 	if err != nil {
 		return
 	}
-	tb.SetStyle(style)
+	tb.SetStyle(req.Style)
 	s.Add(new)
 	newId = new.Model().Id
-	if err = s.InsertTo(id, model.Block_Top, newId); err != nil {
+	targetId := req.BlockId
+	targetPos := model.Block_Top
+	switch req.Mode {
+	case pb.RpcBlockSplitRequest_BOTTOM:
+		targetPos = model.Block_Bottom
+	case pb.RpcBlockSplitRequest_INNER:
+		if len(tb.Model().ChildrenIds) == 0 {
+			targetPos = model.Block_Inner
+		} else {
+			targetId = tb.Model().ChildrenIds[0]
+			targetPos = model.Block_Top
+		}
+	}
+	if err = s.InsertTo(targetId, targetPos, newId); err != nil {
 		return
 	}
 	if err = t.Apply(s); err != nil {
