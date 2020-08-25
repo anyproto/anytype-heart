@@ -537,6 +537,7 @@ message Rpc {
                 message File {
                     string name = 1;
                     bytes data = 2;
+                    string localPath = 3;
                 }
             }
 
@@ -1532,7 +1533,7 @@ message Rpc {
         }
 
         message Update {
-            message Dataview{
+            message Dataview {
                 message Record {
                     message Request {
                         string contextId = 1;
