@@ -6678,9 +6678,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| BOTTOM | 0 |  |
-| TOP | 1 |  |
-| INNER | 2 |  |
+| BOTTOM | 0 | new block will be created under existing |
+| TOP | 1 | new block will be created above existing |
+| INNER | 2 | new block will be created as the first children of existing |
 
 
 

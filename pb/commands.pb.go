@@ -475,9 +475,12 @@ func (RpcBlockReplaceResponseErrorCode) EnumDescriptor() ([]byte, []int) {
 type RpcBlockSplitRequestMode int32
 
 const (
+	// new block will be created under existing
 	RpcBlockSplitRequest_BOTTOM RpcBlockSplitRequestMode = 0
-	RpcBlockSplitRequest_TOP    RpcBlockSplitRequestMode = 1
-	RpcBlockSplitRequest_INNER  RpcBlockSplitRequestMode = 2
+	// new block will be created above existing
+	RpcBlockSplitRequest_TOP RpcBlockSplitRequestMode = 1
+	// new block will be created as the first children of existing
+	RpcBlockSplitRequest_INNER RpcBlockSplitRequestMode = 2
 )
 
 var RpcBlockSplitRequestMode_name = map[int32]string{
