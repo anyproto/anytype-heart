@@ -471,7 +471,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 
 		} else if isPasteWithSplit {
 			isSameBlockCaret = true
-			newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To, false)
+			newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To, true)
 			if err != nil {
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 			}
