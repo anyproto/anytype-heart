@@ -90,6 +90,10 @@ service ClientCommands {
     rpc BlockCreateDataviewView (anytype.Rpc.Block.Create.Dataview.View.Request) returns (anytype.Rpc.Block.Create.Dataview.View.Response);
     rpc BlockDeleteDataviewView (anytype.Rpc.Block.Delete.Dataview.View.Request) returns (anytype.Rpc.Block.Delete.Dataview.View.Response);
 
+    rpc BlockCreateDataviewRecord (anytype.Rpc.Block.Create.Dataview.Record.Request) returns (anytype.Rpc.Block.Create.Dataview.Record.Response);
+    rpc BlockUpdateDataviewRecord (anytype.Rpc.Block.Update.Dataview.Record.Request) returns (anytype.Rpc.Block.Update.Dataview.Record.Response);
+    rpc BlockDeleteDataviewRecord (anytype.Rpc.Block.Delete.Dataview.Record.Request) returns (anytype.Rpc.Block.Delete.Dataview.Record.Response);
+
     rpc BlockBookmarkFetch (anytype.Rpc.Block.Bookmark.Fetch.Request) returns (anytype.Rpc.Block.Bookmark.Fetch.Response);
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) returns (anytype.Rpc.Block.Bookmark.CreateAndFetch.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.Block.File.CreateAndUpload.Request) returns (anytype.Rpc.Block.File.CreateAndUpload.Response);

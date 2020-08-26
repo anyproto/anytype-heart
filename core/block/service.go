@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -30,7 +31,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	simpleFile "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -105,6 +105,7 @@ type Service interface {
 
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error)
 	CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
@@ -120,7 +121,12 @@ type Service interface {
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
 	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
 
+	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (*types.Struct, error)
+	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) error
+	DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) error
+
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
+	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	ProcessAdd(p process.Process) (err error)
@@ -352,7 +358,6 @@ func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrum
 		} else {
 			return ErrUnexpectedBlockType
 		}
-		return nil
 	})
 }
 
@@ -625,6 +630,35 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDa
 	return
 }
 
+func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (rec *types.Struct, err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		cr, err := b.CreateRecord(ctx, req.BlockId, model.PageDetails{Details: req.Record})
+		if err != nil {
+			return err
+		}
+		rec = cr.Details
+		return nil
+	})
+
+	return
+}
+
+func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) (err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateRecord(ctx, req.BlockId, req.RecordId, model.PageDetails{Details: req.Record})
+	})
+
+	return
+}
+
+func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) (err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.DeleteRecord(ctx, req.BlockId, req.RecordId)
+	})
+
+	return
+}
+
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		textSlot, htmlSlot, anySlot, err = cb.Copy(req)
@@ -758,10 +792,21 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 }
 
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
-	<-uploadFilesLimiter
-	defer func() { uploadFilesLimiter <- struct{}{} }()
 	return s.DoFile(req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, req.FilePath, req.Url)
+		err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path: req.FilePath,
+			Url:  req.Url,
+		}, false)
+		return err
+	})
+}
+
+func (s *service) UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
+	return s.DoFile(req.ContextId, func(b file.File) error {
+		err = b.Upload(ctx, req.BlockId, file.FileSource{
+			Path: req.FilePath,
+			Url:  req.Url,
+		}, true)
 		return err
 	})
 }
@@ -775,22 +820,20 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 }
 
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
-	var tempFile = simpleFile.NewFile(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{}}}).(simpleFile.Block)
-	var opts []files.AddOption
+	upl := file.NewUploader(s)
 	if req.DisableEncryption {
-		opts = append(opts, files.WithPlaintext(true))
+		upl.AddOptions(files.WithPlaintext(true))
 	}
-	u := simpleFile.NewUploader(s.Anytype(), func(f func(file simpleFile.Block)) {
-		f(tempFile)
-	}, opts...)
-	if err = u.DoType(req.LocalPath, req.Url, req.Type); err != nil {
-		return
+	if req.Type != model.BlockContentFile_None {
+		upl.SetType(req.Type)
+	} else {
+		upl.AutoType(true)
 	}
-	result := tempFile.Model().GetFile()
-	if result.State != model.BlockContentFile_Done {
-		return "", fmt.Errorf("unexpected upload error")
+	res := upl.SetFile(req.LocalPath).Upload(context.TODO())
+	if res.Err != nil {
+		return "", res.Err
 	}
-	return result.Hash, nil
+	return res.Hash, nil
 }
 
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
@@ -813,7 +856,13 @@ func (s *service) Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (err erro
 
 func (s *service) BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
 	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url)
+		return b.Fetch(ctx, req.BlockId, req.Url, false)
+	})
+}
+
+func (s *service) BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
+	return s.DoBookmark(req.ContextId, func(b bookmark.Bookmark) error {
+		return b.Fetch(ctx, req.BlockId, req.Url, true)
 	})
 }
 
@@ -900,16 +949,14 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	case pb.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta, s.sendEvent)
+		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
-	if err = sb.Init(sc, initEmpty); err != nil {
-		return
-	}
+	err = sb.Init(sc, initEmpty)
 	return
 }
 

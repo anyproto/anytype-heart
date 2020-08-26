@@ -81,7 +81,7 @@ func main() {
 	}
 	webaddr = webLis.Addr().String()
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.MaxRecvMsgSize(20 * 1024 * 1024))
 	lib.RegisterClientCommandsServer(server, mw)
 
 	webrpc := grpcweb.WrapServer(

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -15,15 +16,17 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewSet(ms meta.Service, sendEvent func(e *pb.Event)) *Set {
-	sb := smartblock.New(ms)
-	return &Set{
-		SmartBlock: sb,
-		Basic:      basic.NewBasic(sb),
-		IHistory:   basic.NewHistory(sb),
-		Dataview:   dataview.NewDataview(sb, sendEvent),
-		sendEvent:  sendEvent,
+func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
+	sb := &Set{
+		SmartBlock: smartblock.New(ms),
 	}
+
+	sb.Basic = basic.NewBasic(sb)
+	sb.IHistory = basic.NewHistory(sb)
+	sb.Dataview = dataview.NewDataview(sb)
+	sb.Router = database.New(dbCtrl)
+
+	return sb
 }
 
 type Set struct {
@@ -31,8 +34,7 @@ type Set struct {
 	basic.Basic
 	basic.IHistory
 	dataview.Dataview
-
-	sendEvent func(e *pb.Event)
+	database.Router
 }
 
 func (p *Set) Init(s source.Source, _ bool) (err error) {

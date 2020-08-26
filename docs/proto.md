@@ -69,6 +69,10 @@
     - [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error)
     - [Rpc.Block.Create](#anytype.Rpc.Block.Create)
     - [Rpc.Block.Create.Dataview](#anytype.Rpc.Block.Create.Dataview)
+    - [Rpc.Block.Create.Dataview.Record](#anytype.Rpc.Block.Create.Dataview.Record)
+    - [Rpc.Block.Create.Dataview.Record.Request](#anytype.Rpc.Block.Create.Dataview.Record.Request)
+    - [Rpc.Block.Create.Dataview.Record.Response](#anytype.Rpc.Block.Create.Dataview.Record.Response)
+    - [Rpc.Block.Create.Dataview.Record.Response.Error](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error)
     - [Rpc.Block.Create.Dataview.View](#anytype.Rpc.Block.Create.Dataview.View)
     - [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request)
     - [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response)
@@ -86,6 +90,10 @@
     - [Rpc.Block.Cut.Response.Error](#anytype.Rpc.Block.Cut.Response.Error)
     - [Rpc.Block.Delete](#anytype.Rpc.Block.Delete)
     - [Rpc.Block.Delete.Dataview](#anytype.Rpc.Block.Delete.Dataview)
+    - [Rpc.Block.Delete.Dataview.Record](#anytype.Rpc.Block.Delete.Dataview.Record)
+    - [Rpc.Block.Delete.Dataview.Record.Request](#anytype.Rpc.Block.Delete.Dataview.Record.Request)
+    - [Rpc.Block.Delete.Dataview.Record.Response](#anytype.Rpc.Block.Delete.Dataview.Record.Response)
+    - [Rpc.Block.Delete.Dataview.Record.Response.Error](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error)
     - [Rpc.Block.Delete.Dataview.View](#anytype.Rpc.Block.Delete.Dataview.View)
     - [Rpc.Block.Delete.Dataview.View.Request](#anytype.Rpc.Block.Delete.Dataview.View.Request)
     - [Rpc.Block.Delete.Dataview.View.Response](#anytype.Rpc.Block.Delete.Dataview.View.Response)
@@ -130,6 +138,7 @@
     - [Rpc.Block.OpenBreadcrumbs.Response.Error](#anytype.Rpc.Block.OpenBreadcrumbs.Response.Error)
     - [Rpc.Block.Paste](#anytype.Rpc.Block.Paste)
     - [Rpc.Block.Paste.Request](#anytype.Rpc.Block.Paste.Request)
+    - [Rpc.Block.Paste.Request.File](#anytype.Rpc.Block.Paste.Request.File)
     - [Rpc.Block.Paste.Response](#anytype.Rpc.Block.Paste.Response)
     - [Rpc.Block.Paste.Response.Error](#anytype.Rpc.Block.Paste.Response.Error)
     - [Rpc.Block.Redo](#anytype.Rpc.Block.Redo)
@@ -229,6 +238,12 @@
     - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
     - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
     - [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error)
+    - [Rpc.Block.Update](#anytype.Rpc.Block.Update)
+    - [Rpc.Block.Update.Dataview](#anytype.Rpc.Block.Update.Dataview)
+    - [Rpc.Block.Update.Dataview.Record](#anytype.Rpc.Block.Update.Dataview.Record)
+    - [Rpc.Block.Update.Dataview.Record.Request](#anytype.Rpc.Block.Update.Dataview.Record.Request)
+    - [Rpc.Block.Update.Dataview.Record.Response](#anytype.Rpc.Block.Update.Dataview.Record.Response)
+    - [Rpc.Block.Update.Dataview.Record.Response.Error](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error)
     - [Rpc.Block.Upload](#anytype.Rpc.Block.Upload)
     - [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request)
     - [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response)
@@ -394,10 +409,12 @@
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
+    - [Rpc.Block.Create.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error.Code)
     - [Rpc.Block.Create.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
     - [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code)
+    - [Rpc.Block.Delete.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error.Code)
     - [Rpc.Block.Delete.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
@@ -431,6 +448,7 @@
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
+    - [Rpc.Block.Update.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code)
     - [Rpc.BlockList.Delete.Page.Response.Error.Code](#anytype.Rpc.BlockList.Delete.Page.Response.Error.Code)
@@ -733,6 +751,9 @@
 | BlockSetDataviewActiveView | [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request) | [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response) |  |
 | BlockCreateDataviewView | [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request) | [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response) |  |
 | BlockDeleteDataviewView | [Rpc.Block.Delete.Dataview.View.Request](#anytype.Rpc.Block.Delete.Dataview.View.Request) | [Rpc.Block.Delete.Dataview.View.Response](#anytype.Rpc.Block.Delete.Dataview.View.Response) |  |
+| BlockCreateDataviewRecord | [Rpc.Block.Create.Dataview.Record.Request](#anytype.Rpc.Block.Create.Dataview.Record.Request) | [Rpc.Block.Create.Dataview.Record.Response](#anytype.Rpc.Block.Create.Dataview.Record.Response) |  |
+| BlockUpdateDataviewRecord | [Rpc.Block.Update.Dataview.Record.Request](#anytype.Rpc.Block.Update.Dataview.Record.Request) | [Rpc.Block.Update.Dataview.Record.Response](#anytype.Rpc.Block.Update.Dataview.Record.Response) |  |
+| BlockDeleteDataviewRecord | [Rpc.Block.Delete.Dataview.Record.Request](#anytype.Rpc.Block.Delete.Dataview.Record.Request) | [Rpc.Block.Delete.Dataview.Record.Response](#anytype.Rpc.Block.Delete.Dataview.Record.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
@@ -1542,6 +1563,65 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 
 
+<a name="anytype.Rpc.Block.Create.Dataview.Record"></a>
+
+### Rpc.Block.Create.Dataview.Record
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Create.Dataview.Record.Request"></a>
+
+### Rpc.Block.Create.Dataview.Record.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Create.Dataview.Record.Response"></a>
+
+### Rpc.Block.Create.Dataview.Record.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Create.Dataview.Record.Response.Error](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error) |  |  |
+| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Create.Dataview.Record.Response.Error"></a>
+
+### Rpc.Block.Create.Dataview.Record.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Create.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Create.Dataview.View"></a>
 
 ### Rpc.Block.Create.Dataview.View
@@ -1791,6 +1871,65 @@ common simple block command
 
 ### Rpc.Block.Delete.Dataview
 
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.Record"></a>
+
+### Rpc.Block.Delete.Dataview.Record
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.Record.Request"></a>
+
+### Rpc.Block.Delete.Dataview.Record.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| recordId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.Record.Response"></a>
+
+### Rpc.Block.Delete.Dataview.Record.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Delete.Dataview.Record.Response.Error](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.Record.Response.Error"></a>
+
+### Rpc.Block.Delete.Dataview.Record.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Delete.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -2446,6 +2585,23 @@ Image/Video/File blocks then:
 | textSlot | [string](#string) |  |  |
 | htmlSlot | [string](#string) |  |  |
 | anySlot | [model.Block](#anytype.model.Block) | repeated |  |
+| fileSlot | [Rpc.Block.Paste.Request.File](#anytype.Rpc.Block.Paste.Request.File) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Paste.Request.File"></a>
+
+### Rpc.Block.Paste.Request.File
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| data | [bytes](#bytes) |  |  |
 
 
 
@@ -3867,6 +4023,85 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Update"></a>
+
+### Rpc.Block.Update
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Update.Dataview"></a>
+
+### Rpc.Block.Update.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Update.Dataview.Record"></a>
+
+### Rpc.Block.Update.Dataview.Record
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Update.Dataview.Record.Request"></a>
+
+### Rpc.Block.Update.Dataview.Record.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| recordId | [string](#string) |  |  |
+| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Update.Dataview.Record.Response"></a>
+
+### Rpc.Block.Update.Dataview.Record.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Update.Dataview.Record.Response.Error](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Update.Dataview.Record.Response.Error"></a>
+
+### Rpc.Block.Update.Dataview.Record.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Update.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -6187,6 +6422,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Create.Dataview.Record.Response.Error.Code"></a>
+
+### Rpc.Block.Create.Dataview.Record.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code"></a>
 
 ### Rpc.Block.Create.Dataview.View.Response.Error.Code
@@ -6229,6 +6477,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Cut.Response.Error.Code"></a>
 
 ### Rpc.Block.Cut.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Delete.Dataview.Record.Response.Error.Code"></a>
+
+### Rpc.Block.Delete.Dataview.Record.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -6661,6 +6922,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Unlink.Response.Error.Code"></a>
 
 ### Rpc.Block.Unlink.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Update.Dataview.Record.Response.Error.Code"></a>
+
+### Rpc.Block.Update.Dataview.Record.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -8724,6 +8998,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | total | [int64](#int64) |  |  |
 | done | [int64](#int64) |  |  |
+| message | [string](#string) |  |  |
 
 
 
@@ -8771,6 +9046,7 @@ Precondition: user A and user B opened the same block
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | DropFiles | 0 |  |
+| Import | 1 |  |
 
 
 
