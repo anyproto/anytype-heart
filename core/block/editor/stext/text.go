@@ -64,7 +64,7 @@ func (t *textImpl) RangeSplit(ctx *state.Context, id string, rangeFrom int32, ra
 }
 
 func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
-	s := t.NewState()
+	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
 		return
