@@ -19,7 +19,7 @@ func NewHistory(a anytype.Service, bs BlockService, m meta.Service) History {
 }
 
 type History interface {
-	Show(pageId, versionId string) (bs *pb.EventBlockShow, err error)
+	Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error)
 	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersionsVersion, err error)
 	SetVersion(pageId, versionId string) (err error)
 }
@@ -34,11 +34,12 @@ type history struct {
 	meta meta.Service
 }
 
-func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, err error) {
-	s, err := h.buildState(pageId, versionId)
+func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error) {
+	s, ver, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
 	}
+
 	depIds := append(s.DepSmartIds(), pageId)
 	metaD := h.meta.FetchDetails(depIds)
 	details := make([]*pb.EventBlockSetDetails, 0, len(metaD))
@@ -52,7 +53,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, err err
 		RootId:  pageId,
 		Blocks:  s.Blocks(),
 		Details: details,
-	}, nil
+	}, ver, nil
 }
 
 func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersionsVersion, err error) {
@@ -85,7 +86,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 }
 
 func (h *history) SetVersion(pageId, versionId string) (err error) {
-	s, err := h.buildState(pageId, versionId)
+	s, _, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
 	}
@@ -101,14 +102,14 @@ func (h *history) buildTree(pageId, versionId string) (*change.Tree, error) {
 	return change.BuildTreeBefore(sb, versionId)
 }
 
-func (h *history) buildState(pageId, versionId string) (s *state.State, err error) {
+func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.RpcHistoryVersionsVersion, err error) {
 	tree, err := h.buildTree(pageId, versionId)
 	if err != nil {
 		return
 	}
 	root := tree.Root()
 	if root == nil || root.GetSnapshot() == nil {
-		return nil, fmt.Errorf("root missing or not a snapshot")
+		return nil, nil, fmt.Errorf("root missing or not a snapshot")
 	}
 	s = state.NewDocFromSnapshot(pageId, root.GetSnapshot()).(*state.State)
 	s.SetChangeId(root.Id)
@@ -118,6 +119,13 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, err erro
 	}
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
+	}
+	if ch := tree.Get(versionId); ch != nil {
+		ver = &pb.RpcHistoryVersionsVersion{
+			Id:          ch.Id,
+			PreviousIds: ch.PreviousIds,
+			Time:        ch.Timestamp,
+		}
 	}
 	return
 }

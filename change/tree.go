@@ -261,6 +261,10 @@ func (t *Tree) String() string {
 	return buf.String()
 }
 
+func (t *Tree) Get(id string) *Change {
+	return t.attached[id]
+}
+
 type sortChanges []*Change
 
 func (s sortChanges) Len() int {

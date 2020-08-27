@@ -6,7 +6,7 @@ import (
 )
 
 func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryShowResponse {
-	response := func(show *pb.EventBlockShow, err error) (res *pb.RpcHistoryShowResponse) {
+	response := func(show *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error) (res *pb.RpcHistoryShowResponse) {
 		res = &pb.RpcHistoryShowResponse{
 			Error: &pb.RpcHistoryShowResponseError{
 				Code: pb.RpcHistoryShowResponseError_NULL,
@@ -18,20 +18,22 @@ func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryS
 			return
 		} else {
 			res.BlockShow = show
+			res.Version = ver
 		}
 		return res
 	}
 	var (
 		show *pb.EventBlockShow
+		ver  *pb.RpcHistoryVersionsVersion
 		err  error
 	)
 	if err = mw.doBlockService(func(bs block.Service) (err error) {
-		show, err = bs.History().Show(req.PageId, req.VersionId)
+		show, ver, err = bs.History().Show(req.PageId, req.VersionId)
 		return
 	}); err != nil {
-		return response(nil, err)
+		return response(nil, nil, err)
 	}
-	return response(show, nil)
+	return response(show, ver, nil)
 }
 
 func (mw *Middleware) HistoryVersions(req *pb.RpcHistoryVersionsRequest) *pb.RpcHistoryVersionsResponse {

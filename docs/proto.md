@@ -5310,6 +5310,7 @@ returns blockShow event for given version
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.History.Show.Response.Error](#anytype.Rpc.History.Show.Response.Error) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
+| version | [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version) |  |  |
 
 
 
