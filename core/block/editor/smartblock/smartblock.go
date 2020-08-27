@@ -197,13 +197,7 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 }
 
 func (sb *smartBlock) dependentSmartIds() (ids []string) {
-	ids = make([]string, 0, 30)
-	sb.Doc.(*state.State).Iterate(func(b simple.Block) (isContinue bool) {
-		if ls, ok := b.(linkSource); ok {
-			ids = ls.FillSmartIds(ids)
-		}
-		return true
-	})
+	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 	}

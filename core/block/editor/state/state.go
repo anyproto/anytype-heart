@@ -514,3 +514,18 @@ func (s *State) GetAllFileHashes() (hashes []string) {
 func (s *State) SetParent(parent *State) {
 	s.parent = parent
 }
+
+func (s *State) DepSmartIds() (ids []string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if ls, ok := b.(linkSource); ok {
+			ids = ls.FillSmartIds(ids)
+		}
+		return true
+	})
+	return
+}
+
+type linkSource interface {
+	FillSmartIds(ids []string) []string
+	HasSmartIds() bool
+}

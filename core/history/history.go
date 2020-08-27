@@ -6,13 +6,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func NewHistory(a anytype.Service, bs BlockService) History {
+func NewHistory(a anytype.Service, bs BlockService, m meta.Service) History {
 	return &history{
-		a:  a,
-		bs: bs,
+		a:    a,
+		bs:   bs,
+		meta: m,
 	}
 }
 
@@ -27,8 +29,9 @@ type BlockService interface {
 }
 
 type history struct {
-	a  anytype.Service
-	bs BlockService
+	a    anytype.Service
+	bs   BlockService
+	meta meta.Service
 }
 
 func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, err error) {
@@ -36,10 +39,19 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, err err
 	if err != nil {
 		return
 	}
+	depIds := append(s.DepSmartIds(), pageId)
+	metaD := h.meta.FetchDetails(depIds)
+	details := make([]*pb.EventBlockSetDetails, 0, len(metaD))
+	for _, m := range metaD {
+		details = append(details, &pb.EventBlockSetDetails{
+			Id:      m.BlockId,
+			Details: m.Details,
+		})
+	}
 	return &pb.EventBlockShow{
 		RootId:  pageId,
 		Blocks:  s.Blocks(),
-		Details: nil, // TODO:
+		Details: details,
 	}, nil
 }
 

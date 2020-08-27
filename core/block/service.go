@@ -153,7 +153,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		process:      process.NewService(sendEvent),
 	}
 	s.meta = meta.NewService(a)
-	s.history = history.NewHistory(a, s)
+	s.history = history.NewHistory(a, s, s.meta)
 	go s.cleanupTicker()
 	s.init()
 	log.Info("block service started")
