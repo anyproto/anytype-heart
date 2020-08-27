@@ -79,8 +79,8 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 	if err != nil {
 		return
 	}
-	tb.SetStyle(req.Style)
 	s.Add(new)
+	new.(text.Block).SetStyle(req.Style)
 	newId = new.Model().Id
 	targetId := req.BlockId
 	targetPos := model.Block_Top
