@@ -448,6 +448,16 @@ message Rpc {
                 string blockId = 2;
                 anytype.model.Range range = 3;
                 anytype.model.Block.Content.Text.Style style = 4;
+                Mode mode = 5;
+
+                enum Mode {
+                    // new block will be created under existing
+                    BOTTOM = 0;
+                    // new block will be created above existing
+                    TOP = 1;
+                    // new block will be created as the first children of existing
+                    INNER = 2;
+                }
             }
 
             message Response {
@@ -1532,7 +1542,7 @@ message Rpc {
         }
 
         message Update {
-            message Dataview{
+            message Dataview {
                 message Record {
                     message Request {
                         string contextId = 1;
