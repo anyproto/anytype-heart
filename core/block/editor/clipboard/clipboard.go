@@ -471,7 +471,7 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 
 		} else if isPasteWithSplit {
 			isSameBlockCaret = true
-			newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To)
+			newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To, true)
 			if err != nil {
 				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 			}
@@ -602,6 +602,7 @@ func (cb *clipboard) pasteFiles(ctx *state.Context, req pb.RpcBlockPasteRequest)
 		s.Add(b)
 		if err = cb.file.UploadState(s, b.Model().Id, file.FileSource{
 			Bytes: fs.Data,
+			Path:  fs.LocalPath,
 			Name:  fs.Name,
 		}, true); err != nil {
 			return

@@ -20,6 +20,7 @@ var log = logging.Logger("anytype-mw-source")
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, err error)) error
 	StateRebuild(d state.Doc) (err error)
+	sync.Locker
 }
 
 type Source interface {
@@ -60,7 +61,6 @@ type source struct {
 	unsubscribe    func()
 	detailsOnly    bool
 	closed         chan struct{}
-	mu             sync.Mutex
 }
 
 func (s *source) Id() string {
@@ -76,15 +76,11 @@ func (s *source) Type() pb.SmartBlockType {
 }
 
 func (s *source) ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.detailsOnly = true
 	return s.readDoc(receiver, false)
 }
 
 func (s *source) ReadDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.readDoc(receiver, allowEmpty)
 }
 
@@ -143,8 +139,6 @@ func (s *source) buildState() (doc state.Doc, err error) {
 }
 
 func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	var c = &pb.Change{
 		PreviousIds:        s.tree.Heads(),
 		LastSnapshotId:     s.lastSnapshotId,
@@ -211,8 +205,8 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 		return
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.receiver.Lock()
+	defer s.receiver.Unlock()
 
 	s.logHeads[record.LogID] = record.ID
 
@@ -269,8 +263,6 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 }
 
 func (s *source) Close() (err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.unsubscribe != nil {
 		s.unsubscribe()
 		<-s.closed

@@ -460,7 +460,7 @@ func (s *service) SetDivStyle(ctx *state.Context, contextId string, style model.
 
 func (s *service) SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error) {
 	err = s.DoText(req.ContextId, func(b stext.Text) error {
-		blockId, err = b.RangeSplit(ctx, req.BlockId, req.Range.From, req.Range.To, req.Style)
+		blockId, err = b.Split(ctx, req)
 		return err
 	})
 	return

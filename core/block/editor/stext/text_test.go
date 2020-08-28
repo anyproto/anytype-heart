@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,16 +40,85 @@ func TestTextImpl_UpdateTextBlocks(t *testing.T) {
 }
 
 func TestTextImpl_Split(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
-		AddBlock(newTextBlock("1", "onetwo"))
-	tb := NewText(sb)
-	newId, err := tb.Split("1", 3, model.BlockContentText_Checkbox)
-	require.NoError(t, err)
-	require.NotEmpty(t, newId)
-	r := sb.NewState()
-	assert.Equal(t, []string{newId, "1"}, r.Pick(r.RootId()).Model().ChildrenIds)
-	assert.Equal(t, model.BlockContentText_Checkbox, r.Pick("1").Model().GetText().Style)
+	t.Run("top", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlock("1", "onetwo"))
+		tb := NewText(sb)
+		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
+			BlockId: "1",
+			Range:   &model.Range{From: 3, To: 3},
+			Style:   model.BlockContentText_Checkbox,
+			Mode:    pb.RpcBlockSplitRequest_TOP,
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, newId)
+		r := sb.NewState()
+		assert.Equal(t, []string{newId, "1"}, r.Pick(r.RootId()).Model().ChildrenIds)
+		assert.Equal(t, model.BlockContentText_Checkbox, r.Pick(newId).Model().GetText().Style)
+		assert.Equal(t, "one", r.Pick(newId).Model().GetText().Text)
+		assert.Equal(t, "two", r.Pick("1").Model().GetText().Text)
+	})
+	t.Run("bottom", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlock("1", "onetwo"))
+		tb := NewText(sb)
+		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
+			BlockId: "1",
+			Range:   &model.Range{From: 3, To: 3},
+			Style:   model.BlockContentText_Checkbox,
+			Mode:    pb.RpcBlockSplitRequest_BOTTOM,
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, newId)
+		r := sb.NewState()
+		assert.Equal(t, []string{"1", newId}, r.Pick(r.RootId()).Model().ChildrenIds)
+		assert.Equal(t, "one", r.Pick("1").Model().GetText().Text)
+		assert.Equal(t, "two", r.Pick(newId).Model().GetText().Text)
+	})
+	t.Run("inner empty", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlock("1", "onetwo"))
+		tb := NewText(sb)
+		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
+			BlockId: "1",
+			Range:   &model.Range{From: 3, To: 3},
+			Style:   model.BlockContentText_Checkbox,
+			Mode:    pb.RpcBlockSplitRequest_INNER,
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, newId)
+		r := sb.NewState()
+		assert.Equal(t, []string{"1"}, r.Pick(r.RootId()).Model().ChildrenIds)
+		assert.Equal(t, []string{newId}, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, "one", r.Pick("1").Model().GetText().Text)
+		assert.Equal(t, "two", r.Pick(newId).Model().GetText().Text)
+	})
+	t.Run("inner", func(t *testing.T) {
+		sb := smarttest.New("test")
+		stb := newTextBlock("1", "onetwo")
+		stb.Model().ChildrenIds = []string{"inner2"}
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(stb).
+			AddBlock(newTextBlock("inner2", "111"))
+
+		tb := NewText(sb)
+		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
+			BlockId: "1",
+			Range:   &model.Range{From: 3, To: 3},
+			Style:   model.BlockContentText_Checkbox,
+			Mode:    pb.RpcBlockSplitRequest_INNER,
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, newId)
+		r := sb.NewState()
+		assert.Equal(t, []string{"1"}, r.Pick(r.RootId()).Model().ChildrenIds)
+		assert.Equal(t, []string{newId, "inner2"}, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, "one", r.Pick("1").Model().GetText().Text)
+		assert.Equal(t, "two", r.Pick(newId).Model().GetText().Text)
+	})
 }
 
 func TestTextImpl_Merge(t *testing.T) {

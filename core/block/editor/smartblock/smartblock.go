@@ -354,8 +354,6 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 }
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
-	sb.Lock()
-	defer sb.Unlock()
 	beforeSnippet := sb.Doc.Snippet()
 	s, err := f(sb.Doc)
 	if err != nil {
@@ -378,8 +376,6 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 }
 
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
-	sb.Lock()
-	defer sb.Unlock()
 	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
 	sb.Doc = d
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
