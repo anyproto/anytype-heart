@@ -602,6 +602,7 @@ func (cb *clipboard) pasteFiles(ctx *state.Context, req pb.RpcBlockPasteRequest)
 		s.Add(b)
 		if err = cb.file.UploadState(s, b.Model().Id, file.FileSource{
 			Bytes: fs.Data,
+			Path:  fs.LocalPath,
 			Name:  fs.Name,
 		}, true); err != nil {
 			return

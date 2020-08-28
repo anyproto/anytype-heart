@@ -547,6 +547,7 @@ message Rpc {
                 message File {
                     string name = 1;
                     bytes data = 2;
+                    string localPath = 3;
                 }
             }
 

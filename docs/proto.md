@@ -2583,6 +2583,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | data | [bytes](#bytes) |  |  |
+| localPath | [string](#string) |  |  |
 
 
 
