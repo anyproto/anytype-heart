@@ -431,6 +431,7 @@
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
     - [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code)
+    - [Rpc.Block.Split.Request.Mode](#anytype.Rpc.Block.Split.Request.Mode)
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
@@ -3857,6 +3858,7 @@ set the current active view (persisted only within a session)
 | blockId | [string](#string) |  |  |
 | range | [model.Range](#anytype.model.Range) |  |  |
 | style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+| mode | [Rpc.Block.Split.Request.Mode](#anytype.Rpc.Block.Split.Request.Mode) |  |  |
 
 
 
@@ -6667,6 +6669,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Split.Request.Mode"></a>
+
+### Rpc.Block.Split.Request.Mode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BOTTOM | 0 | new block will be created under existing |
+| TOP | 1 | new block will be created above existing |
+| INNER | 2 | new block will be created as the first children of existing |
 
 
 
