@@ -26,6 +26,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/db"
 	net2 "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
@@ -344,31 +345,12 @@ func (a *Anytype) start() error {
 		a.t = a.opts.NetBootstraper
 	} else {
 		var err error
-
-		a.t, err = litenet.DefaultNetwork(
-			a.opts.Repo,
-			a.opts.Device,
-			[]byte(ipfsPrivateNetworkKey),
-			litenet.WithNetHostAddr(a.opts.HostAddr),
-			litenet.WithNetDebug(false),
-			litenet.WithOffline(a.opts.Offline),
-			litenet.WithNetGRPCOptions(grpc.MaxRecvMsgSize(1024*1024*20)),
-		)
-		if err != nil {
-			if strings.Contains(err.Error(), "address already in use") {
+		if a.t, err = a.startNetwork(a.opts.HostAddr, a.opts.Offline); err != nil {
+			if strings.Contains(err.Error(), "address already in use") { // FIXME proper cross-platform solution?
 				// start on random port in case saved port is already used by some other app
-				a.t, err = litenet.DefaultNetwork(
-					a.opts.Repo,
-					a.opts.Device,
-					[]byte(ipfsPrivateNetworkKey),
-					litenet.WithNetHostAddr(nil),
-					litenet.WithNetDebug(false),
-					litenet.WithOffline(a.opts.Offline),
-					litenet.WithNetGRPCOptions(grpc.MaxRecvMsgSize(1024*1024*20)))
-			}
-
-			if err != nil {
-				return err
+				if a.t, err = a.startNetwork(nil, a.opts.Offline); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -442,6 +424,31 @@ func (a *Anytype) Stop() error {
 	}
 
 	return nil
+}
+
+func (a *Anytype) startNetwork(hostAddr multiaddr.Multiaddr, offline bool) (net.NetBoostrapper, error) {
+	return litenet.DefaultNetwork(
+		a.opts.Repo,
+		a.opts.Device,
+		[]byte(ipfsPrivateNetworkKey),
+		litenet.WithNetHostAddr(hostAddr),
+		litenet.WithNetDebug(false),
+		litenet.WithOffline(offline),
+		litenet.WithNetPubSub(true), // TODO control with env var
+		litenet.WithNetGRPCServerOptions(
+			grpc.MaxRecvMsgSize(1024*1024*20),
+		),
+		litenet.WithNetGRPCDialOptions(
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(1024*1024*10),
+				grpc.MaxCallSendMsgSize(1024*1024*10),
+			),
+
+			// TODO metrics
+			//grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
+			//grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+		),
+	)
 }
 
 func init() {
