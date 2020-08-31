@@ -443,3 +443,10 @@ func (a *Anytype) Stop() error {
 
 	return nil
 }
+
+func init() {
+	// redefine timeouts
+	net2.DialTimeout = 10 * time.Second
+	net2.PushTimeout = 30 * time.Second
+	net2.PullTimeout = 2 * time.Minute
+}
