@@ -123,8 +123,9 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 	}
 
 	api, err := net.NewNetwork(ctx, h, lite.BlockStore(), lite, tstore, net.Config{
-		Debug: config.Debug,
-	}, config.GRPCOptions...)
+		Debug:  config.Debug,
+		PubSub: config.PubSub,
+	}, config.GRPCServerOptions, config.GRPCDialOptions)
 	if err != nil {
 		cancel()
 		if err := logstore.Close(); err != nil {
@@ -149,10 +150,12 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 }
 
 type NetConfig struct {
-	HostAddr    ma.Multiaddr
-	Debug       bool
-	Offline     bool
-	GRPCOptions []grpc.ServerOption
+	HostAddr          ma.Multiaddr
+	Debug             bool
+	Offline           bool
+	GRPCServerOptions []grpc.ServerOption
+	GRPCDialOptions   []grpc.DialOption
+	PubSub            bool
 }
 
 type NetOption func(c *NetConfig) error
@@ -178,9 +181,23 @@ func WithNetDebug(enabled bool) NetOption {
 	}
 }
 
-func WithNetGRPCOptions(opts ...grpc.ServerOption) NetOption {
+func WithNetPubSub(enabled bool) NetOption {
 	return func(c *NetConfig) error {
-		c.GRPCOptions = opts
+		c.PubSub = enabled
+		return nil
+	}
+}
+
+func WithNetGRPCServerOptions(opts ...grpc.ServerOption) NetOption {
+	return func(c *NetConfig) error {
+		c.GRPCServerOptions = opts
+		return nil
+	}
+}
+
+func WithNetGRPCDialOptions(opts ...grpc.DialOption) NetOption {
+	return func(c *NetConfig) error {
+		c.GRPCDialOptions = opts
 		return nil
 	}
 }
