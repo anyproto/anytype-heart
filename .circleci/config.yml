@@ -194,9 +194,7 @@ jobs:
           name: install mingw-w64 and node
           # also protobuf because we have the shared cache with build-ios-framework
           command: |
-            brew update
-            brew install mingw-w64 protobuf jq
-            brew upgrade node@14
+            brew install protobuf mingw-w64 jq
             npm i -g node-gyp
       - save_cache:
           key: homebrew-v5-{{ arch }}
@@ -327,7 +325,7 @@ jobs:
           # also mingw-w64 because we have the shared cache with build-lib-darwin-windows
           command: |
             brew update
-            brew install mingw-w64 protobuf jq swift-protobuf
+            brew install mingw-w64 jq swift-protobuf protobuf
       - save_cache:
           key: homebrew-v5-{{ arch }}
           paths:
@@ -365,7 +363,7 @@ jobs:
             cp ./vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*.proto protobuf/protos
             cp ./vendor/github.com/anytypeio/go-anytype-library/schema/*.json schemas
 
-            protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
+            protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/service/* vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/*
       - run:
           name: collect artifacts
           command: |
