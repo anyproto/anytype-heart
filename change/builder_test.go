@@ -1,14 +1,10 @@
 package change
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-library/core"
-	smartblock2 "github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,11 +45,11 @@ var (
 
 func TestStateBuilder_Build(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		_, _, err := BuildTree(newTestSmartBlock())
+		_, _, err := BuildTree(NewTestSmartBlock())
 		assert.Equal(t, ErrEmpty, err)
 	})
 	t.Run("linear - one snapshot", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -67,7 +63,7 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, []string{"s0"}, b.tree.headIds)
 	})
 	t.Run("linear - one log", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -82,7 +78,7 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, []string{"c0"}, b.tree.headIds)
 	})
 	t.Run("linear - two logs - one snapshot", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -102,7 +98,7 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, []string{"c2"}, b.tree.headIds)
 	})
 	t.Run("linear - two logs - two snapshots", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -124,7 +120,7 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, []string{"c3"}, b.tree.headIds)
 	})
 	t.Run("split brains", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -153,7 +149,7 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, []string{"c3", "c3.3"}, b.tree.headIds)
 	})
 	t.Run("clue brains", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -187,7 +183,7 @@ func TestStateBuilder_Build(t *testing.T) {
 		assert.Equal(t, []string{"c4"}, b.tree.headIds)
 	})
 	t.Run("invalid logs", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -223,7 +219,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 		assert.Equal(t, "one", id)
 	})
 	t.Run("common parent", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0.1", "", nil),
@@ -258,7 +254,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 		assert.Equal(t, "s0", b.tree.RootId())
 	})
 	t.Run("abs split", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0.1", "", nil),
@@ -275,7 +271,7 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 }
 
 func TestBuildDetailsTree(t *testing.T) {
-	sb := newTestSmartBlock()
+	sb := NewTestSmartBlock()
 
 	sb.AddChanges(
 		"a",
@@ -296,7 +292,7 @@ func TestBuildDetailsTree(t *testing.T) {
 
 func TestBuildTreeBefore(t *testing.T) {
 	t.Run("linear", func(t *testing.T) {
-		sb := newTestSmartBlock()
+		sb := NewTestSmartBlock()
 		sb.AddChanges(
 			"a",
 			newSnapshot("s0", "", nil),
@@ -304,92 +300,15 @@ func TestBuildTreeBefore(t *testing.T) {
 			newSnapshot("s1", "s0", nil, "c0"),
 			newChange("c1", "s1", "s1"),
 		)
-		tr, err := BuildTreeBefore(sb, "c1")
+		tr, err := BuildTreeBefore(sb, "c1", true)
 		require.NoError(t, err)
 		require.NotNil(t, tr)
 		assert.Equal(t, "s1", tr.RootId())
 		assert.Equal(t, 2, tr.Len())
-		tr, err = BuildTreeBefore(sb, "c0")
+		tr, err = BuildTreeBefore(sb, "c0", true)
 		require.NoError(t, err)
 		require.NotNil(t, tr)
 		assert.Equal(t, "s0", tr.RootId())
 		assert.Equal(t, 2, tr.Len())
 	})
-}
-
-func newTestSmartBlock() *smartblock {
-	return &smartblock{
-		changes: make(map[string]*core.SmartblockRecord),
-	}
-}
-
-type smartblock struct {
-	logs    []core.SmartblockLog
-	changes map[string]*core.SmartblockRecord
-}
-
-func (s *smartblock) BaseSchema() core.SmartBlockSchema {
-	panic("implement me")
-}
-
-func (s *smartblock) AddChanges(logId string, chs ...*Change) *smartblock {
-	var id string
-	for _, ch := range chs {
-		pl, _ := ch.Change.Marshal()
-		s.changes[ch.Id] = &core.SmartblockRecord{
-			ID:      ch.Id,
-			Payload: pl,
-		}
-		id = ch.Id
-	}
-	for i, l := range s.logs {
-		if l.ID == logId {
-			s.logs[i].Head = id
-			return s
-		}
-	}
-	s.logs = append(s.logs, core.SmartblockLog{
-		ID:   logId,
-		Head: id,
-	})
-	return s
-}
-
-func (s *smartblock) ID() string {
-	return "id"
-}
-
-func (s *smartblock) Type() smartblock2.SmartBlockType {
-	return smartblock2.SmartBlockTypePage
-}
-
-func (s *smartblock) Creator() (string, error) {
-	return "", nil
-}
-
-func (s *smartblock) GetLogs() ([]core.SmartblockLog, error) {
-	return s.logs, nil
-}
-
-func (s *smartblock) GetRecord(ctx context.Context, recordID string) (*core.SmartblockRecord, error) {
-	if data, ok := s.changes[recordID]; ok {
-		return data, nil
-	}
-	return nil, fmt.Errorf("record %v not found", recordID)
-}
-
-func (s *smartblock) PushRecord(payload proto.Marshaler) (id string, err error) {
-	panic("implement me")
-}
-
-func (s *smartblock) SubscribeForRecords(ch chan core.SmartblockRecordWithLogID) (cancel func(), err error) {
-	panic("implement me")
-}
-
-func (s *smartblock) SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error) {
-	panic("implement me")
-}
-
-func (s *smartblock) PublishClientEvent(event proto.Message) error {
-	panic("implement me")
 }

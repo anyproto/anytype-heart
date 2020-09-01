@@ -60,27 +60,27 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	if limit <= 0 {
 		limit = 100
 	}
+	var includeLastId = true
 	for len(resp) < limit {
-		tree, e := h.buildTree(pageId, lastVersionId)
+		tree, e := h.buildTree(pageId, lastVersionId, includeLastId)
 		if e != nil {
 			return nil, e
 		}
-		if tree.Len() == 1 && tree.RootId() == lastVersionId {
-			return
-		}
 		var data []*pb.RpcHistoryVersionsVersion
 		tree.Iterate(tree.RootId(), func(c *change.Change) (isContinue bool) {
-			if c.Id != lastVersionId {
-				data = append(data, &pb.RpcHistoryVersionsVersion{
-					Id:          c.Id,
-					PreviousIds: c.PreviousIds,
-					Time:        c.Timestamp,
-				})
-			}
+			data = append(data, &pb.RpcHistoryVersionsVersion{
+				Id:          c.Id,
+				PreviousIds: c.PreviousIds,
+				Time:        c.Timestamp,
+			})
 			return true
 		})
 		resp = append(data, resp...)
 		lastVersionId = tree.RootId()
+		includeLastId = false
+		if len(data) == 0 || len(data[0].PreviousIds) == 0 {
+			return
+		}
 	}
 	return
 }
@@ -93,17 +93,17 @@ func (h *history) SetVersion(pageId, versionId string) (err error) {
 	return h.bs.ResetToState(pageId, s)
 }
 
-func (h *history) buildTree(pageId, versionId string) (*change.Tree, error) {
+func (h *history) buildTree(pageId, versionId string, includeLastId bool) (*change.Tree, error) {
 	sb, err := h.a.GetBlock(pageId)
 	if err != nil {
 		err = fmt.Errorf("history: anytype.GetBlock error: %v", err)
 		return nil, nil
 	}
-	return change.BuildTreeBefore(sb, versionId)
+	return change.BuildTreeBefore(sb, versionId, includeLastId)
 }
 
 func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.RpcHistoryVersionsVersion, err error) {
-	tree, err := h.buildTree(pageId, versionId)
+	tree, err := h.buildTree(pageId, versionId, true)
 	if err != nil {
 		return
 	}
