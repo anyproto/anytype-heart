@@ -373,7 +373,6 @@ func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []strin
 		removedLinks, addedLinks = diffSlices(exLinks, links)
 	}
 
-	// underlying commands set the same state each time, but this shouldn't be a problem as we made it in 1 transaction
 	if details != nil {
 		if err = m.updateDetails(txn, id, &model.PageDetails{Details: details}); err != nil {
 			return err
@@ -493,6 +492,11 @@ func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
 }
 
 func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
+	sbt, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract smartblock type: %w", err)
+	}
+
 	var details model.PageDetails
 	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
 		return nil, fmt.Errorf("failed to get details: %w", err)
@@ -515,6 +519,7 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 
 	return &model.PageInfo{
 		Id:              id,
+		PageType:        sbt.ToProto(),
 		Details:         details.Details,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,

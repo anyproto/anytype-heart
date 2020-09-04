@@ -1,6 +1,9 @@
 package smartblock
 
-import "github.com/textileio/go-threads/core/thread"
+import (
+	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/textileio/go-threads/core/thread"
+)
 
 type SmartBlockType uint64
 
@@ -31,6 +34,23 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	blockType, _ := uvarint(rawid[n+n2:])
 
 	return SmartBlockType(blockType), nil
+}
+
+func (sbt SmartBlockType) ToProto() model.PageInfoType {
+	switch sbt {
+	case SmartBlockTypePage:
+		return model.PageInfo_Page
+	case SmartBlockTypeProfilePage:
+		return model.PageInfo_Profile
+	case SmartBlockTypeHome:
+		return model.PageInfo_Dashboard
+	case SmartBlockTypeArchive:
+		return model.PageInfo_Archive
+	case SmartBlockTypeSet:
+		return model.PageInfo_Set
+	default:
+		return model.PageInfo_Page
+	}
 }
 
 // Snapshot of varint function that work with a string rather than

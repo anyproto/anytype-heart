@@ -23,63 +23,53 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type State struct {
-	State map[string]uint64 `protobuf:"bytes,1,rep,name=state,proto3" json:"state,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+type PageInfoType int32
+
+const (
+	PageInfo_Page      PageInfoType = 0
+	PageInfo_Profile   PageInfoType = 1
+	PageInfo_Set       PageInfoType = 2
+	PageInfo_Dashboard PageInfoType = 3
+	PageInfo_Archive   PageInfoType = 4
+)
+
+var PageInfoType_name = map[int32]string{
+	0: "Page",
+	1: "Profile",
+	2: "Set",
+	3: "Dashboard",
+	4: "Archive",
 }
 
-func (m *State) Reset()         { *m = State{} }
-func (m *State) String() string { return proto.CompactTextString(m) }
-func (*State) ProtoMessage()    {}
-func (*State) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{0}
-}
-func (m *State) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *State) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_State.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *State) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_State.Merge(m, src)
-}
-func (m *State) XXX_Size() int {
-	return m.Size()
-}
-func (m *State) XXX_DiscardUnknown() {
-	xxx_messageInfo_State.DiscardUnknown(m)
+var PageInfoType_value = map[string]int32{
+	"Page":      0,
+	"Profile":   1,
+	"Set":       2,
+	"Dashboard": 3,
+	"Archive":   4,
 }
 
-var xxx_messageInfo_State proto.InternalMessageInfo
+func (x PageInfoType) String() string {
+	return proto.EnumName(PageInfoType_name, int32(x))
+}
 
-func (m *State) GetState() map[string]uint64 {
-	if m != nil {
-		return m.State
-	}
-	return nil
+func (PageInfoType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_119c394c1cc0a7ab, []int{0, 0}
 }
 
 type PageInfo struct {
 	Id              string        `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Details         *types.Struct `protobuf:"bytes,2,opt,name=details,proto3" json:"details,omitempty"`
 	Snippet         string        `protobuf:"bytes,3,opt,name=snippet,proto3" json:"snippet,omitempty"`
-	State           *State        `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
 	HasInboundLinks bool          `protobuf:"varint,6,opt,name=hasInboundLinks,proto3" json:"hasInboundLinks,omitempty"`
+	PageType        PageInfoType  `protobuf:"varint,7,opt,name=pageType,proto3,enum=anytype.model.PageInfoType" json:"pageType,omitempty"`
 }
 
 func (m *PageInfo) Reset()         { *m = PageInfo{} }
 func (m *PageInfo) String() string { return proto.CompactTextString(m) }
 func (*PageInfo) ProtoMessage()    {}
 func (*PageInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{1}
+	return fileDescriptor_119c394c1cc0a7ab, []int{0}
 }
 func (m *PageInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -129,18 +119,18 @@ func (m *PageInfo) GetSnippet() string {
 	return ""
 }
 
-func (m *PageInfo) GetState() *State {
-	if m != nil {
-		return m.State
-	}
-	return nil
-}
-
 func (m *PageInfo) GetHasInboundLinks() bool {
 	if m != nil {
 		return m.HasInboundLinks
 	}
 	return false
+}
+
+func (m *PageInfo) GetPageType() PageInfoType {
+	if m != nil {
+		return m.PageType
+	}
+	return PageInfo_Page
 }
 
 type PageDetails struct {
@@ -151,7 +141,7 @@ func (m *PageDetails) Reset()         { *m = PageDetails{} }
 func (m *PageDetails) String() string { return proto.CompactTextString(m) }
 func (*PageDetails) ProtoMessage()    {}
 func (*PageDetails) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{2}
+	return fileDescriptor_119c394c1cc0a7ab, []int{1}
 }
 func (m *PageDetails) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -196,7 +186,7 @@ func (m *PageLinks) Reset()         { *m = PageLinks{} }
 func (m *PageLinks) String() string { return proto.CompactTextString(m) }
 func (*PageLinks) ProtoMessage()    {}
 func (*PageLinks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{3}
+	return fileDescriptor_119c394c1cc0a7ab, []int{2}
 }
 func (m *PageLinks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -248,7 +238,7 @@ func (m *PageLinksInfo) Reset()         { *m = PageLinksInfo{} }
 func (m *PageLinksInfo) String() string { return proto.CompactTextString(m) }
 func (*PageLinksInfo) ProtoMessage()    {}
 func (*PageLinksInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{4}
+	return fileDescriptor_119c394c1cc0a7ab, []int{3}
 }
 func (m *PageLinksInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -295,14 +285,13 @@ type PageInfoWithLinks struct {
 	Id    string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Info  *PageInfo      `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
 	Links *PageLinksInfo `protobuf:"bytes,3,opt,name=links,proto3" json:"links,omitempty"`
-	State *State         `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
 }
 
 func (m *PageInfoWithLinks) Reset()         { *m = PageInfoWithLinks{} }
 func (m *PageInfoWithLinks) String() string { return proto.CompactTextString(m) }
 func (*PageInfoWithLinks) ProtoMessage()    {}
 func (*PageInfoWithLinks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{5}
+	return fileDescriptor_119c394c1cc0a7ab, []int{4}
 }
 func (m *PageInfoWithLinks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -352,25 +341,17 @@ func (m *PageInfoWithLinks) GetLinks() *PageLinksInfo {
 	return nil
 }
 
-func (m *PageInfoWithLinks) GetState() *State {
-	if m != nil {
-		return m.State
-	}
-	return nil
-}
-
 type PageInfoWithOutboundLinks struct {
 	Id            string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Info          *PageInfo   `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
 	OutboundLinks []*PageInfo `protobuf:"bytes,3,rep,name=outboundLinks,proto3" json:"outboundLinks,omitempty"`
-	State         *State      `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
 }
 
 func (m *PageInfoWithOutboundLinks) Reset()         { *m = PageInfoWithOutboundLinks{} }
 func (m *PageInfoWithOutboundLinks) String() string { return proto.CompactTextString(m) }
 func (*PageInfoWithOutboundLinks) ProtoMessage()    {}
 func (*PageInfoWithOutboundLinks) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{6}
+	return fileDescriptor_119c394c1cc0a7ab, []int{5}
 }
 func (m *PageInfoWithOutboundLinks) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -420,25 +401,17 @@ func (m *PageInfoWithOutboundLinks) GetOutboundLinks() []*PageInfo {
 	return nil
 }
 
-func (m *PageInfoWithOutboundLinks) GetState() *State {
-	if m != nil {
-		return m.State
-	}
-	return nil
-}
-
 type PageInfoWithOutboundLinksIDs struct {
 	Id            string    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Info          *PageInfo `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
 	OutboundLinks []string  `protobuf:"bytes,3,rep,name=outboundLinks,proto3" json:"outboundLinks,omitempty"`
-	State         *State    `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
 }
 
 func (m *PageInfoWithOutboundLinksIDs) Reset()         { *m = PageInfoWithOutboundLinksIDs{} }
 func (m *PageInfoWithOutboundLinksIDs) String() string { return proto.CompactTextString(m) }
 func (*PageInfoWithOutboundLinksIDs) ProtoMessage()    {}
 func (*PageInfoWithOutboundLinksIDs) Descriptor() ([]byte, []int) {
-	return fileDescriptor_119c394c1cc0a7ab, []int{7}
+	return fileDescriptor_119c394c1cc0a7ab, []int{6}
 }
 func (m *PageInfoWithOutboundLinksIDs) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -488,16 +461,8 @@ func (m *PageInfoWithOutboundLinksIDs) GetOutboundLinks() []string {
 	return nil
 }
 
-func (m *PageInfoWithOutboundLinksIDs) GetState() *State {
-	if m != nil {
-		return m.State
-	}
-	return nil
-}
-
 func init() {
-	proto.RegisterType((*State)(nil), "anytype.model.State")
-	proto.RegisterMapType((map[string]uint64)(nil), "anytype.model.State.StateEntry")
+	proto.RegisterEnum("anytype.model.PageInfoType", PageInfoType_name, PageInfoType_value)
 	proto.RegisterType((*PageInfo)(nil), "anytype.model.PageInfo")
 	proto.RegisterType((*PageDetails)(nil), "anytype.model.PageDetails")
 	proto.RegisterType((*PageLinks)(nil), "anytype.model.PageLinks")
@@ -510,80 +475,39 @@ func init() {
 func init() { proto.RegisterFile("pb/model/protos/localstore.proto", fileDescriptor_119c394c1cc0a7ab) }
 
 var fileDescriptor_119c394c1cc0a7ab = []byte{
-	// 520 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0x4f, 0x8b, 0xd3, 0x40,
-	0x18, 0x87, 0x77, 0x92, 0x76, 0xdb, 0xbe, 0xa5, 0xfe, 0x19, 0x16, 0x36, 0x2e, 0x25, 0x86, 0xe0,
-	0x21, 0x28, 0x9b, 0xb8, 0x5d, 0x84, 0x45, 0x10, 0x44, 0xd6, 0x43, 0x45, 0x51, 0xb2, 0x07, 0xc1,
-	0x5b, 0xd2, 0x4c, 0xd3, 0x61, 0xb3, 0x99, 0x90, 0x4c, 0xd4, 0x7c, 0x0b, 0xbf, 0x88, 0xe0, 0x17,
-	0xf0, 0xe4, 0xc5, 0xe3, 0x1e, 0x3d, 0x4a, 0xfb, 0x45, 0x24, 0x93, 0x4c, 0xcc, 0x96, 0xee, 0xe2,
-	0xb2, 0x5e, 0x4a, 0xe6, 0xe5, 0x99, 0x5f, 0xde, 0xe7, 0x7d, 0xdb, 0x82, 0x91, 0xf8, 0xce, 0x19,
-	0x0b, 0x48, 0xe4, 0x24, 0x29, 0xe3, 0x2c, 0x73, 0x22, 0x36, 0xf3, 0xa2, 0x8c, 0xb3, 0x94, 0xd8,
-	0xa2, 0x82, 0x47, 0x5e, 0x5c, 0xf0, 0x22, 0x21, 0xb6, 0xc0, 0xf6, 0xc6, 0x21, 0x63, 0x61, 0x44,
-	0x2a, 0xdc, 0xcf, 0xe7, 0x4e, 0xc6, 0xd3, 0x7c, 0xc6, 0x2b, 0xd8, 0xfc, 0x0c, 0xdd, 0x13, 0xee,
-	0x71, 0x82, 0x9f, 0x40, 0x37, 0x2b, 0x1f, 0x34, 0x64, 0xa8, 0xd6, 0x70, 0x72, 0xdf, 0xbe, 0x90,
-	0x62, 0x0b, 0xa8, 0xfa, 0x7c, 0x19, 0xf3, 0xb4, 0x70, 0x2b, 0x7a, 0xef, 0x08, 0xe0, 0x6f, 0x11,
-	0xdf, 0x01, 0xf5, 0x94, 0x14, 0x1a, 0x32, 0x90, 0x35, 0x70, 0xcb, 0x47, 0xbc, 0x03, 0xdd, 0x8f,
-	0x5e, 0x94, 0x13, 0x4d, 0x31, 0x90, 0xd5, 0x71, 0xab, 0xc3, 0x53, 0xe5, 0x08, 0x99, 0xdf, 0x11,
-	0xf4, 0xdf, 0x79, 0x21, 0x99, 0xc6, 0x73, 0x86, 0x6f, 0x81, 0x42, 0x83, 0xfa, 0x9e, 0x42, 0x03,
-	0x7c, 0x00, 0xbd, 0x80, 0x70, 0x8f, 0x46, 0x99, 0xb8, 0x38, 0x9c, 0xec, 0xda, 0x95, 0x86, 0x2d,
-	0x35, 0xec, 0x13, 0xa1, 0xe1, 0x4a, 0x0e, 0x6b, 0xd0, 0xcb, 0x62, 0x9a, 0x24, 0x84, 0x6b, 0xaa,
-	0xc8, 0x91, 0x47, 0xfc, 0x50, 0xaa, 0x75, 0x44, 0xd4, 0xce, 0x26, 0xb5, 0xda, 0x07, 0x5b, 0x70,
-	0x7b, 0xe1, 0x65, 0xd3, 0xd8, 0x67, 0x79, 0x1c, 0xbc, 0xa6, 0xf1, 0x69, 0xa6, 0x6d, 0x1b, 0xc8,
-	0xea, 0xbb, 0xeb, 0x65, 0xf3, 0x39, 0x0c, 0xcb, 0xf6, 0x8f, 0xeb, 0xd7, 0xb7, 0x3a, 0x46, 0xff,
-	0xd6, 0xb1, 0xf9, 0x06, 0x06, 0x65, 0x82, 0x88, 0xc3, 0x3a, 0x00, 0xad, 0xe2, 0xa7, 0xc7, 0x99,
-	0x58, 0xc2, 0xc0, 0x6d, 0x55, 0xb0, 0x01, 0x43, 0x96, 0xf3, 0x06, 0x50, 0x04, 0xd0, 0x2e, 0x99,
-	0x9f, 0x60, 0xd4, 0xc4, 0x89, 0xa1, 0x1e, 0x40, 0xaf, 0x0e, 0xa8, 0x97, 0xba, 0xbb, 0x66, 0x2e,
-	0xc7, 0xef, 0x4a, 0x0e, 0x1f, 0x42, 0x5f, 0x46, 0x8a, 0x57, 0x5c, 0x71, 0xa7, 0x01, 0xcd, 0x6f,
-	0x08, 0xee, 0xca, 0xf2, 0x7b, 0xca, 0x17, 0x95, 0xd0, 0xfa, 0x4a, 0x1f, 0x41, 0x87, 0xc6, 0x73,
-	0xd6, 0xec, 0xf3, 0x92, 0x58, 0x01, 0xe1, 0x09, 0x74, 0x23, 0x31, 0x7c, 0x55, 0xd0, 0xe3, 0x0d,
-	0x74, 0xe3, 0xe9, 0x56, 0xe8, 0x75, 0xd6, 0x6c, 0xfe, 0x40, 0x70, 0xaf, 0xdd, 0xf2, 0xdb, 0xda,
-	0xe5, 0x3f, 0xb4, 0xfe, 0x0c, 0x46, 0xac, 0x9d, 0xa6, 0xa9, 0x57, 0xcf, 0xf1, 0x22, 0x7d, 0x2d,
-	0x8b, 0xaf, 0x08, 0xc6, 0x97, 0x5a, 0x94, 0x5f, 0x9a, 0x1b, 0x89, 0x3c, 0xd8, 0x24, 0x32, 0xb8,
-	0x41, 0xbf, 0x2f, 0x5e, 0xfd, 0x5c, 0xea, 0xe8, 0x7c, 0xa9, 0xa3, 0xdf, 0x4b, 0x1d, 0x7d, 0x59,
-	0xe9, 0x5b, 0xe7, 0x2b, 0x7d, 0xeb, 0xd7, 0x4a, 0xdf, 0xfa, 0xf0, 0x38, 0xa4, 0x7c, 0x91, 0xfb,
-	0xf6, 0x8c, 0x9d, 0x39, 0x75, 0x00, 0x65, 0x4e, 0xc8, 0xf6, 0xeb, 0xc3, 0x7e, 0x44, 0xfd, 0xd4,
-	0x4b, 0x0b, 0x47, 0xfe, 0xfb, 0xf9, 0xdb, 0xe2, 0x67, 0x75, 0xf8, 0x27, 0x00, 0x00, 0xff, 0xff,
-	0x40, 0xd6, 0x0e, 0x74, 0x10, 0x05, 0x00, 0x00,
-}
-
-func (m *State) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *State) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *State) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.State) > 0 {
-		for k := range m.State {
-			v := m.State[k]
-			baseI := i
-			i = encodeVarintLocalstore(dAtA, i, uint64(v))
-			i--
-			dAtA[i] = 0x10
-			i -= len(k)
-			copy(dAtA[i:], k)
-			i = encodeVarintLocalstore(dAtA, i, uint64(len(k)))
-			i--
-			dAtA[i] = 0xa
-			i = encodeVarintLocalstore(dAtA, i, uint64(baseI-i))
-			i--
-			dAtA[i] = 0xa
-		}
-	}
-	return len(dAtA) - i, nil
+	// 510 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0xcf, 0x8b, 0xd3, 0x4e,
+	0x18, 0xc6, 0x3b, 0x49, 0xbf, 0x9b, 0xe4, 0x2d, 0xdd, 0x6f, 0x9c, 0x8b, 0x51, 0x4a, 0x08, 0xc1,
+	0x43, 0x40, 0x36, 0x71, 0xbb, 0x17, 0x2f, 0x82, 0x2e, 0xbd, 0x54, 0x14, 0x97, 0xac, 0x20, 0x78,
+	0x4b, 0x9a, 0x69, 0x32, 0x98, 0xcd, 0x84, 0x64, 0xa2, 0xf4, 0x28, 0x78, 0xd7, 0x9b, 0xff, 0x92,
+	0xc7, 0x3d, 0x7a, 0x94, 0xf6, 0x1f, 0x91, 0x4c, 0x7e, 0x90, 0x2d, 0xdd, 0x45, 0xd0, 0x53, 0x98,
+	0x97, 0xcf, 0x3c, 0xf3, 0x3c, 0xef, 0xfb, 0x12, 0xb0, 0xf2, 0xd0, 0xbb, 0x62, 0x11, 0x49, 0xbd,
+	0xbc, 0x60, 0x9c, 0x95, 0x5e, 0xca, 0x56, 0x41, 0x5a, 0x72, 0x56, 0x10, 0x57, 0x54, 0xf0, 0x34,
+	0xc8, 0x36, 0x7c, 0x93, 0x13, 0x57, 0x60, 0x0f, 0x67, 0x31, 0x63, 0x71, 0x4a, 0x1a, 0x3c, 0xac,
+	0xd6, 0x5e, 0xc9, 0x8b, 0x6a, 0xc5, 0x1b, 0xd8, 0xfe, 0x2a, 0x81, 0x7a, 0x11, 0xc4, 0x64, 0x99,
+	0xad, 0x19, 0x3e, 0x06, 0x89, 0x46, 0x06, 0xb2, 0x90, 0xa3, 0xf9, 0x12, 0x8d, 0xf0, 0x29, 0x28,
+	0x11, 0xe1, 0x01, 0x4d, 0x4b, 0x43, 0xb2, 0x90, 0x33, 0x99, 0xdf, 0x77, 0x1b, 0x31, 0xb7, 0x13,
+	0x73, 0x2f, 0x85, 0x98, 0xdf, 0x71, 0xd8, 0x00, 0xa5, 0xcc, 0x68, 0x9e, 0x13, 0x6e, 0xc8, 0x42,
+	0xa7, 0x3b, 0x62, 0x07, 0xfe, 0x4f, 0x82, 0x72, 0x99, 0x85, 0xac, 0xca, 0xa2, 0x57, 0x34, 0xfb,
+	0x50, 0x1a, 0x47, 0x16, 0x72, 0x54, 0x7f, 0xbf, 0x8c, 0x9f, 0x82, 0x9a, 0x07, 0x31, 0x79, 0xbb,
+	0xc9, 0x89, 0xa1, 0x58, 0xc8, 0x39, 0x9e, 0xcf, 0xdc, 0x1b, 0x99, 0xdc, 0xce, 0xb1, 0x5b, 0x33,
+	0x7e, 0x4f, 0xdb, 0xe7, 0x30, 0xae, 0xbf, 0x58, 0x85, 0x71, 0x8d, 0xe8, 0x23, 0x3c, 0x01, 0xe5,
+	0xa2, 0x60, 0x6b, 0x9a, 0x12, 0x1d, 0x61, 0x05, 0xe4, 0x4b, 0xc2, 0x75, 0x09, 0x4f, 0x41, 0x5b,
+	0x04, 0x65, 0x12, 0xb2, 0xa0, 0x88, 0x74, 0xb9, 0x86, 0x5e, 0x14, 0xab, 0x84, 0x7e, 0x24, 0xfa,
+	0xd8, 0x7e, 0x0e, 0x93, 0xfa, 0xee, 0xa2, 0x0d, 0x34, 0xe8, 0x01, 0xfa, 0xb3, 0x1e, 0xd8, 0xaf,
+	0x41, 0xab, 0x15, 0x9a, 0x30, 0x26, 0x00, 0x6d, 0xc2, 0x2d, 0x17, 0xb5, 0x84, 0xec, 0x68, 0xfe,
+	0xa0, 0x82, 0x2d, 0x98, 0xb0, 0x8a, 0xf7, 0x80, 0x24, 0x80, 0x61, 0xc9, 0xfe, 0x04, 0xd3, 0x5e,
+	0x4e, 0x8c, 0xe9, 0x14, 0x94, 0x56, 0x40, 0xe8, 0xd5, 0x96, 0x0e, 0xb7, 0xc7, 0xef, 0x38, 0x7c,
+	0x06, 0x6a, 0x27, 0x29, 0x9e, 0xb8, 0xe3, 0x4e, 0x0f, 0xda, 0x5f, 0x10, 0xdc, 0xeb, 0xca, 0xef,
+	0x28, 0x4f, 0x9a, 0x40, 0xfb, 0x4b, 0xf2, 0x18, 0xc6, 0x34, 0x5b, 0xb3, 0x7e, 0x43, 0x6e, 0x91,
+	0x15, 0x10, 0x9e, 0xc3, 0x7f, 0xa9, 0x18, 0xbd, 0x2c, 0xe8, 0x43, 0x73, 0xed, 0x73, 0xfa, 0x0d,
+	0x6a, 0x7f, 0x47, 0xf0, 0x60, 0x68, 0xe3, 0x4d, 0xeb, 0xef, 0x1f, 0xd8, 0x79, 0x06, 0x53, 0x36,
+	0x54, 0x33, 0xe4, 0xbb, 0x7b, 0x73, 0x93, 0xb6, 0x3f, 0x23, 0x98, 0xdd, 0xea, 0xac, 0x1e, 0xee,
+	0x5f, 0x99, 0x7b, 0x74, 0xc8, 0x9c, 0xb6, 0xe7, 0xe1, 0xfc, 0xe5, 0x8f, 0xad, 0x89, 0xae, 0xb7,
+	0x26, 0xfa, 0xb5, 0x35, 0xd1, 0xb7, 0x9d, 0x39, 0xba, 0xde, 0x99, 0xa3, 0x9f, 0x3b, 0x73, 0xf4,
+	0xfe, 0x49, 0x4c, 0x79, 0x52, 0x85, 0xee, 0x8a, 0x5d, 0x79, 0xed, 0x43, 0x94, 0x79, 0x31, 0x3b,
+	0x69, 0x0f, 0x27, 0x29, 0x0d, 0x8b, 0xa0, 0xd8, 0x78, 0xdd, 0x1f, 0x25, 0x3c, 0x12, 0x2b, 0x7d,
+	0xf6, 0x3b, 0x00, 0x00, 0xff, 0xff, 0x9f, 0x33, 0x4e, 0x3e, 0x64, 0x04, 0x00, 0x00,
 }
 
 func (m *PageInfo) Marshal() (dAtA []byte, err error) {
@@ -606,6 +530,11 @@ func (m *PageInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.PageType != 0 {
+		i = encodeVarintLocalstore(dAtA, i, uint64(m.PageType))
+		i--
+		dAtA[i] = 0x38
+	}
 	if m.HasInboundLinks {
 		i--
 		if m.HasInboundLinks {
@@ -615,18 +544,6 @@ func (m *PageInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		}
 		i--
 		dAtA[i] = 0x30
-	}
-	if m.State != nil {
-		{
-			size, err := m.State.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintLocalstore(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x22
 	}
 	if len(m.Snippet) > 0 {
 		i -= len(m.Snippet)
@@ -804,18 +721,6 @@ func (m *PageInfoWithLinks) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.State != nil {
-		{
-			size, err := m.State.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintLocalstore(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x22
-	}
 	if m.Links != nil {
 		{
 			size, err := m.Links.MarshalToSizedBuffer(dAtA[:i])
@@ -870,18 +775,6 @@ func (m *PageInfoWithOutboundLinks) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	_ = i
 	var l int
 	_ = l
-	if m.State != nil {
-		{
-			size, err := m.State.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintLocalstore(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x22
-	}
 	if len(m.OutboundLinks) > 0 {
 		for iNdEx := len(m.OutboundLinks) - 1; iNdEx >= 0; iNdEx-- {
 			{
@@ -938,18 +831,6 @@ func (m *PageInfoWithOutboundLinksIDs) MarshalToSizedBuffer(dAtA []byte) (int, e
 	_ = i
 	var l int
 	_ = l
-	if m.State != nil {
-		{
-			size, err := m.State.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintLocalstore(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x22
-	}
 	if len(m.OutboundLinks) > 0 {
 		for iNdEx := len(m.OutboundLinks) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.OutboundLinks[iNdEx])
@@ -992,23 +873,6 @@ func encodeVarintLocalstore(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *State) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if len(m.State) > 0 {
-		for k, v := range m.State {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + len(k) + sovLocalstore(uint64(len(k))) + 1 + sovLocalstore(uint64(v))
-			n += mapEntrySize + 1 + sovLocalstore(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
 func (m *PageInfo) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1027,12 +891,11 @@ func (m *PageInfo) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovLocalstore(uint64(l))
 	}
-	if m.State != nil {
-		l = m.State.Size()
-		n += 1 + l + sovLocalstore(uint64(l))
-	}
 	if m.HasInboundLinks {
 		n += 2
+	}
+	if m.PageType != 0 {
+		n += 1 + sovLocalstore(uint64(m.PageType))
 	}
 	return n
 }
@@ -1110,10 +973,6 @@ func (m *PageInfoWithLinks) Size() (n int) {
 		l = m.Links.Size()
 		n += 1 + l + sovLocalstore(uint64(l))
 	}
-	if m.State != nil {
-		l = m.State.Size()
-		n += 1 + l + sovLocalstore(uint64(l))
-	}
 	return n
 }
 
@@ -1136,10 +995,6 @@ func (m *PageInfoWithOutboundLinks) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovLocalstore(uint64(l))
 		}
-	}
-	if m.State != nil {
-		l = m.State.Size()
-		n += 1 + l + sovLocalstore(uint64(l))
 	}
 	return n
 }
@@ -1164,10 +1019,6 @@ func (m *PageInfoWithOutboundLinksIDs) Size() (n int) {
 			n += 1 + l + sovLocalstore(uint64(l))
 		}
 	}
-	if m.State != nil {
-		l = m.State.Size()
-		n += 1 + l + sovLocalstore(uint64(l))
-	}
 	return n
 }
 
@@ -1176,172 +1027,6 @@ func sovLocalstore(x uint64) (n int) {
 }
 func sozLocalstore(x uint64) (n int) {
 	return sovLocalstore(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *State) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowLocalstore
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: State: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: State: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowLocalstore
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.State == nil {
-				m.State = make(map[string]uint64)
-			}
-			var mapkey string
-			var mapvalue uint64
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowLocalstore
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= uint64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					var stringLenmapkey uint64
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowLocalstore
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						stringLenmapkey |= uint64(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					intStringLenmapkey := int(stringLenmapkey)
-					if intStringLenmapkey < 0 {
-						return ErrInvalidLengthLocalstore
-					}
-					postStringIndexmapkey := iNdEx + intStringLenmapkey
-					if postStringIndexmapkey < 0 {
-						return ErrInvalidLengthLocalstore
-					}
-					if postStringIndexmapkey > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
-					iNdEx = postStringIndexmapkey
-				} else if fieldNum == 2 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowLocalstore
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapvalue |= uint64(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipLocalstore(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthLocalstore
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.State[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipLocalstore(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *PageInfo) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
@@ -1472,42 +1157,6 @@ func (m *PageInfo) Unmarshal(dAtA []byte) error {
 			}
 			m.Snippet = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowLocalstore
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.State == nil {
-				m.State = &State{}
-			}
-			if err := m.State.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field HasInboundLinks", wireType)
@@ -1528,6 +1177,25 @@ func (m *PageInfo) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.HasInboundLinks = bool(v != 0)
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PageType", wireType)
+			}
+			m.PageType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.PageType |= PageInfoType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipLocalstore(dAtA[iNdEx:])
@@ -2012,42 +1680,6 @@ func (m *PageInfoWithLinks) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowLocalstore
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.State == nil {
-				m.State = &State{}
-			}
-			if err := m.State.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipLocalstore(dAtA[iNdEx:])
@@ -2203,42 +1835,6 @@ func (m *PageInfoWithOutboundLinks) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowLocalstore
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.State == nil {
-				m.State = &State{}
-			}
-			if err := m.State.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipLocalstore(dAtA[iNdEx:])
@@ -2391,42 +1987,6 @@ func (m *PageInfoWithOutboundLinksIDs) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.OutboundLinks = append(m.OutboundLinks, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowLocalstore
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.State == nil {
-				m.State = &State{}
-			}
-			if err := m.State.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
