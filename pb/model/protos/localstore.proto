@@ -13,10 +13,11 @@ message PageInfo {
 
     enum Type {
         Page = 0;
-        Profile = 1;
-        Set = 2;
-        Dashboard = 3;
-        Archive = 4;
+        Home = 1;
+        ProfilePage = 2;
+        Archive = 3;
+
+        Set = 5;
     }
 }
 

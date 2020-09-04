@@ -41,9 +41,9 @@ func (sbt SmartBlockType) ToProto() model.PageInfoType {
 	case SmartBlockTypePage:
 		return model.PageInfo_Page
 	case SmartBlockTypeProfilePage:
-		return model.PageInfo_Profile
+		return model.PageInfo_ProfilePage
 	case SmartBlockTypeHome:
-		return model.PageInfo_Dashboard
+		return model.PageInfo_Home
 	case SmartBlockTypeArchive:
 		return model.PageInfo_Archive
 	case SmartBlockTypeSet:
