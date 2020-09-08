@@ -31,8 +31,8 @@ github.com/alecthomas/jsonschema v0.0.0-20191017121752-4bb6e3fae4f2/go.mod h1:Ju
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
-github.com/anytypeio/go-anytype-library v0.11.10 h1:t5OP5q8M77x1RNozCCekhdGmAvsCuL/zY4iJU4LbZGU=
-github.com/anytypeio/go-anytype-library v0.11.10/go.mod h1:2Fx2JAw5vJa5TkgNJV6roDd62OI1ySq5KF4K0hqzW2E=
+github.com/anytypeio/go-anytype-library v0.11.11 h1:urw6FvWtX/Oiq2MCRB8zWLTg3t3jZgbaJBgh64zvY5w=
+github.com/anytypeio/go-anytype-library v0.11.11/go.mod h1:2Fx2JAw5vJa5TkgNJV6roDd62OI1ySq5KF4K0hqzW2E=
 github.com/anytypeio/go-gelf v0.0.0-20200813115635-198b2af80f88 h1:akVlk/OGOw228alDyvlEEBoVoBCTziBcu4I+x7xH/HE=
 github.com/anytypeio/go-gelf v0.0.0-20200813115635-198b2af80f88/go.mod h1:EuPAem8b51iulSY3wBQJc0Shz+A2DmyREddzDt0fywM=
 github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f h1:aeyycLTPbhwjW2x/EkmuAgRzdX0bdwy+RStmevhQbhM=

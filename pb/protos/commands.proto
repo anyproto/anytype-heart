@@ -2177,8 +2177,15 @@ message Rpc {
     }
 
     message Navigation {
+        enum Context {
+            Navigation = 0;
+            MoveTo = 1; // do not show sets/archive
+            LinkTo = 2; // same for mention, do not show sets/archive
+        }
+
         message ListPages {
             message Request {
+                Context context = 1;
             }
 
             message Response {
@@ -2205,6 +2212,7 @@ message Rpc {
         message GetPageInfoWithLinks {
             message Request {
                 string pageId = 1;
+                Context context = 2;
             }
 
             message Response {
