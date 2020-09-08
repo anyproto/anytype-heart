@@ -127,3 +127,12 @@ func (td *textDetails) RangeSplit(from int32, to int32, top bool) (newBlock simp
 	td.changed = true
 	return
 }
+
+func (td *textDetails) Merge(b simple.Block) (err error) {
+	if err = td.Text.Merge(b); err != nil {
+		return
+	}
+	td.changed = true
+	td.Text.content.Marks = &model.BlockContentTextMarks{}
+	return
+}
