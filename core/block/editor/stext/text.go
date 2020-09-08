@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -42,27 +43,6 @@ func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent 
 	return t.Apply(s, smartblock.NoEvent)
 }
 
-func (t *textImpl) RangeSplit(ctx *state.Context, id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error) {
-	s := t.NewStateCtx(ctx)
-	tb, err := getText(s, id)
-	if err != nil {
-		return
-	}
-	newBlock, err := tb.RangeSplit(rangeFrom, rangeTo, false)
-	if err != nil {
-		return
-	}
-	tb.SetStyle(style)
-	s.Add(newBlock)
-	if err = s.InsertTo(id, model.Block_Top, newBlock.Model().Id); err != nil {
-		return
-	}
-	if err = t.Apply(s); err != nil {
-		return
-	}
-	return newBlock.Model().Id, nil
-}
-
 func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
 	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, req.BlockId)
@@ -73,6 +53,10 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 	if req.Range != nil {
 		from = req.Range.From
 		to = req.Range.To
+	}
+	if tb.Model().GetText().Style == model.BlockContentText_Title {
+		req.Mode = pb.RpcBlockSplitRequest_TITLE
+		req.Style = model.BlockContentText_Paragraph
 	}
 	createTop := req.Mode == pb.RpcBlockSplitRequest_TOP
 	new, err := tb.RangeSplit(from, to, createTop)
@@ -94,6 +78,9 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 			targetId = tb.Model().ChildrenIds[0]
 			targetPos = model.Block_Top
 		}
+	case pb.RpcBlockSplitRequest_TITLE:
+		targetId = template.HeaderLayoutId
+		targetPos = model.Block_Bottom
 	}
 	if err = s.InsertTo(targetId, targetPos, newId); err != nil {
 		return

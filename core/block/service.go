@@ -744,6 +744,7 @@ func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequ
 			filtered = append(filtered, msg)
 		}
 	}
+	ctx.SetMessages(req.ContextId, filtered)
 	return nil
 }
 

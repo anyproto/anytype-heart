@@ -119,3 +119,11 @@ func (td *textDetails) ModelToSave() *model.Block {
 	b.Content.(*model.BlockContentOfText).Text.Text = ""
 	return b
 }
+
+func (td *textDetails) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error) {
+	if newBlock, err = td.Text.RangeSplit(from, to, top); err != nil {
+		return
+	}
+	td.changed = true
+	return
+}

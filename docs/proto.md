@@ -6684,6 +6684,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BOTTOM | 0 | new block will be created under existing |
 | TOP | 1 | new block will be created above existing |
 | INNER | 2 | new block will be created as the first children of existing |
+| TITLE | 3 | new block will be created after header (not required for set at client side, will auto set for title block) |
 
 
 
