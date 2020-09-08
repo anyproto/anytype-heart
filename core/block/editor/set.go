@@ -8,10 +8,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/google/uuid"
 )
@@ -46,12 +46,13 @@ func (p *Set) Init(s source.Source, _ bool) (err error) {
 
 func (p *Set) init() (err error) {
 	s := p.NewState()
+	if err = template.InitTemplate(p, template.WithTitle, s); err != nil {
+		return
+	}
 	root := s.Get(p.RootId())
-	setDetails := func() error {
-		return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
-			{Key: "name", Value: pbtypes.String("Pages")},
-			{Key: "iconEmoji", Value: pbtypes.String("📒")},
-		})
+	setDetails := func() {
+		s.SetDetail("name", pbtypes.String("Pages"))
+		s.SetDetail("iconEmoji", pbtypes.String("📒"))
 	}
 	if len(root.Model().ChildrenIds) > 0 {
 		return
@@ -88,11 +89,7 @@ func (p *Set) init() (err error) {
 		return fmt.Errorf("can't insert dataview: %v", err)
 	}
 
-	err = setDetails()
-	if err != nil {
-		return fmt.Errorf("can't set details: %v", err)
-	}
-
+	setDetails()
 	log.Infof("create default structure for set: %v", s.RootId())
 	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
 }

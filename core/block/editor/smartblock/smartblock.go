@@ -8,7 +8,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
@@ -97,21 +96,8 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 	sb.source = s
 	sb.hist = history.NewHistory(0)
 	sb.storeFileKeys()
-	return sb.checkRootBlock()
-}
-
-func (sb *smartBlock) checkRootBlock() (err error) {
-	s := sb.NewState()
-	if root := s.Get(sb.RootId()); root != nil {
-		return
-	}
-	s.Add(simple.New(&model.Block{
-		Id: sb.RootId(),
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-	}))
-	return sb.Apply(s, NoEvent, NoHistory)
+	sb.Doc.BlocksInit()
+	return
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
@@ -242,11 +228,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.hist.Add(act)
 	}
 	if sendEvent {
+		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
-			ctx.SetMessages(sb.Id(), msgs)
+			ctx.SetMessages(sb.Id(), events)
 		} else if sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{
-				Messages:  msgs,
+				Messages:  events,
 				ContextId: sb.RootId(),
 			})
 		}
@@ -357,7 +344,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	log.Infof("changes: stateAppend: %d events", len(msgs))
 	if len(msgs) > 0 && sb.sendEvent != nil {
 		sb.sendEvent(&pb.Event{
-			Messages:  msgs,
+			Messages:  msgsToEvents(msgs),
 			ContextId: sb.Id(),
 		})
 	}
@@ -376,7 +363,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	} else {
 		if len(msgs) > 0 && sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{
-				Messages:  msgs,
+				Messages:  msgsToEvents(msgs),
 				ContextId: sb.Id(),
 			})
 		}
@@ -463,4 +450,12 @@ func (sb *smartBlock) storeFileKeys() {
 	if err := sb.Anytype().FileStoreKeys(fileKeys...); err != nil {
 		log.Warnf("can't ctore file keys: %v", err)
 	}
+}
+
+func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
+	events := make([]*pb.EventMessage, len(msgs))
+	for i := range msgs {
+		events[i] = msgs[i].Msg
+	}
+	return events
 }

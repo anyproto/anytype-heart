@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 )
 
 type BlockCreator = func(m *model.Block) Block
@@ -23,13 +24,33 @@ func RegisterFallback(c BlockCreator) {
 
 type Block interface {
 	Model() *model.Block
-	Diff(block Block) (msgs []*pb.EventMessage, err error)
+	ModelToSave() *model.Block
+	Diff(block Block) (msgs []EventMessage, err error)
 	String() string
 	Copy() Block
 }
 
 type FileHashes interface {
 	FillFileHashes(hashes []string) []string
+}
+
+type DetailsService interface {
+	Details() *types.Struct
+	SetDetail(key string, value *types.Value)
+}
+
+type DetailsHandler interface {
+	// will call after block create
+	DetailsInit(s DetailsService)
+	// will call for every details change
+	OnDetailsChange() (msgs []EventMessage, err error)
+	// will call for state apply
+	DetailsApply() (msgs []EventMessage, err error)
+}
+
+type EventMessage struct {
+	Virtual bool
+	Msg     *pb.EventMessage
 }
 
 func New(block *model.Block) (b Block) {

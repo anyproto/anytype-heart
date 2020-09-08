@@ -270,7 +270,7 @@ func TestState_Normalize(t *testing.T) {
 			msgs, _, err := ApplyState(s)
 			require.NoError(t, err)
 			for _, msg := range msgs {
-				if add := msg.GetBlockAdd(); add != nil {
+				if add := msg.Msg.GetBlockAdd(); add != nil {
 					for _, nb := range add.Blocks {
 						for _, nbch := range nb.ChildrenIds {
 							require.NotEmpty(t, nbch)

@@ -34,14 +34,18 @@ func (s *Base) Model() *model.Block {
 	return s.Block
 }
 
-func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
+func (s *Base) ModelToSave() *model.Block {
+	return s.Block
+}
+
+func (s *Base) Diff(block simple.Block) (msgs []simple.EventMessage, err error) {
 	m := block.Model()
 	if !stringSlicesEq(m.ChildrenIds, s.ChildrenIds) {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetChildrenIds{BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
 			Id:          s.Id,
 			ChildrenIds: m.ChildrenIds,
 		}}}
-		msgs = append(msgs, m)
+		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 
 	if s.Restrictions == nil {
@@ -55,28 +59,28 @@ func (s *Base) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 			Id:           s.Id,
 			Restrictions: m.Restrictions,
 		}}}
-		msgs = append(msgs, m)
+		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 	if !fieldsEq(s.Fields, m.Fields) {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFields{BlockSetFields: &pb.EventBlockSetFields{
 			Id:     s.Id,
 			Fields: m.Fields,
 		}}}
-		msgs = append(msgs, m)
+		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 	if s.BackgroundColor != m.BackgroundColor {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBackgroundColor{BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
 			Id:              s.Id,
 			BackgroundColor: m.BackgroundColor,
 		}}}
-		msgs = append(msgs, m)
+		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 	if s.Align != m.Align {
 		m := &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetAlign{BlockSetAlign: &pb.EventBlockSetAlign{
 			Id:    s.Id,
 			Align: m.Align,
 		}}}
-		msgs = append(msgs, m)
+		msgs = append(msgs, simple.EventMessage{Msg: m})
 	}
 
 	return

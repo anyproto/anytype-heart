@@ -56,7 +56,7 @@ func (d *Dataview) Copy() simple.Block {
 	}
 }
 
-func (d *Dataview) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
+func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	dv, ok := b.(*Dataview)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
@@ -78,15 +78,15 @@ func (d *Dataview) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 
 		if !found || changed {
 			msgs = append(msgs,
-				&pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewView{
-
-					&pb.EventBlockSetDataviewView{
-						Id:     dv.Id,
-						ViewId: view2.Id,
-						View:   view2,
-						Offset: 0,
-						Limit:  0,
-					}}})
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewView{
+						&pb.EventBlockSetDataviewView{
+							Id:     dv.Id,
+							ViewId: view2.Id,
+							View:   view2,
+							Offset: 0,
+							Limit:  0,
+						}}}})
 		}
 	}
 
@@ -101,11 +101,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 
 		if !found {
 			msgs = append(msgs,
-				&pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewView{
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewView{
 					&pb.EventBlockDeleteDataviewView{
 						Id:     dv.Id,
 						ViewId: view1.Id,
-					}}})
+					}}}})
 		}
 	}
 

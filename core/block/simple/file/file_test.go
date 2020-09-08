@@ -52,7 +52,7 @@ func TestFile_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Value.(*pb.EventMessageValueOfBlockSetFile).BlockSetFile
+		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetFile).BlockSetFile
 		assert.NotNil(t, change.Hash)
 		assert.NotNil(t, change.Size_)
 		assert.NotNil(t, change.State)

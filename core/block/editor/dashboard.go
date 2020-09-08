@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -11,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -40,12 +40,12 @@ func (p *Dashboard) Init(s source.Source, _ bool) (err error) {
 func (p *Dashboard) init() (err error) {
 	s := p.NewState()
 	var anythingChanged bool
-
-	setDetails := func() error {
-		return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
-			{Key: "name", Value: pbtypes.String("Home")},
-			{Key: "iconEmoji", Value: pbtypes.String("🏠")},
-		})
+	if err = template.InitTemplate(p, template.Empty, s); err != nil {
+		return
+	}
+	setDetails := func() {
+		s.SetDetail("name", pbtypes.String("Home"))
+		s.SetDetail("iconEmoji", pbtypes.String("🏠"))
 	}
 
 	addLink := func(targetBlockId string, style model.BlockContentLinkStyle) error {
@@ -82,10 +82,7 @@ func (p *Dashboard) init() (err error) {
 
 	if p.Meta().Details == nil || p.Meta().Details.Fields == nil || p.Meta().Details.Fields["name"] == nil {
 		anythingChanged = true
-		err = setDetails()
-		if err != nil {
-			return err
-		}
+		setDetails()
 	}
 
 	var foundLinks = map[string]struct{}{}
@@ -114,5 +111,5 @@ func (p *Dashboard) init() (err error) {
 	}
 
 	log.Infof("create default structure for dashboard: %v", s.RootId())
-	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
+	return p.Apply(s, smartblock.NoEvent, smartblock.NoEvent)
 }

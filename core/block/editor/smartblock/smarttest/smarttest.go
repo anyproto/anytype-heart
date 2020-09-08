@@ -101,9 +101,7 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 		st.hist.Add(act)
 	}
 	if sendEvent {
-		st.Results.Events = append(st.Results.Events, &pb.Event{
-			Messages: msgs,
-		})
+		st.Results.Events = append(st.Results.Events, msgs)
 	}
 	st.Results.Applies = append(st.Results.Applies, st.Blocks())
 	return
@@ -131,6 +129,6 @@ func (st *SmartTest) Close() (err error) {
 }
 
 type Results struct {
-	Events  []*pb.Event
+	Events  [][]simple.EventMessage
 	Applies [][]*model.Block
 }

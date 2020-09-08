@@ -49,7 +49,7 @@ func TestLink_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink
+		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink
 		assert.NotNil(t, change.TargetBlockId)
 		assert.NotNil(t, change.Style)
 	})
