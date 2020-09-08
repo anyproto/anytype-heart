@@ -61,7 +61,7 @@ var WithTitle = state.NewDoc("tmpl_title", map[string]simple.Block{
 	}),
 	TitleBlockId: simple.New(&model.Block{
 		Id:      TitleBlockId,
-		Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Title}},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
 				text.DetailsKeyFieldName: pbtypes.String("name"),
