@@ -29,20 +29,18 @@ type DetailsBlock interface {
 
 type textDetails struct {
 	*Text
-	detailsService simple.DetailsService
-	key            string
-	changed        bool
-	text           string
+	key     string
+	changed bool
+	text    string
 }
 
 func (td *textDetails) DetailsInit(s simple.DetailsService) {
-	td.detailsService = s
-	td.OnDetailsChange()
+	td.Text.SetText(pbtypes.GetString(s.Details(), td.key), nil)
 	return
 }
 
-func (td *textDetails) OnDetailsChange() (msgs []simple.EventMessage, err error) {
-	newValue := pbtypes.GetString(td.detailsService.Details(), td.key)
+func (td *textDetails) OnDetailsChange(s simple.DetailsService) (msgs []simple.EventMessage, err error) {
+	newValue := pbtypes.GetString(s.Details(), td.key)
 	if old := td.GetText(); old != newValue {
 		td.Text.SetText(newValue, nil)
 		msgs = append(msgs, simple.EventMessage{
@@ -62,12 +60,12 @@ func (td *textDetails) OnDetailsChange() (msgs []simple.EventMessage, err error)
 	return
 }
 
-func (td *textDetails) DetailsApply() (msgs []simple.EventMessage, err error) {
+func (td *textDetails) DetailsApply(s simple.DetailsService) (msgs []simple.EventMessage, err error) {
 	if !td.changed {
 		return
 	}
 	value := pbtypes.String(td.GetText())
-	td.detailsService.SetDetail(td.key, value)
+	s.SetDetail(td.key, value)
 	msgs = append(msgs, simple.EventMessage{
 		Msg: &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockSetText{
@@ -87,10 +85,9 @@ func (td *textDetails) DetailsApply() (msgs []simple.EventMessage, err error) {
 
 func (td *textDetails) Copy() simple.Block {
 	return &textDetails{
-		Text:           td.Text.Copy().(*Text),
-		detailsService: td.detailsService,
-		key:            td.key,
-		changed:        td.changed,
+		Text:    td.Text.Copy().(*Text),
+		key:     td.key,
+		changed: td.changed,
 	}
 }
 

@@ -261,17 +261,16 @@ func (s *State) apply(fast, one bool) (msgs []simple.EventMessage, action histor
 			affectedIds = append(affectedIds, id)
 		}
 		if db, ok := b.(simple.DetailsHandler); ok {
-			if dmsgs, err := db.DetailsApply(); err == nil && len(dmsgs) > 0 {
+			if dmsgs, err := db.DetailsApply(s); err == nil && len(dmsgs) > 0 {
 				chmsgs = append(chmsgs, dmsgs...)
 			} else if detailsChanged {
-				if dmsgs, err := db.OnDetailsChange(); err == nil {
+				if dmsgs, err := db.OnDetailsChange(s); err == nil {
 					chmsgs = append(chmsgs, dmsgs...)
 				}
 			}
 		}
 		return true
 	})
-
 	flushNewBlocks := func() {
 		if len(newBlocks) > 0 {
 			msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
@@ -368,6 +367,16 @@ func (s *State) apply(fast, one bool) (msgs []simple.EventMessage, action histor
 		if !prev.Equal(s.details) {
 			action.Details = &history.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
 			s.parent.details = s.details
+			msgs = append(msgs, simple.EventMessage{
+				Msg: &pb.EventMessage{
+					Value: &pb.EventMessageValueOfBlockSetDetails{
+						BlockSetDetails: &pb.EventBlockSetDetails{
+							Id:      s.RootId(),
+							Details: pbtypes.CopyStruct(s.details),
+						},
+					},
+				},
+			})
 		}
 	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
@@ -505,12 +514,6 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 
 func (s *State) SetDetails(d *types.Struct) *State {
 	s.details = d
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if db, ok := b.(simple.DetailsHandler); ok {
-			db.OnDetailsChange()
-		}
-		return true
-	})
 	return s
 }
 

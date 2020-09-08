@@ -81,7 +81,7 @@ type Service interface {
 	SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
-	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
+	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -92,7 +92,7 @@ type Service interface {
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) error
-	SetTextText(req pb.RpcBlockSetTextTextRequest) error
+	SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error
 	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
@@ -337,7 +337,7 @@ func (s *service) DeletePage(id string) (err error) {
 
 func (s *service) MarkArchived(id string, archived bool) (err error) {
 	return s.Do(id, func(b smartblock.SmartBlock) error {
-		return b.SetDetails([]*pb.RpcBlockSetDetailsDetail{
+		return b.SetDetails(nil, []*pb.RpcBlockSetDetailsDetail{
 			{
 				Key:   "isArchived",
 				Value: pbtypes.Bool(archived),
@@ -385,7 +385,7 @@ func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId str
 				Value: v,
 			})
 		}
-		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
+		if err = s.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
 			ContextId: pageId,
 			Details:   details,
 		}); err != nil {
@@ -582,9 +582,9 @@ func (s *service) SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest)
 	})
 }
 
-func (s *service) SetDetails(req pb.RpcBlockSetDetailsRequest) (err error) {
+func (s *service) SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		return b.SetDetails(req.Details)
+		return b.SetDetails(ctx, req.Details)
 	})
 }
 
@@ -727,12 +727,24 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 	return rootLinkIds, err
 }
 
-func (s *service) SetTextText(req pb.RpcBlockSetTextTextRequest) error {
-	return s.DoText(req.ContextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks(nil, []string{req.BlockId}, false, func(t text.Block) error {
+func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequest) error {
+	err := s.DoText(req.ContextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, []string{req.BlockId}, true, func(t text.Block) error {
 			return t.SetText(req.Text, req.Marks)
 		})
 	})
+	if err != nil {
+		return err
+	}
+	// filter setTextText event
+	msgs := ctx.GetMessages()
+	var filtered = msgs[:0]
+	for _, msg := range msgs {
+		if msg.GetBlockSetText() == nil {
+			filtered = append(filtered, msg)
+		}
+	}
+	return nil
 }
 
 func (s *service) SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error {

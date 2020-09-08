@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -48,8 +49,8 @@ func (p *Profile) Init(s source.Source, _ bool) (err error) {
 	return template.ApplyTemplate(p, template.WithTitle, nil)
 }
 
-func (p *Profile) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	if err = p.SmartBlock.SetDetails(details); err != nil {
+func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	if err = p.SmartBlock.SetDetails(ctx, details); err != nil {
 		return
 	}
 	meta := p.SmartBlock.Meta()

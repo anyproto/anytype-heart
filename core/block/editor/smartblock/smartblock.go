@@ -51,7 +51,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() history.History
 	Anytype() anytype.Service
-	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Reindex() error
 	Close() (err error)
 	state.Doc
@@ -163,7 +163,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	sb.Lock()
 	defer sb.Unlock()
-	if sb.sendEvent != nil {
+	if sb.sendEvent != nil && d.BlockId != sb.Id() {
 		sb.sendEvent(&pb.Event{
 			Messages: []*pb.EventMessage{
 				{
@@ -311,8 +311,9 @@ func (sb *smartBlock) Anytype() anytype.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	copy := pbtypes.CopyStruct(sb.Details())
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	s := sb.NewStateCtx(ctx)
+	copy := pbtypes.CopyStruct(s.Details())
 	if copy == nil || copy.Fields == nil {
 		copy = &types.Struct{
 			Fields: make(map[string]*types.Value),
@@ -324,8 +325,8 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 	if copy.Equal(sb.Details()) {
 		return
 	}
-	s := sb.NewState().SetDetails(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	s.SetDetails(copy)
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return

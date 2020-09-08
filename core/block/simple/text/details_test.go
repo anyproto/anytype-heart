@@ -41,13 +41,14 @@ func TestTextDetails_OnDetailsChange(t *testing.T) {
 func TestTextDetails_DetailsApply(t *testing.T) {
 	orig := simple.New(testBlock).(DetailsBlock)
 	db := orig.Copy().(DetailsBlock)
-	db.DetailsInit(&testDetailsService{Struct: &types.Struct{
+	ds := &testDetailsService{Struct: &types.Struct{
 		Fields: map[string]*types.Value{
 			"title": pbtypes.String("titleFromDetails"),
 		},
-	}})
+	}}
+	db.DetailsInit(ds)
 	require.NoError(t, db.SetText("changed", nil))
-	msgs, err := db.DetailsApply()
+	msgs, err := db.DetailsApply(ds)
 	require.NoError(t, err)
 	require.Len(t, msgs, 1)
 	st := msgs[0].Msg.GetBlockSetText()
