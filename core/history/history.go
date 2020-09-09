@@ -71,8 +71,6 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		return
 	}
 	var includeLastId = true
-	var groupId int64
-	var prevVersionTimestamp int64
 
 	reverse := func(vers []*pb.RpcHistoryVersionsVersion) []*pb.RpcHistoryVersionsVersion {
 		for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {
@@ -89,18 +87,12 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		var data []*pb.RpcHistoryVersionsVersion
 
 		tree.Iterate(tree.RootId(), func(c *change.Change) (isContinue bool) {
-			if c.Timestamp-prevVersionTimestamp > int64(versionGroupInterval.Seconds()) {
-				groupId++
-			}
-			prevVersionTimestamp = c.Timestamp
-
 			data = append(data, &pb.RpcHistoryVersionsVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
 				AuthorId:    profileId,
 				AuthorName:  profileName,
 				Time:        c.Timestamp,
-				GroupId:     groupId,
 			})
 			return true
 		})
@@ -108,12 +100,23 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		lastVersionId = tree.RootId()
 		includeLastId = false
 		if len(data) == 0 || len(data[0].PreviousIds) == 0 {
-			resp = reverse(resp)
-			return
+			break
 		}
 	}
 
 	resp = reverse(resp)
+
+	var groupId int64
+	var prevVersionTimestamp int64
+
+	for i := 0; i < len(resp); i++ {
+		if resp[i].Time-prevVersionTimestamp > int64(versionGroupInterval.Seconds()) {
+			groupId++
+		}
+		prevVersionTimestamp = resp[i].Time
+		resp[i].GroupId = groupId
+	}
+
 	return
 }
 
