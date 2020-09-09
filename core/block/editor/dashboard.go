@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 
 	"github.com/anytypeio/go-anytype-library/pb/model"
@@ -40,7 +41,8 @@ func (p *Dashboard) Init(s source.Source, _ bool) (err error) {
 
 func (p *Dashboard) init() (err error) {
 	s := p.NewState()
-	var anythingChanged bool
+
+	anythingChanged := p.cleanupLayouts(s)
 
 	setDetails := func() error {
 		return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
@@ -116,4 +118,19 @@ func (p *Dashboard) init() (err error) {
 
 	log.Infof("create default structure for dashboard: %v", s.RootId())
 	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
+}
+
+func (p *Dashboard) cleanupLayouts(s *state.State) (removed bool) {
+	var divIds []string
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if layout := b.Model().GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Div {
+			divIds = append(divIds, b.Model().Id)
+		}
+		return true
+	})
+	for _, divId := range divIds {
+		divChildrens := s.Pick(divId).Model().ChildrenIds
+		s.InsertTo(divId, model.Block_Replace, divChildrens...)
+	}
+	return len(divIds) > 0
 }
