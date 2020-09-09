@@ -103,7 +103,7 @@ jobs:
             source ./source.env
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date --iso-8601=seconds)
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
             export GO111MODULE=on
             go build -o linux-amd64.a -tags nogrpcserver -ldflags "${FLAGS}" -buildmode=c-archive -v ./lib/clib
       - save_cache:
@@ -208,7 +208,7 @@ jobs:
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
             gox -buildmode=c-archive -tags nogrpcserver -ldflags="$FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/lib/clib
             make protos-server
             CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/lib-server/server
@@ -345,7 +345,7 @@ jobs:
             go get golang.org/x/mobile/cmd/...
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
             gomobile bind -v -ldflags="$FLAGS" -tags nogrpcserver -target=ios github.com/anytypeio/go-anytype-middleware/lib github.com/anytypeio/go-anytype-middleware/core
       - save_cache:
           key: go-pkg-v3-ios-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
@@ -443,7 +443,7 @@ jobs:
             go get golang.org/x/mobile/cmd/...
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date --iso-8601=seconds)
-            FLAGS="-X github.com/anytypeio/go-anytype-middleware/common.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/common.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/common.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/common.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/common.GitState=clean"
+            FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
             gomobile bind -v -ldflags="$FLAGS" -tags nogrpcserver -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/lib github.com/anytypeio/go-anytype-middleware/core
       - save_cache:
           key: go-pkg-v3-android-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}

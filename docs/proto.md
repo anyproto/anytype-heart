@@ -476,6 +476,7 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
+    - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
@@ -606,9 +607,8 @@
     - [PageInfoWithOutboundLinksIDs](#anytype.model.PageInfoWithOutboundLinksIDs)
     - [PageLinks](#anytype.model.PageLinks)
     - [PageLinksInfo](#anytype.model.PageLinksInfo)
-    - [State](#anytype.model.State)
-    - [State.StateEntry](#anytype.model.State.StateEntry)
   
+    - [PageInfo.Type](#anytype.model.PageInfo.Type)
   
   
   
@@ -5783,6 +5783,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | pageId | [string](#string) |  |  |
+| context | [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context) |  |  |
 
 
 
@@ -5835,6 +5836,11 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 ### Rpc.Navigation.ListPages.Request
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| context | [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context) |  |  |
 
 
 
@@ -7311,6 +7317,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.Navigation.Context"></a>
+
+### Rpc.Navigation.Context
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Navigation | 0 |  |
+| MoveTo | 1 | do not show sets/archive |
+| LinkTo | 2 | same for mention, do not show sets/archive |
 
 
 
@@ -9123,8 +9142,8 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | snippet | [string](#string) |  |  |
-| state | [State](#anytype.model.State) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
+| pageType | [PageInfo.Type](#anytype.model.PageInfo.Type) |  |  |
 
 
 
@@ -9142,7 +9161,6 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | info | [PageInfo](#anytype.model.PageInfo) |  |  |
 | links | [PageLinksInfo](#anytype.model.PageLinksInfo) |  |  |
-| state | [State](#anytype.model.State) |  |  |
 
 
 
@@ -9160,7 +9178,6 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | info | [PageInfo](#anytype.model.PageInfo) |  |  |
 | outboundLinks | [PageInfo](#anytype.model.PageInfo) | repeated |  |
-| state | [State](#anytype.model.State) |  |  |
 
 
 
@@ -9178,7 +9195,6 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | info | [PageInfo](#anytype.model.PageInfo) |  |  |
 | outboundLinks | [string](#string) | repeated |  |
-| state | [State](#anytype.model.State) |  |  |
 
 
 
@@ -9216,38 +9232,22 @@ Precondition: user A and user B opened the same block
 
 
 
-
-<a name="anytype.model.State"></a>
-
-### State
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| state | [State.StateEntry](#anytype.model.State.StateEntry) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.model.State.StateEntry"></a>
-
-### State.StateEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [uint64](#uint64) |  |  |
-
-
-
-
-
  
+
+
+<a name="anytype.model.PageInfo.Type"></a>
+
+### PageInfo.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Page | 0 |  |
+| Home | 1 |  |
+| ProfilePage | 2 |  |
+| Archive | 3 |  |
+| Set | 5 |  |
+
 
  
 

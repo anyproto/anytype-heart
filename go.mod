@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/anytypeio/go-anytype-library v0.11.9
+	github.com/anytypeio/go-anytype-library v0.11.11
 	github.com/cheggaaa/mb v1.0.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gogo/protobuf v1.3.1
@@ -29,7 +29,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.23-forked
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.23-f-3
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
