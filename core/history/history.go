@@ -96,12 +96,14 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 			})
 			return true
 		})
+		if len(data) == 0 {
+			break
+		} else if len(data[0].PreviousIds) == 0 {
+			data = data[1:]
+		}
 		resp = append(data, resp...)
 		lastVersionId = tree.RootId()
 		includeLastId = false
-		if len(data) == 0 || len(data[0].PreviousIds) == 0 {
-			break
-		}
 	}
 
 	resp = reverse(resp)
@@ -110,7 +112,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	var nextVersionTimestamp int64
 
 	for i := 0; i < len(resp); i++ {
-		if nextVersionTimestamp - resp[i].Time > int64(versionGroupInterval.Seconds()) {
+		if nextVersionTimestamp-resp[i].Time > int64(versionGroupInterval.Seconds()) {
 			groupId++
 		}
 		nextVersionTimestamp = resp[i].Time
