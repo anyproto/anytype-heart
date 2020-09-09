@@ -16,7 +16,7 @@ var (
 	divSize              = maxChildrenThreshold / 2
 )
 
-func (s *State) normalize() (err error) {
+func (s *State) normalize(withLayouts bool) (err error) {
 	// remove invalid children
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
@@ -37,7 +37,10 @@ func (s *State) normalize() (err error) {
 			s.normalizeLayoutRow(b)
 		}
 	}
-	return s.normalizeTree()
+	if withLayouts {
+		return s.normalizeTree()
+	}
+	return
 }
 
 func (s *State) normalizeChildren(b simple.Block) {

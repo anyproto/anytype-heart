@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -18,6 +19,14 @@ func NewBreadcrumbs(m meta.Service) *Breadcrumbs {
 
 type Breadcrumbs struct {
 	smartblock.SmartBlock
+}
+
+func (p *Breadcrumbs) Init(s source.Source, _ bool) (err error) {
+	if err = p.SmartBlock.Init(s, true); err != nil {
+		return
+	}
+	p.SmartBlock.DisableLayouts()
+	return
 }
 
 func (b *Breadcrumbs) SetCrumbs(ids []string) (err error) {

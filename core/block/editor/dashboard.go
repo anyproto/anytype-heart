@@ -34,6 +34,7 @@ func (p *Dashboard) Init(s source.Source, _ bool) (err error) {
 	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
+	p.DisableLayouts()
 	return p.init()
 }
 

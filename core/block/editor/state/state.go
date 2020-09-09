@@ -208,32 +208,32 @@ func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
 }
 
-func ApplyState(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
-	return s.apply(false, false)
+func ApplyState(s *State, withLayouts bool) (msgs []*pb.EventMessage, action history.Action, err error) {
+	return s.apply(false, false, withLayouts)
 }
 
 func ApplyStateFast(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
-	return s.apply(true, false)
+	return s.apply(true, false, false)
 }
 
 func ApplyStateFastOne(s *State) (msgs []*pb.EventMessage, action history.Action, err error) {
-	return s.apply(true, true)
+	return s.apply(true, true, false)
 }
 
-func (s *State) apply(fast, one bool) (msgs []*pb.EventMessage, action history.Action, err error) {
+func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, action history.Action, err error) {
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
 			return
 		}
-		return s.parent.apply(fast, one)
+		return s.parent.apply(fast, one, withLayouts)
 	}
 	if fast {
 		return
 	}
 	st := time.Now()
 	if !fast {
-		if err = s.normalize(); err != nil {
+		if err = s.normalize(withLayouts); err != nil {
 			return
 		}
 	}
