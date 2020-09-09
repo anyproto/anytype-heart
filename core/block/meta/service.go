@@ -41,6 +41,9 @@ func (s *service) ReportChange(m Meta) {
 }
 
 func (s *service) FetchDetails(ids []string) (details []Meta) {
+	if len(ids) == 0 {
+		return
+	}
 	var (
 		filled = make(chan struct{})
 		done   bool
