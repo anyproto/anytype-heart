@@ -2,6 +2,7 @@ package history
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -9,6 +10,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
+
+const versionGroupInterval = time.Minute * 5
 
 func NewHistory(a anytype.Service, bs BlockService, m meta.Service) History {
 	return &history{
@@ -68,19 +71,36 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		return
 	}
 	var includeLastId = true
+	var groupId int64
+	var prevVersionTimestamp int64
+
+	reverse := func(vers []*pb.RpcHistoryVersionsVersion) []*pb.RpcHistoryVersionsVersion {
+		for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {
+			vers[i], vers[j] = vers[j], vers[i]
+		}
+		return vers
+	}
+
 	for len(resp) < limit {
 		tree, e := h.buildTree(pageId, lastVersionId, includeLastId)
 		if e != nil {
 			return nil, e
 		}
 		var data []*pb.RpcHistoryVersionsVersion
+
 		tree.Iterate(tree.RootId(), func(c *change.Change) (isContinue bool) {
+			if c.Timestamp-prevVersionTimestamp > int64(versionGroupInterval.Seconds()) {
+				groupId++
+			}
+			prevVersionTimestamp = c.Timestamp
+
 			data = append(data, &pb.RpcHistoryVersionsVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
 				AuthorId:    profileId,
 				AuthorName:  profileName,
 				Time:        c.Timestamp,
+				GroupId:     groupId,
 			})
 			return true
 		})
@@ -88,9 +108,12 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		lastVersionId = tree.RootId()
 		includeLastId = false
 		if len(data) == 0 || len(data[0].PreviousIds) == 0 {
+			resp = reverse(resp)
 			return
 		}
 	}
+
+	resp = reverse(resp)
 	return
 }
 

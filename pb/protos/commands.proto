@@ -2243,6 +2243,7 @@ message Rpc {
                 string authorId = 3;
                 string authorName = 4;
                 int64 time = 5;
+                int64 groupId = 6;
             }
 
             message Request {
