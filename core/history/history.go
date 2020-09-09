@@ -63,6 +63,10 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	if limit <= 0 {
 		limit = 100
 	}
+	profileId, profileName, err := h.getProfileInfo()
+	if err != nil {
+		return
+	}
 	var includeLastId = true
 	for len(resp) < limit {
 		tree, e := h.buildTree(pageId, lastVersionId, includeLastId)
@@ -74,6 +78,8 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 			data = append(data, &pb.RpcHistoryVersionsVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
+				AuthorId:    profileId,
+				AuthorName:  profileName,
 				Time:        c.Timestamp,
 			})
 			return true
@@ -124,10 +130,35 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 		return
 	}
 	if ch := tree.Get(versionId); ch != nil {
+		profileId, profileName, e := h.getProfileInfo()
+		if e != nil {
+			err = e
+			return
+		}
 		ver = &pb.RpcHistoryVersionsVersion{
 			Id:          ch.Id,
 			PreviousIds: ch.PreviousIds,
+			AuthorId:    profileId,
+			AuthorName:  profileName,
 			Time:        ch.Timestamp,
+		}
+	}
+	return
+}
+
+func (h *history) getProfileInfo() (profileId, profileName string, err error) {
+	profileId = h.a.PredefinedBlocks().Profile
+	ps := h.a.PageStore()
+	if ps == nil {
+		return
+	}
+	profileDetails, err := ps.GetDetails(profileId)
+	if err != nil {
+		return
+	}
+	if profileDetails != nil && profileDetails.Details != nil && profileDetails.Details.Fields != nil {
+		if name, ok := profileDetails.Details.Fields["name"]; ok {
+			profileName = name.GetStringValue()
 		}
 	}
 	return

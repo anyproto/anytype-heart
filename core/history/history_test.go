@@ -3,6 +3,7 @@ package history
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -48,6 +49,10 @@ func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := testMock.NewMockService(ctrl)
 	m := mockMeta.NewMockService(ctrl)
+	a.EXPECT().PredefinedBlocks().Return(core.PredefinedBlockIds{
+		Profile: "profileId",
+	}).AnyTimes()
+	a.EXPECT().PageStore().Return(nil).AnyTimes()
 	return &fixture{
 		History: NewHistory(a, new(bs), m),
 		anytype: a,
