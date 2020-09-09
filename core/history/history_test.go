@@ -41,7 +41,7 @@ func TestHistory_Versions(t *testing.T) {
 		)
 		resp, err := fx.Versions("pageId", "", 0)
 		require.NoError(t, err)
-		assert.Len(t, resp, 5)
+		assert.Len(t, resp, 4)
 	})
 }
 

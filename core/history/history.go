@@ -96,14 +96,20 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 			})
 			return true
 		})
+		if len(data[0].PreviousIds) == 0 {
+			data = data[1:]
+			resp = append(data, resp...)
+			break
+		} else {
+			resp = append(data, resp...)
+			lastVersionId = tree.RootId()
+			includeLastId = false
+		}
+
 		if len(data) == 0 {
 			break
-		} else if len(data[0].PreviousIds) == 0 {
-			data = data[1:]
 		}
-		resp = append(data, resp...)
-		lastVersionId = tree.RootId()
-		includeLastId = false
+
 	}
 
 	resp = reverse(resp)
