@@ -107,13 +107,13 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	resp = reverse(resp)
 
 	var groupId int64
-	var prevVersionTimestamp int64
+	var nextVersionTimestamp int64
 
 	for i := 0; i < len(resp); i++ {
-		if resp[i].Time-prevVersionTimestamp > int64(versionGroupInterval.Seconds()) {
+		if nextVersionTimestamp - resp[i].Time > int64(versionGroupInterval.Seconds()) {
 			groupId++
 		}
-		prevVersionTimestamp = resp[i].Time
+		nextVersionTimestamp = resp[i].Time
 		resp[i].GroupId = groupId
 	}
 
