@@ -351,6 +351,46 @@ func TestState_Normalize(t *testing.T) {
 	})
 }
 
+func TestCleanupLayouts(t *testing.T) {
+	newDiv := func(id string, childrenIds ...string) simple.Block {
+		return simple.New(&model.Block{
+			Id:          id,
+			ChildrenIds: childrenIds,
+			Content: &model.BlockContentOfLayout{
+				Layout: &model.BlockContentLayout{
+					Style: model.BlockContentLayout_Div,
+				},
+			},
+		})
+	}
+	newText := func(id string, childrenIds ...string) simple.Block {
+		return simple.New(&model.Block{
+			Id:          id,
+			ChildrenIds: childrenIds,
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: id,
+				},
+			},
+		})
+	}
+	d := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"div1", "div2"}}),
+		"div1": newDiv("div1", "div3", "3", "4"),
+		"div2": newDiv("div2", "5", "6"),
+		"div3": newDiv("div3", "1", "2"),
+		"1":    newText("1"),
+		"2":    newText("2"),
+		"3":    newText("3"),
+		"4":    newText("4"),
+		"5":    newText("5"),
+		"6":    newText("6"),
+	})
+	s := d.NewState()
+	assert.Equal(t, CleanupLayouts(s), 3)
+	assert.Len(t, s.Pick("root").Model().ChildrenIds, 6)
+}
+
 func BenchmarkNormalize(b *testing.B) {
 	data, err := ioutil.ReadFile("./testdata/349_blocks.pb")
 	require.NoError(b, err)
