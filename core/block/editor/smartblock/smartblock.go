@@ -29,6 +29,7 @@ var (
 const (
 	NoHistory ApplyFlag = iota
 	NoEvent
+	NoRestrictions
 )
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -201,21 +202,30 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var beforeSnippet = sb.Doc.Snippet()
-	var sendEvent, addHistory = true, true
-	msgs, act, err := state.ApplyState(s)
-	if err != nil {
-		return
-	}
-	if act.IsEmpty() {
-		return nil
-	}
+	var sendEvent, addHistory, checkRestrictions = true, true, true
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
 			sendEvent = false
 		case NoHistory:
 			addHistory = false
+		case NoRestrictions:
+			checkRestrictions = false
 		}
+	}
+
+	if checkRestrictions {
+		if err = s.CheckRestrictions(); err != nil {
+			return
+		}
+	}
+
+	msgs, act, err := state.ApplyState(s)
+	if err != nil {
+		return
+	}
+	if act.IsEmpty() {
+		return nil
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
 	fileHashes := getChangedFileHashes(act)

@@ -34,6 +34,12 @@ var WithHeader = state.NewDoc("tmpl_header", map[string]simple.Block{
 	}),
 	HeaderLayoutId: simple.New(&model.Block{
 		Id: HeaderLayoutId,
+		Restrictions: &model.BlockRestrictions{
+			Edit:   true,
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Header,
@@ -52,6 +58,12 @@ var WithTitle = state.NewDoc("tmpl_title", map[string]simple.Block{
 	}),
 	HeaderLayoutId: simple.New(&model.Block{
 		Id: HeaderLayoutId,
+		Restrictions: &model.BlockRestrictions{
+			Edit:   true,
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_Header,
@@ -60,7 +72,12 @@ var WithTitle = state.NewDoc("tmpl_title", map[string]simple.Block{
 		ChildrenIds: []string{TitleBlockId},
 	}),
 	TitleBlockId: simple.New(&model.Block{
-		Id:      TitleBlockId,
+		Id: TitleBlockId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Title}},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{

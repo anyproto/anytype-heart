@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -23,6 +24,10 @@ var log = logging.Logger("anytype-mw-state")
 const (
 	snippetMinSize = 50
 	snippetMaxSize = 300
+)
+
+var (
+	ErrRestricted = errors.New("restricted")
 )
 
 var DetailsFileFields = [...]string{"coverId", "iconImage"}
@@ -583,4 +588,24 @@ func (s *State) BlocksInit() {
 		}
 		return true
 	})
+}
+
+func (s *State) CheckRestrictions() (err error) {
+	if s.parent == nil {
+		return
+	}
+	for id, b := range s.blocks {
+		rest := b.Model().Restrictions
+		if rest == nil {
+			continue
+		}
+		if rest.Edit {
+			if ob := s.parent.Pick(id); ob != nil {
+				if msgs, _ := ob.Diff(b); len(msgs) > 0 {
+					return ErrRestricted
+				}
+			}
+		}
+	}
+	return
 }
