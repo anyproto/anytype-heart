@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	db2 "github.com/textileio/go-threads/core/db"
+	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/db"
@@ -42,7 +43,7 @@ func (s *service) threadsDbInit() error {
 		return err
 	}
 
-	d, err := db.NewDB(context.Background(), s.t, accountID, db.WithNewRepoPath(filepath.Join(s.repoRootPath, "collections")))
+	d, err := db.NewDB(context.Background(), s.t, accountID, db.WithNewRepoPath(filepath.Join(s.repoRootPath, "collections")), db.WithNewCollections())
 	if err != nil {
 		return err
 	}
@@ -66,6 +67,7 @@ func (s *service) threadsDbInit() error {
 }
 
 func (s *service) threadsDbListen() error {
+	log.Infof("threadsDbListen")
 	l, err := s.db.Listen()
 	if err != nil {
 		return err
@@ -114,16 +116,17 @@ func (s *service) threadsDbListen() error {
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
 // supposed to be run in goroutine
 func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) {
-	log.Infof("got new thread %s, addrs: %+v", ti.ID.String(), ti.Addrs)
+	log := log.With("thread", tid.String())
+	log.With("threadAddrs", ti.Addrs).Info("got new thread")
 
 	var attempt int
 	for {
 		attempt++
 		err := s.processNewExternalThread(tid, ti)
 		if err != nil {
-			log.Errorf("processNewExternalThread %s failed after %d attempt: %s", tid.String(), err.Error())
+			log.Errorf("processNewExternalThread failed after %d attempt: %s", attempt, err.Error())
 		} else {
-			log.Debugf("processNewExternalThread %s succeed after %d attempt", tid.String())
+			log.Debugf("processNewExternalThread succeed after %d attempt", attempt)
 			return
 		}
 		select {
@@ -136,12 +139,13 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 }
 
 func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
+	log := log.With("thread", tid.String())
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
 		return fmt.Errorf("failed to parse thread keys %s: %s", tid.String(), err.Error())
 	}
 
-	threadAdded := false
+	success := false
 	var multiAddrs []ma.Multiaddr
 	for _, addr := range ti.Addrs {
 		addr, err := ma.NewMultiaddr(addr)
@@ -160,80 +164,91 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 		}
 
 		if !util2.MultiAddressHasReplicator(multiAddrs, s.replicatorAddr) {
-			log.Warn("processNewExternalThread %s: cafe addr not found among thread addresses, will add it", ti.ID.String())
-			replAddr, err := util2.MultiAddressAddThread(s.replicatorAddr, tid)
+			log.Warn("processNewExternalThread: cafe addr not found among thread addresses, will add it")
+			multiAddrs = append(multiAddrs, replAddrWithThread)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	if _, err := s.t.GetThread(ctx, tid); err == nil {
+		log.Warnf("processNewExternalThread: thread already exists locally")
+		return nil
+	} else {
+		log.Errorf("processNewExternalThread: thread doesn't exist locally: %s", err.Error())
+	addrsLoop:
+		for _, addr := range multiAddrs {
+			logWithAddr := log.With("addr", addr.String())
+			for _, ownAddr := range s.t.Host().Addrs() {
+				ipOwn, _ := ownAddr.ValueForProtocol(ma.P_IP4)
+				ipTarget, _ := addr.ValueForProtocol(ma.P_IP4)
+
+				portOwn, _ := ownAddr.ValueForProtocol(ma.P_TCP)
+				portTarget, _ := addr.ValueForProtocol(ma.P_TCP)
+
+				// do not connect to ourselves
+				if ipOwn == ipTarget && portOwn == portTarget {
+					continue addrsLoop
+				}
+			}
+
+			peerAddr, err := util2.MultiAddressTrimThread(addr)
 			if err != nil {
-				return err
+				logWithAddr.Errorf("processNewExternalThread: failed to parse addr: %s", err.Error())
+				continue
 			}
 
-			multiAddrs = append(multiAddrs, replAddr)
+			peerAddrInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
+			if err != nil {
+				logWithAddr.Errorf("processNewExternalThread: failed to parse addr: %s", err.Error())
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), nodeConnectionTimeout)
+			defer cancel()
+
+			if err = s.t.Host().Connect(ctx, *peerAddrInfo); err != nil {
+				logWithAddr.With("threadAddr", tid.String()).Errorf("processNewExternalThread: failed to connect addr: %s", err.Error())
+				continue
+			}
+
+			addr, err = util2.MultiAddressAddThread(addr, tid)
+			_, err = s.t.AddThread(context.Background(), addr, net.WithThreadKey(key), net.WithLogKey(s.device))
+			if err != nil {
+				if err == logstore.ErrLogExists || err == logstore.ErrThreadExists {
+					success = true
+					break
+				}
+				logWithAddr.Errorf("processNewExternalThread: failed to add: %s", err.Error())
+				continue
+			}
+
+			logWithAddr.Infof("processNewExternalThread: thread successfully added %s", peerAddrInfo.String())
+
+			if s.replicatorAddr != nil {
+				_, err = s.t.AddReplicator(context.Background(), tid, replAddrWithThread)
+				if err != nil {
+					logWithAddr.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
+				}
+			}
+
+			success = true
+			break
 		}
 	}
 
-addrsLoop:
-	for _, addr := range multiAddrs {
-		for _, ownAddr := range s.t.Host().Addrs() {
-			ipOwn, _ := ownAddr.ValueForProtocol(ma.P_IP4)
-			ipTarget, _ := addr.ValueForProtocol(ma.P_IP4)
-
-			portOwn, _ := ownAddr.ValueForProtocol(ma.P_TCP)
-			portTarget, _ := addr.ValueForProtocol(ma.P_TCP)
-
-			// do not connect to ourselves
-			if ipOwn == ipTarget && portOwn == portTarget {
-				continue addrsLoop
-			}
-		}
-
-		peerAddr, err := util2.MultiAddressTrimThread(addr)
-		if err != nil {
-			log.Errorf("processNewExternalThread %s: failed to parse addr %s: %s", ti.ID.String(), addr.String(), err.Error())
-			continue
-		}
-
-		peerAddrInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
-		if err != nil {
-			log.Errorf("processNewExternalThread %s: failed to parse addr %s: %s", ti.ID.String(), addr.String(), err.Error())
-			continue
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), nodeConnectionTimeout)
-		defer cancel()
-
-		if err = s.t.Host().Connect(ctx, *peerAddrInfo); err != nil {
-			log.Errorf("processNewExternalThread %s: failed to connect addr %s: %s", ti.ID.String(), addr.String(), err.Error())
-			continue
-		}
-
-		addr, err = util2.MultiAddressAddThread(addr, tid)
-		_, err = s.t.AddThread(context.Background(), addr, net.WithThreadKey(key), net.WithLogKey(s.device))
-		if err != nil {
-			log.Errorf("processNewExternalThread %s: failed to add from %s: %s", ti.ID.String(), addr.String(), err.Error())
-			continue
-		}
-
-		log.Infof("processNewExternalThread %s: thread successfully added from %s", ti.ID.String(), peerAddrInfo)
-		_, err = s.t.AddReplicator(context.Background(), tid, replAddrWithThread)
-		if err != nil {
-			log.Errorf("processNewExternalThread failed to add the replicator for %s: %s", ti.ID.String(), err.Error())
-		}
-
-		threadAdded = true
-		break
-	}
-
-	if !threadAdded {
+	if !success {
 		return fmt.Errorf("failed to add thread from any provided remote address")
 	} else {
 		_, err = s.pullThread(context.Background(), tid)
 		if err != nil {
-			log.Errorf("processNewExternalThread: pull thread %s failed: %s", tid.String(), err.Error())
+			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
 		}
 	}
 
 	err = s.newHeadProcessor(tid)
 	if err != nil {
-		log.Errorf("processNewExternalThread newHeadProcessor %s failed: %s", tid.String(), err.Error())
+		log.Errorf("processNewExternalThread newHeadProcessor failed: %s", err.Error())
 	}
 
 	return nil

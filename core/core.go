@@ -354,10 +354,14 @@ func (a *Anytype) start() error {
 		if err != nil && err != ErrAlreadyMigrated {
 			return err
 		}
-		err = a.opts.ReindexFunc(id.String())
-		if err != nil {
-			return err
-		}
+		go func() {
+			// todo: mw is locked during AccountSelect, this leads to deadlock in doBlockService
+			// as a workaround,do it in the goroutine
+			err = a.opts.ReindexFunc(id.String())
+			if err != nil {
+				log.Errorf("ReindexFunc failed: %s", err.Error())
+			}
+		}()
 		return nil
 	}, a.opts.CafeP2PAddr)
 
@@ -383,7 +387,7 @@ func (a *Anytype) start() error {
 }
 
 func (a *Anytype) InitPredefinedBlocks(accountSelect bool) error {
-	// todo: do we need to globally limit time to init predefind thread?
+	// todo: do we need to globally limit time to init predefined thread?
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

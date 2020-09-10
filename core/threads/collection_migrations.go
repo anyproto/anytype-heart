@@ -20,6 +20,7 @@ import (
 	"github.com/textileio/go-threads/util"
 )
 
+// threadsDbMigration called on every except the first run of the account
 func (s *service) threadsDbMigration(accountThreadId string) error {
 	err := s.handleAllMissingDbRecords(accountThreadId)
 	if err != nil {
@@ -74,7 +75,7 @@ func (s *service) addMissingThreadsFromCollection() error {
 	}
 
 	if missingThreadsAdded > 0 {
-		log.Errorf("addMissingThreadsFromCollection: adding %d missing threads in background...", missingThreadsAdded)
+		log.Warnf("addMissingThreadsFromCollection: adding %d missing threads in background...", missingThreadsAdded)
 	}
 	return nil
 }
@@ -134,9 +135,7 @@ func (s *service) addMissingThreadsToCollection() error {
 	}
 
 	if missingThreads > 0 {
-		log.Errorf("addMissingThreadsToCollection migration: added %d missing threads", missingThreads)
-	} else {
-		log.Debugf("addMissingThreadsToCollection migration: no missing threads found")
+		log.Warnf("addMissingThreadsToCollection migration: added %d missing threads", missingThreads)
 	}
 
 	return nil
@@ -167,13 +166,22 @@ func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info,
 		records []threadRecord
 	)
 
+	handled := 0
 	defer func() {
 		for i := len(records) - 1; i >= 0; i-- {
 			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 			err := tdb.HandleNetRecord(ctx, records[i], thrd.Key)
 			if err != nil {
-				log.Errorf("failed to handle record: %s", err.Error())
+				// todo: errCantCreateExistingInstance error is not exported
+				if err.Error() != "can't create already existing instance" {
+					log.Errorf("failed to handle record: %s", err.Error())
+				}
+			} else {
+				handled++
 			}
+		}
+		if handled > 0 {
+			log.Warnf("handleAllRecordsInLog: handled %d missing records", handled)
 		}
 	}()
 

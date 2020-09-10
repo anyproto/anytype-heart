@@ -76,31 +76,37 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		if err != nil {
 			return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 		}
-
-		err = s.threadsDbMigration(account.ID.String())
-		if err != nil {
-			return ids, fmt.Errorf("threadsDbMigration failed: %w", err)
-		}
 	}
 
 	if !newAccount {
+		log.Infof("start account pull")
 		accountThreadPullDone := make(chan struct{})
+		ctxPull, pullCancel := context.WithCancel(context.Background())
 		// accountSelect common case
 		go func() {
 			defer close(accountThreadPullDone)
-			// pull only after adding collection to handle all events
-			_, err = s.pullThread(context.TODO(), account.ID)
+			// pull only after threadsDbInit to handle all events
+			_, err = s.pullThread(ctxPull, account.ID)
 			if err != nil {
-				log.Errorf("failed to pull accountThread")
+				log.Errorf("account pull failed")
+			} else {
+				log.Infof("account pull done")
 			}
+
+			err = s.threadsDbMigration(account.ID.String())
 		}()
 
 		if justCreated {
 			// this is the case of accountSelect after accountRecovery
 			// we need to wait for account thread pull to be done
-			<-accountThreadPullDone
-			if err != nil {
-				return ids, err
+			select {
+			case <-accountThreadPullDone:
+				if err != nil {
+					return ids, err
+				}
+			case <-ctx.Done():
+				pullCancel()
+				return ids, ctx.Err()
 			}
 		}
 	}
@@ -293,7 +299,7 @@ func (s *service) derivedThreadCreate(index threadDerivedIndex) (thread.Info, er
 	return thrd, nil
 }
 
-func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context, index threadDerivedIndex, pull bool) (info thread.Info, justCreated bool, err error) {
+func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context, index threadDerivedIndex, pull bool) (thrd thread.Info, justCreated bool, err error) {
 	id, err := s.derivedThreadIdByIndex(index)
 	if err != nil {
 		return thread.Info{}, false, err
@@ -315,14 +321,14 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 
 		// lets try to pull it once the replicatorAddr have been added
 		// in case it fails this thread will be still pulled every PullInterval
-		err := s.PullThread(ctx, thrd.ID)
+		err = s.PullThread(ctx, thrd.ID)
 		if err != nil {
 			log.Errorf("existing thread failed to pull: ", err.Error())
 			return
 		}
 	}
 
-	thrd, err := s.t.GetThread(ctx, id)
+	thrd, err = s.t.GetThread(ctx, id)
 	if err == nil && thrd.Key.Service() != nil {
 		// we already have the thread locally, we can safely pull it in background
 		go addReplicatorAnPullAfter(thrd)
@@ -331,7 +337,7 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 
 	serviceKey, readKey, err := s.derivedThreadKeyByIndex(index)
 	if err != nil {
-		return
+		return thrd, false, err
 	}
 
 	// we must recover it from

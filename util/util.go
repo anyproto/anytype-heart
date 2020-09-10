@@ -20,6 +20,15 @@ func MultiAddressAddThread(addr ma.Multiaddr, tid thread.ID) (ma.Multiaddr, erro
 		return nil, fmt.Errorf("addr is nil")
 	}
 
+	existingThreadId, err := addr.ValueForProtocol(thread.Code)
+	if err != ma.ErrProtocolNotFound {
+		if existingThreadId == tid.String() {
+			return addr, nil
+		} else {
+			return nil, fmt.Errorf("addr already has another thread component with differnet ID")
+		}
+	}
+
 	threadComp, err := ma.NewComponent(thread.Name, tid.String())
 	if err != nil {
 		return nil, err
