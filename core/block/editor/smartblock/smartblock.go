@@ -54,6 +54,7 @@ type SmartBlock interface {
 	Anytype() anytype.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Reindex() error
+	SendEvent(msgs []*pb.EventMessage)
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -99,6 +100,15 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
 	return
+}
+
+func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
+	if sb.sendEvent != nil {
+		sb.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: sb.Id(),
+		})
+	}
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {

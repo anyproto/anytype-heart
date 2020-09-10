@@ -41,6 +41,10 @@ type SmartTest struct {
 	state.Doc
 }
 
+func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
+	return
+}
+
 func (st *SmartTest) Reindex() error {
 	return nil
 }

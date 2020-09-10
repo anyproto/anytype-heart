@@ -16,6 +16,7 @@ type Text interface {
 	Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
+	SetText(req pb.RpcBlockSetTextTextRequest) (err error)
 }
 
 func NewText(sb smartblock.SmartBlock) Text {
@@ -134,6 +135,30 @@ func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark,
 		}
 	}
 	return t.Apply(s)
+}
+
+func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
+	ctx := state.NewContext(nil)
+	s := t.NewStateCtx(ctx)
+	tb, err := getText(s, req.BlockId)
+	if err != nil {
+		return
+	}
+	if err = tb.SetText(req.Text, req.Marks); err != nil {
+		return
+	}
+	if err = t.Apply(s); err != nil {
+		return
+	}
+	msgs := ctx.GetMessages()
+	var filtered = msgs[:0]
+	for _, msg := range msgs {
+		if msg.GetBlockSetText() == nil {
+			filtered = append(filtered, msg)
+		}
+	}
+	t.SendEvent(filtered)
+	return
 }
 
 func getText(s *state.State, id string) (text.Block, error) {

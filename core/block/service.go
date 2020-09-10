@@ -728,24 +728,9 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 }
 
 func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequest) error {
-	err := s.DoText(req.ContextId, func(b stext.Text) error {
-		return b.UpdateTextBlocks(ctx, []string{req.BlockId}, true, func(t text.Block) error {
-			return t.SetText(req.Text, req.Marks)
-		})
+	return s.DoText(req.ContextId, func(b stext.Text) error {
+		return b.SetText(req)
 	})
-	if err != nil {
-		return err
-	}
-	// filter setTextText event
-	msgs := ctx.GetMessages()
-	var filtered = msgs[:0]
-	for _, msg := range msgs {
-		if msg.GetBlockSetText() == nil {
-			filtered = append(filtered, msg)
-		}
-	}
-	ctx.SetMessages(req.ContextId, filtered)
-	return nil
 }
 
 func (s *service) SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
