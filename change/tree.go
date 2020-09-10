@@ -261,6 +261,22 @@ func (t *Tree) String() string {
 	return buf.String()
 }
 
+func (t *Tree) TreeString() string {
+	var buf = bytes.NewBuffer(nil)
+	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
+		buf.WriteString(c.Id)
+		if len(c.Next) > 1 {
+			buf.WriteString("-<")
+		} else if len(c.Next) > 0 {
+			buf.WriteString("->")
+		} else {
+			buf.WriteString("-|")
+		}
+		return true
+	})
+	return buf.String()
+}
+
 func (t *Tree) Get(id string) *Change {
 	return t.attached[id]
 }
