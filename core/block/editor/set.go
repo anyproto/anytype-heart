@@ -54,7 +54,7 @@ func (p *Set) init() (err error) {
 		s.SetDetail("name", pbtypes.String("Pages"))
 		s.SetDetail("iconEmoji", pbtypes.String("📒"))
 	}
-	if len(root.Model().ChildrenIds) > 0 {
+	if len(root.Model().ChildrenIds) > 1 {
 		return
 	}
 	// init dataview
@@ -85,7 +85,7 @@ func (p *Set) init() (err error) {
 
 	s.Add(dataview)
 
-	if err = s.InsertTo(p.RootId(), model.Block_Inner, dataview.Model().Id); err != nil {
+	if err = s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, dataview.Model().Id); err != nil {
 		return fmt.Errorf("can't insert dataview: %v", err)
 	}
 
