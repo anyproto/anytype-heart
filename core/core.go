@@ -96,7 +96,7 @@ type Service interface {
 	IsStarted() bool
 	BecameOnline(ch chan<- error)
 
-	InitPredefinedBlocks(mustSyncFromRemote bool) error
+	InitPredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	DeleteBlock(blockId string) error
@@ -386,21 +386,20 @@ func (a *Anytype) start() error {
 	return nil
 }
 
-func (a *Anytype) InitPredefinedBlocks(accountSelect bool) error {
-	// todo: do we need to globally limit time to init predefined thread?
-	ctx, cancel := context.WithCancel(context.Background())
+func (a *Anytype) InitPredefinedBlocks(ctx context.Context, accountSelect bool) error {
+	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	go func() {
 		select {
-		case <-ctx.Done():
+		case <-cctx.Done():
 			return
 		case <-a.shutdownStartsCh:
 			cancel()
 		}
 	}()
 
-	ids, err := a.threadService.EnsurePredefinedThreads(ctx, !accountSelect)
+	ids, err := a.threadService.EnsurePredefinedThreads(cctx, !accountSelect)
 	if err != nil {
 		return err
 	}
