@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-library/core/threads"
 	"github.com/anytypeio/go-anytype-library/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -143,11 +144,11 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 			return ErrAlreadyMigrated
 		}
 
-		return fmt.Errorf("snapshotToChanges failed to get sb last snapshot %s: %s", id.String(), err.Error())
+		return fmt.Errorf("failed to get sb last snapshot: %s", err.Error())
 	}
 
 	if len(snapshotsPB) == 0 {
-		return fmt.Errorf("snapshotToChanges no snapshots found for %s", id.String())
+		return fmt.Errorf("no records found for the thread")
 	}
 
 	snap := snapshotsPB[0]
@@ -175,9 +176,9 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 	}
 
 	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)
-	sb, _ := a.GetSmartBlock(id.String())
+	sb, err := a.GetSmartBlock(id.String())
 
-	log.Debugf("migratePageToChanges %s", id.String())
+	log.With("thread", id.String()).Debugf("thread migrated")
 	_, err = sb.PushRecord(record)
 	return err
 }
@@ -230,14 +231,14 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 	dsDBPrefix := ds.NewKey("/db")
 	dsDBSchemas := dsDBPrefix.ChildString("schema")
 
-	key := dsDBSchemas.ChildString(threadInfoCollection.Name)
+	key := dsDBSchemas.ChildString(threads.ThreadInfoCollectionName)
 	exists, err := db.Has(key)
 	if !exists {
 		log.Info("migration alterThreadsDbSchema skipped because schema not exists in the collections db")
 		return nil
 	}
 
-	schemaBytes, err := json.Marshal(threadInfoCollection.Schema)
+	schemaBytes, err := json.Marshal(threads.ThreadInfoCollectionName)
 	if err != nil {
 		return err
 	}

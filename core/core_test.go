@@ -1,12 +1,14 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/anytypeio/go-anytype-library/core/smartblock"
+	"github.com/anytypeio/go-anytype-library/core/threads"
 	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-library/structs"
@@ -32,7 +34,7 @@ func getRunningService(t *testing.T) Service {
 		err := s.Start()
 		require.NoError(t, err)
 
-		err = s.InitPredefinedBlocks(false)
+		err = s.InitPredefinedBlocks(context.Background(), false)
 		require.NoError(t, err)
 	})
 	return s
@@ -52,7 +54,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	s := getRunningService(t)
 	require.NotNil(t, s)
 
-	err := s.InitPredefinedBlocks(false)
+	err := s.InitPredefinedBlocks(context.Background(), false)
 	require.NoError(t, err)
 
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
@@ -175,7 +177,7 @@ func TestAnytype_PredefinedBlocks(t *testing.T) {
 	s := getRunningService(t)
 	require.NotNil(t, s)
 
-	err := s.InitPredefinedBlocks(false)
+	err := s.InitPredefinedBlocks(context.Background(), false)
 	require.NoError(t, err)
 
 	fmt.Printf("profile: %s\n", s.PredefinedBlocks().Profile)
@@ -185,7 +187,7 @@ func TestAnytype_PredefinedBlocks(t *testing.T) {
 	require.Len(t, s.PredefinedBlocks().Profile, 57)
 	require.Len(t, s.PredefinedBlocks().Archive, 57)
 
-	tid, err := ProfileThreadIDFromAccountAddress(s.Account())
+	tid, err := threads.ProfileThreadIDFromAccountAddress(s.Account())
 	require.NoError(t, err)
 
 	require.Equal(t, s.PredefinedBlocks().Profile, tid.String())

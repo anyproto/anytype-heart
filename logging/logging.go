@@ -83,6 +83,7 @@ func init() {
 
 func Logger(system string) zap.SugaredLogger {
 	logger := logging.Logger(system)
+	setSubsystemLevels()
 
 	return logger.SugaredLogger
 }
@@ -147,12 +148,36 @@ func setSubsystemLevels() {
 		return
 	}
 
-	for subsystem, level := range logLevels {
-		err := logging.SetLogLevel(subsystem, level)
+	subsystems := logging.GetSubsystems()
+	for subsystemPattern, level := range logLevels {
+		lvl, err := logging.LevelFromString(level)
 		if err != nil {
-			if err != logging.ErrNoSuchLogger {
-				// it returns ErrNoSuchLogger when we don't initialised this subsystem yet
-				log.Errorf("subsystem %s has incorrect log level '%s': %w", subsystem, level, err)
+			log.Errorf("logging: invalid level for %s: %s", subsystemPattern, level)
+			continue
+		}
+
+		if subsystemPattern == "*" {
+			logging.SetAllLoggers(lvl)
+			continue
+		}
+
+		for _, subsystem := range subsystems {
+			matched, err := filepath.Match(subsystemPattern, subsystem)
+			if err != nil {
+				log.Errorf("logging: invalid subsystem pattern: %s", subsystemPattern)
+				continue
+			}
+
+			if !matched {
+				continue
+			}
+
+			err = logging.SetLogLevel(subsystem, level)
+			if err != nil {
+				if err != logging.ErrNoSuchLogger {
+					// it returns ErrNoSuchLogger when we don't initialised this subsystem yet
+					log.Errorf("subsystem %s has incorrect log level '%s': %w", subsystem, level, err)
+				}
 			}
 		}
 	}
