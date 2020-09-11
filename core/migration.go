@@ -144,11 +144,11 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 			return ErrAlreadyMigrated
 		}
 
-		return fmt.Errorf("snapshotToChanges failed to get sb last snapshot %s: %s", id.String(), err.Error())
+		return fmt.Errorf("failed to get sb last snapshot: %s", err.Error())
 	}
 
 	if len(snapshotsPB) == 0 {
-		return fmt.Errorf("snapshotToChanges no snapshots found for %s", id.String())
+		return fmt.Errorf("no records found for the thread")
 	}
 
 	snap := snapshotsPB[0]
@@ -178,7 +178,7 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)
 	sb, err := a.GetSmartBlock(id.String())
 
-	log.Debugf("migratePageToChanges %s", id.String())
+	log.With("thread", id.String()).Debugf("thread migrated")
 	_, err = sb.PushRecord(record)
 	return err
 }

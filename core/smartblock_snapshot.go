@@ -207,8 +207,9 @@ func (a *Anytype) snapshotTraverseLogs(ctx context.Context, thrdId thread.ID, be
 		return nil, err
 	}
 
-	for _, log := range thrd.Logs {
-		snapshots, err := a.snapshotTraverseFromCid(ctx, thrd, log, before, limit)
+	for _, thrdLog := range thrd.Logs {
+		snapshots, err := a.snapshotTraverseFromCid(ctx, thrd, thrdLog, before, limit)
+
 		if err != nil {
 			if strings.HasPrefix(err.Error(), ErrFailedToDecodeSnapshot.Error()) {
 				return nil, ErrFailedToDecodeSnapshot

@@ -323,7 +323,7 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 		// in case it fails this thread will be still pulled every PullInterval
 		err = s.PullThread(ctx, thrd.ID)
 		if err != nil {
-			log.Errorf("existing thread failed to pull: ", err.Error())
+			log.Errorf("failed to pull existing thread: %s", err.Error())
 			return
 		}
 	}
@@ -370,6 +370,8 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 
 	err = s.PullThread(ctx, thrd.ID)
 	if err != nil {
+		log.Errorf("failed to pull new thread: ", err.Error())
+
 		// remove the thread we have just created because we've supposed to successfully pull it from the replicatorAddr
 		err2 := s.t.DeleteThread(context.Background(), id)
 		if err2 != nil {

@@ -58,7 +58,7 @@ func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bo
 	}
 
 	for _, log := range thrd.Logs {
-		if v, exists := headPerLog[log.ID]; !exists {
+		if v, exists := headPerLog[log.ID]; !exists && log.Head.Defined() {
 			headsChanged = true
 			break
 		} else {
