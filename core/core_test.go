@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -33,7 +34,7 @@ func getRunningService(t *testing.T) Service {
 		err := s.Start()
 		require.NoError(t, err)
 
-		err = s.InitPredefinedBlocks(false)
+		err = s.InitPredefinedBlocks(context.Background(), false)
 		require.NoError(t, err)
 	})
 	return s
@@ -53,7 +54,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	s := getRunningService(t)
 	require.NotNil(t, s)
 
-	err := s.InitPredefinedBlocks(false)
+	err := s.InitPredefinedBlocks(context.Background(), false)
 	require.NoError(t, err)
 
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
@@ -176,7 +177,7 @@ func TestAnytype_PredefinedBlocks(t *testing.T) {
 	s := getRunningService(t)
 	require.NotNil(t, s)
 
-	err := s.InitPredefinedBlocks(false)
+	err := s.InitPredefinedBlocks(context.Background(), false)
 	require.NoError(t, err)
 
 	fmt.Printf("profile: %s\n", s.PredefinedBlocks().Profile)
