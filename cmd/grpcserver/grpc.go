@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/anytypeio/go-anytype-middleware/core"
-	"github.com/anytypeio/go-anytype-middleware/lib-server"
+	"github.com/anytypeio/go-anytype-middleware/pb/service"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -82,7 +82,7 @@ func main() {
 	webaddr = webLis.Addr().String()
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20 * 1024 * 1024))
-	lib.RegisterClientCommandsServer(server, mw)
+	service.RegisterClientCommandsServer(server, mw)
 
 	webrpc := grpcweb.WrapServer(
 		server,

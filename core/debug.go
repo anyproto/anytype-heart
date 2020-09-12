@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/lib-server"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	lib "github.com/anytypeio/go-anytype-middleware/pb/service"
 )
 
 func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_ListenEventsServer) {
