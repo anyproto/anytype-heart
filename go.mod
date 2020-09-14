@@ -60,7 +60,7 @@ require (
 	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
 	golang.org/x/text v0.3.3
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.32.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 )
 
