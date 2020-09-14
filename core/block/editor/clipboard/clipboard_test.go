@@ -3,8 +3,8 @@ package clipboard
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 func TestCommonSmart_pasteHtml(t *testing.T) {

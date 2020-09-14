@@ -3,9 +3,9 @@ package pages
 import (
 	"errors"
 
-	"github.com/anytypeio/go-anytype-library/database"
-	"github.com/anytypeio/go-anytype-library/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/gogo/protobuf/types"
 )
 

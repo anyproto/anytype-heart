@@ -11,7 +11,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/mauidude/go-readability"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/otiai10/opengraph"

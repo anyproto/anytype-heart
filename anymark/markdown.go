@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/anymark/blocksUtil"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer"
 	"github.com/anytypeio/go-anytype-middleware/anymark/renderer/html"
 	"github.com/anytypeio/go-anytype-middleware/anymark/spaceReplace"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"

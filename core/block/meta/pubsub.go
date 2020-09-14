@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -266,8 +266,7 @@ func copyMeta(m Meta) Meta {
 		d = pbtypes.CopyStruct(m.Details)
 	}
 	return Meta{
-		BlockId:
-		m.BlockId,
+		BlockId: m.BlockId,
 		SmartBlockMeta: core.SmartBlockMeta{
 			Details: d,
 		},

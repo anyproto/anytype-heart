@@ -582,7 +582,7 @@
   
   
 
-- [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto)
+- [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [PageDetails](#anytype.model.PageDetails)
     - [PageInfo](#anytype.model.PageInfo)
     - [PageInfoWithLinks](#anytype.model.PageInfoWithLinks)
@@ -590,14 +590,13 @@
     - [PageInfoWithOutboundLinksIDs](#anytype.model.PageInfoWithOutboundLinksIDs)
     - [PageLinks](#anytype.model.PageLinks)
     - [PageLinksInfo](#anytype.model.PageLinksInfo)
-    - [State](#anytype.model.State)
-    - [State.StateEntry](#anytype.model.State.StateEntry)
   
+    - [PageInfo.Type](#anytype.model.PageInfo.Type)
   
   
   
 
-- [vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto](#vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto)
+- [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Block](#anytype.model.Block)
@@ -7067,7 +7066,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | Navigation | 0 |  |
 | MoveTo | 1 | do not show sets/archive |
-| LinkTo | 2 | do not show sets/archive |
+| LinkTo | 2 | same for mention, do not show sets/archive |
 
 
 
@@ -8847,10 +8846,10 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto"></a>
+<a name="pkg/lib/pb/model/protos/localstore.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/localstore.proto
+## pkg/lib/pb/model/protos/localstore.proto
 
 
 
@@ -8880,8 +8879,8 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | snippet | [string](#string) |  |  |
-| state | [State](#anytype.model.State) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
+| pageType | [PageInfo.Type](#anytype.model.PageInfo.Type) |  |  |
 
 
 
@@ -8899,7 +8898,6 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | info | [PageInfo](#anytype.model.PageInfo) |  |  |
 | links | [PageLinksInfo](#anytype.model.PageLinksInfo) |  |  |
-| state | [State](#anytype.model.State) |  |  |
 
 
 
@@ -8917,7 +8915,6 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | info | [PageInfo](#anytype.model.PageInfo) |  |  |
 | outboundLinks | [PageInfo](#anytype.model.PageInfo) | repeated |  |
-| state | [State](#anytype.model.State) |  |  |
 
 
 
@@ -8935,7 +8932,6 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | info | [PageInfo](#anytype.model.PageInfo) |  |  |
 | outboundLinks | [string](#string) | repeated |  |
-| state | [State](#anytype.model.State) |  |  |
 
 
 
@@ -8973,38 +8969,22 @@ Precondition: user A and user B opened the same block
 
 
 
-
-<a name="anytype.model.State"></a>
-
-### State
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| state | [State.StateEntry](#anytype.model.State.StateEntry) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.model.State.StateEntry"></a>
-
-### State.StateEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [uint64](#uint64) |  |  |
-
-
-
-
-
  
+
+
+<a name="anytype.model.PageInfo.Type"></a>
+
+### PageInfo.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Page | 0 |  |
+| Home | 1 |  |
+| ProfilePage | 2 |  |
+| Archive | 3 |  |
+| Set | 5 |  |
+
 
  
 
@@ -9014,10 +8994,10 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto"></a>
+<a name="pkg/lib/pb/model/protos/models.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## vendor/github.com/anytypeio/go-anytype-library/pb/model/protos/models.proto
+## pkg/lib/pb/model/protos/models.proto
 
 
 
