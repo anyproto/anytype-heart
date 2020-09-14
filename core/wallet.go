@@ -3,8 +3,8 @@ package core
 import (
 	"os"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 const wordCount int = 12

@@ -1,7 +1,7 @@
 package anytype
 
 import (
-	"github.com/anytypeio/go-anytype-library/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 type Service interface {

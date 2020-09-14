@@ -3,8 +3,8 @@ package dataview
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-library/database"
-	"github.com/anytypeio/go-anytype-library/schema"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/santhosh-tekuri/jsonschema/v2"

@@ -5,8 +5,8 @@ package event
 import (
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/lib-server"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pb/service"
 	"github.com/google/martian/log"
 )
 
@@ -15,7 +15,7 @@ func NewGrpcSender() *GrpcSender {
 }
 
 type GrpcSender struct {
-	Server      lib.ClientCommands_ListenEventsServer
+	Server      service.ClientCommands_ListenEventsServer
 	ServerMutex sync.Mutex
 	ServerCh    chan struct{}
 }
@@ -35,7 +35,7 @@ func (es *GrpcSender) Send(pb *pb.Event) {
 	return
 }
 
-func (es *GrpcSender) SetServer(server lib.ClientCommands_ListenEventsServer) {
+func (es *GrpcSender) SetServer(server service.ClientCommands_ListenEventsServer) {
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
 	if es.ServerCh != nil {

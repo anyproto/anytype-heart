@@ -3,7 +3,7 @@ package anyblocks
 import (
 	"strings"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 func AllBlocksToCode(blocks []*model.Block) (blocksOut []*model.Block) {
