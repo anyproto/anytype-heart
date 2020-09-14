@@ -1,9 +1,9 @@
 syntax = "proto3";
 package anytype.storage;
-option go_package = "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage";
+option go_package = "pkg/lib/pb/storage";
 
-import "pb/model/protos/models.proto";
-import "pb/storage/protos/file.proto";
+import "pkg/lib/pb/model/protos/models.proto";
+import "pkg/lib/pb/storage/protos/file.proto";
 import "google/protobuf/struct.proto";
 
 message SmartBlockSnapshot {
