@@ -1,0 +1,338 @@
+syntax = "proto3";
+package anytype.model;
+option go_package = "pkg/lib/pb/model";
+
+import "google/protobuf/struct.proto";
+
+// deprecated
+message SmartBlockSnapshotBase {
+    repeated Block blocks = 1;
+    google.protobuf.Struct details = 2;
+    google.protobuf.Struct fileKeys = 3;
+}
+
+message Block {
+    string id = 1;
+    google.protobuf.Struct fields = 2;
+    Restrictions restrictions = 3;
+    repeated string childrenIds = 4;
+    string backgroundColor = 5;
+    Align align = 6;
+
+    oneof content {
+        Content.Smartblock smartblock = 11;
+
+        Content.Text text = 14;
+        Content.File file = 15;
+        Content.Layout layout = 16;
+        Content.Div div = 17;
+        Content.Bookmark bookmark = 18;
+        Content.Icon icon = 19;
+        Content.Link link = 20;
+        Content.Dataview dataview = 21;
+    }
+
+
+    message Restrictions {
+        bool read = 1;
+        bool edit = 2;
+        bool remove = 3;
+        bool drag = 4;
+        bool dropOn = 5;
+    }
+
+    enum Position {
+        None = 0;
+        Top = 1;
+        Bottom = 2;
+        Left = 3;
+        Right = 4;
+        Inner = 5;
+        Replace = 6;
+    }
+
+    enum Align {
+        AlignLeft = 0;
+        AlignCenter = 1;
+        AlignRight = 2;
+    }
+
+    message Content {
+        /*
+        * Layout have no visual representation, but affects on blocks, that it contains.
+        * Row/Column layout blocks creates only automatically, after some of a D&D operations, for example
+        */
+        message Layout {
+            Style style = 1;
+
+            enum Style {
+                Row = 0;
+                Column = 1;
+                Div = 2;
+                Header = 3;
+            }
+        }
+
+        /*
+        * Link: block to link some content from an external sources.
+        */
+        message Link {
+            string targetBlockId = 1; // id of the target block
+            Style style = 2;
+            google.protobuf.Struct fields = 3;
+
+            enum Style {
+                Page = 0;
+                Dataview = 1;
+                Dashboard = 2;
+                Archive = 3;
+                // ...
+            }
+        }
+
+        /*
+        * Divider: block, that contains only one horizontal thin line
+        */
+        message Div {
+            Style style = 1;
+
+            enum Style {
+                Line = 0;
+                Dots = 1;
+            }
+        }
+
+        /*
+        * Bookmark is to keep a web-link and to preview a content.
+        */
+        message Bookmark {
+            string url = 1;
+            string title = 2;
+            string description = 3;
+            string imageHash = 4;
+            string faviconHash = 5;
+            LinkPreview.Type type = 6;
+        }
+
+        message Icon {
+            string name = 1;
+        }
+
+        message Text {
+            string text = 1;
+            Style style = 2;
+            Marks marks = 3; // list of marks to apply to the text
+            bool checked = 4;
+            string color = 5;
+
+            message Marks {
+                repeated Mark marks = 1;
+            }
+
+            message Mark {
+                Range range = 1; // range of symbols to apply this mark. From(symbol) To(symbol)
+                Type type = 2;
+                string param = 3; // link, color, etc
+
+                enum Type {
+                    Strikethrough = 0;
+                    Keyboard = 1;
+                    Italic = 2;
+                    Bold = 3;
+                    Underscored = 4;
+                    Link = 5;
+                    TextColor = 6;
+                    BackgroundColor = 7;
+                    Mention = 8;
+                }
+            }
+
+            enum Style {
+                Paragraph = 0;
+                Header1 = 1;
+                Header2 = 2;
+                Header3 = 3;
+                Header4 = 4;
+                Quote = 5;
+                Code = 6;
+                Title = 7;
+                Checkbox = 8;
+                Marked = 9;
+                Numbered = 10;
+                Toggle = 11;
+            }
+        }
+
+        message File {
+            string hash = 1;
+            string name = 2;
+            Type type = 3;
+            string mime = 4;
+            int64 size = 5;
+            int64 addedAt = 6;
+
+            State state = 7;
+
+            enum Type {
+                None = 0;
+                File = 1;
+                Image = 2;
+                Video = 3;
+            }
+
+            enum State {
+                Empty = 0; // There is no file and preview, it's an empty block, that waits files.
+                Uploading = 1; // There is still no file/preview, but file already uploading
+                Done = 2; // File and preview downloaded
+                Error = 3; // Error while uploading
+            }
+        }
+
+        message Smartblock {
+        }
+
+        message Dataview {
+            string databaseId = 1;
+            repeated View views = 2;
+            string schemaURL = 3;
+
+            message View {
+                string id = 1;
+                Type type = 2;
+                string name = 3;
+                repeated Sort sorts = 4;
+                repeated Filter filters = 5;
+                repeated Relation relations = 6; // relations fields/columns options, also used to provide the order
+
+                enum Type {
+                    Table = 0;
+                    List = 1;
+                    Gallery = 2;
+                    Kanban = 3;
+                }
+            }
+
+            message Relation {
+                string id = 1;
+                bool isVisible = 2;
+                int32 width = 3; // the displayed column % calculated based on other visible relations
+
+                oneof options {
+                    EmptyOptions emptyOptions = 10;
+                    DateOptions dateOptions = 11;
+                }
+
+                message EmptyOptions {
+                }
+
+                message DateOptions {
+                    bool includeTime = 1;
+                    TimeFormat timeFormat = 2;
+                    DateFormat dateFormat = 3;
+                }
+
+                enum DateFormat {
+                    MonthAbbrBeforeDay = 0; // Jul 30, 2020
+                    MonthAbbrAfterDay = 1; // 30 Jul 2020
+                    Short = 2; // 30/07/2020
+                    ShortUS = 3; // 07/30/2020
+                    ISO = 4; // 2020-07-30
+                }
+
+                enum TimeFormat {
+                    Format12 = 0;
+                    Format24 = 1;
+                }
+            }
+
+            message Sort {
+                string relationId = 1;
+                Type type = 2;
+
+                enum Type {
+                    Asc = 0;
+                    Desc = 1;
+                }
+            }
+
+            message Filter {
+                Operator operator = 1;
+                string relationId = 2;
+                string relationProperty = 5;
+                Condition condition = 3;
+                google.protobuf.Value value = 4;
+
+                enum Operator {
+                    And = 0;
+                    Or = 1;
+                }
+
+                enum Condition {
+                    Equal = 0;
+                    NotEqual = 1;
+                    Greater = 2;
+                    Less = 3;
+                    GreaterOrEqual = 4;
+                    LessOrEqual = 5;
+                    Like = 6;
+                    NotLike = 7;
+                    In = 8;
+                    NotIn = 9;
+                    Empty = 10;
+                    NotEmpty = 11;
+                }
+            }
+        }
+    }
+}
+
+/*
+* Used to decode block meta only, without the content itself
+*/
+message BlockMetaOnly {
+    string id = 1;
+    google.protobuf.Struct fields = 2;
+}
+
+/*
+* General purpose structure, uses in Mark.
+*/
+message Range {
+    int32 from = 1;
+    int32 to = 2;
+}
+
+/**
+* Contains basic information about a user account
+*/
+message Account {
+    string id = 1; // User's thread id
+    string name = 2; // User name, that associated with this account
+    Avatar avatar = 3; // Avatar of a user's account
+
+    /**
+    * Avatar of a user's account. It could be an image or color
+    */
+    message Avatar {
+        oneof avatar {
+            Block.Content.File image = 1; // Image of the avatar. Contains the hash to retrieve the image.
+            string color = 2; // Color of the avatar, used if image not set.
+        }
+    }
+}
+
+message LinkPreview {
+    string url = 1;
+    string title = 2;
+    string description = 3;
+    string imageUrl = 4;
+    string faviconUrl = 5;
+    Type type = 6;
+
+    enum Type {
+        Unknown = 0;
+        Page = 1;
+        Image = 2;
+        Text = 3;
+    }
+}

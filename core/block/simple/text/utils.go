@@ -3,7 +3,7 @@ package text
 import (
 	"sort"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type sortedMarks []*model.BlockContentTextMark

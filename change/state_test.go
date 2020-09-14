@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/stretchr/testify/require"
 )
 

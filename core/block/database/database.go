@@ -3,11 +3,11 @@ package database
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/database"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/pages"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 )
 
 type Ctrl interface {

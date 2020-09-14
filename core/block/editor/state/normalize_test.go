@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +40,7 @@ func TestState_Normalize(t *testing.T) {
 		r := NewDoc("1", nil)
 		r.(*State).Add(simple.New(&model.Block{Id: "1"}))
 		s := r.NewState()
-		msgs, hist, err := ApplyState(s)
+		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
 		assert.Empty(t, hist)
@@ -53,7 +53,7 @@ func TestState_Normalize(t *testing.T) {
 		}).(*State)
 		s := r.NewState()
 		s.Get("one")
-		msgs, hist, err := ApplyState(s)
+		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 1)
 		assert.Len(t, hist.Change, 1)
@@ -72,7 +72,7 @@ func TestState_Normalize(t *testing.T) {
 		s.Get("c1")
 		s.Get("c2")
 
-		msgs, hist, err := ApplyState(s)
+		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -95,7 +95,7 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.Get("c1")
 
-		msgs, hist, err := ApplyState(s)
+		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2) // 1 remove + 1 change
 		assert.Len(t, hist.Change, 1)
@@ -119,7 +119,7 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		s.Unlink("c2")
 
-		msgs, hist, err := ApplyState(s)
+		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 4) // 1 row change + 1 remove + 2 width reset
 		assert.Len(t, hist.Remove, 2)
@@ -141,7 +141,7 @@ func TestState_Normalize(t *testing.T) {
 
 		s := r.NewState()
 		s.normalizeTree()
-		ApplyState(s)
+		ApplyState(s, true)
 		blocks := r.Blocks()
 		result := []string{}
 		divs := []string{}
@@ -180,7 +180,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: rootIds}))
 
 		s := r.NewState()
-		_, _, err := ApplyState(s)
+		_, _, err := ApplyState(s, true)
 		require.NoError(t, err)
 	})
 
@@ -267,7 +267,7 @@ func TestState_Normalize(t *testing.T) {
 			id := fmt.Sprint(i)
 			s.Add(simple.New(&model.Block{Id: id}))
 			s.InsertTo(targetId, targetPos, id)
-			msgs, _, err := ApplyState(s)
+			msgs, _, err := ApplyState(s, true)
 			require.NoError(t, err)
 			for _, msg := range msgs {
 				if add := msg.Msg.GetBlockAdd(); add != nil {
@@ -310,7 +310,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{div1.Model().Id, div2.Model().Id}}))
 
 		s := r.NewState()
-		_, _, err := ApplyState(s)
+		_, _, err := ApplyState(s, true)
 		require.NoError(t, err)
 		require.Equal(t, []string{"div-1"}, r.Pick(r.RootId()).Model().ChildrenIds)
 		assert.Len(t, r.Pick("div-1").Model().ChildrenIds, 10)
@@ -321,7 +321,7 @@ func TestState_Normalize(t *testing.T) {
 		ids := genIds(s, maxChildrenThreshold*3, 1, true)
 		ids = append(ids, genIds(s, 1, 1000)...)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: ids}))
-		_, _, err := ApplyState(s)
+		_, _, err := ApplyState(s, true)
 		require.NoError(t, err)
 		root := r.Pick("root").Model()
 		require.Len(t, root.ChildrenIds, 2)
@@ -338,7 +338,7 @@ func TestState_Normalize(t *testing.T) {
 		for _, b := range ev.Blocks {
 			r.Add(simple.New(b))
 		}
-		_, _, err = ApplyState(r.NewState())
+		_, _, err = ApplyState(r.NewState(), true)
 		require.NoError(t, err)
 		//t.Log(r.String())
 
@@ -349,6 +349,46 @@ func TestState_Normalize(t *testing.T) {
 			assert.True(t, len(m.ChildrenIds) > 0)
 		}
 	})
+}
+
+func TestCleanupLayouts(t *testing.T) {
+	newDiv := func(id string, childrenIds ...string) simple.Block {
+		return simple.New(&model.Block{
+			Id:          id,
+			ChildrenIds: childrenIds,
+			Content: &model.BlockContentOfLayout{
+				Layout: &model.BlockContentLayout{
+					Style: model.BlockContentLayout_Div,
+				},
+			},
+		})
+	}
+	newText := func(id string, childrenIds ...string) simple.Block {
+		return simple.New(&model.Block{
+			Id:          id,
+			ChildrenIds: childrenIds,
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: id,
+				},
+			},
+		})
+	}
+	d := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"div1", "div2"}}),
+		"div1": newDiv("div1", "div3", "3", "4"),
+		"div2": newDiv("div2", "5", "6"),
+		"div3": newDiv("div3", "1", "2"),
+		"1":    newText("1"),
+		"2":    newText("2"),
+		"3":    newText("3"),
+		"4":    newText("4"),
+		"5":    newText("5"),
+		"6":    newText("6"),
+	})
+	s := d.NewState()
+	assert.Equal(t, CleanupLayouts(s), 3)
+	assert.Len(t, s.Pick("root").Model().ChildrenIds, 6)
 }
 
 func BenchmarkNormalize(b *testing.B) {
@@ -364,6 +404,6 @@ func BenchmarkNormalize(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		ApplyState(r.NewState())
+		ApplyState(r.NewState(), true)
 	}
 }

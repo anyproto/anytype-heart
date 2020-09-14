@@ -8,11 +8,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -218,32 +218,32 @@ func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
 }
 
-func ApplyState(s *State) (msgs []simple.EventMessage, action history.Action, err error) {
-	return s.apply(false, false)
+func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action history.Action, err error) {
+	return s.apply(false, false, withLayouts)
 }
 
 func ApplyStateFast(s *State) (msgs []simple.EventMessage, action history.Action, err error) {
-	return s.apply(true, false)
+	return s.apply(true, false, false)
 }
 
 func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action history.Action, err error) {
-	return s.apply(true, true)
+	return s.apply(true, true, false)
 }
 
-func (s *State) apply(fast, one bool) (msgs []simple.EventMessage, action history.Action, err error) {
+func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action history.Action, err error) {
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
 			return
 		}
-		return s.parent.apply(fast, one)
+		return s.parent.apply(fast, one, withLayouts)
 	}
 	if fast {
 		return
 	}
 	st := time.Now()
 	if !fast {
-		if err = s.normalize(); err != nil {
+		if err = s.normalize(withLayouts); err != nil {
 			return
 		}
 	}

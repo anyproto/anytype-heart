@@ -1,13 +1,13 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -26,6 +26,7 @@ func (p *Breadcrumbs) Init(s source.Source, _ bool) (err error) {
 	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
+	p.SmartBlock.DisableLayouts()
 	return template.ApplyTemplate(p, template.Empty, nil)
 }
 

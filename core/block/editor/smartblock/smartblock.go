@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/history"
@@ -15,6 +13,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -55,6 +55,7 @@ type SmartBlock interface {
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Reindex() error
 	SendEvent(msgs []*pb.EventMessage)
+	DisableLayouts()
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -68,13 +69,14 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds    []string
-	sendEvent func(e *pb.Event)
-	hist      history.History
-	source    source.Source
-	meta      meta.Service
-	metaSub   meta.Subscriber
-	metaData  *core.SmartBlockMeta
+	depIds         []string
+	sendEvent      func(e *pb.Event)
+	hist           history.History
+	source         source.Source
+	meta           meta.Service
+	metaSub        meta.Subscriber
+	metaData       *core.SmartBlockMeta
+	disableLayouts bool
 }
 
 func (sb *smartBlock) Id() string {
@@ -210,6 +212,10 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 	sb.sendEvent = f
 }
 
+func (sb *smartBlock) DisableLayouts() {
+	sb.disableLayouts = true
+}
+
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var beforeSnippet = sb.Doc.Snippet()
 	var sendEvent, addHistory, checkRestrictions = true, true, true
@@ -230,7 +236,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	msgs, act, err := state.ApplyState(s)
+	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
 	}
@@ -358,7 +364,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	if err != nil {
 		return err
 	}
-	msgs, act, err := state.ApplyState(s)
+	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err
 	}

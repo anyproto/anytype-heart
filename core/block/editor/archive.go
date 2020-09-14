@@ -3,12 +3,12 @@ package editor
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -33,6 +33,7 @@ func (p *Archive) Init(s source.Source, _ bool) (err error) {
 	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
+	p.SmartBlock.DisableLayouts()
 	return p.init()
 }
 

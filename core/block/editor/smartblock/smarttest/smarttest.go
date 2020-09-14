@@ -3,8 +3,6 @@ package smarttest
 import (
 	"sync"
 
-	"github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -12,6 +10,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
@@ -39,6 +39,10 @@ type SmartTest struct {
 	meta    *core.SmartBlockMeta
 	sync.Mutex
 	state.Doc
+}
+
+func (st *SmartTest) DisableLayouts() {
+	return
 }
 
 func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
@@ -87,7 +91,7 @@ func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
 
 func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err error) {
 	var sendEvent, addHistory = true, true
-	msgs, act, err := state.ApplyState(s)
+	msgs, act, err := state.ApplyState(s, true)
 	if err != nil {
 		return
 	}

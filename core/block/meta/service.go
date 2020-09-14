@@ -3,8 +3,8 @@ package meta
 import (
 	"sync"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 type Meta struct {

@@ -3,10 +3,10 @@ package state
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -93,7 +93,7 @@ func TestApplyState(t *testing.T) {
 		s.InsertTo("4", model.Block_Bottom, "5")
 		s.changeId = "4"
 
-		msgs, hist, err := ApplyState(s)
+		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Len(t, hist.Add, 2)
 		assert.Len(t, hist.Change, 1)
@@ -117,7 +117,7 @@ func TestApplyState(t *testing.T) {
 				"name": pbtypes.String("new name"),
 			},
 		})
-		msgs, _, err := ApplyState(s)
+		msgs, _, err := ApplyState(s, true)
 		require.NoError(t, err)
 		assert.Len(t, msgs, 2)
 	})
