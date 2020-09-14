@@ -38,7 +38,7 @@ func (c *collector) StateAppend(f func(d state.Doc) (s *state.State, err error))
 	if err != nil {
 		return err
 	}
-	_, _, err = state.ApplyState(s)
+	_, _, err = state.ApplyState(s, false)
 	if err != nil {
 		return err
 	}

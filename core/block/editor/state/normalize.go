@@ -16,7 +16,7 @@ var (
 	divSize              = maxChildrenThreshold / 2
 )
 
-func (s *State) normalize() (err error) {
+func (s *State) normalize(withLayouts bool) (err error) {
 	// remove invalid children
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
@@ -37,7 +37,10 @@ func (s *State) normalize() (err error) {
 			s.normalizeLayoutRow(b)
 		}
 	}
-	return s.normalizeTree()
+	if withLayouts {
+		return s.normalizeTree()
+	}
+	return
 }
 
 func (s *State) normalizeChildren(b simple.Block) {
@@ -267,4 +270,22 @@ func (s *State) pickNextDiv(id string) simple.Block {
 		}
 	}
 	return nil
+}
+
+func CleanupLayouts(s *State) (removedCount int) {
+	var divIds []string
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if layout := b.Model().GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Div {
+			divIds = append(divIds, b.Model().Id)
+		}
+		return true
+	})
+	for _, divId := range divIds {
+		divChildrens := s.Pick(divId).Model().ChildrenIds
+		for _, dCh := range divChildrens {
+			s.Unlink(dCh)
+		}
+		s.InsertTo(divId, model.Block_Replace, divChildrens...)
+	}
+	return len(divIds)
 }

@@ -89,7 +89,7 @@ func TestApplyState(t *testing.T) {
 	s.InsertTo("4", model.Block_Bottom, "5")
 	s.changeId = "4"
 
-	msgs, hist, err := ApplyState(s)
+	msgs, hist, err := ApplyState(s, true)
 	require.NoError(t, err)
 	assert.Len(t, hist.Add, 2)
 	assert.Len(t, hist.Change, 1)
