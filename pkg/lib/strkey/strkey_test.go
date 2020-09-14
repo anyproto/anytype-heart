@@ -3,7 +3,7 @@ package strkey_test
 import (
 	"testing"
 
-	. "github.com/anytypeio/go-anytype-library/strkey"
+	. "github.com/anytypeio/go-anytype-middleware/pkg/lib/strkey"
 	"github.com/stretchr/testify/assert"
 )
 

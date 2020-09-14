@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	util2 "github.com/anytypeio/go-anytype-library/util"
+	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	db2 "github.com/textileio/go-threads/core/db"

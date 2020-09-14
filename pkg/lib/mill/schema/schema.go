@@ -5,7 +5,7 @@ import (
 
 	ipld "github.com/ipfs/go-ipld-format"
 
-	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 // ErrFileValidationFailed indicates dag schema validation failed

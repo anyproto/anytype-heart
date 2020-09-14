@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core/smartblock"
-	"github.com/anytypeio/go-anytype-library/net"
-	util2 "github.com/anytypeio/go-anytype-library/util"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
+	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/textileio/go-threads/cbor"

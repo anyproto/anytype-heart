@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -29,9 +29,9 @@ import (
 	"github.com/textileio/go-threads/net"
 	"google.golang.org/grpc"
 
-	"github.com/anytypeio/go-anytype-library/ipfs"
-	"github.com/anytypeio/go-anytype-library/ipfs/ipfsliteinterface"
-	net2 "github.com/anytypeio/go-anytype-library/net"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/ipfsliteinterface"
+	net2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 )
 
 var log = logging.Logger("anytype-core-litenet")

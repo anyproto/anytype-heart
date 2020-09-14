@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/cafe/pb"
-	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/mr-tron/base58"
 	"github.com/textileio/go-threads/core/thread"
 	"google.golang.org/grpc"

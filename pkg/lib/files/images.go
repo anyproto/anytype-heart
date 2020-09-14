@@ -6,10 +6,10 @@ import (
 	"io/ioutil"
 	"time"
 
-	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
-	"github.com/anytypeio/go-anytype-library/localstore"
-	"github.com/anytypeio/go-anytype-library/mill/schema/anytype"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
+	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {

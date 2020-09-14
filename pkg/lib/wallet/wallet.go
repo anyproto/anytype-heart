@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/tyler-smith/go-bip39"
 
-	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-core-wallet")

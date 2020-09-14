@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/kelseyhightower/envconfig"
 )
 

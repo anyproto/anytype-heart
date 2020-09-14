@@ -7,7 +7,7 @@ import (
 
 	"github.com/mr-tron/base58/base58"
 
-	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 var log = logging.Logger("tex-mill")

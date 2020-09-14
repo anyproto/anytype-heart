@@ -20,6 +20,6 @@ protos:
 	$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT))
-	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pb/ pb/model/protos/*.proto; mv pb/github.com/anytypeio/go-anytype-library/pb/model/*.go pb/model/; rm -rf pb/github.com
-	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pb/ pb/storage/protos/*.proto; mv pb/github.com/anytypeio/go-anytype-library/pb/storage/*.go pb/storage/; rm -rf pb/github.com
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pb/ pb/model/protos/*.proto; mv pb/github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model/*.go pb/model/; rm -rf pb/github.com
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pb/ pb/storage/protos/*.proto; mv pb/github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage/*.go pb/storage/; rm -rf pb/github.com
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP),plugins=grpc:./ cafe/pb/*.proto

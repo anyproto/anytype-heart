@@ -5,13 +5,13 @@ import (
 	"errors"
 	"sync"
 
-	libCore "github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/gateway"
-	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	libCore "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 

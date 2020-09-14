@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/libp2p/go-libp2p-core/crypto"
 )
 

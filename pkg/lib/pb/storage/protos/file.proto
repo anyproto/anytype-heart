@@ -1,6 +1,6 @@
 syntax = "proto3";
 package anytype.storage;
-option go_package = "github.com/anytypeio/go-anytype-library/pb/storage";
+option go_package = "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage";
 
 import "google/protobuf/struct.proto";
 

@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-library/core/threads"
-	"github.com/anytypeio/go-anytype-library/vclock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/textileio/go-threads/core/thread"

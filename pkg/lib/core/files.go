@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/files"
-	"github.com/anytypeio/go-anytype-library/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")

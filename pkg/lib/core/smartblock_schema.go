@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/anytypeio/go-anytype-library/core/smartblock"
-	"github.com/anytypeio/go-anytype-library/schema"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/santhosh-tekuri/jsonschema/v2"
 )
 

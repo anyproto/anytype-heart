@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/files"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 type File interface {

@@ -3,9 +3,9 @@ package change
 import (
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 )

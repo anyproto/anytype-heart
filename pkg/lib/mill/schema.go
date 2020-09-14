@@ -7,9 +7,9 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/xeipuuv/gojsonschema"
 
-	"github.com/anytypeio/go-anytype-library/mill/schema"
-	"github.com/anytypeio/go-anytype-library/pb"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 var pbMarshaler = jsonpb.Marshaler{

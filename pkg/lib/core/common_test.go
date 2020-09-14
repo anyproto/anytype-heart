@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core/config"
-	"github.com/anytypeio/go-anytype-library/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/pnet"

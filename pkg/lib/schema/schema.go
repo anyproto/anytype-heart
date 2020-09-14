@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-core-schema")

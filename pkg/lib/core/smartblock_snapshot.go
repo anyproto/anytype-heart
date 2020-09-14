@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/vclock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/gogo/protobuf/types"
 	cid "github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"

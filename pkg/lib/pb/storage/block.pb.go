@@ -5,7 +5,7 @@ package storage
 
 import (
 	fmt "fmt"
-	model "github.com/anytypeio/go-anytype-library/pb/model"
+	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	proto "github.com/gogo/protobuf/proto"
 	types "github.com/gogo/protobuf/types"
 	io "io"

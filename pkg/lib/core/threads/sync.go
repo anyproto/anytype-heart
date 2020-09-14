@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/util"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"

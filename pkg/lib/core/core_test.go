@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core/smartblock"
-	"github.com/anytypeio/go-anytype-library/core/threads"
-	"github.com/anytypeio/go-anytype-library/database"
-	"github.com/anytypeio/go-anytype-library/pb/model"
-	"github.com/anytypeio/go-anytype-library/structs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )

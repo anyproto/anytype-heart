@@ -4,9 +4,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core/smartblock"
-	"github.com/anytypeio/go-anytype-library/localstore"
-	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 func (a *Anytype) PageStore() localstore.PageStore {

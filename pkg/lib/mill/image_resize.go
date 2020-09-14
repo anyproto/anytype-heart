@@ -15,7 +15,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/rwcarlsen/goexif/exif"
 
-	"github.com/anytypeio/go-anytype-library/mill/ico"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
 )
 
 // Format enumerates the type of images currently supported

@@ -1,7 +1,7 @@
 package smartblock
 
 import (
-	"github.com/anytypeio/go-anytype-library/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/textileio/go-threads/core/thread"
 )
 

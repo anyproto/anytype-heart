@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	cafepb "github.com/anytypeio/go-anytype-library/cafe/pb"
-	"github.com/anytypeio/go-anytype-library/util"
+	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/dgtony/collections/hashset"
 )
 

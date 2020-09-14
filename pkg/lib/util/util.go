@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/thread"
 )

@@ -10,7 +10,7 @@ import (
 
 	"github.com/rwcarlsen/goexif/exif"
 
-	"github.com/anytypeio/go-anytype-library/mill/testdata"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/testdata"
 )
 
 var errFailedToFindExifMarker = fmt.Errorf("exif: failed to find exif intro marker")

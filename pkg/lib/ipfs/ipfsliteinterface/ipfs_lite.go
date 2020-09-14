@@ -11,7 +11,7 @@ import (
 	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/anytypeio/go-anytype-library/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 )
 
 var _ ipfs.IPFS = (*ipfsLite)(nil)

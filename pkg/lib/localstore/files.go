@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-library/pb/storage"
-	"github.com/anytypeio/go-anytype-library/util"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/gogo/protobuf/proto"
 	ds "github.com/ipfs/go-datastore"
 )

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/anytypeio/go-anytype-library/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/gogo/status"
 	"google.golang.org/grpc/codes"
 )

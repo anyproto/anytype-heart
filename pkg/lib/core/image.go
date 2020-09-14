@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/anytypeio/go-anytype-library/files"
-	"github.com/anytypeio/go-anytype-library/mill"
-	"github.com/anytypeio/go-anytype-library/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
 
 type Image interface {

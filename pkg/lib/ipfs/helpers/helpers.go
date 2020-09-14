@@ -19,8 +19,8 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anytypeio/go-anytype-library/ipfs"
-	"github.com/anytypeio/go-anytype-library/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-ipfs")

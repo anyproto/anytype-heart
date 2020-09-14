@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-library/strkey"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/strkey"
 	"github.com/libp2p/go-libp2p-core/crypto"
 )
 
