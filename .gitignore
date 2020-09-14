@@ -3,7 +3,7 @@
 .DS_Store
 node_modules
 package-lock.json
-/jsaddon/build
+/clientlibrary/jsaddon/build
 .vscode
 /vendor/
 *_mock.go

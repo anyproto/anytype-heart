@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
 func newCollector(ps *pubSub, id string) *collector {

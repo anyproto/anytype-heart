@@ -9,8 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/anytypeio/go-anytype-library/logging"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -18,6 +16,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"

@@ -1,9 +1,9 @@
 package anytype
 
 import (
-	"github.com/anytypeio/go-anytype-library/core"
-	coresb "github.com/anytypeio/go-anytype-library/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 )
 
 func NewService(c core.Service) Service {

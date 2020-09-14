@@ -7,9 +7,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/core"
-	"github.com/anytypeio/go-anytype-library/logging"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 

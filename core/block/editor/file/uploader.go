@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-library/files"
-	"github.com/anytypeio/go-anytype-library/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/h2non/filetype"
 )
