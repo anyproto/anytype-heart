@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -99,15 +100,25 @@ func InitTemplate(sb smartblock.SmartBlock, tmpl state.Doc, s *state.State) (err
 		})
 	} else {
 		// migration to title
-		if tmpl == WithTitle && !s.Exists(HeaderLayoutId) {
-			tmpl.Iterate(func(b simple.Block) (isContinue bool) {
-				b = b.Copy()
-				if b.Model().Id != tmpl.RootId() {
-					s.Add(b)
+		if tmpl == WithTitle {
+			if !s.Exists(HeaderLayoutId) {
+				tmpl.Iterate(func(b simple.Block) (isContinue bool) {
+					b = b.Copy()
+					if b.Model().Id != tmpl.RootId() {
+						s.Add(b)
+					}
+					return true
+				})
+				s.Get(s.RootId()).Model().ChildrenIds = append([]string{HeaderLayoutId}, s.Get(s.RootId()).Model().ChildrenIds...)
+			} else {
+				// case when Header not first block of root
+				parent := s.PickParentOf(HeaderLayoutId)
+				if parent == nil || parent.Model().Id != sb.RootId() || slice.FindPos(parent.Model().ChildrenIds, HeaderLayoutId) != 0 {
+					s.Unlink(HeaderLayoutId)
+					root := s.Get(sb.RootId())
+					root.Model().ChildrenIds = append([]string{HeaderLayoutId}, root.Model().ChildrenIds...)
 				}
-				return true
-			})
-			s.Get(s.RootId()).Model().ChildrenIds = append([]string{HeaderLayoutId}, s.Get(s.RootId()).Model().ChildrenIds...)
+			}
 		}
 	}
 	return
