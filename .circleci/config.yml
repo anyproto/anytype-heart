@@ -345,7 +345,7 @@ jobs:
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
-            gomobile bind -v -ldflags="$FLAGS" -tags nogrpcserver -target=ios github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+            gomobile bind -v -ldflags="$FLAGS" -tags nogrpcserver -target=ios -o=Lib.framework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
       - save_cache:
           key: go-pkg-v3-ios-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
           paths:
