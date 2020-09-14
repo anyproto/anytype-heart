@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
@@ -404,16 +405,12 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 
 	if ok && focusedBlock != nil && focusedBlockText != nil && !isSelectedBlocks {
 		focusedContent, isFocusedText = focusedBlock.Model().Content.(*model.BlockContentOfText)
-		isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
+		//isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
 
 		isPasteTop = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && utf8.RuneCountInString(focusedContent.Text.Text) != 0
 		isPasteBottom = req.SelectedTextRange.From == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To != 0
 		isPasteInstead = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text))
 		isPasteWithSplit = !isPasteInstead && !isPasteBottom && !isPasteTop
-	}
-
-	if isFocusedTitle {
-		return blockIds, uploadArr, caretPosition, isSameBlockCaret, ErrTitlePasteRestricted
 	}
 
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
@@ -548,6 +545,10 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 		blockIds = append(blockIds, newBlock.Model().Id)
 
 		if idToIsChild[blocks[index].Id] != true {
+			if targetId == template.TitleBlockId {
+				targetId = template.HeaderLayoutId
+				pos = model.Block_Bottom
+			}
 			err = s.InsertTo(targetId, pos, newBlock.Model().Id)
 
 			if err != nil {

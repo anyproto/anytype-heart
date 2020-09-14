@@ -124,6 +124,17 @@ func (td *textDetails) RangeSplit(from int32, to int32, top bool) (newBlock simp
 	if newBlock, err = td.Text.RangeSplit(from, to, top); err != nil {
 		return
 	}
+	if td.Model().GetText().Style == model.BlockContentText_Title {
+		newBlock.Model().GetText().Style = model.BlockContentText_Paragraph
+	}
+	td.changed = true
+	return
+}
+
+func (td *textDetails) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error) {
+	if caretPosition, err = td.Text.RangeTextPaste(rangeFrom, rangeTo, copiedBlock, isPartOfBlock); err != nil {
+		return
+	}
 	td.changed = true
 	return
 }
