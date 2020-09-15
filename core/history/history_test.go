@@ -3,10 +3,10 @@ package history
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-library/core"
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
 	"github.com/golang/mock/gomock"
@@ -49,7 +49,7 @@ func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := testMock.NewMockService(ctrl)
 	m := mockMeta.NewMockService(ctrl)
-	a.EXPECT().PredefinedBlocks().Return(core.PredefinedBlockIds{
+	a.EXPECT().PredefinedBlocks().Return(threads.DerivedSmartblockIds{
 		Profile: "profileId",
 	}).AnyTimes()
 	a.EXPECT().PageStore().Return(nil).AnyTimes()
