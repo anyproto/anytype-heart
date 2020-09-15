@@ -314,25 +314,36 @@ func TestBuildTreeBefore(t *testing.T) {
 	})
 }
 
-func TestBuildTree_History(t *testing.T) {
+func TestBuildTree_Issue639(t *testing.T) {
 	var vers []struct {
 		Id          string   `json:"id"`
 		PreviousIds []string `json:"previousidsList"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(histList), &vers))
-	tr := NewTree()
-	for i := len(vers) - 1; i >= 0; i-- {
-		tr.Add(&Change{
+	require.NoError(t, json.Unmarshal([]byte(issue639data), &vers))
+	var changes []*Change
+	for i := range vers {
+		c := &Change{
 			Id: vers[i].Id,
 			Change: &pb.Change{
 				PreviousIds: vers[i].PreviousIds,
 			},
-		})
+		}
+		changes = append(changes, c)
 	}
-	t.Log(tr.Len(), tr.String())
+
+	tr := new(Tree)
+	tr.Add(changes[len(changes)-1])
+	tr.AddFast(changes...)
+	//t.Log(tr.Graphviz())
+	var lastId string
+	tr.Iterate(tr.RootId(), func(c *Change) (isContinue bool) {
+		lastId = c.Id
+		return true
+	})
+	assert.Equal(t, "bafyreiaoz4fzp7vnk3nyi5au6teahxpwttv3eflcmsl26yjxyl4aoztfbi", lastId)
 }
 
-var histList = `[
+var issue639data = `[
       {
          "id": "bafyreiemkngls23b7g4qlvkhlutx2bbqf5h3vduyqi27oszikfhdm4tgwa",
          "previousidsList": [
@@ -1416,9 +1427,7 @@ var histList = `[
       },
       {
          "id": "bafyreiassybyk2npiyrqx7iag6b7xjduhzq6eoowmj6uzh576h3j6bc4em",
-         "previousidsList": [
-            "bafyreic2cqcmnbc4zj6xqylbahf7l6h3zqdigskn5seinohcoj3adtdjlq"
-         ],
+         "previousidsList": [],
          "authorid": "bafkrcmumctbpm4y7xasy2wwt5wv2fckfcriclbyvqbiowvxsolglcs2j",
          "authorname": "Shared acc++",
          "time": 1597327788,

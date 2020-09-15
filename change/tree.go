@@ -103,7 +103,9 @@ func (t *Tree) add(c *Change) (attached bool) {
 		t.waitList = make(map[string][]string)
 		return true
 	}
-	sort.Strings(c.PreviousIds)
+	if len(c.PreviousIds) > 1 {
+		sort.Strings(c.PreviousIds)
+	}
 	for _, pid := range c.PreviousIds {
 		if prev, ok := t.attached[pid]; ok {
 			prev.Next = append(prev.Next, c)
@@ -185,22 +187,61 @@ func (t *Tree) updateHeads() {
 	sort.Strings(t.detailsHeadIds)
 }
 
-func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) bool {
+func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	if start == nil {
-		return false
+		return
 	}
-	if !f(start) {
-		return false
-	}
-	for _, n := range start.Next {
-		if len(n.PreviousIds) > 1 && start.Id != n.PreviousIds[len(n.PreviousIds)-1] {
-			continue
+	var (
+		breakpoint *Change
+		queue      = []*Change{start}
+	)
+	iterateLin := func(c *Change) bool {
+		for len(c.Next) == 1 {
+			if !f(c) {
+				return false
+			}
+			c = c.Next[0]
+			if len(c.PreviousIds) > 1 {
+				break
+			}
 		}
-		if !t.iterate(n, f) {
-			return false
+		breakpoint = c
+		return true
+	}
+
+	var toQueue = func(c *Change) {
+		for _, qc := range queue {
+			if qc.Id == c.Id {
+				return
+			}
+		}
+		queue = append(queue, c)
+	}
+
+	for len(queue) > 0 {
+		c := queue[0]
+		queue = queue[1:]
+		nl := len(c.Next)
+		if nl == 1 {
+			if !iterateLin(c) {
+				return
+			}
+			if breakpoint != nil {
+				toQueue(breakpoint)
+				breakpoint = nil
+			}
+		} else {
+			if !f(c) {
+				return
+			}
+			if nl != 0 {
+				for _, next := range c.Next {
+					toQueue(next)
+				}
+			}
 		}
 	}
-	return true
+	return
 }
 
 func (t *Tree) Iterate(startId string, f func(c *Change) (isContinue bool)) {
@@ -246,22 +287,6 @@ func (t *Tree) DetailsHeads() []string {
 }
 
 func (t *Tree) String() string {
-	var buf = bytes.NewBuffer(nil)
-	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
-		buf.WriteString(c.Id)
-		if len(c.Next) > 1 {
-			buf.WriteString("-<")
-		} else if len(c.Next) > 0 {
-			buf.WriteString("->")
-		} else {
-			buf.WriteString("-|")
-		}
-		return true
-	})
-	return buf.String()
-}
-
-func (t *Tree) TreeString() string {
 	var buf = bytes.NewBuffer(nil)
 	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
 		buf.WriteString(c.Id)
