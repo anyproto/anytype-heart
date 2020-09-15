@@ -101,6 +101,9 @@ service ClientCommands {
     rpc NavigationListPages (anytype.Rpc.Navigation.ListPages.Request) returns (anytype.Rpc.Navigation.ListPages.Response);
     rpc NavigationGetPageInfoWithLinks (anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetPageInfoWithLinks.Response);
 
+    rpc RelationList (anytype.Rpc.Relation.List.Request) returns (anytype.Rpc.Relation.List.Response);
+    rpc RelationAdd (anytype.Rpc.Relation.Add.Request) returns (anytype.Rpc.Relation.Add.Response);
+
     rpc Ping (anytype.Rpc.Ping.Request) returns (anytype.Rpc.Ping.Response);
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);

@@ -3,6 +3,8 @@ package anytype;
 option go_package = "pb";
 
 import "pkg/lib/pb/model/protos/models.proto";
+import "pkg/lib/pb/relation/protos/relation.proto";
+
 import "google/protobuf/struct.proto";
 
 /*
@@ -91,8 +93,17 @@ message Event {
         message Show {
             string rootId = 1; // Root block id
             repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
-            repeated Block.Set.Details details = 3; // details for current and dependent smart blocks
+            repeated Block.Set.Details details = 3; // deprecated, details for current and dependent smart blocks
+
             SmartBlockType type = 4;
+
+            message RelationWithValuePerObject {
+                string objectId = 1;
+                repeated anytype.relation.RelationWithValue relations = 2;
+            }
+
+            string objectType = 5; // objectType it to get default relations from
+            repeated RelationWithValuePerObject relationsPerObject = 6; // list of relations used in this object
         }
 
         /**

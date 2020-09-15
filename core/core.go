@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pb/service"
 	libCore "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -18,7 +19,8 @@ import (
 var log = logging.Logger("anytype-mw-api")
 
 var (
-	ErrNotLoggedIn = errors.New("not logged in")
+	ErrNotLoggedIn                              = errors.New("not logged in")
+	_              service.ClientCommandsServer = (*Middleware)(nil)
 )
 
 type Middleware struct {

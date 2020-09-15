@@ -364,6 +364,15 @@
     - [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request)
     - [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response)
     - [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error)
+    - [Rpc.Relation](#anytype.Rpc.Relation)
+    - [Rpc.Relation.Add](#anytype.Rpc.Relation.Add)
+    - [Rpc.Relation.Add.Request](#anytype.Rpc.Relation.Add.Request)
+    - [Rpc.Relation.Add.Response](#anytype.Rpc.Relation.Add.Response)
+    - [Rpc.Relation.Add.Response.Error](#anytype.Rpc.Relation.Add.Response.Error)
+    - [Rpc.Relation.List](#anytype.Rpc.Relation.List)
+    - [Rpc.Relation.List.Request](#anytype.Rpc.Relation.List.Request)
+    - [Rpc.Relation.List.Response](#anytype.Rpc.Relation.List.Response)
+    - [Rpc.Relation.List.Response.Error](#anytype.Rpc.Relation.List.Response.Error)
     - [Rpc.Shutdown](#anytype.Rpc.Shutdown)
     - [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request)
     - [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response)
@@ -464,6 +473,8 @@
     - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
+    - [Rpc.Relation.Add.Response.Error.Code](#anytype.Rpc.Relation.Add.Response.Error.Code)
+    - [Rpc.Relation.List.Response.Error.Code](#anytype.Rpc.Relation.List.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
     - [Rpc.UploadFile.Response.Error.Code](#anytype.Rpc.UploadFile.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
@@ -558,6 +569,7 @@
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
     - [Event.Block.Show](#anytype.Event.Block.Show)
+    - [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
     - [Event.Process](#anytype.Event.Process)
@@ -743,6 +755,8 @@
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
 | NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
 | NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
+| RelationList | [Rpc.Relation.List.Request](#anytype.Rpc.Relation.List.Request) | [Rpc.Relation.List.Response](#anytype.Rpc.Relation.List.Response) |  |
+| RelationAdd | [Rpc.Relation.Add.Request](#anytype.Rpc.Relation.Add.Request) | [Rpc.Relation.Add.Response](#anytype.Rpc.Relation.Add.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
@@ -770,7 +784,7 @@ the element of change tree used to store and internal apply smartBlock history
 | last_snapshot_id | [string](#string) |  | id of the last snapshot |
 | previous_details_ids | [string](#string) | repeated | ids of the last changes with details content |
 | content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
-| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the content will ignoring |
+| snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the Content will be ignored |
 | fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | file keys related to changes content |
 | timestamp | [int64](#int64) |  | creation timestamp |
 
@@ -5779,6 +5793,130 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Relation"></a>
+
+### Rpc.Relation
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Add"></a>
+
+### Rpc.Relation.Add
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Add.Request"></a>
+
+### Rpc.Relation.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| relationsToAdd | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Add.Response"></a>
+
+### Rpc.Relation.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.Add.Response.Error](#anytype.Rpc.Relation.Add.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.Add.Response.Error"></a>
+
+### Rpc.Relation.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.Add.Response.Error.Code](#anytype.Rpc.Relation.Add.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.List"></a>
+
+### Rpc.Relation.List
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.List.Request"></a>
+
+### Rpc.Relation.List.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectType | [string](#string) |  | relations for this objectType will be prioritized |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.List.Response"></a>
+
+### Rpc.Relation.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Relation.List.Response.Error](#anytype.Rpc.Relation.List.Response.Error) |  |  |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Relation.List.Response.Error"></a>
+
+### Rpc.Relation.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Relation.List.Response.Error.Code](#anytype.Rpc.Relation.List.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Shutdown"></a>
 
 ### Rpc.Shutdown
@@ -7119,6 +7257,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Relation.Add.Response.Error.Code"></a>
+
+### Rpc.Relation.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_ID | 3 | ... |
+
+
+
+<a name="anytype.Rpc.Relation.List.Response.Error.Code"></a>
+
+### Rpc.Relation.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE | 3 | ... |
 
 
 
@@ -8517,8 +8683,26 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
-| details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | details for current and dependent smart blocks |
+| details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | deprecated, details for current and dependent smart blocks |
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
+| objectType | [string](#string) |  | objectType it to get default relations from |
+| relationsPerObject | [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject) | repeated | list of relations used in this object |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Show.RelationWithValuePerObject"></a>
+
+### Event.Block.Show.RelationWithValuePerObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| relations | [relation.RelationWithValue](#anytype.relation.RelationWithValue) | repeated |  |
 
 
 

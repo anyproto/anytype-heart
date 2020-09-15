@@ -17,7 +17,7 @@ message Change {
     repeated string previous_details_ids = 5;
     // set of actions to apply
     repeated Content content = 3;
-    // snapshot - when not null, the content will ignoring
+    // snapshot - when not null, the Content will be ignored
     Snapshot snapshot = 4;
     // file keys related to changes content
     repeated FileKeys fileKeys = 6;

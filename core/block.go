@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -77,7 +78,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
-	err = mw.Anytype.PageUpdateLastOpened(req.BlockId)
+	err = mw.Anytype.PageStore().UpdateLastOpened(req.BlockId, time.Now())
 	if err != nil {
 		log.Errorf("failed to update last opened for the page %s: %s", req.BlockId, err.Error())
 	}

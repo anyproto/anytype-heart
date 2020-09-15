@@ -34,7 +34,7 @@ type Change struct {
 	PreviousDetailsIds []string `protobuf:"bytes,5,rep,name=previous_details_ids,json=previousDetailsIds,proto3" json:"previous_details_ids,omitempty"`
 	// set of actions to apply
 	Content []*ChangeContent `protobuf:"bytes,3,rep,name=content,proto3" json:"content,omitempty"`
-	// snapshot - when not null, the content will ignoring
+	// snapshot - when not null, the Content will be ignored
 	Snapshot *ChangeSnapshot `protobuf:"bytes,4,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
 	// file keys related to changes content
 	FileKeys []*ChangeFileKeys `protobuf:"bytes,6,rep,name=fileKeys,proto3" json:"fileKeys,omitempty"`

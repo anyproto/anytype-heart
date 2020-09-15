@@ -4,6 +4,7 @@ option go_package = "pb";
 
 import "pkg/lib/pb/model/protos/models.proto";
 import "pkg/lib/pb/model/protos/localstore.proto";
+import "pkg/lib/pb/relation/protos/relation.proto";
 
 import "pb/protos/events.proto";
 import "google/protobuf/struct.proto";
@@ -2227,6 +2228,55 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
+
+    message Relation {
+        message List {
+            message Request {
+                string objectType = 1; // relations for this objectType will be prioritized
+            }
+
+            message Response {
+                Error error = 1;
+                repeated anytype.relation.Relation relations = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_TYPE = 3;
+                        // ...
+                    }
+                }
+            }
+        }
+        message Add {
+            message Request {
+                string objectId = 1;
+                repeated anytype.relation.Relation relationsToAdd = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_ID = 3;
                         // ...
                     }
                 }
