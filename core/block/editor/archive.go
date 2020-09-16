@@ -33,6 +33,7 @@ func (p *Archive) Init(s source.Source, _ bool) (err error) {
 	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
+	p.SmartBlock.DisableLayouts()
 	return p.init()
 }
 

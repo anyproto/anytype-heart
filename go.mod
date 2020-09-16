@@ -17,7 +17,7 @@ require (
 	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.4.4
 	github.com/google/martian v2.1.0+incompatible
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.1.2
 	github.com/h2non/filetype v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hsanjuan/ipfs-lite v1.1.15
@@ -42,7 +42,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.8.3
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.3.1 // indirect
-	github.com/magiconair/properties v1.8.0
+	github.com/magiconair/properties v1.8.2
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.4

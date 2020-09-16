@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -34,12 +35,14 @@ func (p *Dashboard) Init(s source.Source, _ bool) (err error) {
 	if err = p.SmartBlock.Init(s, true); err != nil {
 		return
 	}
+	p.DisableLayouts()
 	return p.init()
 }
 
 func (p *Dashboard) init() (err error) {
 	s := p.NewState()
-	var anythingChanged bool
+
+	anythingChanged := state.CleanupLayouts(s) > 0
 
 	setDetails := func() error {
 		return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{

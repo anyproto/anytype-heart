@@ -56,6 +56,7 @@ type SmartBlock interface {
 	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Reindex() error
 	ResetToVersion(s *state.State) (err error)
+	DisableLayouts()
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -69,13 +70,14 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds    []string
-	sendEvent func(e *pb.Event)
-	undo      undo.History
-	source    source.Source
-	meta      meta.Service
-	metaSub   meta.Subscriber
-	metaData  *core.SmartBlockMeta
+	depIds         []string
+	sendEvent      func(e *pb.Event)
+	undo           undo.History
+	source         source.Source
+	meta           meta.Service
+	metaSub        meta.Subscriber
+	metaData       *core.SmartBlockMeta
+	disableLayouts bool
 }
 
 func (sb *smartBlock) Id() string {
@@ -209,10 +211,14 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 	sb.sendEvent = f
 }
 
+func (sb *smartBlock) DisableLayouts() {
+	sb.disableLayouts = true
+}
+
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var beforeSnippet = sb.Doc.Snippet()
 	var sendEvent, addHistory, doSnapshot = true, true, false
-	msgs, act, err := state.ApplyState(s)
+	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
 	}
@@ -359,7 +365,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	if err != nil {
 		return err
 	}
-	msgs, act, err := state.ApplyState(s)
+	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err
 	}

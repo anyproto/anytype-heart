@@ -41,6 +41,10 @@ type SmartTest struct {
 	state.Doc
 }
 
+func (st *SmartTest) DisableLayouts() {
+	return
+}
+
 func (st *SmartTest) Reindex() error {
 	return nil
 }
@@ -83,7 +87,7 @@ func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
 
 func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err error) {
 	var sendEvent, addHistory = true, true
-	msgs, act, err := state.ApplyState(s)
+	msgs, act, err := state.ApplyState(s, true)
 	if err != nil {
 		return
 	}
