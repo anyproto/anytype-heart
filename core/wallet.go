@@ -61,6 +61,7 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 
 	mw.mnemonic = req.Mnemonic
 	mw.rootPath = req.RootPath
+	mw.foundAccounts = nil
 
 	err := os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
