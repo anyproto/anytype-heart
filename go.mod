@@ -53,7 +53,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
-	github.com/textileio/go-threads v0.1.23-forked
+	github.com/textileio/go-threads v1.0.0-rc1-f1
 	github.com/tyler-smith/go-bip39 v1.0.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/goldmark v1.1.30
@@ -66,7 +66,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v0.1.23-f-4
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.0-rc1-f1
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
