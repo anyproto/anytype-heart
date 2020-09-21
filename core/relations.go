@@ -29,3 +29,24 @@ func (mw *Middleware) RelationList(request *pb.RpcRelationListRequest) *pb.RpcRe
 func (mw *Middleware) RelationAdd(request *pb.RpcRelationAddRequest) *pb.RpcRelationAddResponse {
 	panic("implement me")
 }
+
+func (mw *Middleware) ObjectTypeCreate(request *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
+	panic("implement me")
+}
+
+func (mw *Middleware) ObjectTypeList(request *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
+	response := func(code pb.RpcObjectTypeListResponseErrorCode, otypes []*pbrelation.ObjectType, err error) *pb.RpcObjectTypeListResponse {
+		m := &pb.RpcObjectTypeListResponse{Error: &pb.RpcObjectTypeListResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	otypes, err := relation.ListObjectTypes()
+	if err != nil {
+		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
+	return response(pb.RpcObjectTypeListResponseError_NULL, otypes, nil)
+}

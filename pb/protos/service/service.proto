@@ -103,6 +103,8 @@ service ClientCommands {
 
     rpc RelationList (anytype.Rpc.Relation.List.Request) returns (anytype.Rpc.Relation.List.Response);
     rpc RelationAdd (anytype.Rpc.Relation.Add.Request) returns (anytype.Rpc.Relation.Add.Response);
+    rpc ObjectTypeCreate (anytype.Rpc.ObjectType.Create.Request) returns (anytype.Rpc.ObjectType.Create.Response);
+    rpc ObjectTypeList (anytype.Rpc.ObjectType.List.Request) returns (anytype.Rpc.ObjectType.List.Response);
 
     rpc Ping (anytype.Rpc.Ping.Request) returns (anytype.Rpc.Ping.Response);
 

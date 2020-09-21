@@ -355,6 +355,24 @@
     - [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request)
     - [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response)
     - [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error)
+    - [Rpc.ObjectType](#anytype.Rpc.ObjectType)
+    - [Rpc.ObjectType.Create](#anytype.Rpc.ObjectType.Create)
+    - [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request)
+    - [Rpc.ObjectType.Create.Response](#anytype.Rpc.ObjectType.Create.Response)
+    - [Rpc.ObjectType.Create.Response.Error](#anytype.Rpc.ObjectType.Create.Response.Error)
+    - [Rpc.ObjectType.List](#anytype.Rpc.ObjectType.List)
+    - [Rpc.ObjectType.List.Request](#anytype.Rpc.ObjectType.List.Request)
+    - [Rpc.ObjectType.List.Response](#anytype.Rpc.ObjectType.List.Response)
+    - [Rpc.ObjectType.List.Response.Error](#anytype.Rpc.ObjectType.List.Response.Error)
+    - [Rpc.ObjectType.Relation](#anytype.Rpc.ObjectType.Relation)
+    - [Rpc.ObjectType.Relation.Add](#anytype.Rpc.ObjectType.Relation.Add)
+    - [Rpc.ObjectType.Relation.Add.Request](#anytype.Rpc.ObjectType.Relation.Add.Request)
+    - [Rpc.ObjectType.Relation.Add.Response](#anytype.Rpc.ObjectType.Relation.Add.Response)
+    - [Rpc.ObjectType.Relation.Add.Response.Error](#anytype.Rpc.ObjectType.Relation.Add.Response.Error)
+    - [Rpc.ObjectType.Relation.Update](#anytype.Rpc.ObjectType.Relation.Update)
+    - [Rpc.ObjectType.Relation.Update.Request](#anytype.Rpc.ObjectType.Relation.Update.Request)
+    - [Rpc.ObjectType.Relation.Update.Response](#anytype.Rpc.ObjectType.Relation.Update.Response)
+    - [Rpc.ObjectType.Relation.Update.Response.Error](#anytype.Rpc.ObjectType.Relation.Update.Response.Error)
     - [Rpc.Ping](#anytype.Rpc.Ping)
     - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
     - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
@@ -471,6 +489,10 @@
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
+    - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
+    - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
+    - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code)
+    - [Rpc.ObjectType.Relation.Update.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Update.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Relation.Add.Response.Error.Code](#anytype.Rpc.Relation.Add.Response.Error.Code)
@@ -757,6 +779,8 @@
 | NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
 | RelationList | [Rpc.Relation.List.Request](#anytype.Rpc.Relation.List.Request) | [Rpc.Relation.List.Response](#anytype.Rpc.Relation.List.Response) |  |
 | RelationAdd | [Rpc.Relation.Add.Request](#anytype.Rpc.Relation.Add.Request) | [Rpc.Relation.Add.Response](#anytype.Rpc.Relation.Add.Response) |  |
+| ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request) | [Rpc.ObjectType.Create.Response](#anytype.Rpc.ObjectType.Create.Response) |  |
+| ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype.Rpc.ObjectType.List.Request) | [Rpc.ObjectType.List.Response](#anytype.Rpc.ObjectType.List.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
@@ -5669,6 +5693,246 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.ObjectType"></a>
+
+### Rpc.ObjectType
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Create"></a>
+
+### Rpc.ObjectType.Create
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Create.Request"></a>
+
+### Rpc.ObjectType.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectType | [relation.ObjectType](#anytype.relation.ObjectType) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Create.Response"></a>
+
+### Rpc.ObjectType.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Create.Response.Error](#anytype.Rpc.ObjectType.Create.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Create.Response.Error"></a>
+
+### Rpc.ObjectType.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.List"></a>
+
+### Rpc.ObjectType.List
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.List.Request"></a>
+
+### Rpc.ObjectType.List.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.List.Response"></a>
+
+### Rpc.ObjectType.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.List.Response.Error](#anytype.Rpc.ObjectType.List.Response.Error) |  |  |
+| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.List.Response.Error"></a>
+
+### Rpc.ObjectType.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation"></a>
+
+### Rpc.ObjectType.Relation
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Add"></a>
+
+### Rpc.ObjectType.Relation.Add
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Add.Request"></a>
+
+### Rpc.ObjectType.Relation.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Add.Response"></a>
+
+### Rpc.ObjectType.Relation.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Relation.Add.Response.Error](#anytype.Rpc.ObjectType.Relation.Add.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Add.Response.Error"></a>
+
+### Rpc.ObjectType.Relation.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Update"></a>
+
+### Rpc.ObjectType.Relation.Update
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Update.Request"></a>
+
+### Rpc.ObjectType.Relation.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Update.Response"></a>
+
+### Rpc.ObjectType.Relation.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Relation.Update.Response.Error](#anytype.Rpc.ObjectType.Relation.Update.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Update.Response.Error"></a>
+
+### Rpc.ObjectType.Relation.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Relation.Update.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Update.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ping"></a>
 
 ### Rpc.Ping
@@ -7231,6 +7495,61 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectType.Create.Response.Error.Code"></a>
+
+### Rpc.ObjectType.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_ID | 3 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectType.List.Response.Error.Code"></a>
+
+### Rpc.ObjectType.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code"></a>
+
+### Rpc.ObjectType.Relation.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_ID | 3 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Update.Response.Error.Code"></a>
+
+### Rpc.ObjectType.Relation.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_ID | 3 | ... |
 
 
 

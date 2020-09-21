@@ -2283,6 +2283,101 @@ message Rpc {
             }
         }
     }
+
+    message ObjectType {
+        message List {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated anytype.relation.ObjectType objectTypes = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Create {
+            message Request {
+                anytype.relation.ObjectType objectType = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_ID = 3;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Relation {
+            message Add {
+                message Request {
+                   repeated anytype.relation.Relation relations = 1;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_ID = 3;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message Update {
+                message Request {
+                    anytype.relation.Relation relation = 1;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_ID = 3;
+                            // ...
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 message Empty {

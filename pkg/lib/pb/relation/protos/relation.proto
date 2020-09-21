@@ -5,9 +5,18 @@ option go_package = "pkg/lib/pb/relation";
 import "google/protobuf/struct.proto";
 
 message ObjectType {
-    string name = 1; // name of objectType (can be localized for bundled types)
-    repeated Relation relations = 2; // cannot contain more than one Relation with the same RelationType
+    string url = 1; // leave empty in case you want to create the new one
+    string name = 2; // name of objectType (can be localized for bundled types)
+    repeated Relation relations = 3; // cannot contain more than one Relation with the same RelationType
+    Layout layout = 4;
+
+    enum Layout {
+        page = 0;
+        contact = 1;
+        task = 2;
+    }
 }
+
 
 message RelationWithValue {
     Relation relation = 1;

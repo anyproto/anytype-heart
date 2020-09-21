@@ -14,6 +14,7 @@ const bundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
 var (
 	bundledObjectTypes = map[string]*relation.ObjectType{
 		"page": {
+			Url:  bundledObjectTypeURLPrefix + "page",
 			Name: "Page",
 			Relations: []*relation.Relation{
 				bundledRelations["creationDate"],
@@ -26,6 +27,7 @@ var (
 				bundledRelations["coverY"],
 				bundledRelations["coverScale"],
 			},
+			Layout: relation.ObjectType_page,
 		},
 	}
 )
@@ -41,4 +43,13 @@ func GetObjectType(objectTypeURL string) (*relation.ObjectType, error) {
 	} else {
 		return nil, ErrNotFound
 	}
+}
+
+func ListObjectTypes() ([]*relation.ObjectType, error) {
+	var otypes []*relation.ObjectType
+	for _, ot := range bundledObjectTypes {
+		otypes = append(otypes, ot)
+	}
+
+	return otypes, nil
 }
