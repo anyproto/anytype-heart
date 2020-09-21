@@ -250,14 +250,25 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	}
 
 	var remoteAccountsProceed = make(chan struct{})
-	for index := 0; index < len(mw.foundAccounts); index++ {
+	// todo: this case temporarily commented-out because we only have 1 acc per mnemonic
+	/*for index := 0; index < len(mw.foundAccounts); index++ {
 		// in case we returned to the account choose screen we can use cached accounts
 		sendAccountAddEvent(index, mw.foundAccounts[index])
-	}
+	}*/
 
 	accounts, err := mw.getDerivedAccountsForMnemonic(10)
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_BAD_INPUT, err)
+	}
+
+	// todo: this case temporarily prioritized because we only have 1 acc per mnemonic
+	for i, acc := range accounts {
+		if !mw.isAccountExistsOnDisk(acc.Address()) {
+			continue
+		}
+		// todo: load profile name from the details cache in badger
+		sendAccountAddEvent(i, &model.Account{Id: acc.Address(), Name: ""})
+		return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 	}
 
 	zeroAccount := accounts[0]
@@ -303,17 +314,6 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
-	go func() {
-		// this is workaround when we are working offline
-		for i, acc := range accounts {
-			if !mw.isAccountExistsOnDisk(acc.Address()) {
-				continue
-			}
-			// todo: load profile name from the details cache in badger
-			sendAccountAddEvent(i, &model.Account{Id: acc.Address(), Name: ""})
-		}
-	}()
-
 	profilesCh := make(chan core.Profile)
 	go func() {
 		defer func() {
@@ -350,11 +350,23 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 					}
 				}
 
-				sendAccountAddEvent(index, &model.Account{
+				account := &model.Account{
 					Id:     profile.AccountAddr,
 					Name:   profile.Name,
 					Avatar: avatar,
-				})
+				}
+
+				var alreadyExists bool
+				for _, foundAccount := range mw.foundAccounts {
+					if foundAccount.Id == account.Id {
+						alreadyExists = true
+					}
+				}
+				if !alreadyExists {
+					mw.foundAccounts = append(mw.foundAccounts, account)
+				}
+
+				sendAccountAddEvent(index, account)
 			}
 		}
 
