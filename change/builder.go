@@ -207,8 +207,16 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			}
 		}
 
-		// unexpected behavior - just return lesser id
 		log.Warnf("changes build tree: possible versions split")
+
+		// prefer not empty snapshot
+		if len(ch1.PreviousIds) == 0 && len(ch2.PreviousIds) > 0 {
+			return s2, nil
+		} else if len(ch1.PreviousIds) > 0 && len(ch2.PreviousIds) == 0 {
+			return s1, nil
+		}
+
+		// unexpected behavior - just return lesser id
 		if s1 < s2 {
 			return s1, nil
 		}
