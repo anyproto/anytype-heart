@@ -1,6 +1,8 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -65,4 +67,28 @@ func (mw *Middleware) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPag
 	}
 
 	return response(pb.RpcNavigationGetPageInfoWithLinksResponseError_NULL, page, nil)
+}
+
+func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcPageCreateResponseErrorCode, id string, err error) *pb.RpcPageCreateResponse {
+		m := &pb.RpcPageCreateResponse{Error: &pb.RpcPageCreateResponseError{Code: code}, PageId: id}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, err = bs.CreateSmartBlock(pb.RpcBlockCreatePageRequest{Details: req.Details})
+		return
+	})
+
+	if err != nil {
+		return response(pb.RpcPageCreateResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcPageCreateResponseError_NULL, id, nil)
 }
