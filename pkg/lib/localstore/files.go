@@ -97,10 +97,6 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 	defer txn.Discard()
 
 	fileInfoKey := filesInfoBase.ChildString(file.Hash)
-	err = AddIndexes(m, m.ds, file, file.Hash)
-	if err != nil {
-		return err
-	}
 
 	exists, err := txn.Has(fileInfoKey)
 	if err != nil {
@@ -118,6 +114,48 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 	err = txn.Put(fileInfoKey, b)
 	if err != nil {
 		return err
+	}
+
+	err = AddIndexesWithTxn(m, txn, file, file.Hash)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+// AddMulti add multiple files and ignores possible duplicate errors, tx with all inserts discarded in case of other errors
+func (m *dsFileStore) AddMulti(files ...*storage.FileInfo) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	for _, file := range files {
+		fileInfoKey := filesInfoBase.ChildString(file.Hash)
+		exists, err := txn.Has(fileInfoKey)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+
+		b, err := proto.Marshal(file)
+		if err != nil {
+			return err
+		}
+
+		err = txn.Put(fileInfoKey, b)
+		if err != nil {
+			return err
+		}
+
+		err = AddIndexesWithTxn(m, txn, file, file.Hash)
+		if err != nil {
+			return err
+		}
 	}
 
 	return txn.Commit()
