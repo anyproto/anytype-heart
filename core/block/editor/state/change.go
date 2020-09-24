@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -105,6 +106,18 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
 			return
 		}
+	case ch.GetRelationAdd() != nil:
+		if err = s.changeRelationAdd(ch.GetRelationAdd()); err != nil {
+			return
+		}
+	case ch.GetRelationRemove() != nil:
+		if err = s.changeRelationRemove(ch.GetRelationRemove()); err != nil {
+			return
+		}
+	case ch.GetRelationUpdate() != nil:
+		if err = s.changeRelationUpdate(ch.GetRelationUpdate()); err != nil {
+			return
+		}
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -133,6 +146,49 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	s.details = pbtypes.CopyStruct(det)
 	delete(s.details.Fields, unset.Key)
 	return nil
+}
+
+func (s *State) changeRelationAdd(rel *pb.ChangeRelationAdd) error {
+	rels := s.Relations()
+	rels = append(rels, rel.Relation)
+	return nil
+}
+
+func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
+	var relFiltered []*pbrelation.Relation
+	for _, rel := range s.Relations() {
+		if rel.Key == remove.Key {
+			continue
+		}
+		relFiltered = append(relFiltered, rel)
+	}
+
+	if len(relFiltered) == len(s.relations) {
+		log.Warnf("changeRelationRemove: relation to remove not found")
+	}
+	s.relations = relFiltered
+	return nil
+}
+
+func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
+	for _, rel := range s.Relations() {
+		// todo: copy slice?
+		if rel.Key == rel.Key {
+			continue
+		}
+
+		switch val := update.Value.(type) {
+		case *pb.ChangeRelationUpdateValueOfFormat:
+			rel.Format = val.Format
+		case *pb.ChangeRelationUpdateValueOfName:
+			rel.Name = val.Name
+		case *pb.ChangeRelationUpdateValueOfDefaultValue:
+			rel.DefaultValue = val.DefaultValue
+		}
+		return nil
+	}
+
+	return fmt.Errorf("relation not found")
 }
 
 func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
@@ -239,6 +295,7 @@ func (s *State) fillChanges(msgs []*pb.EventMessage) {
 	}
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
+	s.changes = append(s.changes, s.makeRelationsChanges()...)
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
@@ -328,6 +385,108 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{
 					DetailsUnset: &pb.ChangeDetailsUnset{Key: k},
+				},
+			})
+		}
+	}
+	return
+}
+
+func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation) ([]*pb.ChangeRelationUpdate, error) {
+	var updates []*pb.ChangeRelationUpdate
+
+	if prev.Key != new.Key {
+		return nil, fmt.Errorf("key should be the same")
+	}
+
+	if prev.Name != new.Name {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfName{Name: new.Name},
+		})
+	}
+
+	if prev.Format != new.Format {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfFormat{Format: new.Format},
+		})
+	}
+
+	if prev.ObjectType != new.ObjectType {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfObjectType{ObjectType: new.ObjectType},
+		})
+	}
+
+	if !prev.DefaultValue.Equal(new.DefaultValue) {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfDefaultValue{DefaultValue: new.DefaultValue},
+		})
+	}
+
+	if prev.Multi != new.Multi {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfMulti{Multi: new.Multi},
+		})
+	}
+
+	if slice.UnsortedEquals(prev.SelectDict, new.SelectDict) {
+		// todo: CRDT SelectDict patches
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: new.SelectDict}},
+		})
+	}
+
+	return updates, nil
+}
+
+func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
+	if s.relations == nil {
+		return nil
+	}
+	var prev []*pbrelation.Relation
+	if s.parent != nil {
+		prev = s.parent.Relations()
+	}
+
+	var prevMap = pbtypes.CopyRelationsToMap(prev)
+	var curMap = pbtypes.CopyRelationsToMap(s.relations)
+
+	for _, v := range s.relations {
+		pv, ok := prevMap[v.Key]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationAdd{
+					RelationAdd: &pb.ChangeRelationAdd{Relation: v},
+				},
+			})
+		} else {
+			updates, err := diffRelationsIntoUpdates(*pv, *v)
+			if err != nil {
+				// bad input(not equal keys), return the fatal error
+				log.Fatal("diffRelationsIntoUpdates fatal error: %s", err.Error())
+			}
+
+			for _, update := range updates {
+				ch = append(ch, &pb.ChangeContent{
+					Value: &pb.ChangeContentValueOfRelationUpdate{
+						RelationUpdate: update,
+					},
+				})
+			}
+		}
+	}
+	for _, v := range prev {
+		_, ok := curMap[v.Key]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationRemove{
+					RelationRemove: &pb.ChangeRelationRemove{Key: v.Key},
 				},
 			})
 		}

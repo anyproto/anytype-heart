@@ -751,6 +751,7 @@ message Rpc {
                     }
                 }
             }
+
             message Restrictions {
                 message Request {
                     string contextId = 1;
@@ -2235,55 +2236,6 @@ message Rpc {
         }
     }
 
-    message Relation {
-        message List {
-            message Request {
-                string objectType = 1; // relations for this objectType will be prioritized
-            }
-
-            message Response {
-                Error error = 1;
-                repeated anytype.relation.Relation relations = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        UNKNOWN_OBJECT_TYPE = 3;
-                        // ...
-                    }
-                }
-            }
-        }
-        message Add {
-            message Request {
-                string objectId = 1;
-                repeated anytype.relation.Relation relationsToAdd = 2;
-            }
-
-            message Response {
-                Error error = 1;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        UNKNOWN_OBJECT_ID = 3;
-                        // ...
-                    }
-                }
-            }
-        }
-    }
-
     message ObjectType {
         message List {
             message Request {
@@ -2323,7 +2275,7 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
-                        UNKNOWN_OBJECT_ID = 3;
+                        UNKNOWN_OBJECT_TYPE_URL = 3;
                         // ...
                     }
                 }
@@ -2333,7 +2285,8 @@ message Rpc {
         message Relation {
             message Add {
                 message Request {
-                   repeated anytype.relation.Relation relations = 1;
+                    string objectTypeURL = 1;
+                    repeated anytype.relation.Relation relations = 2;
                 }
 
                 message Response {
@@ -2347,7 +2300,8 @@ message Rpc {
                             NULL = 0;
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
-                            UNKNOWN_OBJECT_ID = 3;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
+                            READONLY_OBJECT_TYPE = 4;
                             // ...
                         }
                     }
@@ -2355,7 +2309,8 @@ message Rpc {
             }
             message Update {
                 message Request {
-                    anytype.relation.Relation relation = 1;
+                    string objectTypeURL = 1;
+                    anytype.relation.Relation relation = 2;
                 }
 
                 message Response {
@@ -2369,7 +2324,32 @@ message Rpc {
                             NULL = 0;
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
-                            UNKNOWN_OBJECT_ID = 3;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
+                            READONLY_OBJECT_TYPE = 4;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message List {
+                message Request {
+                    string objectTypeURL = 1;
+                    bool appendRelationsFromOtherTypes = 2; // add relations from other object types in the end
+                }
+
+                message Response {
+                    Error error = 1;
+                    repeated anytype.relation.Relation relations = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
                             // ...
                         }
                     }

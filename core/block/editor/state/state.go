@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -35,6 +36,8 @@ type Doc interface {
 	Pick(id string) (b simple.Block)
 	Append(targetId string, id string) (ok bool)
 	Details() *types.Struct
+	Relations() []*pbrelation.Relation
+
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
 	GetFileKeys() []pb.ChangeFileKeys
@@ -51,15 +54,16 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx      *Context
-	parent   *State
-	blocks   map[string]simple.Block
-	rootId   string
-	newIds   []string
-	changeId string
-	changes  []*pb.ChangeContent
-	fileKeys []pb.ChangeFileKeys
-	details  *types.Struct
+	ctx       *Context
+	parent    *State
+	blocks    map[string]simple.Block
+	rootId    string
+	newIds    []string
+	changeId  string
+	changes   []*pb.ChangeContent
+	fileKeys  []pb.ChangeFileKeys
+	details   *types.Struct
+	relations []*pbrelation.Relation
 
 	changesStructureIgnoreIds []string
 
@@ -469,11 +473,34 @@ func (s *State) SetDetails(d *types.Struct) *State {
 	return s
 }
 
+func (s *State) AddRelation(relation *pbrelation.Relation) *State {
+	for _, rel := range s.relations {
+		if rel.Key == relation.Key {
+			return s
+		}
+	}
+	s.relations = append(s.relations, relation)
+	return s
+}
+
+func (s *State) SetRelations(relations []*pbrelation.Relation) *State {
+	s.relations = relations
+	return s
+}
+
 func (s *State) Details() *types.Struct {
 	if s.details == nil && s.parent != nil {
 		return s.parent.Details()
 	}
+
 	return s.details
+}
+
+func (s *State) Relations() []*pbrelation.Relation {
+	if s.relations == nil && s.relations != nil {
+		return s.parent.Relations()
+	}
+	return s.relations
 }
 
 func (s *State) Snippet() (snippet string) {

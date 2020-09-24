@@ -101,8 +101,9 @@ service ClientCommands {
     rpc NavigationListPages (anytype.Rpc.Navigation.ListPages.Request) returns (anytype.Rpc.Navigation.ListPages.Response);
     rpc NavigationGetPageInfoWithLinks (anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetPageInfoWithLinks.Response);
 
-    rpc RelationList (anytype.Rpc.Relation.List.Request) returns (anytype.Rpc.Relation.List.Response);
-    rpc RelationAdd (anytype.Rpc.Relation.Add.Request) returns (anytype.Rpc.Relation.Add.Response);
+    rpc ObjectTypeRelationList (anytype.Rpc.ObjectType.Relation.List.Request) returns (anytype.Rpc.ObjectType.Relation.List.Response);
+    rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
+    rpc ObjectTypeRelationUpdate (anytype.Rpc.ObjectType.Relation.Update.Request) returns (anytype.Rpc.ObjectType.Relation.Update.Response);
     rpc ObjectTypeCreate (anytype.Rpc.ObjectType.Create.Request) returns (anytype.Rpc.ObjectType.Create.Response);
     rpc ObjectTypeList (anytype.Rpc.ObjectType.List.Request) returns (anytype.Rpc.ObjectType.List.Response);
 

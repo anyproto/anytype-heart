@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -82,6 +83,10 @@ type Service interface {
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
+	GetObjectType(objectTypeId string) (objectType *pbrelation.ObjectType, err error)
+	UpdateRelations(objectTypeId string, relations []*pbrelation.Relation) (err error)
+	AddRelations(objectTypeId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveRelations(objectTypeId string, relationKeys []string) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -1099,6 +1104,48 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	sb.Lock()
 	defer sb.Unlock()
 	return apply(sb)
+}
+
+func (s *service) GetObjectType(objectTypeId string) (objectType *pbrelation.ObjectType, err error) {
+	err = s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+		details := b.Details()
+		objectType.Relations = b.Relations()
+		if details != nil && details.Fields != nil {
+			if v, ok := details.Fields["name"]; ok {
+				objectType.Name = v.String()
+			}
+			if v, ok := details.Fields["layout"]; ok {
+				objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
+			}
+		}
+		return nil
+	})
+	return
+}
+
+func (s *service) UpdateRelations(objectTypeId string, relations []*pbrelation.Relation) (err error) {
+	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+		return b.UpdateRelations(relations)
+	})
+}
+
+func (s *service) AddRelations(objectTypeId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	err = s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+		var err2 error
+		relationsWithKeys, err2 = b.AddRelations(relations)
+		if err2 != nil {
+			return err2
+		}
+		return nil
+	})
+
+	return
+}
+
+func (s *service) RemoveRelations(objectTypeId string, relationKeys []string) (err error) {
+	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+		return b.RemoveRelations(relationKeys)
+	})
 }
 
 func (s *service) cleanupBlocks() (closed bool) {

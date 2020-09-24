@@ -96,6 +96,8 @@ type Service interface {
 	IsStarted() bool
 	BecameOnline(ch chan<- error)
 
+	ThreadService() threads.Service
+
 	InitPredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
@@ -445,6 +447,10 @@ func (a *Anytype) Stop() error {
 	}
 
 	return nil
+}
+
+func (a *Anytype) ThreadService() threads.Service {
+	return a.threadService
 }
 
 func (a *Anytype) startNetwork(hostAddr multiaddr.Multiaddr, offline bool) (net.NetBoostrapper, error) {

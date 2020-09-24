@@ -14,6 +14,7 @@ const (
 	SmartBlockTypeArchive     SmartBlockType = 0x30
 	SmartBlockTypeDatabase    SmartBlockType = 0x40
 	SmartBlockTypeSet         SmartBlockType = 0x41
+	SmartBlockTypeObjectType  SmartBlockType = 0x60
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {

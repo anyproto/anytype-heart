@@ -52,6 +52,8 @@ func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPa
 type Service interface {
 	ThreadsCollection() (*db.Collection, error)
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
+	ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error)
+
 	DeleteThread(id string) error
 
 	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
@@ -174,4 +176,26 @@ func (s *service) DeleteThread(id string) error {
 		log.With("thread", id).Error("DeleteThread failed to remove thread from collection: %s", err.Error())
 	}
 	return nil
+}
+
+func (s *service) ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error) {
+	threads, err := s.threadsGetter.Threads()
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered []thread.ID
+	for _, thrdId := range threads {
+		t, err := smartblock.SmartBlockTypeFromThreadID(thrdId)
+		if err != nil {
+			log.Errorf("SmartBlockTypeFromThreadID failed: %s", err.Error())
+			continue
+		}
+
+		if t == blockType {
+			filtered = append(filtered, thrdId)
+		}
+	}
+
+	return filtered, nil
 }

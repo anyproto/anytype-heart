@@ -2,6 +2,7 @@ package smartblock
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -16,8 +17,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -53,6 +56,10 @@ type SmartBlock interface {
 	History() history.History
 	Anytype() anytype.Service
 	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
+	AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	UpdateRelations(relations []*pbrelation.Relation) (err error)
+	RemoveRelations(relationKeys []string) (err error)
+
 	Reindex() error
 	DisableLayouts()
 	Close() (err error)
@@ -344,6 +351,73 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 		return
 	}
 	s := sb.NewState().SetDetails(copy)
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	copy := pbtypes.CopyRelations(sb.Relations())
+
+	var existsMap = map[string]struct{}{}
+	for _, rel := range copy {
+		existsMap[rel.Key] = struct{}{}
+	}
+	for _, rel := range relations {
+		if _, exists := existsMap[rel.Key]; !exists {
+			rel.Key = bson.NewObjectId().Hex()
+			// we return the pointers slice here just for clarity
+			relationsWithKeys = append(relationsWithKeys, rel)
+			copy = append(copy, rel)
+		} else {
+			return nil, fmt.Errorf("relation with the same key already exists")
+		}
+	}
+
+	s := sb.NewState().SetRelations(copy)
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) UpdateRelations(relations []*pbrelation.Relation) (err error) {
+	copy := pbtypes.CopyRelations(sb.Relations())
+
+	for i, rel := range copy {
+		for _, relation := range relations {
+			if rel.Key == relation.Key {
+				copy[i] = relation
+			}
+		}
+	}
+
+	s := sb.NewState().SetRelations(copy)
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) RemoveRelations(relationKeys []string) (err error) {
+	copy := pbtypes.CopyRelations(sb.Relations())
+	filtered := []*pbrelation.Relation{}
+	for _, rel := range copy {
+		var toBeRemoved bool
+		for _, relationKey := range relationKeys {
+			if rel.Key == relationKey {
+				toBeRemoved = true
+				break
+			}
+		}
+		if !toBeRemoved {
+			filtered = append(filtered, rel)
+		}
+	}
+
+	s := sb.NewState().SetRelations(filtered)
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
