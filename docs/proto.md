@@ -682,6 +682,19 @@
   
   
 
+- [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
+    - [ObjectType](#anytype.relation.ObjectType)
+    - [Relation](#anytype.relation.Relation)
+    - [RelationWithValue](#anytype.relation.RelationWithValue)
+    - [Relations](#anytype.relation.Relations)
+  
+    - [ObjectType.Layout](#anytype.relation.ObjectType.Layout)
+    - [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource)
+    - [RelationFormat](#anytype.relation.RelationFormat)
+  
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -5812,6 +5825,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Create.Response.Error](#anytype.Rpc.ObjectType.Create.Response.Error) |  |  |
+| objectType | [relation.ObjectType](#anytype.relation.ObjectType) |  |  |
 
 
 
@@ -5931,6 +5945,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Relation.Add.Response.Error](#anytype.Rpc.ObjectType.Relation.Add.Response.Error) |  |  |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
 
 
 
@@ -10265,6 +10280,142 @@ deprecated
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="pkg/lib/pb/relation/protos/relation.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## pkg/lib/pb/relation/protos/relation.proto
+
+
+
+<a name="anytype.relation.ObjectType"></a>
+
+### ObjectType
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  | leave empty in case you want to create the new one |
+| name | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| relations | [Relation](#anytype.relation.Relation) | repeated | cannot contain more than one Relation with the same RelationType |
+| layout | [ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype.relation.Relation"></a>
+
+### Relation
+Relation describe the human-interpreted relation type. It may be something like &#34;Date of creation, format=date&#34; or &#34;Assignee, format=objectId, objectType=person&#34;
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  | Key under which the value is stored in the map. Must be unique for the object type. It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types. |
+| format | [RelationFormat](#anytype.relation.RelationFormat) |  | format of the underlying data |
+| name | [string](#string) |  | name to show (can be localized for bundled types) |
+| defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+| dataSource | [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource) |  | where the data is stored |
+| hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
+| readOnly | [bool](#bool) |  | not editable by user |
+| multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
+| objectType | [string](#string) |  | URL of object type, empty to allow link to any object |
+| selectDict | [string](#string) | repeated | default dictionary to choose for select/multiSelect format. Any known existing(or previously used) value for this RelationType will be appended to this list |
+
+
+
+
+
+
+<a name="anytype.relation.RelationWithValue"></a>
+
+### RelationWithValue
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relation | [Relation](#anytype.relation.Relation) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.relation.Relations"></a>
+
+### Relations
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relations | [Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+ 
+
+
+<a name="anytype.relation.ObjectType.Layout"></a>
+
+### ObjectType.Layout
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| page | 0 |  |
+| contact | 1 |  |
+| task | 2 |  |
+
+
+
+<a name="anytype.relation.Relation.RelationDataSource"></a>
+
+### Relation.RelationDataSource
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| details | 0 | default, stored inside the smartblock&#39;s details |
+| local | 1 | stored locally, e.g. in badger or generated on the fly |
+
+
+
+<a name="anytype.relation.RelationFormat"></a>
+
+### RelationFormat
+RelationFormat describes how the underlying data is stored in the google.protobuf.Value and how it should be validated/sanitized
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| title | 0 | string up to 250 symbols |
+| description | 1 | string |
+| number | 2 | double |
+| select | 3 | string |
+| date | 4 | int64(pb.Value doesn&#39;t have int64) or string |
+| file | 5 | list of string, CID of media or file |
+| checkbox | 6 | boolean |
+| url | 7 | string with sanity check |
+| email | 8 | string with sanity check |
+| phone | 9 | string with sanity check |
+| emoji | 10 | one emoji, can contains multiple utf-8 symbols |
+| objectId | 100 | relation must has objectType |
 
 
  

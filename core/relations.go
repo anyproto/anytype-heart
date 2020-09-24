@@ -61,30 +61,31 @@ func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRe
 }
 
 func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	response := func(code pb.RpcObjectTypeRelationAddResponseErrorCode, err error) *pb.RpcObjectTypeRelationAddResponse {
-		m := &pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: code}}
+	response := func(code pb.RpcObjectTypeRelationAddResponseErrorCode, relations []*pbrelation.Relation, err error) *pb.RpcObjectTypeRelationAddResponse {
+		m := &pb.RpcObjectTypeRelationAddResponse{Relations: relations, Error: &pb.RpcObjectTypeRelationAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
 	if strings.HasPrefix(req.ObjectTypeURL, bundledObjectTypeURLPrefix) {
-		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
+		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, nil, fmt.Errorf("can't modify bundled object type"))
 	}
 
 	if !strings.HasPrefix(req.ObjectTypeURL, customObjectTypeURLPrefix) {
-		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, fmt.Errorf("incorrect object type URL format"))
+		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, fmt.Errorf("incorrect object type URL format"))
 	}
 
 	sbid := strings.TrimPrefix(req.ObjectTypeURL, customObjectTypeURLPrefix)
 
 	sb, err := mw.Anytype.GetBlock(sbid)
 	if err != nil {
-		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
+		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
 	}
 
+	var relations []*pbrelation.Relation
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		_, err = bs.AddRelations(sb.ID(), req.Relations)
+		relations, err = bs.AddRelations(sb.ID(), req.Relations)
 		if err != nil {
 			return err
 		}
@@ -92,10 +93,10 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 	})
 
 	if err != nil {
-		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	return response(pb.RpcObjectTypeRelationAddResponseError_NULL, nil)
+	return response(pb.RpcObjectTypeRelationAddResponseError_NULL, relations, nil)
 }
 
 func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse {
@@ -138,7 +139,7 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 
 func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
 	response := func(code pb.RpcObjectTypeCreateResponseErrorCode, otype *pbrelation.ObjectType, err error) *pb.RpcObjectTypeCreateResponse {
-		m := &pb.RpcObjectTypeCreateResponse{Error: &pb.RpcObjectTypeCreateResponseError{Code: code}}
+		m := &pb.RpcObjectTypeCreateResponse{ObjectType: otype, Error: &pb.RpcObjectTypeCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -182,7 +183,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 
 func (mw *Middleware) ObjectTypeList(request *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
 	response := func(code pb.RpcObjectTypeListResponseErrorCode, otypes []*pbrelation.ObjectType, err error) *pb.RpcObjectTypeListResponse {
-		m := &pb.RpcObjectTypeListResponse{Error: &pb.RpcObjectTypeListResponseError{Code: code}}
+		m := &pb.RpcObjectTypeListResponse{ObjectTypes: otypes, Error: &pb.RpcObjectTypeListResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
