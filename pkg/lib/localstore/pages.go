@@ -28,6 +28,8 @@ var (
 	_ PageStore = (*dsPageStore)(nil)
 )
 
+var ErrNotAPage = fmt.Errorf("not a page")
+
 const (
 	// special record fields
 	fieldLastOpened   = "lastOpened"
@@ -496,6 +498,9 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract smartblock type: %w", err)
 	}
+	if sbt == smartblock.SmartBlockTypeArchive {
+		return nil, ErrNotAPage
+	}
 
 	var details model.PageDetails
 	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
@@ -531,7 +536,7 @@ func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
 	for _, id := range ids {
 		info, err := getPageInfo(txn, id)
 		if err != nil {
-			if strings.HasSuffix(err.Error(), "key not found") {
+			if strings.HasSuffix(err.Error(), "key not found") || err == ErrNotAPage {
 				continue
 			}
 			return nil, err
