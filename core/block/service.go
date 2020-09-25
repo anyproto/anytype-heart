@@ -71,7 +71,7 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -369,8 +369,8 @@ func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) 
 	return
 }
 
-func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error) {
-	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypePage)
+func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error) {
+	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -382,17 +382,17 @@ func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId str
 	}
 
 	log.Infof("created new smartBlock: %v", pageId)
-	if req.Details != nil && req.Details.Fields != nil {
-		var details []*pb.RpcBlockSetDetailsDetail
-		for k, v := range req.Details.Fields {
-			details = append(details, &pb.RpcBlockSetDetailsDetail{
+	if details != nil && details.Fields != nil {
+		var setDetails []*pb.RpcBlockSetDetailsDetail
+		for k, v := range details.Fields {
+			setDetails = append(setDetails, &pb.RpcBlockSetDetailsDetail{
 				Key:   k,
 				Value: v,
 			})
 		}
 		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
 			ContextId: pageId,
-			Details:   details,
+			Details:   setDetails,
 		}); err != nil {
 			return pageId, fmt.Errorf("can't set details to page: %v", err)
 		}
@@ -412,7 +412,7 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 		return "", "", basic.ErrNotSupported
 	}
 
-	pageId, err = s.CreateSmartBlock(req)
+	pageId, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}

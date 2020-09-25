@@ -10,6 +10,7 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -145,26 +146,20 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		}
 		return m
 	}
-	sb, err := mw.Anytype.CreateBlock(smartblock.SmartBlockTypeObjectType)
+	var sbId string
 	var relations []*pbrelation.Relation
-	err = mw.doBlockService(func(bs block.Service) (err error) {
-		details := []*pb.RpcBlockSetDetailsDetail{
-			{
-				Key:   "name",
-				Value: pbtypes.String(req.ObjectType.Name),
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		sbId, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
+			Fields: map[string]*types.Value{
+				"name":   pbtypes.String(req.ObjectType.Name),
+				"layout": pbtypes.Float64(float64(req.ObjectType.Layout)),
 			},
-			{
-				Key:   "layout",
-				Value: pbtypes.Float64(float64(req.ObjectType.Layout)),
-			},
-		}
-
-		err = bs.SetDetails(pb.RpcBlockSetDetailsRequest{ContextId: sb.ID(), Details: details})
+		})
 		if err != nil {
 			return err
 		}
 
-		relations, err = bs.AddRelations(sb.ID(), req.ObjectType.Relations)
+		relations, err = bs.AddRelations(sbId, req.ObjectType.Relations)
 		if err != nil {
 			return err
 		}
@@ -177,7 +172,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 
 	otype := req.ObjectType
 	otype.Relations = relations
-	otype.Url = customObjectTypeURLPrefix + sb.ID()
+	otype.Url = customObjectTypeURLPrefix + sbId
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }
 

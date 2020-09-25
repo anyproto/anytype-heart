@@ -6,13 +6,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/pages"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/gogo/protobuf/types"
 )
 
 type Ctrl interface {
 	Anytype() anytype.Service
 	SetDetails(req pb.RpcBlockSetDetailsRequest) error
-	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
 }
 
 type Router interface {

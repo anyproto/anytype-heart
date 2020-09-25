@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/gogo/protobuf/types"
@@ -12,7 +13,7 @@ import (
 func New(
 	pageStore localstore.PageStore,
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
-	createSmartBlock func(req pb.RpcBlockCreatePageRequest) (pageId string, err error),
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error),
 ) database.Database {
 	return &setPages{
 		PageStore:        pageStore,
@@ -24,11 +25,11 @@ func New(
 type setPages struct {
 	localstore.PageStore
 	setDetails       func(req pb.RpcBlockSetDetailsRequest) error
-	createSmartBlock func(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
 }
 
 func (sp setPages) Create(rec database.Record) (database.Record, error) {
-	id, err := sp.createSmartBlock(pb.RpcBlockCreatePageRequest{Details: rec.Details})
+	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details)
 	if err != nil {
 		return rec, err
 	}

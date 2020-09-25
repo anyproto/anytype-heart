@@ -4,6 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -83,7 +84,7 @@ func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreate
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, err = bs.CreateSmartBlock(pb.RpcBlockCreatePageRequest{Details: req.Details})
+		id, err = bs.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details)
 		return
 	})
 
