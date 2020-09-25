@@ -84,7 +84,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
 	require.NoError(t, err)
 
-	var ps = s.PageStore()
+	var ps = s.ObjectStore()
 
 	results, total, err := ps.Query(database.Query{Limit: 1, Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
 	require.NoError(t, err)

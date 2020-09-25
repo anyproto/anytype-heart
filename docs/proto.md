@@ -132,6 +132,15 @@
     - [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request)
     - [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response)
     - [Rpc.Block.Merge.Response.Error](#anytype.Rpc.Block.Merge.Response.Error)
+    - [Rpc.Block.ObjectType](#anytype.Rpc.Block.ObjectType)
+    - [Rpc.Block.ObjectType.Add](#anytype.Rpc.Block.ObjectType.Add)
+    - [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request)
+    - [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response)
+    - [Rpc.Block.ObjectType.Add.Response.Error](#anytype.Rpc.Block.ObjectType.Add.Response.Error)
+    - [Rpc.Block.ObjectType.Remove](#anytype.Rpc.Block.ObjectType.Remove)
+    - [Rpc.Block.ObjectType.Remove.Request](#anytype.Rpc.Block.ObjectType.Remove.Request)
+    - [Rpc.Block.ObjectType.Remove.Response](#anytype.Rpc.Block.ObjectType.Remove.Response)
+    - [Rpc.Block.ObjectType.Remove.Response.Error](#anytype.Rpc.Block.ObjectType.Remove.Response.Error)
     - [Rpc.Block.Open](#anytype.Rpc.Block.Open)
     - [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request)
     - [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response)
@@ -149,6 +158,23 @@
     - [Rpc.Block.Redo.Request](#anytype.Rpc.Block.Redo.Request)
     - [Rpc.Block.Redo.Response](#anytype.Rpc.Block.Redo.Response)
     - [Rpc.Block.Redo.Response.Error](#anytype.Rpc.Block.Redo.Response.Error)
+    - [Rpc.Block.Relation](#anytype.Rpc.Block.Relation)
+    - [Rpc.Block.Relation.Add](#anytype.Rpc.Block.Relation.Add)
+    - [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request)
+    - [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response)
+    - [Rpc.Block.Relation.Add.Response.Error](#anytype.Rpc.Block.Relation.Add.Response.Error)
+    - [Rpc.Block.Relation.List](#anytype.Rpc.Block.Relation.List)
+    - [Rpc.Block.Relation.List.Request](#anytype.Rpc.Block.Relation.List.Request)
+    - [Rpc.Block.Relation.List.Response](#anytype.Rpc.Block.Relation.List.Response)
+    - [Rpc.Block.Relation.List.Response.Error](#anytype.Rpc.Block.Relation.List.Response.Error)
+    - [Rpc.Block.Relation.Remove](#anytype.Rpc.Block.Relation.Remove)
+    - [Rpc.Block.Relation.Remove.Request](#anytype.Rpc.Block.Relation.Remove.Request)
+    - [Rpc.Block.Relation.Remove.Response](#anytype.Rpc.Block.Relation.Remove.Response)
+    - [Rpc.Block.Relation.Remove.Response.Error](#anytype.Rpc.Block.Relation.Remove.Response.Error)
+    - [Rpc.Block.Relation.Update](#anytype.Rpc.Block.Relation.Update)
+    - [Rpc.Block.Relation.Update.Request](#anytype.Rpc.Block.Relation.Update.Request)
+    - [Rpc.Block.Relation.Update.Response](#anytype.Rpc.Block.Relation.Update.Response)
+    - [Rpc.Block.Relation.Update.Response.Error](#anytype.Rpc.Block.Relation.Update.Response.Error)
     - [Rpc.Block.Replace](#anytype.Rpc.Block.Replace)
     - [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request)
     - [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response)
@@ -377,6 +403,10 @@
     - [Rpc.ObjectType.Relation.List.Request](#anytype.Rpc.ObjectType.Relation.List.Request)
     - [Rpc.ObjectType.Relation.List.Response](#anytype.Rpc.ObjectType.Relation.List.Response)
     - [Rpc.ObjectType.Relation.List.Response.Error](#anytype.Rpc.ObjectType.Relation.List.Response.Error)
+    - [Rpc.ObjectType.Relation.Remove](#anytype.Rpc.ObjectType.Relation.Remove)
+    - [Rpc.ObjectType.Relation.Remove.Request](#anytype.Rpc.ObjectType.Relation.Remove.Request)
+    - [Rpc.ObjectType.Relation.Remove.Response](#anytype.Rpc.ObjectType.Relation.Remove.Response)
+    - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype.Rpc.ObjectType.Relation.Remove.Response.Error)
     - [Rpc.ObjectType.Relation.Update](#anytype.Rpc.ObjectType.Relation.Update)
     - [Rpc.ObjectType.Relation.Update.Request](#anytype.Rpc.ObjectType.Relation.Update.Request)
     - [Rpc.ObjectType.Relation.Update.Response](#anytype.Rpc.ObjectType.Relation.Update.Response)
@@ -395,6 +425,11 @@
     - [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request)
     - [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response)
     - [Rpc.Process.Cancel.Response.Error](#anytype.Rpc.Process.Cancel.Response.Error)
+    - [Rpc.Set](#anytype.Rpc.Set)
+    - [Rpc.Set.Create](#anytype.Rpc.Set.Create)
+    - [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request)
+    - [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response)
+    - [Rpc.Set.Create.Response.Error](#anytype.Rpc.Set.Create.Response.Error)
     - [Rpc.Shutdown](#anytype.Rpc.Shutdown)
     - [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request)
     - [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response)
@@ -440,10 +475,16 @@
     - [Rpc.Block.GetPublicWebURL.Response.Error.Code](#anytype.Rpc.Block.GetPublicWebURL.Response.Error.Code)
     - [Rpc.Block.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Block.ImportMarkdown.Response.Error.Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype.Rpc.Block.Merge.Response.Error.Code)
+    - [Rpc.Block.ObjectType.Add.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Add.Response.Error.Code)
+    - [Rpc.Block.ObjectType.Remove.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Remove.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
     - [Rpc.Block.OpenBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.OpenBreadcrumbs.Response.Error.Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype.Rpc.Block.Paste.Response.Error.Code)
     - [Rpc.Block.Redo.Response.Error.Code](#anytype.Rpc.Block.Redo.Response.Error.Code)
+    - [Rpc.Block.Relation.Add.Response.Error.Code](#anytype.Rpc.Block.Relation.Add.Response.Error.Code)
+    - [Rpc.Block.Relation.List.Response.Error.Code](#anytype.Rpc.Block.Relation.List.Response.Error.Code)
+    - [Rpc.Block.Relation.Remove.Response.Error.Code](#anytype.Rpc.Block.Relation.Remove.Response.Error.Code)
+    - [Rpc.Block.Relation.Update.Response.Error.Code](#anytype.Rpc.Block.Relation.Update.Response.Error.Code)
     - [Rpc.Block.Replace.Response.Error.Code](#anytype.Rpc.Block.Replace.Response.Error.Code)
     - [Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code)
     - [Rpc.Block.Set.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.View.Response.Error.Code)
@@ -497,10 +538,12 @@
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code)
     - [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.List.Response.Error.Code)
+    - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Remove.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Update.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Update.Response.Error.Code)
     - [Rpc.Page.Create.Response.Error.Code](#anytype.Rpc.Page.Create.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
+    - [Rpc.Set.Create.Response.Error.Code](#anytype.Rpc.Set.Create.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
     - [Rpc.UploadFile.Response.Error.Code](#anytype.Rpc.UploadFile.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
@@ -792,9 +835,15 @@
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
+| BlockObjectTypeAdd | [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request) | [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response) |  |
+| BlockObjectTypeRemove | [Rpc.Block.ObjectType.Remove.Request](#anytype.Rpc.Block.ObjectType.Remove.Request) | [Rpc.Block.ObjectType.Remove.Response](#anytype.Rpc.Block.ObjectType.Remove.Response) |  |
+| BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) |  |
+| BlockRelationUpdate | [Rpc.Block.Relation.Update.Request](#anytype.Rpc.Block.Relation.Update.Request) | [Rpc.Block.Relation.Update.Response](#anytype.Rpc.Block.Relation.Update.Response) |  |
+| BlockRelationRemove | [Rpc.Block.Relation.Remove.Request](#anytype.Rpc.Block.Relation.Remove.Request) | [Rpc.Block.Relation.Remove.Response](#anytype.Rpc.Block.Relation.Remove.Response) |  |
 | NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
 | NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page |
+| SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) |  |
 | ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype.Rpc.ObjectType.Relation.List.Request) | [Rpc.ObjectType.Relation.List.Response](#anytype.Rpc.ObjectType.Relation.List.Response) |  |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype.Rpc.ObjectType.Relation.Add.Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype.Rpc.ObjectType.Relation.Add.Response) |  |
 | ObjectTypeRelationUpdate | [Rpc.ObjectType.Relation.Update.Request](#anytype.Rpc.ObjectType.Relation.Update.Request) | [Rpc.ObjectType.Relation.Update.Response](#anytype.Rpc.ObjectType.Relation.Update.Response) |  |
@@ -2536,6 +2585,132 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype.Rpc.Block.ObjectType"></a>
+
+### Rpc.Block.ObjectType
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Add"></a>
+
+### Rpc.Block.ObjectType.Add
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Add.Request"></a>
+
+### Rpc.Block.ObjectType.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Add.Response"></a>
+
+### Rpc.Block.ObjectType.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.ObjectType.Add.Response.Error](#anytype.Rpc.Block.ObjectType.Add.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Add.Response.Error"></a>
+
+### Rpc.Block.ObjectType.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.ObjectType.Add.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Add.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Remove"></a>
+
+### Rpc.Block.ObjectType.Remove
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Remove.Request"></a>
+
+### Rpc.Block.ObjectType.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Remove.Response"></a>
+
+### Rpc.Block.ObjectType.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.ObjectType.Remove.Response.Error](#anytype.Rpc.Block.ObjectType.Remove.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Remove.Response.Error"></a>
+
+### Rpc.Block.ObjectType.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.ObjectType.Remove.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Remove.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Open"></a>
 
 ### Rpc.Block.Open
@@ -2801,6 +2976,245 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Redo.Response.Error.Code](#anytype.Rpc.Block.Redo.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation"></a>
+
+### Rpc.Block.Relation
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Add"></a>
+
+### Rpc.Block.Relation.Add
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Add.Request"></a>
+
+### Rpc.Block.Relation.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Add.Response"></a>
+
+### Rpc.Block.Relation.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Relation.Add.Response.Error](#anytype.Rpc.Block.Relation.Add.Response.Error) |  |  |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Add.Response.Error"></a>
+
+### Rpc.Block.Relation.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Relation.Add.Response.Error.Code](#anytype.Rpc.Block.Relation.Add.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.List"></a>
+
+### Rpc.Block.Relation.List
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.List.Request"></a>
+
+### Rpc.Block.Relation.List.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.List.Response"></a>
+
+### Rpc.Block.Relation.List.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Relation.List.Response.Error](#anytype.Rpc.Block.Relation.List.Response.Error) |  |  |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.List.Response.Error"></a>
+
+### Rpc.Block.Relation.List.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Relation.List.Response.Error.Code](#anytype.Rpc.Block.Relation.List.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Remove"></a>
+
+### Rpc.Block.Relation.Remove
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Remove.Request"></a>
+
+### Rpc.Block.Relation.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| relationKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Remove.Response"></a>
+
+### Rpc.Block.Relation.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Relation.Remove.Response.Error](#anytype.Rpc.Block.Relation.Remove.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Remove.Response.Error"></a>
+
+### Rpc.Block.Relation.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Relation.Remove.Response.Error.Code](#anytype.Rpc.Block.Relation.Remove.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Update"></a>
+
+### Rpc.Block.Relation.Update
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Update.Request"></a>
+
+### Rpc.Block.Relation.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Update.Response"></a>
+
+### Rpc.Block.Relation.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Relation.Update.Response.Error](#anytype.Rpc.Block.Relation.Update.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Relation.Update.Response.Error"></a>
+
+### Rpc.Block.Relation.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Relation.Update.Response.Error.Code](#anytype.Rpc.Block.Relation.Update.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -6026,6 +6440,63 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.ObjectType.Relation.Remove"></a>
+
+### Rpc.ObjectType.Relation.Remove
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Remove.Request"></a>
+
+### Rpc.ObjectType.Relation.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypeURL | [string](#string) |  |  |
+| relationKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Remove.Response"></a>
+
+### Rpc.ObjectType.Relation.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype.Rpc.ObjectType.Relation.Remove.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectType.Relation.Remove.Response.Error"></a>
+
+### Rpc.ObjectType.Relation.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Remove.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ObjectType.Relation.Update"></a>
 
 ### Rpc.ObjectType.Relation.Update
@@ -6268,6 +6739,75 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Set"></a>
+
+### Rpc.Set
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Set.Create"></a>
+
+### Rpc.Set.Create
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Set.Create.Request"></a>
+
+### Rpc.Set.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypeURL | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | if omitted the name of page will be the same with object type |
+
+
+
+
+
+
+<a name="anytype.Rpc.Set.Create.Response"></a>
+
+### Rpc.Set.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Set.Create.Response.Error](#anytype.Rpc.Set.Create.Response.Error) |  |  |
+| pageId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Set.Create.Response.Error"></a>
+
+### Rpc.Set.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Set.Create.Response.Error.Code](#anytype.Rpc.Set.Create.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -6886,6 +7426,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.ObjectType.Add.Response.Error.Code"></a>
+
+### Rpc.Block.ObjectType.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+
+
+
+<a name="anytype.Rpc.Block.ObjectType.Remove.Response.Error.Code"></a>
+
+### Rpc.Block.ObjectType.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+
+
+
 <a name="anytype.Rpc.Block.Open.Response.Error.Code"></a>
 
 ### Rpc.Block.Open.Response.Error.Code
@@ -6937,6 +7505,66 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_MOVE | 3 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Relation.Add.Response.Error.Code"></a>
+
+### Rpc.Block.Relation.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+| READONLY_OBJECT_TYPE | 4 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Relation.List.Response.Error.Code"></a>
+
+### Rpc.Block.Relation.List.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Relation.Remove.Response.Error.Code"></a>
+
+### Rpc.Block.Relation.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+| READONLY_OBJECT_TYPE | 4 |  |
+| CANNOT_REMOVE_RELATION_REQUIRED_BY_OBJECTTYPE | 5 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Relation.Update.Response.Error.Code"></a>
+
+### Rpc.Block.Relation.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+| READONLY_OBJECT_TYPE | 4 | ... |
 
 
 
@@ -7648,6 +8276,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.ObjectType.Relation.Remove.Response.Error.Code"></a>
+
+### Rpc.ObjectType.Relation.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
+| READONLY_OBJECT_TYPE | 4 | ... |
+
+
+
 <a name="anytype.Rpc.ObjectType.Relation.Update.Response.Error.Code"></a>
 
 ### Rpc.ObjectType.Relation.Update.Response.Error.Code
@@ -7699,6 +8342,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Set.Create.Response.Error.Code"></a>
+
+### Rpc.Set.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
 
 
 
@@ -9699,9 +10356,9 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| databaseId | [string](#string) |  |  |
+| source | [string](#string) |  |  |
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
-| schemaURL | [string](#string) |  |  |
+| schemaURL | [string](#string) |  | deprecated |
 
 
 
@@ -9717,7 +10374,7 @@ Bookmark is to keep a web-link and to preview a content.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  |  |
-| relationId | [string](#string) |  |  |
+| RelationKey | [string](#string) |  |  |
 | relationProperty | [string](#string) |  |  |
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
 | value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
@@ -9735,7 +10392,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
 | emptyOptions | [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions) |  |  |
@@ -9781,7 +10438,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relationId | [string](#string) |  |  |
+| RelationKey | [string](#string) |  |  |
 | type | [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type) |  |  |
 
 
@@ -10394,6 +11051,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 | ---- | ------ | ----------- |
 | details | 0 | default, stored inside the smartblock&#39;s details |
 | local | 1 | stored locally, e.g. in badger or generated on the fly |
+| account | 2 | stored in the account DB. means existing only for specific anytype account |
 
 
 

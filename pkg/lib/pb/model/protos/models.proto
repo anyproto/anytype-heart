@@ -191,9 +191,9 @@ message Block {
         }
 
         message Dataview {
-            string databaseId = 1;
+            string source = 1;
             repeated View views = 2;
-            string schemaURL = 3;
+            string schemaURL = 3; // deprecated
 
             message View {
                 string id = 1;
@@ -212,7 +212,7 @@ message Block {
             }
 
             message Relation {
-                string id = 1;
+                string key = 1;
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
 
@@ -244,7 +244,7 @@ message Block {
             }
 
             message Sort {
-                string relationId = 1;
+                string RelationKey = 1;
                 Type type = 2;
 
                 enum Type {
@@ -255,7 +255,7 @@ message Block {
 
             message Filter {
                 Operator operator = 1;
-                string relationId = 2;
+                string RelationKey = 2;
                 string relationProperty = 5;
                 Condition condition = 3;
                 google.protobuf.Value value = 4;

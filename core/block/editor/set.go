@@ -23,9 +23,8 @@ func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
 
 	sb.Basic = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)
-	sb.Dataview = dataview.NewDataview(sb)
+	sb.Dataview = dataview.NewDataview(sb, dbCtrl)
 	sb.Router = database.New(dbCtrl)
-
 	return sb
 }
 
@@ -38,13 +37,21 @@ type Set struct {
 }
 
 func (p *Set) Init(s source.Source, _ bool) (err error) {
-	if err = p.SmartBlock.Init(s, true); err != nil {
-		return
+	err = p.SmartBlock.Init(s, true)
+	if err != nil {
+		return err
 	}
-	return p.init()
+
+	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
+		return p.initPagesSet()
+	}
+	return
 }
 
-func (p *Set) init() (err error) {
+func (p *Set) initPagesSet() (err error) {
+	if p.Id() != p.Anytype().PredefinedBlocks().SetPages {
+		return nil
+	}
 	s := p.NewState()
 	root := s.Get(p.RootId())
 	setDetails := func() error {
@@ -57,12 +64,12 @@ func (p *Set) init() (err error) {
 		return
 	}
 	// init dataview
-	relations := []*model.BlockContentDataviewRelation{{Id: "id", IsVisible: false}, {Id: "name", IsVisible: true}, {Id: "lastOpened", IsVisible: true}, {Id: "lastModified", IsVisible: true}}
+	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpened", IsVisible: true}, {Key: "lastModified", IsVisible: true}}
 	dataview := simple.New(&model.Block{
 		Content: &model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				DatabaseId: "pages",
-				SchemaURL:  "https://anytype.io/schemas/page",
+				Source:    "https://anytype.io/schemas/object/bundled/page",
+				SchemaURL: "https://anytype.io/schemas/page",
 				Views: []*model.BlockContentDataviewView{
 					{
 						Id:   uuid.New().String(),
@@ -70,8 +77,8 @@ func (p *Set) init() (err error) {
 						Name: "All pages",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
+								RelationKey: "name",
+								Type:        model.BlockContentDataviewSort_Asc,
 							},
 						},
 						Relations: relations,

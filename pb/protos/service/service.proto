@@ -98,11 +98,19 @@ service ClientCommands {
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) returns (anytype.Rpc.Block.Bookmark.CreateAndFetch.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.Block.File.CreateAndUpload.Request) returns (anytype.Rpc.Block.File.CreateAndUpload.Response);
 
+    rpc BlockObjectTypeAdd (anytype.Rpc.Block.ObjectType.Add.Request) returns (anytype.Rpc.Block.ObjectType.Add.Response);
+    rpc BlockObjectTypeRemove (anytype.Rpc.Block.ObjectType.Remove.Request) returns (anytype.Rpc.Block.ObjectType.Remove.Response);
+
+    rpc BlockRelationAdd (anytype.Rpc.Block.Relation.Add.Request) returns (anytype.Rpc.Block.Relation.Add.Response);
+    rpc BlockRelationUpdate (anytype.Rpc.Block.Relation.Update.Request) returns (anytype.Rpc.Block.Relation.Update.Response);
+    rpc BlockRelationRemove (anytype.Rpc.Block.Relation.Remove.Request) returns (anytype.Rpc.Block.Relation.Remove.Response);
+
     rpc NavigationListPages (anytype.Rpc.Navigation.ListPages.Request) returns (anytype.Rpc.Navigation.ListPages.Response);
     rpc NavigationGetPageInfoWithLinks (anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetPageInfoWithLinks.Response);
 
     // PageCreate just creates the new page, without adding the link to it from some other page
     rpc PageCreate (anytype.Rpc.Page.Create.Request) returns (anytype.Rpc.Page.Create.Response);
+    rpc SetCreate (anytype.Rpc.Set.Create.Request) returns (anytype.Rpc.Set.Create.Response);
 
     rpc ObjectTypeRelationList (anytype.Rpc.ObjectType.Relation.List.Request) returns (anytype.Rpc.ObjectType.Relation.List.Response);
     rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);

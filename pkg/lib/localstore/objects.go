@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -25,7 +26,7 @@ var (
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
 
-	_ PageStore = (*dsPageStore)(nil)
+	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
 const (
@@ -55,11 +56,11 @@ func (m *filterPagesOnly) Filter(e query.Entry) bool {
 	return false
 }
 
-func NewPageStore(ds ds.TxnDatastore) PageStore {
-	return &dsPageStore{ds: ds}
+func NewObjectStore(ds ds.TxnDatastore) ObjectStore {
+	return &dsObjectStore{ds: ds}
 }
 
-type dsPageStore struct {
+type dsObjectStore struct {
 	// underlying storage
 	ds ds.TxnDatastore
 
@@ -67,14 +68,14 @@ type dsPageStore struct {
 	l sync.Mutex
 }
 
-func (m *dsPageStore) Query(q database.Query) (records []database.Record, total int, err error) {
+func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []database.Record, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	dsq := q.DSQuery(m.Schema())
+	dsq := q.DSQuery(sch)
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
@@ -126,11 +127,11 @@ func (m *dsPageStore) Query(q database.Query) (records []database.Record, total 
 	return results, total, nil
 }
 
-func (m *dsPageStore) Schema() string {
+func (m *dsObjectStore) Schema() string {
 	return pageSchema
 }
 
-func (m *dsPageStore) AddPage(page *model.PageInfoWithOutboundLinksIDs) error {
+func (m *dsObjectStore) AddObject(page *model.PageInfoWithOutboundLinksIDs) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -168,7 +169,7 @@ func (m *dsPageStore) AddPage(page *model.PageInfoWithOutboundLinksIDs) error {
 	return txn.Commit()
 }
 
-func (m *dsPageStore) DeletePage(id string) error {
+func (m *dsObjectStore) DeletePage(id string) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -203,7 +204,7 @@ func (m *dsPageStore) DeletePage(id string) error {
 	return txn.Commit()
 }
 
-func (m *dsPageStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error) {
+func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -250,7 +251,7 @@ func (m *dsPageStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks,
 	}, nil
 }
 
-func (m *dsPageStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error) {
+func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -283,7 +284,7 @@ func (m *dsPageStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWi
 	}, nil
 }
 
-func (m *dsPageStore) GetDetails(id string) (*model.PageDetails, error) {
+func (m *dsObjectStore) GetDetails(id string) (*model.PageDetails, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -293,7 +294,7 @@ func (m *dsPageStore) GetDetails(id string) (*model.PageDetails, error) {
 	return getDetails(txn, id)
 }
 
-func (m *dsPageStore) List() ([]*model.PageInfo, error) {
+func (m *dsObjectStore) List() ([]*model.PageInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -308,7 +309,7 @@ func (m *dsPageStore) List() ([]*model.PageInfo, error) {
 	return getPagesInfo(txn, ids)
 }
 
-func (m *dsPageStore) GetByIDs(ids ...string) ([]*model.PageInfo, error) {
+func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.PageInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -341,7 +342,7 @@ func diffSlices(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []string, snippet string) error {
+func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 
@@ -404,7 +405,7 @@ func (m *dsPageStore) UpdatePage(id string, details *types.Struct, links []strin
 	return txn.Commit()
 }
 
-func (m *dsPageStore) UpdateLastOpened(id string, time time.Time) error {
+func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -429,7 +430,7 @@ func (m *dsPageStore) UpdateLastOpened(id string, time time.Time) error {
 	return txn.Commit()
 }
 
-func (m *dsPageStore) UpdateLastModified(id string, time time.Time) error {
+func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -455,7 +456,7 @@ func (m *dsPageStore) UpdateLastModified(id string, time time.Time) error {
 	return txn.Commit()
 }
 
-func (m *dsPageStore) updateDetails(txn ds.Txn, id string, details *model.PageDetails) error {
+func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.PageDetails) error {
 	detailsKey := pagesDetailsBase.ChildString(id)
 	b, err := proto.Marshal(details)
 	if err != nil {
@@ -465,16 +466,16 @@ func (m *dsPageStore) updateDetails(txn ds.Txn, id string, details *model.PageDe
 	return txn.Put(detailsKey, b)
 }
 
-func (m *dsPageStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
+func (m *dsObjectStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
 	return txn.Put(snippetKey, []byte(snippet))
 }
 
-func (m *dsPageStore) Prefix() string {
+func (m *dsObjectStore) Prefix() string {
 	return pagesPrefix
 }
 
-func (m *dsPageStore) Indexes() []Index {
+func (m *dsObjectStore) Indexes() []Index {
 	return nil
 }
 

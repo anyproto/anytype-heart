@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -21,7 +22,7 @@ type Record struct {
 }
 
 type Reader interface {
-	Query(q Query) (records []Record, total int, err error)
+	Query(schema *schema.Schema, q Query) (records []Record, total int, err error)
 }
 
 type Writer interface {
@@ -37,7 +38,7 @@ type Database interface {
 	Reader
 	Writer
 
-	Schema() string
+	//Schema() string
 }
 
 type Query struct {
@@ -48,11 +49,7 @@ type Query struct {
 	Offset    int                                   // skip given number of results
 }
 
-func (q Query) DSQuery(schemaURL string) query.Query {
-	sch, err := schema.Get(schemaURL)
-	if err != nil {
-		log.Errorf("failed to get schema %s: %s", schemaURL, err.Error())
-	}
+func (q Query) DSQuery(sch *schema.Schema) query.Query {
 
 	return query.Query{
 		Filters: []query.Filter{filters{Filters: q.Filters, Relations: q.Relations, Schema: sch}},
@@ -88,9 +85,9 @@ func getTime(v *types.Value, dateIncludeTime bool) time.Time {
 	return t
 }
 
-func getRelationById(relations []*model.BlockContentDataviewRelation, id string) *model.BlockContentDataviewRelation {
+func getRelationByKey(relations []*model.BlockContentDataviewRelation, key string) *model.BlockContentDataviewRelation {
 	for _, relation := range relations {
-		if relation.Id == id {
+		if relation.Key == key {
 			return relation
 		}
 	}
@@ -116,18 +113,18 @@ func (filters filters) Filter(e query.Entry) bool {
 	total := true
 	for _, filter := range filters.Filters {
 		var res bool
-		rel, err := filters.Schema.GetRelationById(filter.RelationId)
+		rel, err := filters.Schema.GetRelationByKey(filter.RelationKey)
 		if err != nil {
-			log.Errorf("failed to find relation %s for the filter: %s", filter.RelationId, err.Error())
+			log.Errorf("failed to find relation %s for the filter: %s", filter.RelationKey, err.Error())
 			continue
 		}
-		isDate := rel.Type == "https://anytype.io/schemas/types/date"
+		isDate := rel.Format == pbrelation.RelationFormat_date
 
 		var dateIncludeTime = false
 		if isDate {
-			relation := getRelationById(filters.Relations, filter.RelationId)
+			relation := getRelationByKey(filters.Relations, filter.RelationKey)
 			if relation == nil {
-				log.Debugf("failed to get relation options for %s: %s", filter.RelationId)
+				log.Debugf("failed to get relation options for %s: %s", filter.RelationKey)
 			} else {
 				dateIncludeTime = relation.GetDateOptions() != nil && relation.GetDateOptions().IncludeTime
 			}
@@ -137,59 +134,59 @@ func (filters filters) Filter(e query.Entry) bool {
 		switch filter.Condition {
 		case model.BlockContentDataviewFilter_Equal:
 			if v1, ok := filter.Value.Kind.(*types.Value_StringValue); ok {
-				if details.Details == nil || details.Details.Fields == nil || details.Details.Fields[filter.RelationId] == nil {
+				if details.Details == nil || details.Details.Fields == nil || details.Details.Fields[filter.RelationKey] == nil {
 					res = v1.String() == ""
-				} else if v2, ok := details.Details.Fields[filter.RelationId].Kind.(*types.Value_StringValue); ok {
+				} else if v2, ok := details.Details.Fields[filter.RelationKey].Kind.(*types.Value_StringValue); ok {
 					res = strings.EqualFold(v1.String(), v2.String())
 				}
 			} else {
 				if isDate {
-					val := getTime(details.Details.Fields[filter.RelationId], dateIncludeTime)
+					val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
 					filterVal := getTime(filter.Value, dateIncludeTime)
 					res = filterVal.Equal(val)
 				} else {
-					res = filter.Value.Equal(details.Details.Fields[filter.RelationId])
+					res = filter.Value.Equal(details.Details.Fields[filter.RelationKey])
 				}
 			}
 		case model.BlockContentDataviewFilter_NotEqual:
 			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationId], dateIncludeTime)
+				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
 				filterVal := getTime(filter.Value, dateIncludeTime)
 				res = !filterVal.Equal(val)
 			} else {
-				res = !filter.Value.Equal(details.Details.Fields[filter.RelationId])
+				res = !filter.Value.Equal(details.Details.Fields[filter.RelationKey])
 			}
 		case model.BlockContentDataviewFilter_Greater:
 			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationId], dateIncludeTime)
+				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
 				filterVal := getTime(filter.Value, dateIncludeTime)
 				res = val.After(filterVal)
 			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationId]) == -1
+				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) == -1
 			}
 		case model.BlockContentDataviewFilter_Less:
 			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationId], dateIncludeTime)
+				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
 				filterVal := getTime(filter.Value, dateIncludeTime)
 				res = val.Before(filterVal)
 			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationId]) == 1
+				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) == 1
 			}
 		case model.BlockContentDataviewFilter_GreaterOrEqual:
 			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationId], dateIncludeTime)
+				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
 				filterVal := getTime(filter.Value, dateIncludeTime)
 				res = val.After(filterVal) || val.Equal(filterVal)
 			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationId]) <= 0
+				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) <= 0
 			}
 		case model.BlockContentDataviewFilter_LessOrEqual:
 			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationId], dateIncludeTime)
+				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
 				filterVal := getTime(filter.Value, dateIncludeTime)
 				res = val.Before(filterVal) || val.Equal(filterVal)
 			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationId]) >= 0
+				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) >= 0
 			}
 		case model.BlockContentDataviewFilter_Like:
 			// todo: support for SQL LIKE query symbols like %?
@@ -198,7 +195,7 @@ func (filters filters) Filter(e query.Entry) bool {
 				break
 			}
 
-			relation := details.Details.Fields[filter.RelationId]
+			relation := details.Details.Fields[filter.RelationKey]
 			if relation == nil {
 				res = false
 				break
@@ -216,7 +213,7 @@ func (filters filters) Filter(e query.Entry) bool {
 				break
 			}
 
-			relation := details.Details.Fields[filter.RelationId]
+			relation := details.Details.Fields[filter.RelationKey]
 			if relation == nil {
 				res = true
 				break
@@ -234,7 +231,7 @@ func (filters filters) Filter(e query.Entry) bool {
 				break
 			}
 
-			detail := details.Details.Fields[filter.RelationId]
+			detail := details.Details.Fields[filter.RelationKey]
 			if detail == nil {
 				res = false
 				break
@@ -255,7 +252,7 @@ func (filters filters) Filter(e query.Entry) bool {
 			}
 			break
 		case model.BlockContentDataviewFilter_Empty:
-			switch v := details.Details.Fields[filter.RelationId].Kind.(type) {
+			switch v := details.Details.Fields[filter.RelationKey].Kind.(type) {
 			case *types.Value_NullValue:
 				res = true
 			case *types.Value_StringValue:
@@ -266,13 +263,13 @@ func (filters filters) Filter(e query.Entry) bool {
 				res = v.StructValue == nil
 			case *types.Value_NumberValue:
 				if isDate {
-					res = getTime(details.Details.Fields[filter.RelationId], dateIncludeTime).IsZero()
+					res = getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
 				}
 			default:
 				res = false
 			}
 		case model.BlockContentDataviewFilter_NotEmpty:
-			switch v := details.Details.Fields[filter.RelationId].Kind.(type) {
+			switch v := details.Details.Fields[filter.RelationKey].Kind.(type) {
 			case *types.Value_NullValue:
 				res = false
 			case *types.Value_StringValue:
@@ -283,7 +280,7 @@ func (filters filters) Filter(e query.Entry) bool {
 				res = v.StructValue != nil
 			case *types.Value_NumberValue:
 				if isDate {
-					res = !getTime(details.Details.Fields[filter.RelationId], dateIncludeTime).IsZero()
+					res = !getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
 				}
 			default:
 				res = true
@@ -322,11 +319,11 @@ func (order order) Compare(a query.Entry, b query.Entry) int {
 	for _, sort := range order.Sorts {
 		var arelation, brelation *types.Value
 		if aDetails.Details != nil && aDetails.Details.Fields != nil {
-			arelation = aDetails.Details.Fields[sort.RelationId]
+			arelation = aDetails.Details.Fields[sort.RelationKey]
 		}
 
 		if bDetails.Details != nil && bDetails.Details.Fields != nil {
-			brelation = bDetails.Details.Fields[sort.RelationId]
+			brelation = bDetails.Details.Fields[sort.RelationKey]
 		}
 
 		res := arelation.Compare(brelation)

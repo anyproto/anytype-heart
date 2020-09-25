@@ -9,7 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func (a *Anytype) PageStore() localstore.PageStore {
+func (a *Anytype) ObjectStore() localstore.ObjectStore {
 	return a.localStore.Pages
 }
 

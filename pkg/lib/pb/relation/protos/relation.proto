@@ -44,6 +44,7 @@ message Relation {
     enum RelationDataSource {
         details = 0; // default, stored inside the smartblock's details
         local = 1; // stored locally, e.g. in badger or generated on the fly
+        account = 2; // stored in the account DB. means existing only for specific anytype account
     }
 }
 

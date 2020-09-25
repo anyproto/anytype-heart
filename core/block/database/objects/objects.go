@@ -1,4 +1,4 @@
-package pages
+package objects
 
 import (
 	"errors"
@@ -10,25 +10,33 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
+const (
+	CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
+	BundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
+)
+
 func New(
-	pageStore localstore.PageStore,
+	pageStore localstore.ObjectStore,
+	objectTypeUrl string,
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
 	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error),
 ) database.Database {
-	return &setPages{
-		PageStore:        pageStore,
+	return &setOfObjects{
+		ObjectStore:      pageStore,
+		objectTypeUrl:    objectTypeUrl,
 		setDetails:       setDetails,
 		createSmartBlock: createSmartBlock,
 	}
 }
 
-type setPages struct {
-	localstore.PageStore
+type setOfObjects struct {
+	localstore.ObjectStore
+	objectTypeUrl    string
 	setDetails       func(req pb.RpcBlockSetDetailsRequest) error
 	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
 }
 
-func (sp setPages) Create(rec database.Record) (database.Record, error) {
+func (sp setOfObjects) Create(rec database.Record) (database.Record, error) {
 	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details)
 	if err != nil {
 		return rec, err
@@ -43,7 +51,7 @@ func (sp setPages) Create(rec database.Record) (database.Record, error) {
 	return rec, nil
 }
 
-func (sp *setPages) Update(id string, rec database.Record) error {
+func (sp *setOfObjects) Update(id string, rec database.Record) error {
 	var details []*pb.RpcBlockSetDetailsDetail
 	for k, v := range rec.Details.Fields {
 		details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
@@ -59,13 +67,9 @@ func (sp *setPages) Update(id string, rec database.Record) error {
 	})
 }
 
-func (sp setPages) Delete(id string) error {
+func (sp setOfObjects) Delete(id string) error {
 
 	// TODO implement!
 
 	return errors.New("not implemented")
-}
-
-func (sp setPages) Schema() string {
-	return sp.Schema()
 }

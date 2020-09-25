@@ -78,7 +78,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
-	err = mw.Anytype.PageStore().UpdateLastOpened(req.BlockId, time.Now())
+	err = mw.Anytype.ObjectStore().UpdateLastOpened(req.BlockId, time.Now())
 	if err != nil {
 		log.Errorf("failed to update last opened for the page %s: %s", req.BlockId, err.Error())
 	}
@@ -1195,4 +1195,24 @@ func (mw *Middleware) BlockDeleteDataviewRecord(req *pb.RpcBlockDeleteDataviewRe
 	}
 
 	return response(pb.RpcBlockDeleteDataviewRecordResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockObjectTypeAdd(req *pb.RpcBlockObjectTypeAddRequest) *pb.RpcBlockObjectTypeAddResponse {
+	panic("implement me")
+}
+
+func (mw *Middleware) BlockObjectTypeRemove(req *pb.RpcBlockObjectTypeRemoveRequest) *pb.RpcBlockObjectTypeRemoveResponse {
+	panic("implement me")
+}
+
+func (mw *Middleware) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
+	panic("implement me")
+}
+
+func (mw *Middleware) BlockRelationUpdate(req *pb.RpcBlockRelationUpdateRequest) *pb.RpcBlockRelationUpdateResponse {
+	panic("implement me")
+}
+
+func (mw *Middleware) BlockRelationRemove(req *pb.RpcBlockRelationRemoveRequest) *pb.RpcBlockRelationRemoveResponse {
+	panic("implement me")
 }

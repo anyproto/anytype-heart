@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -44,6 +47,7 @@ var (
 	ErrBlockNotFound       = errors.New("block not found")
 	ErrBlockAlreadyOpen    = errors.New("block already open")
 	ErrUnexpectedBlockType = errors.New("unexpected block type")
+	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -83,10 +87,11 @@ type Service interface {
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
-	GetObjectType(objectTypeId string) (objectType *pbrelation.ObjectType, err error)
-	UpdateRelations(objectTypeId string, relations []*pbrelation.Relation) (err error)
-	AddRelations(objectTypeId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	RemoveRelations(objectTypeId string, relationKeys []string) (err error)
+
+	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
+	UpdateRelations(url string, relations []*pbrelation.Relation) (err error)
+	AddRelations(url string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveRelations(url string, relationKeys []string) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -1106,14 +1111,35 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	return apply(sb)
 }
 
-func (s *service) GetObjectType(objectTypeId string) (objectType *pbrelation.ObjectType, err error) {
+func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, err error) {
 	objectType = &pbrelation.ObjectType{}
-	err = s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+	var objType *pbrelation.ObjectType
+	if strings.HasPrefix(url, objects.BundledObjectTypeURLPrefix) {
+		var err error
+		objType, err = relation.GetObjectType(url)
+		if err != nil {
+			if err == relation.ErrNotFound {
+				return nil, ErrUnknownObjectType
+			}
+			return nil, err
+		}
+		return objType, nil
+	} else if !strings.HasPrefix(url, objects.CustomObjectTypeURLPrefix) {
+		return nil, fmt.Errorf("incorrect object type URL format")
+	}
+
+	sbid := strings.TrimPrefix(url, objects.CustomObjectTypeURLPrefix)
+	sb, err := s.anytype.GetBlock(sbid)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Do(sb.ID(), func(b smartblock.SmartBlock) error {
 		details := b.Details()
 		objectType.Relations = b.Relations()
 		if details != nil && details.Fields != nil {
 			if v, ok := details.Fields["name"]; ok {
-				objectType.Name = v.String()
+				objectType.Name = v.GetStringValue()
 			}
 			if v, ok := details.Fields["layout"]; ok {
 				objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
@@ -1121,7 +1147,8 @@ func (s *service) GetObjectType(objectTypeId string) (objectType *pbrelation.Obj
 		}
 		return nil
 	})
-	return
+
+	return objType, err
 }
 
 func (s *service) UpdateRelations(objectTypeId string, relations []*pbrelation.Relation) (err error) {

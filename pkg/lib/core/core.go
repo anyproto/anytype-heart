@@ -118,7 +118,7 @@ type Service interface {
 
 	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
 
-	PageStore() localstore.PageStore
+	ObjectStore() localstore.ObjectStore
 	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
 	PageList() ([]*model.PageInfo, error)
 	PageUpdateLastOpened(id string) error

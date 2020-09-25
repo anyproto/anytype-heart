@@ -83,7 +83,6 @@ type SmartBlock interface {
 	ID() string
 	Type() smartblock.SmartBlockType
 	Creator() (string, error)
-	BaseSchema() SmartBlockSchema
 
 	GetLogs() ([]SmartblockLog, error)
 	GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error)
@@ -137,10 +136,6 @@ func (block *smartBlock) Type() smartblock.SmartBlockType {
 	}
 
 	return t
-}
-
-func (block *smartBlock) BaseSchema() SmartBlockSchema {
-	return smartBlockBaseSchema(block.Type())
 }
 
 func (block *smartBlock) ID() string {
@@ -409,7 +404,7 @@ func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Bl
 	outgoingLinks := findOutgoingLinks(blocks)
 	snippet := getSnippet(blocks)
 
-	return block.node.PageStore().UpdatePage(block.ID(), details, outgoingLinks, snippet)
+	return block.node.ObjectStore().UpdateObject(block.ID(), details, outgoingLinks, snippet)
 }
 
 func findOutgoingLinks(blocks []*model.Block) []string {

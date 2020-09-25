@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -35,8 +36,8 @@ type Dataview interface {
 	smartblock.SmartblockOpenListner
 }
 
-func NewDataview(sb smartblock.SmartBlock) Dataview {
-	return &dataviewCollectionImpl{SmartBlock: sb}
+func NewDataview(sb smartblock.SmartBlock, objTypeGetter ObjectTypeGetter) Dataview {
+	return &dataviewCollectionImpl{SmartBlock: sb, ObjectTypeGetter: objTypeGetter}
 }
 
 type dataviewImpl struct {
@@ -49,8 +50,13 @@ type dataviewImpl struct {
 	database.Database
 }
 
+type ObjectTypeGetter interface {
+	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
+}
+
 type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
+	ObjectTypeGetter
 	dataviews []*dataviewImpl
 }
 
@@ -95,7 +101,6 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 
 			ctx.SetMessages(d.Id(), msgs)
 		}
-
 	}
 
 	if showEvent {
@@ -169,19 +174,20 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	}
 
 	if len(view.Relations) == 0 {
-		sch, err := schema.Get(tb.Model().GetDataview().SchemaURL)
+		// todo: fill with required relations
+		/*sch, err := schema.Get(tb.Model().GetDataview().SchemaURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get schema %s for dataview: %s", tb.Model().GetDataview().SchemaURL, err.Error())
 		}
 
-		view.Relations = getDefaultRelations(sch)
+		view.Relations = getDefaultRelations(sch)*/
 	}
 
 	if len(view.Sorts) == 0 {
 		// todo: set depends on the view type
 		view.Sorts = []*model.BlockContentDataviewSort{{
-			RelationId: "id",
-			Type:       model.BlockContentDataviewSort_Asc,
+			RelationKey: "id",
+			Type:        model.BlockContentDataviewSort_Asc,
 		}}
 	}
 
@@ -209,17 +215,17 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 }
 
 func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error) {
-	var databaseId string
+	var source string
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
 		return nil, fmt.Errorf("not a dataview block")
 	} else {
-		databaseId = dvBlock.Model().GetDataview().DatabaseId
+		source = dvBlock.Model().GetDataview().Source
 	}
 
 	var db database.Writer
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(databaseId); err != nil {
+	} else if target, err := dbRouter.Get(source); err != nil {
 		return nil, err
 	} else {
 		db = target
@@ -234,17 +240,17 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.PageDetails) error {
-	var databaseId string
+	var source string
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
 		return fmt.Errorf("not a dataview block")
 	} else {
-		databaseId = dvBlock.Model().GetDataview().DatabaseId
+		source = dvBlock.Model().GetDataview().Source
 	}
 
 	var db database.Writer
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(databaseId); err != nil {
+	} else if target, err := dbRouter.Get(source); err != nil {
 		return err
 	} else {
 		db = target
@@ -254,17 +260,17 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {
-	var databaseId string
+	var source string
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
 		return fmt.Errorf("not a dataview block")
 	} else {
-		databaseId = dvBlock.Model().GetDataview().DatabaseId
+		source = dvBlock.Model().GetDataview().Source
 	}
 
 	var db database.Writer
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(databaseId); err != nil {
+	} else if target, err := dbRouter.Get(source); err != nil {
 		return err
 	} else {
 		db = target
@@ -290,19 +296,25 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 }
 
 func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvBlock dataview.Block) ([]*pb.EventMessage, error) {
-	databaseId := dvBlock.Model().GetDataview().DatabaseId
+	source := dvBlock.Model().GetDataview().Source
 	activeView := dvBlock.GetView(dv.activeViewId)
 
 	var db database.Reader
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(databaseId); err != nil {
+	} else if target, err := dbRouter.Get(source); err != nil {
 		return nil, err
 	} else {
 		db = target
 	}
 
-	entries, total, err := db.Query(database.Query{
+	// todo: inject schema
+	objectType, err := d.GetObjectType(source)
+	if err != nil {
+		return nil, err
+	}
+	sch := schema.New(objectType.Relations)
+	entries, total, err := db.Query(&sch, database.Query{
 		Relations: activeView.Relations,
 		Filters:   activeView.Filters,
 		Sorts:     activeView.Sorts,
@@ -337,27 +349,10 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		}},
 	}
 
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", databaseId, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries
 
 	return msgs, nil
-}
-
-func getDefaultRelations(schema *schema.Schema) []*model.BlockContentDataviewRelation {
-	var relations []*model.BlockContentDataviewRelation
-
-	for _, rel := range schema.Default {
-		if rel.IsHidden {
-			continue
-		}
-		relations = append(relations,
-			&model.BlockContentDataviewRelation{
-				Id:        rel.ID,
-				IsVisible: true,
-			})
-	}
-
-	return relations
 }
 
 func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {

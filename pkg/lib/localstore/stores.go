@@ -30,7 +30,7 @@ var (
 
 type LocalStore struct {
 	Files FileStore
-	Pages PageStore
+	Pages ObjectStore
 }
 
 type FileStore interface {
@@ -51,12 +51,12 @@ type FileStore interface {
 	DeleteFileKeys(hash string) error
 }
 
-type PageStore interface {
+type ObjectStore interface {
 	Indexable
 	database.Reader
 
-	AddPage(page *model.PageInfoWithOutboundLinksIDs) error
-	UpdatePage(id string, details *types.Struct, links []string, snippet string) error
+	AddObject(page *model.PageInfoWithOutboundLinksIDs) error
+	UpdateObject(id string, details *types.Struct, links []string, snippet string) error
 	UpdateLastModified(id string, time time.Time) error
 	UpdateLastOpened(id string, time time.Time) error
 	DeletePage(id string) error
@@ -71,7 +71,7 @@ type PageStore interface {
 func NewLocalStore(store ds.Batching) LocalStore {
 	return LocalStore{
 		Files: NewFileStore(store.(ds.TxnDatastore)),
-		Pages: NewPageStore(store.(ds.TxnDatastore)),
+		Pages: NewObjectStore(store.(ds.TxnDatastore)),
 	}
 }
 
