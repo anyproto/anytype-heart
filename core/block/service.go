@@ -1107,6 +1107,7 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 }
 
 func (s *service) GetObjectType(objectTypeId string) (objectType *pbrelation.ObjectType, err error) {
+	objectType = &pbrelation.ObjectType{}
 	err = s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
 		details := b.Details()
 		objectType.Relations = b.Relations()
