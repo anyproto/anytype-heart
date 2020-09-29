@@ -22,11 +22,11 @@ var (
 )
 
 type Middleware struct {
-	rootPath                   string
-	pin                        string
-	mnemonic                   string
-	gatewayAddr                string
-	accountSearchCancelAndWait context.CancelFunc
+	rootPath            string
+	pin                 string
+	mnemonic            string
+	gatewayAddr         string
+	accountSearchCancel context.CancelFunc
 
 	foundAccounts []*model.Account // found local&remote account for the current mnemonic
 
@@ -45,7 +45,7 @@ func init() {
 }
 
 func New() *Middleware {
-	return &Middleware{accountSearchCancelAndWait: func() {}}
+	return &Middleware{accountSearchCancel: func() {}}
 }
 
 func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
@@ -130,7 +130,7 @@ func (mw *Middleware) stop() error {
 		}
 
 		mw.Anytype = nil
-		mw.accountSearchCancelAndWait()
+		mw.accountSearchCancel()
 	}
 	return nil
 }
