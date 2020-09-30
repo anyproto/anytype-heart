@@ -63,19 +63,29 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	s.Lock()
 	defer s.Unlock()
 
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		select {
+		case <-s.ctx.Done():
+			cancel()
+		case <-cctx.Done():
+			return
+		}
+	}()
+
 	ids := DerivedSmartblockIds{}
 	// account
-	account, justCreated, err := s.derivedThreadEnsure(ctx, threadDerivedIndexAccount, newAccount, false)
+	account, justCreated, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccount, newAccount, false)
 	if err != nil {
 		return ids, err
 	}
 
 	ids.Account = account.ID.String()
-	if s.db == nil {
-		err = s.threadsDbInit()
-		if err != nil {
-			return ids, fmt.Errorf("threadsDbInit failed: %w", err)
-		}
+
+	err = s.threadsDbInit()
+	if err != nil {
+		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 	}
 
 	if !newAccount {
@@ -89,6 +99,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			_, err = s.pullThread(ctxPull, account.ID)
 			if err != nil {
 				log.Errorf("account pull failed")
+				return
 			} else {
 				log.Infof("account pull done")
 			}
@@ -99,41 +110,49 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		if justCreated {
 			// this is the case of accountSelect after accountRecovery
 			// we need to wait for account thread pull to be done
-			select {
-			case <-accountThreadPullDone:
-				if err != nil {
-					return ids, err
+		loop:
+			for {
+				select {
+				case <-accountThreadPullDone:
+					if err != nil {
+						err2 := s.t.DeleteThread(context.Background(), account.ID)
+						if err2 != nil {
+							log.Errorf("failed to delete account thread: %s", err2.Error())
+						}
+						return ids, err
+					}
+					break loop
+				case <-cctx.Done():
+					// cancel pull context and wait till it exits
+					pullCancel()
 				}
-			case <-ctx.Done():
-				pullCancel()
-				return ids, ctx.Err()
 			}
 		}
 	}
 
 	// profile
-	profile, _, err := s.derivedThreadEnsure(ctx, threadDerivedIndexProfilePage, newAccount, true)
+	profile, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexProfilePage, newAccount, true)
 	if err != nil {
 		return ids, err
 	}
 	ids.Profile = profile.ID.String()
 
 	// home
-	home, _, err := s.derivedThreadEnsure(ctx, threadDerivedIndexHome, newAccount, true)
+	home, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexHome, newAccount, true)
 	if err != nil {
 		return ids, err
 	}
 	ids.Home = home.ID.String()
 
 	// archive
-	archive, _, err := s.derivedThreadEnsure(ctx, threadDerivedIndexArchive, newAccount, true)
+	archive, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexArchive, newAccount, true)
 	if err != nil {
 		return ids, err
 	}
 	ids.Archive = archive.ID.String()
 
 	// set pages
-	setPages, _, err := s.derivedThreadEnsure(ctx, threadDerivedIndexSetPages, newAccount, true)
+	setPages, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexSetPages, newAccount, true)
 	if err != nil {
 		return ids, err
 	}
@@ -290,7 +309,7 @@ func (s *service) derivedThreadCreate(index threadDerivedIndex) (thread.Info, er
 			return
 		}
 
-		err = s.addReplicatorWithAttempts(context.Background(), thrd, s.replicatorAddr, 0)
+		err = s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
 		if err != nil {
 			log.Warnf("derivedThreadCreate failed to add replicatorAddr: %s", err.Error())
 		}
@@ -308,7 +327,7 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 	addReplicatorAnPullAfter := func(thrd thread.Info) {
 		if s.replicatorAddr != nil {
 			// if thread doesn't yet have s replicatorAddr this function will continuously try to add it in the background
-			err = s.addReplicatorWithAttempts(context.Background(), thrd, s.replicatorAddr, 0)
+			err = s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
 			if err != nil {
 				log.Errorf("existing thread failed to add replicatorAddr: ", err.Error())
 				return
@@ -358,7 +377,7 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 			// remove the thread we have just created because we've supposed to successfully pull it from the replicatorAddr
 			err2 := s.t.DeleteThread(context.Background(), id)
 			if err2 != nil {
-				log.Errorf("failed to delete thread: %s", err.Error())
+				log.Errorf("failed to delete thread: %s", err2.Error())
 			}
 			return
 		}
@@ -375,7 +394,7 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 		// remove the thread we have just created because we've supposed to successfully pull it from the replicatorAddr
 		err2 := s.t.DeleteThread(context.Background(), id)
 		if err2 != nil {
-			log.Errorf("failed to delete thread: %s", err.Error())
+			log.Errorf("failed to delete thread: %s", err2.Error())
 		}
 		return
 	}
