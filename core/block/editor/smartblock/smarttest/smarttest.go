@@ -51,9 +51,11 @@ func (st *SmartTest) Reindex() error {
 
 func (st *SmartTest) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
 	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{Details: &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}}
+		st.meta = &core.SmartBlockMeta{
+			Relations: st.Relations(),
+			Details: &types.Struct{
+				Fields: make(map[string]*types.Value),
+			}}
 	}
 	for _, d := range details {
 		st.meta.Details.Fields[d.Key] = d.Value

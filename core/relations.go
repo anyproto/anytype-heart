@@ -101,9 +101,10 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
+	id := strings.TrimPrefix(objType.Url, objects.BundledObjectTypeURLPrefix)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.UpdateRelations(objType.Url, []*pbrelation.Relation{req.Relation})
+		err = bs.UpdateRelations(id, []*pbrelation.Relation{req.Relation})
 		if err != nil {
 			return err
 		}
@@ -138,7 +139,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 			return err
 		}
 
-		relations, err = bs.AddRelations(objects.CustomObjectTypeURLPrefix+sbId, req.ObjectType.Relations)
+		relations, err = bs.AddRelations(sbId, req.ObjectType.Relations)
 		if err != nil {
 			return err
 		}

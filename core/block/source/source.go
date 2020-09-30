@@ -149,8 +149,9 @@ func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileCh
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.logHeads,
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:  st.Blocks(),
-				Details: st.Details(),
+				Blocks:    st.Blocks(),
+				Details:   st.Details(),
+				Relations: st.Relations(),
 			},
 			FileKeys: s.getFileKeysByHashes(st.GetAllFileHashes()),
 		}

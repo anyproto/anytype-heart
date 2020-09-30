@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/gogo/protobuf/proto"
@@ -52,7 +53,9 @@ type SmartBlockContentChange struct {
 }
 
 type SmartBlockMeta struct {
-	Details *types.Struct
+	ObjectTypes []string
+	Relations   []*pbrelation.Relation
+	Details     *types.Struct
 }
 
 type SmartBlockMetaChange struct {

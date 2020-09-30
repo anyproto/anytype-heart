@@ -58,7 +58,8 @@ func (c *collector) updateMeta() {
 	d := Meta{
 		BlockId: c.blockId,
 		SmartBlockMeta: core.SmartBlockMeta{
-			Details: c.doc.Details(),
+			Relations: c.doc.Relations(),
+			Details:   c.doc.Details(),
 		},
 	}
 	if !c.lastMeta.Details.Equal(d.Details) {
@@ -100,7 +101,8 @@ func (c *collector) fetchInitialMeta() (err error) {
 	c.lastMeta = Meta{
 		BlockId: c.blockId,
 		SmartBlockMeta: core.SmartBlockMeta{
-			Details: c.doc.Details(),
+			Relations: c.doc.Relations(),
+			Details:   c.doc.Details(),
 		},
 	}
 	return nil

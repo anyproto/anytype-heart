@@ -91,7 +91,8 @@ func (sb *smartBlock) Id() string {
 
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{
-		Details: sb.Details(),
+		Details:   sb.Details(),
+		Relations: sb.Relations(),
 	}
 }
 
@@ -135,7 +136,6 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 					RootId:  sb.RootId(),
 					Blocks:  sb.Blocks(),
 					Details: details,
-					Type:    sb.Type(),
 				}},
 			},
 		})

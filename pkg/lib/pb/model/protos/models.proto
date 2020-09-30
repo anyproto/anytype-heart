@@ -2,6 +2,7 @@ syntax = "proto3";
 package anytype.model;
 option go_package = "pkg/lib/pb/model";
 
+import "pkg/lib/pb/relation/protos/relation.proto";
 import "google/protobuf/struct.proto";
 
 // deprecated
@@ -9,6 +10,7 @@ message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
     google.protobuf.Struct details = 2;
     google.protobuf.Struct fileKeys = 3;
+    repeated anytype.relation.Relation relations = 4;
 }
 
 message Block {

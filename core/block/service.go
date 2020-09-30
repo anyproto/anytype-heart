@@ -89,9 +89,9 @@ type Service interface {
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
-	UpdateRelations(url string, relations []*pbrelation.Relation) (err error)
-	AddRelations(url string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	RemoveRelations(url string, relationKeys []string) (err error)
+	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
+	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveRelations(id string, relationKeys []string) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -1113,17 +1113,16 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 
 func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, err error) {
 	objectType = &pbrelation.ObjectType{}
-	var objType *pbrelation.ObjectType
 	if strings.HasPrefix(url, objects.BundledObjectTypeURLPrefix) {
 		var err error
-		objType, err = relation.GetObjectType(url)
+		objectType, err = relation.GetObjectType(url)
 		if err != nil {
 			if err == relation.ErrNotFound {
 				return nil, ErrUnknownObjectType
 			}
 			return nil, err
 		}
-		return objType, nil
+		return objectType, nil
 	} else if !strings.HasPrefix(url, objects.CustomObjectTypeURLPrefix) {
 		return nil, fmt.Errorf("incorrect object type URL format")
 	}
@@ -1137,6 +1136,7 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 	err = s.Do(sb.ID(), func(b smartblock.SmartBlock) error {
 		details := b.Details()
 		objectType.Relations = b.Relations()
+		objectType.Url = url
 		if details != nil && details.Fields != nil {
 			if v, ok := details.Fields["name"]; ok {
 				objectType.Name = v.GetStringValue()
@@ -1148,7 +1148,7 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 		return nil
 	})
 
-	return objType, err
+	return objectType, err
 }
 
 func (s *service) UpdateRelations(objectTypeId string, relations []*pbrelation.Relation) (err error) {

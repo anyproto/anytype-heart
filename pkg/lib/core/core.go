@@ -21,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -234,7 +235,7 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	return a, nil
 }
 
-func New(rootPath string, account string, reIndexFunc func(id string) error, snapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler) (Service, error) {
+func New(rootPath string, account string, reIndexFunc func(id string) error, snapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, fileKeys []*FileKeys) proto.Marshaler) (Service, error) {
 	opts, err := getNewConfig(rootPath, account)
 	if err != nil {
 		return nil, err

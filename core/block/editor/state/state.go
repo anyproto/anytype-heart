@@ -353,6 +353,14 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, act
 			s.parent.details = s.details
 		}
 	}
+	if s.parent != nil && s.relations != nil {
+		prev := s.parent.Relations()
+
+		if !pbtypes.RelationsEqual(prev, s.relations) {
+			action.Relations = &history.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.relations)}
+			s.parent.relations = s.relations
+		}
+	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -497,7 +505,7 @@ func (s *State) Details() *types.Struct {
 }
 
 func (s *State) Relations() []*pbrelation.Relation {
-	if s.relations == nil && s.relations != nil {
+	if s.relations == nil && s.parent != nil {
 		return s.parent.Relations()
 	}
 	return s.relations
