@@ -50,7 +50,7 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 		return m
 	}
 
-	mw.accountSearchCancelAndWait()
+	mw.accountSearchCancel()
 
 	mw.m.Lock()
 	defer mw.m.Unlock()

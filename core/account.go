@@ -104,6 +104,7 @@ func checkInviteCode(code string, account string) error {
 }
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
@@ -300,9 +301,8 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	defer close(recoveryFinished)
 
 	ctx, searchQueryCancel := context.WithTimeout(context.Background(), time.Second*30)
-	mw.accountSearchCancelAndWait = func() {
+	mw.accountSearchCancel = func() {
 		searchQueryCancel()
-		<-recoveryFinished
 	}
 	defer searchQueryCancel()
 
@@ -378,7 +378,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		log.Errorf("remote profiles request failed: %s", findProfilesErr.Error())
 	}
 
-	// wait until we read all profiles from chan and process them
+	// wait until we finish to read profiles from chan and process them in case request was successful
 	<-remoteAccountsProceed
 
 	sentAccountsMutex.Lock()
@@ -415,8 +415,8 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return m
 	}
 
-	// this func will wait until search process will stop in order to be sure node was properly stopped
-	mw.accountSearchCancelAndWait()
+	// cancel pending account searches and it will release the mutex
+	mw.accountSearchCancel()
 
 	mw.m.Lock()
 	defer mw.m.Unlock()
@@ -510,6 +510,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 }
 
 func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
