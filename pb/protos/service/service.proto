@@ -108,6 +108,10 @@ service ClientCommands {
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);
 
+    rpc HistoryShow (anytype.Rpc.History.Show.Request) returns (anytype.Rpc.History.Show.Response);
+    rpc HistoryVersions (anytype.Rpc.History.Versions.Request) returns (anytype.Rpc.History.Versions.Response);
+    rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
+
     // used only for lib-server via grpc
     rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);
 }

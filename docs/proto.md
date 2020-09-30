@@ -321,6 +321,20 @@
     - [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request)
     - [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response)
     - [Rpc.ExternalDrop.Files.Response.Error](#anytype.Rpc.ExternalDrop.Files.Response.Error)
+    - [Rpc.History](#anytype.Rpc.History)
+    - [Rpc.History.SetVersion](#anytype.Rpc.History.SetVersion)
+    - [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request)
+    - [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response)
+    - [Rpc.History.SetVersion.Response.Error](#anytype.Rpc.History.SetVersion.Response.Error)
+    - [Rpc.History.Show](#anytype.Rpc.History.Show)
+    - [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request)
+    - [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response)
+    - [Rpc.History.Show.Response.Error](#anytype.Rpc.History.Show.Response.Error)
+    - [Rpc.History.Versions](#anytype.Rpc.History.Versions)
+    - [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request)
+    - [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response)
+    - [Rpc.History.Versions.Response.Error](#anytype.Rpc.History.Versions.Response.Error)
+    - [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version)
     - [Rpc.Ipfs](#anytype.Rpc.Ipfs)
     - [Rpc.Ipfs.File](#anytype.Rpc.Ipfs.File)
     - [Rpc.Ipfs.File.Get](#anytype.Rpc.Ipfs.File.Get)
@@ -458,6 +472,9 @@
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
+    - [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code)
+    - [Rpc.History.Show.Response.Error.Code](#anytype.Rpc.History.Show.Response.Error.Code)
+    - [Rpc.History.Versions.Response.Error.Code](#anytype.Rpc.History.Versions.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
@@ -749,9 +766,12 @@
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
 | NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
 | NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
-| PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) |  |
+| PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
+| HistoryShow | [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request) | [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response) |  |
+| HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
+| HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
 
  
@@ -5197,6 +5217,211 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.History"></a>
+
+### Rpc.History
+
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion"></a>
+
+### Rpc.History.SetVersion
+
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Request"></a>
+
+### Rpc.History.SetVersion.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+| versionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Response"></a>
+
+### Rpc.History.SetVersion.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.SetVersion.Response.Error](#anytype.Rpc.History.SetVersion.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Response.Error"></a>
+
+### Rpc.History.SetVersion.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show"></a>
+
+### Rpc.History.Show
+returns blockShow event for given version
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show.Request"></a>
+
+### Rpc.History.Show.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+| versionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show.Response"></a>
+
+### Rpc.History.Show.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.Show.Response.Error](#anytype.Rpc.History.Show.Response.Error) |  |  |
+| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
+| version | [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show.Response.Error"></a>
+
+### Rpc.History.Show.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.Show.Response.Error.Code](#anytype.Rpc.History.Show.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions"></a>
+
+### Rpc.History.Versions
+returns list of versions (changes)
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Request"></a>
+
+### Rpc.History.Versions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+| lastVersionId | [string](#string) |  | when indicated, results will include versions before given id |
+| limit | [int32](#int32) |  | desired count of versions |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Response"></a>
+
+### Rpc.History.Versions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.Versions.Response.Error](#anytype.Rpc.History.Versions.Response.Error) |  |  |
+| versions | [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Response.Error"></a>
+
+### Rpc.History.Versions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.Versions.Response.Error.Code](#anytype.Rpc.History.Versions.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Version"></a>
+
+### Rpc.History.Versions.Version
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| previousIds | [string](#string) | repeated |  |
+| authorId | [string](#string) |  |  |
+| authorName | [string](#string) |  |  |
+| time | [int64](#int64) |  |  |
+| groupId | [int64](#int64) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ipfs"></a>
 
 ### Rpc.Ipfs
@@ -7031,6 +7256,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.ExternalDrop.Files.Response.Error.Code"></a>
 
 ### Rpc.ExternalDrop.Files.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Response.Error.Code"></a>
+
+### Rpc.History.SetVersion.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.History.Show.Response.Error.Code"></a>
+
+### Rpc.History.Show.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.History.Versions.Response.Error.Code"></a>
+
+### Rpc.History.Versions.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -9782,21 +10046,21 @@ deprecated
 
 ## Scalar Value Types
 
-| .proto Type | Notes | C++ Type | Java Type | Python Type |
-| ----------- | ----- | -------- | --------- | ----------- |
-| <a name="double" /> double |  | double | double | float |
-| <a name="float" /> float |  | float | float | float |
-| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int |
-| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long |
-| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long |
-| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long |
-| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int |
-| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long |
-| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int |
-| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long |
-| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int |
-| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long |
-| <a name="bool" /> bool |  | bool | boolean | boolean |
-| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode |
-| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str |
+| .proto Type | Notes | C++ | Java | Python | Go | C# | PHP | Ruby |
+| ----------- | ----- | --- | ---- | ------ | -- | -- | --- | ---- |
+| <a name="double" /> double |  | double | double | float | float64 | double | float | Float |
+| <a name="float" /> float |  | float | float | float | float32 | float | float | Float |
+| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long | uint32 | uint | integer | Bignum or Fixnum (as required) |
+| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum or Fixnum (as required) |
+| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int | uint32 | uint | integer | Bignum or Fixnum (as required) |
+| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum |
+| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
+| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long | int64 | long | integer/string | Bignum |
+| <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
+| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
+| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
 

@@ -1,4 +1,4 @@
-package history
+package undo
 
 import (
 	"testing"
@@ -24,7 +24,7 @@ func TestHistory_Add(t *testing.T) {
 }
 
 func TestHistory_Previous(t *testing.T) {
-	t.Run("no history on empty set", func(t *testing.T) {
+	t.Run("no undo on empty set", func(t *testing.T) {
 		h := NewHistory(3)
 		_, err := h.Previous()
 		assert.Equal(t, ErrNoHistory, err)
@@ -64,7 +64,7 @@ func TestHistory_Previous(t *testing.T) {
 }
 
 func TestHistory_Next(t *testing.T) {
-	t.Run("no history on empty set", func(t *testing.T) {
+	t.Run("no undo on empty set", func(t *testing.T) {
 		h := NewHistory(3)
 		_, err := h.Next()
 		assert.Equal(t, ErrNoHistory, err)

@@ -2234,6 +2234,94 @@ message Rpc {
         }
     }
 
+    message History {
+        // returns list of versions (changes)
+        message Versions {
+            message Version {
+                string id = 1;
+                repeated string previousIds = 2;
+                string authorId = 3;
+                string authorName = 4;
+                int64 time = 5;
+                int64 groupId = 6;
+            }
+
+            message Request {
+                string pageId = 1;
+                // when indicated, results will include versions before given id
+                string lastVersionId = 2;
+                // desired count of versions
+                int32 limit = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated Version versions = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        // returns blockShow event for given version
+        message Show {
+            message Request {
+                string pageId = 1;
+                string versionId = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                Event.Block.Show blockShow = 2;
+                History.Versions.Version version = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message SetVersion {
+            message Request {
+                string pageId = 1;
+                string versionId = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
+
     message Page {
         message Create {
             message Request {

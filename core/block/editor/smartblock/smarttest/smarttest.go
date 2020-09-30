@@ -6,9 +6,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -21,7 +21,7 @@ func New(id string) *SmartTest {
 	return &SmartTest{
 		id:   id,
 		Doc:  state.NewDoc(id, nil),
-		hist: history.NewHistory(0),
+		hist: undo.NewHistory(0),
 	}
 }
 
@@ -35,7 +35,7 @@ type SmartTest struct {
 	Results Results
 	anytype *testMock.MockService
 	id      string
-	hist    history.History
+	hist    undo.History
 	meta    *core.SmartBlockMeta
 	sync.Mutex
 	state.Doc
@@ -113,7 +113,7 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 	return
 }
 
-func (st *SmartTest) History() history.History {
+func (st *SmartTest) History() undo.History {
 	return st.hist
 }
 
@@ -128,6 +128,10 @@ func (st *SmartTest) MockAnytype() *testMock.MockService {
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 	st.Doc.(*state.State).Add(b)
 	return st
+}
+
+func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
+	return nil
 }
 
 func (st *SmartTest) Close() (err error) {
