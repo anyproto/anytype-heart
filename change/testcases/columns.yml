@@ -1,0 +1,29 @@
+- name: move left twice
+  init:
+    child:
+      - id: 1
+      - id: 2
+  changes:
+    - type: move
+      data:
+        targetid: 2
+        position: 3
+        ids:
+          - 1
+    - type: move
+      error: true
+      data:
+        targetid: 2
+        position: 3
+        ids:
+          - 1
+  expected:
+    child:
+      - id: /row/
+        child:
+          - id: /column/
+            child:
+              - id: 1
+          - id: /column/
+            child:
+              - id: 2

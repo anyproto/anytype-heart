@@ -243,14 +243,16 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, act
 		newBlocks   []*model.Block
 	)
 
-	s.Iterate(func(b simple.Block) (isContinue bool) {
+	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		id := b.Model().Id
 		inUse[id] = struct{}{}
 		if _, ok := s.blocks[id]; ok {
 			affectedIds = append(affectedIds, id)
 		}
 		return true
-	})
+	}); err != nil {
+		return
+	}
 
 	flushNewBlocks := func() {
 		if len(newBlocks) > 0 {
