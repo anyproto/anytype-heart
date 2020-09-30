@@ -25,7 +25,7 @@ func TestHistory_Versions(t *testing.T) {
 		)
 		resp, err := fx.Versions("pageId", "", 0)
 		require.NoError(t, err)
-		assert.Len(t, resp, 2)
+		assert.Len(t, resp, 3)
 	})
 	t.Run("chunks", func(t *testing.T) {
 		fx := newFixture(t)
@@ -41,7 +41,7 @@ func TestHistory_Versions(t *testing.T) {
 		)
 		resp, err := fx.Versions("pageId", "", 0)
 		require.NoError(t, err)
-		assert.Len(t, resp, 4)
+		assert.Len(t, resp, 5)
 	})
 }
 
