@@ -9,11 +9,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -212,47 +210,20 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 	}
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		var name string
-		if req.Details != nil && req.Details.Fields != nil && req.Details.Fields["name"] != nil {
-			name = req.Details.Fields["name"].GetStringValue()
-		} else {
-			name = objType.Name
+		var name, icon string
+		if req.Details != nil && req.Details.Fields != nil {
+			if req.Details.Fields["name"] != nil {
+				name = req.Details.Fields["name"].GetStringValue()
+			}
+			if req.Details.Fields["icon"] != nil {
+				icon = req.Details.Fields["icon"].GetStringValue()
+			}
 		}
 
-		id, err = bs.CreateSmartBlock(smartblock.SmartBlockTypePage, &types.Struct{
-			Fields: map[string]*types.Value{
-				"name":      pbtypes.String(name),
-				"iconEmoji": pbtypes.String("📒"),
-			},
-		})
-
-		relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpened", IsVisible: true}, {Key: "lastModified", IsVisible: true}}
-		dataview := &model.Block{
-			Content: &model.BlockContentOfDataview{
-				Dataview: &model.BlockContentDataview{
-					Source: req.ObjectTypeURL,
-					Views: []*model.BlockContentDataviewView{
-						{
-							Id:   bson.NewObjectId().Hex(),
-							Type: model.BlockContentDataviewView_Table,
-							Name: "All",
-							Sorts: []*model.BlockContentDataviewSort{
-								{
-									RelationKey: "name",
-									Type:        model.BlockContentDataviewSort_Asc,
-								},
-							},
-							Relations: relations,
-							Filters:   nil,
-						},
-					},
-				},
-			},
-		}
-
-		_, err = bs.CreateBlock(ctx, pb.RpcBlockCreateRequest{ContextId: id, TargetId: id, Block: dataview})
+		id, err = bs.CreateSet(objType, name, icon)
 		return err
 	})
+
 	if err != nil {
 		return response(pb.RpcSetCreateResponseError_UNKNOWN_ERROR, "", err)
 	}

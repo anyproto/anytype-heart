@@ -16,6 +16,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
+
 func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
 	sb := &Set{
 		SmartBlock: smartblock.New(ms),
@@ -48,58 +50,63 @@ func (p *Set) Init(s source.Source, _ bool) (err error) {
 	return
 }
 
-func (p *Set) initPagesSet() (err error) {
-	if p.Id() != p.Anytype().PredefinedBlocks().SetPages {
-		return nil
-	}
-	s := p.NewState()
-	root := s.Get(p.RootId())
-	setDetails := func() error {
-		return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
-			{Key: "name", Value: pbtypes.String("Pages")},
-			{Key: "iconEmoji", Value: pbtypes.String("📒")},
-		})
-	}
-	if len(root.Model().ChildrenIds) > 0 {
-		return
-	}
+func (p *Set) initPagesSet() error {
 	// init dataview
 	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpened", IsVisible: true}, {Key: "lastModified", IsVisible: true}}
-	dataview := simple.New(&model.Block{
-		Content: &model.BlockContentOfDataview{
-			Dataview: &model.BlockContentDataview{
-				Source:    "https://anytype.io/schemas/object/bundled/page",
-				SchemaURL: "https://anytype.io/schemas/page",
-				Views: []*model.BlockContentDataviewView{
-					{
-						Id:   uuid.New().String(),
-						Type: model.BlockContentDataviewView_Table,
-						Name: "All pages",
-						Sorts: []*model.BlockContentDataviewSort{
-							{
-								RelationKey: "name",
-								Type:        model.BlockContentDataviewSort_Asc,
-							},
+	dataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source:    "https://anytype.io/schemas/object/bundled/page",
+			SchemaURL: "https://anytype.io/schemas/page",
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   uuid.New().String(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All pages",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
 						},
-						Relations: relations,
-						Filters:   nil,
 					},
+					Relations: relations,
+					Filters:   nil,
 				},
 			},
 		},
+	}
+
+	err := p.InitDataview(dataview, "Pages", "📒")
+	if err == ErrAlreadyHasDataviewBlock {
+		return nil
+	}
+
+	return err
+}
+
+func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
+	s := p.NewState()
+	root := s.Get(p.RootId())
+	err := p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
+		{Key: "name", Value: pbtypes.String(name)},
+		{Key: "iconEmoji", Value: pbtypes.String(icon)},
 	})
+	if err != nil {
+		return err
+	}
 
-	s.Add(dataview)
+	if len(root.Model().ChildrenIds) > 0 {
+		return ErrAlreadyHasDataviewBlock
+	}
 
-	if err = s.InsertTo(p.RootId(), model.Block_Inner, dataview.Model().Id); err != nil {
+	// use fixed id, becuase it should be the only one block
+	dw := simple.New(&model.Block{Content: &blockContent, Id: "dataview"})
+	s.Add(dw)
+
+	if err = s.InsertTo(p.RootId(), model.Block_Inner, dw.Model().Id); err != nil {
 		return fmt.Errorf("can't insert dataview: %v", err)
 	}
 
-	err = setDetails()
-	if err != nil {
-		return fmt.Errorf("can't set details: %v", err)
-	}
-
 	log.Infof("create default structure for set: %v", s.RootId())
+
 	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -93,6 +94,7 @@ type Service interface {
 	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
 	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveRelations(id string, relationKeys []string) (err error)
+	CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -1173,6 +1175,55 @@ func (s *service) AddRelations(objectTypeId string, relations []*pbrelation.Rela
 	})
 
 	return
+}
+
+func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error) {
+	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet)
+	if err != nil {
+		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
+		return
+	}
+	id = csm.ID()
+
+	sb, err := s.createSmartBlock(id, true)
+	if err != nil {
+		return "", err
+	}
+	set, ok := sb.(*editor.Set)
+	if !ok {
+		return id, fmt.Errorf("unexpected set block type: %T", sb)
+	}
+
+	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpened", IsVisible: true}, {Key: "lastModified", IsVisible: true}}
+	dataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source: objType.Url,
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   bson.NewObjectId().Hex(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Relations: relations,
+					Filters:   nil,
+				},
+			},
+		},
+	}
+
+	if name == "" {
+		name = objType.Name + " set"
+	}
+	if icon == "" {
+		icon = "📒"
+	}
+
+	return id, set.InitDataview(dataview, name, icon)
 }
 
 func (s *service) RemoveRelations(objectTypeId string, relationKeys []string) (err error) {

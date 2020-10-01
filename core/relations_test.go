@@ -13,7 +13,7 @@ import (
 )
 
 func TestRelations(t *testing.T) {
-	mw := Middleware{}
+	mw := New()
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
 	defer os.RemoveAll(rootPath)
@@ -48,4 +48,10 @@ func TestRelations(t *testing.T) {
 	require.Len(t, resp4.ObjectTypes, 2)
 	require.Equal(t, resp3.ObjectType.Url, resp4.ObjectTypes[1].Url)
 	require.Len(t, resp4.ObjectTypes[1].Relations, 2)
+
+	resp5 := mw.SetCreate(&pb.RpcSetCreateRequest{
+		ObjectTypeURL: resp4.ObjectTypes[1].Url,
+	})
+	require.Equal(t, 0, int(resp5.Error.Code), resp5.Error.Description)
+	require.NotEmpty(t, resp5.PageId)
 }
