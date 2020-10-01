@@ -1,4 +1,4 @@
-// +build !linux,!darwin
+// +build !linux,!darwin android ios
 // +build !amd64
 
 package change
