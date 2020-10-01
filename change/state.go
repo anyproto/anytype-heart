@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 )
 
 func NewStateCache() *stateCache {
@@ -70,9 +69,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 		ns.ApplyChangeIgnoreErr(c.Change.Content...)
 		ns.SetChangeId(c.Id)
 		s.AddFileKeys(c.FileKeys...)
-		if err = ns.Iterate(func(_ simple.Block) (isContinue bool) {
-			return true
-		}); err != nil {
+		if err = s.Validate(); err != nil {
 			err = fmt.Errorf("state build check error: %v: %v", err, c.Change)
 			return
 		}

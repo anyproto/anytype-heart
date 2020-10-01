@@ -527,6 +527,31 @@ func (s *State) DepSmartIds() (ids []string) {
 	return
 }
 
+func (s *State) Validate() (err error) {
+	var (
+		err2        error
+		childrenIds = make(map[string]string)
+	)
+
+	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
+		for _, cid := range b.Model().ChildrenIds {
+			if parentId, ok := childrenIds[cid]; ok {
+				err2 = fmt.Errorf("two children with same id: %v; parent1: %s; parent2: %s", cid, parentId, b.Model().Id)
+				return false
+			}
+			childrenIds[cid] = b.Model().Id
+			if !s.Exists(cid) {
+				err2 = fmt.Errorf("missed block: %s; parent: %s", cid, b.Model().Id)
+				return false
+			}
+		}
+		return true
+	}); err != nil {
+		return
+	}
+	return err2
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
