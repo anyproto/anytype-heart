@@ -50,7 +50,6 @@ type Query struct {
 }
 
 func (q Query) DSQuery(sch *schema.Schema) query.Query {
-
 	return query.Query{
 		Filters: []query.Filter{filters{Filters: q.Filters, Relations: q.Relations, Schema: sch}},
 		Orders:  []query.Order{order{Sorts: q.Sorts, Relations: q.Relations, Schema: sch}},
@@ -99,7 +98,7 @@ func (filters filters) Filter(e query.Entry) bool {
 		return true
 	}
 
-	var details model.PageDetails
+	var details model.ObjectDetails
 	err := proto.Unmarshal(e.Value, &details)
 	if err != nil {
 		log.Errorf("query filters decode error: %s", err.Error())
@@ -302,14 +301,14 @@ func (order order) Compare(a query.Entry, b query.Entry) int {
 		return 0
 	}
 
-	var aDetails model.PageDetails
+	var aDetails model.ObjectDetails
 	err := proto.Unmarshal(a.Value, &aDetails)
 	if err != nil {
 		log.Errorf("query filters decode error: %s", err.Error())
 		return -1
 	}
 
-	var bDetails model.PageDetails
+	var bDetails model.ObjectDetails
 	err = proto.Unmarshal(b.Value, &bDetails)
 	if err != nil {
 		log.Errorf("query filters decode error: %s", err.Error())

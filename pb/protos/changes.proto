@@ -15,7 +15,7 @@ message Change {
     // id of the last snapshot
     string last_snapshot_id = 2;
     // ids of the last changes with details/relations content
-    repeated string previous_details_ids = 5;
+    repeated string previous_meta_ids = 5;
     // set of actions to apply
     repeated Content content = 3;
     // snapshot - when not null, the Content will be ignored
@@ -51,6 +51,9 @@ message Change {
             RelationAdd relationAdd = 102;
             RelationRemove relationRemove = 103;
             RelationUpdate relationUpdate = 104;
+            ObjectTypeAdd objectTypeAdd = 105;
+            ObjectTypeRemove objectTypeRemove = 106;
+
         }
     }
 
@@ -113,4 +116,11 @@ message Change {
         string key = 1;
     }
 
+    message ObjectTypeAdd {
+        string url = 1;
+    }
+
+    message ObjectTypeRemove {
+        string url = 1;
+    }
 }

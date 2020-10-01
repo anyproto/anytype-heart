@@ -29,6 +29,22 @@ var (
 			},
 			Layout: relation.ObjectType_page,
 		},
+		"set": {
+			Url:  bundledObjectTypeURLPrefix + "set",
+			Name: "Set of objects",
+			Relations: []*relation.Relation{
+				bundledRelations["creationDate"],
+				bundledRelations["modifiedDate"],
+				bundledRelations["name"],
+				bundledRelations["iconEmoji"],
+				bundledRelations["iconImage"],
+				bundledRelations["coverImage"],
+				bundledRelations["coverX"],
+				bundledRelations["coverY"],
+				bundledRelations["coverScale"],
+			},
+			Layout: relation.ObjectType_page,
+		},
 	}
 )
 

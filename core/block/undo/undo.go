@@ -28,16 +28,21 @@ type Relations struct {
 	Before, After []*pbrelation.Relation
 }
 
+type ObjectType struct {
+	Before, After []string
+}
+
 type Action struct {
-	Add       []simple.Block
-	Change    []Change
-	Remove    []simple.Block
-	Details   *Details
-	Relations *Relations
+	Add         []simple.Block
+	Change      []Change
+	Remove      []simple.Block
+	Details     *Details
+	Relations   *Relations
+	ObjectTypes *ObjectType
 }
 
 func (a Action) IsEmpty() bool {
-	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.Relations == nil
+	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.Relations == nil && a.ObjectTypes == nil
 }
 
 type History interface {

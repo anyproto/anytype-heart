@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Anytype_PageInfoWithLinks(t *testing.T) {
+func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 	s := getRunningService(t)
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
@@ -52,7 +52,7 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
 	require.NoError(t, err)
 
-	info2, err := s.PageInfoWithLinks(block2.ID())
+	info2, err := s.ObjectInfoWithLinks(block2.ID())
 	require.NoError(t, err)
 	require.NotNil(t, info2.Links)
 	require.NotNil(t, info2.Links.Outbound)
@@ -61,7 +61,7 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	require.Equal(t, block1.ID(), info2.Links.Outbound[0].Id)
 	require.True(t, info2.Links.Outbound[0].Details.Compare(details1) == 0)
 
-	info1, err := s.PageInfoWithLinks(block1.ID())
+	info1, err := s.ObjectInfoWithLinks(block1.ID())
 	require.NoError(t, err)
 	require.NotNil(t, info1.Links)
 	require.Len(t, info1.Links.Inbound, 1)
@@ -83,10 +83,10 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	err = block2.(*smartBlock).indexSnapshot(details2Modified, blocks2Modified)
 	require.NoError(t, err)
 
-	info2Modified, err := s.PageInfoWithLinks(block2.ID())
+	info2Modified, err := s.ObjectInfoWithLinks(block2.ID())
 	require.NoError(t, err)
 
-	info1Modified, err := s.PageInfoWithLinks(block1.ID())
+	info1Modified, err := s.ObjectInfoWithLinks(block1.ID())
 	require.NoError(t, err)
 
 	require.Len(t, info1Modified.Links.Inbound, 1)
@@ -97,11 +97,11 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	err = s.DeleteBlock(block1.ID())
 	require.NoError(t, err)
 
-	info1Modified, err = s.PageInfoWithLinks(block1.ID())
+	info1Modified, err = s.ObjectInfoWithLinks(block1.ID())
 	require.Error(t, err)
 	require.Nil(t, info1Modified)
 
-	info2Modified, err = s.PageInfoWithLinks(block2.ID())
+	info2Modified, err = s.ObjectInfoWithLinks(block2.ID())
 	require.NoError(t, err)
 	require.Len(t, info2Modified.Links.Outbound, 0)
 }
@@ -141,10 +141,10 @@ func Test_Anytype_PageList(t *testing.T) {
 	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
 	require.NoError(t, err)
 
-	pages, err := s.PageList()
+	pages, err := s.ObjectList()
 	require.NoError(t, err)
 
-	var pageById = make(map[string]*model.PageInfo)
+	var pageById = make(map[string]*model.ObjectInfo)
 	for _, page := range pages {
 		pageById[page.Id] = page
 	}

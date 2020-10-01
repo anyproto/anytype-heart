@@ -132,7 +132,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 				"name":   pbtypes.String(req.ObjectType.Name),
 				"layout": pbtypes.Float64(float64(req.ObjectType.Layout)),
 			},
-		})
+		}, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -190,7 +190,7 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcSetCreateResponseErrorCode, id string, err error) *pb.RpcSetCreateResponse {
-		m := &pb.RpcSetCreateResponse{Error: &pb.RpcSetCreateResponseError{Code: code}, PageId: id}
+		m := &pb.RpcSetCreateResponse{Error: &pb.RpcSetCreateResponseError{Code: code}, Id: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {

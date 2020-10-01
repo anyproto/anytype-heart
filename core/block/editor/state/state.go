@@ -37,6 +37,7 @@ type Doc interface {
 	Append(targetId string, id string) (ok bool)
 	Details() *types.Struct
 	Relations() []*pbrelation.Relation
+	ObjectTypes() []string
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
@@ -54,16 +55,17 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx       *Context
-	parent    *State
-	blocks    map[string]simple.Block
-	rootId    string
-	newIds    []string
-	changeId  string
-	changes   []*pb.ChangeContent
-	fileKeys  []pb.ChangeFileKeys
-	details   *types.Struct
-	relations []*pbrelation.Relation
+	ctx         *Context
+	parent      *State
+	blocks      map[string]simple.Block
+	rootId      string
+	newIds      []string
+	changeId    string
+	changes     []*pb.ChangeContent
+	fileKeys    []pb.ChangeFileKeys
+	details     *types.Struct
+	relations   []*pbrelation.Relation
+	objectTypes []string
 
 	changesStructureIgnoreIds []string
 
@@ -361,6 +363,14 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, act
 			s.parent.relations = s.relations
 		}
 	}
+
+	if s.parent != nil && s.objectTypes != nil {
+		prev := s.parent.ObjectTypes()
+		if !slice.UnsortedEquals(prev, s.objectTypes) {
+			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypes()}
+			s.parent.objectTypes = s.objectTypes
+		}
+	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -496,6 +506,11 @@ func (s *State) SetRelations(relations []*pbrelation.Relation) *State {
 	return s
 }
 
+func (s *State) SetObjectTypes(objectTypes []string) *State {
+	s.objectTypes = objectTypes
+	return s
+}
+
 func (s *State) Details() *types.Struct {
 	if s.details == nil && s.parent != nil {
 		return s.parent.Details()
@@ -509,6 +524,13 @@ func (s *State) Relations() []*pbrelation.Relation {
 		return s.parent.Relations()
 	}
 	return s.relations
+}
+
+func (s *State) ObjectTypes() []string {
+	if s.objectTypes == nil && s.parent != nil {
+		return s.parent.objectTypes
+	}
+	return s.objectTypes
 }
 
 func (s *State) Snippet() (snippet string) {

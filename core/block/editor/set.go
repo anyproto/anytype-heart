@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -20,7 +21,7 @@ var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
 func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
 	sb := &Set{
-		SmartBlock: smartblock.New(ms),
+		SmartBlock: smartblock.New(ms, objects.BundledObjectTypeURLPrefix+"set"),
 	}
 
 	sb.Basic = basic.NewBasic(sb)
@@ -38,8 +39,8 @@ type Set struct {
 	database.Router
 }
 
-func (p *Set) Init(s source.Source, _ bool) (err error) {
-	err = p.SmartBlock.Init(s, true)
+func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+	err = p.SmartBlock.Init(s, true, nil)
 	if err != nil {
 		return err
 	}

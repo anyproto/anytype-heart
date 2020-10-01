@@ -16,7 +16,7 @@ func TestTree_Add(t *testing.T) {
 		assert.Equal(t, Append, tr.Add(newSnapshot("root", "", nil)))
 		assert.Equal(t, tr.root.Id, "root")
 		assert.Equal(t, []string{"root"}, tr.Heads())
-		assert.Equal(t, []string{"root"}, tr.DetailsHeads())
+		assert.Equal(t, []string{"root"}, tr.MetaHeads())
 	})
 	t.Run("linear add", func(t *testing.T) {
 		tr := new(Tree)
@@ -39,7 +39,7 @@ func TestTree_Add(t *testing.T) {
 		}
 		assert.Equal(t, []string{"root", "one", "two", "three"}, ids)
 		assert.Equal(t, []string{"three"}, tr.Heads())
-		assert.Equal(t, []string{"one"}, tr.DetailsHeads())
+		assert.Equal(t, []string{"one"}, tr.MetaHeads())
 	})
 	t.Run("branch", func(t *testing.T) {
 		tr := new(Tree)
@@ -58,12 +58,12 @@ func TestTree_Add(t *testing.T) {
 		assert.Len(t, tr.unAttached, 0)
 		assert.Len(t, tr.attached, 6)
 		assert.Equal(t, []string{"1.3", "2"}, tr.Heads())
-		assert.Equal(t, []string{"1.2", "2"}, tr.DetailsHeads())
+		assert.Equal(t, []string{"1.2", "2"}, tr.MetaHeads())
 	})
 	t.Run("branch union", func(t *testing.T) {
 		tr := new(Tree)
 		c3 := newDetailsChange("3", "root", "", "", true)
-		c3.PreviousDetailsIds = []string{"2", "1.3"}
+		c3.PreviousMetaIds = []string{"2", "1.3"}
 		c3.PreviousIds = []string{"2", "1.3"}
 		assert.Equal(t, Append, tr.Add(
 			newSnapshot("root", "", nil),
@@ -78,7 +78,7 @@ func TestTree_Add(t *testing.T) {
 		assert.Len(t, tr.unAttached, 0)
 		assert.Len(t, tr.attached, 8)
 		assert.Equal(t, []string{"4"}, tr.Heads())
-		assert.Equal(t, []string{"3"}, tr.DetailsHeads())
+		assert.Equal(t, []string{"3"}, tr.MetaHeads())
 	})
 	t.Run("big set", func(t *testing.T) {
 		tr := new(Tree)
@@ -95,7 +95,7 @@ func TestTree_Add(t *testing.T) {
 		tr.AddFast(changes...)
 		t.Log(time.Since(st))
 		assert.Equal(t, []string{"9999"}, tr.Heads())
-		assert.Equal(t, []string{"root"}, tr.DetailsHeads())
+		assert.Equal(t, []string{"root"}, tr.MetaHeads())
 	})
 }
 
@@ -140,7 +140,7 @@ func TestTree_AddFuzzy(t *testing.T) {
 		}
 		phash = hash
 		assert.Equal(t, []string{"3"}, tr.Heads())
-		assert.Equal(t, []string{"1.3"}, tr.DetailsHeads())
+		assert.Equal(t, []string{"1.3"}, tr.MetaHeads())
 	}
 }
 

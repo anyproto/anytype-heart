@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -19,7 +20,7 @@ func NewPage(
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
 ) *Page {
-	sb := smartblock.New(m)
+	sb := smartblock.New(m, objects.BundledObjectTypeURLPrefix+"page")
 	f := file.NewFile(sb, fileSource)
 	return &Page{
 		SmartBlock: sb,

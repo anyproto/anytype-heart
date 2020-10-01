@@ -21,19 +21,19 @@ func NewTree() *Tree {
 	return &Tree{}
 }
 
-func NewDetailsTree() *Tree {
-	return &Tree{detailsOnly: true}
+func NewMetaTree() *Tree {
+	return &Tree{metaOnly: true}
 }
 
 type Tree struct {
-	root           *Change
-	headIds        []string
-	detailsHeadIds []string
-	attached       map[string]*Change
-	unAttached     map[string]*Change
+	root        *Change
+	headIds     []string
+	metaHeadIds []string
+	attached    map[string]*Change
+	unAttached  map[string]*Change
 	// missed id -> list of dependency ids
-	waitList    map[string][]string
-	detailsOnly bool
+	waitList map[string][]string
+	metaOnly bool
 }
 
 func (t *Tree) RootId() string {
@@ -91,8 +91,8 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 }
 
 func (t *Tree) add(c *Change) (attached bool) {
-	if t.detailsOnly {
-		c.PreviousIds = c.PreviousDetailsIds
+	if t.metaOnly {
+		c.PreviousIds = c.PreviousMetaIds
 	}
 	if t.root == nil { // first element
 		t.root = c
@@ -168,23 +168,23 @@ func (t *Tree) after(id1, id2 string) (found bool) {
 }
 
 func (t *Tree) updateHeads() {
-	var newHeadIds, newDetailsHeadIds []string
+	var newHeadIds, newMetaHeadIds []string
 	t.iterate(t.root, func(c *Change) (isContinue bool) {
 		if len(c.Next) == 0 {
 			newHeadIds = append(newHeadIds, c.Id)
 		}
-		if c.HasDetails() {
-			for _, prevDetId := range c.PreviousDetailsIds {
-				newDetailsHeadIds = slice.Remove(newDetailsHeadIds, prevDetId)
+		if c.HasMeta() {
+			for _, prevDetId := range c.PreviousMetaIds {
+				newMetaHeadIds = slice.Remove(newMetaHeadIds, prevDetId)
 			}
-			newDetailsHeadIds = append(newDetailsHeadIds, c.Id)
+			newMetaHeadIds = append(newMetaHeadIds, c.Id)
 		}
 		return true
 	})
 	t.headIds = newHeadIds
-	t.detailsHeadIds = newDetailsHeadIds
+	t.metaHeadIds = newMetaHeadIds
 	sort.Strings(t.headIds)
-	sort.Strings(t.detailsHeadIds)
+	sort.Strings(t.metaHeadIds)
 }
 
 func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
@@ -282,8 +282,8 @@ func (t *Tree) Heads() []string {
 	return t.headIds
 }
 
-func (t *Tree) DetailsHeads() []string {
-	return t.detailsHeadIds
+func (t *Tree) MetaHeads() []string {
+	return t.metaHeadIds
 }
 
 func (t *Tree) String() string {

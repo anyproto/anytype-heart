@@ -13,8 +13,15 @@ import (
 type Ctrl interface {
 	Anytype() anytype.Service
 	SetDetails(req pb.RpcBlockSetDetailsRequest) error
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
+	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
+	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveRelations(id string, relationKeys []string) (err error)
+	CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error)
+
+	AddObjectTypes(objectId string, objectTypes []string) (err error)
+	RemoveObjectTypes(objectId string, objectTypes []string) (err error)
 }
 
 type Router interface {
@@ -30,7 +37,7 @@ type router struct{ s Ctrl }
 func (r router) Get(id string) (database.Database, error) {
 	// compatibility with older versions
 	if id == "pages" {
-		id = "https://anytype.io/schemas/object/bundled/pages"
+		id = "https://anytype.io/schemas/object/bundled/page"
 	}
 
 	return objects.New(r.s.Anytype().ObjectStore(), id, r.s.SetDetails, r.s.CreateSmartBlock), nil

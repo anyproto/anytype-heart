@@ -15,7 +15,7 @@ import (
 func NewArchive(m meta.Service, ctrl ArchiveCtrl) *Archive {
 	return &Archive{
 		ctrl:       ctrl,
-		SmartBlock: smartblock.New(m),
+		SmartBlock: smartblock.New(m, ""),
 	}
 }
 
@@ -29,8 +29,8 @@ type Archive struct {
 	smartblock.SmartBlock
 }
 
-func (p *Archive) Init(s source.Source, _ bool) (err error) {
-	if err = p.SmartBlock.Init(s, true); err != nil {
+func (p *Archive) Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error) {
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
 		return
 	}
 	p.SmartBlock.DisableLayouts()

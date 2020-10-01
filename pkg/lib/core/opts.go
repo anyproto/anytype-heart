@@ -27,7 +27,7 @@ type ServiceOptions struct {
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
 	ReindexFunc           func(smartblockId string) error
-	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, fileKeys []*FileKeys) proto.Marshaler
+	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*FileKeys) proto.Marshaler
 	WebGatewaySnapshotUri string
 }
 
@@ -131,7 +131,7 @@ func WithReindexFunc(f func(smartblockId string) error) ServiceOption {
 	}
 }
 
-func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, fileKeys []*FileKeys) proto.Marshaler) ServiceOption {
+func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*FileKeys) proto.Marshaler) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.SnapshotMarshalerFunc = f
 		return nil

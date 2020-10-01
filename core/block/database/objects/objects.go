@@ -7,6 +7,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -19,7 +20,7 @@ func New(
 	pageStore localstore.ObjectStore,
 	objectTypeUrl string,
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error),
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error),
 ) database.Database {
 	return &setOfObjects{
 		ObjectStore:      pageStore,
@@ -33,11 +34,11 @@ type setOfObjects struct {
 	localstore.ObjectStore
 	objectTypeUrl    string
 	setDetails       func(req pb.RpcBlockSetDetailsRequest) error
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 }
 
 func (sp setOfObjects) Create(rec database.Record) (database.Record, error) {
-	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details)
+	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, []string{sp.objectTypeUrl}, nil)
 	if err != nil {
 		return rec, err
 	}

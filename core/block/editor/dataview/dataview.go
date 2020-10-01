@@ -29,8 +29,8 @@ type Dataview interface {
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
 
-	CreateRecord(ctx *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error)
-	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.PageDetails) error
+	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
+	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
 	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
 	smartblock.SmartblockOpenListner
@@ -214,7 +214,7 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 	}
 }
 
-func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.PageDetails) (*model.PageDetails, error) {
+func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error) {
 	var source string
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
 		return nil, fmt.Errorf("not a dataview block")
@@ -236,10 +236,10 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 		return nil, err
 	}
 
-	return &model.PageDetails{Details: created.Details}, nil
+	return &model.ObjectDetails{Details: created.Details}, nil
 }
 
-func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.PageDetails) error {
+func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.ObjectDetails) error {
 	var source string
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
 		return fmt.Errorf("not a dataview block")
@@ -313,7 +313,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	if err != nil {
 		return nil, err
 	}
-	sch := schema.New(objectType.Relations)
+	sch := schema.New(objectType)
 	entries, total, err := db.Query(&sch, database.Query{
 		Relations: activeView.Relations,
 		Filters:   activeView.Filters,

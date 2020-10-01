@@ -28,7 +28,7 @@ type Source interface {
 	Anytype() anytype.Service
 	Type() pb.SmartBlockType
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
-	ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
+	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error)
 	Close() (err error)
 }
@@ -59,7 +59,7 @@ type source struct {
 	logHeads       map[string]string
 	receiver       ChangeReceiver
 	unsubscribe    func()
-	detailsOnly    bool
+	metaOnly       bool
 	closed         chan struct{}
 }
 
@@ -75,8 +75,8 @@ func (s *source) Type() pb.SmartBlockType {
 	return anytype.SmartBlockTypeToProto(s.sb.Type())
 }
 
-func (s *source) ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error) {
-	s.detailsOnly = true
+func (s *source) ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error) {
+	s.metaOnly = true
 	return s.readDoc(receiver, false)
 }
 
@@ -99,8 +99,8 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 			}
 		}()
 	}
-	if s.detailsOnly {
-		s.tree, s.logHeads, err = change.BuildDetailsTree(s.sb)
+	if s.metaOnly {
+		s.tree, s.logHeads, err = change.BuildMetaTree(s.sb)
 	} else {
 		s.tree, s.logHeads, err = change.BuildTree(s.sb)
 	}
@@ -140,18 +140,19 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error) {
 	var c = &pb.Change{
-		PreviousIds:        s.tree.Heads(),
-		LastSnapshotId:     s.lastSnapshotId,
-		PreviousDetailsIds: s.tree.DetailsHeads(),
-		Timestamp:          time.Now().Unix(),
+		PreviousIds:     s.tree.Heads(),
+		LastSnapshotId:  s.lastSnapshotId,
+		PreviousMetaIds: s.tree.MetaHeads(),
+		Timestamp:       time.Now().Unix(),
 	}
 	if doSnapshot || s.needSnapshot() || len(changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.logHeads,
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:    st.Blocks(),
-				Details:   st.Details(),
-				Relations: st.Relations(),
+				Blocks:      st.Blocks(),
+				Details:     st.Details(),
+				Relations:   st.Relations(),
+				ObjectTypes: st.ObjectTypes(),
 			},
 			FileKeys: s.getFileKeysByHashes(st.GetAllFileHashes()),
 		}
@@ -202,7 +203,7 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 	if err != nil {
 		return
 	}
-	if s.detailsOnly && !ch.HasDetails() {
+	if s.metaOnly && !ch.HasMeta() {
 		return
 	}
 
@@ -212,8 +213,8 @@ func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
 	s.logHeads[record.LogID] = record.ID
 
 	var heads []string
-	if s.detailsOnly {
-		heads = s.tree.DetailsHeads()
+	if s.metaOnly {
+		heads = s.tree.MetaHeads()
 	} else {
 		heads = s.tree.Heads()
 	}

@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func (mw *Middleware) NavigationListPages(req *pb.RpcNavigationListPagesRequest) *pb.RpcNavigationListPagesResponse {
-	response := func(code pb.RpcNavigationListPagesResponseErrorCode, pages []*model.PageInfo, err error) *pb.RpcNavigationListPagesResponse {
-		m := &pb.RpcNavigationListPagesResponse{Error: &pb.RpcNavigationListPagesResponseError{Code: code}, Pages: pages}
+func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
+	response := func(code pb.RpcNavigationListObjectsResponseErrorCode, Objects []*model.ObjectInfo, err error) *pb.RpcNavigationListObjectsResponse {
+		m := &pb.RpcNavigationListObjectsResponse{Error: &pb.RpcNavigationListObjectsResponseError{Code: code}, Objects: Objects}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -18,26 +18,26 @@ func (mw *Middleware) NavigationListPages(req *pb.RpcNavigationListPagesRequest)
 		return m
 	}
 
-	pages, err := mw.Anytype.PageList()
+	Objects, err := mw.Anytype.ObjectList()
 	if err != nil {
-		return response(pb.RpcNavigationListPagesResponseError_UNKNOWN_ERROR, nil, err)
+		return response(pb.RpcNavigationListObjectsResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	var pagesFiltered []*model.PageInfo
-	for _, page := range pages {
-		if req.Context != pb.RpcNavigation_Navigation && (page.PageType == model.PageInfo_Set || page.PageType == model.PageInfo_Archive) {
+	var ObjectsFiltered []*model.ObjectInfo
+	for _, page := range Objects {
+		if req.Context != pb.RpcNavigation_Navigation && (page.ObjectType == model.ObjectInfo_Set || page.ObjectType == model.ObjectInfo_Archive) {
 			continue
 		}
 
-		pagesFiltered = append(pagesFiltered, page)
+		ObjectsFiltered = append(ObjectsFiltered, page)
 	}
 
-	return response(pb.RpcNavigationListPagesResponseError_NULL, pagesFiltered, nil)
+	return response(pb.RpcNavigationListObjectsResponseError_NULL, ObjectsFiltered, nil)
 }
 
-func (mw *Middleware) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse {
-	response := func(code pb.RpcNavigationGetPageInfoWithLinksResponseErrorCode, page *model.PageInfoWithLinks, err error) *pb.RpcNavigationGetPageInfoWithLinksResponse {
-		m := &pb.RpcNavigationGetPageInfoWithLinksResponse{Error: &pb.RpcNavigationGetPageInfoWithLinksResponseError{Code: code}, Page: page}
+func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
+	response := func(code pb.RpcNavigationGetObjectInfoWithLinksResponseErrorCode, object *model.ObjectInfoWithLinks, err error) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
+		m := &pb.RpcNavigationGetObjectInfoWithLinksResponse{Error: &pb.RpcNavigationGetObjectInfoWithLinksResponseError{Code: code}, Object: object}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -45,10 +45,10 @@ func (mw *Middleware) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPag
 		return m
 	}
 
-	filter := func(pages []*model.PageInfo) []*model.PageInfo {
-		var filtered []*model.PageInfo
-		for _, page := range pages {
-			if page.PageType == model.PageInfo_Set || page.PageType == model.PageInfo_Archive {
+	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
+		var filtered []*model.ObjectInfo
+		for _, page := range Objects {
+			if page.ObjectType == model.ObjectInfo_Set || page.ObjectType == model.ObjectInfo_Archive {
 				continue
 			}
 
@@ -57,9 +57,9 @@ func (mw *Middleware) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPag
 		return filtered
 	}
 
-	page, err := mw.Anytype.PageInfoWithLinks(req.PageId)
+	page, err := mw.Anytype.ObjectInfoWithLinks(req.ObjectId)
 	if err != nil {
-		return response(pb.RpcNavigationGetPageInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
+		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
 	if req.Context != pb.RpcNavigation_Navigation && page.Links != nil {
@@ -67,7 +67,7 @@ func (mw *Middleware) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPag
 		page.Links.Outbound = filter(page.Links.Outbound)
 	}
 
-	return response(pb.RpcNavigationGetPageInfoWithLinksResponseError_NULL, page, nil)
+	return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_NULL, page, nil)
 }
 
 func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse {
@@ -84,7 +84,7 @@ func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreate
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, err = bs.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details)
+		id, err = bs.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil, nil)
 		return
 	})
 

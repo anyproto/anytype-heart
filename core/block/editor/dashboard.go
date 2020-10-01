@@ -3,6 +3,7 @@ package editor
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -17,7 +18,7 @@ import (
 )
 
 func NewDashboard(m meta.Service, importServices _import.Services) *Dashboard {
-	sb := smartblock.New(m)
+	sb := smartblock.New(m, objects.BundledObjectTypeURLPrefix+"dashboard")
 	return &Dashboard{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
@@ -31,8 +32,8 @@ type Dashboard struct {
 	_import.Import
 }
 
-func (p *Dashboard) Init(s source.Source, _ bool) (err error) {
-	if err = p.SmartBlock.Init(s, true); err != nil {
+func (p *Dashboard) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+	if err = p.SmartBlock.Init(s, true, []string{p.SmartBlock.DefaultObjectTypeUrl()}); err != nil {
 		return
 	}
 	p.DisableLayouts()

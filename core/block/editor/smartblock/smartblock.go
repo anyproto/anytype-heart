@@ -38,8 +38,8 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New(ms meta.Service) SmartBlock {
-	return &smartBlock{meta: ms}
+func New(ms meta.Service, defaultObjectTypeUrl string) SmartBlock {
+	return &smartBlock{meta: ms, defaultObjectTypeUrl: defaultObjectTypeUrl}
 }
 
 type SmartblockOpenListner interface {
@@ -47,8 +47,9 @@ type SmartblockOpenListner interface {
 }
 
 type SmartBlock interface {
-	Init(s source.Source, allowEmpty bool) (err error)
+	Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error)
 	Id() string
+	DefaultObjectTypeUrl() string
 	Type() pb.SmartBlockType
 	Meta() *core.SmartBlockMeta
 	Show(*state.Context) (err error)
@@ -60,6 +61,8 @@ type SmartBlock interface {
 	AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateRelations(relations []*pbrelation.Relation) (err error)
 	RemoveRelations(relationKeys []string) (err error)
+	AddObjectTypes(objectTypes []string) (err error)
+	RemoveObjectTypes(objectTypes []string) (err error)
 
 	Reindex() error
 	ResetToVersion(s *state.State) (err error)
@@ -77,14 +80,15 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds         []string
-	sendEvent      func(e *pb.Event)
-	undo           undo.History
-	source         source.Source
-	meta           meta.Service
-	metaSub        meta.Subscriber
-	metaData       *core.SmartBlockMeta
-	disableLayouts bool
+	depIds               []string
+	sendEvent            func(e *pb.Event)
+	undo                 undo.History
+	source               source.Source
+	meta                 meta.Service
+	metaSub              meta.Subscriber
+	metaData             *core.SmartBlockMeta
+	disableLayouts       bool
+	defaultObjectTypeUrl string
 }
 
 func (sb *smartBlock) Id() string {
@@ -98,31 +102,49 @@ func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	}
 }
 
+func (sb *smartBlock) DefaultObjectTypeUrl() string {
+	return sb.defaultObjectTypeUrl
+}
+
 func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return err
 	}
 	sb.source = s
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
-	return sb.checkRootBlock()
+	return sb.fillIfEmpty(objectTypeUrls)
 }
 
-func (sb *smartBlock) checkRootBlock() (err error) {
+func (sb *smartBlock) fillIfEmpty(objectTypeUrls []string) (err error) {
 	s := sb.NewState()
-	if root := s.Get(sb.RootId()); root != nil {
-		return
+	root := s.Get(sb.RootId())
+	var changed bool
+	if root == nil {
+		changed = true
+		s.Add(simple.New(&model.Block{
+			Id: sb.RootId(),
+			Content: &model.BlockContentOfSmartblock{
+				Smartblock: &model.BlockContentSmartblock{},
+			},
+		}))
 	}
-	s.Add(simple.New(&model.Block{
-		Id: sb.RootId(),
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-	}))
+
+	if len(s.ObjectTypes()) == 0 {
+		if len(objectTypeUrls) == 0 {
+			objectTypeUrls = []string{sb.defaultObjectTypeUrl}
+		}
+		changed = true
+		s.SetObjectTypes(objectTypeUrls)
+	}
+	if !changed {
+		return nil
+	}
+
 	return sb.Apply(s, NoEvent, NoHistory)
 }
 
@@ -304,6 +326,11 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
 	}
+	if storeInfo.details == nil || storeInfo.details.Fields == nil {
+		storeInfo.details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+
+	storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
 
 	if hasDepIds(act) {
 		if sb.checkSubscriptions() {
@@ -385,6 +412,43 @@ func (sb *smartBlock) AddRelations(relations []*pbrelation.Relation) (relationsW
 	}
 
 	s := sb.NewState().SetRelations(copy)
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) AddObjectTypes(objectTypes []string) (err error) {
+	c := make([]string, len(sb.ObjectTypes()))
+	copy(c, sb.ObjectTypes())
+
+	c = append(c, objectTypes...)
+	s := sb.NewState().SetObjectTypes(c)
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) RemoveObjectTypes(objectTypes []string) (err error) {
+	filtered := []string{}
+
+	for _, ot := range sb.ObjectTypes() {
+		var toBeRemoved bool
+		for _, OTToRemove := range objectTypes {
+			if ot == OTToRemove {
+				toBeRemoved = true
+				break
+			}
+		}
+		if !toBeRemoved {
+			filtered = append(filtered, ot)
+		}
+	}
+
+	s := sb.NewState().SetObjectTypes(filtered)
 
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return

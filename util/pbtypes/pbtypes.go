@@ -14,6 +14,17 @@ func String(v string) *types.Value {
 	}
 }
 
+func StringList(s []string) *types.Value {
+	var vals []*types.Value
+	for _, str := range s {
+		vals = append(vals, String(str))
+	}
+
+	return &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+	}
+}
+
 func Bool(v bool) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_BoolValue{BoolValue: v},

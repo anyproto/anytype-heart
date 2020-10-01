@@ -198,6 +198,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().ReadDoc(gomock.Any(), true).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.Init(fx.source, true)
+	err := fx.Init(fx.source, true, "")
 	require.NoError(fx.t, err)
 }

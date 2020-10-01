@@ -9,6 +9,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	types2 "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +29,7 @@ func TestRelations(t *testing.T) {
 	resp := mw.WalletCreate(&pb.RpcWalletCreateRequest{RootPath: rootPath})
 	require.Equal(t, 0, int(resp.Error.Code))
 
-	resp2 := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "test", AlphaInviteCode: "elbrus"})
+	resp2 := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "profile", AlphaInviteCode: "elbrus"})
 	require.Equal(t, 0, int(resp2.Error.Code))
 
 	resp3 := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
@@ -45,20 +47,33 @@ func TestRelations(t *testing.T) {
 
 	resp4 := mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(resp4.Error.Code), resp4.Error.Description)
-	require.Len(t, resp4.ObjectTypes, 2)
-	require.Equal(t, resp3.ObjectType.Url, resp4.ObjectTypes[1].Url)
-	require.Len(t, resp4.ObjectTypes[1].Relations, 2)
+	require.Len(t, resp4.ObjectTypes, 3)
+	require.Equal(t, resp3.ObjectType.Url, resp4.ObjectTypes[2].Url)
+	require.Len(t, resp4.ObjectTypes[2].Relations, 2)
 
 	resp5 := mw.SetCreate(&pb.RpcSetCreateRequest{
-		ObjectTypeURL: resp4.ObjectTypes[1].Url,
+		ObjectTypeURL: resp4.ObjectTypes[2].Url,
 	})
 	require.Equal(t, 0, int(resp5.Error.Code), resp5.Error.Description)
-	require.NotEmpty(t, resp5.PageId)
+	require.NotEmpty(t, resp5.Id)
+	respCreate1 := mw.BlockCreateDataviewRecord(&pb.RpcBlockCreateDataviewRecordRequest{ContextId: resp5.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom1")}}})
+	require.Equal(t, 0, int(respCreate1.Error.Code), respCreate1.Error.Description)
 
-	resp6 := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: resp5.PageId})
+	resp6 := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: resp5.Id})
 	require.Equal(t, 0, int(resp6.Error.Code), resp6.Error.Description)
 
 	require.Len(t, resp6.Event.Messages, 2)
+	require.Len(t, resp6.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
+
 	show := resp6.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
+
+	mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
+	resp7 := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
+	require.Equal(t, 0, int(resp7.Error.Code), resp7.Error.Description)
+	require.Len(t, resp7.Event.Messages, 2)
+	show = resp6.Event.Messages[0].GetBlockShow()
+	require.NotNil(t, show)
+	require.Len(t, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 2)
+
 }

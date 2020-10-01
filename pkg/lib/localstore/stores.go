@@ -29,8 +29,8 @@ var (
 )
 
 type LocalStore struct {
-	Files FileStore
-	Pages ObjectStore
+	Files   FileStore
+	Objects ObjectStore
 }
 
 type FileStore interface {
@@ -55,23 +55,23 @@ type ObjectStore interface {
 	Indexable
 	database.Reader
 
-	AddObject(page *model.PageInfoWithOutboundLinksIDs) error
+	AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error
 	UpdateObject(id string, details *types.Struct, links []string, snippet string) error
 	UpdateLastModified(id string, time time.Time) error
 	UpdateLastOpened(id string, time time.Time) error
 	DeletePage(id string) error
 
-	GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error)
-	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)
-	GetDetails(id string) (*model.PageDetails, error)
-	GetByIDs(ids ...string) ([]*model.PageInfo, error)
-	List() ([]*model.PageInfo, error)
+	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
+	GetDetails(id string) (*model.ObjectDetails, error)
+	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
+	List() ([]*model.ObjectInfo, error)
 }
 
 func NewLocalStore(store ds.Batching) LocalStore {
 	return LocalStore{
-		Files: NewFileStore(store.(ds.TxnDatastore)),
-		Pages: NewObjectStore(store.(ds.TxnDatastore)),
+		Files:   NewFileStore(store.(ds.TxnDatastore)),
+		Objects: NewObjectStore(store.(ds.TxnDatastore)),
 	}
 }
 

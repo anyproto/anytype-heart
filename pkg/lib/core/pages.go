@@ -10,16 +10,16 @@ import (
 )
 
 func (a *Anytype) ObjectStore() localstore.ObjectStore {
-	return a.localStore.Pages
+	return a.localStore.Objects
 }
 
 // deprecated, to be removed
-func (a *Anytype) PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error) {
-	return a.localStore.Pages.GetWithLinksInfoByID(id)
+func (a *Anytype) ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error) {
+	return a.localStore.Objects.GetWithLinksInfoByID(id)
 }
 
 // deprecated, to be removed
-func (a *Anytype) PageList() ([]*model.PageInfo, error) {
+func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
 	ids, err := a.t.Logstore().Threads()
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 		idsS = append(idsS, id.String())
 	}
 
-	pages, err := a.localStore.Pages.GetByIDs(idsS...)
+	pages, err := a.localStore.Objects.GetByIDs(idsS...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,10 +82,10 @@ func (a *Anytype) PageList() ([]*model.PageInfo, error) {
 }
 
 // deprecated, to be removed
-func (a *Anytype) PageUpdateLastOpened(id string) error {
+func (a *Anytype) ObjectUpdateLastOpened(id string) error {
 	// lock here for the concurrent details changes
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	return a.localStore.Pages.UpdateLastModified(id, time.Now())
+	return a.localStore.Objects.UpdateLastModified(id, time.Now())
 }

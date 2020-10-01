@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -14,7 +15,7 @@ import (
 )
 
 func NewProfile(m meta.Service, fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
-	sb := smartblock.New(m)
+	sb := smartblock.New(m, objects.BundledObjectTypeURLPrefix+"profile")
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
 		SmartBlock: sb,
@@ -40,8 +41,8 @@ type Profile struct {
 	sendEvent func(e *pb.Event)
 }
 
-func (p *Profile) Init(s source.Source, _ bool) (err error) {
-	return p.SmartBlock.Init(s, true)
+func (p *Profile) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+	return p.SmartBlock.Init(s, true, []string{p.DefaultObjectTypeUrl()})
 }
 
 func (p *Profile) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {

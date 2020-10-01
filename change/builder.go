@@ -31,8 +31,8 @@ func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err erro
 	return sb.tree, sb.logHeads, err
 }
 
-func BuildDetailsTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
-	sb := &stateBuilder{onlyDetails: true}
+func BuildMetaTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
+	sb := &stateBuilder{onlyMeta: true}
 	err = sb.Build(s)
 	return sb.tree, sb.logHeads, err
 }
@@ -43,7 +43,7 @@ type stateBuilder struct {
 	tree            *Tree
 	smartblock      core.SmartBlock
 	qt              time.Duration
-	onlyDetails     bool
+	onlyMeta        bool
 	beforeId        string
 	includeBeforeId bool
 }
@@ -112,8 +112,8 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 	if err != nil {
 		return
 	}
-	if sb.onlyDetails {
-		sb.tree = NewDetailsTree()
+	if sb.onlyMeta {
+		sb.tree = NewMetaTree()
 	} else {
 		sb.tree = NewTree()
 	}
@@ -126,10 +126,10 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 			return
 		}
 	}
-	if sb.onlyDetails {
+	if sb.onlyMeta {
 		var filteredChanges = changes[:0]
 		for _, ch := range changes {
-			if ch.HasDetails() {
+			if ch.HasMeta() {
 				filteredChanges = append(filteredChanges, ch)
 			}
 		}
@@ -357,8 +357,8 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return
 	}
 	ch = &Change{Id: id, Change: chp}
-	if sb.onlyDetails {
-		ch.PreviousIds = ch.PreviousDetailsIds
+	if sb.onlyMeta {
+		ch.PreviousIds = ch.PreviousMetaIds
 	}
 	sb.cache[id] = ch
 	return

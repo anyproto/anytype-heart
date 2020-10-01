@@ -77,7 +77,7 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -95,6 +95,9 @@ type Service interface {
 	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveRelations(id string, relationKeys []string) (err error)
 	CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error)
+
+	AddObjectTypes(objectId string, objectTypes []string) (err error)
+	RemoveObjectTypes(objectId string, objectTypes []string) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -210,7 +213,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	s.m.Lock()
 	ob, ok := s.openedBlocks[id]
 	if !ok {
-		sb, e := s.createSmartBlock(id, false)
+		sb, e := s.createSmartBlock(id, false, nil)
 		if e != nil {
 			s.m.Unlock()
 			return e
@@ -230,7 +233,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
-	if e := s.anytype.PageUpdateLastOpened(id); e != nil {
+	if e := s.anytype.ObjectUpdateLastOpened(id); e != nil {
 		log.Warnf("can't update last opened id: %v", e)
 	}
 
@@ -245,7 +248,7 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	s.m.Lock()
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs(s.meta)
-	if err = bs.Init(source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs), true); err != nil {
+	if err = bs.Init(source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs), true, nil); err != nil {
 		return
 	}
 	bs.Lock()
@@ -382,19 +385,19 @@ func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) 
 	return
 }
 
-func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error) {
+func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error) {
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
-	pageId = csm.ID()
+	id = csm.ID()
 
-	if _, err = s.createSmartBlock(pageId, true); err != nil {
-		return pageId, err
+	if _, err = s.createSmartBlock(id, true, objectTypes); err != nil {
+		return id, err
 	}
 
-	log.Infof("created new smartBlock: %v", pageId)
+	log.Debugf("created new smartBlock: %v", id)
 	if details != nil && details.Fields != nil {
 		var setDetails []*pb.RpcBlockSetDetailsDetail
 		for k, v := range details.Fields {
@@ -404,14 +407,27 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 			})
 		}
 		if err = s.SetDetails(pb.RpcBlockSetDetailsRequest{
-			ContextId: pageId,
+			ContextId: id,
 			Details:   setDetails,
 		}); err != nil {
-			return pageId, fmt.Errorf("can't set details to page: %v", err)
+			return id, fmt.Errorf("can't set details to object: %v", err)
 		}
 	}
 
-	return pageId, nil
+	if relations != nil {
+		var setDetails []*pb.RpcBlockSetDetailsDetail
+		for k, v := range details.Fields {
+			setDetails = append(setDetails, &pb.RpcBlockSetDetailsDetail{
+				Key:   k,
+				Value: v,
+			})
+		}
+		if _, err = s.AddRelations(id, relations); err != nil {
+			return id, fmt.Errorf("can't add relations to object: %v", err)
+		}
+	}
+
+	return id, nil
 }
 
 func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
@@ -425,7 +441,7 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 		return "", "", basic.ErrNotSupported
 	}
 
-	pageId, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details)
+	pageId, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, []string{objects.BundledObjectTypeURLPrefix + "page"}, nil)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
@@ -645,7 +661,7 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDa
 
 func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (rec *types.Struct, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		cr, err := b.CreateRecord(ctx, req.BlockId, model.PageDetails{Details: req.Record})
+		cr, err := b.CreateRecord(ctx, req.BlockId, model.ObjectDetails{Details: req.Record})
 		if err != nil {
 			return err
 		}
@@ -658,7 +674,7 @@ func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreate
 
 func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) (err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateRecord(ctx, req.BlockId, req.RecordId, model.PageDetails{Details: req.Record})
+		return b.UpdateRecord(ctx, req.BlockId, req.RecordId, model.ObjectDetails{Details: req.Record})
 	})
 
 	return
@@ -931,7 +947,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 	}
 	ob, ok := s.openedBlocks[id]
 	if !ok {
-		sb, err = s.createSmartBlock(id, false)
+		sb, err = s.createSmartBlock(id, false, nil)
 		if err != nil {
 			return
 		}
@@ -949,7 +965,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 	}, nil
 }
 
-func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.SmartBlock, err error) {
+func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectTypeUrls []string) (sb smartblock.SmartBlock, err error) {
 	sc, err := source.NewSource(s.anytype, id)
 	if err != nil {
 		return
@@ -969,7 +985,7 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
-	err = sb.Init(sc, initEmpty)
+	err = sb.Init(sc, initEmpty, initWithObjectTypeUrls)
 	return
 }
 
@@ -1159,14 +1175,14 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 	return objectType, err
 }
 
-func (s *service) UpdateRelations(objectTypeId string, relations []*pbrelation.Relation) (err error) {
-	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+func (s *service) UpdateRelations(objectId string, relations []*pbrelation.Relation) (err error) {
+	return s.Do(objectId, func(b smartblock.SmartBlock) error {
 		return b.UpdateRelations(relations)
 	})
 }
 
-func (s *service) AddRelations(objectTypeId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	err = s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+func (s *service) AddRelations(objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		var err2 error
 		relationsWithKeys, err2 = b.AddRelations(relations)
 		if err2 != nil {
@@ -1178,6 +1194,18 @@ func (s *service) AddRelations(objectTypeId string, relations []*pbrelation.Rela
 	return
 }
 
+func (s *service) AddObjectTypes(objectId string, objectTypes []string) (err error) {
+	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+		return b.AddObjectTypes(objectTypes)
+	})
+}
+
+func (s *service) RemoveObjectTypes(objectId string, objectTypes []string) (err error) {
+	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+		return b.RemoveObjectTypes(objectTypes)
+	})
+}
+
 func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error) {
 	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet)
 	if err != nil {
@@ -1186,7 +1214,7 @@ func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (
 	}
 	id = csm.ID()
 
-	sb, err := s.createSmartBlock(id, true)
+	sb, err := s.createSmartBlock(id, true, nil)
 	if err != nil {
 		return "", err
 	}

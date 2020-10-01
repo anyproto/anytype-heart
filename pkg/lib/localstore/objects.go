@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	// PageInfo is stored in db key pattern:
+	// ObjectInfo is stored in db key pattern:
 	pagesPrefix            = "pages"
 	pagesDetailsBase       = ds.NewKey("/" + pagesPrefix + "/details")
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
@@ -107,7 +108,7 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 			continue
 		}
 
-		var details model.PageDetails
+		var details model.ObjectDetails
 		if err = proto.Unmarshal(rec.Value, &details); err != nil {
 			log.Errorf("failed to unmarshal: %s", err.Error())
 			total--
@@ -122,6 +123,28 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		}
 
+		var foundType bool
+		if t, ok := details.Details.Fields["type"]; ok {
+			if list := t.GetListValue(); list != nil {
+				for _, val := range list.Values {
+					if val.GetStringValue() == sch.ObjType.Url {
+						foundType = true
+						break
+					}
+				}
+			}
+			delete(details.Details.Fields, "type")
+		} else {
+			if sch.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+				// backward compatibility in case we don't have type indexed for pages
+				foundType = true
+			}
+		}
+
+		if !foundType {
+			continue
+		}
+
 		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
 		results = append(results, database.Record{Details: details.Details})
 	}
@@ -129,11 +152,7 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	return results, total, nil
 }
 
-func (m *dsObjectStore) Schema() string {
-	return pageSchema
-}
-
-func (m *dsObjectStore) AddObject(page *model.PageInfoWithOutboundLinksIDs) error {
+func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -149,6 +168,7 @@ func (m *dsObjectStore) AddObject(page *model.PageInfoWithOutboundLinksIDs) erro
 		return ErrDuplicateKey
 	}
 
+	page.Info.Details.Fields["type"] = pbtypes.StringList(page.Info.ObjectTypeUrls)
 	b, err := proto.Marshal(page.Info.Details)
 	if err != nil {
 		return err
@@ -206,7 +226,7 @@ func (m *dsObjectStore) DeletePage(id string) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error) {
+func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -243,17 +263,17 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.PageInfoWithLink
 		return nil, err
 	}
 
-	return &model.PageInfoWithLinks{
+	return &model.ObjectInfoWithLinks{
 		Id:   id,
 		Info: page,
-		Links: &model.PageLinksInfo{
+		Links: &model.ObjectLinksInfo{
 			Inbound:  inbound,
 			Outbound: outbound,
 		},
 	}, nil
 }
 
-func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error) {
+func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -280,13 +300,13 @@ func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.PageInfo
 		return nil, err
 	}
 
-	return &model.PageInfoWithOutboundLinks{
+	return &model.ObjectInfoWithOutboundLinks{
 		Info:          page,
 		OutboundLinks: outbound,
 	}, nil
 }
 
-func (m *dsObjectStore) GetDetails(id string) (*model.PageDetails, error) {
+func (m *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -296,7 +316,7 @@ func (m *dsObjectStore) GetDetails(id string) (*model.PageDetails, error) {
 	return getDetails(txn, id)
 }
 
-func (m *dsObjectStore) List() ([]*model.PageInfo, error) {
+func (m *dsObjectStore) List() ([]*model.ObjectInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -311,7 +331,7 @@ func (m *dsObjectStore) List() ([]*model.PageInfo, error) {
 	return getPagesInfo(txn, ids)
 }
 
-func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.PageInfo, error) {
+func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -355,7 +375,7 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, links []s
 	defer txn.Discard()
 
 	if details != nil || len(snippet) > 0 {
-		exInfo, _ := getPageInfo(txn, id)
+		exInfo, _ := getObjectInfo(txn, id)
 		if exInfo != nil {
 			if exInfo.Details.Equal(details) {
 				// skip updating details
@@ -377,7 +397,7 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, links []s
 	}
 
 	if details != nil {
-		if err = m.updateDetails(txn, id, &model.PageDetails{Details: details}); err != nil {
+		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
 	}
@@ -420,7 +440,7 @@ func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {
 	}
 
 	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
+		details = &model.ObjectDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
 	}
 
 	details.Details.Fields[fieldLastOpened] = structs.Float64(float64(time.Unix()))
@@ -445,7 +465,7 @@ func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
 	}
 
 	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.PageDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
+		details = &model.ObjectDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
 	}
 
 	details.Details.Fields[fieldLastModified] = structs.Float64(float64(time.Unix()))
@@ -458,7 +478,7 @@ func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.PageDetails) error {
+func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.ObjectDetails) error {
 	detailsKey := pagesDetailsBase.ChildString(id)
 	b, err := proto.Marshal(details)
 	if err != nil {
@@ -483,8 +503,8 @@ func (m *dsObjectStore) Indexes() []Index {
 
 /* internal */
 
-func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
-	var details model.PageDetails
+func getDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
+	var details model.ObjectDetails
 	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil && err != ds.ErrNotFound {
 		return nil, fmt.Errorf("failed to get details: %w", err)
 	} else if err := proto.Unmarshal(val, &details); err != nil {
@@ -494,7 +514,7 @@ func getDetails(txn ds.Txn, id string) (*model.PageDetails, error) {
 	return &details, nil
 }
 
-func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
+func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract smartblock type: %w", err)
@@ -503,11 +523,20 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, ErrNotAPage
 	}
 
-	var details model.PageDetails
+	var details model.ObjectDetails
 	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
 		return nil, fmt.Errorf("failed to get details: %w", err)
 	} else if err := proto.Unmarshal(val, &details); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
+	}
+
+	var objectTypes []string
+	if details.Details != nil && details.Details.Fields != nil && details.Details.Fields["type"] != nil {
+		vals := details.Details.Fields["type"].GetListValue()
+		for _, val := range vals.Values {
+			objectTypes = append(objectTypes, val.GetStringValue())
+		}
+		delete(details.Details.Fields, "type")
 	}
 
 	var snippet string
@@ -523,19 +552,20 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 		return nil, err
 	}
 
-	return &model.PageInfo{
+	return &model.ObjectInfo{
 		Id:              id,
-		PageType:        sbt.ToProto(),
+		ObjectType:      sbt.ToProto(),
 		Details:         details.Details,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
+		ObjectTypeUrls:  objectTypes,
 	}, nil
 }
 
-func getPagesInfo(txn ds.Txn, ids []string) ([]*model.PageInfo, error) {
-	var pages []*model.PageInfo
+func getPagesInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
+	var pages []*model.ObjectInfo
 	for _, id := range ids {
-		info, err := getPageInfo(txn, id)
+		info, err := getObjectInfo(txn, id)
 		if err != nil {
 			if strings.HasSuffix(err.Error(), "key not found") || err == ErrNotAPage {
 				continue

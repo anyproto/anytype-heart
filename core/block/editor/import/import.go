@@ -20,6 +20,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -61,7 +62,7 @@ type fileInfo struct {
 }
 
 type Services interface {
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct) (pageId string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error
@@ -131,7 +132,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			continue
 		}
 
-		pageID, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil)
+		pageID, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil, nil, nil)
 		if err != nil {
 			log.Errorf("failed to create smartblock: %s", err.Error())
 			continue
@@ -264,7 +265,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		progress.AddDone(1)
 		// wrap root-level csv files with page
 		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
-			pageID, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil)
+			pageID, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil, nil, nil)
 			if err != nil {
 				log.Errorf("failed to create smartblock: %s", err.Error())
 				continue

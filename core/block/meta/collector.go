@@ -94,7 +94,7 @@ func (c *collector) fetchInitialMeta() (err error) {
 	if err != nil {
 		return err
 	}
-	c.doc, err = c.s.ReadDetails(c)
+	c.doc, err = c.s.ReadMeta(c)
 	if err != nil {
 		return err
 	}

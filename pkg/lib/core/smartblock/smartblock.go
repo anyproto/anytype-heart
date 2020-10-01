@@ -37,20 +37,20 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	return SmartBlockType(blockType), nil
 }
 
-func (sbt SmartBlockType) ToProto() model.PageInfoType {
+func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 	switch sbt {
 	case SmartBlockTypePage:
-		return model.PageInfo_Page
+		return model.ObjectInfo_Page
 	case SmartBlockTypeProfilePage:
-		return model.PageInfo_ProfilePage
+		return model.ObjectInfo_ProfilePage
 	case SmartBlockTypeHome:
-		return model.PageInfo_Home
+		return model.ObjectInfo_Home
 	case SmartBlockTypeArchive:
-		return model.PageInfo_Archive
+		return model.ObjectInfo_Archive
 	case SmartBlockTypeSet:
-		return model.PageInfo_Set
+		return model.ObjectInfo_Set
 	default:
-		return model.PageInfo_Page
+		return model.ObjectInfo_Page
 	}
 }
 

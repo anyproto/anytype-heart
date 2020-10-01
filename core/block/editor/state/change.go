@@ -118,6 +118,14 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeRelationUpdate(ch.GetRelationUpdate()); err != nil {
 			return
 		}
+	case ch.GetObjectTypeAdd() != nil:
+		if err = s.changeObjectTypeAdd(ch.GetObjectTypeAdd()); err != nil {
+			return
+		}
+	case ch.GetObjectTypeRemove() != nil:
+		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
+			return
+		}
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -148,32 +156,36 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	return nil
 }
 
-func (s *State) changeRelationAdd(rel *pb.ChangeRelationAdd) error {
+func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	rels := s.Relations()
-	rels = append(rels, rel.Relation)
+	for _, rel := range s.Relations() {
+		if rel.Key == add.Relation.Key {
+			// todo: update?
+			log.Warnf("changeRelationAdd, relation already exists")
+			return nil
+		}
+	}
+
+	s.relations = append(rels, add.Relation)
 	return nil
 }
 
 func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
-	var relFiltered []*pbrelation.Relation
-	for _, rel := range s.Relations() {
+	for i, rel := range s.Relations() {
 		if rel.Key == remove.Key {
-			continue
+			s.relations = append(s.relations[:i], s.relations[i+1:]...)
+			return nil
 		}
-		relFiltered = append(relFiltered, rel)
 	}
 
-	if len(relFiltered) == len(s.relations) {
-		log.Warnf("changeRelationRemove: relation to remove not found")
-	}
-	s.relations = relFiltered
+	log.Warnf("changeRelationRemove: relation to remove not found")
 	return nil
 }
 
 func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
 	for _, rel := range s.Relations() {
 		// todo: copy slice?
-		if rel.Key == rel.Key {
+		if rel.Key != update.Key {
 			continue
 		}
 
@@ -189,6 +201,29 @@ func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
 	}
 
 	return fmt.Errorf("relation not found")
+}
+
+func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
+	for _, ot := range s.ObjectTypes() {
+		if ot == add.Url {
+			return nil
+		}
+	}
+
+	s.objectTypes = append(s.objectTypes, add.Url)
+	return nil
+}
+
+func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
+	for i, ot := range s.ObjectTypes() {
+		if ot == remove.Url {
+			s.objectTypes = append(s.objectTypes[:i], s.objectTypes[i+1:]...)
+			return nil
+		}
+	}
+
+	log.Warnf("changeObjectTypeRemove: type to remove not found")
+	return nil
 }
 
 func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
@@ -296,6 +331,8 @@ func (s *State) fillChanges(msgs []*pb.EventMessage) {
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeRelationsChanges()...)
+	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
+
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
@@ -487,6 +524,41 @@ func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfRelationRemove{
 					RelationRemove: &pb.ChangeRelationRemove{Key: v.Key},
+				},
+			})
+		}
+	}
+	return
+}
+
+func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
+	if s.objectTypes == nil {
+		return nil
+	}
+	var prev []string
+	if s.parent != nil {
+		prev = s.parent.ObjectTypes()
+	}
+
+	var prevMap = make(map[string]struct{}, len(prev))
+	var curMap = make(map[string]struct{}, len(s.objectTypes))
+
+	for _, v := range s.objectTypes {
+		_, ok := prevMap[v]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfObjectTypeAdd{
+					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v},
+				},
+			})
+		}
+	}
+	for _, v := range prev {
+		_, ok := curMap[v]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfObjectTypeRemove{
+					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v},
 				},
 			})
 		}

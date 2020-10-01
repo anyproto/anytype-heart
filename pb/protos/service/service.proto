@@ -105,8 +105,8 @@ service ClientCommands {
     rpc BlockRelationUpdate (anytype.Rpc.Block.Relation.Update.Request) returns (anytype.Rpc.Block.Relation.Update.Response);
     rpc BlockRelationRemove (anytype.Rpc.Block.Relation.Remove.Request) returns (anytype.Rpc.Block.Relation.Remove.Response);
 
-    rpc NavigationListPages (anytype.Rpc.Navigation.ListPages.Request) returns (anytype.Rpc.Navigation.ListPages.Response);
-    rpc NavigationGetPageInfoWithLinks (anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetPageInfoWithLinks.Response);
+    rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
+    rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
 
     // PageCreate just creates the new page, without adding the link to it from some other page
     rpc PageCreate (anytype.Rpc.Page.Create.Request) returns (anytype.Rpc.Page.Create.Response);

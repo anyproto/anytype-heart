@@ -10,15 +10,15 @@ import (
 var log = logging.Logger("anytype-core-schema")
 
 type Schema struct {
-	relations []*pbrelation.Relation
+	ObjType *pbrelation.ObjectType
 }
 
-func New(relations []*pbrelation.Relation) Schema {
-	return Schema{relations: relations}
+func New(objType *pbrelation.ObjectType) Schema {
+	return Schema{ObjType: objType}
 }
 
 func (sch *Schema) GetRelationByKey(key string) (*pbrelation.Relation, error) {
-	for _, rel := range sch.relations {
+	for _, rel := range sch.ObjType.Relations {
 		if rel.Key == key {
 			return rel, nil
 		}

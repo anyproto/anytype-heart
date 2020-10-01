@@ -255,7 +255,7 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 		return "", err
 	}
 
-	err = block.node.localStore.Pages.UpdateLastModified(block.thread.ID.String(), time.Now())
+	err = block.node.localStore.Objects.UpdateLastModified(block.thread.ID.String(), time.Now())
 	if err != nil {
 		log.Errorf("failed to update lastModified: %w", err)
 	}

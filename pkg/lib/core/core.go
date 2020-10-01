@@ -120,9 +120,9 @@ type Service interface {
 	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
 
 	ObjectStore() localstore.ObjectStore
-	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
-	PageList() ([]*model.PageInfo, error)
-	PageUpdateLastOpened(id string) error
+	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
+	ObjectList() ([]*model.ObjectInfo, error)
+	ObjectUpdateLastOpened(id string) error
 }
 
 func (a *Anytype) Account() string {
@@ -235,7 +235,7 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	return a, nil
 }
 
-func New(rootPath string, account string, reIndexFunc func(id string) error, snapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, fileKeys []*FileKeys) proto.Marshaler) (Service, error) {
+func New(rootPath string, account string, reIndexFunc func(id string) error, snapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*FileKeys) proto.Marshaler) (Service, error) {
 	opts, err := getNewConfig(rootPath, account)
 	if err != nil {
 		return nil, err

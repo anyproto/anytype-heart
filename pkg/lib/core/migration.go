@@ -175,7 +175,7 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 		}
 	}
 
-	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, nil, keys)
+	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, nil, nil, keys)
 	sb, err := a.GetSmartBlock(id.String())
 
 	log.With("thread", id.String()).Debugf("thread migrated")

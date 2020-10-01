@@ -22,6 +22,8 @@
     - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
     - [Change.FileKeys](#anytype.Change.FileKeys)
     - [Change.FileKeys.KeysEntry](#anytype.Change.FileKeys.KeysEntry)
+    - [Change.ObjectTypeAdd](#anytype.Change.ObjectTypeAdd)
+    - [Change.ObjectTypeRemove](#anytype.Change.ObjectTypeRemove)
     - [Change.RelationAdd](#anytype.Change.RelationAdd)
     - [Change.RelationRemove](#anytype.Change.RelationRemove)
     - [Change.RelationUpdate](#anytype.Change.RelationUpdate)
@@ -391,14 +393,14 @@
     - [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response)
     - [Rpc.Log.Send.Response.Error](#anytype.Rpc.Log.Send.Response.Error)
     - [Rpc.Navigation](#anytype.Rpc.Navigation)
-    - [Rpc.Navigation.GetPageInfoWithLinks](#anytype.Rpc.Navigation.GetPageInfoWithLinks)
-    - [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request)
-    - [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response)
-    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error)
-    - [Rpc.Navigation.ListPages](#anytype.Rpc.Navigation.ListPages)
-    - [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request)
-    - [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response)
-    - [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error)
+    - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype.Rpc.Navigation.GetObjectInfoWithLinks)
+    - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request)
+    - [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response)
+    - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error)
+    - [Rpc.Navigation.ListObjects](#anytype.Rpc.Navigation.ListObjects)
+    - [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request)
+    - [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response)
+    - [Rpc.Navigation.ListObjects.Response.Error](#anytype.Rpc.Navigation.ListObjects.Response.Error)
     - [Rpc.ObjectType](#anytype.Rpc.ObjectType)
     - [Rpc.ObjectType.Create](#anytype.Rpc.ObjectType.Create)
     - [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request)
@@ -549,8 +551,8 @@
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
-    - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code)
-    - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
+    - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
+    - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code)
@@ -681,15 +683,15 @@
   
 
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
-    - [PageDetails](#anytype.model.PageDetails)
-    - [PageInfo](#anytype.model.PageInfo)
-    - [PageInfoWithLinks](#anytype.model.PageInfoWithLinks)
-    - [PageInfoWithOutboundLinks](#anytype.model.PageInfoWithOutboundLinks)
-    - [PageInfoWithOutboundLinksIDs](#anytype.model.PageInfoWithOutboundLinksIDs)
-    - [PageLinks](#anytype.model.PageLinks)
-    - [PageLinksInfo](#anytype.model.PageLinksInfo)
+    - [ObjectDetails](#anytype.model.ObjectDetails)
+    - [ObjectInfo](#anytype.model.ObjectInfo)
+    - [ObjectInfoWithLinks](#anytype.model.ObjectInfoWithLinks)
+    - [ObjectInfoWithOutboundLinks](#anytype.model.ObjectInfoWithOutboundLinks)
+    - [ObjectInfoWithOutboundLinksIDs](#anytype.model.ObjectInfoWithOutboundLinksIDs)
+    - [ObjectLinks](#anytype.model.ObjectLinks)
+    - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
   
-    - [PageInfo.Type](#anytype.model.PageInfo.Type)
+    - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
   
   
   
@@ -857,8 +859,8 @@
 | BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) |  |
 | BlockRelationUpdate | [Rpc.Block.Relation.Update.Request](#anytype.Rpc.Block.Relation.Update.Request) | [Rpc.Block.Relation.Update.Response](#anytype.Rpc.Block.Relation.Update.Response) |  |
 | BlockRelationRemove | [Rpc.Block.Relation.Remove.Request](#anytype.Rpc.Block.Relation.Remove.Request) | [Rpc.Block.Relation.Remove.Response](#anytype.Rpc.Block.Relation.Remove.Response) |  |
-| NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
-| NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
+| NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request) | [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response) |  |
+| NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) |  |
 | ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype.Rpc.ObjectType.Relation.List.Request) | [Rpc.ObjectType.Relation.List.Response](#anytype.Rpc.ObjectType.Relation.List.Response) |  |
@@ -894,7 +896,7 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | previous_ids | [string](#string) | repeated | ids of previous changes |
 | last_snapshot_id | [string](#string) |  | id of the last snapshot |
-| previous_details_ids | [string](#string) | repeated | ids of the last changes with details/relations content |
+| previous_meta_ids | [string](#string) | repeated | ids of the last changes with details/relations content |
 | content | [Change.Content](#anytype.Change.Content) | repeated | set of actions to apply |
 | snapshot | [Change.Snapshot](#anytype.Change.Snapshot) |  | snapshot - when not null, the Content will be ignored |
 | fileKeys | [Change.FileKeys](#anytype.Change.FileKeys) | repeated | file keys related to changes content |
@@ -1004,6 +1006,8 @@ the element of change tree used to store and internal apply smartBlock history
 | relationAdd | [Change.RelationAdd](#anytype.Change.RelationAdd) |  |  |
 | relationRemove | [Change.RelationRemove](#anytype.Change.RelationRemove) |  |  |
 | relationUpdate | [Change.RelationUpdate](#anytype.Change.RelationUpdate) |  |  |
+| objectTypeAdd | [Change.ObjectTypeAdd](#anytype.Change.ObjectTypeAdd) |  |  |
+| objectTypeRemove | [Change.ObjectTypeRemove](#anytype.Change.ObjectTypeRemove) |  |  |
 
 
 
@@ -1067,6 +1071,36 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.ObjectTypeAdd"></a>
+
+### Change.ObjectTypeAdd
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.ObjectTypeRemove"></a>
+
+### Change.ObjectTypeRemove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
 
 
 
@@ -6305,9 +6339,9 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
-<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks"></a>
+<a name="anytype.Rpc.Navigation.GetObjectInfoWithLinks"></a>
 
-### Rpc.Navigation.GetPageInfoWithLinks
+### Rpc.Navigation.GetObjectInfoWithLinks
 Get the info for page alongside with info for all inbound and outbound links from/to this page
 
 
@@ -6315,15 +6349,15 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Request"></a>
+<a name="anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request"></a>
 
-### Rpc.Navigation.GetPageInfoWithLinks.Request
+### Rpc.Navigation.GetObjectInfoWithLinks.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| pageId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | context | [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context) |  |  |
 
 
@@ -6331,31 +6365,31 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response"></a>
+<a name="anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response"></a>
 
-### Rpc.Navigation.GetPageInfoWithLinks.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error) |  |  |
-| page | [model.PageInfoWithLinks](#anytype.model.PageInfoWithLinks) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error"></a>
-
-### Rpc.Navigation.GetPageInfoWithLinks.Response.Error
+### Rpc.Navigation.GetObjectInfoWithLinks.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code) |  |  |
+| error | [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error) |  |  |
+| object | [model.ObjectInfoWithLinks](#anytype.model.ObjectInfoWithLinks) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error"></a>
+
+### Rpc.Navigation.GetObjectInfoWithLinks.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -6363,19 +6397,19 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Navigation.ListPages"></a>
+<a name="anytype.Rpc.Navigation.ListObjects"></a>
 
-### Rpc.Navigation.ListPages
-
-
+### Rpc.Navigation.ListObjects
 
 
 
 
 
-<a name="anytype.Rpc.Navigation.ListPages.Request"></a>
 
-### Rpc.Navigation.ListPages.Request
+
+<a name="anytype.Rpc.Navigation.ListObjects.Request"></a>
+
+### Rpc.Navigation.ListObjects.Request
 
 
 
@@ -6388,31 +6422,31 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Navigation.ListPages.Response"></a>
+<a name="anytype.Rpc.Navigation.ListObjects.Response"></a>
 
-### Rpc.Navigation.ListPages.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error) |  |  |
-| pages | [model.PageInfo](#anytype.model.PageInfo) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Navigation.ListPages.Response.Error"></a>
-
-### Rpc.Navigation.ListPages.Response.Error
+### Rpc.Navigation.ListObjects.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code) |  |  |
+| error | [Rpc.Navigation.ListObjects.Response.Error](#anytype.Rpc.Navigation.ListObjects.Response.Error) |  |  |
+| objects | [model.ObjectInfo](#anytype.model.ObjectInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Navigation.ListObjects.Response.Error"></a>
+
+### Rpc.Navigation.ListObjects.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7016,7 +7050,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Set.Create.Response.Error](#anytype.Rpc.Set.Create.Response.Error) |  |  |
-| pageId | [string](#string) |  |  |
+| id | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
@@ -8458,9 +8492,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code"></a>
+<a name="anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code"></a>
 
-### Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code
+### Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -8471,9 +8505,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Navigation.ListPages.Response.Error.Code"></a>
+<a name="anytype.Rpc.Navigation.ListObjects.Response.Error.Code"></a>
 
-### Rpc.Navigation.ListPages.Response.Error.Code
+### Rpc.Navigation.ListObjects.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -10372,9 +10406,9 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="anytype.model.PageDetails"></a>
+<a name="anytype.model.ObjectDetails"></a>
 
-### PageDetails
+### ObjectDetails
 
 
 
@@ -10387,69 +10421,71 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="anytype.model.PageInfo"></a>
+<a name="anytype.model.ObjectInfo"></a>
 
-### PageInfo
+### ObjectInfo
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
+| objectTypeUrls | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| relations | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
-| pageType | [PageInfo.Type](#anytype.model.PageInfo.Type) |  |  |
+| objectType | [ObjectInfo.Type](#anytype.model.ObjectInfo.Type) |  |  |
 
 
 
 
 
 
-<a name="anytype.model.PageInfoWithLinks"></a>
+<a name="anytype.model.ObjectInfoWithLinks"></a>
 
-### PageInfoWithLinks
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| info | [PageInfo](#anytype.model.PageInfo) |  |  |
-| links | [PageLinksInfo](#anytype.model.PageLinksInfo) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.PageInfoWithOutboundLinks"></a>
-
-### PageInfoWithOutboundLinks
+### ObjectInfoWithLinks
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| info | [PageInfo](#anytype.model.PageInfo) |  |  |
-| outboundLinks | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+| info | [ObjectInfo](#anytype.model.ObjectInfo) |  |  |
+| links | [ObjectLinksInfo](#anytype.model.ObjectLinksInfo) |  |  |
 
 
 
 
 
 
-<a name="anytype.model.PageInfoWithOutboundLinksIDs"></a>
+<a name="anytype.model.ObjectInfoWithOutboundLinks"></a>
 
-### PageInfoWithOutboundLinksIDs
+### ObjectInfoWithOutboundLinks
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| info | [PageInfo](#anytype.model.PageInfo) |  |  |
+| info | [ObjectInfo](#anytype.model.ObjectInfo) |  |  |
+| outboundLinks | [ObjectInfo](#anytype.model.ObjectInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.ObjectInfoWithOutboundLinksIDs"></a>
+
+### ObjectInfoWithOutboundLinksIDs
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| info | [ObjectInfo](#anytype.model.ObjectInfo) |  |  |
 | outboundLinks | [string](#string) | repeated |  |
 
 
@@ -10457,9 +10493,9 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="anytype.model.PageLinks"></a>
+<a name="anytype.model.ObjectLinks"></a>
 
-### PageLinks
+### ObjectLinks
 
 
 
@@ -10473,16 +10509,16 @@ Precondition: user A and user B opened the same block
 
 
 
-<a name="anytype.model.PageLinksInfo"></a>
+<a name="anytype.model.ObjectLinksInfo"></a>
 
-### PageLinksInfo
+### ObjectLinksInfo
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| inbound | [PageInfo](#anytype.model.PageInfo) | repeated |  |
-| outbound | [PageInfo](#anytype.model.PageInfo) | repeated |  |
+| inbound | [ObjectInfo](#anytype.model.ObjectInfo) | repeated |  |
+| outbound | [ObjectInfo](#anytype.model.ObjectInfo) | repeated |  |
 
 
 
@@ -10491,9 +10527,9 @@ Precondition: user A and user B opened the same block
  
 
 
-<a name="anytype.model.PageInfo.Type"></a>
+<a name="anytype.model.ObjectInfo.Type"></a>
 
-### PageInfo.Type
+### ObjectInfo.Type
 
 
 | Name | Number | Description |
@@ -10958,6 +10994,7 @@ deprecated
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated |  |
+| objectTypes | [string](#string) | repeated |  |
 
 
 

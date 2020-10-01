@@ -13,7 +13,7 @@ var log = logging.Logger("anytype-mw-editor")
 
 func NewBreadcrumbs(m meta.Service) *Breadcrumbs {
 	return &Breadcrumbs{
-		SmartBlock: smartblock.New(m),
+		SmartBlock: smartblock.New(m, ""),
 	}
 }
 
@@ -21,8 +21,8 @@ type Breadcrumbs struct {
 	smartblock.SmartBlock
 }
 
-func (p *Breadcrumbs) Init(s source.Source, _ bool) (err error) {
-	if err = p.SmartBlock.Init(s, true); err != nil {
+func (p *Breadcrumbs) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
 		return
 	}
 	p.SmartBlock.DisableLayouts()
