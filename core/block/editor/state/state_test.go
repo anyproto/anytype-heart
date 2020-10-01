@@ -144,3 +144,16 @@ func TestState_Diff(t *testing.T) {
 	require.NotNil(t, msgs[2].Msg.GetBlockDelete())
 	assert.Len(t, msgs[2].Msg.GetBlockDelete().BlockIds, 1)
 }
+
+func TestState_IsChild(t *testing.T) {
+	s := NewDoc("root", map[string]simple.Block{
+		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2"}}),
+		"2":    base.NewBase(&model.Block{Id: "2", ChildrenIds: []string{"3"}}),
+		"3":    base.NewBase(&model.Block{Id: "3"}),
+	}).NewState()
+	assert.True(t, s.IsChild("2", "3"))
+	assert.True(t, s.IsChild("root", "3"))
+	assert.True(t, s.IsChild("root", "2"))
+	assert.False(t, s.IsChild("root", "root"))
+	assert.False(t, s.IsChild("3", "2"))
+}

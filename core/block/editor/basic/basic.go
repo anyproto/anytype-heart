@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -88,8 +89,13 @@ func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id st
 	if bs.Type() == pb.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
-
 	s := bs.NewStateCtx(ctx)
+	if req.TargetId != "" {
+		if s.IsChild(template.HeaderLayoutId, req.TargetId) {
+			req.Position = model.Block_Bottom
+			req.TargetId = template.HeaderLayoutId
+		}
+	}
 	block := simple.New(req.Block)
 	s.Add(block)
 	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
@@ -164,6 +170,12 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 	}
 
 	s := bs.NewStateCtx(ctx)
+	if req.DropTargetId != "" {
+		if s.IsChild(template.HeaderLayoutId, req.DropTargetId) || req.DropTargetId == template.HeaderLayoutId {
+			req.Position = model.Block_Bottom
+			req.DropTargetId = template.HeaderLayoutId
+		}
+	}
 	for _, id := range req.BlockIds {
 		if b := s.Pick(id); b != nil {
 			s.Unlink(id)

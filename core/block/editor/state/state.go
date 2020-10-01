@@ -180,6 +180,19 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 	return
 }
 
+func (s *State) IsChild(parentId, childId string) bool {
+	for {
+		parent := s.PickParentOf(childId)
+		if parent == nil {
+			return false
+		}
+		if parent.Model().Id == parentId {
+			return true
+		}
+		childId = parent.Model().Id
+	}
+}
+
 func (s *State) PickOriginParentOf(id string) (res simple.Block) {
 	if s.parent != nil {
 		return s.parent.PickParentOf(id)
