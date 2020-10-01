@@ -147,3 +147,5 @@ func (td *textDetails) Merge(b simple.Block) (err error) {
 	td.Text.content.Marks = &model.BlockContentTextMarks{}
 	return
 }
+
+func (td *textDetails) SetStyle(_ model.BlockContentTextStyle) {}
