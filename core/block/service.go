@@ -208,11 +208,11 @@ func (s *service) Anytype() anytype.Service {
 
 func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	s.m.Lock()
-	defer s.m.Unlock()
 	ob, ok := s.openedBlocks[id]
 	if !ok {
 		sb, e := s.createSmartBlock(id, false)
 		if e != nil {
+			s.m.Unlock()
 			return e
 		}
 		ob = &openedBlock{
@@ -221,6 +221,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		}
 		s.openedBlocks[id] = ob
 	}
+	s.m.Unlock()
 
 	ob.Lock()
 	defer ob.Unlock()

@@ -54,4 +54,11 @@ func TestRelations(t *testing.T) {
 	})
 	require.Equal(t, 0, int(resp5.Error.Code), resp5.Error.Description)
 	require.NotEmpty(t, resp5.PageId)
+
+	resp6 := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: resp5.PageId})
+	require.Equal(t, 0, int(resp6.Error.Code), resp6.Error.Description)
+
+	require.Len(t, resp6.Event.Messages, 2)
+	show := resp6.Event.Messages[0].GetBlockShow()
+	require.NotNil(t, show)
 }
