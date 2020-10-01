@@ -1,0 +1,6 @@
+FROM cimg/base:2020.01
+
+COPY ./dist/server /bin/server
+COPY .circleci/testdata /testdata
+
+ENTRYPOINT ["/bin/server"]

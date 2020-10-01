@@ -133,12 +133,55 @@ jobs:
             mv jsaddon/build addon
             tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon schemas
             mv js_${VERSION}_linux-amd64.tar.gz ${OUT}/
+      - run:
+          name: build lib-server
+          command: |
+            make build-server
       - persist_to_workspace:
           root: ~/dist
           paths:
             - lib
+            - server
       - store_artifacts:
           path: ~/dist/lib
+
+  functional-test:
+    docker:
+      - image: circleci/golang:1.13.12
+    steps:
+      - *checkout-linux
+      - add_ssh_keys:
+          fingerprints:
+            - "b5:92:d9:fa:2b:e8:97:ab:83:48:02:89:35:39:ff:e7"
+      - restore_cache:
+          keys:
+            - go-pkg-v3-{{ arch }}-{{ checksum "go.sum" }}
+            - go-pkg-v3-{{ arch }}
+      - setup_remote_docker
+      - run:
+          name: build lib-server
+          command: |
+            sudo apt-get update -qq
+            sudo apt install -y gogoprotobuf
+            make setup-go
+            make setup-protoc-go
+            ls -la
+            make build-server
+            echo ${GITHUB_TOKEN} | docker login https://docker.pkg.github.com -u ${CIRCLE_PROJECT_USERNAME} --password-stdin
+            TAG=${CIRCLE_SHA1}
+            docker build -t docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG} -f .circleci/Dockerfile-debug .
+            docker push docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG}
+            docker tag docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG} docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${CIRCLE_BRANCH}
+            docker push docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${CIRCLE_BRANCH}
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              docker tag docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG} docker.pkg.github.com/anytypeio/go-anytype-middleware/server:latest
+              docker push docker.pkg.github.com/anytypeio/go-anytype-middleware/server:latest
+            fi
+      - run:
+          name: run tests
+          command: |
+            echo ${GITHUB_TOKEN} | docker login https://docker.pkg.github.com -u ${CIRCLE_PROJECT_USERNAME} --password-stdin
+            ./.circleci/run_test.sh
 
   build-lib-darwin-windows:
     macos:
@@ -533,6 +576,12 @@ workflows:
           filters:
             branches:
               only: master
+            tags:
+              only: /.*/
+      - functional-test:
+          requires:
+            - unit-test
+          filters:
             tags:
               only: /.*/
       - build-ios-framework:

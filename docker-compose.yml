@@ -1,0 +1,27 @@
+version: "3"
+
+services:
+  test:
+    container_name: test
+    image: docker.pkg.github.com/anytypeio/python-anytype-testing/tests:latest
+    volumes:
+      - ./allure-results:/app/allure-results
+    links:
+      - middleware-node-a
+      - middleware-node-b
+    environment:
+      TEST_MIDDLEWARE_NODE_A_ADDRESS_HOST: middleware-node-a
+      TEST_MIDDLEWARE_NODE_A_ADDRESS_PORT: 31007
+      TEST_MIDDLEWARE_NODE_B_ADDRESS_HOST: middleware-node-b
+      TEST_MIDDLEWARE_NODE_B_ADDRESS_PORT: 41007
+    command: bash -c "make test"
+
+  middleware-node-a:
+    image: docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG}
+    environment:
+      ANYTYPE_GRPC_ADDR: "0.0.0.0:31007"
+
+  middleware-node-b:
+    image: docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG}
+    environment:
+      ANYTYPE_GRPC_ADDR: "0.0.0.0:41007"
