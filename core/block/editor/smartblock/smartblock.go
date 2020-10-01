@@ -9,10 +9,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -33,6 +33,7 @@ var (
 const (
 	NoHistory ApplyFlag = iota
 	NoEvent
+	DoSnapshot
 )
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -53,7 +54,7 @@ type SmartBlock interface {
 	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
-	History() history.History
+	History() undo.History
 	Anytype() anytype.Service
 	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
 	AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
@@ -61,6 +62,7 @@ type SmartBlock interface {
 	RemoveRelations(relationKeys []string) (err error)
 
 	Reindex() error
+	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	Close() (err error)
 	state.Doc
@@ -77,7 +79,7 @@ type smartBlock struct {
 	sync.Mutex
 	depIds         []string
 	sendEvent      func(e *pb.Event)
-	hist           history.History
+	undo           undo.History
 	source         source.Source
 	meta           meta.Service
 	metaSub        meta.Subscriber
@@ -105,7 +107,7 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 		return err
 	}
 	sb.source = s
-	sb.hist = history.NewHistory(0)
+	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
 	return sb.checkRootBlock()
 }
@@ -204,13 +206,7 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 }
 
 func (sb *smartBlock) dependentSmartIds() (ids []string) {
-	ids = make([]string, 0, 30)
-	sb.Doc.(*state.State).Iterate(func(b simple.Block) (isContinue bool) {
-		if ls, ok := b.(linkSource); ok {
-			ids = ls.FillSmartIds(ids)
-		}
-		return true
-	})
+	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 	}
@@ -228,7 +224,7 @@ func (sb *smartBlock) DisableLayouts() {
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var beforeSnippet = sb.Doc.Snippet()
-	var sendEvent, addHistory = true, true
+	var sendEvent, addHistory, doSnapshot = true, true, false
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
@@ -242,17 +238,19 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			sendEvent = false
 		case NoHistory:
 			addHistory = false
+		case DoSnapshot:
+			doSnapshot = true
 		}
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
 	fileHashes := getChangedFileHashes(act)
-	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes)
+	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes, doSnapshot)
 	if err != nil {
 		return
 	}
 	sb.Doc.(*state.State).SetChangeId(id)
-	if sb.hist != nil && addHistory {
-		sb.hist.Add(act)
+	if sb.undo != nil && addHistory {
+		sb.undo.Add(act)
 	}
 	if sendEvent {
 		if ctx := s.Context(); ctx != nil {
@@ -275,13 +273,24 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	return
 }
 
-func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *history.Action) {
+func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
+	s.SetParent(sb.Doc.(*state.State))
+	if err = sb.Apply(s, NoHistory, DoSnapshot); err != nil {
+		return
+	}
+	if sb.undo != nil {
+		sb.undo.Reset()
+	}
+	return
+}
+
+func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *undo.Action) {
 	if e := sb.updatePageStore(beforeSnippet, act); e != nil {
 		log.Warnf("can't update pageStore info: %v", e)
 	}
 }
 
-func (sb *smartBlock) updatePageStore(beforeSnippet string, act *history.Action) (err error) {
+func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (err error) {
 	if sb.Type() == pb.SmartBlockType_Archive {
 		return
 	}
@@ -329,8 +338,8 @@ func (sb *smartBlock) checkSubscriptions() (changed bool) {
 	return false
 }
 
-func (sb *smartBlock) History() history.History {
-	return sb.hist
+func (sb *smartBlock) History() undo.History {
+	return sb.undo
 }
 
 func (sb *smartBlock) Anytype() anytype.Service {
@@ -479,7 +488,7 @@ func (sb *smartBlock) Close() (err error) {
 	return
 }
 
-func hasDepIds(act *history.Action) bool {
+func hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
@@ -504,7 +513,7 @@ func hasDepIds(act *history.Action) bool {
 	return false
 }
 
-func getChangedFileHashes(act history.Action) (hashes []string) {
+func getChangedFileHashes(act undo.Action) (hashes []string) {
 	for _, nb := range act.Add {
 		if fh, ok := nb.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)

@@ -1,4 +1,4 @@
-package history
+package undo
 
 import (
 	"errors"

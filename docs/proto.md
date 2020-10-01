@@ -351,6 +351,20 @@
     - [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request)
     - [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response)
     - [Rpc.ExternalDrop.Files.Response.Error](#anytype.Rpc.ExternalDrop.Files.Response.Error)
+    - [Rpc.History](#anytype.Rpc.History)
+    - [Rpc.History.SetVersion](#anytype.Rpc.History.SetVersion)
+    - [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request)
+    - [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response)
+    - [Rpc.History.SetVersion.Response.Error](#anytype.Rpc.History.SetVersion.Response.Error)
+    - [Rpc.History.Show](#anytype.Rpc.History.Show)
+    - [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request)
+    - [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response)
+    - [Rpc.History.Show.Response.Error](#anytype.Rpc.History.Show.Response.Error)
+    - [Rpc.History.Versions](#anytype.Rpc.History.Versions)
+    - [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request)
+    - [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response)
+    - [Rpc.History.Versions.Response.Error](#anytype.Rpc.History.Versions.Response.Error)
+    - [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version)
     - [Rpc.Ipfs](#anytype.Rpc.Ipfs)
     - [Rpc.Ipfs.File](#anytype.Rpc.Ipfs.File)
     - [Rpc.Ipfs.File.Get](#anytype.Rpc.Ipfs.File.Get)
@@ -525,6 +539,9 @@
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
+    - [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code)
+    - [Rpc.History.Show.Response.Error.Code](#anytype.Rpc.History.Show.Response.Error.Code)
+    - [Rpc.History.Versions.Response.Error.Code](#anytype.Rpc.History.Versions.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
@@ -851,6 +868,9 @@
 | ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype.Rpc.ObjectType.List.Request) | [Rpc.ObjectType.List.Response](#anytype.Rpc.ObjectType.List.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
+| HistoryShow | [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request) | [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response) |  |
+| HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
+| HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
 
  
@@ -5730,6 +5750,211 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.History"></a>
+
+### Rpc.History
+
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion"></a>
+
+### Rpc.History.SetVersion
+
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Request"></a>
+
+### Rpc.History.SetVersion.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+| versionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Response"></a>
+
+### Rpc.History.SetVersion.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.SetVersion.Response.Error](#anytype.Rpc.History.SetVersion.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Response.Error"></a>
+
+### Rpc.History.SetVersion.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show"></a>
+
+### Rpc.History.Show
+returns blockShow event for given version
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show.Request"></a>
+
+### Rpc.History.Show.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+| versionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show.Response"></a>
+
+### Rpc.History.Show.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.Show.Response.Error](#anytype.Rpc.History.Show.Response.Error) |  |  |
+| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
+| version | [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Show.Response.Error"></a>
+
+### Rpc.History.Show.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.Show.Response.Error.Code](#anytype.Rpc.History.Show.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions"></a>
+
+### Rpc.History.Versions
+returns list of versions (changes)
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Request"></a>
+
+### Rpc.History.Versions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pageId | [string](#string) |  |  |
+| lastVersionId | [string](#string) |  | when indicated, results will include versions before given id |
+| limit | [int32](#int32) |  | desired count of versions |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Response"></a>
+
+### Rpc.History.Versions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.History.Versions.Response.Error](#anytype.Rpc.History.Versions.Response.Error) |  |  |
+| versions | [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Response.Error"></a>
+
+### Rpc.History.Versions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.History.Versions.Response.Error.Code](#anytype.Rpc.History.Versions.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.History.Versions.Version"></a>
+
+### Rpc.History.Versions.Version
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| previousIds | [string](#string) | repeated |  |
+| authorId | [string](#string) |  |  |
+| authorName | [string](#string) |  |  |
+| time | [int64](#int64) |  |  |
+| groupId | [int64](#int64) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ipfs"></a>
 
 ### Rpc.Ipfs
@@ -8080,6 +8305,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.ExternalDrop.Files.Response.Error.Code"></a>
 
 ### Rpc.ExternalDrop.Files.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.History.SetVersion.Response.Error.Code"></a>
+
+### Rpc.History.SetVersion.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.History.Show.Response.Error.Code"></a>
+
+### Rpc.History.Show.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.History.Versions.Response.Error.Code"></a>
+
+### Rpc.History.Versions.Response.Error.Code
 
 
 | Name | Number | Description |

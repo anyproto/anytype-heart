@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	"github.com/anytypeio/go-anytype-middleware/core/history"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 
@@ -145,6 +146,8 @@ type Service interface {
 
 	Reindex(id string) (err error)
 
+	History() history.History
+
 	Close() error
 }
 
@@ -160,6 +163,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		process:      process.NewService(sendEvent),
 	}
 	s.meta = meta.NewService(a)
+	s.history = history.NewHistory(a, s, s.meta)
 	go s.cleanupTicker()
 	s.init()
 	log.Info("block service started")
@@ -182,6 +186,7 @@ type service struct {
 	closed       bool
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
+	history      history.History
 	m            sync.RWMutex
 }
 
@@ -1068,7 +1073,7 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 		defer sb.Unlock()
 		return apply(bb)
 	}
-	return fmt.Errorf("history operation not available for this block type: %T", sb)
+	return fmt.Errorf("undo operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
@@ -1212,4 +1217,14 @@ func (s *service) AllDescendantIds(rootBlockId string, allBlocks map[string]*mod
 	}
 
 	return traversed
+}
+
+func (s *service) ResetToState(pageId string, state *state.State) (err error) {
+	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
+		return sb.ResetToVersion(state)
+	})
+}
+
+func (s *service) History() history.History {
+	return s.history
 }

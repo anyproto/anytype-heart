@@ -19,7 +19,7 @@ func BenchmarkOpenDoc(b *testing.B) {
 	var changeSet map[string][]byte
 	require.NoError(b, dec.Decode(&changeSet))
 
-	sb := newTestSmartBlock()
+	sb := NewTestSmartBlock()
 	sb.changes = make(map[string]*core.SmartblockRecord)
 	for k, v := range changeSet {
 		sb.changes[k] = &core.SmartblockRecord{Payload: v}
