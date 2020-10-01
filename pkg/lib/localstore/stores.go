@@ -36,6 +36,7 @@ type LocalStore struct {
 type FileStore interface {
 	Indexable
 	Add(file *storage.FileInfo) error
+	AddMulti(files ...*storage.FileInfo) error
 	AddFileKeys(fileKeys ...FileKeys) error
 	GetFileKeys(hash string) (map[string]string, error)
 	GetByHash(hash string) (*storage.FileInfo, error)
@@ -89,6 +90,22 @@ type Index struct {
 type IndexKeyParts []string
 
 func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
+	txn, err := ds.NewTransaction(false)
+	if err != nil {
+		return err
+	}
+
+	defer txn.Discard()
+
+	err = AddIndexWithTxn(index, txn, newVal, newValPrimary)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary string) error {
 	for _, keyParts := range index.Keys(newVal) {
 		keyStr := strings.Join(keyParts, "")
 		if index.Hash {
@@ -117,6 +134,21 @@ func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary
 }
 
 func RemoveIndex(index Index, ds ds.TxnDatastore, val interface{}, valPrimary string) error {
+	txn, err := ds.NewTransaction(false)
+	if err != nil {
+		return err
+	}
+	defer txn.Discard()
+
+	err = RemoveIndexWithTxn(index, txn, val, valPrimary)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary string) error {
 	for _, keyParts := range index.Keys(val) {
 		keyStr := strings.Join(keyParts, "")
 		if index.Hash {
@@ -126,7 +158,7 @@ func RemoveIndex(index Index, ds ds.TxnDatastore, val interface{}, valPrimary st
 
 		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 		if index.Unique {
-			exists, err := ds.Has(key)
+			exists, err := txn.Has(key)
 			if err != nil {
 				return err
 			}
@@ -135,28 +167,58 @@ func RemoveIndex(index Index, ds ds.TxnDatastore, val interface{}, valPrimary st
 			}
 		}
 
-		err := ds.Delete(key.ChildString(valPrimary))
+		err := txn.Delete(key.ChildString(valPrimary))
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func AddIndexesWithTxn(store Indexable, txn ds.Txn, newVal interface{}, newValPrimary string) error {
+	for _, index := range store.Indexes() {
+		err := AddIndexWithTxn(index, txn, newVal, newValPrimary)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func AddIndexes(store Indexable, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
-	for _, index := range store.Indexes() {
-		err := AddIndex(index, ds, newVal, newValPrimary)
-		if err != nil {
-			return err
-		}
+	txn, err := ds.NewTransaction(false)
+	if err != nil {
+		return err
+	}
+	defer txn.Discard()
+
+	err = AddIndexesWithTxn(store, txn, newVal, newValPrimary)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return txn.Commit()
 }
 
 func RemoveIndexes(store Indexable, ds ds.TxnDatastore, val interface{}, valPrimary string) error {
+	txn, err := ds.NewTransaction(false)
+	if err != nil {
+		return err
+	}
+	defer txn.Discard()
+
+	err = RemoveIndexesWithTxn(store, txn, val, valPrimary)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
+func RemoveIndexesWithTxn(store Indexable, txn ds.Txn, val interface{}, valPrimary string) error {
 	for _, index := range store.Indexes() {
-		err := RemoveIndex(index, ds, val, valPrimary)
+		err := RemoveIndexWithTxn(index, txn, val, valPrimary)
 		if err != nil {
 			return err
 		}

@@ -32,11 +32,13 @@ type service struct {
 	repoRootPath      string
 	newHeadProcessor  func(id thread.ID) error
 	replicatorAddr    ma.Multiaddr
-	closeCh           chan struct{}
+	ctx               context.Context
+	ctxCancel         context.CancelFunc
 	sync.Mutex
 }
 
 func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPath string, deviceKeypair wallet.Keypair, accountKeypair wallet.Keypair, newHeadProcessor func(id thread.ID) error, replicatorAddr ma.Multiaddr) Service {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
 		t:                threadsAPI,
 		threadsGetter:    threadsGetter,
@@ -45,7 +47,8 @@ func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPa
 		account:          accountKeypair,
 		newHeadProcessor: newHeadProcessor,
 		replicatorAddr:   replicatorAddr,
-		closeCh:          make(chan struct{}),
+		ctx:              ctx,
+		ctxCancel:        cancel,
 	}
 }
 
@@ -71,7 +74,14 @@ func (s *service) ThreadsCollection() (*db.Collection, error) {
 }
 
 func (s *service) Close() error {
-	close(s.closeCh)
+	// close global service context to stop all work
+	s.ctxCancel()
+	// lock in order to wait for work to finish and, e.g. db to init
+	s.Lock()
+	defer s.Unlock()
+	if db := s.db; db != nil {
+		return db.Close()
+	}
 	return nil
 }
 
@@ -138,7 +148,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 					log.Errorf("failed to add log replicator after %d attempt: %s", attempt, err.Error())
 					select {
 					case <-time.After(time.Second * 3 * time.Duration(attempt)):
-					case <-s.closeCh:
+					case <-s.ctx.Done():
 						return
 					}
 					continue

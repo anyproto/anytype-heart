@@ -77,7 +77,7 @@ func (s *service) threadsDbListen() error {
 		defer l.Close()
 		for {
 			select {
-			case <-s.closeCh:
+			case <-s.ctx.Done():
 				return
 			case c := <-l.Channel():
 				switch c.Type {
@@ -130,7 +130,7 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 			return
 		}
 		select {
-		case <-s.closeCh:
+		case <-s.ctx.Done():
 			return
 		case <-time.After(time.Duration(5*attempt) * time.Second):
 			continue
@@ -213,7 +213,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			}
 
 			addr, err = util2.MultiAddressAddThread(addr, tid)
-			_, err = s.t.AddThread(context.Background(), addr, net.WithThreadKey(key), net.WithLogKey(s.device))
+			_, err = s.t.AddThread(s.ctx, addr, net.WithThreadKey(key), net.WithLogKey(s.device))
 			if err != nil {
 				if err == logstore.ErrLogExists || err == logstore.ErrThreadExists {
 					success = true
@@ -226,7 +226,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			logWithAddr.Infof("processNewExternalThread: thread successfully added %s", peerAddrInfo.String())
 
 			if s.replicatorAddr != nil {
-				_, err = s.t.AddReplicator(context.Background(), tid, replAddrWithThread)
+				_, err = s.t.AddReplicator(s.ctx, tid, replAddrWithThread)
 				if err != nil {
 					logWithAddr.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
 				}
@@ -240,7 +240,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	if !success {
 		return fmt.Errorf("failed to add thread from any provided remote address")
 	} else {
-		_, err = s.pullThread(context.Background(), tid)
+		_, err = s.pullThread(s.ctx, tid)
 		if err != nil {
 			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
 		}

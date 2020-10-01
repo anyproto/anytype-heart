@@ -104,6 +104,7 @@ func checkInviteCode(code string, account string) error {
 }
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
+	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
@@ -250,14 +251,25 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	}
 
 	var remoteAccountsProceed = make(chan struct{})
-	for index := 0; index < len(mw.foundAccounts); index++ {
+	// todo: this case temporarily commented-out because we only have 1 acc per mnemonic
+	/*for index := 0; index < len(mw.foundAccounts); index++ {
 		// in case we returned to the account choose screen we can use cached accounts
 		sendAccountAddEvent(index, mw.foundAccounts[index])
-	}
+	}*/
 
 	accounts, err := mw.getDerivedAccountsForMnemonic(10)
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_BAD_INPUT, err)
+	}
+
+	// todo: this case temporarily prioritized because we only have 1 acc per mnemonic
+	for i, acc := range accounts {
+		if !mw.isAccountExistsOnDisk(acc.Address()) {
+			continue
+		}
+		// todo: load profile name from the details cache in badger
+		sendAccountAddEvent(i, &model.Account{Id: acc.Address(), Name: ""})
+		return response(pb.RpcAccountRecoverResponseError_NULL, nil)
 	}
 
 	zeroAccount := accounts[0]
@@ -289,9 +301,8 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	defer close(recoveryFinished)
 
 	ctx, searchQueryCancel := context.WithTimeout(context.Background(), time.Second*30)
-	mw.accountSearchCancelAndWait = func() {
+	mw.accountSearchCancel = func() {
 		searchQueryCancel()
-		<-recoveryFinished
 	}
 	defer searchQueryCancel()
 
@@ -302,17 +313,6 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
-
-	go func() {
-		// this is workaround when we are working offline
-		for i, acc := range accounts {
-			if !mw.isAccountExistsOnDisk(acc.Address()) {
-				continue
-			}
-			// todo: load profile name from the details cache in badger
-			sendAccountAddEvent(i, &model.Account{Id: acc.Address(), Name: ""})
-		}
-	}()
 
 	profilesCh := make(chan core.Profile)
 	go func() {
@@ -350,11 +350,23 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 					}
 				}
 
-				sendAccountAddEvent(index, &model.Account{
+				account := &model.Account{
 					Id:     profile.AccountAddr,
 					Name:   profile.Name,
 					Avatar: avatar,
-				})
+				}
+
+				var alreadyExists bool
+				for _, foundAccount := range mw.foundAccounts {
+					if foundAccount.Id == account.Id {
+						alreadyExists = true
+					}
+				}
+				if !alreadyExists {
+					mw.foundAccounts = append(mw.foundAccounts, account)
+				}
+
+				sendAccountAddEvent(index, account)
 			}
 		}
 
@@ -366,7 +378,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		log.Errorf("remote profiles request failed: %s", findProfilesErr.Error())
 	}
 
-	// wait until we read all profiles from chan and process them
+	// wait until we finish to read profiles from chan and process them in case request was successful
 	<-remoteAccountsProceed
 
 	sentAccountsMutex.Lock()
@@ -403,8 +415,8 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return m
 	}
 
-	// this func will wait until search process will stop in order to be sure node was properly stopped
-	mw.accountSearchCancelAndWait()
+	// cancel pending account searches and it will release the mutex
+	mw.accountSearchCancel()
 
 	mw.m.Lock()
 	defer mw.m.Unlock()
@@ -498,6 +510,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 }
 
 func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
+	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
 

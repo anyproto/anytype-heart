@@ -19,6 +19,12 @@ var (
 
 var log = logging.Logger("anytype-mw-change-builder")
 
+func BuildTreeBefore(s core.SmartBlock, beforeLogId string, includeBeforeId bool) (t *Tree, err error) {
+	sb := &stateBuilder{beforeId: beforeLogId, includeBeforeId: includeBeforeId}
+	err = sb.Build(s)
+	return sb.tree, err
+}
+
 func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
 	sb := new(stateBuilder)
 	err = sb.Build(s)
@@ -32,35 +38,24 @@ func BuildDetailsTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, e
 }
 
 type stateBuilder struct {
-	cache       map[string]*Change
-	logHeads    map[string]string
-	tree        *Tree
-	smartblock  core.SmartBlock
-	qt          time.Duration
-	onlyDetails bool
+	cache           map[string]*Change
+	logHeads        map[string]string
+	tree            *Tree
+	smartblock      core.SmartBlock
+	qt              time.Duration
+	onlyDetails     bool
+	beforeId        string
+	includeBeforeId bool
 }
 
 func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	st := time.Now()
 	sb.smartblock = s
-	logs, err := sb.smartblock.GetLogs()
+	logs, err := sb.getLogs()
 	if err != nil {
-		return fmt.Errorf("GetLogs error: %v", err)
+		return err
 	}
-	log.Debugf("build tree: logs: %v", logs)
-	sb.logHeads = make(map[string]string)
-	if len(logs) == 0 || len(logs) == 1 && len(logs[0].Head) <= 1 {
-		return ErrEmpty
-	}
-	sb.cache = make(map[string]*Change)
-	var nonEmptyLogs = logs[:0]
-	for _, l := range logs {
-		sb.logHeads[l.ID] = l.Head
-		if l.Head != "" {
-			nonEmptyLogs = append(nonEmptyLogs, l)
-		}
-	}
-	heads, err := sb.getActualHeads(nonEmptyLogs)
+	heads, err := sb.getActualHeads(logs)
 	if err != nil {
 		return fmt.Errorf("getActualHeads error: %v", err)
 	}
@@ -74,6 +69,42 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	log.Infof("tree build: len: %d; scanned: %d; dur: %v (lib %v)", sb.tree.Len(), len(sb.cache), time.Since(st), sb.qt)
 	sb.cache = nil
 	return
+}
+
+func (sb *stateBuilder) getLogs() (logs []core.SmartblockLog, err error) {
+	sb.cache = make(map[string]*Change)
+	if sb.beforeId != "" {
+		before, e := sb.loadChange(sb.beforeId)
+		if e != nil {
+			return nil, e
+		}
+		if sb.includeBeforeId {
+			return []core.SmartblockLog{
+				{Head: sb.beforeId},
+			}, nil
+		}
+		for _, pid := range before.PreviousIds {
+			logs = append(logs, core.SmartblockLog{Head: pid})
+		}
+		return
+	}
+	logs, err = sb.smartblock.GetLogs()
+	if err != nil {
+		return nil, fmt.Errorf("GetLogs error: %v", err)
+	}
+	log.Debugf("build tree: logs: %v", logs)
+	sb.logHeads = make(map[string]string)
+	if len(logs) == 0 || len(logs) == 1 && len(logs[0].Head) <= 1 {
+		return nil, ErrEmpty
+	}
+	var nonEmptyLogs = logs[:0]
+	for _, l := range logs {
+		sb.logHeads[l.ID] = l.Head
+		if l.Head != "" {
+			nonEmptyLogs = append(nonEmptyLogs, l)
+		}
+	}
+	return nonEmptyLogs, nil
 }
 
 func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error) {
@@ -207,11 +238,42 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			}
 		}
 
-		// unexpected behavior - just return lesser id
 		log.Warnf("changes build tree: possible versions split")
-		if s1 < s2 {
+
+		// prefer not first snapshot
+		if len(ch1.PreviousIds) == 0 && len(ch2.PreviousIds) > 0 {
+			log.Warnf("changes build tree: prefer %s(%d prevIds) over %s(%d prevIds)", s2, len(ch2.PreviousIds), s1, len(ch1.PreviousIds))
+			return s2, nil
+		} else if len(ch1.PreviousIds) > 0 && len(ch2.PreviousIds) == 0 {
+			log.Warnf("changes build tree: prefer %s(%d prevIds) over %s(%d prevIds)", s1, len(ch1.PreviousIds), s2, len(ch2.PreviousIds))
 			return s1, nil
 		}
+
+		isEmptySnapshot := func(ch *Change) bool {
+			// todo: ignore root & header blocks
+			if ch.Snapshot == nil || ch.Snapshot.Data == nil || len(ch.Snapshot.Data.Blocks) <= 1 {
+				return true
+			}
+
+			return false
+		}
+
+		// prefer not empty snapshot
+		if isEmptySnapshot(ch1) && !isEmptySnapshot(ch2) {
+			log.Warnf("changes build tree: prefer %s(not empty) over %s(empty)", s2, s1)
+			return s2, nil
+		} else if isEmptySnapshot(ch2) && !isEmptySnapshot(ch1) {
+			log.Warnf("changes build tree: prefer %s(not empty) over %s(empty)", s1, s2)
+			return s1, nil
+		}
+
+		// unexpected behavior - just return lesser id
+		if s1 < s2 {
+			log.Warnf("changes build tree: prefer %s (%s<%s)", s1, s1, s2)
+			return s1, nil
+		}
+		log.Warnf("changes build tree: prefer %s (%s<%s)", s2, s2, s1)
+
 		return s2, nil
 	}
 

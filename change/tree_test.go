@@ -151,7 +151,7 @@ func TestTree_IterateBranching(t *testing.T) {
 		newChange("1", "0", "0"),
 		newChange("1.1", "0", "1"),
 		newChange("1.2", "0", "1.1"),
-		newChange("1.4", "0", "1.2", "2,3", "3.3"),
+		newChange("1.4", "0", "1.2", "2.3", "3.3"),
 		newChange("1.5", "0", "1.4"),
 		newChange("2.1", "0", "1"),
 		newChange("2.2", "0", "1.1", "2.1"),
@@ -167,11 +167,11 @@ func TestTree_IterateBranching(t *testing.T) {
 		return true
 	})
 	var expectedList = []string{
-		"0", "1", "1.1", "1.2", "2.1", "2.2", "2.3", "3.2", "3.3", "1.4", "1.5",
+		"0", "1", "1.1", "2.1", "1.2", "2.2", "2.3", "3.2", "3.3", "1.4", "1.5",
 	}
 	require.Equal(t, expectedList, list)
 	var expectedBranching = []int{
-		0, 0, 1, 2, 2, 2, 2, 2, 2, 0, 0,
+		0, 0, 1, 2, 3, 2, 2, 2, 2, 0, 0,
 	}
 	assert.Equal(t, expectedBranching, branching)
 }

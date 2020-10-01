@@ -343,6 +343,8 @@ func (a *Anytype) start() error {
 				if a.t, err = a.startNetwork(nil, a.opts.Offline); err != nil {
 					return err
 				}
+			} else {
+				return err
 			}
 		}
 	}

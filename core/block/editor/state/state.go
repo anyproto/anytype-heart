@@ -8,8 +8,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/history"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -218,19 +218,19 @@ func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
 }
 
-func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action history.Action, err error) {
+func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
 	return s.apply(false, false, withLayouts)
 }
 
-func ApplyStateFast(s *State) (msgs []simple.EventMessage, action history.Action, err error) {
+func ApplyStateFast(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
 	return s.apply(true, false, false)
 }
 
-func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action history.Action, err error) {
+func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
 	return s.apply(true, true, false)
 }
 
-func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action history.Action, err error) {
+func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -302,7 +302,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			b := s.blocks[id]
 			diff, err := orig.Diff(b)
 			if err != nil {
-				return nil, history.Action{}, err
+				return nil, undo.Action{}, err
 			}
 			if len(diff) > 0 {
 				msgs = append(msgs, diff...)
@@ -311,7 +311,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 						file.State = model.BlockContentFile_Empty
 					}
 				}
-				action.Change = append(action.Change, history.Change{
+				action.Change = append(action.Change, undo.Change{
 					Before: orig.Copy(),
 					After:  b.Copy(),
 				})
@@ -370,7 +370,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		if !prev.Equal(s.details) {
-			action.Details = &history.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
+			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
 			s.parent.details = s.details
 			msgs = append(msgs, simple.EventMessage{
 				Msg: &pb.EventMessage{
@@ -608,4 +608,23 @@ func (s *State) CheckRestrictions() (err error) {
 		}
 	}
 	return
+}
+
+func (s *State) SetParent(parent *State) {
+	s.parent = parent
+}
+
+func (s *State) DepSmartIds() (ids []string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if ls, ok := b.(linkSource); ok {
+			ids = ls.FillSmartIds(ids)
+		}
+		return true
+	})
+	return
+}
+
+type linkSource interface {
+	FillSmartIds(ids []string) []string
+	HasSmartIds() bool
 }

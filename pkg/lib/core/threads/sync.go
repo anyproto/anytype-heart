@@ -83,7 +83,7 @@ func (s *service) addMissingReplicators() error {
 	}
 
 	for _, threadId := range threadsIds {
-		ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+		ctx, _ := context.WithTimeout(s.ctx, time.Second*30)
 		thrd, err := s.t.GetThread(ctx, threadId)
 		if err != nil {
 			log.Errorf("failed to get thread %s: %s", threadId.String(), err.Error())
@@ -91,7 +91,7 @@ func (s *service) addMissingReplicators() error {
 		}
 
 		if !util.MultiAddressHasReplicator(thrd.Addrs, s.replicatorAddr) {
-			err = s.addReplicatorWithAttempts(context.Background(), thrd, s.replicatorAddr, 0)
+			err = s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
 			if err != nil {
 				log.Errorf("failed to add missing replicator for %s: %s", thrd.ID, err.Error())
 			} else {
@@ -136,8 +136,6 @@ func (s *service) addReplicatorWithAttempts(ctx context.Context, thrd thread.Inf
 		select {
 		case <-time.After(time.Second * time.Duration(3*attempt)):
 			continue
-		case <-s.closeCh:
-			return
 		case <-ctx.Done():
 			err = ctx.Err()
 			return
