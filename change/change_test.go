@@ -1,6 +1,7 @@
 package change
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -105,11 +106,12 @@ func doTestCase(t *testing.T, tc *TestCase) {
 		err := s.ApplyChange(chc)
 		if !ch.Error {
 			require.NoError(t, err, fmt.Sprintf("index: %d; change: %s", i, chc.String()))
+		} else {
+			require.Error(t, err, fmt.Sprintf("index: %d; change: %s", i, chc.String()))
 		}
 
-		_, act, err := state.ApplyState(s, false)
+		_, _, err = state.ApplyState(s, false)
 		require.NoError(t, err)
-		t.Log(d.String(), act)
 	}
 
 	exp := state.NewDoc("root", nil).(*state.State)
@@ -117,21 +119,31 @@ func doTestCase(t *testing.T, tc *TestCase) {
 		tc.Expected.Id = "root"
 	}
 	fillStruct(exp, tc.Expected)
-	t.Log(d.String())
 	assert.Equal(t, stateToTestString(exp), stateToTestString(d))
 }
 
 func stateToTestString(s *state.State) string {
-	var repl = make(map[string]string)
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if layout := b.Model().GetLayout(); layout != nil {
-			repl[b.Model().Id] = "/" + strings.ToLower(layout.Style.String()) + "/"
+	var buf = bytes.NewBuffer(nil)
+	var writeBlock func(id string, l int)
+	writeBlock = func(id string, l int) {
+		b := s.Pick(id)
+		buf.WriteString(strings.Repeat("\t", l))
+		if b == nil {
+			buf.WriteString(id)
+			buf.WriteString(" MISSING")
+		} else {
+			id := b.Model().Id
+			if layout := b.Model().GetLayout(); layout != nil {
+				id = "/" + strings.ToLower(layout.Style.String()) + "/"
+			}
+			buf.WriteString(id)
 		}
-		return true
-	})
-	str := s.String()
-	for k, v := range repl {
-		str = strings.ReplaceAll(str, k, v)
+		buf.WriteString("\n")
+		if b != nil {
+			for _, cid := range b.Model().ChildrenIds {
+				writeBlock(cid, l+1)
+			}
+		}
 	}
-	return str
+	return buf.String()
 }
