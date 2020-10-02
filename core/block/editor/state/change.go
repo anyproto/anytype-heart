@@ -23,10 +23,12 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		fileKeys = append(fileKeys, *fk)
 	}
 	return &State{
-		rootId:   rootId,
-		blocks:   blocks,
-		details:  snapshot.Data.Details,
-		fileKeys: fileKeys,
+		rootId:      rootId,
+		blocks:      blocks,
+		details:     snapshot.Data.Details,
+		relations:   snapshot.Data.Relations,
+		objectTypes: snapshot.Data.ObjectTypes,
+		fileKeys:    fileKeys,
 	}
 }
 

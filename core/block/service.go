@@ -393,7 +393,8 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 	}
 	id = csm.ID()
 
-	if _, err = s.createSmartBlock(id, true, objectTypes); err != nil {
+	var sb smartblock.SmartBlock
+	if sb, err = s.createSmartBlock(id, true, objectTypes); err != nil {
 		return id, err
 	}
 

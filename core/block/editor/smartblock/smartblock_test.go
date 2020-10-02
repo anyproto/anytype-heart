@@ -77,61 +77,6 @@ func TestSmartBlock_Show(t *testing.T) {
 	assert.Equal(t, "1", msg.RootId)
 }
 
-func TestSmartBlock_Relations(t *testing.T) {
-	fx := newFixture(t)
-	defer fx.tearDown()
-	fx.init([]*model.Block{
-		{Id: "1", ChildrenIds: []string{"2", "3"}},
-		{Id: "2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-			TargetBlockId: "22",
-		}}},
-		{Id: "3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Marks: &model.BlockContentTextMarks{
-				Marks: []*model.BlockContentTextMark{
-					{Type: model.BlockContentTextMark_Mention, Param: "33"},
-				},
-			},
-		}}},
-	})
-	keys, err := fx.AddRelations([]*pbrelation.Relation{{Key: "a1", Format: pbrelation.RelationFormat_title}})
-	require.NoError(t, err)
-	require.Len(t, keys, 1)
-
-	fx.metaSubscriber.EXPECT().Callback(gomock.Any()).Return(fx.metaSubscriber).AnyTimes()
-	fx.metaSubscriber.EXPECT().Subscribe([]string{"1", "22", "33"}).Return(fx.metaSubscriber)
-	bm := meta.Meta{
-		BlockId: "1",
-		SmartBlockMeta: core.SmartBlockMeta{
-			Relations: fx.SmartBlock.(*smartBlock).Relations(),
-			Details:   fx.SmartBlock.(*smartBlock).Details(),
-		},
-	}
-	fx.metaService.EXPECT().ReportChange(bm).Do(func(d meta.Meta) {
-		go func() {
-			fx.SmartBlock.(*smartBlock).onMetaChange(d)
-			for _, id := range []string{"22", "33"} {
-				fx.SmartBlock.(*smartBlock).onMetaChange(meta.Meta{
-					BlockId:        id,
-					SmartBlockMeta: core.SmartBlockMeta{},
-				})
-			}
-		}()
-	})
-
-	ctx := state.NewContext(nil)
-	err = fx.Show(ctx)
-	require.NoError(t, err)
-
-	msgs := ctx.GetMessages()
-	require.Len(t, msgs, 1)
-	msg := msgs[0].GetBlockShow()
-	require.NotNil(t, msg)
-	assert.Len(t, msg.RelationsPerObject, 1)
-	assert.Len(t, msg.Blocks, 3)
-	//assert.Len(t, msg.Details, 3)
-	assert.Equal(t, "1", msg.RootId)
-}
-
 func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		fx := newFixture(t)
