@@ -7,8 +7,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 )
 
 const versionGroupInterval = time.Minute * 5
@@ -80,7 +82,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	}
 
 	for len(resp) < limit {
-		tree, e := h.buildTree(pageId, lastVersionId, includeLastId)
+		tree, _, e := h.buildTree(pageId, lastVersionId, includeLastId)
 		if e != nil {
 			return nil, e
 		}
@@ -153,17 +155,20 @@ func (h *history) SetVersion(pageId, versionId string) (err error) {
 	return h.bs.ResetToState(pageId, s)
 }
 
-func (h *history) buildTree(pageId, versionId string, includeLastId bool) (*change.Tree, error) {
+func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree *change.Tree, blockType smartblock.SmartBlockType, err error) {
 	sb, err := h.a.GetBlock(pageId)
 	if err != nil {
 		err = fmt.Errorf("history: anytype.GetBlock error: %v", err)
-		return nil, nil
+		return
 	}
-	return change.BuildTreeBefore(sb, versionId, includeLastId)
+	if tree, err = change.BuildTreeBefore(sb, versionId, includeLastId); err != nil {
+		return
+	}
+	return tree, sb.Type(), nil
 }
 
 func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.RpcHistoryVersionsVersion, err error) {
-	tree, err := h.buildTree(pageId, versionId, true)
+	tree, sbType, err := h.buildTree(pageId, versionId, true)
 	if err != nil {
 		return
 	}
@@ -180,6 +185,11 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
+	switch sbType {
+	case smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeProfilePage, smartblock.SmartBlockTypeSet:
+		template.InitTemplate(template.WithTitle, s)
+	}
+	s.BlocksInit()
 	if ch := tree.Get(versionId); ch != nil {
 		profileId, profileName, e := h.getProfileInfo()
 		if e != nil {

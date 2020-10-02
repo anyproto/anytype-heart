@@ -46,7 +46,7 @@ func (p *Set) Init(s source.Source, _ bool) (err error) {
 
 func (p *Set) init() (err error) {
 	s := p.NewState()
-	if err = template.InitTemplate(p, template.WithTitle, s); err != nil {
+	if err = template.InitTemplate(template.WithTitle, s); err != nil {
 		return
 	}
 	root := s.Get(p.RootId())

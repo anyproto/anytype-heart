@@ -88,12 +88,12 @@ var WithTitle = state.NewDoc("tmpl_title", map[string]simple.Block{
 	}),
 })
 
-func InitTemplate(sb smartblock.SmartBlock, tmpl state.Doc, s *state.State) (err error) {
-	if !s.Exists(sb.RootId()) {
+func InitTemplate(tmpl state.Doc, s *state.State) (err error) {
+	if !s.Exists(s.RootId()) {
 		tmpl.Iterate(func(b simple.Block) (isContinue bool) {
 			b = b.Copy()
 			if b.Model().Id == tmpl.RootId() {
-				b.Model().Id = sb.Id()
+				b.Model().Id = s.RootId()
 			}
 			s.Add(b)
 			return true
@@ -113,9 +113,9 @@ func InitTemplate(sb smartblock.SmartBlock, tmpl state.Doc, s *state.State) (err
 			} else {
 				// case when Header not first block of root
 				parent := s.PickParentOf(HeaderLayoutId)
-				if parent == nil || parent.Model().Id != sb.RootId() || slice.FindPos(parent.Model().ChildrenIds, HeaderLayoutId) != 0 {
+				if parent == nil || parent.Model().Id != s.RootId() || slice.FindPos(parent.Model().ChildrenIds, HeaderLayoutId) != 0 {
 					s.Unlink(HeaderLayoutId)
-					root := s.Get(sb.RootId())
+					root := s.Get(s.RootId())
 					root.Model().ChildrenIds = append([]string{HeaderLayoutId}, root.Model().ChildrenIds...)
 				}
 			}
@@ -128,7 +128,7 @@ func ApplyTemplate(sb smartblock.SmartBlock, tmpl state.Doc, s *state.State) (er
 	if s == nil {
 		s = sb.NewState()
 	}
-	if err = InitTemplate(sb, tmpl, s); err != nil {
+	if err = InitTemplate(tmpl, s); err != nil {
 		return
 	}
 	return sb.Apply(s, smartblock.NoHistory, smartblock.NoEvent)

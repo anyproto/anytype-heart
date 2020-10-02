@@ -43,7 +43,7 @@ func (p *Dashboard) init() (err error) {
 	s := p.NewState()
 
 	anythingChanged := state.CleanupLayouts(s) > 0
-	if err = template.InitTemplate(p, template.Empty, s); err != nil {
+	if err = template.InitTemplate(template.Empty, s); err != nil {
 		return
 	}
 	setDetails := func() {
