@@ -369,6 +369,11 @@
     - [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request)
     - [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response)
     - [Rpc.Navigation.ListPages.Response.Error](#anytype.Rpc.Navigation.ListPages.Response.Error)
+    - [Rpc.Page](#anytype.Rpc.Page)
+    - [Rpc.Page.Create](#anytype.Rpc.Page.Create)
+    - [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request)
+    - [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response)
+    - [Rpc.Page.Create.Response.Error](#anytype.Rpc.Page.Create.Response.Error)
     - [Rpc.Ping](#anytype.Rpc.Ping)
     - [Rpc.Ping.Request](#anytype.Rpc.Ping.Request)
     - [Rpc.Ping.Response](#anytype.Rpc.Ping.Response)
@@ -479,6 +484,7 @@
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListPages.Response.Error.Code](#anytype.Rpc.Navigation.ListPages.Response.Error.Code)
+    - [Rpc.Page.Create.Response.Error.Code](#anytype.Rpc.Page.Create.Response.Error.Code)
     - [Rpc.Ping.Response.Error.Code](#anytype.Rpc.Ping.Response.Error.Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
@@ -760,6 +766,7 @@
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
 | NavigationListPages | [Rpc.Navigation.ListPages.Request](#anytype.Rpc.Navigation.ListPages.Request) | [Rpc.Navigation.ListPages.Response](#anytype.Rpc.Navigation.ListPages.Response) |  |
 | NavigationGetPageInfoWithLinks | [Rpc.Navigation.GetPageInfoWithLinks.Request](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Request) | [Rpc.Navigation.GetPageInfoWithLinks.Response](#anytype.Rpc.Navigation.GetPageInfoWithLinks.Response) |  |
+| PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | HistoryShow | [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request) | [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response) |  |
@@ -5880,6 +5887,74 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Page"></a>
+
+### Rpc.Page
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Page.Create"></a>
+
+### Rpc.Page.Create
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Page.Create.Request"></a>
+
+### Rpc.Page.Create.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | page details |
+
+
+
+
+
+
+<a name="anytype.Rpc.Page.Create.Response"></a>
+
+### Rpc.Page.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Page.Create.Response.Error](#anytype.Rpc.Page.Create.Response.Error) |  |  |
+| pageId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Page.Create.Response.Error"></a>
+
+### Rpc.Page.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Page.Create.Response.Error.Code](#anytype.Rpc.Page.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ping"></a>
 
 ### Rpc.Ping
@@ -7350,6 +7425,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Navigation.ListPages.Response.Error.Code"></a>
 
 ### Rpc.Navigation.ListPages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Page.Create.Response.Error.Code"></a>
+
+### Rpc.Page.Create.Response.Error.Code
 
 
 | Name | Number | Description |

@@ -97,7 +97,9 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 			return true
 		})
 		if len(data[0].PreviousIds) == 0 {
-			data = data[1:]
+			if h.isEmpty(tree.Get(data[0].Id)) {
+				data = data[1:]
+			}
 			resp = append(data, resp...)
 			break
 		} else {
@@ -126,6 +128,21 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	}
 
 	return
+}
+
+func (h *history) isEmpty(c *change.Change) bool {
+	if c.Snapshot != nil && c.Snapshot.Data != nil {
+		if c.Snapshot.Data.Details != nil && c.Snapshot.Data.Details.Fields != nil && len(c.Snapshot.Data.Details.Fields) > 0 {
+			return false
+		}
+		for _, b := range c.Snapshot.Data.Blocks {
+			if b.GetSmartblock() != nil && b.GetLayout() != nil {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func (h *history) SetVersion(pageId, versionId string) (err error) {

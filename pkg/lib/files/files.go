@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -291,7 +290,7 @@ func (s *Service) fileIndexLink(ctx context.Context, inode ipld.Node, data strin
 	return s.store.AddTarget(dlink.Cid.String(), data)
 }
 
-func (s *Service) fileAddInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
+func (s *Service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
 	plaintext, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
@@ -317,13 +316,7 @@ func (s *Service) fileAddInfoFromPath(target string, path string, key string) (*
 	}
 
 	file.Targets = []string{target}
-	err = s.store.Add(&file)
-	if err != nil {
-		if !errors.Is(err, localstore.ErrDuplicateKey) {
-			return nil, err
-		}
-		log.Debugf("file exists: %s", file.Hash)
-	}
+
 	return &file, nil
 }
 
@@ -620,9 +613,9 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string) ([]*storage.Fi
 				key = keys["/"+index.Name+"/"]
 			}
 
-			fileIndex, err := s.fileAddInfoFromPath(hash, hash+"/"+index.Name, key)
+			fileIndex, err := s.fileInfoFromPath(hash, hash+"/"+index.Name, key)
 			if err != nil {
-				return nil, fmt.Errorf("fileAddInfoFromPath error: %s", err.Error())
+				return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
 			}
 			files = append(files, fileIndex)
 		} else {
@@ -632,13 +625,18 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string) ([]*storage.Fi
 					key = keys["/"+index.Name+"/"+link.Name+"/"]
 				}
 
-				fileIndex, err := s.fileAddInfoFromPath(hash, hash+"/"+index.Name+"/"+link.Name, key)
+				fileIndex, err := s.fileInfoFromPath(hash, hash+"/"+index.Name+"/"+link.Name, key)
 				if err != nil {
-					return nil, fmt.Errorf("fileAddInfoFromPath error: %s", err.Error())
+					return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
 				}
 				files = append(files, fileIndex)
 			}
 		}
+	}
+
+	err = s.store.AddMulti(files...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add files to store: %w", err)
 	}
 
 	return files, nil
