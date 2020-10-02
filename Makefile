@@ -86,13 +86,13 @@ build-js-addon:
 build-ios: setup-go
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/clientlibrary
+	@GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=ios github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/ios/ && mv Lib.framework dist/ios/
 
 build-android: setup-go
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/clientlibrary
+	@GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=android -o mobile.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 
 setup-protoc-go:
