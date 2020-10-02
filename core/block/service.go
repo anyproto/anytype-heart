@@ -398,7 +398,8 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 		return id, err
 	}
 
-	log.Debugf("created new smartBlock: %v", id)
+	log.Debugf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
+
 	if details != nil && details.Fields != nil {
 		var setDetails []*pb.RpcBlockSetDetailsDetail
 		for k, v := range details.Fields {
