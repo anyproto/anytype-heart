@@ -104,7 +104,7 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 	if row == nil {
 		return fmt.Errorf("target block has not parent")
 	}
-	if s.Exists("r-" + opId) {
+	if s.Exists("cd-" + opId) {
 		return fmt.Errorf("nothing to do")
 	}
 	if row.Model().GetLayout() == nil || row.Model().GetLayout().Style != model.BlockContentLayout_Row {

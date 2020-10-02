@@ -67,6 +67,21 @@ type State struct {
 }
 
 func (s *State) RootId() string {
+	if s.rootId == "" {
+		for id := range s.blocks {
+			var found bool
+			for _, b2 := range s.blocks {
+				if slice.FindPos(b2.Model().ChildrenIds, id) != -1 {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.rootId = id
+				break
+			}
+		}
+	}
 	return s.rootId
 }
 

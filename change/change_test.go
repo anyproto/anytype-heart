@@ -29,6 +29,25 @@ func TestStateBuildCases(t *testing.T) {
 	}))
 }
 
+func Test_Issue605(t *testing.T) {
+	data, err := ioutil.ReadFile("./testdata/605_snapshot.pb")
+	require.NoError(t, err)
+	var base = &model.SmartBlockSnapshotBase{}
+	require.NoError(t, base.Unmarshal(data))
+	data, err = ioutil.ReadFile("./testdata/605_change.pb")
+	require.NoError(t, err)
+	var change = &pb.Change{}
+	require.NoError(t, change.Unmarshal(data))
+	blocks := make(map[string]simple.Block)
+	for _, b := range base.Blocks {
+		blocks[b.Id] = simple.New(b)
+	}
+	d := state.NewDoc("", blocks).(*state.State)
+	s := d.NewState()
+	s.ApplyChangeIgnoreErr(change.Content...)
+	assert.NoError(t, s.Validate())
+}
+
 type TestCase struct {
 	Name     string
 	Init     *DocStruct

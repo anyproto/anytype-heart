@@ -68,9 +68,9 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 		ns := s.NewState()
 		ns.ApplyChangeIgnoreErr(c.Change.Content...)
 		ns.SetChangeId(c.Id)
-		s.AddFileKeys(c.FileKeys...)
-		if err = s.Validate(); err != nil {
-			err = fmt.Errorf("state build check error: %v: %v", err, c.Change)
+		ns.AddFileKeys(c.FileKeys...)
+		if err = ns.Validate(); err != nil {
+			err = fmt.Errorf("state build check error: %v: change(%d): %v", err, count, c.Change)
 			return
 		}
 		_, _, err = state.ApplyStateFastOne(ns)
