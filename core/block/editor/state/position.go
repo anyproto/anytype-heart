@@ -104,6 +104,9 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 	if row == nil {
 		return fmt.Errorf("target block has not parent")
 	}
+	if s.Exists("cd-" + opId) {
+		return fmt.Errorf("nothing to do")
+	}
 	if row.Model().GetLayout() == nil || row.Model().GetLayout().Style != model.BlockContentLayout_Row {
 		s.changesStructureIgnoreIds = append(s.changesStructureIgnoreIds, row.Model().Id)
 		if row, err = s.wrapToRow(opId, row, target); err != nil {

@@ -1,0 +1,75 @@
+- name: move left twice
+  init:
+    child:
+      - id: 1
+      - id: 2
+  changes:
+    - type: move
+      data:
+        targetid: 2
+        position: 3
+        ids:
+          - 1
+    - type: move
+      error: true
+      data:
+        targetid: 2
+        position: 3
+        ids:
+          - 1
+  expected:
+    child:
+      - id: /row/
+        child:
+          - id: /column/
+            child:
+              - id: 1
+          - id: /column/
+            child:
+              - id: 2
+
+- name: move bottom twice
+  init:
+    child:
+      - id: 1
+      - id: 2
+  changes:
+    - type: move
+      data:
+        targetid: 1
+        position: 2
+        ids:
+          - 2
+    - type: move
+      data:
+        targetid: 1
+        position: 2
+        ids:
+          - 2
+  expected:
+    child:
+      - id: 2
+      - id: 1
+
+- name: move top twice
+  init:
+    child:
+      - id: 1
+      - id: 2
+  changes:
+    - type: move
+      data:
+        targetid: 2
+        position: 1
+        ids:
+          - 1
+    - type: move
+      data:
+        targetid: 2
+        position: 1
+        ids:
+          - 1
+  expected:
+    child:
+      - id: 2
+      - id: 1
