@@ -318,14 +318,20 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 	}
 
 	var storeInfo struct {
-		details *types.Struct
-		snippet string
-		links   []string
+		details   *types.Struct
+		relations *pbrelation.Relations
+		snippet   string
+		links     []string
 	}
 
 	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
 	}
+
+	if act == nil || act.Relations != nil {
+		storeInfo.relations = &pbrelation.Relations{Relations: pbtypes.CopyRelations(sb.Relations())}
+	}
+
 	if storeInfo.details == nil || storeInfo.details.Fields == nil {
 		storeInfo.details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
@@ -346,7 +352,7 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 
 	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
 		if storeInfo.links != nil || storeInfo.details != nil || len(storeInfo.snippet) > 0 {
-			return at.ObjectStore().UpdateObject(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet)
+			return at.ObjectStore().UpdateObject(sb.Id(), storeInfo.details, storeInfo.relations, storeInfo.links, storeInfo.snippet)
 		}
 	}
 

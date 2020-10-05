@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
@@ -56,7 +57,7 @@ type ObjectStore interface {
 	database.Reader
 
 	AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error
-	UpdateObject(id string, details *types.Struct, links []string, snippet string) error
+	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	UpdateLastModified(id string, time time.Time) error
 	UpdateLastOpened(id string, time time.Time) error
 	DeletePage(id string) error

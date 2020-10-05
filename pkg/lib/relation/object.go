@@ -12,20 +12,22 @@ var ErrNotFound = fmt.Errorf("not found")
 const bundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
 
 var (
-	bundledObjectTypes = map[string]*relation.ObjectType{
+	BundledObjectTypes = map[string]*relation.ObjectType{
 		"page": {
 			Url:  bundledObjectTypeURLPrefix + "page",
 			Name: "Page",
 			Relations: []*relation.Relation{
-				bundledRelations["creationDate"],
-				bundledRelations["modifiedDate"],
-				bundledRelations["name"],
-				bundledRelations["iconEmoji"],
-				bundledRelations["iconImage"],
-				bundledRelations["coverImage"],
-				bundledRelations["coverX"],
-				bundledRelations["coverY"],
-				bundledRelations["coverScale"],
+				BundledRelations["creationDate"],
+				BundledRelations["lastModifiedDate"],
+				BundledRelations["lastOpenedDate"],
+
+				BundledRelations["name"],
+				BundledRelations["iconEmoji"],
+				BundledRelations["iconImage"],
+				BundledRelations["coverImage"],
+				BundledRelations["coverX"],
+				BundledRelations["coverY"],
+				BundledRelations["coverScale"],
 			},
 			Layout: relation.ObjectType_page,
 		},
@@ -33,15 +35,16 @@ var (
 			Url:  bundledObjectTypeURLPrefix + "set",
 			Name: "Set of objects",
 			Relations: []*relation.Relation{
-				bundledRelations["creationDate"],
-				bundledRelations["modifiedDate"],
-				bundledRelations["name"],
-				bundledRelations["iconEmoji"],
-				bundledRelations["iconImage"],
-				bundledRelations["coverImage"],
-				bundledRelations["coverX"],
-				bundledRelations["coverY"],
-				bundledRelations["coverScale"],
+				BundledRelations["creationDate"],
+				BundledRelations["lastModifiedDate"],
+				BundledRelations["lastOpenedDate"],
+				BundledRelations["name"],
+				BundledRelations["iconEmoji"],
+				BundledRelations["iconImage"],
+				BundledRelations["coverImage"],
+				BundledRelations["coverX"],
+				BundledRelations["coverY"],
+				BundledRelations["coverScale"],
 			},
 			Layout: relation.ObjectType_page,
 		},
@@ -54,7 +57,7 @@ func GetObjectType(objectTypeURL string) (*relation.ObjectType, error) {
 	}
 	bundledId := strings.TrimPrefix(objectTypeURL, bundledObjectTypeURLPrefix)
 
-	if v, exists := bundledObjectTypes[bundledId]; exists {
+	if v, exists := BundledObjectTypes[bundledId]; exists {
 		return v, nil
 	} else {
 		return nil, ErrNotFound
@@ -63,7 +66,7 @@ func GetObjectType(objectTypeURL string) (*relation.ObjectType, error) {
 
 func ListObjectTypes() ([]*relation.ObjectType, error) {
 	var otypes []*relation.ObjectType
-	for _, ot := range bundledObjectTypes {
+	for _, ot := range BundledObjectTypes {
 		otypes = append(otypes, ot)
 	}
 

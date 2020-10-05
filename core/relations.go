@@ -126,11 +126,31 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 	var sbId string
 	var relations []*pbrelation.Relation
+	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(relation.RequiredInternalRelations))
+
+	for _, rel := range relation.RequiredInternalRelations {
+		requiredRelationByKey[rel] = relation.BundledRelations[rel]
+	}
+
+	for _, rel := range req.ObjectType.Relations {
+		if v, exists := requiredRelationByKey[rel.Key]; exists {
+			if !pbtypes.RelationEqual(v, rel) {
+				return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("required relation %s not equals the bundled one", rel.Key))
+			}
+			delete(requiredRelationByKey, rel.Key)
+		}
+	}
+
+	for _, rel := range requiredRelationByKey {
+		req.ObjectType.Relations = append(req.ObjectType.Relations, rel)
+	}
+
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		sbId, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
 			Fields: map[string]*types.Value{
-				"name":   pbtypes.String(req.ObjectType.Name),
-				"layout": pbtypes.Float64(float64(req.ObjectType.Layout)),
+				"name":      pbtypes.String(req.ObjectType.Name),
+				"iconEmoji": pbtypes.String(req.ObjectType.IconEmoji),
+				"layout":    pbtypes.Float64(float64(req.ObjectType.Layout)),
 			},
 		}, nil, nil)
 		if err != nil {

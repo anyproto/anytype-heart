@@ -118,6 +118,11 @@
     - [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response)
     - [Rpc.Block.File.CreateAndUpload.Response.Error](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error)
     - [Rpc.Block.Get](#anytype.Rpc.Block.Get)
+    - [Rpc.Block.Get.Dataview](#anytype.Rpc.Block.Get.Dataview)
+    - [Rpc.Block.Get.Dataview.AvailableRelations](#anytype.Rpc.Block.Get.Dataview.AvailableRelations)
+    - [Rpc.Block.Get.Dataview.AvailableRelations.Request](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Request)
+    - [Rpc.Block.Get.Dataview.AvailableRelations.Response](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response)
+    - [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error)
     - [Rpc.Block.Get.Marks](#anytype.Rpc.Block.Get.Marks)
     - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
     - [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response)
@@ -487,6 +492,7 @@
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
     - [Rpc.Block.File.CreateAndUpload.Response.Error.Code](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error.Code)
+    - [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.GetPublicWebURL.Response.Error.Code](#anytype.Rpc.Block.GetPublicWebURL.Response.Error.Code)
     - [Rpc.Block.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Block.ImportMarkdown.Response.Error.Code)
@@ -657,6 +663,7 @@
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
     - [Event.Block.Show](#anytype.Event.Block.Show)
+    - [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject)
     - [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
@@ -844,6 +851,7 @@
 | BlockSetVideoName | [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request) | [Rpc.Block.Set.Video.Name.Response](#anytype.Rpc.Block.Set.Video.Name.Response) |  |
 | BlockSetVideoWidth | [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request) | [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response) |  |
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
+| BlockGetDataviewAvailableRelations | [Rpc.Block.Get.Dataview.AvailableRelations.Request](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Request) | [Rpc.Block.Get.Dataview.AvailableRelations.Response](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response) |  |
 | BlockSetDataviewView | [Rpc.Block.Set.Dataview.View.Request](#anytype.Rpc.Block.Set.Dataview.View.Request) | [Rpc.Block.Set.Dataview.View.Response](#anytype.Rpc.Block.Set.Dataview.View.Response) |  |
 | BlockSetDataviewActiveView | [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request) | [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response) |  |
 | BlockCreateDataviewView | [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request) | [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response) |  |
@@ -2399,6 +2407,74 @@ common simple block command
 
 ### Rpc.Block.Get
 
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Dataview"></a>
+
+### Rpc.Block.Get.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations"></a>
+
+### Rpc.Block.Get.Dataview.AvailableRelations
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Request"></a>
+
+### Rpc.Block.Get.Dataview.AvailableRelations.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response"></a>
+
+### Rpc.Block.Get.Dataview.AvailableRelations.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error) |  |  |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error"></a>
+
+### Rpc.Block.Get.Dataview.AvailableRelations.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -7633,6 +7709,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code"></a>
+
+### Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_A_DATAVIEW_BLOCK | 3 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Get.Marks.Response.Error.Code"></a>
 
 ### Rpc.Block.Get.Marks.Response.Error.Code
@@ -10054,8 +10144,24 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | deprecated, details for current and dependent smart blocks |
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
-| objectType | [string](#string) |  | objectType it to get default relations from |
+| objectTypesPerObject | [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject) | repeated | objectType it to get default relations from |
 | relationsPerObject | [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject) | repeated | list of relations used in this object |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Show.ObjectTypePerObject"></a>
+
+### Event.Block.Show.ObjectTypePerObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| objectTypes | [string](#string) | repeated |  |
 
 
 
@@ -10432,7 +10538,7 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | objectTypeUrls | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| relations | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| relations | [anytype.relation.Relations](#anytype.relation.Relations) |  |  |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
 | objectType | [ObjectInfo.Type](#anytype.model.ObjectInfo.Type) |  |  |
@@ -11268,6 +11374,7 @@ deprecated
 | name | [string](#string) |  | name of objectType (can be localized for bundled types) |
 | relations | [Relation](#anytype.relation.Relation) | repeated | cannot contain more than one Relation with the same RelationType |
 | layout | [ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
+| iconEmoji | [string](#string) |  | emoji symbol |
 
 
 
@@ -11376,6 +11483,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | phone | 9 | string with sanity check |
 | emoji | 10 | one emoji, can contains multiple utf-8 symbols |
 | objectId | 100 | relation must has objectType |
+| objectIdSelf | 101 | relation of object to itself (using the same objectType) |
 
 
  

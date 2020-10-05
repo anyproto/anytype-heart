@@ -2,22 +2,43 @@ package relation
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
+// all required internal relations will be added to any new object type
+var RequiredInternalRelations = []string{"createdDate", "lastModifiedDate", "lastOpenedDate", "name", "id"}
+
 var (
-	bundledRelations = map[string]*relation.Relation{
-		"creationDate": {
+	BundledRelations = map[string]*relation.Relation{
+		"id": {
+			Format:       relation.RelationFormat_objectId,
+			Name:         "Anytype ID",
+			DefaultValue: nil,
+			Key:          "id",
+			DataSource:   relation.Relation_local,
+			Hidden:       true,
+			ReadOnly:     true,
+		},
+		"createdDate": {
 			Format:       relation.RelationFormat_date,
 			Name:         "Creation date",
 			DefaultValue: nil,
-			Key:          "creationDate",
+			Key:          "createdDate",
 			DataSource:   relation.Relation_local,
 			Hidden:       false,
 			ReadOnly:     true,
 		},
-		"modifiedDate": {
+		"lastModifiedDate": {
 			Format:       relation.RelationFormat_date,
 			Name:         "Last modified date",
 			DefaultValue: nil,
-			Key:          "modifiedDate",
+			Key:          "lastModifiedDate",
+			DataSource:   relation.Relation_local,
+			Hidden:       false,
+			ReadOnly:     true,
+		},
+		"lastOpenedDate": {
+			Format:       relation.RelationFormat_date,
+			Name:         "Last opened date",
+			DefaultValue: nil,
+			Key:          "lastOpenedDate",
 			DataSource:   relation.Relation_local,
 			Hidden:       false,
 			ReadOnly:     true,

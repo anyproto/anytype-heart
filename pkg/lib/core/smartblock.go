@@ -399,7 +399,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	return block.decodeRecord(ctx, rec)
 }
 
-func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Block) error {
+func (block *smartBlock) indexSnapshot(details *types.Struct, relations *pbrelation.Relations, blocks []*model.Block) error {
 	if block.Type() == smartblock.SmartBlockTypeArchive {
 		return nil
 	}
@@ -407,7 +407,7 @@ func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Bl
 	outgoingLinks := findOutgoingLinks(blocks)
 	snippet := getSnippet(blocks)
 
-	return block.node.ObjectStore().UpdateObject(block.ID(), details, outgoingLinks, snippet)
+	return block.node.ObjectStore().UpdateObject(block.ID(), details, relations, outgoingLinks, snippet)
 }
 
 func findOutgoingLinks(blocks []*model.Block) []string {

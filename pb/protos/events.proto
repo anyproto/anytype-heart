@@ -102,7 +102,12 @@ message Event {
                 repeated anytype.relation.RelationWithValue relations = 2;
             }
 
-            string objectType = 5; // objectType it to get default relations from
+            message ObjectTypePerObject {
+                string objectId = 1;
+                repeated string objectTypes = 2;
+            }
+
+            repeated ObjectTypePerObject objectTypesPerObject = 5; // objectType it to get default relations from
             repeated RelationWithValuePerObject relationsPerObject = 6; // list of relations used in this object
         }
 

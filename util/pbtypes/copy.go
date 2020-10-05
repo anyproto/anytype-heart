@@ -1,7 +1,6 @@
 package pbtypes
 
 import (
-	"bytes"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -104,22 +103,6 @@ func CopyRelationsToMap(in []*pbrelation.Relation) (out map[string]*pbrelation.R
 	rels := CopyRelations(in)
 	for _, rel := range rels {
 		out[rel.Key] = rel
-	}
-
-	return
-}
-
-func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) (equal bool) {
-	if len(rels1) != len(rels2) {
-		return false
-	}
-
-	for i := 0; i < len(rels2); i++ {
-		b1, _ := rels1[i].Marshal()
-		b2, _ := rels2[i].Marshal()
-		if !bytes.Equal(b1, b2) {
-			return false
-		}
 	}
 
 	return

@@ -131,6 +131,7 @@ type Service interface {
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
 	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
+	GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (string, error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error
 	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
@@ -628,6 +629,15 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.SetFields(ctx, req.BlockFields...)
 	})
+}
+
+func (s *service) GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (objectType string, err error) {
+	err = s.DoDataview(contextId, func(b dataview.Dataview) error {
+		objectType, err = b.GetObjectTypeURL(ctx, blockId)
+		return err
+	})
+
+	return
 }
 
 func (s *service) SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error {
@@ -1225,7 +1235,19 @@ func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (
 		return id, fmt.Errorf("unexpected set block type: %T", sb)
 	}
 
-	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpened", IsVisible: true}, {Key: "lastModified", IsVisible: true}}
+	var relations []*model.BlockContentDataviewRelation
+	for _, rel := range relation.RequiredInternalRelations {
+		if r, ok := relation.BundledRelations[rel]; !ok {
+			log.Fatalf("RequiredInternalRelations has unknown relation %s", r.Key)
+		} else {
+			relations = append(relations, &model.BlockContentDataviewRelation{Key: r.Key, IsVisible: !r.Hidden})
+		}
+	}
+
+	for _, rel := range objType.Relations {
+		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
+	}
+
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source: objType.Url,

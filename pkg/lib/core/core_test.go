@@ -11,6 +11,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
@@ -64,16 +67,19 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
+	relations1 := &pbrelation.Relations{Relations: map[string]*pbrelation.Relation{"name": relation.BundledRelations["name"]}}
 	blocks1 := []*model.Block{
 		{
 			Id:      "test_id1",
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Kademlia is a distributed hash table for decentralized peer-to-peer computer networks designed by Petar Maymounkov and David Mazières in 2002.[1][2] It specifies the structure of the network and the exchange of information through node lookups. Kademlia nodes communicate among themselves using UDP. A virtual or overlay network is formed by the participant nodes. Each node is identified by a number or node ID. The node ID serves not only as identification, but the Kademlia algorithm uses the node ID to locate values (usually file hashes or keywords). In fact, the node ID provides a direct map to file hashes and that node stores information on where to obtain the file or resource."}},
 		},
 	}
-	err = block1.(*smartBlock).indexSnapshot(details1, blocks1)
+	err = block1.(*smartBlock).indexSnapshot(details1, relations1, blocks1)
 	require.NoError(t, err)
 
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
+	relations2 := &pbrelation.Relations{Relations: map[string]*pbrelation.Relation{"iconImage": relation.BundledRelations["iconImage"]}}
+
 	blocks2 := []*model.Block{
 		{
 			Id:      "test_id2",
@@ -81,26 +87,26 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 		},
 	}
 
-	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
+	err = block2.(*smartBlock).indexSnapshot(details2, relations2, blocks2)
 	require.NoError(t, err)
 
 	var ps = s.ObjectStore()
-
-	results, total, err := ps.Query(database.Query{Limit: 1, Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
+	sch := schema.New(relation.BundledObjectTypes["page"])
+	results, total, err := ps.Query(&sch, database.Query{Limit: 1, Sorts: []*model.BlockContentDataviewSort{{RelationKey: "name"}}})
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.Equal(t, 2, total)
 	require.Equal(t, details1.Fields["name"].GetStringValue(), results[0].Details.Fields["name"].GetStringValue())
 	require.Equal(t, block1.ID(), results[0].Details.Fields["id"].GetStringValue())
 
-	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
-		Operator:   model.BlockContentDataviewFilter_And,
-		RelationId: "name",
-		Condition:  model.BlockContentDataviewFilter_Like,
-		Value:      structs.String("lock1"),
+	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:    model.BlockContentDataviewFilter_And,
+		RelationKey: "name",
+		Condition:   model.BlockContentDataviewFilter_Like,
+		Value:       structs.String("lock1"),
 	}},
 
-		Sorts: []*model.BlockContentDataviewSort{{RelationId: "name"}}})
+		Sorts: []*model.BlockContentDataviewSort{{RelationKey: "name"}}})
 
 	require.NoError(t, err)
 	require.Len(t, results, 1)
@@ -110,11 +116,11 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 
 	ps.UpdateLastOpened(block1.ID(), time.Now())
-	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
-		Operator:   model.BlockContentDataviewFilter_And,
-		RelationId: "lastOpened",
-		Condition:  model.BlockContentDataviewFilter_Equal,
-		Value:      structs.Float64(float64(nowTruncatedToDay.Unix())),
+	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:    model.BlockContentDataviewFilter_And,
+		RelationKey: "lastOpened",
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       structs.Float64(float64(nowTruncatedToDay.Unix())),
 	}},
 	})
 	require.NoError(t, err)
@@ -124,11 +130,11 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	ps.UpdateLastModified(block1.ID(), time.Now())
 	ps.UpdateLastModified(block2.ID(), time.Now())
 
-	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
-		Operator:   model.BlockContentDataviewFilter_And,
-		RelationId: "lastModified",
-		Condition:  model.BlockContentDataviewFilter_Equal,
-		Value:      structs.Float64(float64(nowTruncatedToDay.Unix())),
+	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:    model.BlockContentDataviewFilter_And,
+		RelationKey: "lastModified",
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       structs.Float64(float64(nowTruncatedToDay.Unix())),
 	}},
 	})
 	require.NoError(t, err)
@@ -137,11 +143,11 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	nextDay := time.Date(n.Year(), n.Month(), n.Day()+1, 0, 0, 0, 0, time.UTC)
 
-	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
-		Operator:   model.BlockContentDataviewFilter_And,
-		RelationId: "lastModified",
-		Condition:  model.BlockContentDataviewFilter_Less,
-		Value:      structs.Float64(float64(nextDay.Unix())),
+	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:    model.BlockContentDataviewFilter_And,
+		RelationKey: "lastModified",
+		Condition:   model.BlockContentDataviewFilter_Less,
+		Value:       structs.Float64(float64(nextDay.Unix())),
 	}},
 	})
 	require.NoError(t, err)
@@ -150,22 +156,22 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	prevDay := time.Date(n.Year(), n.Month(), n.Day()-1, 0, 0, 0, 0, time.UTC)
 
-	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
-		Operator:   model.BlockContentDataviewFilter_And,
-		RelationId: "lastModified",
-		Condition:  model.BlockContentDataviewFilter_Greater,
-		Value:      structs.Float64(float64(prevDay.Unix())),
+	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:    model.BlockContentDataviewFilter_And,
+		RelationKey: "lastModified",
+		Condition:   model.BlockContentDataviewFilter_Greater,
+		Value:       structs.Float64(float64(prevDay.Unix())),
 	}},
 	})
 	require.NoError(t, err)
 	require.Len(t, results, 2)
 	require.Equal(t, total, 2)
 
-	results, total, err = ps.Query(database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
-		Operator:   model.BlockContentDataviewFilter_And,
-		RelationId: "lastModified",
-		Condition:  model.BlockContentDataviewFilter_Greater,
-		Value:      structs.Float64(float64(nextDay.Unix())),
+	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
+		Operator:    model.BlockContentDataviewFilter_And,
+		RelationKey: "lastModified",
+		Condition:   model.BlockContentDataviewFilter_Greater,
+		Value:       structs.Float64(float64(nextDay.Unix())),
 	}},
 	})
 	require.NoError(t, err)

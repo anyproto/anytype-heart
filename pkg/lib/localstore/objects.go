@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -21,8 +22,10 @@ import (
 
 var (
 	// ObjectInfo is stored in db key pattern:
-	pagesPrefix            = "pages"
-	pagesDetailsBase       = ds.NewKey("/" + pagesPrefix + "/details")
+	pagesPrefix        = "pages"
+	pagesDetailsBase   = ds.NewKey("/" + pagesPrefix + "/details")
+	pagesRelationsBase = ds.NewKey("/" + pagesPrefix + "/relations")
+
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
@@ -160,6 +163,8 @@ func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) er
 	defer txn.Discard()
 
 	detailsKey := pagesDetailsBase.ChildString(page.Id)
+	relationsKey := pagesRelationsBase.ChildString(page.Id)
+
 	snippetKey := pagesSnippetBase.ChildString(page.Id)
 
 	if exists, err := txn.Has(detailsKey); err != nil {
@@ -173,8 +178,16 @@ func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) er
 	if err != nil {
 		return err
 	}
-
 	if err = txn.Put(detailsKey, b); err != nil {
+		return err
+	}
+
+	b, err = proto.Marshal(page.Info.Relations)
+	if err != nil {
+		return err
+	}
+
+	if err = txn.Put(relationsKey, b); err != nil {
 		return err
 	}
 
@@ -364,7 +377,7 @@ func diffSlices(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, links []string, snippet string) error {
+func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 
@@ -398,6 +411,12 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, links []s
 
 	if details != nil {
 		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: details}); err != nil {
+			return err
+		}
+	}
+
+	if relations != nil {
+		if err = m.updateRelations(txn, id, relations); err != nil {
 			return err
 		}
 	}
@@ -488,6 +507,16 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.Obje
 	return txn.Put(detailsKey, b)
 }
 
+func (m *dsObjectStore) updateRelations(txn ds.Txn, id string, relations *pbrelation.Relations) error {
+	relationsKey := pagesRelationsBase.ChildString(id)
+	b, err := proto.Marshal(relations)
+	if err != nil {
+		return err
+	}
+
+	return txn.Put(relationsKey, b)
+}
+
 func (m *dsObjectStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
 	return txn.Put(snippetKey, []byte(snippet))
@@ -530,7 +559,16 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
 
+	var relations pbrelation.Relations
+	if val, err := txn.Get(pagesRelationsBase.ChildString(id)); err != nil {
+		return nil, fmt.Errorf("failed to get relations: %w", err)
+	} else if err := proto.Unmarshal(val, &relations); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
+	}
+
 	var objectTypes []string
+	// remove hardcoded type
+	// todo: maybe we should move it to a separate key?
 	if details.Details != nil && details.Details.Fields != nil && details.Details.Fields["type"] != nil {
 		vals := details.Details.Fields["type"].GetListValue()
 		for _, val := range vals.Values {
@@ -556,6 +594,7 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		Id:              id,
 		ObjectType:      sbt.ToProto(),
 		Details:         details.Details,
+		Relations:       &relations,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
 		ObjectTypeUrls:  objectTypes,

@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -1050,6 +1051,36 @@ func (mw *Middleware) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUplo
 		return response(pb.RpcBlockFileCreateAndUploadResponseError_UNKNOWN_ERROR, "", err)
 	}
 	return response(pb.RpcBlockFileCreateAndUploadResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) BlockGetDataviewAvailableRelations(req *pb.RpcBlockGetDataviewAvailableRelationsRequest) *pb.RpcBlockGetDataviewAvailableRelationsResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockGetDataviewAvailableRelationsResponseErrorCode, relations []*relation.Relation, err error) *pb.RpcBlockGetDataviewAvailableRelationsResponse {
+		m := &pb.RpcBlockGetDataviewAvailableRelationsResponse{Relations: relations, Error: &pb.RpcBlockGetDataviewAvailableRelationsResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	var (
+		err        error
+		objTypeUrl string
+	)
+
+	err = mw.doBlockService(func(bs block.Service) (err error) {
+		objTypeUrl, err = bs.GetDataviewObjectType(ctx, req.ContextId, req.BlockId)
+		return
+	})
+
+	objType, err := mw.getObjectType(objTypeUrl)
+	if err != nil {
+		if err == block.ErrUnknownObjectType {
+			return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_UNKNOWN_ERROR, nil, err)
+		}
+		return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
+	return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_NULL, objType.Relations, nil)
 }
 
 func (mw *Middleware) BlockSetDataviewView(req *pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse {

@@ -9,6 +9,7 @@ message ObjectType {
     string name = 2; // name of objectType (can be localized for bundled types)
     repeated Relation relations = 3; // cannot contain more than one Relation with the same RelationType
     Layout layout = 4;
+    string iconEmoji = 5; // emoji symbol
 
     enum Layout {
         page = 0;
@@ -63,8 +64,9 @@ enum RelationFormat {
     emoji = 10; // one emoji, can contains multiple utf-8 symbols
 
     objectId = 100; // relation must has objectType
-}
+    objectIdSelf = 101; // relation of object to itself (using the same objectType)
 
+}
 message Relations {
     repeated Relation relations = 1;
 }

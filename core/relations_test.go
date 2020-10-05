@@ -41,15 +41,16 @@ func TestRelations(t *testing.T) {
 			},
 		},
 	})
+
 	require.Equal(t, 0, int(resp3.Error.Code), resp3.Error.Description)
-	require.Len(t, resp3.ObjectType.Relations, 2)
+	require.Len(t, resp3.ObjectType.Relations, 7) // including relation.RequiredInternalRelations
 	require.True(t, strings.HasPrefix(resp3.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
 
 	resp4 := mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(resp4.Error.Code), resp4.Error.Description)
 	require.Len(t, resp4.ObjectTypes, 3)
 	require.Equal(t, resp3.ObjectType.Url, resp4.ObjectTypes[2].Url)
-	require.Len(t, resp4.ObjectTypes[2].Relations, 2)
+	require.Len(t, resp4.ObjectTypes[2].Relations, 7)
 
 	resp5 := mw.SetCreate(&pb.RpcSetCreateRequest{
 		ObjectTypeURL: resp4.ObjectTypes[2].Url,

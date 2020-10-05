@@ -24,6 +24,7 @@ const defaultLimit = 100
 var log = logging.Logger("anytype-mw-editor")
 
 type Dataview interface {
+	GetObjectTypeURL(ctx *state.Context, blockId string) (string, error)
 	UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
 	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
@@ -107,6 +108,20 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 		return d.Apply(s)
 	}
 	return d.Apply(s, smartblock.NoEvent)
+}
+
+func (d *dataviewCollectionImpl) GetObjectTypeURL(ctx *state.Context, blockId string) (string, error) {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return "", err
+	}
+
+	if v, ok := tb.Model().Content.(*model.BlockContentOfDataview); !ok {
+		return "", fmt.Errorf("wrong dataview block content type: %T", tb.Model().Content)
+	} else {
+		return v.Dataview.SchemaURL, nil
+	}
 }
 
 func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {

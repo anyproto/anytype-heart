@@ -79,7 +79,6 @@ func (d *Dataview) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		if !found || changed {
 			msgs = append(msgs,
 				&pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewView{
-
 					&pb.EventBlockSetDataviewView{
 						Id:     dv.Id,
 						ViewId: view2.Id,
