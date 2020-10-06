@@ -136,6 +136,7 @@ func (td *textDetails) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBloc
 		return
 	}
 	td.changed = true
+	td.Text.content.Marks = &model.BlockContentTextMarks{}
 	return
 }
 
