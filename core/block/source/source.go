@@ -132,7 +132,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	if err != nil {
 		return
 	}
-	if _, _, err = state.ApplyStateFast(st); err != nil {
+	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
 	}
 	return

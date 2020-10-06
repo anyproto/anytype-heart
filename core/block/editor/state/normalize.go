@@ -16,6 +16,11 @@ var (
 	divSize              = maxChildrenThreshold / 2
 )
 
+func (s *State) Normalize(withLayouts bool) (err error) {
+	s.removeDuplicates()
+	return s.normalize(withLayouts)
+}
+
 func (s *State) normalize(withLayouts bool) (err error) {
 	// remove invalid children
 	for _, b := range s.blocks {
@@ -270,6 +275,30 @@ func (s *State) pickNextDiv(id string) simple.Block {
 		}
 	}
 	return nil
+}
+
+func (s *State) removeDuplicates() {
+	childrenIds := make(map[string]string)
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		var delIdx []int
+		for i, cid := range b.Model().ChildrenIds {
+			if _, ok := childrenIds[cid]; ok {
+				delIdx = append(delIdx, i)
+				break
+			}
+			childrenIds[cid] = b.Model().Id
+		}
+		b = s.Get(b.Model().Id)
+		if len(delIdx) > 0 {
+			chIds := b.Model().ChildrenIds
+			for _, idx := range delIdx {
+				copy(chIds[idx:], chIds[idx+1:])
+				chIds = chIds[:len(chIds)-1]
+			}
+			b.Model().ChildrenIds = chIds
+		}
+		return true
+	})
 }
 
 func CleanupLayouts(s *State) (removedCount int) {

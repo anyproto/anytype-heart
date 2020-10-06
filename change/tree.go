@@ -191,15 +191,21 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	if start == nil {
 		return
 	}
+	var doneMap = make(map[string]struct{})
 	var (
 		breakpoint *Change
 		queue      = []*Change{start}
 	)
 	iterateLin := func(c *Change) bool {
 		for len(c.Next) == 1 {
-			if !f(c) {
-				return false
+			_, done := doneMap[c.Id]
+			if !done {
+				if !f(c) {
+					return false
+				}
+				doneMap[c.Id] = struct{}{}
 			}
+
 			c = c.Next[0]
 			if len(c.PreviousIds) > 1 {
 				break
@@ -231,8 +237,12 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 				breakpoint = nil
 			}
 		} else {
-			if !f(c) {
-				return
+			_, done := doneMap[c.Id]
+			if !done {
+				if !f(c) {
+					return
+				}
+				doneMap[c.Id] = struct{}{}
 			}
 			if nl != 0 {
 				for _, next := range c.Next {

@@ -2,6 +2,7 @@ package change
 
 import (
 	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,6 +48,49 @@ func Test_Issue605(t *testing.T) {
 	s := d.NewState()
 	s.ApplyChangeIgnoreErr(change.Content...)
 	assert.NoError(t, s.Validate())
+}
+
+func Test_Issue605Tree(t *testing.T) {
+	data, err := ioutil.ReadFile("./testdata/605_tree.pb")
+	require.NoError(t, err)
+	var changeSet map[string][]byte
+	require.NoError(t, gob.NewDecoder(bytes.NewReader(data)).Decode(&changeSet))
+	sb := NewTestSmartBlock()
+	sb.changes = make(map[string]*core.SmartblockRecord)
+	for k, v := range changeSet {
+		sb.changes[k] = &core.SmartblockRecord{Payload: v}
+	}
+	t.Log("changes:", len(sb.changes))
+	sb.logs = append(sb.logs, core.SmartblockLog{
+		ID:   "one",
+		Head: "bafyreidatuo2ooxzyao56ic2fm5ybyidheywbt4hgdubr3ow3lyvw7t37e",
+	})
+
+	tree, _, e := BuildTree(sb)
+	require.NoError(t, e)
+	var cnt int
+	tree.Iterate(tree.RootId(), func(c *Change) (isContinue bool) {
+		cnt++
+		return true
+	})
+	assert.Equal(t, cnt, tree.Len())
+	//gv, _ := tree.Graphviz()
+	//ioutil.WriteFile("/home/che/gv.txt", []byte(gv), 0777)
+
+	root := tree.Root()
+	if root == nil || root.GetSnapshot() == nil {
+		require.NoError(t, fmt.Errorf("root missing or not a snapshot"))
+	}
+	doc := state.NewDocFromSnapshot("bafyba6akblqzapgdmlu3swkrsb62mgrvgdv2g72eqvtufuis4vxhgcgl", root.GetSnapshot()).(*state.State)
+	doc.SetChangeId(root.Id)
+	st, err := BuildStateSimpleCRDT(doc, tree)
+	if err != nil {
+		return
+	}
+	if _, _, err = state.ApplyState(st, true); err != nil {
+		return
+	}
+	t.Log(st.String())
 }
 
 type TestCase struct {
