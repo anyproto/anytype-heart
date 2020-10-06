@@ -351,7 +351,7 @@ func TestState_Normalize(t *testing.T) {
 	})
 	t.Run("remove duplicates", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
-		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"a", "b", "c", "a"}}))
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"a", "b", "b", "c", "a", "a"}}))
 		r.Add(simple.New(&model.Block{Id: "a", ChildrenIds: []string{"b", "d"}}))
 		r.Add(simple.New(&model.Block{Id: "b"}))
 		r.Add(simple.New(&model.Block{Id: "c", ChildrenIds: []string{"e", "e"}}))

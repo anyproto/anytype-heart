@@ -278,25 +278,30 @@ func (s *State) pickNextDiv(id string) simple.Block {
 }
 
 func (s *State) removeDuplicates() {
-	childrenIds := make(map[string]string)
+	childrenIds := make(map[string]struct{})
+	handledBlocks := make(map[string]struct{})
 	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if _, ok := handledBlocks[b.Model().Id]; ok {
+			return true
+		}
 		var delIdx []int
 		for i, cid := range b.Model().ChildrenIds {
 			if _, ok := childrenIds[cid]; ok {
 				delIdx = append(delIdx, i)
-				break
+			} else {
+				childrenIds[cid] = struct{}{}
 			}
-			childrenIds[cid] = b.Model().Id
 		}
-		b = s.Get(b.Model().Id)
 		if len(delIdx) > 0 {
+			b = s.Get(b.Model().Id)
 			chIds := b.Model().ChildrenIds
-			for _, idx := range delIdx {
-				copy(chIds[idx:], chIds[idx+1:])
-				chIds = chIds[:len(chIds)-1]
+			for i, idx := range delIdx {
+				idx = idx - i
+				chIds = append(chIds[:idx], chIds[idx+1:]...)
 			}
 			b.Model().ChildrenIds = chIds
 		}
+		handledBlocks[b.Model().Id] = struct{}{}
 		return true
 	})
 }
