@@ -279,7 +279,8 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 	if len(t.content.Text) == 0 || (rangeFrom == 0 && rangeTo == int32(len(t.content.Text))) {
 		if t.content.Style != model.BlockContentText_Numbered &&
 			t.content.Style != model.BlockContentText_Marked &&
-			t.content.Style != model.BlockContentText_Code {
+			t.content.Style != model.BlockContentText_Code &&
+			t.content.Style != model.BlockContentText_Title {
 			t.content.Style = copiedText.Style
 		}
 

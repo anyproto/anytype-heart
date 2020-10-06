@@ -74,6 +74,21 @@ type State struct {
 }
 
 func (s *State) RootId() string {
+	if s.rootId == "" {
+		for id := range s.blocks {
+			var found bool
+			for _, b2 := range s.blocks {
+				if slice.FindPos(b2.Model().ChildrenIds, id) != -1 {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.rootId = id
+				break
+			}
+		}
+	}
 	return s.rootId
 }
 
@@ -272,7 +287,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prev := s.parent.Details()
 		detailsChanged = !prev.Equal(s.details)
 	}
-	s.Iterate(func(b simple.Block) (isContinue bool) {
+	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		id := b.Model().Id
 		inUse[id] = struct{}{}
 		if _, ok := s.blocks[id]; ok {
@@ -288,7 +303,9 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			}
 		}
 		return true
-	})
+	}); err != nil {
+		return
+	}
 	flushNewBlocks := func() {
 		if len(newBlocks) > 0 {
 			msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
@@ -635,6 +652,31 @@ func (s *State) DepSmartIds() (ids []string) {
 		return true
 	})
 	return
+}
+
+func (s *State) Validate() (err error) {
+	var (
+		err2        error
+		childrenIds = make(map[string]string)
+	)
+
+	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
+		for _, cid := range b.Model().ChildrenIds {
+			if parentId, ok := childrenIds[cid]; ok {
+				err2 = fmt.Errorf("two children with same id: %v; parent1: %s; parent2: %s", cid, parentId, b.Model().Id)
+				return false
+			}
+			childrenIds[cid] = b.Model().Id
+			if !s.Exists(cid) {
+				err2 = fmt.Errorf("missed block: %s; parent: %s", cid, b.Model().Id)
+				return false
+			}
+		}
+		return true
+	}); err != nil {
+		return
+	}
+	return err2
 }
 
 type linkSource interface {
