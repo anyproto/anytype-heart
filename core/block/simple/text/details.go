@@ -150,3 +150,14 @@ func (td *textDetails) Merge(b simple.Block) (err error) {
 }
 
 func (td *textDetails) SetStyle(_ model.BlockContentTextStyle) {}
+
+func (td *textDetails) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error) {
+	if cutBlock, initialBlock, err = td.Text.RangeCut(from, to); err != nil {
+		return nil, nil, err
+	}
+	if pbtypes.GetString(cutBlock.GetFields(), DetailsKeyFieldName) != "" {
+		delete(cutBlock.GetFields().Fields, DetailsKeyFieldName)
+	}
+	cutBlock.GetText().Style = model.BlockContentText_Paragraph
+	return
+}

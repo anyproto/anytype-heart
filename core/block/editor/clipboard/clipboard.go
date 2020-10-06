@@ -117,16 +117,18 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 		}
 
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
+		textSlot = cutBlock.GetText().Text
+		anySlot = []*model.Block{cutBlock}
 		s.Set(simple.New(cutBlock))
 		htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
 		textSlot = cutBlock.GetText().Text
-
+		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
 	htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
-
+	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
 
@@ -157,12 +159,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
 
-		firstBlock.Model().GetText().Text = initialBlock.GetText().Text
-		firstBlock.Model().GetText().Marks = initialBlock.GetText().Marks
-
-		if err != nil {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
-		}
+		firstBlock.(text.Block).SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
 
 		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
 			for i, m := range cutBlock.GetText().Marks.Marks {
@@ -574,6 +571,7 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 
 func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 	cbs = state.NewDoc("cbRoot", nil).(*state.State)
+	cbs.SetDetails(cb.Details())
 	cbs.Add(simple.New(&model.Block{Id: "cbRoot"}))
 
 	var inChildrens, rootIds []string
@@ -587,7 +585,19 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 		cbs.Add(simple.New(b))
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
+	cbs.BlocksInit()
 	return
+}
+
+func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
+	blocks := s.Blocks()
+	result := blocks[:0]
+	for _, b := range blocks {
+		if b.Id != "cbRoot" {
+			result = append(result, b)
+		}
+	}
+	return result
 }
 
 func (cb *clipboard) pasteFiles(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, err error) {
