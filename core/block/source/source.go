@@ -132,6 +132,9 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	if err != nil {
 		return
 	}
+	if verr := st.Validate(); verr != nil {
+		log.With("thread", s.id).Errorf("not valid state: %v", verr)
+	}
 	if err = st.Normalize(false); err != nil {
 		return
 	}
