@@ -98,9 +98,6 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return err
 	}
-	if err = sb.Doc.(*state.State).Normalize(!sb.disableLayouts); err != nil {
-		return
-	}
 	sb.source = s
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
