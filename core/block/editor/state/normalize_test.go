@@ -349,6 +349,22 @@ func TestState_Normalize(t *testing.T) {
 			assert.True(t, len(m.ChildrenIds) > 0)
 		}
 	})
+	t.Run("remove duplicates", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"a", "b", "b", "c", "a", "a"}}))
+		r.Add(simple.New(&model.Block{Id: "a", ChildrenIds: []string{"b", "d"}}))
+		r.Add(simple.New(&model.Block{Id: "b"}))
+		r.Add(simple.New(&model.Block{Id: "c", ChildrenIds: []string{"e", "e"}}))
+		r.Add(simple.New(&model.Block{Id: "d"}))
+		r.Add(simple.New(&model.Block{Id: "e"}))
+		s := r.NewState()
+		require.NoError(t, s.Normalize(false))
+		_, _, err := ApplyState(s, false)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"a", "b", "c"}, r.Pick("root").Model().ChildrenIds)
+		assert.Equal(t, []string{"d"}, r.Pick("a").Model().ChildrenIds)
+		assert.Equal(t, []string{"e"}, r.Pick("c").Model().ChildrenIds)
+	})
 }
 
 func TestCleanupLayouts(t *testing.T) {

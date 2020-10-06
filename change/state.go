@@ -1,7 +1,6 @@
 package change
 
 import (
-	"fmt"
 	"sort"
 	"time"
 
@@ -54,6 +53,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 		startId = t.RootId()
 		applyRoot = true
 	}
+
 	t.Iterate(startId, func(c *Change) (isContinue bool) {
 		count++
 		if startId == c.Id {
@@ -69,10 +69,6 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 		ns.ApplyChangeIgnoreErr(c.Change.Content...)
 		ns.SetChangeId(c.Id)
 		ns.AddFileKeys(c.FileKeys...)
-		if err = ns.Validate(); err != nil {
-			err = fmt.Errorf("state build check error: %v: change(%d): %v", err, count, c.Change)
-			return
-		}
 		_, _, err = state.ApplyStateFastOne(ns)
 		if err != nil {
 			return false
