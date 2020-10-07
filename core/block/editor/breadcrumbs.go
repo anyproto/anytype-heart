@@ -2,6 +2,7 @@ package editor
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -26,7 +27,7 @@ func (p *Breadcrumbs) Init(s source.Source, _ bool) (err error) {
 		return
 	}
 	p.SmartBlock.DisableLayouts()
-	return
+	return template.ApplyTemplate(p, template.Empty, nil)
 }
 
 func (b *Breadcrumbs) SetCrumbs(ids []string) (err error) {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -38,15 +38,10 @@ func (p *Archive) Init(s source.Source, _ bool) (err error) {
 }
 
 func (p *Archive) init() (err error) {
-	if meta := p.SmartBlock.Meta(); meta != nil {
-		if meta.Details != nil && meta.Details.Fields != nil && len(meta.Details.Fields) > 0 {
-			return
-		}
-	}
-	return p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
-		{Key: "name", Value: pbtypes.String("Archive")},
-		{Key: "iconEmoji", Value: pbtypes.String("🗑️")},
-	})
+	s := p.NewState()
+	s.SetDetail("name", pbtypes.String("Archive"))
+	s.SetDetail("iconEmoji", pbtypes.String("🗑️"))
+	return template.ApplyTemplate(p, template.Empty, s)
 }
 
 func (p *Archive) Archive(id string) (err error) {

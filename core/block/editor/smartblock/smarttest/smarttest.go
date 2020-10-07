@@ -45,11 +45,15 @@ func (st *SmartTest) DisableLayouts() {
 	return
 }
 
+func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
+	return
+}
+
 func (st *SmartTest) Reindex() error {
 	return nil
 }
 
-func (st *SmartTest) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
+func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{Details: &types.Struct{
 			Fields: make(map[string]*types.Value),
@@ -105,9 +109,7 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 		st.hist.Add(act)
 	}
 	if sendEvent {
-		st.Results.Events = append(st.Results.Events, &pb.Event{
-			Messages: msgs,
-		})
+		st.Results.Events = append(st.Results.Events, msgs)
 	}
 	st.Results.Applies = append(st.Results.Applies, st.Blocks())
 	return
@@ -139,6 +141,6 @@ func (st *SmartTest) Close() (err error) {
 }
 
 type Results struct {
-	Events  []*pb.Event
+	Events  [][]simple.EventMessage
 	Applies [][]*model.Block
 }

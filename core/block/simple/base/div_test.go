@@ -47,7 +47,7 @@ func TestDiv_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Value.(*pb.EventMessageValueOfBlockSetDiv).BlockSetDiv
+		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetDiv).BlockSetDiv
 		assert.NotNil(t, change.Style)
 	})
 }

@@ -90,7 +90,7 @@ func (f *Bookmark) Copy() simple.Block {
 	}
 }
 
-func (f *Bookmark) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
+func (f *Bookmark) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	bookmark, ok := b.(*Bookmark)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
@@ -129,7 +129,7 @@ func (f *Bookmark) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	}
 
 	if hasChanges {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes}})
+		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes}}})
 	}
 	return
 }

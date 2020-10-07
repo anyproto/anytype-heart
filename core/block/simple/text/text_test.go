@@ -56,7 +56,7 @@ func TestText_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		textChange := diff[0].Value.(*pb.EventMessageValueOfBlockSetText).BlockSetText
+		textChange := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetText).BlockSetText
 		assert.NotNil(t, textChange.Style)
 		assert.NotNil(t, textChange.Checked)
 		assert.NotNil(t, textChange.Text)

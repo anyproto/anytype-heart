@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -25,6 +26,10 @@ const (
 	snippetMaxSize = 300
 )
 
+var (
+	ErrRestricted = errors.New("restricted")
+)
+
 var DetailsFileFields = [...]string{"coverId", "iconImage"}
 
 type Doc interface {
@@ -38,16 +43,18 @@ type Doc interface {
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
 	GetFileKeys() []pb.ChangeFileKeys
+	BlocksInit()
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	if blocks == nil {
 		blocks = make(map[string]simple.Block)
 	}
-	return &State{
+	s := &State{
 		rootId: rootId,
 		blocks: blocks,
 	}
+	return s
 }
 
 type State struct {
@@ -104,6 +111,7 @@ func (s *State) Add(b simple.Block) (ok bool) {
 		if s.parent != nil {
 			s.newIds = append(s.newIds, id)
 		}
+		s.blockInit(b)
 		return true
 	}
 	return false
@@ -114,6 +122,7 @@ func (s *State) Set(b simple.Block) {
 		s.Add(b)
 	} else {
 		s.blocks[b.Model().Id] = b
+		s.blockInit(b)
 	}
 }
 
@@ -125,6 +134,7 @@ func (s *State) Get(id string) (b simple.Block) {
 		if b = s.Pick(id); b != nil {
 			b = b.Copy()
 			s.blocks[id] = b
+			s.blockInit(b)
 			return
 		}
 	}
@@ -185,6 +195,19 @@ func (s *State) PickParentOf(id string) (res simple.Block) {
 	return
 }
 
+func (s *State) IsChild(parentId, childId string) bool {
+	for {
+		parent := s.PickParentOf(childId)
+		if parent == nil {
+			return false
+		}
+		if parent.Model().Id == parentId {
+			return true
+		}
+		childId = parent.Model().Id
+	}
+}
+
 func (s *State) PickOriginParentOf(id string) (res simple.Block) {
 	if s.parent != nil {
 		return s.parent.PickParentOf(id)
@@ -223,19 +246,19 @@ func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
 }
 
-func ApplyState(s *State, withLayouts bool) (msgs []*pb.EventMessage, action undo.Action, err error) {
+func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
 	return s.apply(false, false, withLayouts)
 }
 
-func ApplyStateFast(s *State) (msgs []*pb.EventMessage, action undo.Action, err error) {
+func ApplyStateFast(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
 	return s.apply(true, false, false)
 }
 
-func ApplyStateFastOne(s *State) (msgs []*pb.EventMessage, action undo.Action, err error) {
+func ApplyStateFastOne(s *State) (msgs []simple.EventMessage, action undo.Action, err error) {
 	return s.apply(true, true, false)
 }
 
-func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, action undo.Action, err error) {
+func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
 	if s.parent != nil && (s.parent.parent != nil || fast) {
 		s.intermediateApply()
 		if one {
@@ -253,31 +276,45 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, act
 		}
 	}
 	var (
-		inUse       = make(map[string]struct{})
-		affectedIds = make([]string, 0, len(s.blocks))
-		newBlocks   []*model.Block
+		inUse          = make(map[string]struct{})
+		affectedIds    = make([]string, 0, len(s.blocks))
+		newBlocks      []*model.Block
+		chmsgs         []simple.EventMessage
+		detailsChanged bool
 	)
 
+	if s.parent != nil && s.details != nil {
+		prev := s.parent.Details()
+		detailsChanged = !prev.Equal(s.details)
+	}
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		id := b.Model().Id
 		inUse[id] = struct{}{}
 		if _, ok := s.blocks[id]; ok {
 			affectedIds = append(affectedIds, id)
 		}
+		if db, ok := b.(simple.DetailsHandler); ok {
+			if dmsgs, err := db.DetailsApply(s); err == nil && len(dmsgs) > 0 {
+				chmsgs = append(chmsgs, dmsgs...)
+			} else if detailsChanged {
+				if dmsgs, err := db.OnDetailsChange(s); err == nil {
+					chmsgs = append(chmsgs, dmsgs...)
+				}
+			}
+		}
 		return true
 	}); err != nil {
 		return
 	}
-
 	flushNewBlocks := func() {
 		if len(newBlocks) > 0 {
-			msgs = append(msgs, &pb.EventMessage{
+			msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
 				Value: &pb.EventMessageValueOfBlockAdd{
 					BlockAdd: &pb.EventBlockAdd{
 						Blocks: newBlocks,
 					},
 				},
-			})
+			}})
 		}
 		newBlocks = nil
 	}
@@ -312,6 +349,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, act
 		}
 	}
 	flushNewBlocks()
+	msgs = append(msgs, chmsgs...)
 
 	// removed blocks
 	var (
@@ -329,11 +367,11 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, act
 		}
 	}
 	if len(toRemove) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
+		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockDelete{
 				BlockDelete: &pb.EventBlockDelete{BlockIds: toRemove},
 			},
-		})
+		}})
 	}
 	// generate changes
 	s.fillChanges(msgs)
@@ -364,6 +402,16 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []*pb.EventMessage, act
 		if !prev.Equal(s.details) {
 			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
 			s.parent.details = s.details
+			msgs = append(msgs, simple.EventMessage{
+				Msg: &pb.EventMessage{
+					Value: &pb.EventMessageValueOfBlockSetDetails{
+						BlockSetDetails: &pb.EventBlockSetDetails{
+							Id:      s.RootId(),
+							Details: pbtypes.CopyStruct(s.details),
+						},
+					},
+				},
+			})
 		}
 	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
@@ -390,7 +438,7 @@ func (s *State) intermediateApply() {
 	return
 }
 
-func (s *State) Diff(new *State) (msgs []*pb.EventMessage, err error) {
+func (s *State) Diff(new *State) (msgs []simple.EventMessage, err error) {
 	var (
 		newBlocks []*model.Block
 		removeIds []string
@@ -419,22 +467,22 @@ func (s *State) Diff(new *State) (msgs []*pb.EventMessage, err error) {
 		return true
 	})
 	if len(newBlocks) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
+		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockAdd{
 				BlockAdd: &pb.EventBlockAdd{
 					Blocks: newBlocks,
 				},
 			},
-		})
+		}})
 	}
 	if len(removeIds) > 0 {
-		msgs = append(msgs, &pb.EventMessage{
+		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockDelete{
 				BlockDelete: &pb.EventBlockDelete{
 					BlockIds: removeIds,
 				},
 			},
-		})
+		}})
 	}
 	return
 }
@@ -455,6 +503,24 @@ func (s *State) Blocks() []*model.Block {
 		}
 	}
 
+	return blocks
+}
+
+func (s *State) BlocksToSave() []*model.Block {
+	var (
+		ids    = []string{s.RootId()}
+		blocks = make([]*model.Block, 0, len(s.blocks))
+	)
+
+	for len(ids) > 0 {
+		next := ids[0]
+		ids = ids[1:]
+
+		if b := s.Pick(next); b != nil {
+			blocks = append(blocks, b.Copy().ModelToSave())
+			ids = append(ids, b.Model().ChildrenIds...)
+		}
+	}
 	return blocks
 }
 
@@ -486,6 +552,17 @@ func (s *State) SetDetails(d *types.Struct) *State {
 	return s
 }
 
+func (s *State) SetDetail(key string, value *types.Value) {
+	if s.details == nil {
+		s.details = pbtypes.CopyStruct(s.parent.Details())
+	}
+	if s.details == nil || s.details.Fields == nil {
+		s.details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	s.details.Fields[key] = value
+	return
+}
+
 func (s *State) Details() *types.Struct {
 	if s.details == nil && s.parent != nil {
 		return s.parent.Details()
@@ -495,7 +572,7 @@ func (s *State) Details() *types.Struct {
 
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if text := b.Model().GetText(); text != nil {
+		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title {
 			if snippet != "" {
 				snippet += " "
 			}
@@ -523,6 +600,41 @@ func (s *State) GetAllFileHashes() (hashes []string) {
 	for _, field := range DetailsFileFields {
 		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
 			hashes = append(hashes, v.GetStringValue())
+		}
+	}
+	return
+}
+
+func (s *State) blockInit(b simple.Block) {
+	if db, ok := b.(simple.DetailsHandler); ok {
+		db.DetailsInit(s)
+	}
+}
+
+func (s *State) BlocksInit() {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if db, ok := b.(simple.DetailsHandler); ok {
+			db.DetailsInit(s)
+		}
+		return true
+	})
+}
+
+func (s *State) CheckRestrictions() (err error) {
+	if s.parent == nil {
+		return
+	}
+	for id, b := range s.blocks {
+		rest := b.Model().Restrictions
+		if rest == nil {
+			continue
+		}
+		if rest.Edit {
+			if ob := s.parent.Pick(id); ob != nil {
+				if msgs, _ := ob.Diff(b); len(msgs) > 0 {
+					return ErrRestricted
+				}
+			}
 		}
 	}
 	return

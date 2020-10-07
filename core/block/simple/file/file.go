@@ -102,7 +102,7 @@ func (f *File) Copy() simple.Block {
 	}
 }
 
-func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
+func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	file, ok := b.(*File)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
@@ -141,7 +141,7 @@ func (f *File) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 	}
 
 	if hasChanges {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}})
+		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}}})
 	}
 	return
 }

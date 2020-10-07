@@ -27,7 +27,7 @@ type Div struct {
 	content *model.BlockContentDiv
 }
 
-func (b *Div) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
+func (b *Div) Diff(block simple.Block) (msgs []simple.EventMessage, err error) {
 	div, ok := block.(*Div)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
@@ -45,7 +45,7 @@ func (b *Div) Diff(block simple.Block) (msgs []*pb.EventMessage, err error) {
 		changes.Style = &pb.EventBlockSetDivStyle{Value: div.content.Style}
 	}
 	if hasChanges {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDiv{BlockSetDiv: changes}})
+		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDiv{BlockSetDiv: changes}}})
 	}
 	return
 }

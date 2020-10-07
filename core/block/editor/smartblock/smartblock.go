@@ -15,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -30,6 +29,7 @@ var (
 const (
 	NoHistory ApplyFlag = iota
 	NoEvent
+	NoRestrictions
 	DoSnapshot
 )
 
@@ -53,8 +53,9 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() anytype.Service
-	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Reindex() error
+	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	Close() (err error)
@@ -101,21 +102,17 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
 	sb.source = s
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
-	return sb.checkRootBlock()
+	sb.Doc.BlocksInit()
+	return
 }
 
-func (sb *smartBlock) checkRootBlock() (err error) {
-	s := sb.NewState()
-	if root := s.Get(sb.RootId()); root != nil {
-		return
+func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
+	if sb.sendEvent != nil {
+		sb.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: sb.Id(),
+		})
 	}
-	s.Add(simple.New(&model.Block{
-		Id: sb.RootId(),
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-	}))
-	return sb.Apply(s, NoEvent, NoHistory)
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
@@ -181,7 +178,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	sb.Lock()
 	defer sb.Unlock()
-	if sb.sendEvent != nil {
+	if sb.sendEvent != nil && d.BlockId != sb.Id() {
 		sb.sendEvent(&pb.Event{
 			Messages: []*pb.EventMessage{
 				{
@@ -217,14 +214,7 @@ func (sb *smartBlock) DisableLayouts() {
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var beforeSnippet = sb.Doc.Snippet()
-	var sendEvent, addHistory, doSnapshot = true, true, false
-	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
-	if err != nil {
-		return
-	}
-	if act.IsEmpty() {
-		return nil
-	}
+	var sendEvent, addHistory, doSnapshot, checkRestrictions = true, true, false, true
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
@@ -233,7 +223,23 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			addHistory = false
 		case DoSnapshot:
 			doSnapshot = true
+		case NoRestrictions:
+			checkRestrictions = false
 		}
+	}
+
+	if checkRestrictions {
+		if err = s.CheckRestrictions(); err != nil {
+			return
+		}
+	}
+
+	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
+	if err != nil {
+		return
+	}
+	if act.IsEmpty() {
+		return nil
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
 	fileHashes := getChangedFileHashes(act)
@@ -246,11 +252,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.undo.Add(act)
 	}
 	if sendEvent {
+		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
-			ctx.SetMessages(sb.Id(), msgs)
+			ctx.SetMessages(sb.Id(), events)
 		} else if sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{
-				Messages:  msgs,
+				Messages:  events,
 				ContextId: sb.RootId(),
 			})
 		}
@@ -339,8 +346,9 @@ func (sb *smartBlock) Anytype() anytype.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	copy := pbtypes.CopyStruct(sb.Details())
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	s := sb.NewStateCtx(ctx)
+	copy := pbtypes.CopyStruct(s.Details())
 	if copy == nil || copy.Fields == nil {
 		copy = &types.Struct{
 			Fields: make(map[string]*types.Value),
@@ -352,8 +360,8 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 	if copy.Equal(sb.Details()) {
 		return
 	}
-	s := sb.NewState().SetDetails(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	s.SetDetails(copy)
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return
@@ -372,7 +380,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	log.Infof("changes: stateAppend: %d events", len(msgs))
 	if len(msgs) > 0 && sb.sendEvent != nil {
 		sb.sendEvent(&pb.Event{
-			Messages:  msgs,
+			Messages:  msgsToEvents(msgs),
 			ContextId: sb.Id(),
 		})
 	}
@@ -391,7 +399,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	} else {
 		if len(msgs) > 0 && sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{
-				Messages:  msgs,
+				Messages:  msgsToEvents(msgs),
 				ContextId: sb.Id(),
 			})
 		}
@@ -478,4 +486,12 @@ func (sb *smartBlock) storeFileKeys() {
 	if err := sb.Anytype().FileStoreKeys(fileKeys...); err != nil {
 		log.Warnf("can't ctore file keys: %v", err)
 	}
+}
+
+func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
+	events := make([]*pb.EventMessage, len(msgs))
+	for i := range msgs {
+		events[i] = msgs[i].Msg
+	}
+	return events
 }

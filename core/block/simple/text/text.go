@@ -26,6 +26,9 @@ func init() {
 		if _, err := toTextContent(m.Content); err != nil {
 			return nil
 		}
+		if key := pbtypes.GetString(m.GetFields(), DetailsKeyFieldName); key != "" {
+			return NewDetails(m, key)
+		}
 		return NewText(m)
 	})
 }
@@ -84,7 +87,7 @@ func (t *Text) Copy() simple.Block {
 	return NewText(pbtypes.CopyBlock(t.Model()))
 }
 
-func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
+func (t *Text) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	text, ok := b.(*Text)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
@@ -118,7 +121,7 @@ func (t *Text) Diff(b simple.Block) (msgs []*pb.EventMessage, err error) {
 		changes.Color = &pb.EventBlockSetTextColor{Value: text.content.Color}
 	}
 	if hasChanges {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}})
+		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}}})
 	}
 	return
 }
@@ -274,13 +277,8 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 	}
 
 	if len(t.content.Text) == 0 || (rangeFrom == 0 && rangeTo == int32(len(t.content.Text))) {
-		if t.content.Style != model.BlockContentText_Numbered &&
-			t.content.Style != model.BlockContentText_Marked &&
-			t.content.Style != model.BlockContentText_Code {
-			t.content.Style = copiedText.Style
-		}
-
 		if !isPartOfBlock {
+			t.content.Style = copiedText.Style
 			t.content.Color = copiedText.Color
 			t.BackgroundColor = copiedBlock.BackgroundColor
 		}
@@ -312,7 +310,6 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 
 func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error) {
 	if from < 0 || int(from) > utf8.RuneCountInString(t.content.Text) {
-		log.Debug("RangeSplit:", "from", from, "to", to, "count", utf8.RuneCountInString(t.content.Text), "text", t.content.Text)
 		return nil, nil, ErrOutOfRange
 	}
 	if to < 0 || int(to) > utf8.RuneCountInString(t.content.Text) {
@@ -403,13 +400,6 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 		t.content.Marks = oldMarks
 	}
 	return newBlock, nil
-}
-
-func Abs(x int32) int32 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, newTextLen int32) (topMarks []*model.BlockContentTextMark, botMarks []*model.BlockContentTextMark) {

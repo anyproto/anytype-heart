@@ -21,12 +21,13 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	for _, fk := range snapshot.FileKeys {
 		fileKeys = append(fileKeys, *fk)
 	}
-	return &State{
+	s := &State{
 		rootId:   rootId,
 		blocks:   blocks,
 		details:  snapshot.Data.Details,
 		fileKeys: fileKeys,
 	}
+	return s
 }
 
 func (s *State) SetChangeId(id string) {
@@ -177,34 +178,37 @@ func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
 
-func (s *State) fillChanges(msgs []*pb.EventMessage) {
+func (s *State) fillChanges(msgs []simple.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
 	var delIds []string
 	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
 	for _, msg := range msgs {
-		switch o := msg.Value.(type) {
+		if msg.Virtual {
+			continue
+		}
+		switch o := msg.Msg.Value.(type) {
 		case *pb.EventMessageValueOfBlockSetChildrenIds:
 			structMsgs = append(structMsgs, o.BlockSetChildrenIds)
 		case *pb.EventMessageValueOfBlockSetAlign:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetBackgroundColor:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetBookmark:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetDiv:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetText:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetFields:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetFile:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetLink:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetDataviewView:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDeleteDataviewView:
-			updMsgs = append(updMsgs, msg)
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDelete:
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
 		case *pb.EventMessageValueOfBlockAdd:
