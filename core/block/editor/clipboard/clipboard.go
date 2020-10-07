@@ -291,6 +291,9 @@ func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered 
 func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
 	var oldToNew = make(map[string]string)
 	for _, b := range anySlot {
+		if b.Id == "" {
+			b.Id = bson.NewObjectId().Hex()
+		}
 		oldToNew[b.Id] = bson.NewObjectId().Hex()
 	}
 	for _, b := range anySlot {
@@ -516,7 +519,6 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 		newBlocks = append(newBlocks, newBlock)
 		s.Add(newBlock)
 	}
-
 	for i, _ := range blocks {
 		index := i
 		if isReversed {
