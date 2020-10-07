@@ -118,7 +118,6 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
-		anySlot = []*model.Block{cutBlock}
 		s.Set(simple.New(cutBlock))
 		htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
 		textSlot = cutBlock.GetText().Text
@@ -586,6 +585,7 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
 	cbs.BlocksInit()
+	cbs.Normalize(false)
 	return
 }
 
