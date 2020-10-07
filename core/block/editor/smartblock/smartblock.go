@@ -275,12 +275,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
-	if err = sb.Apply(s, NoHistory, DoSnapshot); err != nil {
+	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
 	if sb.undo != nil {
 		sb.undo.Reset()
 	}
+	sb.updatePageStoreNoErr("", nil)
 	return
 }
 
