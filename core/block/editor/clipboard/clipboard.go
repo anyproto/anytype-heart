@@ -118,7 +118,6 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
-		anySlot = []*model.Block{cutBlock}
 		s.Set(simple.New(cutBlock))
 		htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
 		textSlot = cutBlock.GetText().Text
@@ -282,38 +281,27 @@ func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest) 
 
 func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered []*model.Block) {
 	for _, b := range anySlot {
-		if b.GetLayout() == nil {
+		if layout := b.GetLayout(); layout == nil || layout.Style != model.BlockContentLayout_Div || layout.Style == model.BlockContentLayout_Header {
 			anySlotFiltered = append(anySlotFiltered, b)
 		}
 	}
-
 	return anySlotFiltered
 }
 
 func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
-	var oldToNew map[string]string
-	oldToNew = make(map[string]string)
-
-	for i, _ := range anySlot {
-		var oldId = make([]byte, len(anySlot[i].Id))
-
-		newId := bson.NewObjectId().Hex()
-
-		copy(oldId, anySlot[i].Id)
-		oldToNew[string(oldId)] = newId
-		anySlot[i].Id = newId
-	}
-
-	for i, _ := range anySlot {
-		cIds := []string{}
-		for _, cId := range anySlot[i].ChildrenIds {
-			if len(oldToNew[cId]) > 0 {
-				cIds = append(cIds, oldToNew[cId])
-			}
+	var oldToNew = make(map[string]string)
+	for _, b := range anySlot {
+		if b.Id == "" {
+			b.Id = bson.NewObjectId().Hex()
 		}
-		anySlot[i].ChildrenIds = cIds
+		oldToNew[b.Id] = bson.NewObjectId().Hex()
 	}
-
+	for _, b := range anySlot {
+		b.Id = oldToNew[b.Id]
+		for i := range b.ChildrenIds {
+			b.ChildrenIds[i] = oldToNew[b.ChildrenIds[i]]
+		}
+	}
 	return anySlot
 }
 
@@ -531,7 +519,6 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 		newBlocks = append(newBlocks, newBlock)
 		s.Add(newBlock)
 	}
-
 	for i, _ := range blocks {
 		index := i
 		if isReversed {
@@ -586,6 +573,7 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
 	cbs.BlocksInit()
+	cbs.Normalize(false)
 	return
 }
 
