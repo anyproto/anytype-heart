@@ -281,38 +281,24 @@ func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest) 
 
 func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered []*model.Block) {
 	for _, b := range anySlot {
-		if b.GetLayout() == nil {
+		if layout := b.GetLayout(); layout == nil || layout.Style != model.BlockContentLayout_Div {
 			anySlotFiltered = append(anySlotFiltered, b)
 		}
 	}
-
 	return anySlotFiltered
 }
 
 func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
-	var oldToNew map[string]string
-	oldToNew = make(map[string]string)
-
-	for i, _ := range anySlot {
-		var oldId = make([]byte, len(anySlot[i].Id))
-
-		newId := bson.NewObjectId().Hex()
-
-		copy(oldId, anySlot[i].Id)
-		oldToNew[string(oldId)] = newId
-		anySlot[i].Id = newId
+	var oldToNew = make(map[string]string)
+	for _, b := range anySlot {
+		oldToNew[b.Id] = bson.NewObjectId().Hex()
 	}
-
-	for i, _ := range anySlot {
-		cIds := []string{}
-		for _, cId := range anySlot[i].ChildrenIds {
-			if len(oldToNew[cId]) > 0 {
-				cIds = append(cIds, oldToNew[cId])
-			}
+	for _, b := range anySlot {
+		b.Id = oldToNew[b.Id]
+		for i := range b.ChildrenIds {
+			b.ChildrenIds[i] = oldToNew[b.ChildrenIds[i]]
 		}
-		anySlot[i].ChildrenIds = cIds
 	}
-
 	return anySlot
 }
 
