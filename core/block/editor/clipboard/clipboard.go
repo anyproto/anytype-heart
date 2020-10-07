@@ -281,7 +281,7 @@ func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest) 
 
 func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered []*model.Block) {
 	for _, b := range anySlot {
-		if layout := b.GetLayout(); layout == nil || layout.Style != model.BlockContentLayout_Div {
+		if layout := b.GetLayout(); layout == nil || layout.Style != model.BlockContentLayout_Div || layout.Style == model.BlockContentLayout_Header {
 			anySlotFiltered = append(anySlotFiltered, b)
 		}
 	}
