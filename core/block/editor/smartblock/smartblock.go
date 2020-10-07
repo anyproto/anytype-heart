@@ -30,7 +30,15 @@ const (
 	NoHistory ApplyFlag = iota
 	NoEvent
 	NoRestrictions
+	NoHooks
 	DoSnapshot
+)
+
+type Hook int
+
+const (
+	HookOnNewState Hook = iota
+	HookOnClose
 )
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -58,6 +66,7 @@ type SmartBlock interface {
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
+	AddHook(f func(), events ...Hook)
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -71,14 +80,16 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds         []string
-	sendEvent      func(e *pb.Event)
-	undo           undo.History
-	source         source.Source
-	meta           meta.Service
-	metaSub        meta.Subscriber
-	metaData       *core.SmartBlockMeta
-	disableLayouts bool
+	depIds          []string
+	sendEvent       func(e *pb.Event)
+	undo            undo.History
+	source          source.Source
+	meta            meta.Service
+	metaSub         meta.Subscriber
+	metaData        *core.SmartBlockMeta
+	disableLayouts  bool
+	onNewStateHooks []func()
+	onCloseHooks    []func()
 }
 
 func (sb *smartBlock) Id() string {
@@ -213,7 +224,6 @@ func (sb *smartBlock) DisableLayouts() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
-	var beforeSnippet = sb.Doc.Snippet()
 	var sendEvent, addHistory, doSnapshot, checkRestrictions = true, true, false, true
 	for _, f := range flags {
 		switch f {
@@ -227,13 +237,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			checkRestrictions = false
 		}
 	}
-
 	if checkRestrictions {
 		if err = s.CheckRestrictions(); err != nil {
 			return
 		}
 	}
 
+	var beforeSnippet = sb.Doc.Snippet()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
@@ -338,6 +348,16 @@ func (sb *smartBlock) checkSubscriptions() (changed bool) {
 	return false
 }
 
+func (sb *smartBlock) NewState() *state.State {
+	sb.execHooks(HookOnNewState)
+	return sb.Doc.NewState()
+}
+
+func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
+	sb.execHooks(HookOnNewState)
+	return sb.Doc.NewStateCtx(ctx)
+}
+
 func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
@@ -414,6 +434,7 @@ func (sb *smartBlock) Reindex() (err error) {
 }
 
 func (sb *smartBlock) Close() (err error) {
+	sb.execHooks(HookOnClose)
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -484,7 +505,33 @@ func (sb *smartBlock) storeFileKeys() {
 		}
 	}
 	if err := sb.Anytype().FileStoreKeys(fileKeys...); err != nil {
-		log.Warnf("can't ctore file keys: %v", err)
+		log.Warnf("can't store file keys: %v", err)
+	}
+}
+
+func (sb *smartBlock) AddHook(f func(), events ...Hook) {
+	for _, e := range events {
+		switch e {
+		case HookOnClose:
+			sb.onCloseHooks = append(sb.onCloseHooks, f)
+		case HookOnNewState:
+			sb.onNewStateHooks = append(sb.onNewStateHooks, f)
+		}
+	}
+}
+
+func (sb *smartBlock) execHooks(event Hook) {
+	var hooks []func()
+	switch event {
+	case HookOnNewState:
+		hooks = sb.onNewStateHooks
+	case HookOnClose:
+		hooks = sb.onCloseHooks
+	}
+	for _, h := range hooks {
+		if h != nil {
+			h()
+		}
 	}
 }
 

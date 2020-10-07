@@ -191,3 +191,19 @@ func TestTextImpl_SetMark(t *testing.T) {
 		assert.True(t, tb2.HasMarkForAllText(mark))
 	})
 }
+
+func TestTextImpl_SetText(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+		AddBlock(newTextBlock("1", "")).
+		AddBlock(newTextBlock("2", ""))
+	tb := NewText(sb)
+
+	require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		BlockId: "1",
+		Text:    "1",
+	}))
+
+	
+
+}
