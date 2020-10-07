@@ -30,7 +30,8 @@ var (
 				MustGetBundledRelationByKey("coverY"),
 				MustGetBundledRelationByKey("coverScale"),
 			},
-			Layout: relation.ObjectType_page,
+			Layout:    relation.ObjectType_page,
+			IconEmoji: "📒",
 		},
 		"set": {
 			Url:  bundledObjectTypeURLPrefix + "set",
@@ -48,7 +49,8 @@ var (
 				MustGetBundledRelationByKey("coverY"),
 				MustGetBundledRelationByKey("coverScale"),
 			},
-			Layout: relation.ObjectType_page,
+			Layout:    relation.ObjectType_page,
+			IconEmoji: "🗂",
 		},
 	}
 )
