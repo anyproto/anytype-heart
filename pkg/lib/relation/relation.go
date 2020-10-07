@@ -8,7 +8,7 @@ var RequiredInternalRelations = []string{"createdDate", "lastModifiedDate", "las
 var (
 	BundledRelations = map[string]*relation.Relation{
 		"id": {
-			Format:       relation.RelationFormat_objectId,
+			Format:       relation.RelationFormat_objectIdSelf,
 			Name:         "Anytype ID",
 			DefaultValue: nil,
 			Key:          "id",

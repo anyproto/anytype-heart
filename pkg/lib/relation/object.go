@@ -17,7 +17,8 @@ var (
 			Url:  bundledObjectTypeURLPrefix + "page",
 			Name: "Page",
 			Relations: []*relation.Relation{
-				BundledRelations["creationDate"],
+				BundledRelations["id"],
+				BundledRelations["createdDate"],
 				BundledRelations["lastModifiedDate"],
 				BundledRelations["lastOpenedDate"],
 
@@ -35,7 +36,8 @@ var (
 			Url:  bundledObjectTypeURLPrefix + "set",
 			Name: "Set of objects",
 			Relations: []*relation.Relation{
-				BundledRelations["creationDate"],
+				BundledRelations["id"],
+				BundledRelations["createdDate"],
 				BundledRelations["lastModifiedDate"],
 				BundledRelations["lastOpenedDate"],
 				BundledRelations["name"],

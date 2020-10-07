@@ -53,7 +53,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 
 func (p *Set) initPagesSet() error {
 	// init dataview
-	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpened", IsVisible: true}, {Key: "lastModified", IsVisible: true}}
+	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpenedDate", IsVisible: true}, {Key: "lastModifiedDate", IsVisible: true}}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:    "https://anytype.io/schemas/object/bundled/page",
