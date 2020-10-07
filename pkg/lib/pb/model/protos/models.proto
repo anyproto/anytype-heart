@@ -218,6 +218,7 @@ message Block {
                 string key = 1;
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
+                bool isReadOnly = 4; // can't be edited
 
                 oneof options {
                     EmptyOptions emptyOptions = 10;

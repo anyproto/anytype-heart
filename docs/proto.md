@@ -10801,6 +10801,7 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
+| isReadOnly | [bool](#bool) |  | can&#39;t be edited |
 | emptyOptions | [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions) |  |  |
 | dateOptions | [Block.Content.Dataview.Relation.DateOptions](#anytype.model.Block.Content.Dataview.Relation.DateOptions) |  |  |
 

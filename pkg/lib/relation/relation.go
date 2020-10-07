@@ -1,6 +1,10 @@
 package relation
 
-import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+import (
+	"log"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+)
 
 // all required internal relations will be added to any new object type
 var RequiredInternalRelations = []string{"createdDate", "lastModifiedDate", "lastOpenedDate", "name", "id"}
@@ -108,3 +112,12 @@ var (
 		},
 	}
 )
+
+func MustGetBundledRelationByKey(key string) *relation.Relation {
+	if v, ok := BundledRelations[key]; !ok {
+		log.Fatal("MustGetBundledRelationByName got not-existing key: ", key)
+		return nil
+	} else {
+		return v
+	}
+}

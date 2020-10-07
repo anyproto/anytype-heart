@@ -1180,6 +1180,9 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 			if v, ok := details.Fields["layout"]; ok {
 				objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
 			}
+			if v, ok := details.Fields["iconEmoji"]; ok {
+				objectType.IconEmoji = v.GetStringValue()
+			}
 		}
 		return nil
 	})
@@ -1236,16 +1239,8 @@ func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (
 	}
 
 	var relations []*model.BlockContentDataviewRelation
-	for _, rel := range relation.RequiredInternalRelations {
-		if r, ok := relation.BundledRelations[rel]; !ok {
-			log.Fatalf("RequiredInternalRelations has unknown relation %s", r.Key)
-		} else {
-			relations = append(relations, &model.BlockContentDataviewRelation{Key: r.Key, IsVisible: !r.Hidden})
-		}
-	}
-
 	for _, rel := range objType.Relations {
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
+		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden, IsReadOnly: rel.ReadOnly})
 	}
 
 	dataview := model.BlockContentOfDataview{
