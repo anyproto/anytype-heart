@@ -49,7 +49,7 @@ var (
 				MustGetBundledRelationByKey("coverY"),
 				MustGetBundledRelationByKey("coverScale"),
 			},
-			Layout:    relation.ObjectType_page,
+			Layout:    relation.ObjectType_set,
 			IconEmoji: "🗂",
 		},
 	}

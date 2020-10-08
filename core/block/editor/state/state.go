@@ -388,6 +388,12 @@ func (s *State) intermediateApply() {
 	if s.details != nil {
 		s.parent.details = s.details
 	}
+	if s.relations != nil {
+		s.parent.relations = s.relations
+	}
+	if s.objectTypes != nil {
+		s.parent.objectTypes = s.objectTypes
+	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
