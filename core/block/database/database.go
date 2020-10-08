@@ -35,10 +35,5 @@ func New(s Ctrl) Router {
 type router struct{ s Ctrl }
 
 func (r router) Get(id string) (database.Database, error) {
-	// compatibility with older versions
-	if id == "pages" {
-		id = "https://anytype.io/schemas/object/bundled/page"
-	}
-
 	return objects.New(r.s.Anytype().ObjectStore(), id, r.s.SetDetails, r.s.CreateSmartBlock), nil
 }

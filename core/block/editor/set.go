@@ -56,8 +56,7 @@ func (p *Set) initPagesSet() error {
 	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false, IsReadOnly: true}, {Key: "name", IsVisible: true}, {Key: "lastOpenedDate", IsVisible: true, IsReadOnly: true}, {Key: "lastModifiedDate", IsVisible: true, IsReadOnly: true}, {Key: "createdDate", IsVisible: true, IsReadOnly: true}}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    "https://anytype.io/schemas/object/bundled/page",
-			SchemaURL: "https://anytype.io/schemas/page",
+			Source: "https://anytype.io/schemas/object/bundled/page",
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   uuid.New().String(),
