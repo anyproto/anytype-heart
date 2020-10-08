@@ -408,7 +408,9 @@ func (sb *smartBlock) AddRelations(relations []*pbrelation.Relation) (relationsW
 	}
 	for _, rel := range relations {
 		if _, exists := existsMap[rel.Key]; !exists {
-			rel.Key = bson.NewObjectId().Hex()
+			if rel.Key == "" {
+				rel.Key = bson.NewObjectId().Hex()
+			}
 			// we return the pointers slice here just for clarity
 			relationsWithKeys = append(relationsWithKeys, rel)
 			copy = append(copy, rel)

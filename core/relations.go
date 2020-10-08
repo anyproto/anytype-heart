@@ -133,6 +133,9 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 
 	for _, rel := range req.ObjectType.Relations {
+		if rel.Key == "" {
+			continue
+		}
 		if v, exists := requiredRelationByKey[rel.Key]; exists {
 			if !pbtypes.RelationEqual(v, rel) {
 				return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("required relation %s not equals the bundled one", rel.Key))
