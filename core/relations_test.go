@@ -89,12 +89,12 @@ func TestRelations(t *testing.T) {
 	resp7 := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(resp7.Error.Code), resp7.Error.Description)
 	require.Len(t, resp7.Event.Messages, 2)
-	show = resp6.Event.Messages[0].GetBlockShow()
+	show = resp7.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 	require.Len(t, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
 	require.Equal(t, respCreatePage.PageId, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
 
-	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
+	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 
 	resp7 = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
@@ -103,5 +103,5 @@ func TestRelations(t *testing.T) {
 	show = resp6.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 	require.Len(t, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 2)
-	require.Equal(t, respCreatePage.PageId, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
+	require.Equal(t, respCreatePage.PageId, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[1].Fields["id"].GetStringValue())
 }

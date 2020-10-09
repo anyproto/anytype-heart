@@ -312,10 +312,6 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 
 func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvBlock dataview.Block) ([]*pb.EventMessage, error) {
 	source := dvBlock.Model().GetDataview().Source
-	if source == "" && dvBlock.Model().GetDataview().SchemaURL == "pages" {
-		// compatibility with older versions
-		source = "https://anytype.io/schemas/object/bundled/page"
-	}
 	activeView := dvBlock.GetView(dv.activeViewId)
 
 	var db database.Reader

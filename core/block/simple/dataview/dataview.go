@@ -2,7 +2,9 @@ package dataview
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -34,6 +36,7 @@ type Block interface {
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
+	SetSource(source string) error
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -179,4 +182,13 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 
 func (l *Dataview) HasSmartIds() bool {
 	return len(l.recordIDs) > 0
+}
+
+func (d *Dataview) SetSource(source string) error {
+	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, objects.CustomObjectTypeURLPrefix) {
+		return fmt.Errorf("invalid source URL")
+	}
+
+	d.content.Source = source
+	return nil
 }

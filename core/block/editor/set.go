@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -77,10 +78,27 @@ func (p *Set) initPagesSet() error {
 
 	err := p.InitDataview(dataview, "Pages", "📒")
 	if err == ErrAlreadyHasDataviewBlock {
-		return nil
+		return p.migrateOldSet()
 	}
 
 	return err
+}
+
+func (p *Set) migrateOldSet() error {
+	return p.Iterate(func(b simple.Block) (isContinue bool) {
+		if dvBlock, ok := b.(simpleDataview.Block); !ok {
+			return true
+		} else {
+			if dvBlock.Model().GetDataview().Source == "" && dvBlock.Model().GetDataview().SchemaURL == "pages" {
+				// migrate old pages set
+				s := p.NewState()
+				_ = dvBlock.SetSource("https://anytype.io/schemas/object/bundled/page")
+				s.Set(dvBlock)
+				p.Apply(s, smartblock.NoEvent)
+			}
+		}
+		return true
+	})
 }
 
 func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
