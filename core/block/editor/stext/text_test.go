@@ -2,6 +2,7 @@ package stext
 
 import (
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -193,17 +194,70 @@ func TestTextImpl_SetMark(t *testing.T) {
 }
 
 func TestTextImpl_SetText(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-		AddBlock(newTextBlock("1", "")).
-		AddBlock(newTextBlock("2", ""))
-	tb := NewText(sb)
+	setTextApplyInterval = time.Second / 2
 
-	require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
-		BlockId: "1",
-		Text:    "1",
-	}))
+	t.Run("set text after interval", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", ""))
+		tb := NewText(sb)
 
-	
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "1",
+			Text:    "1",
+		}))
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "1",
+			Text:    "12",
+		}))
+		assert.Equal(t, "", sb.NewState().Pick("1").Model().GetText().Text)
+		time.Sleep(time.Second)
+		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
+		assert.Len(t, sb.Results.Applies, 1)
+	})
+	t.Run("set text and new op", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", ""))
+		tb := NewText(sb)
 
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "1",
+			Text:    "1",
+		}))
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "1",
+			Text:    "12",
+		}))
+		assert.Equal(t, "", sb.NewState().Pick("1").Model().GetText().Text)
+		tb.(*textImpl).flushSetTextState()
+		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
+		time.Sleep(time.Second)
+		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
+		assert.Len(t, sb.Results.Applies, 1)
+	})
+	t.Run("set text two blocks", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", ""))
+		tb := NewText(sb)
+
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "1",
+			Text:    "1",
+		}))
+		tb.(*textImpl).flushSetTextState()
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "2",
+			Text:    "2",
+		}))
+		tb.(*textImpl).flushSetTextState()
+		assert.Equal(t, "1", sb.NewState().Pick("1").Model().GetText().Text)
+		assert.Equal(t, "2", sb.NewState().Pick("2").Model().GetText().Text)
+		time.Sleep(time.Second)
+		assert.Len(t, sb.Results.Applies, 2)
+	})
 }
