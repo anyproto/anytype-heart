@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"

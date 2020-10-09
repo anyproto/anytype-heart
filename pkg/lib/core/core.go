@@ -277,7 +277,7 @@ func getNewConfig(rootPath string, account string) ([]ServiceOption, error) {
 
 	cfg, err := config.GetConfig(repoPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
 	opts := []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithHostMultiaddr(cfg.HostAddr), WithWebGatewayBaseUrl(cfg.WebGatewayBaseUrl)}

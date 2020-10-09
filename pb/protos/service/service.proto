@@ -35,6 +35,8 @@ service ClientCommands {
     rpc BlockSetBreadcrumbs (anytype.Rpc.Block.SetBreadcrumbs.Request) returns (anytype.Rpc.Block.SetBreadcrumbs.Response);
     rpc BlockCreate (anytype.Rpc.Block.Create.Request) returns (anytype.Rpc.Block.Create.Response);
     rpc BlockCreatePage (anytype.Rpc.Block.CreatePage.Request) returns (anytype.Rpc.Block.CreatePage.Response);
+    rpc BlockCreateSet (anytype.Rpc.Block.CreateSet.Request) returns (anytype.Rpc.Block.CreateSet.Response);
+
     rpc BlockUnlink (anytype.Rpc.Block.Unlink.Request) returns (anytype.Rpc.Block.Unlink.Response);
     rpc BlockClose (anytype.Rpc.Block.Close.Request) returns (anytype.Rpc.Block.Close.Response);
     rpc BlockDownload (anytype.Rpc.Block.Download.Request) returns (anytype.Rpc.Block.Download.Response);

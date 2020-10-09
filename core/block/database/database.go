@@ -18,7 +18,6 @@ type Ctrl interface {
 	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
 	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveRelations(id string, relationKeys []string) (err error)
-	CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error)
 
 	AddObjectTypes(objectId string, objectTypes []string) (err error)
 	RemoveObjectTypes(objectId string, objectTypes []string) (err error)

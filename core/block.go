@@ -57,6 +57,33 @@ func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.Rpc
 	return response(pb.RpcBlockCreatePageResponseError_NULL, id, targetId, nil)
 }
 
+func (mw *Middleware) BlockCreateSet(req *pb.RpcBlockCreateSetRequest) *pb.RpcBlockCreateSetResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockCreateSetResponseErrorCode, id, targetId string, err error) *pb.RpcBlockCreateSetResponse {
+		m := &pb.RpcBlockCreateSetResponse{Error: &pb.RpcBlockCreateSetResponseError{Code: code}, BlockId: id, TargetId: targetId}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id, targetId string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, targetId, err = bs.CreateSet(ctx, *req)
+		return
+	})
+
+	if err != nil {
+		if err == block.ErrUnknownObjectType {
+			return response(pb.RpcBlockCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", "", err)
+		}
+
+		return response(pb.RpcBlockCreateSetResponseError_UNKNOWN_ERROR, "", "", err)
+	}
+	return response(pb.RpcBlockCreateSetResponseError_NULL, id, targetId, nil)
+}
+
 func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockOpenResponseErrorCode, err error) *pb.RpcBlockOpenResponse {

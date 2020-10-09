@@ -94,7 +94,7 @@ type Service interface {
 	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
 	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveRelations(id string, relationKeys []string) (err error)
-	CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error)
+	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 
 	AddObjectTypes(objectId string, objectTypes []string) (err error)
 	RemoveObjectTypes(objectId string, objectTypes []string) (err error)
@@ -447,6 +447,11 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 	pageId, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, []string{objects.BundledObjectTypeURLPrefix + "page"}, nil)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
+	}
+
+	if req.ContextId == "" && req.TargetId == "" {
+		// do not create a link
+		return "", pageId, nil
 	}
 
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
@@ -1221,21 +1226,26 @@ func (s *service) RemoveObjectTypes(objectId string, objectTypes []string) (err 
 	})
 }
 
-func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (id string, err error) {
+func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
+	objType, err := s.GetObjectType(req.ObjectTypeURL)
+	if err != nil {
+		return "", "", err
+	}
+
 	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
-	id = csm.ID()
+	setId = csm.ID()
 
-	sb, err := s.createSmartBlock(id, true, nil)
+	sb, err := s.createSmartBlock(setId, true, nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	set, ok := sb.(*editor.Set)
 	if !ok {
-		return id, fmt.Errorf("unexpected set block type: %T", sb)
+		return "", setId, fmt.Errorf("unexpected set block type: %T", sb)
 	}
 
 	var relations []*model.BlockContentDataviewRelation
@@ -1264,6 +1274,15 @@ func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (
 		},
 	}
 
+	var name, icon string
+	if req.Details != nil && req.Details.Fields != nil {
+		if req.Details.Fields["name"] != nil {
+			name = req.Details.Fields["name"].GetStringValue()
+		}
+		if req.Details.Fields["icon"] != nil {
+			icon = req.Details.Fields["icon"].GetStringValue()
+		}
+	}
 	if name == "" {
 		name = objType.Name + " set"
 	}
@@ -1271,7 +1290,36 @@ func (s *service) CreateSet(objType *pbrelation.ObjectType, name, icon string) (
 		icon = "📒"
 	}
 
-	return id, set.InitDataview(dataview, name, icon)
+	err = set.InitDataview(dataview, name, icon)
+	if err != nil {
+		return "", setId, err
+	}
+
+	if req.ContextId == "" && req.TargetId == "" {
+		// do not create a link
+		return "", setId, nil
+	}
+
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		linkId, err = b.Create(ctx, pb.RpcBlockCreateRequest{
+			TargetId: req.TargetId,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: setId,
+						Style:         model.BlockContentLink_Page,
+					},
+				},
+			},
+			Position: req.Position,
+		})
+		if err != nil {
+			err = fmt.Errorf("link create error: %v", err)
+		}
+		return err
+	})
+
+	return linkId, setId, nil
 }
 
 func (s *service) RemoveRelations(objectTypeId string, relationKeys []string) (err error) {

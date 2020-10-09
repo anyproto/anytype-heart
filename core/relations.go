@@ -223,31 +223,15 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 	}
 
 	var id string
-
-	objType, err := mw.getObjectType(req.ObjectTypeURL)
-	if err != nil {
-		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcSetCreateResponseError_UNKNOWN_OBJECT_TYPE_URL, "", err)
-		}
-		return response(pb.RpcSetCreateResponseError_UNKNOWN_ERROR, "", err)
-	}
-
-	err = mw.doBlockService(func(bs block.Service) (err error) {
-		var name, icon string
-		if req.Details != nil && req.Details.Fields != nil {
-			if req.Details.Fields["name"] != nil {
-				name = req.Details.Fields["name"].GetStringValue()
-			}
-			if req.Details.Fields["icon"] != nil {
-				icon = req.Details.Fields["icon"].GetStringValue()
-			}
-		}
-
-		id, err = bs.CreateSet(objType, name, icon)
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		_, id, err = bs.CreateSet(ctx, pb.RpcBlockCreateSetRequest{ObjectTypeURL: req.ObjectTypeURL, Details: req.Details})
 		return err
 	})
 
 	if err != nil {
+		if err == block.ErrUnknownObjectType {
+			return response(pb.RpcSetCreateResponseError_UNKNOWN_OBJECT_TYPE_URL, "", err)
+		}
 		return response(pb.RpcSetCreateResponseError_UNKNOWN_ERROR, "", err)
 	}
 

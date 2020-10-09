@@ -90,6 +90,10 @@
     - [Rpc.Block.CreatePage.Request](#anytype.Rpc.Block.CreatePage.Request)
     - [Rpc.Block.CreatePage.Response](#anytype.Rpc.Block.CreatePage.Response)
     - [Rpc.Block.CreatePage.Response.Error](#anytype.Rpc.Block.CreatePage.Response.Error)
+    - [Rpc.Block.CreateSet](#anytype.Rpc.Block.CreateSet)
+    - [Rpc.Block.CreateSet.Request](#anytype.Rpc.Block.CreateSet.Request)
+    - [Rpc.Block.CreateSet.Response](#anytype.Rpc.Block.CreateSet.Response)
+    - [Rpc.Block.CreateSet.Response.Error](#anytype.Rpc.Block.CreateSet.Response.Error)
     - [Rpc.Block.Cut](#anytype.Rpc.Block.Cut)
     - [Rpc.Block.Cut.Request](#anytype.Rpc.Block.Cut.Request)
     - [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response)
@@ -486,6 +490,7 @@
     - [Rpc.Block.Create.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
+    - [Rpc.Block.CreateSet.Response.Error.Code](#anytype.Rpc.Block.CreateSet.Response.Error.Code)
     - [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code)
     - [Rpc.Block.Delete.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error.Code)
     - [Rpc.Block.Delete.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code)
@@ -811,6 +816,7 @@
 | BlockSetBreadcrumbs | [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request) | [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request) | [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response) |  |
 | BlockCreatePage | [Rpc.Block.CreatePage.Request](#anytype.Rpc.Block.CreatePage.Request) | [Rpc.Block.CreatePage.Response](#anytype.Rpc.Block.CreatePage.Response) |  |
+| BlockCreateSet | [Rpc.Block.CreateSet.Request](#anytype.Rpc.Block.CreateSet.Request) | [Rpc.Block.CreateSet.Response](#anytype.Rpc.Block.CreateSet.Response) |  |
 | BlockUnlink | [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request) | [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response) |  |
 | BlockClose | [Rpc.Block.Close.Request](#anytype.Rpc.Block.Close.Request) | [Rpc.Block.Close.Response](#anytype.Rpc.Block.Close.Response) |  |
 | BlockDownload | [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request) | [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response) |  |
@@ -2006,6 +2012,69 @@ common simple block command
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreateSet"></a>
+
+### Rpc.Block.CreateSet
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreateSet.Request"></a>
+
+### Rpc.Block.CreateSet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
+| targetId | [string](#string) |  | id of the closest block |
+| objectTypeURL | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | details |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreateSet.Response"></a>
+
+### Rpc.Block.CreateSet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.CreateSet.Response.Error](#anytype.Rpc.Block.CreateSet.Response.Error) |  |  |
+| blockId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.CreateSet.Response.Error"></a>
+
+### Rpc.Block.CreateSet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.CreateSet.Response.Error.Code](#anytype.Rpc.Block.CreateSet.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7628,6 +7697,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.CreateSet.Response.Error.Code"></a>
+
+### Rpc.Block.CreateSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
 
 
 

@@ -1696,6 +1696,36 @@ message Rpc {
             }
         }
 
+        message CreateSet {
+            message Request {
+                string contextId = 1; // id of the context block
+                string targetId = 2; // id of the closest block
+                string objectTypeURL = 3;
+                google.protobuf.Struct details = 4; // details
+
+                anytype.model.Block.Position position = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;
+                string targetId = 3;
+                ResponseEvent event = 4;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_TYPE_URL = 3;
+                        // ...
+                    }
+                }
+            }
+        }
         /*
          * Remove blocks from the childrenIds of its parents
         */

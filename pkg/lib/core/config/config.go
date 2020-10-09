@@ -50,7 +50,7 @@ func GetConfig(repoPath string) (*Config, error) {
 		defer cfgFile.Close()
 		err = json.NewDecoder(cfgFile).Decode(&cfg)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid format: %w", err)
 		}
 	}
 
