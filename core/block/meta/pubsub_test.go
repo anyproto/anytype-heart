@@ -18,7 +18,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	var (
 		blockId = "1"
 	)
-	fx.source.EXPECT().ReadDetails(gomock.Any()).Return(state.NewDoc("", nil), nil)
+	fx.source.EXPECT().ReadMeta(gomock.Any()).Return(state.NewDoc("", nil), nil)
 	s := fx.PubSub().NewSubscriber()
 	var mch = make(chan Meta, 1)
 	f := func(m Meta) {

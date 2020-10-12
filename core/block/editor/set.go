@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -46,6 +47,9 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		return err
 	}
 
+	if err = template.ApplyTemplate(p, template.WithTitle, nil); err != nil {
+		return
+	}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		return p.initPagesSet()
 	}
@@ -103,8 +107,7 @@ func (p *Set) migrateOldSet() error {
 
 func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
 	s := p.NewState()
-	root := s.Get(p.RootId())
-	err := p.SetDetails([]*pb.RpcBlockSetDetailsDetail{
+	err := p.SetDetails(s.Context(), []*pb.RpcBlockSetDetailsDetail{
 		{Key: "name", Value: pbtypes.String(name)},
 		{Key: "iconEmoji", Value: pbtypes.String(icon)},
 	})
@@ -112,15 +115,15 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 		return err
 	}
 
-	if len(root.Model().ChildrenIds) > 0 {
+	if !s.IsEmpty() {
 		return ErrAlreadyHasDataviewBlock
 	}
 
-	// use fixed id, becuase it should be the only one block
+	// use fixed id, because it should be the only one block
 	dw := simple.New(&model.Block{Content: &blockContent, Id: "dataview"})
 	s.Add(dw)
 
-	if err = s.InsertTo(p.RootId(), model.Block_Inner, dw.Model().Id); err != nil {
+	if err = s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, dw.Model().Id); err != nil {
 		return fmt.Errorf("can't insert dataview: %v", err)
 	}
 

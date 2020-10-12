@@ -67,7 +67,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
-	relations1 := &pbrelation.Relations{Relations: map[string]*pbrelation.Relation{"name": relation.BundledRelations["name"]}}
+	relations1 := &pbrelation.Relations{Relations: []*pbrelation.Relation{relation.BundledRelations["name"]}}
 	blocks1 := []*model.Block{
 		{
 			Id:      "test_id1",
@@ -78,7 +78,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
-	relations2 := &pbrelation.Relations{Relations: map[string]*pbrelation.Relation{"iconImage": relation.BundledRelations["iconImage"]}}
+	relations2 := &pbrelation.Relations{Relations: []*pbrelation.Relation{relation.BundledRelations["iconImage"]}}
 
 	blocks2 := []*model.Block{
 		{

@@ -458,6 +458,8 @@ message Rpc {
                     TOP = 1;
                     // new block will be created as the first children of existing
                     INNER = 2;
+                    // new block will be created after header (not required for set at client side, will auto set for title block)
+                    TITLE = 3;
                 }
             }
 
@@ -737,6 +739,7 @@ message Rpc {
                 }
                 message Response {
                     Error error = 1;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -814,6 +817,7 @@ message Rpc {
 
                     message Response {
                         Error error = 1;
+                        ResponseEvent event = 2;
 
                         message Error {
                             Code code = 1;

@@ -59,7 +59,7 @@ func TestBookmark_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Value.(*pb.EventMessageValueOfBlockSetBookmark).BlockSetBookmark
+		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetBookmark).BlockSetBookmark
 		assert.NotNil(t, change.Title)
 		assert.NotNil(t, change.Description)
 		assert.NotNil(t, change.Url)

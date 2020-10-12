@@ -16,7 +16,12 @@ func (tr *Tree) Graphviz() (data string, err error) {
 	var order = make(map[string]string)
 	var seq = 0
 	tr.Iterate(tr.RootId(), func(c *Change) (isContinue bool) {
-		order[c.Id] = fmt.Sprint(seq)
+		v := order[c.Id]
+		if v == "" {
+			order[c.Id] = fmt.Sprint(seq)
+		} else {
+			order[c.Id] = fmt.Sprintf("%s,%d", v, seq)
+		}
 		seq++
 		return true
 	})

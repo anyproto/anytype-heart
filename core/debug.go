@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+
 	lib "github.com/anytypeio/go-anytype-middleware/pb/service"
 )
 

@@ -31,7 +31,7 @@ func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: blockContent1}},
 		},
 	}
-	err = block1.(*smartBlock).indexSnapshot(details1, blocks1)
+	err = block1.(*smartBlock).indexSnapshot(details1, nil, blocks1)
 	require.NoError(t, err)
 
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
@@ -49,7 +49,7 @@ func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 		},
 	}
 
-	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
+	err = block2.(*smartBlock).indexSnapshot(details2, nil, blocks2)
 	require.NoError(t, err)
 
 	info2, err := s.ObjectInfoWithLinks(block2.ID())
@@ -80,7 +80,7 @@ func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 		},
 	}
 
-	err = block2.(*smartBlock).indexSnapshot(details2Modified, blocks2Modified)
+	err = block2.(*smartBlock).indexSnapshot(details2Modified, nil, blocks2Modified)
 	require.NoError(t, err)
 
 	info2Modified, err := s.ObjectInfoWithLinks(block2.ID())
@@ -120,7 +120,7 @@ func Test_Anytype_PageList(t *testing.T) {
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
 		},
 	}
-	err = block1.(*smartBlock).indexSnapshot(details1, blocks1)
+	err = block1.(*smartBlock).indexSnapshot(details1, nil, blocks1)
 
 	require.NoError(t, err)
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
@@ -138,7 +138,7 @@ func Test_Anytype_PageList(t *testing.T) {
 		},
 	}
 
-	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
+	err = block2.(*smartBlock).indexSnapshot(details2, nil, blocks2)
 	require.NoError(t, err)
 
 	pages, err := s.ObjectList()

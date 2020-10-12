@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -16,15 +17,32 @@ import (
 )
 
 func TestBasic_Create(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-	b := NewBasic(sb)
-	id, err := b.Create(nil, pb.RpcBlockCreateRequest{
-		Block: &model.Block{},
+	t.Run("generic", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
+		b := NewBasic(sb)
+		id, err := b.Create(nil, pb.RpcBlockCreateRequest{
+			Block: &model.Block{},
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, id)
+		assert.Len(t, sb.Results.Applies, 1)
 	})
-	require.NoError(t, err)
-	require.NotEmpty(t, id)
-	assert.Len(t, sb.Results.Applies, 1)
+	t.Run("title", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
+		require.NoError(t, template.ApplyTemplate(sb, template.WithTitle, sb.NewState()))
+		b := NewBasic(sb)
+		id, err := b.Create(nil, pb.RpcBlockCreateRequest{
+			TargetId: template.TitleBlockId,
+			Position: model.Block_Top,
+			Block:    &model.Block{},
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, id)
+		s := sb.NewState()
+		assert.Equal(t, []string{template.HeaderLayoutId, id}, s.Pick(s.RootId()).Model().ChildrenIds)
+	})
 }
 
 func TestBasic_Duplicate(t *testing.T) {
@@ -60,22 +78,54 @@ func TestBasic_Unlink(t *testing.T) {
 }
 
 func TestBasic_Move(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2", "4"}})).
-		AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
-		AddBlock(simple.New(&model.Block{Id: "3"})).
-		AddBlock(simple.New(&model.Block{Id: "4"}))
+	t.Run("generic", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2", "4"}})).
+			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
+			AddBlock(simple.New(&model.Block{Id: "3"})).
+			AddBlock(simple.New(&model.Block{Id: "4"}))
 
-	b := NewBasic(sb)
+		b := NewBasic(sb)
 
-	err := b.Move(nil, pb.RpcBlockListMoveRequest{
-		BlockIds:     []string{"3"},
-		DropTargetId: "4",
-		Position:     model.Block_Inner,
+		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+			BlockIds:     []string{"3"},
+			DropTargetId: "4",
+			Position:     model.Block_Inner,
+		})
+		require.NoError(t, err)
+		assert.Len(t, sb.NewState().Pick("2").Model().ChildrenIds, 0)
+		assert.Len(t, sb.NewState().Pick("4").Model().ChildrenIds, 1)
+
 	})
-	require.NoError(t, err)
-	assert.Len(t, sb.NewState().Pick("2").Model().ChildrenIds, 0)
-	assert.Len(t, sb.NewState().Pick("4").Model().ChildrenIds, 1)
+	t.Run("header", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
+		require.NoError(t, template.ApplyTemplate(sb, template.WithTitle, sb.NewState()))
+		b := NewBasic(sb)
+		id1, err := b.Create(nil, pb.RpcBlockCreateRequest{
+			TargetId: template.HeaderLayoutId,
+			Position: model.Block_Bottom,
+			Block:    &model.Block{},
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, id1)
+		id0, err := b.Create(nil, pb.RpcBlockCreateRequest{
+			TargetId: template.HeaderLayoutId,
+			Position: model.Block_Bottom,
+			Block:    &model.Block{},
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, id0)
+
+		err = b.Move(nil, pb.RpcBlockListMoveRequest{
+			BlockIds:     []string{id0},
+			DropTargetId: template.TitleBlockId,
+			Position:     model.Block_Top,
+		})
+		require.NoError(t, err)
+		s := sb.NewState()
+		assert.Equal(t, []string{template.HeaderLayoutId, id0, id1}, s.Pick(s.RootId()).Model().ChildrenIds)
+	})
 }
 
 func TestBasic_Replace(t *testing.T) {

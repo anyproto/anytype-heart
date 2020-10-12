@@ -36,7 +36,7 @@ var (
 	detailsContent   = []*pb.ChangeContent{{Value: &pb.ChangeContentValueOfDetailsSet{&pb.ChangeDetailsSet{}}}}
 	newDetailsChange = func(id, snapshotId string, prevIds string, prevDetIds string, withDet bool) *Change {
 		ch := newChange(id, snapshotId, prevIds)
-		ch.PreviousDetailsIds = []string{prevDetIds}
+		ch.PreviousMetaIds = []string{prevDetIds}
 		if withDet {
 			ch.Content = detailsContent
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
@@ -116,16 +117,17 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 		}
 
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
+		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
 		htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
 		textSlot = cutBlock.GetText().Text
-
+		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
 	htmlSlot = html.NewHTMLConverter(cb.Anytype(), s).Convert()
-
+	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
 
@@ -156,12 +158,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
 
-		firstBlock.Model().GetText().Text = initialBlock.GetText().Text
-		firstBlock.Model().GetText().Marks = initialBlock.GetText().Marks
-
-		if err != nil {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
-		}
+		firstBlock.(text.Block).SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
 
 		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
 			for i, m := range cutBlock.GetText().Marks.Marks {
@@ -284,38 +281,27 @@ func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest) 
 
 func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered []*model.Block) {
 	for _, b := range anySlot {
-		if b.GetLayout() == nil {
+		if layout := b.GetLayout(); layout == nil || layout.Style != model.BlockContentLayout_Div || layout.Style == model.BlockContentLayout_Header {
 			anySlotFiltered = append(anySlotFiltered, b)
 		}
 	}
-
 	return anySlotFiltered
 }
 
 func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
-	var oldToNew map[string]string
-	oldToNew = make(map[string]string)
-
-	for i, _ := range anySlot {
-		var oldId = make([]byte, len(anySlot[i].Id))
-
-		newId := bson.NewObjectId().Hex()
-
-		copy(oldId, anySlot[i].Id)
-		oldToNew[string(oldId)] = newId
-		anySlot[i].Id = newId
-	}
-
-	for i, _ := range anySlot {
-		cIds := []string{}
-		for _, cId := range anySlot[i].ChildrenIds {
-			if len(oldToNew[cId]) > 0 {
-				cIds = append(cIds, oldToNew[cId])
-			}
+	var oldToNew = make(map[string]string)
+	for _, b := range anySlot {
+		if b.Id == "" {
+			b.Id = bson.NewObjectId().Hex()
 		}
-		anySlot[i].ChildrenIds = cIds
+		oldToNew[b.Id] = bson.NewObjectId().Hex()
 	}
-
+	for _, b := range anySlot {
+		b.Id = oldToNew[b.Id]
+		for i := range b.ChildrenIds {
+			b.ChildrenIds[i] = oldToNew[b.ChildrenIds[i]]
+		}
+	}
 	return anySlot
 }
 
@@ -404,16 +390,12 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (
 
 	if ok && focusedBlock != nil && focusedBlockText != nil && !isSelectedBlocks {
 		focusedContent, isFocusedText = focusedBlock.Model().Content.(*model.BlockContentOfText)
-		isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
+		//isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
 
 		isPasteTop = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && utf8.RuneCountInString(focusedContent.Text.Text) != 0
 		isPasteBottom = req.SelectedTextRange.From == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To != 0
 		isPasteInstead = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text))
 		isPasteWithSplit = !isPasteInstead && !isPasteBottom && !isPasteTop
-	}
-
-	if isFocusedTitle {
-		return blockIds, uploadArr, caretPosition, isSameBlockCaret, ErrTitlePasteRestricted
 	}
 
 	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
@@ -537,7 +519,6 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 		newBlocks = append(newBlocks, newBlock)
 		s.Add(newBlock)
 	}
-
 	for i, _ := range blocks {
 		index := i
 		if isReversed {
@@ -548,6 +529,10 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 		blockIds = append(blockIds, newBlock.Model().Id)
 
 		if idToIsChild[blocks[index].Id] != true {
+			if targetId == template.TitleBlockId {
+				targetId = template.HeaderLayoutId
+				pos = model.Block_Bottom
+			}
 			err = s.InsertTo(targetId, pos, newBlock.Model().Id)
 
 			if err != nil {
@@ -573,6 +558,7 @@ func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targe
 
 func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 	cbs = state.NewDoc("cbRoot", nil).(*state.State)
+	cbs.SetDetails(cb.Details())
 	cbs.Add(simple.New(&model.Block{Id: "cbRoot"}))
 
 	var inChildrens, rootIds []string
@@ -586,7 +572,20 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 		cbs.Add(simple.New(b))
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
+	cbs.BlocksInit()
+	cbs.Normalize(false)
 	return
+}
+
+func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
+	blocks := s.Blocks()
+	result := blocks[:0]
+	for _, b := range blocks {
+		if b.Id != "cbRoot" {
+			result = append(result, b)
+		}
+	}
+	return result
 }
 
 func (cb *clipboard) pasteFiles(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, err error) {

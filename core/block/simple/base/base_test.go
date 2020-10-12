@@ -44,7 +44,7 @@ func TestBase_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, b2.ChildrenIds, diff[0].Value.(*pb.EventMessageValueOfBlockSetChildrenIds).BlockSetChildrenIds.ChildrenIds)
+		assert.Equal(t, b2.ChildrenIds, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetChildrenIds).BlockSetChildrenIds.ChildrenIds)
 	})
 	t.Run("restrictions", func(t *testing.T) {
 		b1 := testBlock()
@@ -53,7 +53,7 @@ func TestBase_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, b2.Restrictions, diff[0].Value.(*pb.EventMessageValueOfBlockSetRestrictions).BlockSetRestrictions.Restrictions)
+		assert.Equal(t, b2.Restrictions, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetRestrictions).BlockSetRestrictions.Restrictions)
 	})
 	t.Run("fields", func(t *testing.T) {
 		b1 := testBlock()
@@ -64,6 +64,6 @@ func TestBase_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, b2.Fields, diff[0].Value.(*pb.EventMessageValueOfBlockSetFields).BlockSetFields.Fields)
+		assert.Equal(t, b2.Fields, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetFields).BlockSetFields.Fields)
 	})
 }

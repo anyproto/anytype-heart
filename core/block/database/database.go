@@ -3,6 +3,7 @@ package database
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -12,7 +13,7 @@ import (
 
 type Ctrl interface {
 	Anytype() anytype.Service
-	SetDetails(req pb.RpcBlockSetDetailsRequest) error
+	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
 	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
@@ -34,5 +35,8 @@ func New(s Ctrl) Router {
 type router struct{ s Ctrl }
 
 func (r router) Get(id string) (database.Database, error) {
-	return objects.New(r.s.Anytype().ObjectStore(), id, r.s.SetDetails, r.s.CreateSmartBlock), nil
+	setDetailsNoContext := func(req pb.RpcBlockSetDetailsRequest) error {
+		return r.s.SetDetails(nil, req)
+	}
+	return objects.New(r.s.Anytype().ObjectStore(), id, setDetailsNoContext, r.s.CreateSmartBlock), nil
 }

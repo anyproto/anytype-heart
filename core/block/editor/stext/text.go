@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -15,6 +16,7 @@ type Text interface {
 	Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
+	SetText(req pb.RpcBlockSetTextTextRequest) (err error)
 }
 
 func NewText(sb smartblock.SmartBlock) Text {
@@ -42,27 +44,6 @@ func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent 
 	return t.Apply(s, smartblock.NoEvent)
 }
 
-func (t *textImpl) RangeSplit(ctx *state.Context, id string, rangeFrom int32, rangeTo int32, style model.BlockContentTextStyle) (newId string, err error) {
-	s := t.NewStateCtx(ctx)
-	tb, err := getText(s, id)
-	if err != nil {
-		return
-	}
-	newBlock, err := tb.RangeSplit(rangeFrom, rangeTo, false)
-	if err != nil {
-		return
-	}
-	tb.SetStyle(style)
-	s.Add(newBlock)
-	if err = s.InsertTo(id, model.Block_Top, newBlock.Model().Id); err != nil {
-		return
-	}
-	if err = t.Apply(s); err != nil {
-		return
-	}
-	return newBlock.Model().Id, nil
-}
-
 func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
 	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, req.BlockId)
@@ -73,6 +54,10 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 	if req.Range != nil {
 		from = req.Range.From
 		to = req.Range.To
+	}
+	if tb.Model().GetText().Style == model.BlockContentText_Title {
+		req.Mode = pb.RpcBlockSplitRequest_TITLE
+		req.Style = model.BlockContentText_Paragraph
 	}
 	createTop := req.Mode == pb.RpcBlockSplitRequest_TOP
 	new, err := tb.RangeSplit(from, to, createTop)
@@ -94,6 +79,9 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 			targetId = tb.Model().ChildrenIds[0]
 			targetPos = model.Block_Top
 		}
+	case pb.RpcBlockSplitRequest_TITLE:
+		targetId = template.HeaderLayoutId
+		targetPos = model.Block_Bottom
 	}
 	if err = s.InsertTo(targetId, targetPos, newId); err != nil {
 		return
@@ -147,6 +135,30 @@ func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark,
 		}
 	}
 	return t.Apply(s)
+}
+
+func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
+	ctx := state.NewContext(nil)
+	s := t.NewStateCtx(ctx)
+	tb, err := getText(s, req.BlockId)
+	if err != nil {
+		return
+	}
+	if err = tb.SetText(req.Text, req.Marks); err != nil {
+		return
+	}
+	if err = t.Apply(s); err != nil {
+		return
+	}
+	msgs := ctx.GetMessages()
+	var filtered = msgs[:0]
+	for _, msg := range msgs {
+		if msg.GetBlockSetText() == nil {
+			filtered = append(filtered, msg)
+		}
+	}
+	t.SendEvent(filtered)
+	return
 }
 
 func getText(s *state.State, id string) (text.Block, error) {

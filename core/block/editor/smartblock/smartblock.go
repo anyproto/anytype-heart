@@ -16,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -33,6 +32,7 @@ var (
 const (
 	NoHistory ApplyFlag = iota
 	NoEvent
+	NoRestrictions
 	DoSnapshot
 )
 
@@ -57,7 +57,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() anytype.Service
-	SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
 	AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateRelations(relations []*pbrelation.Relation) (err error)
 	RemoveRelations(relationKeys []string) (err error)
@@ -65,6 +65,7 @@ type SmartBlock interface {
 	RemoveObjectTypes(objectTypes []string) (err error)
 
 	Reindex() error
+	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	Close() (err error)
@@ -117,35 +118,27 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectTypeUrls []st
 	sb.source = s
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
-	return sb.fillIfEmpty(objectTypeUrls)
+	sb.Doc.BlocksInit()
+	return sb.initObjectTypes(objectTypeUrls)
 }
 
-func (sb *smartBlock) fillIfEmpty(objectTypeUrls []string) (err error) {
-	s := sb.NewState()
-	root := s.Get(sb.RootId())
-	var changed bool
-	if root == nil {
-		changed = true
-		s.Add(simple.New(&model.Block{
-			Id: sb.RootId(),
-			Content: &model.BlockContentOfSmartblock{
-				Smartblock: &model.BlockContentSmartblock{},
-			},
-		}))
+func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
+	if sb.sendEvent != nil {
+		sb.sendEvent(&pb.Event{
+			Messages:  msgs,
+			ContextId: sb.Id(),
+		})
 	}
+}
 
-	if len(s.ObjectTypes()) == 0 {
+func (sb *smartBlock) initObjectTypes(objectTypeUrls []string) (err error) {
+	if len(sb.ObjectTypes()) == 0 {
 		if len(objectTypeUrls) == 0 {
 			objectTypeUrls = []string{sb.defaultObjectTypeUrl}
 		}
-		changed = true
-		s.SetObjectTypes(objectTypeUrls)
+		return sb.AddObjectTypes(objectTypeUrls)
 	}
-	if !changed {
-		return nil
-	}
-
-	return sb.Apply(s, NoEvent, NoHistory)
+	return nil
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
@@ -210,7 +203,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	sb.Lock()
 	defer sb.Unlock()
-	if sb.sendEvent != nil {
+	if sb.sendEvent != nil && d.BlockId != sb.Id() {
 		sb.sendEvent(&pb.Event{
 			Messages: []*pb.EventMessage{
 				{
@@ -246,14 +239,7 @@ func (sb *smartBlock) DisableLayouts() {
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var beforeSnippet = sb.Doc.Snippet()
-	var sendEvent, addHistory, doSnapshot = true, true, false
-	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
-	if err != nil {
-		return
-	}
-	if act.IsEmpty() {
-		return nil
-	}
+	var sendEvent, addHistory, doSnapshot, checkRestrictions = true, true, false, true
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
@@ -262,7 +248,23 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			addHistory = false
 		case DoSnapshot:
 			doSnapshot = true
+		case NoRestrictions:
+			checkRestrictions = false
 		}
+	}
+
+	if checkRestrictions {
+		if err = s.CheckRestrictions(); err != nil {
+			return
+		}
+	}
+
+	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
+	if err != nil {
+		return
+	}
+	if act.IsEmpty() {
+		return nil
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
 	fileHashes := getChangedFileHashes(act)
@@ -275,11 +277,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.undo.Add(act)
 	}
 	if sendEvent {
+		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
-			ctx.SetMessages(sb.Id(), msgs)
+			ctx.SetMessages(sb.Id(), events)
 		} else if sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{
-				Messages:  msgs,
+				Messages:  events,
 				ContextId: sb.RootId(),
 			})
 		}
@@ -297,12 +300,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
-	if err = sb.Apply(s, NoHistory, DoSnapshot); err != nil {
+	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
 	if sb.undo != nil {
 		sb.undo.Reset()
 	}
+	sb.updatePageStoreNoErr("", nil)
 	return
 }
 
@@ -379,8 +383,9 @@ func (sb *smartBlock) Anytype() anytype.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	copy := pbtypes.CopyStruct(sb.Details())
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
+	s := sb.NewStateCtx(ctx)
+	copy := pbtypes.CopyStruct(s.Details())
 	if copy == nil || copy.Fields == nil {
 		copy = &types.Struct{
 			Fields: make(map[string]*types.Value),
@@ -392,8 +397,8 @@ func (sb *smartBlock) SetDetails(details []*pb.RpcBlockSetDetailsDetail) (err er
 	if copy.Equal(sb.Details()) {
 		return
 	}
-	s := sb.NewState().SetDetails(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	s.SetDetails(copy)
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return
@@ -518,7 +523,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	log.Infof("changes: stateAppend: %d events", len(msgs))
 	if len(msgs) > 0 && sb.sendEvent != nil {
 		sb.sendEvent(&pb.Event{
-			Messages:  msgs,
+			Messages:  msgsToEvents(msgs),
 			ContextId: sb.Id(),
 		})
 	}
@@ -537,7 +542,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	} else {
 		if len(msgs) > 0 && sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{
-				Messages:  msgs,
+				Messages:  msgsToEvents(msgs),
 				ContextId: sb.Id(),
 			})
 		}
@@ -624,4 +629,12 @@ func (sb *smartBlock) storeFileKeys() {
 	if err := sb.Anytype().FileStoreKeys(fileKeys...); err != nil {
 		log.Warnf("can't ctore file keys: %v", err)
 	}
+}
+
+func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
+	events := make([]*pb.EventMessage, len(msgs))
+	for i := range msgs {
+		events[i] = msgs[i].Msg
+	}
+	return events
 }

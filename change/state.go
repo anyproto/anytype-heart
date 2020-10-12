@@ -53,6 +53,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 		startId = t.RootId()
 		applyRoot = true
 	}
+
 	t.Iterate(startId, func(c *Change) (isContinue bool) {
 		count++
 		if startId == c.Id {
@@ -67,7 +68,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 		ns := s.NewState()
 		ns.ApplyChangeIgnoreErr(c.Change.Content...)
 		ns.SetChangeId(c.Id)
-		s.AddFileKeys(c.FileKeys...)
+		ns.AddFileKeys(c.FileKeys...)
 		_, _, err = state.ApplyStateFastOne(ns)
 		if err != nil {
 			return false

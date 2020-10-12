@@ -109,21 +109,25 @@ func (c *collector) fetchInitialMeta() (err error) {
 }
 
 func (c *collector) fetchMeta() {
+	defer func() {
+		select {
+		case <-c.ready:
+		default:
+			close(c.ready)
+		}
+	}()
 	var i time.Duration
 	for {
-		err := c.fetchInitialMeta()
-		if err != nil {
+		if err := c.fetchInitialMeta(); err != nil {
 			i++
 			wait := time.Second * i
 			log.Infof("meta: %s: can't fetch initial meta: %v; - retry after %v", c.blockId, err, wait)
-			time.Sleep(wait)
+			select {
+			case <-time.After(wait):
+			case <-c.quit:
+				return
+			}
 			continue
-		}
-		select {
-		case <-c.ready:
-			return
-		default:
-			close(c.ready)
 		}
 		return
 	}

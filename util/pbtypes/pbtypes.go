@@ -40,3 +40,13 @@ func GetFloat64(s *types.Struct, name string) float64 {
 	}
 	return 0
 }
+
+func GetString(s *types.Struct, name string) string {
+	if s == nil || s.Fields == nil {
+		return ""
+	}
+	if v, ok := s.Fields[name]; ok {
+		return v.GetStringValue()
+	}
+	return ""
+}

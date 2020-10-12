@@ -207,7 +207,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		})
 	}
 
-	err = bs.SetDetails(pb.RpcBlockSetDetailsRequest{
+	err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
 		ContextId: mw.Anytype.PredefinedBlocks().Profile,
 		Details:   details,
 	})

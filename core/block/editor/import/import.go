@@ -63,7 +63,7 @@ type fileInfo struct {
 
 type Services interface {
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
-	SetDetails(req pb.RpcBlockSetDetailsRequest) (err error)
+	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
@@ -202,7 +202,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			})
 		}
 
-		err = imp.ctrl.SetDetails(pb.RpcBlockSetDetailsRequest{
+		err = imp.ctrl.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
 			ContextId: file.pageID,
 			Details:   details,
 		})
@@ -285,7 +285,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				})
 			}
 
-			err = imp.ctrl.SetDetails(pb.RpcBlockSetDetailsRequest{
+			err = imp.ctrl.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
 				ContextId: pageID,
 				Details:   details,
 			})

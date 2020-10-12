@@ -270,7 +270,7 @@ func TestState_Normalize(t *testing.T) {
 			msgs, _, err := ApplyState(s, true)
 			require.NoError(t, err)
 			for _, msg := range msgs {
-				if add := msg.GetBlockAdd(); add != nil {
+				if add := msg.Msg.GetBlockAdd(); add != nil {
 					for _, nb := range add.Blocks {
 						for _, nbch := range nb.ChildrenIds {
 							require.NotEmpty(t, nbch)
@@ -348,6 +348,22 @@ func TestState_Normalize(t *testing.T) {
 			assert.NotNil(t, m.GetLayout())
 			assert.True(t, len(m.ChildrenIds) > 0)
 		}
+	})
+	t.Run("remove duplicates", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"a", "b", "b", "c", "a", "a"}}))
+		r.Add(simple.New(&model.Block{Id: "a", ChildrenIds: []string{"b", "d"}}))
+		r.Add(simple.New(&model.Block{Id: "b"}))
+		r.Add(simple.New(&model.Block{Id: "c", ChildrenIds: []string{"e", "e"}}))
+		r.Add(simple.New(&model.Block{Id: "d"}))
+		r.Add(simple.New(&model.Block{Id: "e"}))
+		s := r.NewState()
+		require.NoError(t, s.Normalize(false))
+		_, _, err := ApplyState(s, false)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"a", "b", "c"}, r.Pick("root").Model().ChildrenIds)
+		assert.Equal(t, []string{"d"}, r.Pick("a").Model().ChildrenIds)
+		assert.Equal(t, []string{"e"}, r.Pick("c").Model().ChildrenIds)
 	})
 }
 

@@ -49,7 +49,7 @@ func TestSmartBlock_Show(t *testing.T) {
 	bm := meta.Meta{
 		BlockId: "1",
 		SmartBlockMeta: core.SmartBlockMeta{
-			Details: fx.SmartBlock.(*smartBlock).Details(),
+			Details: fx.Details(),
 		},
 	}
 	fx.metaService.EXPECT().ReportChange(bm).Do(func(d meta.Meta) {
@@ -119,7 +119,7 @@ func newFixture(t *testing.T) *fixture {
 	metaService.EXPECT().PubSub().AnyTimes().Return(metaPubSub)
 	metaPubSub.EXPECT().NewSubscriber().AnyTimes().Return(metaSubscriber)
 	return &fixture{
-		SmartBlock:     New(metaService),
+		SmartBlock:     New(metaService, "test"),
 		t:              t,
 		ctrl:           ctrl,
 		source:         source,
@@ -142,6 +142,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().ReadDoc(gomock.Any(), true).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.Init(fx.source, true, "")
+	err := fx.Init(fx.source, true, nil)
 	require.NoError(fx.t, err)
 }
