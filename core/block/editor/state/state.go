@@ -39,7 +39,6 @@ type Doc interface {
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
-	Append(targetId string, id string) (ok bool)
 	Details() *types.Struct
 	Relations() []*pbrelation.Relation
 	ObjectTypes() []string
@@ -175,12 +174,6 @@ func (s *State) Unlink(id string) (ok bool) {
 		return true
 	}
 	return
-}
-
-func (s *State) Append(targetId string, id string) (ok bool) {
-	parent := s.Get(targetId).Model()
-	parent.ChildrenIds = append(parent.ChildrenIds, id)
-	return true
 }
 
 func (s *State) GetParentOf(id string) (res simple.Block) {

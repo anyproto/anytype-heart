@@ -94,7 +94,7 @@ var WithHeader = StateTransformer(func(s *state.State) {
 		},
 	}))
 
-	// todo: add state prepend method?
+	// todo: rewrite when we add insert position Block_Inner_Leading
 	root := s.Get(s.RootId())
 	root.Model().ChildrenIds = append([]string{HeaderLayoutId}, root.Model().ChildrenIds...)
 })
@@ -121,7 +121,9 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		},
 	}))
 
-	s.Append(HeaderLayoutId, TitleBlockId)
+	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
+		log.Errorf("template WithTitle failed to insert: %w", err)
+	}
 })
 
 var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer {
@@ -143,9 +145,13 @@ var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer 
 			return
 		}
 		s.Add(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
-		s.Append(s.RootId(), DataviewBlockId)
+		err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
+		if err != nil {
+			log.Errorf("template WithDataview failed to insert: %w", err)
+		}
 	}
 }
+
 var WithRootLink = func(targetBlockId string, style model.BlockContentLinkStyle) StateTransformer {
 	return func(s *state.State) {
 		var exists bool
