@@ -129,21 +129,23 @@ var WithTitle = StateTransformer(func(s *state.State) {
 var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer {
 	return func(s *state.State) {
 		if s.Exists(DataviewBlockId) {
-			// migrate old dataview
-			s.Iterate(func(b simple.Block) (isContinue bool) {
-				if dvBlock, ok := b.(simpleDataview.Block); !ok {
-					return true
-				} else {
-					if dvBlock.Model().GetDataview().Source == "" && dvBlock.Model().GetDataview().SchemaURL == "pages" {
-						// migrate old pages set
-						_ = dvBlock.SetSource("https://anytype.io/schemas/object/bundled/page")
-						s.Set(dvBlock)
-					}
-				}
-				return true
-			})
 			return
 		}
+
+		// remove old dataview
+		s.Iterate(func(b simple.Block) (isContinue bool) {
+			if dvBlock, ok := b.(simpleDataview.Block); !ok {
+				return true
+			} else {
+				if dvBlock.Model().GetDataview().Source == "" && dvBlock.Model().GetDataview().SchemaURL == "pages" {
+					// remove old pages set
+					s.Unlink(b.Model().Id)
+					return false
+				}
+			}
+			return true
+		})
+
 		s.Add(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
 		err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
 		if err != nil {
