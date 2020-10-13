@@ -48,8 +48,11 @@ type Page struct {
 }
 
 func (p *Page) Init(s source.Source, _ bool, objectTypeUrls []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, objectTypeUrls); err != nil {
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
 		return
 	}
-	return template.ApplyTemplate(p, template.WithTitle, nil)
+	if objectTypeUrls == nil {
+		objectTypeUrls = []string{p.DefaultObjectTypeUrl()}
+	}
+	return template.ApplyTemplate(p, nil, template.WithTitle, template.WithObjectTypes(objectTypeUrls))
 }

@@ -3,6 +3,7 @@ package editor
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -21,5 +22,8 @@ type ObjectType struct {
 }
 
 func (p *ObjectType) Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error) {
-	return p.SmartBlock.Init(s, true, []string{p.DefaultObjectTypeUrl()})
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+		return
+	}
+	return template.ApplyTemplate(p, nil, template.WithEmpty, template.WithObjectTypes([]string{p.DefaultObjectTypeUrl()}))
 }

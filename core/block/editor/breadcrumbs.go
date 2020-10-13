@@ -27,7 +27,7 @@ func (p *Breadcrumbs) Init(s source.Source, allowEmpty bool, _ []string) (err er
 		return
 	}
 	p.SmartBlock.DisableLayouts()
-	return template.ApplyTemplate(p, template.Empty, nil)
+	return template.ApplyTemplate(p, nil, template.WithEmpty)
 }
 
 func (b *Breadcrumbs) SetCrumbs(ids []string) (err error) {

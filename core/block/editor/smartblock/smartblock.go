@@ -111,7 +111,7 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectTypeUrls []st
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
-	return sb.initObjectTypes(objectTypeUrls)
+	return
 }
 
 func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
@@ -129,16 +129,6 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 			ContextId: sb.Id(),
 		})
 	}
-}
-
-func (sb *smartBlock) initObjectTypes(objectTypeUrls []string) (err error) {
-	if len(sb.ObjectTypes()) == 0 {
-		if len(objectTypeUrls) == 0 {
-			objectTypeUrls = []string{sb.defaultObjectTypeUrl}
-		}
-		return sb.AddObjectTypes(objectTypeUrls)
-	}
-	return nil
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {

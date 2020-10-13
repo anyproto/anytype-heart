@@ -10,12 +10,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/google/uuid"
 )
 
@@ -47,87 +43,39 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		return err
 	}
 
-	if err = template.ApplyTemplate(p, template.WithTitle, nil); err != nil {
-		return
-	}
+	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypes([]string{p.DefaultObjectTypeUrl()})}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
-		return p.initPagesSet()
+		dataview := model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Source: "https://anytype.io/schemas/object/bundled/page",
+				Views: []*model.BlockContentDataviewView{
+					{
+						Id:   uuid.New().String(),
+						Type: model.BlockContentDataviewView_Table,
+						Name: "All pages",
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: "name",
+								Type:        model.BlockContentDataviewSort_Asc,
+							},
+						},
+						Relations: []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false, IsReadOnly: true}, {Key: "name", IsVisible: true}, {Key: "lastOpenedDate", IsVisible: true, IsReadOnly: true}, {Key: "lastModifiedDate", IsVisible: true, IsReadOnly: true}, {Key: "createdDate", IsVisible: true, IsReadOnly: true}},
+						Filters:   nil,
+					},
+				},
+			},
+		}
+
+		templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
+	}
+
+	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
+		return
 	}
 	return
 }
 
-func (p *Set) initPagesSet() error {
-	// init dataview
-	relations := []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false, IsReadOnly: true}, {Key: "name", IsVisible: true}, {Key: "lastOpenedDate", IsVisible: true, IsReadOnly: true}, {Key: "lastModifiedDate", IsVisible: true, IsReadOnly: true}, {Key: "createdDate", IsVisible: true, IsReadOnly: true}}
-	dataview := model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			Source: "https://anytype.io/schemas/object/bundled/page",
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:   uuid.New().String(),
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All pages",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
-					Relations: relations,
-					Filters:   nil,
-				},
-			},
-		},
-	}
-
-	err := p.InitDataview(dataview, "Pages", "📒")
-	if err == ErrAlreadyHasDataviewBlock {
-		return p.migrateOldSet()
-	}
-
-	return err
-}
-
-func (p *Set) migrateOldSet() error {
-	return p.Iterate(func(b simple.Block) (isContinue bool) {
-		if dvBlock, ok := b.(simpleDataview.Block); !ok {
-			return true
-		} else {
-			if dvBlock.Model().GetDataview().Source == "" && dvBlock.Model().GetDataview().SchemaURL == "pages" {
-				// migrate old pages set
-				s := p.NewState()
-				_ = dvBlock.SetSource("https://anytype.io/schemas/object/bundled/page")
-				s.Set(dvBlock)
-				p.Apply(s, smartblock.NoEvent)
-			}
-		}
-		return true
-	})
-}
-
 func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
 	s := p.NewState()
-	err := p.SetDetails(s.Context(), []*pb.RpcBlockSetDetailsDetail{
-		{Key: "name", Value: pbtypes.String(name)},
-		{Key: "iconEmoji", Value: pbtypes.String(icon)},
-	})
-	if err != nil {
-		return err
-	}
-
-	if !s.IsEmpty() {
-		return ErrAlreadyHasDataviewBlock
-	}
-
-	// use fixed id, because it should be the only one block
-	dw := simple.New(&model.Block{Content: &blockContent, Id: "dataview"})
-	s.Add(dw)
-
-	if err = s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, dw.Model().Id); err != nil {
-		return fmt.Errorf("can't insert dataview: %v", err)
-	}
-
-	log.Infof("create default structure for set: %v", s.RootId())
-
-	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
+	return template.ApplyTemplate(p, s, template.WithDetailName(name), template.WithDetailIconEmoji(icon), template.WithDataview(blockContent))
 }

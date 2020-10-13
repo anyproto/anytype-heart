@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewArchive(m meta.Service, ctrl ArchiveCtrl) *Archive {
@@ -34,14 +33,7 @@ func (p *Archive) Init(s source.Source, allowEmpty bool, objectTypeUrls []string
 		return
 	}
 	p.SmartBlock.DisableLayouts()
-	return p.init()
-}
-
-func (p *Archive) init() (err error) {
-	s := p.NewState()
-	s.SetDetail("name", pbtypes.String("Archive"))
-	s.SetDetail("iconEmoji", pbtypes.String("🗑️"))
-	return template.ApplyTemplate(p, template.Empty, s)
+	return template.ApplyTemplate(p, nil, template.WithEmpty, template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
 }
 
 func (p *Archive) Archive(id string) (err error) {

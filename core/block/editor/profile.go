@@ -44,10 +44,10 @@ type Profile struct {
 }
 
 func (p *Profile) Init(s source.Source, _ bool, _ []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, []string{p.DefaultObjectTypeUrl()}); err != nil {
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
 		return
 	}
-	return template.ApplyTemplate(p, template.WithTitle, nil)
+	return template.ApplyTemplate(p, nil, template.WithTitle, template.WithObjectTypes([]string{p.DefaultObjectTypeUrl()}))
 }
 
 func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {

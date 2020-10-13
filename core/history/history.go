@@ -187,7 +187,8 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 	}
 	switch sbType {
 	case smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeProfilePage, smartblock.SmartBlockTypeSet:
-		template.InitTemplate(template.WithTitle, s)
+		// todo: set case not handled
+		template.InitTemplate(s, template.WithTitle)
 	}
 	s.BlocksInit()
 	if ch := tree.Get(versionId); ch != nil {
