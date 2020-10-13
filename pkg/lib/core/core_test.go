@@ -118,7 +118,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	ps.UpdateLastOpened(block1.ID(), time.Now())
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:    model.BlockContentDataviewFilter_And,
-		RelationKey: "lastOpened",
+		RelationKey: "lastOpenedDate",
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       structs.Float64(float64(nowTruncatedToDay.Unix())),
 	}},
@@ -132,7 +132,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:    model.BlockContentDataviewFilter_And,
-		RelationKey: "lastModified",
+		RelationKey: "lastModifiedDate",
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       structs.Float64(float64(nowTruncatedToDay.Unix())),
 	}},
@@ -145,7 +145,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:    model.BlockContentDataviewFilter_And,
-		RelationKey: "lastModified",
+		RelationKey: "lastModifiedDate",
 		Condition:   model.BlockContentDataviewFilter_Less,
 		Value:       structs.Float64(float64(nextDay.Unix())),
 	}},
@@ -158,7 +158,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:    model.BlockContentDataviewFilter_And,
-		RelationKey: "lastModified",
+		RelationKey: "lastModifiedDate",
 		Condition:   model.BlockContentDataviewFilter_Greater,
 		Value:       structs.Float64(float64(prevDay.Unix())),
 	}},
@@ -169,7 +169,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:    model.BlockContentDataviewFilter_And,
-		RelationKey: "lastModified",
+		RelationKey: "lastModifiedDate",
 		Condition:   model.BlockContentDataviewFilter_Greater,
 		Value:       structs.Float64(float64(nextDay.Unix())),
 	}},

@@ -56,14 +56,14 @@ func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
 		var lastOpenedI, lastOpenedJ int64
 
 		if pages[i].Details != nil {
-			if pages[i].Details.Fields["lastOpened"] != nil {
-				lastOpenedI = int64(pages[i].Details.Fields["lastOpened"].GetNumberValue())
+			if pages[i].Details.Fields["lastOpenedDate"] != nil {
+				lastOpenedI = int64(pages[i].Details.Fields["lastOpenedDate"].GetNumberValue())
 			}
 		}
 
 		if pages[j].Details != nil {
-			if pages[j].Details.Fields["lastOpened"] != nil {
-				lastOpenedJ = int64(pages[j].Details.Fields["lastOpened"].GetNumberValue())
+			if pages[j].Details.Fields["lastOpenedDate"] != nil {
+				lastOpenedJ = int64(pages[j].Details.Fields["lastOpenedDate"].GetNumberValue())
 			}
 		}
 

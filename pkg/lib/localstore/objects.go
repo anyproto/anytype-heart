@@ -37,8 +37,8 @@ var ErrNotAPage = fmt.Errorf("not a page")
 
 const (
 	// special record fields
-	fieldLastOpened   = "lastOpened"
-	fieldLastModified = "lastModified"
+	fieldLastOpened   = "lastOpenedDate"
+	fieldLastModified = "lastModifiedDate"
 
 	pageSchema = "https://anytype.io/schemas/page"
 )
@@ -561,7 +561,9 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 
 	var relations pbrelation.Relations
 	if val, err := txn.Get(pagesRelationsBase.ChildString(id)); err != nil {
-		return nil, fmt.Errorf("failed to get relations: %w", err)
+		if err != ds.ErrNotFound {
+			return nil, fmt.Errorf("failed to get relations: %w", err)
+		}
 	} else if err := proto.Unmarshal(val, &relations); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
 	}
