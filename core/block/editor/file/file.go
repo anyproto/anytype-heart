@@ -45,7 +45,7 @@ type File interface {
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 	Upload(ctx *state.Context, id string, source FileSource, isSync bool) (err error)
 	UploadState(s *state.State, id string, source FileSource, isSync bool) (err error)
-	UpdateFile(id string, apply func(b file.Block) error) (err error)
+	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 
 	dropFilesHandler
@@ -64,7 +64,7 @@ type sfile struct {
 }
 
 func (sf *sfile) Upload(ctx *state.Context, id string, source FileSource, isSync bool) (err error) {
-	s := sf.NewStateCtx(ctx)
+	s := sf.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	if err = sf.upload(s, id, source, isSync); err != nil {
 		return
 	}
@@ -107,7 +107,6 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if !ok {
 		return fmt.Errorf("not a file block")
 	}
-	f.SetUndoGroupId(bson.NewObjectId().Hex())
 	upl := sf.newUploader().SetBlock(f)
 	if source.Path != "" {
 		upl.SetFile(source.Path)
@@ -119,7 +118,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if isSync {
 		return upl.Upload(context.TODO()).Err
 	} else {
-		upl.AsyncUpdates(sf.Id()).UploadAsync(context.TODO())
+		upl.SetGroupId(s.GroupId()).AsyncUpdates(sf.Id()).UploadAsync(context.TODO())
 	}
 	return
 }
@@ -131,8 +130,8 @@ func (sf *sfile) newUploader() Uploader {
 	}
 }
 
-func (sf *sfile) UpdateFile(id string, apply func(b file.Block) error) (err error) {
-	s := sf.NewState()
+func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
+	s := sf.NewState().SetGroupId(groupId)
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
@@ -190,7 +189,7 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 				},
 			}})
 			blockId = fb.Model().Id
-			fb.(file.Block).SetState(model.BlockContentFile_Uploading).SetUndoGroupId(blockId)
+			fb.(file.Block).SetState(model.BlockContentFile_Uploading)
 			s.Add(fb)
 			if err = s.InsertTo(targetId, pos, blockId); err != nil {
 				return
@@ -212,7 +211,7 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 		s.Unlink(info.blockId)
 		return sf.Apply(s)
 	}
-	return sf.UpdateFile(info.blockId, func(f file.Block) error {
+	return sf.UpdateFile(info.blockId, info.groupId, func(f file.Block) error {
 		if info.err != nil || info.file == nil || info.file.State == model.BlockContentFile_Error {
 			log.Warnf("upload file[%v] error: %v", info.name, info.err)
 			f.SetState(model.BlockContentFile_Error)
@@ -236,6 +235,7 @@ type dropFileInfo struct {
 	err             error
 	name            string
 	file            *model.BlockContentFile
+	groupId         string
 }
 
 type dropFilesHandler interface {

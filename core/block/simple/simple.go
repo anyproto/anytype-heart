@@ -48,11 +48,6 @@ type DetailsHandler interface {
 	DetailsApply(s DetailsService) (msgs []EventMessage, err error)
 }
 
-type UndoGroup interface {
-	UndoGroupId() string
-	SetUndoGroupId(id string)
-}
-
 type EventMessage struct {
 	Virtual bool
 	Msg     *pb.EventMessage

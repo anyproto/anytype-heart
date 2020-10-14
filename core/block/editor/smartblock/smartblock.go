@@ -249,6 +249,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	sb.Doc.(*state.State).SetChangeId(id)
 	if sb.undo != nil && addHistory {
+		act.Group = s.GroupId()
 		sb.undo.Add(act)
 	}
 	if sendEvent {

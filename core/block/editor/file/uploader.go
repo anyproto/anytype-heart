@@ -48,6 +48,7 @@ type Uploader interface {
 	SetBytes(b []byte) Uploader
 	SetUrl(url string) Uploader
 	SetFile(path string) Uploader
+	SetGroupId(groupId string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -97,6 +98,7 @@ type uploader struct {
 	smartBlockId string
 	fileType     model.BlockContentFileType
 	opts         []files.AddOption
+	groupId      string
 }
 
 type bufioClose struct {
@@ -113,6 +115,11 @@ func (bc *bufioClose) Close() error {
 
 func (u *uploader) SetBlock(block file.Block) Uploader {
 	u.block = block
+	return u
+}
+
+func (u *uploader) SetGroupId(groupId string) Uploader {
+	u.groupId = groupId
 	return u
 }
 
@@ -293,7 +300,7 @@ func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
 func (u *uploader) updateBlock() {
 	if u.smartBlockId != "" && u.block != nil {
 		err := u.service.DoFile(u.smartBlockId, func(f File) error {
-			return f.UpdateFile(u.block.Model().Id, func(b file.Block) error {
+			return f.UpdateFile(u.block.Model().Id, u.groupId, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil
 			})

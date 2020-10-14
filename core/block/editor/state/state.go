@@ -71,6 +71,7 @@ type State struct {
 	changesStructureIgnoreIds []string
 
 	bufIterateParentIds []string
+	groupId             string
 }
 
 func (s *State) RootId() string {
@@ -102,6 +103,15 @@ func (s *State) NewStateCtx(ctx *Context) *State {
 
 func (s *State) Context() *Context {
 	return s.ctx
+}
+
+func (s *State) SetGroupId(groupId string) *State {
+	s.groupId = groupId
+	return s
+}
+
+func (s *State) GroupId() string {
+	return s.groupId
 }
 
 func (s *State) Add(b simple.Block) (ok bool) {

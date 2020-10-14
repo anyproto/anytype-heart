@@ -28,7 +28,6 @@ func NewFile(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	simple.FileHashes
-	simple.UndoGroup
 	SetHash(hash string) Block
 	SetName(name string) Block
 	SetState(state model.BlockContentFileState) Block
@@ -176,12 +175,4 @@ func (f *File) FillFileHashes(hashes []string) []string {
 		return append(hashes, f.content.Hash)
 	}
 	return hashes
-}
-
-func (f *File) SetUndoGroupId(id string) {
-	f.undoGroupId = id
-}
-
-func (f *File) UndoGroupId() string {
-	return f.undoGroupId
 }

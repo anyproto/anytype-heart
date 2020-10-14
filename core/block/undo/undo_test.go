@@ -12,19 +12,6 @@ import (
 
 var _ base.Base
 
-type groupBlock struct {
-	simple.Block
-	groupId string
-}
-
-func (g *groupBlock) UndoGroupId() string {
-	return g.groupId
-}
-
-func (g *groupBlock) SetUndoGroupId(id string) {
-	g.groupId = id
-}
-
 func TestHistory_Add(t *testing.T) {
 	t.Run("add with limit", func(t *testing.T) {
 		h := NewHistory(2)
@@ -35,30 +22,32 @@ func TestHistory_Add(t *testing.T) {
 		assert.Equal(t, 2, h.Len())
 	})
 	t.Run("group", func(t *testing.T) {
-		newGroupBlock := func(id, groupId, bg string) simple.Block {
-			return &groupBlock{
-				Block:   simple.New(&model.Block{Id: id, BackgroundColor: bg}),
-				groupId: groupId,
-			}
+		newBlock := func(id, bg string) simple.Block {
+			return simple.New(&model.Block{Id: id, BackgroundColor: bg})
 		}
 
 		h := NewHistory(10)
 		h.Add(Action{Add: []simple.Block{nil}})
-		h.Add(Action{Add: []simple.Block{newGroupBlock("1", "g1", "addFirst")}})
-		h.Add(Action{Change: []Change{{After: newGroupBlock("2", "g2", "changeFirst")}}})
+		h.Add(Action{Add: []simple.Block{newBlock("1", "addFirst")}, Group: "g1"})
+		h.Add(Action{Change: []Change{{After: newBlock("2", "changeFirst")}}, Group: "g2"})
 		assert.Equal(t, 3, h.Len())
 
-		h.Add(Action{Change: []Change{{After: newGroupBlock("1", "g1", "addSecond")}}})
+		h.Add(Action{Change: []Change{{After: newBlock("1", "addSecond")}}, Group: "g1"})
 		assert.Equal(t, 3, h.Len())
 
-		h.Add(Action{Add: []simple.Block{newGroupBlock("2", "g2", "changeSecond")}})
+		h.Add(Action{Change: []Change{{After: newBlock("2", "changeSecond")}}, Group: "g2"})
 		assert.Equal(t, 3, h.Len())
 
-		h.Add(Action{Change: []Change{{After: newGroupBlock("2", "g2", "changeThird")}}})
+		h.Add(Action{Change: []Change{{After: newBlock("2", "changeThird")}, {After: newBlock("3", "")}}, Group: "g2"})
 		assert.Equal(t, 3, h.Len())
 
 		assert.Equal(t, "addSecond", h.(*history).actions[1].Add[0].Model().BackgroundColor)
 		assert.Equal(t, "changeThird", h.(*history).actions[2].Change[0].After.Model().BackgroundColor)
+	})
+	t.Run("do not add empty", func(t *testing.T) {
+		h := NewHistory(100)
+		h.Add(Action{})
+		assert.Equal(t, 0, h.Len())
 	})
 }
 

@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -25,46 +24,46 @@ type Details struct {
 }
 
 type Action struct {
-	Add      []simple.Block
-	Change   []Change
-	Remove   []simple.Block
-	Details  *Details
-	groupIds []string
+	Add     []simple.Block
+	Change  []Change
+	Remove  []simple.Block
+	Details *Details
+	Group   string
 }
 
 func (a Action) IsEmpty() bool {
 	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil
 }
 
-func (a *Action) HandleGroupBlocks(apply func(groupId string, b simple.Block) bool) {
-	filteredAdd := a.Add[:0]
-	for _, add := range a.Add {
-		if gr, ok := add.(simple.UndoGroup); ok {
-			if groupId := gr.UndoGroupId(); groupId != "" {
-				if apply(groupId, add) {
-					continue
-				} else {
-					a.groupIds = append(a.groupIds, groupId)
+func (a Action) Merge(b Action) (result Action) {
+	var changedIds []string
+	for _, changeB := range b.Change {
+		idB := changeB.After.Model().Id
+		found := false
+		for i, addA := range a.Add {
+			idA := addA.Model().Id
+			if idA == idB {
+				a.Add[i] = changeB.After
+				found = true
+				break
+			}
+		}
+		if !found {
+			for i, changeA := range a.Change {
+				idA := changeA.After.Model().Id
+				if idA == idB {
+					a.Change[i].After = changeB.After
+					found = true
+					break
 				}
 			}
 		}
-		filteredAdd = append(filteredAdd, add)
-	}
-	a.Add = filteredAdd
-	filteredChange := a.Change[:0]
-	for _, change := range a.Change {
-		if gr, ok := change.After.(simple.UndoGroup); ok {
-			if groupId := gr.UndoGroupId(); groupId != "" {
-				if apply(groupId, change.After) {
-					continue
-				} else {
-					a.groupIds = append(a.groupIds, groupId)
-				}
-			}
+		if !found {
+			a.Change = append(a.Change, changeB)
 		}
-		filteredChange = append(filteredChange, change)
+		changedIds = append(changedIds, idB)
 	}
-	a.Change = filteredChange
+	return a
 }
 
 type History interface {
@@ -89,10 +88,13 @@ type history struct {
 }
 
 func (h *history) Add(a Action) {
-	act := &a
-	act.HandleGroupBlocks(h.applyToGroup)
-	if act.IsEmpty() {
+	if a.IsEmpty() {
 		return
+	}
+	if a.Group != "" {
+		if h.applyGroup(a) {
+			return
+		}
 	}
 	if len(h.actions) != h.pointer {
 		h.actions = h.actions[:h.pointer]
@@ -132,28 +134,11 @@ func (h *history) Reset() {
 	h.actions = h.actions[:0]
 }
 
-func (h *history) applyToGroup(gId string, b simple.Block) (ok bool) {
+func (h *history) applyGroup(b Action) (ok bool) {
 	for i, a := range h.actions {
-		if slice.FindPos(a.groupIds, gId) != -1 {
-			for ai, add := range a.Add {
-				if gr, ok := add.(simple.UndoGroup); ok {
-					if groupId := gr.UndoGroupId(); groupId == gId {
-						a.Add[ai] = b
-						h.actions[i] = a
-						return true
-					}
-				}
-			}
-			for ci, change := range a.Change {
-				if gr, ok := change.After.(simple.UndoGroup); ok {
-					if groupId := gr.UndoGroupId(); groupId == gId {
-						change.After = b
-						a.Change[ci] = change
-						h.actions[i] = a
-						return true
-					}
-				}
-			}
+		if a.Group == b.Group {
+			h.actions[i] = a.Merge(b)
+			return true
 		}
 	}
 	return false
