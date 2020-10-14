@@ -46,7 +46,7 @@ func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.Rpc
 	}
 	var id, targetId string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, targetId, err = bs.CreatePage(ctx, *req)
+		id, targetId, err = bs.CreatePage(ctx, "", *req)
 		return
 	})
 	if err != nil {

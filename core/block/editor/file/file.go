@@ -36,7 +36,7 @@ func NewFile(sb smartblock.SmartBlock, source BlockService) File {
 
 type BlockService interface {
 	DoFile(id string, apply func(f File) error) error
-	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	ProcessAdd(p process.Process) (err error)
 	Anytype() anytype.Service
 }
@@ -154,8 +154,8 @@ func (sf *sfile) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
 	return
 }
 
-func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
-	s := sf.NewState()
+func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
+	s := sf.NewState().SetGroupId(groupId)
 	for _, entry := range entries {
 		var blockId, pageId string
 		if entry.isDir {
@@ -163,7 +163,7 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.fileSource.CreatePage(nil, pb.RpcBlockCreatePageRequest{
+			blockId, pageId, err = sf.fileSource.CreatePage(nil, groupId, pb.RpcBlockCreatePageRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,
@@ -181,7 +181,7 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 			targetId = blockId
 			pos = model.Block_Bottom
 			blockId = pageId
-			s = sf.NewState()
+			s = sf.NewState().SetGroupId(groupId)
 		} else {
 			fb := simple.New(&model.Block{Content: &model.BlockContentOfFile{
 				File: &model.BlockContentFile{
@@ -239,7 +239,7 @@ type dropFileInfo struct {
 }
 
 type dropFilesHandler interface {
-	dropFilesCreateStructure(targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error)
+	dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error)
 	dropFilesSetInfo(info dropFileInfo) (err error)
 	newUploader() Uploader
 }
@@ -252,6 +252,7 @@ type dropFilesProcess struct {
 	cancel      chan struct{}
 	doneCh      chan struct{}
 	canceling   int32
+	groupId     string
 }
 
 func (dp *dropFilesProcess) Id() string {
@@ -304,6 +305,7 @@ func (dp *dropFilesProcess) Init(paths []string) (err error) {
 			dp.total++
 		}
 	}
+	dp.groupId = bson.NewObjectId().Hex()
 	return
 }
 
@@ -381,7 +383,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 				isContinue = idx != 0
 				return fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
 			}
-			blockIds, err := sbHandler.dropFilesCreateStructure(targetId, pos, flatEntries[idx])
+			blockIds, err := sbHandler.dropFilesCreateStructure(dp.groupId, targetId, pos, flatEntries[idx])
 			if err != nil {
 				isContinue = idx != 0
 				return err
@@ -397,6 +399,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 						blockId: blockIds[i],
 						path:    entry.path,
 						name:    entry.name,
+						groupId: dp.groupId,
 					}
 				}
 			}

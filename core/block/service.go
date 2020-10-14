@@ -70,7 +70,7 @@ type Service interface {
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
-	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
@@ -363,7 +363,7 @@ func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrum
 
 func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		id, err = b.Create(ctx, req)
+		id, err = b.Create(ctx, "", req)
 		return err
 	})
 	return
@@ -401,7 +401,7 @@ func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId str
 	return pageId, nil
 }
 
-func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
 	var contextBlockType pb.SmartBlockType
 	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		contextBlockType = b.Type()
@@ -418,7 +418,7 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 	}
 
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		linkId, err = b.Create(ctx, pb.RpcBlockCreateRequest{
+		linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
@@ -503,7 +503,7 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
 	// 1. Create new page, link
-	linkId, pageId, err := s.CreatePage(ctx, pb.RpcBlockCreatePageRequest{
+	linkId, pageId, err := s.CreatePage(ctx, "", pb.RpcBlockCreatePageRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
@@ -710,7 +710,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 			return rootLinkIds, err
 		}
 	} else {
-		_, pageId, err := s.CreatePage(ctx, pb.RpcBlockCreatePageRequest{
+		_, pageId, err := s.CreatePage(ctx, "", pb.RpcBlockCreatePageRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{Fields: map[string]*types.Value{
 				"name":      pbtypes.String("Import from Notion"),
