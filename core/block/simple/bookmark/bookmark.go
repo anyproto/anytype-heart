@@ -54,8 +54,7 @@ type Updater func(id string, apply func(b Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
-	content     *model.BlockContentBookmark
-	undoGroupId string
+	content *model.BlockContentBookmark
 }
 
 func (f *Bookmark) SetLinkPreview(data model.LinkPreview) {

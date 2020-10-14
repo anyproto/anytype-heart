@@ -45,8 +45,7 @@ type Updater interface {
 
 type File struct {
 	*base.Base
-	content     *model.BlockContentFile
-	undoGroupId string
+	content *model.BlockContentFile
 }
 
 func (f *File) SetHash(hash string) Block {
@@ -98,9 +97,8 @@ func (f *File) SetModel(m *model.BlockContentFile) Block {
 func (f *File) Copy() simple.Block {
 	copy := pbtypes.CopyBlock(f.Model())
 	return &File{
-		Base:        base.NewBase(copy).(*base.Base),
-		content:     copy.GetFile(),
-		undoGroupId: f.undoGroupId,
+		Base:    base.NewBase(copy).(*base.Base),
+		content: copy.GetFile(),
 	}
 }
 
