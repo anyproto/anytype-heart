@@ -55,7 +55,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
 	github.com/textileio/go-threads v1.0.0-m3
-	github.com/tyler-smith/go-bip39 v1.0.0
+	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/goldmark v1.1.30
 	go.uber.org/zap v1.15.0
