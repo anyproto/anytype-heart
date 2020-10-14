@@ -52,10 +52,11 @@ type File interface {
 }
 
 type FileSource struct {
-	Path  string
-	Url   string
-	Bytes []byte
-	Name  string
+	Path    string
+	Url     string
+	Bytes   []byte
+	Name    string
+	GroupId string
 }
 
 type sfile struct {
@@ -64,7 +65,10 @@ type sfile struct {
 }
 
 func (sf *sfile) Upload(ctx *state.Context, id string, source FileSource, isSync bool) (err error) {
-	s := sf.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
+	if source.GroupId == "" {
+		source.GroupId = bson.NewObjectId().Hex()
+	}
+	s := sf.NewStateCtx(ctx).SetGroupId(source.GroupId)
 	if err = sf.upload(s, id, source, isSync); err != nil {
 		return
 	}

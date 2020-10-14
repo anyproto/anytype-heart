@@ -37,7 +37,7 @@ var (
 
 type Clipboard interface {
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
+	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 	Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
@@ -51,22 +51,22 @@ type clipboard struct {
 	file file.File
 }
 
-func (cb *clipboard) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	caretPosition = -1
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
 		return
 	} else if len(req.AnySlot) > 0 {
-		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteAny(ctx, req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteAny(ctx, req, groupId)
 	} else if len(req.HtmlSlot) > 0 {
-		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteHtml(ctx, req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteHtml(ctx, req, groupId)
 
 		if err != nil {
-			blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteText(ctx, req)
+			blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteText(ctx, req, groupId)
 		}
 
 	} else if len(req.TextSlot) > 0 {
-		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteText(ctx, req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.pasteText(ctx, req, groupId)
 
 	} else {
 		return nil, nil, caretPosition, isSameBlockCaret, ErrAllSlotsEmpty
@@ -238,7 +238,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 	return filePath, nil
 }
 
-func (cb *clipboard) pasteHtml(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteHtml(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	mdToBlocksConverter := anymark.New()
 	err, blocks, _ := mdToBlocksConverter.HTMLToBlocks([]byte(req.HtmlSlot))
 
@@ -247,10 +247,10 @@ func (cb *clipboard) pasteHtml(ctx *state.Context, req pb.RpcBlockPasteRequest) 
 	}
 
 	req.AnySlot = blocks
-	return cb.pasteAny(ctx, req)
+	return cb.pasteAny(ctx, req, groupId)
 }
 
-func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	if utf8.RuneCountInString(req.TextSlot) == 0 {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
@@ -275,7 +275,7 @@ func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest) 
 		})
 	}
 
-	return cb.pasteAny(ctx, req)
+	return cb.pasteAny(ctx, req, groupId)
 
 }
 
@@ -305,8 +305,8 @@ func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*m
 	return anySlot
 }
 
-func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
-	s := cb.NewStateCtx(ctx)
+func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
 	targetId := req.FocusedBlockId
 	isSameBlockCaret = false
 
