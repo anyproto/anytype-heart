@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -48,13 +49,13 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-
 	url, err = uri.ProcessURI(url)
 	if err != nil {
 		// Do nothing
 	}
 	var updMu sync.Mutex
 	if bm, ok := bb.(bookmark.Block); ok {
+		bm.SetUndoGroupId(bson.NewObjectId().Hex())
 		return bm.Fetch(bookmark.FetchParams{
 			Url:     url,
 			Anytype: b.Anytype(),
@@ -111,5 +112,5 @@ func (b *sbookmark) UpdateBookmark(id string, apply func(b bookmark.Block) error
 	} else {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-	return b.Apply(s, smartblock.NoHistory)
+	return b.Apply(s)
 }

@@ -35,6 +35,7 @@ func NewBookmark(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	simple.FileHashes
+	simple.UndoGroup
 	Fetch(params FetchParams) (err error)
 	SetLinkPreview(data model.LinkPreview)
 	SetImageHash(hash string)
@@ -54,7 +55,8 @@ type Updater func(id string, apply func(b Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
-	content *model.BlockContentBookmark
+	content     *model.BlockContentBookmark
+	undoGroupId string
 }
 
 func (f *Bookmark) SetLinkPreview(data model.LinkPreview) {
@@ -223,6 +225,14 @@ func (f *Bookmark) FillFileHashes(hashes []string) []string {
 		hashes = append(hashes, f.content.FaviconHash)
 	}
 	return hashes
+}
+
+func (f *Bookmark) SetUndoGroupId(id string) {
+	f.undoGroupId = id
+}
+
+func (f *Bookmark) UndoGroupId() string {
+	return f.undoGroupId
 }
 
 func loadImage(stor anytype.Service, url string) (hash string, err error) {

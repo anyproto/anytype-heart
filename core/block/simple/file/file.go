@@ -28,6 +28,7 @@ func NewFile(m *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	simple.FileHashes
+	simple.UndoGroup
 	SetHash(hash string) Block
 	SetName(name string) Block
 	SetState(state model.BlockContentFileState) Block
@@ -45,7 +46,8 @@ type Updater interface {
 
 type File struct {
 	*base.Base
-	content *model.BlockContentFile
+	content     *model.BlockContentFile
+	undoGroupId string
 }
 
 func (f *File) SetHash(hash string) Block {
@@ -97,8 +99,9 @@ func (f *File) SetModel(m *model.BlockContentFile) Block {
 func (f *File) Copy() simple.Block {
 	copy := pbtypes.CopyBlock(f.Model())
 	return &File{
-		Base:    base.NewBase(copy).(*base.Base),
-		content: copy.GetFile(),
+		Base:        base.NewBase(copy).(*base.Base),
+		content:     copy.GetFile(),
+		undoGroupId: f.undoGroupId,
 	}
 }
 
@@ -173,4 +176,12 @@ func (f *File) FillFileHashes(hashes []string) []string {
 		return append(hashes, f.content.Hash)
 	}
 	return hashes
+}
+
+func (f *File) SetUndoGroupId(id string) {
+	f.undoGroupId = id
+}
+
+func (f *File) UndoGroupId() string {
+	return f.undoGroupId
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
@@ -106,6 +107,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if !ok {
 		return fmt.Errorf("not a file block")
 	}
+	f.SetUndoGroupId(bson.NewObjectId().Hex())
 	upl := sf.newUploader().SetBlock(f)
 	if source.Path != "" {
 		upl.SetFile(source.Path)
@@ -139,7 +141,7 @@ func (sf *sfile) UpdateFile(id string, apply func(b file.Block) error) (err erro
 	if err = apply(f); err != nil {
 		return
 	}
-	return sf.Apply(s, smartblock.NoHistory)
+	return sf.Apply(s)
 }
 
 func (sf *sfile) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
@@ -187,9 +189,9 @@ func (sf *sfile) dropFilesCreateStructure(targetId string, pos model.BlockPositi
 					Name: entry.name,
 				},
 			}})
-			fb.(file.Block).SetState(model.BlockContentFile_Uploading)
-			s.Add(fb)
 			blockId = fb.Model().Id
+			fb.(file.Block).SetState(model.BlockContentFile_Uploading).SetUndoGroupId(blockId)
+			s.Add(fb)
 			if err = s.InsertTo(targetId, pos, blockId); err != nil {
 				return
 			}
@@ -208,7 +210,7 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 	if info.err == context.Canceled {
 		s := sf.NewState()
 		s.Unlink(info.blockId)
-		return sf.Apply(s, smartblock.NoHistory)
+		return sf.Apply(s)
 	}
 	return sf.UpdateFile(info.blockId, func(f file.Block) error {
 		if info.err != nil || info.file == nil || info.file.State == model.BlockContentFile_Error {
