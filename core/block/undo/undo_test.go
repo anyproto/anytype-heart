@@ -12,14 +12,53 @@ import (
 
 var _ base.Base
 
+type groupBlock struct {
+	simple.Block
+	groupId string
+}
+
+func (g *groupBlock) UndoGroupId() string {
+	return g.groupId
+}
+
+func (g *groupBlock) SetUndoGroupId(id string) {
+	g.groupId = id
+}
+
 func TestHistory_Add(t *testing.T) {
 	t.Run("add with limit", func(t *testing.T) {
 		h := NewHistory(2)
-		h.Add(Action{})
-		h.Add(Action{})
+		h.Add(Action{Add: []simple.Block{nil}})
+		h.Add(Action{Add: []simple.Block{nil}})
 		assert.Equal(t, 2, h.Len())
-		h.Add(Action{})
+		h.Add(Action{Add: []simple.Block{nil}})
 		assert.Equal(t, 2, h.Len())
+	})
+	t.Run("group", func(t *testing.T) {
+		newGroupBlock := func(id, groupId, bg string) simple.Block {
+			return &groupBlock{
+				Block:   simple.New(&model.Block{Id: id, BackgroundColor: bg}),
+				groupId: groupId,
+			}
+		}
+
+		h := NewHistory(10)
+		h.Add(Action{Add: []simple.Block{nil}})
+		h.Add(Action{Add: []simple.Block{newGroupBlock("1", "g1", "addFirst")}})
+		h.Add(Action{Change: []Change{{After: newGroupBlock("2", "g2", "changeFirst")}}})
+		assert.Equal(t, 3, h.Len())
+
+		h.Add(Action{Change: []Change{{After: newGroupBlock("1", "g1", "addSecond")}}})
+		assert.Equal(t, 3, h.Len())
+
+		h.Add(Action{Add: []simple.Block{newGroupBlock("2", "g2", "changeSecond")}})
+		assert.Equal(t, 3, h.Len())
+
+		h.Add(Action{Change: []Change{{After: newGroupBlock("2", "g2", "changeThird")}}})
+		assert.Equal(t, 3, h.Len())
+
+		assert.Equal(t, "addSecond", h.(*history).actions[1].Add[0].Model().BackgroundColor)
+		assert.Equal(t, "changeThird", h.(*history).actions[2].Change[0].After.Model().BackgroundColor)
 	})
 }
 
