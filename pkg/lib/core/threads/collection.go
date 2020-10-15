@@ -85,10 +85,7 @@ func (s *service) threadsDbListen() error {
 			select {
 			case <-s.ctx.Done():
 				return
-			case c, ok := <-l.Channel():
-				if !ok {
-					return
-				}
+			case c := <-l.Channel():
 				switch c.Type {
 				case db.ActionCreate:
 					instanceBytes, err := s.threadsCollection.FindByID(c.ID)
@@ -114,7 +111,10 @@ func (s *service) threadsDbListen() error {
 					go func() {
 						s.processNewExternalThreadUntilSuccess(tid, ti)
 						if s.newThreadChan != nil {
-							s.newThreadChan <- tid.String()
+							select {
+							case <-s.ctx.Done():
+							case s.newThreadChan <- tid.String():
+							}
 						}
 					}()
 				}
