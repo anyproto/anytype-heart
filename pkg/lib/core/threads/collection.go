@@ -76,7 +76,8 @@ func (s *service) threadsDbListen() error {
 	go func() {
 		defer func() {
 			l.Close()
-			if s.newThreadChan != nil {
+			ch := s.getNewThreadChan()
+			if ch != nil {
 				close(s.newThreadChan)
 			}
 		}()
@@ -110,10 +111,12 @@ func (s *service) threadsDbListen() error {
 
 					go func() {
 						s.processNewExternalThreadUntilSuccess(tid, ti)
-						if s.newThreadChan != nil {
+
+						ch := s.getNewThreadChan()
+						if ch != nil {
 							select {
 							case <-s.ctx.Done():
-							case s.newThreadChan <- tid.String():
+							case ch <- tid.String():
 							}
 						}
 					}()
