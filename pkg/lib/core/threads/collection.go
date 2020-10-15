@@ -74,12 +74,21 @@ func (s *service) threadsDbListen() error {
 	}
 
 	go func() {
-		defer l.Close()
+		defer func() {
+			l.Close()
+			if s.newThreadChan != nil {
+				close(s.newThreadChan)
+			}
+		}()
+
 		for {
 			select {
 			case <-s.ctx.Done():
 				return
-			case c := <-l.Channel():
+			case c, ok := <-l.Channel():
+				if !ok {
+					return
+				}
 				switch c.Type {
 				case db.ActionCreate:
 					instanceBytes, err := s.threadsCollection.FindByID(c.ID)
@@ -104,6 +113,9 @@ func (s *service) threadsDbListen() error {
 
 					go func() {
 						s.processNewExternalThreadUntilSuccess(tid, ti)
+						if s.newThreadChan != nil {
+							s.newThreadChan <- tid.String()
+						}
 					}()
 				}
 			}
@@ -253,12 +265,6 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	if err != nil {
 		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
 		return fmt.Errorf("failed to pull thread: %w", err)
-	}
-
-	if s.newThreadChan != nil {
-		go func() {
-			s.newThreadChan <- tid.String()
-		}()
 	}
 
 	err = s.newHeadProcessor(tid)
