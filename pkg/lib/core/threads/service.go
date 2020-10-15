@@ -31,13 +31,15 @@ type service struct {
 	account           wallet.Keypair
 	repoRootPath      string
 	newHeadProcessor  func(id thread.ID) error
-	replicatorAddr    ma.Multiaddr
-	ctx               context.Context
-	ctxCancel         context.CancelFunc
+	newThreadChan     chan string
+
+	replicatorAddr ma.Multiaddr
+	ctx            context.Context
+	ctxCancel      context.CancelFunc
 	sync.Mutex
 }
 
-func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPath string, deviceKeypair wallet.Keypair, accountKeypair wallet.Keypair, newHeadProcessor func(id thread.ID) error, replicatorAddr ma.Multiaddr) Service {
+func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPath string, deviceKeypair wallet.Keypair, accountKeypair wallet.Keypair, newHeadProcessor func(id thread.ID) error, newThreadChan chan string, replicatorAddr ma.Multiaddr) Service {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
 		t:                threadsAPI,
