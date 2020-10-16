@@ -210,3 +210,15 @@ func BenchmarkTree_Add(b *testing.B) {
 		}
 	})
 }
+
+func TestTree_LastSnapshotId(t *testing.T) {
+	tr := new(Tree)
+	assert.Equal(t, Append, tr.Add(
+		newSnapshot("root", "", nil),
+		newDetailsChange("one", "root", "root", "root", true),
+		newDetailsChange("two", "root", "one", "one", false),
+	))
+	assert.Equal(t, "root", tr.LastSnapshotId())
+	assert.Equal(t, Append, tr.Add(newSnapshot("three", "root", nil, "two")))
+	assert.Equal(t, "three", tr.LastSnapshotId())
+}

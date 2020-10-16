@@ -316,6 +316,18 @@ func (t *Tree) Get(id string) *Change {
 	return t.attached[id]
 }
 
+func (t *Tree) LastSnapshotId() string {
+	for _, id := range t.headIds {
+		if head := t.Get(id); head.GetSnapshot() != nil {
+			return head.Id
+		}
+	}
+	if len(t.headIds) > 0 {
+		return t.Get(t.headIds[0]).LastSnapshotId
+	}
+	return ""
+}
+
 type sortChanges []*Change
 
 func (s sortChanges) Len() int {
