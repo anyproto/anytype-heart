@@ -197,6 +197,14 @@ func (p *pubSub) cleanup(now time.Time) bool {
 	return true
 }
 
+func (p *pubSub) onNewThread(id string) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if c, ok := p.collectors[id]; ok {
+		c.wakeUp()
+	}
+}
+
 func (p *pubSub) Close() error {
 	p.m.Lock()
 	defer p.m.Unlock()
