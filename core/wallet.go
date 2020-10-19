@@ -82,7 +82,7 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 
 func (mw *Middleware) WalletConvert(req *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse {
 	response := func(mnemonic, entropy string, code pb.RpcWalletConvertResponseErrorCode, err error) *pb.RpcWalletConvertResponse {
-		m := &pb.RpcWalletConvertResponse{Error: &pb.RpcWalletConvertResponseError{Code: code}}
+		m := &pb.RpcWalletConvertResponse{Mnemonic: mnemonic, Entropy: entropy, Error: &pb.RpcWalletConvertResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
