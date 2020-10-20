@@ -211,7 +211,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 
 func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 	if info.err == context.Canceled {
-		s := sf.NewState()
+		s := sf.NewState().SetGroupId(info.groupId)
 		s.Unlink(info.blockId)
 		return sf.Apply(s)
 	}
