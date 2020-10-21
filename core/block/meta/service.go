@@ -21,9 +21,16 @@ type Service interface {
 }
 
 func NewService(a anytype.Service) Service {
-	return &service{
+	s := &service{
 		ps: newPubSub(a),
 	}
+	var newSmartblockCh = make(chan string)
+	if err := a.InitNewSmartblocksChan(newSmartblockCh); err != nil {
+		log.Errorf("can't init new smartblock chan: %v", err)
+	} else {
+		go s.newSmartblockListener(newSmartblockCh)
+	}
+	return s
 }
 
 type service struct {
@@ -67,6 +74,12 @@ func (s *service) FetchDetails(ids []string) (details []Meta) {
 	case <-filled:
 	}
 	return
+}
+
+func (s *service) newSmartblockListener(ch chan string) {
+	for newId := range ch {
+		s.ps.onNewThread(newId)
+	}
 }
 
 func (s *service) Close() (err error) {

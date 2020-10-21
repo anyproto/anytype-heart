@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -36,6 +37,7 @@ func newFixture(t *testing.T) (fx *fixture) {
 	ctrl := gomock.NewController(t)
 	at := testMock.NewMockService(ctrl)
 	s := mockSource.NewMockSource(ctrl)
+	at.EXPECT().InitNewSmartblocksChan(gomock.Any()).Return(fmt.Errorf("test"))
 	fx = &fixture{
 		ctrl:    ctrl,
 		anytype: at,

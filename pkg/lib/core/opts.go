@@ -2,8 +2,11 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -28,6 +31,74 @@ type ServiceOptions struct {
 	ReindexFunc           func(smartblockId string) error
 	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler
 	WebGatewaySnapshotUri string
+	NewSmartblockChan     chan string
+}
+
+func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
+	return func(args *ServiceOptions) error {
+		repoPath := filepath.Join(rootPath, account)
+		args.Repo = repoPath
+
+		b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
+		if err != nil {
+			return fmt.Errorf("failed to read account keyfile: %w", err)
+		}
+
+		accountKp, err := wallet.UnmarshalBinary(b)
+		if err != nil {
+			return err
+		}
+		if accountKp.KeypairType() != wallet.KeypairTypeAccount {
+			return fmt.Errorf("got %s key type instead of %s", accountKp.KeypairType(), wallet.KeypairTypeAccount)
+		}
+
+		b, err = ioutil.ReadFile(filepath.Join(repoPath, keyFileDevice))
+		if err != nil {
+			return fmt.Errorf("failed to read device keyfile: %w", err)
+		}
+
+		deviceKp, err := wallet.UnmarshalBinary(b)
+		if err != nil {
+			return err
+		}
+
+		if deviceKp.KeypairType() != wallet.KeypairTypeDevice {
+			return fmt.Errorf("got %s key type instead of %s", deviceKp.KeypairType(), wallet.KeypairTypeDevice)
+		}
+
+		cfg, err := config.GetConfig(repoPath)
+		if err != nil {
+			return err
+		}
+
+		opts := []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithHostMultiaddr(cfg.HostAddr), WithWebGatewayBaseUrl(cfg.WebGatewayBaseUrl)}
+
+		// "-" or any other single char assumes as empty for env var compatability
+		if len(cfg.CafeP2PAddr) > 1 {
+			opts = append(opts, WithCafeP2PAddr(cfg.CafeP2PAddr))
+		}
+
+		if len(cfg.CafeGRPCAddr) > 1 {
+			opts = append(opts, WithCafeGRPCHost(cfg.CafeGRPCAddr))
+		}
+
+		for _, opt := range opts {
+			err = opt(args)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// WithNewSmartblockChan add a chan to subscribe to new smartblocks' threads that just became available to read
+// it is ok to pass unbuffered chan, because all msgs send in the goroutine
+func WithNewSmartblockChan(ch chan string) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.NewSmartblockChan = ch
+		return nil
+	}
 }
 
 func WithRepo(repoPath string) ServiceOption {
