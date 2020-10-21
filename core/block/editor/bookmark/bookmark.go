@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -13,6 +11,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
+	"github.com/globalsign/mgo/bson"
 )
 
 func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBookmark) Bookmark {
@@ -22,7 +22,7 @@ func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBo
 type Bookmark interface {
 	Fetch(ctx *state.Context, id string, url string, isSync bool) (err error)
 	CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
-	UpdateBookmark(id string, apply func(b bookmark.Block) error) (err error)
+	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
 }
 
 type DoBookmark interface {
@@ -36,7 +36,7 @@ type sbookmark struct {
 }
 
 func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
-	s := b.NewStateCtx(ctx)
+	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	if err = b.fetch(s, id, url, isSync); err != nil {
 		return
 	}
@@ -48,11 +48,11 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-
 	url, err = uri.ProcessURI(url)
 	if err != nil {
 		// Do nothing
 	}
+	groupId := s.GroupId()
 	var updMu sync.Mutex
 	if bm, ok := bb.(bookmark.Block); ok {
 		return bm.Fetch(bookmark.FetchParams{
@@ -65,7 +65,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 					return apply(bm)
 				}
 				return b.ctrl.DoBookmark(b.Id(), func(b Bookmark) error {
-					return b.UpdateBookmark(id, apply)
+					return b.UpdateBookmark(id, groupId, apply)
 				})
 			},
 			LinkPreview: b.lp,
@@ -76,7 +76,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 }
 
 func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
-	s := b.NewStateCtx(ctx)
+	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfBookmark{
 			Bookmark: &model.BlockContentBookmark{
@@ -98,8 +98,8 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
-func (b *sbookmark) UpdateBookmark(id string, apply func(b bookmark.Block) error) (err error) {
-	s := b.NewState()
+func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error) {
+	s := b.NewState().SetGroupId(groupId)
 	if bb := s.Get(id); bb != nil {
 		if bm, ok := bb.(bookmark.Block); ok {
 			if err = apply(bm); err != nil {
@@ -111,5 +111,5 @@ func (b *sbookmark) UpdateBookmark(id string, apply func(b bookmark.Block) error
 	} else {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-	return b.Apply(s, smartblock.NoHistory)
+	return b.Apply(s)
 }
