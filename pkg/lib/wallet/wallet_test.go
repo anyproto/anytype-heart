@@ -9,6 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestWalletFromEntropy(t *testing.T) {
+	w, err := WalletFromWordCount(12)
+	require.NoError(t, err)
+	e, err := w.Entropy()
+	require.NoError(t, err)
+	w2, err := WalletFromEntropy(e)
+	require.NoError(t, err)
+	require.Equal(t, w.RecoveryPhrase, w2.RecoveryPhrase)
+}
+
 func TestNewWordCount(t *testing.T) {
 	type args struct {
 		cnt int

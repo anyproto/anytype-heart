@@ -4,14 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -21,9 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -96,6 +91,9 @@ type Service interface {
 	IsStarted() bool
 	BecameOnline(ch chan<- error)
 
+	// InitNewSmartblocksChan allows to init the chan to inform when there is a new smartblock becomes available
+	// Can be called only once. Returns error if called more than once
+	InitNewSmartblocksChan(ch chan<- string) error
 	InitPredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
@@ -194,7 +192,7 @@ func init() {
 	logging.ApplyLevelsFromEnv()
 }
 
-func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
+func New(options ...ServiceOption) (*Anytype, error) {
 	opts := ServiceOptions{}
 
 	for _, opt := range options {
@@ -230,65 +228,6 @@ func NewFromOptions(options ...ServiceOption) (*Anytype, error) {
 	}
 
 	return a, nil
-}
-
-func New(rootPath string, account string, reIndexFunc func(id string) error, snapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler) (Service, error) {
-	opts, err := getNewConfig(rootPath, account)
-	if err != nil {
-		return nil, err
-	}
-
-	opts = append(opts, WithReindexFunc(reIndexFunc), WithSnapshotMarshalerFunc(snapshotMarshalerFunc))
-	return NewFromOptions(opts...)
-}
-
-func getNewConfig(rootPath string, account string) ([]ServiceOption, error) {
-	repoPath := filepath.Join(rootPath, account)
-
-	b, err := ioutil.ReadFile(filepath.Join(repoPath, keyFileAccount))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read account keyfile: %w", err)
-	}
-
-	accountKp, err := wallet.UnmarshalBinary(b)
-	if err != nil {
-		return nil, err
-	}
-	if accountKp.KeypairType() != wallet.KeypairTypeAccount {
-		return nil, fmt.Errorf("got %s key type instead of %s", accountKp.KeypairType(), wallet.KeypairTypeAccount)
-	}
-
-	b, err = ioutil.ReadFile(filepath.Join(repoPath, keyFileDevice))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read device keyfile: %w", err)
-	}
-
-	deviceKp, err := wallet.UnmarshalBinary(b)
-	if err != nil {
-		return nil, err
-	}
-
-	if deviceKp.KeypairType() != wallet.KeypairTypeDevice {
-		return nil, fmt.Errorf("got %s key type instead of %s", deviceKp.KeypairType(), wallet.KeypairTypeDevice)
-	}
-
-	cfg, err := config.GetConfig(repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	opts := []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithHostMultiaddr(cfg.HostAddr), WithWebGatewayBaseUrl(cfg.WebGatewayBaseUrl)}
-
-	// "-" or any other single char assumes as empty for env var compatability
-	if len(cfg.CafeP2PAddr) > 1 {
-		opts = append(opts, WithCafeP2PAddr(cfg.CafeP2PAddr))
-	}
-
-	if len(cfg.CafeGRPCAddr) > 1 {
-		opts = append(opts, WithCafeGRPCHost(cfg.CafeGRPCAddr))
-	}
-
-	return opts, nil
 }
 
 func (a *Anytype) runPeriodicJobsInBackground() {
@@ -365,7 +304,7 @@ func (a *Anytype) start() error {
 			}
 		}()
 		return nil
-	}, a.opts.CafeP2PAddr)
+	}, a.opts.NewSmartblockChan, a.opts.CafeP2PAddr)
 
 	// find and retry failed pins
 	go a.checkPins()
@@ -447,6 +386,14 @@ func (a *Anytype) Stop() error {
 	}
 
 	return nil
+}
+
+func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
+	if a.threadService == nil {
+		return fmt.Errorf("thread service not ready yet")
+	}
+
+	return a.threadService.InitNewThreadsChan(ch)
 }
 
 func (a *Anytype) startNetwork(hostAddr multiaddr.Multiaddr, offline bool) (net.NetBoostrapper, error) {

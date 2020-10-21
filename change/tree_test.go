@@ -210,3 +210,32 @@ func BenchmarkTree_Add(b *testing.B) {
 		}
 	})
 }
+
+func TestTree_LastSnapshotId(t *testing.T) {
+	t.Run("trivial", func(t *testing.T) {
+		tr := new(Tree)
+		assert.Equal(t, Append, tr.Add(
+			newSnapshot("root", "", nil),
+			newDetailsChange("one", "root", "root", "root", true),
+			newDetailsChange("two", "root", "one", "one", false),
+		))
+		assert.Equal(t, "root", tr.LastSnapshotId())
+		assert.Equal(t, Append, tr.Add(newSnapshot("three", "root", nil, "two")))
+		assert.Equal(t, "three", tr.LastSnapshotId())
+	})
+	t.Run("empty", func(t *testing.T) {
+		tr := new(Tree)
+		assert.Equal(t, "", tr.LastSnapshotId())
+	})
+	t.Run("builder", func(t *testing.T) {
+		tr := new(Tree)
+		tr.Add(
+			newSnapshot("root", "", nil),
+			newDetailsChange("one", "root", "root", "root", true),
+			newDetailsChange("two", "root", "one", "one", false),
+			newSnapshot("newSh", "root", nil, "one"),
+		)
+		assert.Equal(t, []string{"newSh", "two"}, tr.Heads())
+		assert.Equal(t, "root", tr.LastSnapshotId())
+	})
+}

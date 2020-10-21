@@ -14,7 +14,7 @@ import (
 )
 
 type Basic interface {
-	Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error)
+	Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
 	Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(ctx *state.Context, id ...string) (err error)
 	Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
@@ -85,11 +85,11 @@ type basic struct {
 	smartblock.SmartBlock
 }
 
-func (bs *basic) Create(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
+func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
 	if bs.Type() == pb.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
-	s := bs.NewStateCtx(ctx)
+	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
 	if req.TargetId != "" {
 		if s.IsChild(template.HeaderLayoutId, req.TargetId) {
 			req.Position = model.Block_Bottom

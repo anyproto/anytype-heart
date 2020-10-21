@@ -31,13 +31,15 @@ type service struct {
 	account           wallet.Keypair
 	repoRootPath      string
 	newHeadProcessor  func(id thread.ID) error
-	replicatorAddr    ma.Multiaddr
-	ctx               context.Context
-	ctxCancel         context.CancelFunc
+	newThreadChan     chan<- string
+
+	replicatorAddr ma.Multiaddr
+	ctx            context.Context
+	ctxCancel      context.CancelFunc
 	sync.Mutex
 }
 
-func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPath string, deviceKeypair wallet.Keypair, accountKeypair wallet.Keypair, newHeadProcessor func(id thread.ID) error, replicatorAddr ma.Multiaddr) Service {
+func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPath string, deviceKeypair wallet.Keypair, accountKeypair wallet.Keypair, newHeadProcessor func(id thread.ID) error, newThreadChan chan string, replicatorAddr ma.Multiaddr) Service {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
 		t:                threadsAPI,
@@ -56,6 +58,7 @@ type Service interface {
 	ThreadsCollection() (*db.Collection, error)
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	DeleteThread(id string) error
+	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
 	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
 	Close() error
@@ -63,6 +66,23 @@ type Service interface {
 
 type ThreadsGetter interface {
 	Threads() (thread.IDSlice, error)
+}
+
+func (s *service) InitNewThreadsChan(ch chan<- string) error {
+	s.Lock()
+	defer s.Unlock()
+	if s.newThreadChan != nil {
+		return fmt.Errorf("already set")
+	}
+
+	s.newThreadChan = ch
+	return nil
+}
+
+func (s *service) getNewThreadChan() chan<- string {
+	s.Lock()
+	defer s.Unlock()
+	return s.newThreadChan
 }
 
 func (s *service) ThreadsCollection() (*db.Collection, error) {

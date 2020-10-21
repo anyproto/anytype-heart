@@ -26,15 +26,14 @@ func createAccount(t require.TestingT) Service {
 	err = WalletInitRepo(rootPath, rawSeed)
 	require.NoError(t, err)
 
-	opts, err := getNewConfig(rootPath, account.Address())
-	require.NoError(t, err)
+	var opts = []ServiceOption{WithRootPathAndAccount(rootPath, account.Address())}
 
 	if os.Getenv("ANYTYPE_TEST_OFFLINE") == "1" {
 		opts = append(opts, WithOfflineMode(true))
 		opts = append(opts, WithoutCafe())
 	}
 
-	anytype, err := NewFromOptions(opts...)
+	anytype, err := New(opts...)
 	require.NoError(t, err)
 
 	return anytype

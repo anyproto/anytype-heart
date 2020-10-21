@@ -158,7 +158,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	anytypeService, err := core.New(mw.rootPath, account.Address(), mw.reindexDoc, change.NewSnapshotChange)
+	anytypeService, err := core.New(core.WithRootPathAndAccount(mw.rootPath, account.Address()), core.WithReindexFunc(mw.reindexDoc), core.WithSnapshotMarshalerFunc(change.NewSnapshotChange))
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -289,8 +289,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
 	// it is ok to unlock just after we've started with the 1st account
-
-	c, err := core.New(mw.rootPath, zeroAccount.Address(), mw.reindexDoc, change.NewSnapshotChange)
+	c, err := core.New(core.WithRootPathAndAccount(mw.rootPath, zeroAccount.Address()), core.WithReindexFunc(mw.reindexDoc), core.WithSnapshotMarshalerFunc(change.NewSnapshotChange))
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 	}
@@ -477,7 +476,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			}
 		}
 
-		anytype, err := core.New(mw.rootPath, req.Id, mw.reindexDoc, change.NewSnapshotChange)
+		anytype, err := core.New(core.WithRootPathAndAccount(mw.rootPath, req.Id), core.WithReindexFunc(mw.reindexDoc), core.WithSnapshotMarshalerFunc(change.NewSnapshotChange))
 		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}

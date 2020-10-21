@@ -70,7 +70,7 @@ type Service interface {
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
-	CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId string, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
@@ -84,7 +84,7 @@ type Service interface {
 
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 
-	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
+	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
 	Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
@@ -104,7 +104,7 @@ type Service interface {
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
 
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
-	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) error
+	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest, groupId string) error
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error)
 	CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
@@ -363,7 +363,7 @@ func (s *service) SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrum
 
 func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (id string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		id, err = b.Create(ctx, req)
+		id, err = b.Create(ctx, "", req)
 		return err
 	})
 	return
@@ -401,7 +401,7 @@ func (s *service) CreateSmartBlock(req pb.RpcBlockCreatePageRequest) (pageId str
 	return pageId, nil
 }
 
-func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
 	var contextBlockType pb.SmartBlockType
 	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		contextBlockType = b.Type()
@@ -418,7 +418,7 @@ func (s *service) CreatePage(ctx *state.Context, req pb.RpcBlockCreatePageReques
 	}
 
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		linkId, err = b.Create(ctx, pb.RpcBlockCreateRequest{
+		linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
@@ -503,7 +503,7 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
 	// 1. Create new page, link
-	linkId, pageId, err := s.CreatePage(ctx, pb.RpcBlockCreatePageRequest{
+	linkId, pageId, err := s.CreatePage(ctx, "", pb.RpcBlockCreatePageRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
@@ -668,9 +668,9 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot st
 	return textSlot, htmlSlot, anySlot, err
 }
 
-func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.Paste(ctx, req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.Paste(ctx, req, groupId)
 		return err
 	})
 
@@ -710,7 +710,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdo
 			return rootLinkIds, err
 		}
 	} else {
-		_, pageId, err := s.CreatePage(ctx, pb.RpcBlockCreatePageRequest{
+		_, pageId, err := s.CreatePage(ctx, "", pb.RpcBlockCreatePageRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{Fields: map[string]*types.Value{
 				"name":      pbtypes.String("Import from Notion"),
@@ -789,11 +789,12 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 	})
 }
 
-func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error) {
+func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest, groupId string) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path: req.FilePath,
-			Url:  req.Url,
+			Path:    req.FilePath,
+			Url:     req.Url,
+			GroupId: groupId,
 		}, false)
 		return err
 	})

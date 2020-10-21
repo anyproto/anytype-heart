@@ -78,10 +78,10 @@ func WalletFromWordCount(wordCount int) (*Wallet, error) {
 		return nil, err
 	}
 
-	return WalletFromEntropy(wcount.EntropySize())
+	return WalletFromRandomEntropy(wcount.EntropySize())
 }
 
-func WalletFromEntropy(entropySize int) (*Wallet, error) {
+func WalletFromRandomEntropy(entropySize int) (*Wallet, error) {
 	entropy, err := bip39.NewEntropy(entropySize)
 	if err != nil {
 		return nil, err
@@ -95,6 +95,15 @@ func WalletFromEntropy(entropySize int) (*Wallet, error) {
 
 func WalletFromMnemonic(mnemonic string) *Wallet {
 	return &Wallet{RecoveryPhrase: mnemonic}
+}
+
+func WalletFromEntropy(entropy []byte) (*Wallet, error) {
+	mnemonic, err := bip39.NewMnemonic(entropy)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Wallet{RecoveryPhrase: mnemonic}, nil
 }
 
 // To understand how this works, refer to the living document:
@@ -121,4 +130,8 @@ func (w *Wallet) AccountAt(index int, passphrase string) (Keypair, error) {
 	privKey, _, err := crypto.GenerateEd25519Key(reader)
 
 	return NewKeypairFromPrivKey(KeypairTypeAccount, privKey)
+}
+
+func (w *Wallet) Entropy() ([]byte, error) {
+	return bip39.MnemonicToByteArray(w.RecoveryPhrase, true)
 }
