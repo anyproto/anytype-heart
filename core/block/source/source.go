@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/cheggaaa/mb"
 )
 
 var log = logging.Logger("anytype-mw-source")
@@ -188,61 +189,67 @@ func (s *source) needSnapshot() bool {
 	return rand.Intn(500) == 42
 }
 
-func (s *source) changeListener(records chan core.SmartblockRecordWithLogID) {
+func (s *source) changeListener(recordsCh chan core.SmartblockRecordWithLogID) {
 	defer close(s.closed)
-	for r := range records {
-		if err := s.newChange(r); err != nil {
-			log.Warnf("can't handle change: %v; %v", r.ID, err)
+	batch := mb.New(0)
+	defer batch.Close()
+	go func() {
+		var records []core.SmartblockRecordWithLogID
+		for {
+			msgs := batch.Wait()
+			if len(msgs) == 0 {
+				return
+			}
+			records = records[:0]
+			for _, msg := range msgs {
+				records = append(records, msg.(core.SmartblockRecordWithLogID))
+			}
+			if err := s.applyRecords(records); err != nil {
+				log.Errorf("can't handle records: %v; records: %v", err, records)
+			}
+			// wait 100 millisecond for better batching
+			time.Sleep(100 * time.Millisecond)
 		}
+	}()
+	for r := range recordsCh {
+		batch.Add(r)
 	}
 }
 
-func (s *source) newChange(record core.SmartblockRecordWithLogID) (err error) {
-	if record.LogID == s.a.Device() {
-		// ignore self logs
-		return
-	}
-	log.Infof("changes: received log record: %v", record.ID)
-	ch, err := change.NewChangeFromRecord(record)
-	if err != nil {
-		return
-	}
-	if s.detailsOnly && !ch.HasDetails() {
-		return
-	}
-
+func (s *source) applyRecords(records []core.SmartblockRecordWithLogID) (err error) {
 	s.receiver.Lock()
 	defer s.receiver.Unlock()
-
-	s.logHeads[record.LogID] = record.ID
-
-	var heads []string
-	if s.detailsOnly {
-		heads = s.tree.DetailsHeads()
-	} else {
-		heads = s.tree.Heads()
+	var changes = make([]*change.Change, 0, len(records))
+	for _, record := range records {
+		if record.LogID == s.a.Device() {
+			// ignore self logs
+			continue
+		}
+		ch, e := change.NewChangeFromRecord(record)
+		if e != nil {
+			return e
+		}
+		if s.detailsOnly && !ch.HasDetails() {
+			continue
+		}
+		changes = append(changes, ch)
+		s.logHeads[record.LogID] = record.ID
 	}
-	if len(heads) == 0 {
-		log.Warnf("unexpected empty heads while receive new change")
+	log.With("thread", s.id).Infof("received %d records; changes count: %d", len(records), len(changes))
+	if len(changes) == 0 {
 		return
 	}
-
-	switch s.tree.Add(ch) {
+	switch s.tree.Add(changes...) {
 	case change.Nothing:
 		// existing or not complete
-		log.Debugf("add change to tree %v: nothing to do", ch.Id)
 		return
 	case change.Append:
-		if ch.Snapshot != nil {
-			s.lastSnapshotId = ch.Id
-		}
+		s.lastSnapshotId = s.tree.LastSnapshotId()
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
 			return change.BuildStateSimpleCRDT(d.(*state.State), s.tree)
 		})
 	case change.Rebuild:
-		if ch.Snapshot != nil {
-			s.lastSnapshotId = ch.Id
-		}
+		s.lastSnapshotId = s.tree.LastSnapshotId()
 		doc, err := s.buildState()
 		if err != nil {
 			return err

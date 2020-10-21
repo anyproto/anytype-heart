@@ -316,6 +316,33 @@ func (t *Tree) Get(id string) *Change {
 	return t.attached[id]
 }
 
+func (t *Tree) LastSnapshotId() string {
+	var sIds []string
+	for _, hid := range t.headIds {
+		hd := t.Get(hid)
+		sId := hd.Id
+		if hd.Snapshot == nil {
+			sId = hd.LastSnapshotId
+		}
+		if slice.FindPos(sIds, sId) == -1 {
+			sIds = append(sIds, sId)
+		}
+	}
+	if len(sIds) == 1 {
+		return sIds[0]
+	} else if len(sIds) == 0 {
+		return ""
+	}
+	b := &stateBuilder{
+		cache: t.attached,
+	}
+	sId, err := b.findCommonSnapshot(sIds)
+	if err != nil {
+		log.Errorf("can't find common snapshot: %v", err)
+	}
+	return sId
+}
+
 type sortChanges []*Change
 
 func (s sortChanges) Len() int {
