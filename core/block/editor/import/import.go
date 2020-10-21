@@ -330,7 +330,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			continue
 		}
 
-		log.Debug("   >>> start to paste to page:", name, file.pageID)
+		log.Debug(">>> start to paste to page:", name, file.pageID)
 		if file.parsedBlocks == nil {
 			log.Errorf("parsedBlocks is nil")
 		}
@@ -349,7 +349,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		default:
 		}
 		progress.AddDone(1)
-		log.Debug("   >>> current page:", name, "    |   linked: ", file.hasInboundLinks)
+		log.Debug(">>> current page:", name, "    |   linked: ", file.hasInboundLinks)
 		if file.pageID == "" {
 			continue
 		}
@@ -366,7 +366,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				}
 			} else if f := b.GetFile(); f != nil {
 				filesCount = filesCount - 1
-				log.Debug("          page:", name, " | start to upload file :", f.Name)
+				log.Debug("page:", name, " | start to upload file :", f.Name)
 
 				if strings.HasPrefix(f.Name, "http://") || strings.HasPrefix(f.Name, "https://") {
 					err = imp.ctrl.UploadBlockFileSync(ctx, pb.RpcBlockUploadRequest{
@@ -529,7 +529,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 	log.Debug("1. DirWithMarkdownToBlocks: Get allFileShortPaths:", allFileShortPaths)
 
 	for shortPath, file := range files {
-		log.Debug("   >>> Current file:", shortPath)
+		log.Debug(">>> Current file:", shortPath)
 		if filepath.Base(shortPath) == shortPath {
 			file.isRootFile = true
 		}
@@ -549,7 +549,7 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 			file.Close()
 
 			for i, block := range file.parsedBlocks {
-				log.Debug("      Block:", i)
+				log.Debug("Block:", i)
 				//file.parsedBlocks[i].Id = bson.NewObjectId().Hex()
 
 				txt := block.GetText()
@@ -819,11 +819,11 @@ func (imp *importImpl) processFieldBlockIfItIs(blocks []*model.Block, files map[
 				}
 			}*/
 
-			if len(file.pageID) == 0 {
+			if file == nil || len(file.pageID) == 0 {
 				text += potentialFileName
-				log.Debug("     TARGET NOT FOUND:", shortPath, potentialFileName)
+				log.Errorf("target file not found:", shortPath, potentialFileName)
 			} else {
-				log.Debug("     TARGET FOUND:", file.pageID, shortPath)
+				log.Debug("target file found:", file.pageID, shortPath)
 				file.hasInboundLinks = true
 				if file.title == "" {
 					// shouldn't be a case
