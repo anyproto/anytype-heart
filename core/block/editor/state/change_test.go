@@ -111,7 +111,6 @@ func TestStateNormalizeMerge(t *testing.T) {
 	s.Add(simple.New(&model.Block{Id: "root"}))
 	s.Add(simple.New(&model.Block{Id: "parent"}))
 	s.InsertTo("root", model.Block_Inner, "parent")
-	var ids []string
 	for i := 0; i < 40; i++ {
 		id := fmt.Sprintf("common%d", i)
 		s.Add(simple.New(&model.Block{Id: id}))
@@ -120,44 +119,98 @@ func TestStateNormalizeMerge(t *testing.T) {
 		} else {
 			s.InsertTo(fmt.Sprintf("common%d", i-1), model.Block_Bottom, id)
 		}
-		ids = append(ids, id)
 	}
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
 
-	docA := d.Copy()
-	stateA := docA.NewState()
-	stateA.Add(simple.New(&model.Block{Id: "a1"}))
-	stateA.Add(simple.New(&model.Block{Id: "a2"}))
-	stateA.InsertTo("common39", model.Block_Bottom, "a1", "a2")
-	_, _, err = ApplyState(stateA, true)
-	require.NoError(t, err)
-	//t.Log(docA.String())
-	changesA := stateA.GetChanges()
+	t.Run("parallel normalize", func(t *testing.T) {
+		d := d.Copy()
+		ids := d.Pick("parent").Copy().Model().ChildrenIds
+		docA := d.Copy()
+		stateA := docA.NewState()
+		stateA.Add(simple.New(&model.Block{Id: "a1"}))
+		stateA.Add(simple.New(&model.Block{Id: "a2"}))
+		stateA.InsertTo("common39", model.Block_Bottom, "a1", "a2")
+		_, _, err = ApplyState(stateA, true)
+		require.NoError(t, err)
+		//t.Log(docA.String())
+		changesA := stateA.GetChanges()
 
-	docB := d.Copy()
-	stateB := docB.NewState()
-	stateB.Add(simple.New(&model.Block{Id: "b1"}))
-	stateB.InsertTo("common39", model.Block_Bottom, "b1")
-	_, _, err = ApplyState(stateB, true)
-	require.NoError(t, err)
-	//t.Log(docB.String())
-	changesB := stateB.GetChanges()
+		docB := d.Copy()
+		stateB := docB.NewState()
+		stateB.Add(simple.New(&model.Block{Id: "b1"}))
+		stateB.InsertTo("common39", model.Block_Bottom, "b1")
+		_, _, err = ApplyState(stateB, true)
+		require.NoError(t, err)
+		//t.Log(docB.String())
+		changesB := stateB.GetChanges()
 
-	s = d.NewState()
-	require.NoError(t, s.ApplyChange(changesB...))
-	_, _, err = ApplyStateFastOne(s)
-	require.NoError(t, err)
-	s = d.NewState()
-	require.NoError(t, s.ApplyChange(changesA...))
-	_, _, err = ApplyState(s, true)
-	require.NoError(t, err)
+		s = d.NewState()
+		require.NoError(t, s.ApplyChange(changesB...))
+		_, _, err = ApplyStateFastOne(s)
+		require.NoError(t, err)
+		s = d.NewState()
+		require.NoError(t, s.ApplyChange(changesA...))
+		_, _, err = ApplyState(s, true)
+		require.NoError(t, err)
 
-	s = d.NewState()
-	assert.True(t, CleanupLayouts(s) > 0)
-	ids = append(ids, "a1", "a2", "b1")
-	assert.Equal(t, ids, s.Pick("parent").Model().ChildrenIds)
-	//t.Log(s.String())
+		s = d.NewState()
+		assert.True(t, CleanupLayouts(s) > 0)
+		ids = append(ids, "a1", "a2", "b1")
+		assert.Equal(t, ids, s.Pick("parent").Model().ChildrenIds)
+		//t.Log(s.String())
+	})
+	t.Run("rebalance", func(t *testing.T) {
+		d := d.Copy()
+		ids := d.Pick("parent").Copy().Model().ChildrenIds
+		s := d.NewState()
+		s.Add(simple.New(&model.Block{Id: "common40"}))
+		s.InsertTo("common39", model.Block_Bottom, "common40")
+		ids = append(ids, "common40")
+		_, _, err := ApplyState(s, true)
+		require.NoError(t, err)
+
+		aIds := []string{}
+		docA := d.Copy()
+		stateA := docA.NewState()
+		for i := 0; i < 21; i++ {
+			id := fmt.Sprintf("a%d", i)
+			aIds = append(aIds, id)
+			stateA.Add(simple.New(&model.Block{Id: id}))
+		}
+		stateA.InsertTo("common0", model.Block_Top, aIds...)
+		_, _, err = ApplyState(stateA, true)
+		require.NoError(t, err)
+		changesA := stateA.GetChanges()
+
+		bIds := []string{}
+		docB := d.Copy()
+		stateB := docB.NewState()
+		for i := 0; i < 11; i++ {
+			id := fmt.Sprintf("b%d", i)
+			bIds = append(bIds, id)
+			stateB.Add(simple.New(&model.Block{Id: id}))
+		}
+		stateB.InsertTo("common40", model.Block_Bottom, bIds...)
+		_, _, err = ApplyState(stateB, true)
+		require.NoError(t, err)
+		changesB := stateB.GetChanges()
+
+		s = d.NewState()
+		require.NoError(t, s.ApplyChange(changesB...))
+		_, _, err = ApplyStateFastOne(s)
+		require.NoError(t, err)
+		s = d.NewState()
+		require.NoError(t, s.ApplyChange(changesA...))
+		_, _, err = ApplyState(s, true)
+		require.NoError(t, err)
+
+		s = d.NewState()
+		assert.True(t, CleanupLayouts(s) > 0)
+		ids = append(aIds, ids...)
+		ids = append(ids, bIds...)
+		assert.Equal(t, ids, s.Pick("parent").Model().ChildrenIds)
+	})
 }
 
 func newMoveChange(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {
