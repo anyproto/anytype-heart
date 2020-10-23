@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
-	github.com/PuerkitoBio/goquery v1.5.1
+	github.com/PuerkitoBio/goquery v1.6.0
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/cheggaaa/mb v1.0.2
