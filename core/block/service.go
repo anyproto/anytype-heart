@@ -1225,7 +1225,7 @@ func (s *service) RemoveObjectTypes(objectId string, objectTypes []string) (err 
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	objType, err := s.GetObjectType(req.ObjectTypeURL)
+	objType, err := s.GetObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		return "", "", err
 	}

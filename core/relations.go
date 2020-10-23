@@ -29,7 +29,7 @@ func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRe
 		return m
 	}
 
-	objType, err := mw.getObjectType(req.ObjectTypeURL)
+	objType, err := mw.getObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -50,7 +50,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 		return m
 	}
 
-	objType, err := mw.getObjectType(req.ObjectTypeURL)
+	objType, err := mw.getObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -87,7 +87,7 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		}
 		return m
 	}
-	objType, err := mw.getObjectType(req.ObjectTypeURL)
+	objType, err := mw.getObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationUpdateResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
@@ -224,7 +224,7 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		_, id, err = bs.CreateSet(ctx, pb.RpcBlockCreateSetRequest{ObjectTypeURL: req.ObjectTypeURL, Details: req.Details})
+		_, id, err = bs.CreateSet(ctx, pb.RpcBlockCreateSetRequest{ObjectTypeUrl: req.ObjectTypeUrl, Details: req.Details})
 		return err
 	})
 

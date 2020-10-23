@@ -1704,7 +1704,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context block
                 string targetId = 2; // id of the closest block
-                string objectTypeURL = 3;
+                string objectTypeUrl = 3;
                 google.protobuf.Struct details = 4; // details
 
                 anytype.model.Block.Position position = 5;
@@ -2567,7 +2567,7 @@ message Rpc {
     message Set {
         message Create {
             message Request {
-                string objectTypeURL = 1;
+                string objectTypeUrl = 1;
                 google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
             }
 
@@ -2641,7 +2641,7 @@ message Rpc {
         message Relation {
             message Add {
                 message Request {
-                    string objectTypeURL = 1;
+                    string objectTypeUrl = 1;
                     repeated anytype.relation.Relation relations = 2;
                 }
 
@@ -2666,7 +2666,7 @@ message Rpc {
             }
             message Remove {
                 message Request {
-                    string objectTypeURL = 1;
+                    string objectTypeUrl = 1;
                     string relationKey = 2;
                 }
 
@@ -2690,7 +2690,7 @@ message Rpc {
             }
             message Update {
                 message Request {
-                    string objectTypeURL = 1;
+                    string objectTypeUrl = 1;
                     anytype.relation.Relation relation = 2;
                 }
 
@@ -2714,7 +2714,7 @@ message Rpc {
             }
             message List {
                 message Request {
-                    string objectTypeURL = 1;
+                    string objectTypeUrl = 1;
                     bool appendRelationsFromOtherTypes = 2; // add relations from other object types in the end
                 }
 

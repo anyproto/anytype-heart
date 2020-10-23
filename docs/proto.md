@@ -2039,7 +2039,7 @@ common simple block command
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
 | targetId | [string](#string) |  | id of the closest block |
-| objectTypeURL | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | details |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
@@ -6748,7 +6748,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeURL | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
 
 
@@ -6806,7 +6806,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeURL | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
 | appendRelationsFromOtherTypes | [bool](#bool) |  | add relations from other object types in the end |
 
 
@@ -6864,7 +6864,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeURL | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
 | relationKey | [string](#string) |  |  |
 
 
@@ -6921,7 +6921,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeURL | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
 | relation | [relation.Relation](#anytype.relation.Relation) |  |  |
 
 
@@ -7180,7 +7180,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeURL | [string](#string) |  |  |
+| objectTypeUrl | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | if omitted the name of page will be the same with object type |
 
 
