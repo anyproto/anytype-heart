@@ -136,7 +136,6 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 					}
 				}
 			}
-			delete(details.Details.Fields, "type")
 		} else {
 			if sch.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
 				// backward compatibility in case we don't have type indexed for pages
@@ -576,7 +575,6 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		for _, val := range vals.Values {
 			objectTypes = append(objectTypes, val.GetStringValue())
 		}
-		delete(details.Details.Fields, "type")
 	}
 
 	var snippet string

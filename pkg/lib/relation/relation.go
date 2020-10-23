@@ -6,16 +6,31 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 )
 
+// ObjectTypeSelfType used in relations which target the type of the object which holds this relation
+const ObjectTypeSelfType = "self"
+
 // all required internal relations will be added to any new object type
 var RequiredInternalRelations = []string{"createdDate", "lastModifiedDate", "lastOpenedDate", "name", "id"}
 
 var (
 	BundledRelations = map[string]*relation.Relation{
 		"id": {
-			Format:       relation.RelationFormat_objectIdSelf,
+			Format:       relation.RelationFormat_object,
+			ObjectType:   ObjectTypeSelfType, // the actual objectType of the object which has this relation will be injected here
 			Name:         "Anytype ID",
 			DefaultValue: nil,
 			Key:          "id",
+			DataSource:   relation.Relation_local,
+			Hidden:       true,
+			ReadOnly:     true,
+		},
+		"type": {
+			Format:       relation.RelationFormat_object,
+			Multi:        true,
+			ObjectType:   bundledObjectTypeURLPrefix + "objectType",
+			Name:         "Object Type",
+			DefaultValue: nil,
+			Key:          "type",
 			DataSource:   relation.Relation_local,
 			Hidden:       true,
 			ReadOnly:     true,

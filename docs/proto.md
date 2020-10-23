@@ -11638,8 +11638,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| title | 0 | string up to 250 symbols |
-| description | 1 | string |
+| description | 0 | plain string |
+| title | 1 | string, usually short enough. May be truncated |
 | number | 2 | double |
 | select | 3 | string |
 | date | 4 | int64(pb.Value doesn&#39;t have int64) or string |
@@ -11649,8 +11649,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | email | 8 | string with sanity check |
 | phone | 9 | string with sanity check |
 | emoji | 10 | one emoji, can contains multiple utf-8 symbols |
-| objectId | 100 | relation must has objectType |
-| objectIdSelf | 101 | relation of object to itself (using the same objectType) |
+| object | 100 | relation can has objectType to specify objectType |
 
 
  

@@ -41,7 +41,7 @@ func TestRelations(t *testing.T) {
 			Name: "1",
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
-				{Format: pbrelation.RelationFormat_objectId, Name: "bio", ObjectType: "https://anytype.io/schemas/object/bundled/pages"},
+				{Format: pbrelation.RelationFormat_object, Name: "bio", ObjectType: "https://anytype.io/schemas/object/bundled/pages"},
 			},
 		},
 	})
