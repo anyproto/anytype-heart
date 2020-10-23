@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -102,6 +103,61 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 	_, _, err = ApplyState(s2, true)
 	require.NoError(t, err)
 	assert.Equal(t, d.(*State).String(), dc.(*State).String())
+}
+
+func TestStateNormalizeMerge(t *testing.T) {
+	d := NewDoc("root", nil).(*State)
+	s := d.NewState()
+	s.Add(simple.New(&model.Block{Id: "root"}))
+	s.Add(simple.New(&model.Block{Id: "parent"}))
+	s.InsertTo("root", model.Block_Inner, "parent")
+	var ids []string
+	for i := 0; i < 40; i++ {
+		id := fmt.Sprintf("common%d", i)
+		s.Add(simple.New(&model.Block{Id: id}))
+		if i == 0 {
+			s.InsertTo("parent", model.Block_Inner, id)
+		} else {
+			s.InsertTo(fmt.Sprintf("common%d", i-1), model.Block_Bottom, id)
+		}
+		ids = append(ids, id)
+	}
+	_, _, err := ApplyState(s, true)
+	require.NoError(t, err)
+
+	docA := d.Copy()
+	stateA := docA.NewState()
+	stateA.Add(simple.New(&model.Block{Id: "a1"}))
+	stateA.Add(simple.New(&model.Block{Id: "a2"}))
+	stateA.InsertTo("common39", model.Block_Bottom, "a1", "a2")
+	_, _, err = ApplyState(stateA, true)
+	require.NoError(t, err)
+	//t.Log(docA.String())
+	changesA := stateA.GetChanges()
+
+	docB := d.Copy()
+	stateB := docB.NewState()
+	stateB.Add(simple.New(&model.Block{Id: "b1"}))
+	stateB.InsertTo("common39", model.Block_Bottom, "b1")
+	_, _, err = ApplyState(stateB, true)
+	require.NoError(t, err)
+	//t.Log(docB.String())
+	changesB := stateB.GetChanges()
+
+	s = d.NewState()
+	require.NoError(t, s.ApplyChange(changesB...))
+	_, _, err = ApplyStateFastOne(s)
+	require.NoError(t, err)
+	s = d.NewState()
+	require.NoError(t, s.ApplyChange(changesA...))
+	_, _, err = ApplyState(s, true)
+	require.NoError(t, err)
+
+	s = d.NewState()
+	assert.True(t, CleanupLayouts(s) > 0)
+	ids = append(ids, "a1", "a2", "b1")
+	assert.Equal(t, ids, s.Pick("parent").Model().ChildrenIds)
+	//t.Log(s.String())
 }
 
 func newMoveChange(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {
