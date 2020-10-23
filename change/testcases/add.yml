@@ -1,0 +1,23 @@
+- name: add block twice
+  init:
+    child:
+      - id: 1
+      - id: 2
+  changes:
+    - type: create
+      data:
+        targetid: 2
+        position: 1
+        blocks:
+          - id: 3
+    - type: create
+      data:
+        targetid: 2
+        position: 2
+        blocks:
+          - id: 3
+  expected:
+    child:
+      - id: 1
+      - id: 2
+      - id: 3
