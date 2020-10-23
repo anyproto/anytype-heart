@@ -9,7 +9,7 @@ require (
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/cheggaaa/mb v1.0.2
 	github.com/dgtony/collections v0.1.3
-	github.com/disintegration/imaging v1.6.0
+	github.com/disintegration/imaging v1.6.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gobwas/glob v0.2.3
 	github.com/goccy/go-graphviz v0.0.7
