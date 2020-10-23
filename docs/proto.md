@@ -469,6 +469,10 @@
     - [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response)
     - [Rpc.Version.Get.Response.Error](#anytype.Rpc.Version.Get.Response.Error)
     - [Rpc.Wallet](#anytype.Rpc.Wallet)
+    - [Rpc.Wallet.Convert](#anytype.Rpc.Wallet.Convert)
+    - [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request)
+    - [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response)
+    - [Rpc.Wallet.Convert.Response.Error](#anytype.Rpc.Wallet.Convert.Response.Error)
     - [Rpc.Wallet.Create](#anytype.Rpc.Wallet.Create)
     - [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request)
     - [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response)
@@ -577,6 +581,7 @@
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
     - [Rpc.UploadFile.Response.Error.Code](#anytype.Rpc.UploadFile.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
+    - [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
@@ -795,6 +800,7 @@
 | ----------- | ------------ | ------------- | ------------|
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) |  |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
+| WalletConvert | [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request) | [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
@@ -7399,7 +7405,66 @@ Info is a string, that contains: BuildDate, GitCommit, GitBranch, GitState
 <a name="anytype.Rpc.Wallet"></a>
 
 ### Rpc.Wallet
-Namespace, that agregates subtopics and actions, that relates to wallet.
+Namespace, that aggregates subtopics and actions, that relates to wallet.
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.Convert"></a>
+
+### Rpc.Wallet.Convert
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.Convert.Request"></a>
+
+### Rpc.Wallet.Convert.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mnemonic | [string](#string) |  | Mnemonic of a wallet to convert |
+| entropy | [string](#string) |  | entropy of a wallet to convert |
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.Convert.Response"></a>
+
+### Rpc.Wallet.Convert.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Wallet.Convert.Response.Error](#anytype.Rpc.Wallet.Convert.Response.Error) |  | Error while trying to recover a wallet |
+| entropy | [string](#string) |  |  |
+| mnemonic | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Wallet.Convert.Response.Error"></a>
+
+### Rpc.Wallet.Convert.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -8873,6 +8938,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | VERSION_IS_EMPTY | 3 |  |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.Wallet.Convert.Response.Error.Code"></a>
+
+### Rpc.Wallet.Convert.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error; wallet successfully recovered |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | mnemonic is wrong |
 
 
 

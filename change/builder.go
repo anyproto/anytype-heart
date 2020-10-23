@@ -346,6 +346,9 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
 	}
+	if sb.smartblock == nil {
+		return
+	}
 	st := time.Now()
 	sr, err := sb.smartblock.GetRecord(context.TODO(), id)
 	if err != nil {

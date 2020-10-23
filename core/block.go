@@ -10,6 +10,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -48,7 +50,7 @@ func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.Rpc
 	}
 	var id, targetId string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, targetId, err = bs.CreatePage(ctx, *req)
+		id, targetId, err = bs.CreatePage(ctx, "", *req)
 		return
 	})
 	if err != nil {
@@ -246,17 +248,18 @@ func (mw *Middleware) BlockPaste(req *pb.RpcBlockPasteRequest) *pb.RpcBlockPaste
 		blockIds         []string
 		caretPosition    int32
 		isSameBlockCaret bool
+		groupId          = bson.NewObjectId().Hex()
 	)
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		var uploadArr []pb.RpcBlockUploadRequest
-		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = bs.Paste(ctx, *req)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = bs.Paste(ctx, *req, groupId)
 		if err != nil {
 			return
 		}
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			if err = bs.UploadBlockFile(nil, r); err != nil {
+			if err = bs.UploadBlockFile(nil, r, groupId); err != nil {
 				return err
 			}
 		}
@@ -367,7 +370,7 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UploadBlockFile(ctx, *req)
+		return bs.UploadBlockFile(ctx, *req, "")
 	})
 	if err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)

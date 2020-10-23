@@ -21,7 +21,7 @@ func TestBasic_Create(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		b := NewBasic(sb)
-		id, err := b.Create(nil, pb.RpcBlockCreateRequest{
+		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			Block: &model.Block{},
 		})
 		require.NoError(t, err)
@@ -33,7 +33,7 @@ func TestBasic_Create(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
-		id, err := b.Create(nil, pb.RpcBlockCreateRequest{
+		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
 			Position: model.Block_Top,
 			Block:    &model.Block{},
@@ -102,14 +102,14 @@ func TestBasic_Move(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
-		id1, err := b.Create(nil, pb.RpcBlockCreateRequest{
+		id1, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
 			Position: model.Block_Bottom,
 			Block:    &model.Block{},
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, id1)
-		id0, err := b.Create(nil, pb.RpcBlockCreateRequest{
+		id0, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
 			Position: model.Block_Bottom,
 			Block:    &model.Block{},

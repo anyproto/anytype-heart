@@ -45,6 +45,10 @@ type SmartTest struct {
 	state.Doc
 }
 
+func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
+	return
+}
+
 func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }

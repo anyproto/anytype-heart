@@ -2,14 +2,18 @@ package stext
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
+
+var setTextApplyInterval = time.Second * 3
 
 type Text interface {
 	UpdateTextBlocks(ctx *state.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
@@ -20,11 +24,18 @@ type Text interface {
 }
 
 func NewText(sb smartblock.SmartBlock) Text {
-	return &textImpl{sb}
+	t := &textImpl{SmartBlock: sb, setTextFlushed: make(chan struct{})}
+	t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose)
+	return t
 }
+
+var log = logging.Logger("anytype-mw-smartblock")
 
 type textImpl struct {
 	smartblock.SmartBlock
+	lastSetTextId    string
+	lastSetTextState *state.State
+	setTextFlushed   chan struct{}
 }
 
 func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent bool, apply func(t text.Block) error) error {
@@ -137,9 +148,41 @@ func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark,
 	return t.Apply(s)
 }
 
+func (t *textImpl) newSetTextState(blockId string, ctx *state.Context) *state.State {
+	if t.lastSetTextState != nil && t.lastSetTextId == blockId {
+		return t.lastSetTextState
+	}
+	t.lastSetTextId = blockId
+	t.lastSetTextState = t.NewStateCtx(ctx)
+	go func() {
+		select {
+		case <-time.After(setTextApplyInterval):
+		case <-t.setTextFlushed:
+			return
+		}
+		t.Lock()
+		defer t.Unlock()
+		t.flushSetTextState()
+	}()
+	return t.lastSetTextState
+}
+
+func (t *textImpl) flushSetTextState() {
+	if t.lastSetTextState != nil {
+		if err := t.Apply(t.lastSetTextState, smartblock.NoEvent, smartblock.NoHooks); err != nil {
+			log.Errorf("can't apply setText state: %v", err)
+		}
+		t.lastSetTextState = nil
+		select {
+		case t.setTextFlushed <- struct{}{}:
+		default:
+		}
+	}
+}
+
 func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	ctx := state.NewContext(nil)
-	s := t.NewStateCtx(ctx)
+	s := t.newSetTextState(req.BlockId, ctx)
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
 		return
@@ -147,17 +190,22 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	if err = tb.SetText(req.Text, req.Marks); err != nil {
 		return
 	}
-	if err = t.Apply(s); err != nil {
+	if _, ok := tb.(text.DetailsBlock); ok {
+		if err = t.Apply(s); err != nil {
+			return
+		}
+		msgs := ctx.GetMessages()
+		var filtered = msgs[:0]
+		for _, msg := range msgs {
+			if msg.GetBlockSetText() == nil {
+				filtered = append(filtered, msg)
+			}
+		}
+		t.SendEvent(filtered)
+		t.lastSetTextState = nil
+		t.setTextFlushed <- struct{}{}
 		return
 	}
-	msgs := ctx.GetMessages()
-	var filtered = msgs[:0]
-	for _, msg := range msgs {
-		if msg.GetBlockSetText() == nil {
-			filtered = append(filtered, msg)
-		}
-	}
-	t.SendEvent(filtered)
 	return
 }
 

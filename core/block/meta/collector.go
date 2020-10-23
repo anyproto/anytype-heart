@@ -11,10 +11,11 @@ import (
 
 func newCollector(ps *pubSub, id string) *collector {
 	c := &collector{
-		blockId: id,
-		ps:      ps,
-		ready:   make(chan struct{}),
-		quit:    make(chan struct{}),
+		blockId:  id,
+		ps:       ps,
+		ready:    make(chan struct{}),
+		wakeUpCh: make(chan struct{}),
+		quit:     make(chan struct{}),
 	}
 	go c.fetchMeta()
 	log.Infof("metaListener started: %v", id)
@@ -27,6 +28,7 @@ type collector struct {
 	ready    chan struct{}
 	m        sync.Mutex
 	ps       *pubSub
+	wakeUpCh chan struct{}
 	quit     chan struct{}
 	closed   bool
 	s        source.Source
@@ -108,6 +110,15 @@ func (c *collector) fetchInitialMeta() (err error) {
 	return nil
 }
 
+func (c *collector) wakeUp() {
+	c.m.Lock()
+	if c.wakeUpCh != nil {
+		close(c.wakeUpCh)
+		c.wakeUpCh = nil
+	}
+	c.m.Unlock()
+}
+
 func (c *collector) fetchMeta() {
 	defer func() {
 		select {
@@ -122,7 +133,11 @@ func (c *collector) fetchMeta() {
 			i++
 			wait := time.Second * i
 			log.Infof("meta: %s: can't fetch initial meta: %v; - retry after %v", c.blockId, err, wait)
+			c.m.Lock()
+			wuCh := c.wakeUpCh
+			c.m.Unlock()
 			select {
+			case <-wuCh:
 			case <-time.After(wait):
 			case <-c.quit:
 				return

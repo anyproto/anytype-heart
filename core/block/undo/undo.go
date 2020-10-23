@@ -37,12 +37,44 @@ type Action struct {
 	Change      []Change
 	Remove      []simple.Block
 	Details     *Details
+	Group       string
 	Relations   *Relations
 	ObjectTypes *ObjectType
 }
 
 func (a Action) IsEmpty() bool {
 	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.Relations == nil && a.ObjectTypes == nil
+}
+
+func (a Action) Merge(b Action) (result Action) {
+	var changedIds []string
+	for _, changeB := range b.Change {
+		idB := changeB.After.Model().Id
+		found := false
+		for i, addA := range a.Add {
+			idA := addA.Model().Id
+			if idA == idB {
+				a.Add[i] = changeB.After
+				found = true
+				break
+			}
+		}
+		if !found {
+			for i, changeA := range a.Change {
+				idA := changeA.After.Model().Id
+				if idA == idB {
+					a.Change[i].After = changeB.After
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			a.Change = append(a.Change, changeB)
+		}
+		changedIds = append(changedIds, idB)
+	}
+	return a
 }
 
 type History interface {
@@ -67,6 +99,14 @@ type history struct {
 }
 
 func (h *history) Add(a Action) {
+	if a.IsEmpty() {
+		return
+	}
+	if a.Group != "" {
+		if h.applyGroup(a) {
+			return
+		}
+	}
 	if len(h.actions) != h.pointer {
 		h.actions = h.actions[:h.pointer]
 	}
@@ -103,4 +143,14 @@ func (h *history) Next() (Action, error) {
 func (h *history) Reset() {
 	h.pointer = 0
 	h.actions = h.actions[:0]
+}
+
+func (h *history) applyGroup(b Action) (ok bool) {
+	for i, a := range h.actions {
+		if a.Group == b.Group {
+			h.actions[i] = a.Merge(b)
+			return true
+		}
+	}
+	return false
 }

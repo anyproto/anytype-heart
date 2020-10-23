@@ -66,7 +66,7 @@ func TestRelations(t *testing.T) {
 	require.Len(t, resp4.ObjectTypes[2].Relations, 7)
 
 	resp5 := mw.SetCreate(&pb.RpcSetCreateRequest{
-		ObjectTypeURL: resp4.ObjectTypes[2].Url,
+		ObjectTypeUrl: resp4.ObjectTypes[2].Url,
 	})
 	require.Equal(t, 0, int(resp5.Error.Code), resp5.Error.Description)
 	require.NotEmpty(t, resp5.Id)

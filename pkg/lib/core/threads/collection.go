@@ -74,7 +74,14 @@ func (s *service) threadsDbListen() error {
 	}
 
 	go func() {
-		defer l.Close()
+		defer func() {
+			l.Close()
+			ch := s.getNewThreadChan()
+			if ch != nil {
+				close(s.newThreadChan)
+			}
+		}()
+
 		for {
 			select {
 			case <-s.ctx.Done():
@@ -104,6 +111,14 @@ func (s *service) threadsDbListen() error {
 
 					go func() {
 						s.processNewExternalThreadUntilSuccess(tid, ti)
+
+						ch := s.getNewThreadChan()
+						if ch != nil {
+							select {
+							case <-s.ctx.Done():
+							case ch <- tid.String():
+							}
+						}
 					}()
 				}
 			}
@@ -156,6 +171,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 		multiAddrs = append(multiAddrs, addr)
 	}
 
+	var localThreadInfo thread.Info
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
 		replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, tid)
@@ -171,9 +187,11 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	if _, err := s.t.GetThread(ctx, tid); err == nil {
+	if localThreadInfo, err = s.t.GetThread(ctx, tid); err == nil {
 		log.Warnf("processNewExternalThread: thread already exists locally")
-		return nil
+		if hasNonEmptyLogs(localThreadInfo.Logs) {
+			return nil
+		}
 	} else {
 		log.Errorf("processNewExternalThread: thread doesn't exist locally: %s", err.Error())
 	addrsLoop:
@@ -213,9 +231,14 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			}
 
 			addr, err = util2.MultiAddressAddThread(addr, tid)
-			_, err = s.t.AddThread(s.ctx, addr, net.WithThreadKey(key), net.WithLogKey(s.device))
+			localThreadInfo, err = s.t.AddThread(s.ctx, addr, net.WithThreadKey(key), net.WithLogKey(s.device))
 			if err != nil {
 				if err == logstore.ErrLogExists || err == logstore.ErrThreadExists {
+					err2 := err
+					localThreadInfo, err = s.t.GetThread(ctx, tid)
+					if err != nil {
+						logWithAddr.Errorf("processNewExternalThread: failed to add(%s) and get thread: %s", err2.Error(), err.Error())
+					}
 					success = true
 					break
 				}
@@ -225,13 +248,6 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 
 			logWithAddr.Infof("processNewExternalThread: thread successfully added %s", peerAddrInfo.String())
 
-			if s.replicatorAddr != nil {
-				_, err = s.t.AddReplicator(s.ctx, tid, replAddrWithThread)
-				if err != nil {
-					logWithAddr.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
-				}
-			}
-
 			success = true
 			break
 		}
@@ -239,11 +255,19 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 
 	if !success {
 		return fmt.Errorf("failed to add thread from any provided remote address")
-	} else {
-		_, err = s.pullThread(s.ctx, tid)
+	}
+
+	if s.replicatorAddr != nil && !util2.MultiAddressHasReplicator(localThreadInfo.Addrs, s.replicatorAddr) {
+		_, err = s.t.AddReplicator(s.ctx, tid, replAddrWithThread)
 		if err != nil {
-			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
+			log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
 		}
+	}
+
+	_, err = s.pullThread(s.ctx, tid)
+	if err != nil {
+		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
+		return fmt.Errorf("failed to pull thread: %w", err)
 	}
 
 	err = s.newHeadProcessor(tid)
@@ -252,4 +276,14 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	}
 
 	return nil
+}
+
+func hasNonEmptyLogs(logs []thread.LogInfo) bool {
+	for _, l := range logs {
+		if l.Head.Defined() {
+			return true
+		}
+	}
+
+	return false
 }
