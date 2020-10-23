@@ -112,6 +112,10 @@ jobs:
             - /go/pkg
             - /home/circleci/.cache/go-build
       - run:
+          name: build lib-server
+          command: |
+            make build-server
+      - run:
           name: compile addon
           command: |
             VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)
@@ -133,10 +137,6 @@ jobs:
             mv clientlibrary/jsaddon/build addon
             tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon schemas
             mv js_${VERSION}_linux-amd64.tar.gz ${OUT}/
-      - run:
-          name: build lib-server
-          command: |
-            make build-server
       - persist_to_workspace:
           root: ~/dist
           paths:
