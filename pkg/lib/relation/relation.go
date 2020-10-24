@@ -10,7 +10,7 @@ import (
 const ObjectTypeSelfType = "self"
 
 // all required internal relations will be added to any new object type
-var RequiredInternalRelations = []string{"createdDate", "lastModifiedDate", "lastOpenedDate", "name", "id"}
+var RequiredInternalRelations = []string{"createdDate", "lastModifiedDate", "lastOpenedDate", "name", "id", "type"}
 
 var (
 	BundledRelations = map[string]*relation.Relation{

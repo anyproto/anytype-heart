@@ -18,6 +18,7 @@ var (
 			Name: "Page",
 			Relations: []*relation.Relation{
 				MustGetBundledRelationByKey("id"),
+				MustGetBundledRelationByKey("type"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
@@ -38,6 +39,7 @@ var (
 			Name: "Set of objects",
 			Relations: []*relation.Relation{
 				MustGetBundledRelationByKey("id"),
+				MustGetBundledRelationByKey("type"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
