@@ -19,11 +19,11 @@ var (
 			Relations: []*relation.Relation{
 				MustGetBundledRelationByKey("id"),
 				MustGetBundledRelationByKey("type"),
+				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
 
-				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("iconEmoji"),
 				MustGetBundledRelationByKey("iconImage"),
 				MustGetBundledRelationByKey("coverImage"),
@@ -40,10 +40,10 @@ var (
 			Relations: []*relation.Relation{
 				MustGetBundledRelationByKey("id"),
 				MustGetBundledRelationByKey("type"),
+				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
-				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("iconEmoji"),
 				MustGetBundledRelationByKey("iconImage"),
 				MustGetBundledRelationByKey("coverImage"),
