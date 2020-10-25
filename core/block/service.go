@@ -1280,8 +1280,8 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		if req.Details.Fields["name"] != nil {
 			name = req.Details.Fields["name"].GetStringValue()
 		}
-		if req.Details.Fields["icon"] != nil {
-			icon = req.Details.Fields["icon"].GetStringValue()
+		if req.Details.Fields["iconEmoji"] != nil {
+			icon = req.Details.Fields["iconEmoji"].GetStringValue()
 		}
 	}
 	if name == "" {
