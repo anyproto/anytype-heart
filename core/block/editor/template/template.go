@@ -128,10 +128,6 @@ var WithTitle = StateTransformer(func(s *state.State) {
 
 var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer {
 	return func(s *state.State) {
-		if s.Exists(DataviewBlockId) {
-			return
-		}
-
 		// remove old dataview
 		s.Iterate(func(b simple.Block) (isContinue bool) {
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
@@ -145,6 +141,11 @@ var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer 
 			}
 			return true
 		})
+
+		// todo: move to the begin of func
+		if s.Exists(DataviewBlockId) {
+			return
+		}
 
 		s.Add(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
 		err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
