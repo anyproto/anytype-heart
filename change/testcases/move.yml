@@ -36,16 +36,16 @@
   changes:
     - type: move
       data:
-        targetid: 1
+        targetid: 2
         position: 2
         ids:
-          - 2
+          - 1
     - type: move
       data:
-        targetid: 1
+        targetid: 2
         position: 2
         ids:
-          - 2
+          - 1
   expected:
     child:
       - id: 2
@@ -59,16 +59,16 @@
   changes:
     - type: move
       data:
-        targetid: 2
+        targetid: 1
         position: 1
         ids:
-          - 1
+          - 2
     - type: move
       data:
-        targetid: 2
+        targetid: 1
         position: 1
         ids:
-          - 1
+          - 2
   expected:
     child:
       - id: 2

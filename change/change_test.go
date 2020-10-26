@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -129,6 +130,12 @@ func (t *TestChangeContent) GetChange(tp string) *pb.ChangeContent {
 		value = &pb.ChangeContentValueOfBlockMove{
 			BlockMove: bm,
 		}
+	case "create":
+		bc := &pb.ChangeBlockCreate{}
+		t.unmarshal(&bc)
+		value = &pb.ChangeContentValueOfBlockCreate{
+			BlockCreate: bc,
+		}
 	}
 	return &pb.ChangeContent{
 		Value: value,
@@ -155,7 +162,20 @@ func doTestCase(t *testing.T, tc *TestCase) {
 	}
 	var fillStruct func(s *state.State, d *DocStruct)
 	fillStruct = func(s *state.State, d *DocStruct) {
-		b := &model.Block{Id: d.Id}
+		var cont model.IsBlockContent
+		if d.Id == "/column/" {
+			d.Id = bson.NewObjectId().Hex()
+			cont = &model.BlockContentOfLayout{
+				Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Column},
+			}
+		}
+		if d.Id == "/row/" {
+			d.Id = bson.NewObjectId().Hex()
+			cont = &model.BlockContentOfLayout{
+				Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Row},
+			}
+		}
+		b := &model.Block{Id: d.Id, Content: cont}
 		for _, ch := range d.Child {
 			fillStruct(s, ch)
 			b.ChildrenIds = append(b.ChildrenIds, ch.Id)
@@ -209,5 +229,6 @@ func stateToTestString(s *state.State) string {
 			}
 		}
 	}
+	writeBlock(s.RootId(), 0)
 	return buf.String()
 }
