@@ -673,7 +673,8 @@
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
     - [Event.Block.Show](#anytype.Event.Block.Show)
-    - [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject)
+    - [Event.Block.Show.ObjectTypes](#anytype.Event.Block.Show.ObjectTypes)
+    - [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject)
     - [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
@@ -10308,17 +10309,35 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | deprecated, details for current and dependent smart blocks |
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
-| objectTypesPerObject | [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject) | repeated | objectType it to get default relations from |
+| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | deprecated, details for current and dependent smart blocks |
+| objectTypesPerObject | [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject) | repeated | objectType it to get default relations from |
 | relationsPerObject | [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject) | repeated | list of relations used in this object |
+| layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Show.ObjectTypePerObject"></a>
+<a name="anytype.Event.Block.Show.ObjectTypes"></a>
 
-### Event.Block.Show.ObjectTypePerObject
+### Event.Block.Show.ObjectTypes
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| objectTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Show.ObjectTypesPerObject"></a>
+
+### Event.Block.Show.ObjectTypesPerObject
 
 
 

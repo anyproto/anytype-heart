@@ -45,7 +45,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb
 		return
 	}
 
-	metaD := h.meta.FetchDetails(s.DepSmartIds())
+	metaD := h.meta.FetchMeta(s.DepSmartIds())
 	details := make([]*pb.EventBlockSetDetails, 0, len(metaD))
 	for _, m := range metaD {
 		details = append(details, &pb.EventBlockSetDetails{

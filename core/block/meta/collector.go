@@ -7,6 +7,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func newCollector(ps *pubSub, id string) *collector {
@@ -57,16 +59,17 @@ func (c *collector) StateRebuild(doc state.Doc) (err error) {
 }
 
 func (c *collector) updateMeta() {
-	d := Meta{
+	m := Meta{
 		BlockId: c.blockId,
 		SmartBlockMeta: core.SmartBlockMeta{
-			Relations: c.doc.Relations(),
-			Details:   c.doc.Details(),
+			ObjectTypes: c.doc.ObjectTypes(),
+			Relations:   c.doc.Relations(),
+			Details:     c.doc.Details(),
 		},
 	}
-	if !c.lastMeta.Details.Equal(d.Details) {
-		c.ps.call(d)
-		c.lastMeta = d
+	if !c.lastMeta.Details.Equal(m.Details) || !slice.SortedEquals(c.lastMeta.ObjectTypes, m.ObjectTypes) || !pbtypes.RelationsEqual(c.lastMeta.Relations, m.Relations) {
+		c.ps.call(m)
+		c.lastMeta = m
 	}
 }
 
@@ -77,12 +80,12 @@ func (c *collector) GetMeta() (d Meta) {
 	return c.lastMeta
 }
 
-func (c *collector) setMeta(d Meta) {
+func (c *collector) setMeta(m Meta) {
 	c.m.Lock()
 	defer c.m.Unlock()
-	if !c.lastMeta.Details.Equal(d.Details) {
-		c.ps.call(d)
-		c.lastMeta = d
+	if !c.lastMeta.Details.Equal(m.Details) || !slice.SortedEquals(c.lastMeta.ObjectTypes, m.ObjectTypes) || !pbtypes.RelationsEqual(c.lastMeta.Relations, m.Relations) {
+		c.ps.call(m)
+		c.lastMeta = m
 	}
 }
 
@@ -103,8 +106,9 @@ func (c *collector) fetchInitialMeta() (err error) {
 	c.lastMeta = Meta{
 		BlockId: c.blockId,
 		SmartBlockMeta: core.SmartBlockMeta{
-			Relations: c.doc.Relations(),
-			Details:   c.doc.Details(),
+			ObjectTypes: c.doc.ObjectTypes(),
+			Relations:   c.doc.Relations(),
+			Details:     c.doc.Details(),
 		},
 	}
 	return nil

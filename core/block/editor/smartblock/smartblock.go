@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -17,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -109,8 +112,9 @@ func (sb *smartBlock) Id() string {
 
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{
-		Details:   sb.Details(),
-		Relations: sb.Relations(),
+		ObjectTypes: sb.ObjectTypes(),
+		Details:     sb.Details(),
+		Relations:   sb.Relations(),
 	}
 }
 
@@ -144,16 +148,36 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, err := sb.fetchDetails()
+		details, relations, objectTypesUrlByObject, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
 		}
+
+		var layout pbrelation.ObjectTypeLayout
+		for _, objectTypesUrlForObject := range objectTypesUrlByObject {
+			if objectTypesUrlForObject.ObjectId != sb.Id() {
+				continue
+			}
+			for _, otUrl := range objectTypesUrlForObject.ObjectTypes {
+				for _, ot := range objectTypes {
+					if ot.Url == otUrl {
+						layout = ot.Layout
+					}
+				}
+			}
+
+		}
+
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-					RootId:  sb.RootId(),
-					Blocks:  sb.Blocks(),
-					Details: details,
+					RootId:               sb.RootId(),
+					Blocks:               sb.Blocks(),
+					Details:              details,
+					RelationsPerObject:   relations,
+					ObjectTypesPerObject: objectTypesUrlByObject,
+					ObjectTypes:          objectTypes,
+					Layout:               layout,
 				}},
 			},
 		})
@@ -161,7 +185,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relationsByObject []*pb.EventBlockShowRelationWithValuePerObject, objectTypesUrlByObject []*pb.EventBlockShowObjectTypesPerObject, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -176,6 +200,7 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 		SmartBlockMeta: *sb.Meta(),
 	})
 
+	objectTypes = sb.meta.FetchObjectTypes(sb.ObjectTypes())
 	defer func() {
 		go func() {
 			for d := range ch {
@@ -192,10 +217,34 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 		case <-timeout:
 			return
 		case d := <-ch:
-			details = append(details, &pb.EventBlockSetDetails{
-				Id:      d.BlockId,
-				Details: d.SmartBlockMeta.Details,
-			})
+			if d.Details != nil {
+				details = append(details, &pb.EventBlockSetDetails{
+					Id:      d.BlockId,
+					Details: d.SmartBlockMeta.Details,
+				})
+			}
+			if d.ObjectTypes != nil {
+				objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
+					ObjectId:    d.BlockId,
+					ObjectTypes: d.SmartBlockMeta.ObjectTypes,
+				})
+			}
+
+			// todo: temporary only for the actual sb, not its dependents
+			if d.BlockId == sb.Id() {
+				var relations []*pbrelation.Relation
+				for i := range objectTypes {
+					relations = append(relations, objectTypes[i].Relations...)
+				}
+				if d.Relations != nil {
+					relations = append(relations, d.Relations...)
+				}
+				mergedRelations := relation.MergeRelations(relations)
+				relationsByObject = append(relationsByObject, &pb.EventBlockShowRelationWithValuePerObject{
+					ObjectId:  d.BlockId,
+					Relations: relation.FillRelations(mergedRelations, d.Details),
+				})
+			}
 		}
 	}
 	return
@@ -225,6 +274,12 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
+
+		for _, ot := range sb.ObjectTypes() {
+			if strings.HasSuffix(ot, objects.CustomObjectTypeURLPrefix) {
+				ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
+			}
+		}
 	}
 	sort.Strings(ids)
 	return

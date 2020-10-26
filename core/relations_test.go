@@ -26,17 +26,17 @@ func TestRelations(t *testing.T) {
 		// nothing to do
 	})
 
-	resp := mw.WalletCreate(&pb.RpcWalletCreateRequest{RootPath: rootPath})
-	require.Equal(t, 0, int(resp.Error.Code))
+	respWalletCreate := mw.WalletCreate(&pb.RpcWalletCreateRequest{RootPath: rootPath})
+	require.Equal(t, 0, int(respWalletCreate.Error.Code))
 
-	resp2 := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "profile", AlphaInviteCode: "elbrus"})
-	require.Equal(t, 0, int(resp2.Error.Code))
+	respAccountCreate := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "profile", AlphaInviteCode: "elbrus"})
+	require.Equal(t, 0, int(respAccountCreate.Error.Code))
 
-	resp2_1 := mw.ObjectTypeList(nil)
-	require.Equal(t, 0, int(resp2_1.Error.Code), resp2_1.Error.Description)
-	require.Len(t, resp2_1.ObjectTypes, 2)
+	respObjectTypeList := mw.ObjectTypeList(nil)
+	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
+	require.Len(t, respObjectTypeList.ObjectTypes, 2)
 
-	resp3 := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
+	respObjectTypeCreate := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
 		ObjectType: &pbrelation.ObjectType{
 			Name: "1",
 			Relations: []*pbrelation.Relation{
@@ -46,66 +46,76 @@ func TestRelations(t *testing.T) {
 		},
 	})
 
-	require.Equal(t, 0, int(resp3.Error.Code), resp3.Error.Description)
-	require.Len(t, resp3.ObjectType.Relations, 8) // including relation.RequiredInternalRelations
-	require.True(t, strings.HasPrefix(resp3.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
+	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
+	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 8) // including relation.RequiredInternalRelations
+	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
 
-	resp4 := mw.ObjectTypeList(nil)
-	require.Equal(t, 0, int(resp4.Error.Code), resp4.Error.Description)
-	require.Len(t, resp4.ObjectTypes, 3)
-	require.Equal(t, resp3.ObjectType.Url, resp4.ObjectTypes[2].Url)
-	require.Len(t, resp4.ObjectTypes[2].Relations, 8)
+	respObjectTypeList = mw.ObjectTypeList(nil)
+	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
+	require.Len(t, respObjectTypeList.ObjectTypes, 3)
+	require.Equal(t, respObjectTypeCreate.ObjectType.Url, respObjectTypeList.ObjectTypes[2].Url)
+	require.Len(t, respObjectTypeList.ObjectTypes[2].Relations, 8)
 
-	resp2_3 := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: resp2.Account.Id, RootPath: rootPath})
-	require.Equal(t, 0, int(resp2_3.Error.Code))
+	respAccountSelect := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: respAccountCreate.Account.Id, RootPath: rootPath})
+	require.Equal(t, 0, int(respAccountSelect.Error.Code))
 
-	resp4 = mw.ObjectTypeList(nil)
-	require.Equal(t, 0, int(resp4.Error.Code), resp4.Error.Description)
-	require.Len(t, resp4.ObjectTypes, 3)
-	require.Equal(t, resp3.ObjectType.Url, resp4.ObjectTypes[2].Url)
-	require.Len(t, resp4.ObjectTypes[2].Relations, 8)
+	respObjectTypeList = mw.ObjectTypeList(nil)
+	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
+	require.Len(t, respObjectTypeList.ObjectTypes, 3)
+	require.Equal(t, respObjectTypeCreate.ObjectType.Url, respObjectTypeList.ObjectTypes[2].Url)
+	require.Len(t, respObjectTypeList.ObjectTypes[2].Relations, 8)
 
-	resp5 := mw.SetCreate(&pb.RpcSetCreateRequest{
-		ObjectTypeUrl: resp4.ObjectTypes[2].Url,
+	respCreateCustomTypeSet := mw.SetCreate(&pb.RpcSetCreateRequest{
+		ObjectTypeUrl: respObjectTypeList.ObjectTypes[2].Url,
 	})
-	require.Equal(t, 0, int(resp5.Error.Code), resp5.Error.Description)
-	require.NotEmpty(t, resp5.Id)
+	require.Equal(t, 0, int(respCreateCustomTypeSet.Error.Code), respCreateCustomTypeSet.Error.Description)
+	require.NotEmpty(t, respCreateCustomTypeSet.Id)
 
-	resp6 := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: resp5.Id})
-	require.Equal(t, 0, int(resp6.Error.Code), resp6.Error.Description)
+	respOpenCustomTypeSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
+	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
 
-	respCreate1 := mw.BlockCreateDataviewRecord(&pb.RpcBlockCreateDataviewRecordRequest{ContextId: resp5.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom1")}}})
-	require.Equal(t, 0, int(respCreate1.Error.Code), respCreate1.Error.Description)
+	respCreateRecordInCustomTypeSet := mw.BlockCreateDataviewRecord(&pb.RpcBlockCreateDataviewRecordRequest{ContextId: respCreateCustomTypeSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom1")}}})
+	require.Equal(t, 0, int(respCreateRecordInCustomTypeSet.Error.Code), respCreateRecordInCustomTypeSet.Error.Description)
 
-	resp6 = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: resp5.Id})
-	require.Equal(t, 0, int(resp6.Error.Code), resp6.Error.Description)
+	respOpenCustomTypeObject := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue()})
+	require.Equal(t, 0, int(respOpenCustomTypeObject.Error.Code), respOpenCustomTypeObject.Error.Description)
+	require.Len(t, respOpenCustomTypeObject.Event.Messages, 1)
+	show := respOpenCustomTypeObject.Event.Messages[0].GetBlockShow()
+	require.NotNil(t, show)
+	require.Len(t, show.ObjectTypes, 1)
+	require.Len(t, show.ObjectTypesPerObject, 1)
+	require.Len(t, show.RelationsPerObject, 1)
+	require.Equal(t, show.ObjectTypes[0], respObjectTypeCreate.ObjectType)
 
-	require.Len(t, resp6.Event.Messages, 2)
-	require.Len(t, resp6.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
-	require.Equal(t, respCreate1.Record.Fields["id"].GetStringValue(), resp6.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
+	respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
+	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
 
-	show := resp6.Event.Messages[0].GetBlockShow()
+	require.Len(t, respOpenCustomTypeSet.Event.Messages, 2)
+	require.Len(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
+	require.Equal(t, respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue(), respOpenCustomTypeSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
+
+	show = respOpenCustomTypeSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 
 	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 
-	resp7 := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
-	require.Equal(t, 0, int(resp7.Error.Code), resp7.Error.Description)
-	require.Len(t, resp7.Event.Messages, 2)
-	show = resp7.Event.Messages[0].GetBlockShow()
+	respOpenPagesSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
+	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
+	require.Len(t, respOpenPagesSet.Event.Messages, 2)
+	show = respOpenPagesSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
-	require.Len(t, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
-	require.Equal(t, respCreatePage.PageId, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
+	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
+	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
 
 	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 
-	resp7 = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
-	require.Equal(t, 0, int(resp7.Error.Code), resp7.Error.Description)
-	require.Len(t, resp7.Event.Messages, 2)
-	show = resp6.Event.Messages[0].GetBlockShow()
+	respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
+	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
+	require.Len(t, respOpenPagesSet.Event.Messages, 2)
+	show = respOpenCustomTypeSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
-	require.Len(t, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 2)
-	require.Equal(t, respCreatePage.PageId, resp7.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[1].Fields["id"].GetStringValue())
+	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 2)
+	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[1].Fields["id"].GetStringValue())
 }
