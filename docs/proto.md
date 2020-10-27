@@ -10310,8 +10310,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 | objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | deprecated, details for current and dependent smart blocks |
 | objectTypesPerObject | [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject) | repeated | objectType it to get default relations from |
-| relationsPerObject | [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject) | repeated | list of relations used in this object |
-| layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
+| layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  | the layout of the last objectType for this object |
 
 
 

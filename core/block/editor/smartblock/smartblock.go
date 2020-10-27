@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -148,7 +147,7 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, relations, objectTypesUrlByObject, objectTypes, err := sb.fetchMeta()
+		details, _, objectTypesUrlByObject, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
 		}
@@ -175,7 +174,6 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 					Type:                 sb.Type(),
 					Blocks:               sb.Blocks(),
 					Details:              details,
-					RelationsPerObject:   relations,
 					ObjectTypesPerObject: objectTypesUrlByObject,
 					ObjectTypes:          objectTypes,
 					Layout:               layout,
@@ -201,17 +199,10 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 		SmartBlockMeta: *sb.Meta(),
 	})
 
-	objectTypes = sb.meta.FetchObjectTypes(sb.ObjectTypes())
-	defer func() {
-		go func() {
-			for d := range ch {
-				sb.onMetaChange(d)
-			}
-		}()
-		subscriber.Callback(sb.onMetaChange)
-		close(ch)
-	}()
-
+	var objectTypesMap = map[string]struct{}{}
+	for _, ot := range sb.ObjectTypes() {
+		objectTypesMap[ot] = struct{}{}
+	}
 	timeout := time.After(time.Second)
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
@@ -225,29 +216,33 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 				})
 			}
 			if d.ObjectTypes != nil {
+				for _, ot := range d.ObjectTypes {
+					objectTypesMap[ot] = struct{}{}
+				}
+
 				objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
 					ObjectId:    d.BlockId,
 					ObjectTypes: d.SmartBlockMeta.ObjectTypes,
 				})
 			}
-
-			// todo: temporary only for the actual sb, not its dependents
-			if d.BlockId == sb.Id() {
-				var relations []*pbrelation.Relation
-				for i := range objectTypes {
-					relations = append(relations, objectTypes[i].Relations...)
-				}
-				if d.Relations != nil {
-					relations = append(relations, d.Relations...)
-				}
-				mergedRelations := relation.MergeRelations(relations)
-				relationsByObject = append(relationsByObject, &pb.EventBlockShowRelationWithValuePerObject{
-					ObjectId:  d.BlockId,
-					Relations: relation.FillRelations(mergedRelations, d.Details),
-				})
-			}
 		}
 	}
+
+	var objectTypesUrls []string
+	for ot := range objectTypesMap {
+		objectTypesUrls = append(objectTypesUrls, ot)
+	}
+
+	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
+	defer func() {
+		go func() {
+			for d := range ch {
+				sb.onMetaChange(d)
+			}
+		}()
+		subscriber.Callback(sb.onMetaChange)
+		close(ch)
+	}()
 	return
 }
 

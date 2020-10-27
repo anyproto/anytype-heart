@@ -84,7 +84,6 @@ func TestRelations(t *testing.T) {
 	require.NotNil(t, show)
 	require.Len(t, show.ObjectTypes, 1)
 	require.Len(t, show.ObjectTypesPerObject, 1)
-	require.Len(t, show.RelationsPerObject, 1)
 	require.Equal(t, show.ObjectTypes[0], respObjectTypeCreate.ObjectType)
 
 	respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
