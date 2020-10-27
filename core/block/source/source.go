@@ -28,6 +28,7 @@ type Source interface {
 	Id() string
 	Anytype() anytype.Service
 	Type() pb.SmartBlockType
+	Virtual() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error)
@@ -74,6 +75,10 @@ func (s *source) Anytype() anytype.Service {
 
 func (s *source) Type() pb.SmartBlockType {
 	return anytype.SmartBlockTypeToProto(s.sb.Type())
+}
+
+func (s *source) Virtual() bool {
+	return false
 }
 
 func (s *source) ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error) {
