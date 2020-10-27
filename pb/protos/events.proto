@@ -50,6 +50,8 @@ message Event {
             Process.New processNew = 101;
             Process.Update processUpdate = 102;
             Process.Done processDone = 103;
+
+            Sync syncStatus = 110;
         }
     }
 
@@ -555,6 +557,17 @@ message Event {
         }
     }
 
+    message Sync {
+        ThreadStatus thread = 1;
+        int64 lastPull = 2;
+
+        enum ThreadStatus {
+            Unknown = 0;
+            InProgress = 1;
+            Success = 2;
+            Failure = 3;
+        }
+    }
 }
 
 enum SmartBlockType {
