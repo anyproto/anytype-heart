@@ -18,13 +18,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/multiformats/go-multiaddr"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/thread"
-	net2 "github.com/textileio/go-threads/net"
+	tnet "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
 	"google.golang.org/grpc"
 )
@@ -186,12 +185,6 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	a.t.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
 }
 
-func init() {
-	net2.PullInterval = pullInterval
-	// apply log levels in go-threads and go-ipfs deps
-	logging.ApplyLevelsFromEnv()
-}
-
 func New(options ...ServiceOption) (*Anytype, error) {
 	opts := ServiceOptions{}
 
@@ -276,14 +269,25 @@ func (a *Anytype) start() error {
 		a.t = a.opts.NetBootstraper
 	} else {
 		var err error
-		if a.t, err = a.startNetwork(a.opts.HostAddr, a.opts.Offline); err != nil {
+		if a.t, err = a.startNetwork(a.opts.HostAddr); err != nil {
 			if strings.Contains(err.Error(), "address already in use") { // FIXME proper cross-platform solution?
 				// start on random port in case saved port is already used by some other app
-				if a.t, err = a.startNetwork(nil, a.opts.Offline); err != nil {
+				if a.t, err = a.startNetwork(nil); err != nil {
 					return err
 				}
 			} else {
 				return err
+			}
+		}
+	}
+
+	if a.opts.CafeP2PAddr != nil {
+		// protect cafe connections from pruning
+		if p, err := a.opts.CafeP2PAddr.ValueForProtocol(ma.P_P2P); err == nil {
+			if pid, err := peer.Decode(p); err == nil {
+				a.t.Host().ConnManager().Protect(pid, "cafe-sync")
+			} else {
+				log.Errorf("obtaining peerID from cafe address failed: %v", err)
 			}
 		}
 	}
@@ -396,17 +400,15 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 	return a.threadService.InitNewThreadsChan(ch)
 }
 
-func (a *Anytype) startNetwork(hostAddr multiaddr.Multiaddr, offline bool) (net.NetBoostrapper, error) {
-	return litenet.DefaultNetwork(
-		a.opts.Repo,
-		a.opts.Device,
-		[]byte(ipfsPrivateNetworkKey),
+func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error) {
+	var opts = []litenet.NetOption{
 		litenet.WithNetHostAddr(hostAddr),
 		litenet.WithNetDebug(false),
-		litenet.WithOffline(offline),
+		litenet.WithOffline(a.opts.Offline),
 		litenet.WithNetPubSub(true), // TODO control with env var
+		litenet.WithNetSyncTracking(),
 		litenet.WithNetGRPCServerOptions(
-			grpc.MaxRecvMsgSize(1024*1024*20),
+			grpc.MaxRecvMsgSize(1024 * 1024 * 20),
 		),
 		litenet.WithNetGRPCDialOptions(
 			grpc.WithDefaultCallOptions(
@@ -414,16 +416,24 @@ func (a *Anytype) startNetwork(hostAddr multiaddr.Multiaddr, offline bool) (net.
 				grpc.MaxCallSendMsgSize(1024*1024*10),
 			),
 
-			// TODO metrics
+			// gRPC metrics
 			//grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
 			//grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
 		),
-	)
+	}
+
+	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
 func init() {
-	// redefine timeouts
-	net2.DialTimeout = 10 * time.Second
-	net2.PushTimeout = 30 * time.Second
-	net2.PullTimeout = 2 * time.Minute
+	// redefine thread pulling interval
+	tnet.PullInterval = pullInterval
+
+	// redefine timeouts for threads
+	tnet.DialTimeout = 10 * time.Second
+	tnet.PushTimeout = 30 * time.Second
+	tnet.PullTimeout = 2 * time.Minute
+
+	// apply log levels in go-threads and go-ipfs deps
+	logging.ApplyLevelsFromEnv()
 }
