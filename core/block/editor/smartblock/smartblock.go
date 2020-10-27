@@ -172,6 +172,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
 					RootId:               sb.RootId(),
+					Type:                 sb.Type(),
 					Blocks:               sb.Blocks(),
 					Details:              details,
 					RelationsPerObject:   relations,

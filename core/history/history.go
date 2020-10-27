@@ -47,20 +47,42 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb
 
 	metaD := h.meta.FetchMeta(s.DepSmartIds())
 	details := make([]*pb.EventBlockSetDetails, 0, len(metaD))
+	objectTypesPerObject := make([]*pb.EventBlockShowObjectTypesPerObject, 0, len(metaD))
+	sbType, err := smartblock.SmartBlockTypeFromID(pageId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("incorrect sb type: %w", err)
+	}
 	for _, m := range metaD {
 		details = append(details, &pb.EventBlockSetDetails{
 			Id:      m.BlockId,
 			Details: m.Details,
 		})
+
+		objectTypesPerObject = append(objectTypesPerObject, &pb.EventBlockShowObjectTypesPerObject{
+			ObjectId:    m.BlockId,
+			ObjectTypes: m.ObjectTypes,
+		})
 	}
+
 	details = append(details, &pb.EventBlockSetDetails{
 		Id:      pageId,
 		Details: s.Details(),
 	})
+
+	objectTypesPerObject = append(objectTypesPerObject, &pb.EventBlockShowObjectTypesPerObject{
+		ObjectId:    pageId,
+		ObjectTypes: s.ObjectTypes(),
+	})
+
+	objectTypes := h.meta.FetchObjectTypes(s.ObjectTypes())
+
 	return &pb.EventBlockShow{
-		RootId:  pageId,
-		Blocks:  s.Blocks(),
-		Details: details,
+		RootId:               pageId,
+		Type:                 anytype.SmartBlockTypeToProto(sbType),
+		Blocks:               s.Blocks(),
+		Details:              details,
+		ObjectTypesPerObject: objectTypesPerObject,
+		ObjectTypes:          objectTypes,
 	}, ver, nil
 }
 
