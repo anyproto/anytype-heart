@@ -203,6 +203,16 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 	for _, ot := range sb.ObjectTypes() {
 		objectTypesMap[ot] = struct{}{}
 	}
+
+	if sb.Type() == pb.SmartBlockType_Set {
+		// add the object type from the dataview source
+		if b := sb.Doc.Pick("dataview"); b != nil {
+			if dv := b.Model().GetDataview(); dv != nil {
+				objectTypesMap[dv.Source] = struct{}{}
+			}
+		}
+	}
+
 	timeout := time.After(time.Second)
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
