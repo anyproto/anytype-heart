@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -300,9 +301,8 @@ func TestState_Normalize(t *testing.T) {
 	})
 	t.Run("merge divided list", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
-		var seq int32
-		div1 := r.newDiv(&seq)
-		div2 := r.newDiv(&seq)
+		div1 := r.newDiv()
+		div2 := r.newDiv()
 		div1.Model().ChildrenIds = genIds(r, 5, 1, true)
 		div2.Model().ChildrenIds = genIds(r, 5, 6, true)
 		r.Add(div1)
@@ -312,8 +312,9 @@ func TestState_Normalize(t *testing.T) {
 		s := r.NewState()
 		_, _, err := ApplyState(s, true)
 		require.NoError(t, err)
-		require.Equal(t, []string{"div-1"}, r.Pick(r.RootId()).Model().ChildrenIds)
-		assert.Len(t, r.Pick("div-1").Model().ChildrenIds, 10)
+		divId := r.Pick(r.RootId()).Model().ChildrenIds[0]
+		require.True(t, strings.HasPrefix(divId, "div"))
+		assert.Len(t, r.Pick(divId).Model().ChildrenIds, 10)
 	})
 	t.Run("do not split numeric list", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
