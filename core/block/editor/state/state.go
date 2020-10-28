@@ -768,6 +768,20 @@ func (s *State) IsEmpty() bool {
 	return false
 }
 
+func (s *State) Copy() *State {
+	blocks := make(map[string]simple.Block, len(s.blocks))
+	for k, v := range s.blocks {
+		blocks[k] = v.Copy()
+	}
+	copy := &State{
+		ctx:     s.ctx,
+		blocks:  blocks,
+		rootId:  s.rootId,
+		details: pbtypes.CopyStruct(s.details),
+	}
+	return copy
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool

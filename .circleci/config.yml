@@ -112,10 +112,6 @@ jobs:
             - /go/pkg
             - /home/circleci/.cache/go-build
       - run:
-          name: build lib-server
-          command: |
-            make build-server
-      - run:
           name: compile addon
           command: |
             VERSION=$(echo $CIRCLE_SHA1 | cut -c -7)

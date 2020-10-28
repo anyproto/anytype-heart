@@ -2,13 +2,12 @@ package state
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 )
 
 var (
@@ -22,6 +21,11 @@ func (s *State) Normalize(withLayouts bool) (err error) {
 }
 
 func (s *State) normalize(withLayouts bool) (err error) {
+	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
+		return true
+	}); err != nil {
+		return err
+	}
 	// remove invalid children
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
@@ -109,24 +113,8 @@ func isDivLayout(m *model.Block) bool {
 }
 
 func (s *State) normalizeTree() (err error) {
-	var seq int32
-	err = s.Iterate(func(b simple.Block) (isContinue bool) {
-		if isDivLayout(b.Model()) {
-			id := b.Model().Id
-			if strings.HasPrefix(id, "div-") {
-				res, _ := strconv.Atoi(id[len("div-"):])
-				if int32(res) > seq {
-					seq = int32(res)
-				}
-			}
-		}
-		return true
-	})
-	if err != nil {
-		return
-	}
 	s.checkDividedLists(s.RootId())
-	s.normalizeTreeBranch(s.RootId(), &seq)
+	s.normalizeTreeBranch(s.RootId())
 	return nil
 }
 
@@ -155,20 +143,20 @@ func (s *State) checkDividedLists(id string) {
 	}
 }
 
-func (s *State) normalizeTreeBranch(id string, seq *int32) {
+func (s *State) normalizeTreeBranch(id string) {
 	parentB := s.Pick(id)
 	if parentB == nil {
 		return
 	}
 	parent := parentB.Model()
 	if s.dividedLen(parent.ChildrenIds) > maxChildrenThreshold {
-		if nextId := s.wrapChildrenToDiv(id, seq); nextId != "" {
-			s.normalizeTreeBranch(nextId, seq)
+		if nextId := s.wrapChildrenToDiv(id); nextId != "" {
+			s.normalizeTreeBranch(nextId)
 			return
 		}
 	}
 	for _, chId := range parent.ChildrenIds {
-		s.normalizeTreeBranch(chId, seq)
+		s.normalizeTreeBranch(chId)
 	}
 }
 
@@ -183,14 +171,14 @@ func (s *State) dividedLen(ids []string) int {
 	return 0
 }
 
-func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
+func (s *State) wrapChildrenToDiv(id string) (nextId string) {
 	parent := s.Get(id).Model()
 	overflow := maxChildrenThreshold - len(parent.ChildrenIds)
 	if isDivLayout(parent) {
 		changes := false
 		nextDiv := s.getNextDiv(id)
 		if nextDiv == nil || len(nextDiv.Model().ChildrenIds)+overflow > maxChildrenThreshold {
-			nextDiv = s.newDiv(seq)
+			nextDiv = s.newDiv()
 			s.Add(nextDiv)
 			s.InsertTo(parent.Id, model.Block_Bottom, nextDiv.Model().Id)
 			changes = true
@@ -200,7 +188,7 @@ func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
 			nextDiv = s.getNextDiv(parent.Id)
 			overflow = maxChildrenThreshold - len(parent.ChildrenIds)
 			if nextDiv == nil || len(nextDiv.Model().ChildrenIds)+overflow > maxChildrenThreshold {
-				nextDiv = s.newDiv(seq)
+				nextDiv = s.newDiv()
 				s.Add(nextDiv)
 				s.InsertTo(parent.Id, model.Block_Bottom, nextDiv.Model().Id)
 				changes = true
@@ -212,7 +200,7 @@ func (s *State) wrapChildrenToDiv(id string, seq *int32) (nextId string) {
 		return ""
 	}
 
-	div := s.newDiv(seq)
+	div := s.newDiv()
 	div.Model().ChildrenIds = parent.ChildrenIds
 	s.Add(div)
 	parent.ChildrenIds = []string{div.Model().Id}
@@ -244,9 +232,8 @@ func (s *State) canDivide(id string) bool {
 	return true
 }
 
-func (s *State) newDiv(seq *int32) simple.Block {
-	*seq++
-	divId := fmt.Sprintf("div-%d", *seq)
+func (s *State) newDiv() simple.Block {
+	divId := fmt.Sprintf("div-%s", bson.NewObjectId().Hex())
 	return simple.New(&model.Block{
 		Id: divId,
 		Content: &model.BlockContentOfLayout{
@@ -307,19 +294,24 @@ func (s *State) removeDuplicates() {
 }
 
 func CleanupLayouts(s *State) (removedCount int) {
-	var divIds []string
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if layout := b.Model().GetLayout(); layout != nil && layout.Style == model.BlockContentLayout_Div {
-			divIds = append(divIds, b.Model().Id)
+	var cleanup func(id string) []string
+	cleanup = func(id string) (result []string) {
+		b := s.Get(id)
+		if b == nil {
+			return
 		}
-		return true
-	})
-	for _, divId := range divIds {
-		divChildrens := s.Pick(divId).Model().ChildrenIds
-		for _, dCh := range divChildrens {
-			s.Unlink(dCh)
+		for _, chId := range b.Model().ChildrenIds {
+			if isDivLayout(s.Pick(chId).Model()) {
+				removedCount++
+				result = append(result, cleanup(chId)...)
+			} else {
+				result = append(result, chId)
+				cleanup(chId)
+			}
 		}
-		s.InsertTo(divId, model.Block_Replace, divChildrens...)
+		b.Model().ChildrenIds = result
+		return
 	}
-	return len(divIds)
+	cleanup(s.RootId())
+	return
 }
