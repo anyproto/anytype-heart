@@ -297,6 +297,9 @@ func CleanupLayouts(s *State) (removedCount int) {
 	var cleanup func(id string) []string
 	cleanup = func(id string) (result []string) {
 		b := s.Get(id)
+		if b == nil {
+			return
+		}
 		for _, chId := range b.Model().ChildrenIds {
 			if isDivLayout(s.Pick(chId).Model()) {
 				removedCount++
