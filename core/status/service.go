@@ -83,21 +83,21 @@ func (r *service) Watch(tid thread.ID, eventCtx string) {
 
 		// get sync status with cafe
 		s, _ := r.threads.Status(tid, r.cafe)
-		var msg = pb.EventSync{LastPull: s.LastPull}
+		var msg = pb.EventStatusThreadSync{LastPull: s.LastPull}
 
 		// Interpret sync status: we are interested in download stats mostly
 		switch s.Down {
 		case net.Unknown:
-			msg.Thread = pb.EventSync_Unknown
+			msg.Status = pb.EventStatusThreadSync_Unknown
 		case net.InProgress:
-			msg.Thread = pb.EventSync_InProgress
+			msg.Status = pb.EventStatusThreadSync_InProgress
 		case net.Success:
-			msg.Thread = pb.EventSync_Success
+			msg.Status = pb.EventStatusThreadSync_Success
 		case net.Failure:
-			msg.Thread = pb.EventSync_Failure
+			msg.Status = pb.EventStatusThreadSync_Failure
 		}
 
-		r.emitter(wrapEvent(eventCtx, &msg))
+		r.sendEvent(eventCtx, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &msg})
 	}()
 }
 
@@ -128,10 +128,9 @@ func (r *service) Start() error {
 			r.mu.Unlock()
 
 			if event.Peer == r.cafe {
-
-				// todo send event CafeConnection
-				//r.emitter(wrapEvent("", ))
-
+				r.sendEvent("", &pb.EventMessageValueOfConnStatus{
+					ConnStatus: &pb.EventStatusCafeConnect{Connected: event.Connected},
+				})
 			}
 		}
 	}()
@@ -150,12 +149,9 @@ func (r *service) Stop() {
 	}
 }
 
-func wrapEvent(ctx string, event *pb.EventSync) *pb.Event {
-	return &pb.Event{
-		Messages: []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfSyncStatus{
-				SyncStatus: event},
-		}},
+func (r *service) sendEvent(ctx string, event pb.IsEventMessageValue) {
+	r.emitter(&pb.Event{
+		Messages:  []*pb.EventMessage{{Value: event}},
 		ContextId: ctx,
-	}
+	})
 }
