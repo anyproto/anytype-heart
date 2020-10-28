@@ -22,6 +22,7 @@ import (
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	ma "github.com/multiformats/go-multiaddr"
+	tcn "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	tnet "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
@@ -60,27 +61,6 @@ type PredefinedBlockIds struct {
 	SetPages string
 }
 
-type Anytype struct {
-	t                  net.NetBoostrapper
-	files              *files.Service
-	cafe               cafe.Client
-	mdns               discovery.Service
-	localStore         localstore.LocalStore
-	predefinedBlockIds threads.DerivedSmartblockIds
-	threadService      threads.Service
-
-	logLevels map[string]string
-
-	opts ServiceOptions
-
-	replicationWG    sync.WaitGroup
-	migrationOnce    sync.Once
-	lock             sync.Mutex
-	isStarted        bool          // use under the lock
-	shutdownStartsCh chan struct{} // closed when node shutdown starts
-	onlineCh         chan struct{} // closed when became online
-}
-
 type Service interface {
 	Account() string
 	Device() string
@@ -117,6 +97,69 @@ type Service interface {
 	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
 	PageList() ([]*model.PageInfo, error)
 	PageUpdateLastOpened(id string) error
+
+	SyncStatus() tcn.SyncInfo
+	FileStatus() FileInfo
+}
+
+var _ Service = (*Anytype)(nil)
+
+type Anytype struct {
+	t                  net.NetBoostrapper
+	files              *files.Service
+	cafe               cafe.Client
+	mdns               discovery.Service
+	localStore         localstore.LocalStore
+	predefinedBlockIds threads.DerivedSmartblockIds
+	threadService      threads.Service
+	pinRegistry        *filePinRegistry
+
+	logLevels map[string]string
+
+	opts ServiceOptions
+
+	replicationWG    sync.WaitGroup
+	migrationOnce    sync.Once
+	lock             sync.Mutex
+	isStarted        bool          // use under the lock
+	shutdownStartsCh chan struct{} // closed when node shutdown starts
+	onlineCh         chan struct{} // closed when became online
+}
+
+func New(options ...ServiceOption) (*Anytype, error) {
+	opts := ServiceOptions{}
+
+	for _, opt := range options {
+		err := opt(&opts)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if opts.Device == nil {
+		return nil, fmt.Errorf("no device keypair provided")
+	}
+
+	logging.SetHost(opts.Device.Address())
+
+	a := &Anytype{
+		opts:             opts,
+		shutdownStartsCh: make(chan struct{}),
+		onlineCh:         make(chan struct{}),
+		pinRegistry:      newFilePinRegistry(),
+	}
+
+	if opts.CafeGrpcHost != "" {
+		isLocal := strings.HasPrefix(opts.CafeGrpcHost, "127.0.0.1") || strings.HasPrefix(opts.CafeGrpcHost, "localhost")
+
+		var err error
+		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, "<todo>", isLocal, opts.Device, opts.Account)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get grpc client: %w", err)
+		}
+	}
+
+	return a, nil
 }
 
 func (a *Anytype) Account() string {
@@ -133,8 +176,12 @@ func (a *Anytype) Device() string {
 	return a.opts.Device.Address()
 }
 
-func (a *Anytype) ThreadsNet() net.NetBoostrapper {
+func (a *Anytype) SyncStatus() tcn.SyncInfo {
 	return a.t
+}
+
+func (a *Anytype) FileStatus() FileInfo {
+	return a.pinRegistry
 }
 
 func (a *Anytype) Ipfs() ipfs.IPFS {
@@ -183,44 +230,6 @@ func (a *Anytype) PredefinedBlocks() threads.DerivedSmartblockIds {
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	a.t.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
-}
-
-func New(options ...ServiceOption) (*Anytype, error) {
-	opts := ServiceOptions{}
-
-	for _, opt := range options {
-		err := opt(&opts)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if opts.Device == nil {
-		return nil, fmt.Errorf("no device keypair provided")
-	}
-
-	logging.SetHost(opts.Device.Address())
-
-	a := &Anytype{
-		opts:          opts,
-		replicationWG: sync.WaitGroup{},
-		migrationOnce: sync.Once{},
-
-		shutdownStartsCh: make(chan struct{}),
-		onlineCh:         make(chan struct{}),
-	}
-
-	if opts.CafeGrpcHost != "" {
-		isLocal := strings.HasPrefix(opts.CafeGrpcHost, "127.0.0.1") || strings.HasPrefix(opts.CafeGrpcHost, "localhost")
-
-		var err error
-		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, "<todo>", isLocal, opts.Device, opts.Account)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get grpc client: %w", err)
-		}
-	}
-
-	return a, nil
 }
 
 func (a *Anytype) runPeriodicJobsInBackground() {
@@ -287,7 +296,7 @@ func (a *Anytype) start() error {
 			if pid, err := peer.Decode(p); err == nil {
 				a.t.Host().ConnManager().Protect(pid, "cafe-sync")
 			} else {
-				log.Errorf("obtaining peerID from cafe address failed: %v", err)
+				log.Errorf("decoding peerID from cafe address failed: %v", err)
 			}
 		}
 	}
