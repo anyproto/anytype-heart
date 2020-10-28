@@ -112,16 +112,13 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
-	if !s.Virtual() {
-		tid, err := thread.Decode(s.Id())
-		if err != nil {
-			return fmt.Errorf("decoding thread ID: %w", err)
+	if !s.Virtual() && sb.status != nil {
+		if tid, err := thread.Decode(s.Id()); err == nil {
+			sb.threadId = tid
+			sb.status.Watch(tid, s.Id())
+		} else {
+			log.Warnf("can't restore thread ID: %v", err)
 		}
-		sb.threadId = tid
-	}
-
-	if tid := sb.threadId; tid != thread.Undef && sb.status != nil {
-		sb.status.Watch(tid, s.Id())
 	}
 
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
