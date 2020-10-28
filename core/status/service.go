@@ -19,8 +19,13 @@ type Service interface {
 	Unwatch(tid thread.ID)
 	ThreadSummary() net.SyncSummary
 
-	// todo extend with connectivity!
+	// TODO extend with specific requests e.g:
+	//  - peer connectivity map
+	//  - thread status
+	//  - file status
 
+	Start() error
+	Stop()
 }
 
 var _ Service = (*service)(nil)
@@ -30,6 +35,7 @@ type service struct {
 	threads  net.SyncInfo
 	files    core.FileInfo
 	watchers map[thread.ID]func()
+	connMap  map[peer.ID]bool
 	emitter  func(event *pb.Event)
 	mu       sync.Mutex
 }
@@ -41,11 +47,12 @@ func NewService(
 	cafe peer.ID,
 ) *service {
 	return &service{
+		cafe:     cafe,
 		threads:  ts,
 		files:    fs,
-		cafe:     cafe,
-		emitter:  emitter,
 		watchers: make(map[thread.ID]func()),
+		connMap:  make(map[peer.ID]bool),
+		emitter:  emitter,
 	}
 }
 
@@ -106,6 +113,41 @@ func (r *service) Unwatch(tid thread.ID) {
 func (r *service) ThreadSummary() net.SyncSummary {
 	ps, _ := r.threads.PeerSummary(r.cafe)
 	return ps
+}
+
+func (r *service) Start() error {
+	connEvents, err := r.threads.Connectivity()
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for event := range connEvents {
+			r.mu.Lock()
+			r.connMap[event.Peer] = event.Connected
+			r.mu.Unlock()
+
+			if event.Peer == r.cafe {
+
+				// todo send event CafeConnection
+				//r.emitter(wrapEvent("", ))
+
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (r *service) Stop() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// just shutdown all thread status watchers, connectivity tracking
+	// will be stopped automatically on closing the network layer
+	for _, stop := range r.watchers {
+		stop()
+	}
 }
 
 func wrapEvent(ctx string, event *pb.EventSync) *pb.Event {
