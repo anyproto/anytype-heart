@@ -7,37 +7,35 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
-	"github.com/anytypeio/go-anytype-middleware/core/history"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/history"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -129,6 +127,7 @@ type Service interface {
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
+	// init process with progressbar
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
 
@@ -141,10 +140,18 @@ type Service interface {
 	Close() error
 }
 
-func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
+func NewService(
+	accountId string,
+	a anytype.Service,
+	lp linkpreview.LinkPreview,
+	ss status.Service,
+	sendEvent func(event *pb.Event),
+) Service {
 	s := &service{
 		accountId: accountId,
 		anytype:   a,
+		status:    ss,
+		meta:      meta.NewService(a),
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
@@ -152,7 +159,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		linkPreview:  lp,
 		process:      process.NewService(sendEvent),
 	}
-	s.meta = meta.NewService(a)
+
 	s.history = history.NewHistory(a, s, s.meta)
 	go s.cleanupTicker()
 	s.init()
@@ -170,6 +177,7 @@ type openedBlock struct {
 type service struct {
 	anytype      anytype.Service
 	meta         meta.Service
+	status       status.Service
 	accountId    string
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
@@ -302,7 +310,6 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 		} else {
 			return archive.UnArchive(req.BlockId)
 		}
-		return nil
 	})
 }
 
@@ -944,15 +951,15 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
+		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview, s.status)
 	case pb.SmartBlockType_Home:
-		sb = editor.NewDashboard(s.meta, s)
+		sb = editor.NewDashboard(s.meta, s, s.status)
 	case pb.SmartBlockType_Archive:
-		sb = editor.NewArchive(s.meta, s)
+		sb = editor.NewArchive(s.meta, s, s.status)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta, s)
+		sb = editor.NewSet(s.meta, s, s.status)
 	case pb.SmartBlockType_ProfilePage:
-		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent, s.status)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
