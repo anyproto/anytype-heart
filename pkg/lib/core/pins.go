@@ -2,11 +2,12 @@ package core
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/dgtony/collections/hashset"
+	ct "github.com/dgtony/collections/time"
 )
 
 func (a *Anytype) checkPins() {
@@ -19,7 +20,7 @@ func (a *Anytype) checkPins() {
 		return
 	}
 
-	t := util.NewImmediateTicker(checkPeriod)
+	t := ct.NewRightAwayTicker(checkPeriod)
 	defer t.Stop()
 
 	for {
@@ -30,10 +31,9 @@ func (a *Anytype) checkPins() {
 		)
 
 		select {
+		case <-t.C:
 		case <-a.shutdownStartsCh:
 			return
-		case <-t.C:
-			break
 		}
 
 		log.Debugf("checking pinned files statuses...")
@@ -69,6 +69,12 @@ func (a *Anytype) checkPins() {
 		log.Debugf("cafe status: queued for pinning: %d, pinned: %d, failed: %d, local: %d",
 			queued, pinned, len(failedCIDs), onlyLocal.Len())
 
+		a.pinRegistry.Update(FilePinSummary{
+			Pinned:     pinned,
+			InProgress: queued + onlyLocal.Len(),
+			Failed:     len(failedCIDs),
+		})
+
 		// add local files for the sync
 		for _, cid := range onlyLocal.List() {
 			failedCIDs = append(failedCIDs, cid.(string))
@@ -102,4 +108,39 @@ func (a *Anytype) deriveContext(timeout time.Duration) context.Context {
 	}()
 
 	return ctx
+}
+
+/* File status service */
+
+type FilePinSummary struct {
+	Pinned, InProgress, Failed int
+}
+
+type FileInfo interface {
+	FileSummary() FilePinSummary
+}
+
+var _ FileInfo = (*filePinRegistry)(nil)
+
+// Stub implementation
+type filePinRegistry struct {
+	summary FilePinSummary
+	mu      sync.RWMutex
+}
+
+func newFilePinRegistry() *filePinRegistry {
+	return &filePinRegistry{}
+}
+
+func (f *filePinRegistry) FileSummary() FilePinSummary {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	return f.summary
+}
+
+func (f *filePinRegistry) Update(summary FilePinSummary) {
+	f.mu.Lock()
+	f.summary = summary
+	f.mu.Unlock()
 }
