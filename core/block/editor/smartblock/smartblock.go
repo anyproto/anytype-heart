@@ -2,6 +2,7 @@ package smartblock
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -12,12 +13,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 type ApplyFlag int
@@ -43,8 +46,8 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New(ms meta.Service) SmartBlock {
-	return &smartBlock{meta: ms}
+func New(ms meta.Service, ss status.Service) SmartBlock {
+	return &smartBlock{meta: ms, status: ss}
 }
 
 type SmartblockOpenListner interface {
@@ -87,6 +90,8 @@ type smartBlock struct {
 	meta            meta.Service
 	metaSub         meta.Subscriber
 	metaData        *core.SmartBlockMeta
+	status          status.Service
+	threadId        thread.ID
 	disableLayouts  bool
 	onNewStateHooks []func()
 	onCloseHooks    []func()
@@ -107,9 +112,22 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
-	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
-		return err
+	if !s.Virtual() {
+		tid, err := thread.Decode(s.Id())
+		if err != nil {
+			return fmt.Errorf("decoding thread ID: %w", err)
+		}
+		sb.threadId = tid
 	}
+
+	if tid := sb.threadId; tid != thread.Undef && sb.status != nil {
+		sb.status.Watch(tid, s.Id())
+	}
+
+	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
+		return fmt.Errorf("reading document: %w", err)
+	}
+
 	sb.source = s
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
@@ -437,6 +455,9 @@ func (sb *smartBlock) Reindex() (err error) {
 
 func (sb *smartBlock) Close() (err error) {
 	sb.execHooks(HookOnClose)
+	if sb.threadId != thread.Undef && sb.status != nil {
+		sb.status.Unwatch(sb.threadId)
+	}
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}

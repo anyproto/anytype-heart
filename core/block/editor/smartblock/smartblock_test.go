@@ -120,7 +120,7 @@ func newFixture(t *testing.T) *fixture {
 	metaService.EXPECT().PubSub().AnyTimes().Return(metaPubSub)
 	metaPubSub.EXPECT().NewSubscriber().AnyTimes().Return(metaSubscriber)
 	return &fixture{
-		SmartBlock:     New(metaService),
+		SmartBlock:     New(metaService, nil),
 		t:              t,
 		ctrl:           ctrl,
 		source:         source,

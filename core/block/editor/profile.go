@@ -11,12 +11,20 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
-func NewProfile(m meta.Service, fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
-	sb := smartblock.New(m)
+func NewProfile(
+	m meta.Service,
+	fileSource file.BlockService,
+	bCtrl bookmark.DoBookmark,
+	lp linkpreview.LinkPreview,
+	sendEvent func(e *pb.Event),
+	ss status.Service,
+) *Profile {
+	sb := smartblock.New(m, ss)
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
 		SmartBlock: sb,

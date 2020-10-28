@@ -3,21 +3,21 @@ package editor
 import (
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewDashboard(m meta.Service, importServices _import.Services) *Dashboard {
-	sb := smartblock.New(m)
+func NewDashboard(m meta.Service, importServices _import.Services, ss status.Service) *Dashboard {
+	sb := smartblock.New(m, ss)
 	return &Dashboard{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),

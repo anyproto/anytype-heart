@@ -11,15 +11,18 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/google/uuid"
 )
 
-func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
-	sb := &Set{
-		SmartBlock: smartblock.New(ms),
-	}
+func NewSet(
+	ms meta.Service,
+	dbCtrl database.Ctrl,
+	ss status.Service,
+) *Set {
+	sb := &Set{SmartBlock: smartblock.New(ms, ss)}
 
 	sb.Basic = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)

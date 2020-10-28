@@ -8,14 +8,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewArchive(m meta.Service, ctrl ArchiveCtrl) *Archive {
+func NewArchive(m meta.Service, ctrl ArchiveCtrl, ss status.Service) *Archive {
 	return &Archive{
 		ctrl:       ctrl,
-		SmartBlock: smartblock.New(m),
+		SmartBlock: smartblock.New(m, ss),
 	}
 }
 

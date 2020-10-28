@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
@@ -20,8 +21,9 @@ func NewPage(
 	bCtrl bookmark.DoBookmark,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
+	ss status.Service,
 ) *Page {
-	sb := smartblock.New(m)
+	sb := smartblock.New(m, ss)
 	f := file.NewFile(sb, fileSource)
 	return &Page{
 		SmartBlock: sb,
