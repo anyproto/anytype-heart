@@ -23,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 const cafeUrl = "https://cafe1.anytype.io"
@@ -177,9 +178,10 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	newAcc.Name = req.Name
 
 	var (
-		details = []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
-		ss      = status.NewService(mw.Anytype.SyncStatus(), mw.Anytype.FileStatus(), mw.EventSender.Send, cafePeerId)
-		bs      = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, mw.EventSender.Send)
+		cafePid, _ = peer.Decode(cafePeerId)
+		details    = []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
+		ss         = status.NewService(mw.Anytype.SyncStatus(), mw.Anytype.FileStatus(), mw.EventSender.Send, cafePid)
+		bs         = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, mw.EventSender.Send)
 	)
 
 	if err := ss.Start(); err != nil {
@@ -502,9 +504,10 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	}
 
 	var (
-		acc = model.Account{Id: req.Id}
-		ss  = status.NewService(mw.Anytype.SyncStatus(), mw.Anytype.FileStatus(), mw.EventSender.Send, cafePeerId)
-		bs  = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, mw.EventSender.Send)
+		acc        = model.Account{Id: req.Id}
+		cafePid, _ = peer.Decode(cafePeerId)
+		ss         = status.NewService(mw.Anytype.SyncStatus(), mw.Anytype.FileStatus(), mw.EventSender.Send, cafePid)
+		bs         = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, mw.EventSender.Send)
 	)
 
 	if err := ss.Start(); err != nil {
