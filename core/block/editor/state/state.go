@@ -631,7 +631,7 @@ func (s *State) Relations() []*pbrelation.Relation {
 
 func (s *State) ObjectTypes() []string {
 	if s.objectTypes == nil && s.parent != nil {
-		return s.parent.objectTypes
+		return s.parent.ObjectTypes()
 	}
 	return s.objectTypes
 }
