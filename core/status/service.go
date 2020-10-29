@@ -12,7 +12,7 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-const threadStatusUpdatePeriod = 2 * time.Second
+const threadStatusUpdatePeriod = 3 * time.Second
 
 type Service interface {
 	Watch(tid thread.ID, eventCtx string)

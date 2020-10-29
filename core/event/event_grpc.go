@@ -11,7 +11,7 @@ import (
 )
 
 func NewGrpcSender() *GrpcSender {
-	return &GrpcSender{ServerMutex: sync.Mutex{}}
+	return &GrpcSender{}
 }
 
 type GrpcSender struct {

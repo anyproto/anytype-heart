@@ -185,7 +185,7 @@ type service struct {
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
 	history      history.History
-	m            sync.RWMutex
+	m            sync.Mutex
 }
 
 func (s *service) init() {
