@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
@@ -247,8 +248,20 @@ func (bs *basic) SetDivStyle(ctx *state.Context, style model.BlockContentDivStyl
 }
 
 func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) (err error) {
-
-	return
+	s := bs.NewStateCtx(ctx)
+	b := s.Get(req.BlockId)
+	if b == nil {
+		return smartblock.ErrSimpleBlockNotFound
+	}
+	if !s.HasRelation(req.Key) {
+		return fmt.Errorf("relation with given key not found")
+	}
+	if rel, ok := b.(relation.Block); ok {
+		rel.SetKey(req.Key)
+	} else {
+		return fmt.Errorf("unexpected block type: %T (want Relation)", b)
+	}
+	return bs.Apply(s)
 }
 
 func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []simple.Block {

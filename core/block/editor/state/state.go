@@ -782,6 +782,15 @@ func (s *State) Copy() *State {
 	return copy
 }
 
+func (s *State) HasRelation(key string) bool {
+	for _, rel := range s.Relations() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
