@@ -106,6 +106,7 @@ func (r *service) Unwatch(tid thread.ID) {
 	defer r.mu.Unlock()
 
 	if stop, found := r.watchers[tid]; found {
+		delete(r.watchers, tid)
 		stop()
 	}
 }
@@ -144,7 +145,8 @@ func (r *service) Stop() {
 
 	// just shutdown all thread status watchers, connectivity tracking
 	// will be stopped automatically on closing the network layer
-	for _, stop := range r.watchers {
+	for tid, stop := range r.watchers {
+		delete(r.watchers, tid)
 		stop()
 	}
 }
