@@ -118,6 +118,43 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 	return response(pb.RpcObjectTypeRelationUpdateResponseError_NULL, nil)
 }
 
+func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
+	response := func(code pb.RpcObjectTypeRelationRemoveResponseErrorCode, err error) *pb.RpcObjectTypeRelationRemoveResponse {
+		m := &pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+	if err != nil {
+		if err == block.ErrUnknownObjectType {
+			return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
+		}
+
+		return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_ERROR, err)
+	}
+
+	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
+		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
+	}
+	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
+
+	err = mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.RemoveRelations(id, []string{req.RelationKey})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectTypeRelationRemoveResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
 	response := func(code pb.RpcObjectTypeCreateResponseErrorCode, otype *pbrelation.ObjectType, err error) *pb.RpcObjectTypeCreateResponse {
 		m := &pb.RpcObjectTypeCreateResponse{ObjectType: otype, Error: &pb.RpcObjectTypeCreateResponseError{Code: code}}
