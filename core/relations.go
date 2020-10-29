@@ -64,8 +64,10 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 	}
 
 	var relations []*pbrelation.Relation
+	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
+
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddRelations(objType.Url, req.Relations)
+		relations, err = bs.AddRelations(id, req.Relations)
 		if err != nil {
 			return err
 		}
@@ -99,8 +101,8 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
-	id := strings.TrimPrefix(objType.Url, objects.BundledObjectTypeURLPrefix)
 
+	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 	err = mw.doBlockService(func(bs block.Service) (err error) {
 		err = bs.UpdateRelations(id, []*pbrelation.Relation{req.Relation})
 		if err != nil {
