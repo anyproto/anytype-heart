@@ -119,6 +119,8 @@ service ClientCommands {
     rpc ObjectTypeRelationList (anytype.Rpc.ObjectType.Relation.List.Request) returns (anytype.Rpc.ObjectType.Relation.List.Response);
     rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
     rpc ObjectTypeRelationUpdate (anytype.Rpc.ObjectType.Relation.Update.Request) returns (anytype.Rpc.ObjectType.Relation.Update.Response);
+    rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);
+
     rpc ObjectTypeCreate (anytype.Rpc.ObjectType.Create.Request) returns (anytype.Rpc.ObjectType.Create.Response);
     rpc ObjectTypeList (anytype.Rpc.ObjectType.List.Request) returns (anytype.Rpc.ObjectType.List.Response);
 

@@ -94,10 +94,6 @@ func getRelationByKey(relations []*model.BlockContentDataviewRelation, key strin
 }
 
 func (filters filters) Filter(e query.Entry) bool {
-	if len(filters.Filters) == 0 {
-		return true
-	}
-
 	var details model.ObjectDetails
 	err := proto.Unmarshal(e.Value, &details)
 	if err != nil {
@@ -105,8 +101,33 @@ func (filters filters) Filter(e query.Entry) bool {
 		return false
 	}
 
-	if details.Details == nil {
+	if details.Details == nil || details.Details.Fields == nil {
+		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+
+	var foundType bool
+	if t, ok := details.Details.Fields["type"]; ok {
+		if list := t.GetListValue(); list != nil {
+			for _, val := range list.Values {
+				if val.GetStringValue() == filters.Schema.ObjType.Url {
+					foundType = true
+					break
+				}
+			}
+		}
+	} else {
+		if filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+			// backward compatibility in case we don't have type indexed for pages
+			foundType = true
+		}
+	}
+
+	if !foundType {
 		return false
+	}
+
+	if len(filters.Filters) == 0 {
+		return true
 	}
 
 	total := true

@@ -98,6 +98,11 @@ message Event {
 
             SmartBlockType type = 4;
 
+            message RelationWithValuePerObject {
+                string objectId = 1;
+                repeated anytype.relation.RelationWithValue relations = 2;
+            }
+
             message ObjectTypesPerObject {
                 string objectId = 1;
                 repeated string objectTypes = 2;
@@ -105,7 +110,9 @@ message Event {
 
             repeated anytype.relation.ObjectType objectTypes = 5; // object types for the actual object and all dependent objects
             repeated ObjectTypesPerObject objectTypesPerObject = 6; // objectType it to get default relations from
-            anytype.relation.ObjectType.Layout layout = 7; // the layout of the last objectType for this object
+            repeated RelationWithValuePerObject relationsPerObject = 7; // list of relations used in this object
+
+            anytype.relation.ObjectType.Layout layout = 8; //
         }
 
         /**

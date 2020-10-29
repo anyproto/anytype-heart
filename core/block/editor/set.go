@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -35,6 +36,7 @@ type Set struct {
 	basic.IHistory
 	dataview.Dataview
 	database.Router
+	stext.Text
 }
 
 func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {

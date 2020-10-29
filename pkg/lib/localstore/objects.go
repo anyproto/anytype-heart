@@ -43,9 +43,9 @@ const (
 	pageSchema = "https://anytype.io/schemas/page"
 )
 
-type filterPagesOnly struct{}
+type filterNotSystemObjects struct{}
 
-func (m *filterPagesOnly) Filter(e query.Entry) bool {
+func (m *filterNotSystemObjects) Filter(e query.Entry) bool {
 	keyParts := strings.Split(e.Key, "/")
 	id := keyParts[len(keyParts)-1]
 
@@ -55,7 +55,7 @@ func (m *filterPagesOnly) Filter(e query.Entry) bool {
 		return false
 	}
 
-	if t == smartblock.SmartBlockTypePage || t == smartblock.SmartBlockTypeProfilePage {
+	if t != smartblock.SmartBlockTypeArchive && t != smartblock.SmartBlockTypeHome && t != smartblock.SmartBlockTypeObjectType {
 		return true
 	}
 
@@ -85,7 +85,7 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{&filterPagesOnly{}}, dsq.Filters...)
+	dsq.Filters = append([]query.Filter{&filterNotSystemObjects{}}, dsq.Filters...)
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
@@ -124,27 +124,6 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 
 		if details.Details == nil || details.Details.Fields == nil {
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-
-		var foundType bool
-		if t, ok := details.Details.Fields["type"]; ok {
-			if list := t.GetListValue(); list != nil {
-				for _, val := range list.Values {
-					if val.GetStringValue() == sch.ObjType.Url {
-						foundType = true
-						break
-					}
-				}
-			}
-		} else {
-			if sch.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
-				// backward compatibility in case we don't have type indexed for pages
-				foundType = true
-			}
-		}
-
-		if !foundType {
-			continue
 		}
 
 		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)

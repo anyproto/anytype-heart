@@ -173,9 +173,10 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 }
 
 func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
-	for i, rel := range s.Relations() {
+	rels := s.Relations()
+	for i, rel := range rels {
 		if rel.Key == remove.Key {
-			s.relations = append(s.relations[:i], s.relations[i+1:]...)
+			s.relations = append(rels[:i], rels[i+1:]...)
 			return nil
 		}
 	}
