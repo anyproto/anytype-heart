@@ -674,6 +674,7 @@
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
     - [Event.Block.Show](#anytype.Event.Block.Show)
     - [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject)
+    - [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
     - [Event.Process](#anytype.Event.Process)
@@ -10308,9 +10309,10 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | deprecated, details for current and dependent smart blocks |
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
-| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | object types for the actual object and all dependent objects |
+| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | deprecated, details for current and dependent smart blocks |
 | objectTypesPerObject | [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject) | repeated | objectType it to get default relations from |
-| layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  | the layout of the last objectType for this object |
+| relationsPerObject | [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject) | repeated | list of relations used in this object |
+| layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
 
 
 
@@ -10327,6 +10329,22 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | objectId | [string](#string) |  |  |
 | objectTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Show.RelationWithValuePerObject"></a>
+
+### Event.Block.Show.RelationWithValuePerObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| relations | [relation.RelationWithValue](#anytype.relation.RelationWithValue) | repeated |  |
 
 
 
