@@ -75,29 +75,31 @@ func (r *service) Watch(tid thread.ID, eventCtx string) {
 	r.watchers[tid] = closer
 
 	go func() {
-		select {
-		case <-ticker.C:
-		case <-stop:
-			return
+		for {
+			select {
+			case <-ticker.C:
+			case <-stop:
+				return
+			}
+
+			// get sync status with cafe
+			s, _ := r.threads.Status(tid, r.cafe)
+			var msg = pb.EventStatusThreadSync{LastPull: s.LastPull}
+
+			// Interpret sync status: we are interested in download stats mostly
+			switch s.Down {
+			case net.Unknown:
+				msg.Status = pb.EventStatusThreadSync_Unknown
+			case net.InProgress:
+				msg.Status = pb.EventStatusThreadSync_InProgress
+			case net.Success:
+				msg.Status = pb.EventStatusThreadSync_Success
+			case net.Failure:
+				msg.Status = pb.EventStatusThreadSync_Failure
+			}
+
+			r.sendEvent(eventCtx, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &msg})
 		}
-
-		// get sync status with cafe
-		s, _ := r.threads.Status(tid, r.cafe)
-		var msg = pb.EventStatusThreadSync{LastPull: s.LastPull}
-
-		// Interpret sync status: we are interested in download stats mostly
-		switch s.Down {
-		case net.Unknown:
-			msg.Status = pb.EventStatusThreadSync_Unknown
-		case net.InProgress:
-			msg.Status = pb.EventStatusThreadSync_InProgress
-		case net.Success:
-			msg.Status = pb.EventStatusThreadSync_Success
-		case net.Failure:
-			msg.Status = pb.EventStatusThreadSync_Failure
-		}
-
-		r.sendEvent(eventCtx, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &msg})
 	}()
 }
 
