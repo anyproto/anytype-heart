@@ -1272,14 +1272,23 @@ func (mw *Middleware) BlockObjectTypeRemove(req *pb.RpcBlockObjectTypeRemoveRequ
 	panic("implement me")
 }
 
-func (mw *Middleware) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
-	panic("implement me")
-}
+func (mw *Middleware) BlockRelationSetKey(req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockRelationSetKeyResponseErrorCode, err error) *pb.RpcBlockRelationSetKeyResponse {
+		m := &pb.RpcBlockRelationSetKeyResponse{Error: &pb.RpcBlockRelationSetKeyResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
 
-func (mw *Middleware) BlockRelationUpdate(req *pb.RpcBlockRelationUpdateRequest) *pb.RpcBlockRelationUpdateResponse {
-	panic("implement me")
-}
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetRelationKey(ctx, *req)
+	}); err != nil {
+		return response(pb.RpcBlockRelationSetKeyResponseError_UNKNOWN_ERROR, err)
+	}
 
-func (mw *Middleware) BlockRelationRemove(req *pb.RpcBlockRelationRemoveRequest) *pb.RpcBlockRelationRemoveResponse {
-	panic("implement me")
+	return response(pb.RpcBlockRelationSetKeyResponseError_NULL, nil)
 }

@@ -24,6 +24,7 @@ type Basic interface {
 	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
+	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -243,6 +244,11 @@ func (bs *basic) SetDivStyle(ctx *state.Context, style model.BlockContentDivStyl
 		}
 	}
 	return bs.Apply(s)
+}
+
+func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) (err error) {
+
+	return
 }
 
 func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []simple.Block {

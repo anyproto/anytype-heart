@@ -40,6 +40,7 @@ message Event {
             Block.Set.Dataview.Records blockSetDataviewRecords = 18;
             Block.Set.Dataview.View blockSetDataviewView = 19;
             Block.Delete.Dataview.View blockDeleteDataviewView = 20;
+            Block.Set.Relation blockSetRelation = 21;
 
             Block.Show blockShow = 30;
             User.Block.Join userBlockJoin = 31;
@@ -164,6 +165,14 @@ message Event {
                     anytype.model.Block.Content.Dataview.View view = 3;
                     uint32 offset = 4; // middleware will try to preserve the current aciveview's offset&limit but may reset it in case it becomes invalid or not actual anymore
                     uint32 limit = 5;
+                }
+            }
+
+            message Relation {
+                string id = 1;
+                Key key = 2;
+                message Key {
+                    string value = 1;
                 }
             }
 

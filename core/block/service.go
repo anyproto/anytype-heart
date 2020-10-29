@@ -145,6 +145,8 @@ type Service interface {
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
+	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
+
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
 
@@ -917,6 +919,12 @@ func (s *service) BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBook
 		return err
 	})
 	return
+}
+
+func (s *service) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) (err error) {
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.SetRelationKey(ctx, req)
+	})
 }
 
 func (s *service) Reindex(id string) (err error) {
