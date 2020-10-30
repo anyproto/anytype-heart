@@ -108,6 +108,7 @@ service ClientCommands {
     rpc BlockObjectTypeRemove (anytype.Rpc.Block.ObjectType.Remove.Request) returns (anytype.Rpc.Block.ObjectType.Remove.Response);
 
     rpc BlockRelationSetKey (anytype.Rpc.Block.Relation.SetKey.Request) returns (anytype.Rpc.Block.Relation.SetKey.Response);
+    rpc BlockRelationAdd (anytype.Rpc.Block.Relation.Add.Request) returns (anytype.Rpc.Block.Relation.Add.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);

@@ -1292,3 +1292,24 @@ func (mw *Middleware) BlockRelationSetKey(req *pb.RpcBlockRelationSetKeyRequest)
 
 	return response(pb.RpcBlockRelationSetKeyResponseError_NULL, nil)
 }
+
+func (mw *Middleware) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockRelationAddResponseErrorCode, err error) *pb.RpcBlockRelationAddResponse {
+		m := &pb.RpcBlockRelationAddResponse{Error: &pb.RpcBlockRelationAddResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.AddRelationBlock(ctx, *req)
+	}); err != nil {
+		return response(pb.RpcBlockRelationAddResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockRelationAddResponseError_NULL, nil)
+}
