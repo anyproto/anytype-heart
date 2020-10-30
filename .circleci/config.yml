@@ -401,7 +401,7 @@ jobs:
             cp ./pkg/lib/pb/model/protos/*.proto protobuf/protos
             cp ./pkg/lib/schema/*.json schemas
 
-            protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/service/* pkg/lib/pb/model/protos/*
+            protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/* pkg/lib/pb/model/protos/*.proto
       - run:
           name: collect artifacts
           command: |
