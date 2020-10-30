@@ -114,14 +114,13 @@ func newFixture(t *testing.T) *fixture {
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(pb.SmartBlockType_Page)
 	source.EXPECT().Anytype().AnyTimes().Return(nil)
-	source.EXPECT().Virtual().AnyTimes()
 	metaSubscriber := mockMeta.NewMockSubscriber(ctrl)
 	metaPubSub := mockMeta.NewMockPubSub(ctrl)
 	metaService := mockMeta.NewMockService(ctrl)
 	metaService.EXPECT().PubSub().AnyTimes().Return(metaPubSub)
 	metaPubSub.EXPECT().NewSubscriber().AnyTimes().Return(metaSubscriber)
 	return &fixture{
-		SmartBlock:     New(metaService, nil),
+		SmartBlock:     New(metaService),
 		t:              t,
 		ctrl:           ctrl,
 		source:         source,

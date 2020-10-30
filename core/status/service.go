@@ -61,8 +61,6 @@ func (r *service) Watch(tid thread.ID, eventCtx string) {
 	defer r.mu.Unlock()
 
 	if _, exist := r.watchers[tid]; exist {
-		// practically unreachable as we don't expect two
-		// processes simultaneously watching the same thread
 		return
 	}
 

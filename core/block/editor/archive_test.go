@@ -11,7 +11,7 @@ import (
 func TestArchive_Archive(t *testing.T) {
 	t.Run("archive", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c, nil)
+		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(nil, true))
 
@@ -28,7 +28,7 @@ func TestArchive_Archive(t *testing.T) {
 	})
 	t.Run("archive archived", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c, nil)
+		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(nil, true))
 
@@ -44,7 +44,7 @@ func TestArchive_Archive(t *testing.T) {
 func TestArchive_UnArchive(t *testing.T) {
 	t.Run("unarchive", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c, nil)
+		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(nil, true))
 
@@ -60,7 +60,7 @@ func TestArchive_UnArchive(t *testing.T) {
 	})
 	t.Run("unarchived", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c, nil)
+		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(nil, true))
 
@@ -77,7 +77,7 @@ func TestArchive_UnArchive(t *testing.T) {
 func TestArchive_Delete(t *testing.T) {
 	t.Run("delete", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c, nil)
+		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(nil, true))
 

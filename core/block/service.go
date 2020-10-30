@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -169,6 +171,7 @@ func NewService(
 
 type openedBlock struct {
 	smartblock.SmartBlock
+	threadId  thread.ID
 	lastUsage time.Time
 	locked    bool
 	refs      int32
@@ -233,6 +236,17 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		v.SmartblockOpened(ctx)
 	}
 
+	if s.status != nil &&
+		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
+		ob.threadId == thread.Undef {
+		if tid, err := thread.Decode(ob.Id()); err == nil {
+			ob.threadId = tid
+			s.status.Watch(tid, ob.Id())
+		} else {
+			log.Warnf("can't restore thread ID: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -257,17 +271,27 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	return bs.Id(), nil
 }
 
-func (s *service) CloseBlock(id string) (err error) {
+func (s *service) CloseBlock(id string) error {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if ob, ok := s.openedBlocks[id]; ok {
-		ob.Lock()
-		defer ob.Unlock()
-		ob.SetEventFunc(nil)
-		ob.locked = false
-		return
+
+	ob, ok := s.openedBlocks[id]
+	if !ok {
+		return ErrBlockNotFound
 	}
-	return ErrBlockNotFound
+
+	ob.Lock()
+	defer ob.Unlock()
+	ob.SetEventFunc(nil)
+	ob.locked = false
+
+	if s.status != nil &&
+		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
+		ob.threadId == thread.Undef {
+		s.status.Unwatch(ob.threadId)
+	}
+
+	return nil
 }
 
 func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
@@ -951,15 +975,15 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 	}
 	switch sc.Type() {
 	case pb.SmartBlockType_Page:
-		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview, s.status)
+		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
 	case pb.SmartBlockType_Home:
-		sb = editor.NewDashboard(s.meta, s, s.status)
+		sb = editor.NewDashboard(s.meta, s)
 	case pb.SmartBlockType_Archive:
-		sb = editor.NewArchive(s.meta, s, s.status)
+		sb = editor.NewArchive(s.meta, s)
 	case pb.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta, s, s.status)
+		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
-		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent, s.status)
+		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

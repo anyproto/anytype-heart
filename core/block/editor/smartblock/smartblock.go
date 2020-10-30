@@ -13,14 +13,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 type ApplyFlag int
@@ -46,8 +44,8 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New(ms meta.Service, ss status.Service) SmartBlock {
-	return &smartBlock{meta: ms, status: ss}
+func New(ms meta.Service) SmartBlock {
+	return &smartBlock{meta: ms}
 }
 
 type SmartblockOpenListner interface {
@@ -90,8 +88,6 @@ type smartBlock struct {
 	meta            meta.Service
 	metaSub         meta.Subscriber
 	metaData        *core.SmartBlockMeta
-	status          status.Service
-	threadId        thread.ID
 	disableLayouts  bool
 	onNewStateHooks []func()
 	onCloseHooks    []func()
@@ -112,15 +108,6 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
-	if !s.Virtual() && sb.status != nil {
-		if tid, err := thread.Decode(s.Id()); err == nil {
-			sb.threadId = tid
-			sb.status.Watch(tid, s.Id())
-		} else {
-			log.Warnf("can't restore thread ID: %v", err)
-		}
-	}
-
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -452,9 +439,6 @@ func (sb *smartBlock) Reindex() (err error) {
 
 func (sb *smartBlock) Close() (err error) {
 	sb.execHooks(HookOnClose)
-	if sb.threadId != thread.Undef && sb.status != nil {
-		sb.status.Unwatch(sb.threadId)
-	}
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}

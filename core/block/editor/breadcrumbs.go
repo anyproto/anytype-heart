@@ -14,7 +14,7 @@ var log = logging.Logger("anytype-mw-editor")
 
 func NewBreadcrumbs(m meta.Service) *Breadcrumbs {
 	return &Breadcrumbs{
-		SmartBlock: smartblock.New(m, nil),
+		SmartBlock: smartblock.New(m),
 	}
 }
 

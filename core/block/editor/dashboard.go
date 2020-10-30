@@ -11,13 +11,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewDashboard(m meta.Service, importServices _import.Services, ss status.Service) *Dashboard {
-	sb := smartblock.New(m, ss)
+func NewDashboard(m meta.Service, importServices _import.Services) *Dashboard {
+	sb := smartblock.New(m)
 	return &Dashboard{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
