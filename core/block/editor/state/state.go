@@ -631,7 +631,7 @@ func (s *State) Relations() []*pbrelation.Relation {
 
 func (s *State) ObjectTypes() []string {
 	if s.objectTypes == nil && s.parent != nil {
-		return s.parent.objectTypes
+		return s.parent.ObjectTypes()
 	}
 	return s.objectTypes
 }
@@ -780,6 +780,15 @@ func (s *State) Copy() *State {
 		details: pbtypes.CopyStruct(s.details),
 	}
 	return copy
+}
+
+func (s *State) HasRelation(key string) bool {
+	for _, rel := range s.Relations() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 type linkSource interface {

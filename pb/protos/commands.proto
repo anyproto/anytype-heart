@@ -1174,15 +1174,39 @@ message Rpc {
         }
 
         message Relation {
+            message SetKey {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    string key = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
             message Add {
                 message Request {
                     string contextId = 1;
-                    repeated anytype.relation.Relation relations = 2;
+                    string blockId = 2;
+                    anytype.relation.Relation relation = 3;
                 }
 
                 message Response {
                     Error error = 1;
-                    repeated anytype.relation.Relation relations = 2;
+                    ResponseEvent event = 2;
 
                     message Error {
                         Code code = 1;
@@ -1192,83 +1216,6 @@ message Rpc {
                             NULL = 0;
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
-                            UNKNOWN_OBJECT_TYPE_URL = 3;
-                            READONLY_OBJECT_TYPE = 4;
-                            // ...
-                        }
-                    }
-                }
-            }
-
-            message Remove {
-                message Request {
-                    string contextId = 1;
-                    string relationKey = 2;
-                }
-
-                message Response {
-                    Error error = 1;
-
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
-
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            UNKNOWN_OBJECT_TYPE_URL = 3;
-                            READONLY_OBJECT_TYPE = 4;
-                            CANNOT_REMOVE_RELATION_REQUIRED_BY_OBJECTTYPE = 5;
-                            // ...
-                        }
-                    }
-                }
-            }
-
-            message Update {
-                message Request {
-                    string contextId = 1;
-                    anytype.relation.Relation relation = 2;
-                }
-
-                message Response {
-                    Error error = 1;
-
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
-
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            UNKNOWN_OBJECT_TYPE_URL = 3;
-                            READONLY_OBJECT_TYPE = 4;
-                            // ...
-                        }
-                    }
-                }
-            }
-
-            message List {
-                message Request {
-                    string contextId = 1;
-                }
-
-                message Response {
-                    Error error = 1;
-                    repeated anytype.relation.Relation relations = 2;
-
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
-
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            // ...
                         }
                     }
                 }

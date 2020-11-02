@@ -10,6 +10,7 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -198,4 +199,49 @@ func TestBasic_InternalPaste(t *testing.T) {
 	s := sb.NewState()
 	require.Len(t, s.Blocks(), 6)
 	assert.Len(t, s.Pick(s.RootId()).Model().ChildrenIds, 2)
+}
+
+func TestBasic_SetRelationKey(t *testing.T) {
+	fillSb := func(sb *smarttest.SmartTest) {
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(simple.New(&model.Block{Id: "1"})).
+			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
+				Relation: &model.BlockContentRelation{},
+			}}))
+		sb.AddRelations([]*pbrelation.Relation{
+			{Key: "key"},
+		})
+	}
+	t.Run("correct", func(t *testing.T) {
+		sb := smarttest.New("test")
+		fillSb(sb)
+		b := NewBasic(sb)
+		err := b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
+			BlockId: "2",
+			Key:     "key",
+		})
+		require.NoError(t, err)
+		require.Len(t, sb.Results.Events, 1)
+		require.Len(t, sb.Results.Events[0], 1)
+		assert.Equal(t, "key", sb.Results.Events[0][0].Msg.GetBlockSetRelation().GetKey().Value)
+		assert.Equal(t, "key", sb.NewState().Pick("2").Model().GetRelation().Key)
+	})
+	t.Run("not relation block", func(t *testing.T) {
+		sb := smarttest.New("test")
+		fillSb(sb)
+		b := NewBasic(sb)
+		require.Error(t, b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
+			BlockId: "1",
+			Key:     "key",
+		}))
+	})
+	t.Run("relation not found", func(t *testing.T) {
+		sb := smarttest.New("test")
+		fillSb(sb)
+		b := NewBasic(sb)
+		require.Error(t, b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
+			BlockId: "2",
+			Key:     "not exists",
+		}))
+	})
 }

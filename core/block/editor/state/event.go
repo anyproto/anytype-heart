@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -105,6 +106,15 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				return f.DeleteView(o.BlockDeleteDataviewView.Id)
 			}
 			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockSetRelation:
+		if err = apply(o.BlockSetRelation.Id, func(b simple.Block) error {
+			if f, ok := b.(relation.Block); ok {
+				return f.ApplyEvent(o.BlockSetRelation)
+			}
+			return fmt.Errorf("not a relation block")
 		}); err != nil {
 			return
 		}

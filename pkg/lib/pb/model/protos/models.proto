@@ -33,6 +33,7 @@ message Block {
         Content.Icon icon = 19;
         Content.Link link = 20;
         Content.Dataview dataview = 21;
+        Content.Relation relation = 22;
     }
 
 
@@ -287,6 +288,10 @@ message Block {
                     NotEmpty = 11;
                 }
             }
+        }
+
+        message Relation {
+            string key = 1;
         }
     }
 }
