@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
@@ -25,6 +26,8 @@ var log = logging.Logger("anytype-mw-editor")
 
 type Dataview interface {
 	GetObjectTypeURL(ctx *state.Context, blockId string) (string, error)
+	GetAggregatedRelations(ctx *state.Context, blockId string) ([]*pbrelation.Relation, error)
+
 	UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
 	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
@@ -59,6 +62,45 @@ type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
 	ObjectTypeGetter
 	dataviews []*dataviewImpl
+}
+
+func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, blockId string) ([]*pbrelation.Relation, error) {
+	s := d.NewStateCtx(ctx)
+
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return nil, err
+	}
+
+	dv := d.getDataviewImpl(tb)
+	objectType, err := d.GetObjectType(tb.GetSource())
+	if err != nil {
+		return nil, err
+	}
+
+	var relations []*pbrelation.Relation
+
+	sch := schema.New(objectType)
+	aggregatedRelations, err := dv.Database.AggregateRelations(&sch)
+	if err != nil {
+		return nil, err
+	}
+
+	var m = make(map[string]struct{}, len(aggregatedRelations))
+	for _, rel := range objectType.Relations {
+		m[rel.Key] = struct{}{}
+		relations = append(relations, pbtypes.CopyRelation(rel))
+	}
+
+	for _, rel := range aggregatedRelations {
+		if _, exists := m[rel.Key]; exists {
+			continue
+		}
+		m[rel.Key] = struct{}{}
+		relations = append(relations, pbtypes.CopyRelation(rel))
+	}
+
+	return relations, nil
 }
 
 func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataviewImpl {

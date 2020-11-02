@@ -44,7 +44,7 @@ func (p *Dashboard) init() (err error) {
 		template.WithDetailName("Home"),
 		template.WithDetailIconEmoji("🏠"),
 		template.WithRootLink(p.Anytype().PredefinedBlocks().Archive, model.BlockContentLink_Archive),
-		template.WithRootLink(p.Anytype().PredefinedBlocks().SetPages, model.BlockContentLink_Archive),
+		template.WithRootLink(p.Anytype().PredefinedBlocks().SetPages, model.BlockContentLink_Dataview),
 	); err != nil {
 		return
 	}

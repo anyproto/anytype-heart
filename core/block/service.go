@@ -131,6 +131,7 @@ type Service interface {
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
 	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
+	GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockGetDataviewAvailableRelationsRequest) (relations []*pbrelation.Relation, err error)
 	GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (string, error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error
 	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
@@ -634,6 +635,15 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.SetFields(ctx, req.BlockFields...)
 	})
+}
+
+func (s *service) GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockGetDataviewAvailableRelationsRequest) (relations []*pbrelation.Relation, err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		relations, err = b.GetAggregatedRelations(ctx, req.BlockId)
+		return err
+	})
+
+	return
 }
 
 func (s *service) GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (objectType string, err error) {
@@ -1256,7 +1266,8 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source: objType.Url,
+			Relations: objType.Relations,
+			Source:    objType.Url,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   bson.NewObjectId().Hex(),

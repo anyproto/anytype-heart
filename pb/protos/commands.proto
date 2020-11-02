@@ -1268,7 +1268,6 @@ message Rpc {
                             NULL = 0;
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
-                            UNKNOWN_OBJECT_TYPE_URL = 3;
                             // ...
                         }
                     }

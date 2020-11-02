@@ -23,6 +23,7 @@ type Record struct {
 
 type Reader interface {
 	Query(schema *schema.Schema, q Query) (records []Record, total int, err error)
+	AggregateRelations(schema *schema.Schema) (relations []*pbrelation.Relation, err error)
 }
 
 type Writer interface {

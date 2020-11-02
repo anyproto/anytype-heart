@@ -198,6 +198,7 @@ message Block {
             string source = 1;
             repeated View views = 2;
             string schemaURL = 3; // deprecated
+            repeated anytype.relation.Relation relations = 4;
 
             message View {
                 string id = 1;

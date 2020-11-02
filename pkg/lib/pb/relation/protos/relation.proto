@@ -16,10 +16,8 @@ message ObjectType {
         contact = 1;
         task = 2;
         set = 3;
-
     }
 }
-
 
 message RelationWithValue {
     Relation relation = 1;
@@ -67,6 +65,7 @@ enum RelationFormat {
 
     object = 100; // relation can has objectType to specify objectType
 }
+
 message Relations {
     repeated Relation relations = 1;
 }

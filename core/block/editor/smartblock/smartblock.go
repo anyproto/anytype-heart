@@ -175,7 +175,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 					Type:                 sb.Type(),
 					Blocks:               sb.Blocks(),
 					Details:              details,
-					RelationsPerObject:   relations,
+					Relations:            relations,
 					ObjectTypesPerObject: objectTypesUrlByObject,
 					ObjectTypes:          objectTypes,
 					Layout:               layout,
@@ -186,7 +186,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relationsByObject []*pb.EventBlockShowRelationWithValuePerObject, objectTypesUrlByObject []*pb.EventBlockShowObjectTypesPerObject, objectTypes []*pbrelation.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations []*pbrelation.Relation, objectTypesUrlByObject []*pb.EventBlockShowObjectTypesPerObject, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -215,6 +215,13 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 		}
 	}
 
+	var objectTypesUrls []string
+	for ot := range objectTypesMap {
+		objectTypesUrls = append(objectTypesUrls, ot)
+	}
+
+	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
+
 	timeout := time.After(time.Second)
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
@@ -239,28 +246,16 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 			}
 
 			if d.BlockId == sb.Id() {
-				var relations []*pbrelation.Relation
+				// only for the actual sb
 				for i := range objectTypes {
 					relations = append(relations, objectTypes[i].Relations...)
 				}
-				if d.Relations != nil {
-					relations = append(relations, d.Relations...)
-				}
-				mergedRelations := relation.MergeRelations(relations)
-				relationsByObject = append(relationsByObject, &pb.EventBlockShowRelationWithValuePerObject{
-					ObjectId:  d.BlockId,
-					Relations: relation.FillRelations(mergedRelations, d.Details),
-				})
+
+				relations = relation.MergeAndSortRelations(relations, d.Relations, d.Details)
 			}
 		}
 	}
 
-	var objectTypesUrls []string
-	for ot := range objectTypesMap {
-		objectTypesUrls = append(objectTypesUrls, ot)
-	}
-
-	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
 	defer func() {
 		go func() {
 			for d := range ch {
@@ -277,17 +272,35 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	sb.Lock()
 	defer sb.Unlock()
 	if sb.sendEvent != nil && d.BlockId != sb.Id() {
-		sb.sendEvent(&pb.Event{
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfBlockSetDetails{
-						BlockSetDetails: &pb.EventBlockSetDetails{
-							Id:      d.BlockId,
-							Details: d.Details,
-						},
+		msgs := []*pb.EventMessage{}
+		if d.Details != nil {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfBlockSetDetails{
+					BlockSetDetails: &pb.EventBlockSetDetails{
+						Id:      d.BlockId,
+						Details: d.Details,
 					},
 				},
-			},
+			})
+		}
+
+		if d.Relations != nil {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfBlockSetRelations{
+					BlockSetRelations: &pb.EventBlockSetRelations{
+						Id:        d.BlockId,
+						Relations: d.Relations,
+					},
+				},
+			})
+		}
+
+		if len(msgs) == 0 {
+			return
+		}
+
+		sb.sendEvent(&pb.Event{
+			Messages:  msgs,
 			ContextId: sb.Id(),
 		})
 	}

@@ -258,12 +258,15 @@ type ClientCommandsClient interface {
 	NavigationGetObjectInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetObjectInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetObjectInfoWithLinksResponse, error)
 	// PageCreate just creates the new page, without adding the link to it from some other page
 	PageCreate(ctx context.Context, in *pb.RpcPageCreateRequest, opts ...grpc.CallOption) (*pb.RpcPageCreateResponse, error)
+	// SetCreate just creates the new set, without adding the link to it from some other page
 	SetCreate(ctx context.Context, in *pb.RpcSetCreateRequest, opts ...grpc.CallOption) (*pb.RpcSetCreateResponse, error)
 	ObjectTypeRelationList(ctx context.Context, in *pb.RpcObjectTypeRelationListRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationListResponse, error)
 	ObjectTypeRelationAdd(ctx context.Context, in *pb.RpcObjectTypeRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationAddResponse, error)
 	ObjectTypeRelationUpdate(ctx context.Context, in *pb.RpcObjectTypeRelationUpdateRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationUpdateResponse, error)
 	ObjectTypeRelationRemove(ctx context.Context, in *pb.RpcObjectTypeRelationRemoveRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationRemoveResponse, error)
+	// ObjectTypeCreate creates the new object type
 	ObjectTypeCreate(ctx context.Context, in *pb.RpcObjectTypeCreateRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeCreateResponse, error)
+	// ObjectTypeList lists all object types both bundled and created by user
 	ObjectTypeList(ctx context.Context, in *pb.RpcObjectTypeListRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeListResponse, error)
 	Ping(ctx context.Context, in *pb.RpcPingRequest, opts ...grpc.CallOption) (*pb.RpcPingResponse, error)
 	ProcessCancel(ctx context.Context, in *pb.RpcProcessCancelRequest, opts ...grpc.CallOption) (*pb.RpcProcessCancelResponse, error)
@@ -1265,12 +1268,15 @@ type ClientCommandsServer interface {
 	NavigationGetObjectInfoWithLinks(*pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse
 	// PageCreate just creates the new page, without adding the link to it from some other page
 	PageCreate(*pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse
+	// SetCreate just creates the new set, without adding the link to it from some other page
 	SetCreate(*pb.RpcSetCreateRequest) *pb.RpcSetCreateResponse
 	ObjectTypeRelationList(*pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse
 	ObjectTypeRelationAdd(*pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse
 	ObjectTypeRelationUpdate(*pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse
 	ObjectTypeRelationRemove(*pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse
+	// ObjectTypeCreate creates the new object type
 	ObjectTypeCreate(*pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse
+	// ObjectTypeList lists all object types both bundled and created by user
 	ObjectTypeList(*pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse
 	Ping(*pb.RpcPingRequest) *pb.RpcPingResponse
 	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse

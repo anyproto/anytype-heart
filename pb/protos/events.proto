@@ -36,6 +36,7 @@ message Event {
             Block.Set.Bookmark blockSetBookmark = 14;
             Block.Set.Align blockSetAlign = 15;
             Block.Set.Details blockSetDetails = 16;
+            Block.Set.Relations blockSetRelations = 21;
             Block.Set.Div blockSetDiv = 17;
             Block.Set.Dataview.Records blockSetDataviewRecords = 18;
             Block.Set.Dataview.View blockSetDataviewView = 19;
@@ -109,7 +110,7 @@ message Event {
 
             repeated anytype.relation.ObjectType objectTypes = 5; // object types for the actual object and all dependent objects
             repeated ObjectTypesPerObject objectTypesPerObject = 6; // objectType it to get default relations from
-            repeated RelationWithValuePerObject relationsPerObject = 7; // list of relations used in this object
+            repeated anytype.relation.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
 
             anytype.relation.ObjectType.Layout layout = 8; //
         }
@@ -148,6 +149,11 @@ message Event {
             message Details {
                 string id = 1;
                 google.protobuf.Struct details = 2;
+            }
+
+            message Relations {
+                string id = 1;
+                repeated anytype.relation.Relation relations = 2;
             }
 
 

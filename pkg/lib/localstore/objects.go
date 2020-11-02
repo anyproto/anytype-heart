@@ -133,6 +133,45 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	return results, total, nil
 }
 
+func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbrelation.Relation, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	q := database.Query{}
+	dsq := q.DSQuery(sch)
+	dsq.Offset = 0
+	dsq.Limit = 0
+	dsq.Prefix = pagesRelationsBase.String() + "/"
+	dsq.Filters = append([]query.Filter{&filterNotSystemObjects{}}, dsq.Filters...)
+	res, err := txn.Query(dsq)
+	if err != nil {
+		return nil, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	var relationsKeysMaps map[string]struct{}
+
+	for rec := range res.Next() {
+		var rels pbrelation.Relations
+		if err = proto.Unmarshal(rec.Value, &rels); err != nil {
+			log.Errorf("failed to unmarshal: %s", err.Error())
+			continue
+		}
+
+		for i, rel := range rels.Relations {
+			if _, exists := relationsKeysMaps[rel.Key]; exists {
+				continue
+			}
+
+			relationsKeysMaps[rel.Key] = struct{}{}
+			relations = append(relations, rels.Relations[i])
+		}
+	}
+
+	return relations, nil
+}
+
 func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
@@ -142,7 +181,6 @@ func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) er
 
 	detailsKey := pagesDetailsBase.ChildString(page.Id)
 	relationsKey := pagesRelationsBase.ChildString(page.Id)
-
 	snippetKey := pagesSnippetBase.ChildString(page.Id)
 
 	if exists, err := txn.Has(detailsKey); err != nil {

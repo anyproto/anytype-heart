@@ -251,12 +251,15 @@ type ClientCommandsHandler interface {
 	NavigationGetObjectInfoWithLinks(*pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse
 	// PageCreate just creates the new page, without adding the link to it from some other page
 	PageCreate(*pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse
+	// SetCreate just creates the new set, without adding the link to it from some other page
 	SetCreate(*pb.RpcSetCreateRequest) *pb.RpcSetCreateResponse
 	ObjectTypeRelationList(*pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse
 	ObjectTypeRelationAdd(*pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse
 	ObjectTypeRelationUpdate(*pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse
 	ObjectTypeRelationRemove(*pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse
+	// ObjectTypeCreate creates the new object type
 	ObjectTypeCreate(*pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse
+	// ObjectTypeList lists all object types both bundled and created by user
 	ObjectTypeList(*pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse
 	Ping(*pb.RpcPingRequest) *pb.RpcPingResponse
 	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse

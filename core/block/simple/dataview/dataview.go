@@ -36,6 +36,7 @@ type Block interface {
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
+	GetSource() string
 	SetSource(source string) error
 
 	FillSmartIds(ids []string) []string
@@ -192,4 +193,8 @@ func (d *Dataview) SetSource(source string) error {
 
 	d.content.Source = source
 	return nil
+}
+
+func (d *Dataview) GetSource() string {
+	return d.content.Source
 }

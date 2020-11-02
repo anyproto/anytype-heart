@@ -1099,24 +1099,19 @@ func (mw *Middleware) BlockGetDataviewAvailableRelations(req *pb.RpcBlockGetData
 		return m
 	}
 	var (
-		err        error
-		objTypeUrl string
+		err       error
+		relations []*relation.Relation
 	)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		objTypeUrl, err = bs.GetDataviewObjectType(ctx, req.ContextId, req.BlockId)
+		relations, err = bs.GetAggregatedRelations(ctx, *req)
 		return
 	})
-
-	objType, err := mw.getObjectType(objTypeUrl)
 	if err != nil {
-		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_UNKNOWN_ERROR, nil, err)
-		}
-		return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_UNKNOWN_ERROR, nil, err)
+		return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_BAD_INPUT, relations, err)
 	}
 
-	return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_NULL, objType.Relations, nil)
+	return response(pb.RpcBlockGetDataviewAvailableRelationsResponseError_NULL, relations, nil)
 }
 
 func (mw *Middleware) BlockSetDataviewView(req *pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse {
