@@ -69,11 +69,7 @@ func (a *Anytype) checkPins() {
 		log.Debugf("cafe status: queued for pinning: %d, pinned: %d, failed: %d, local: %d",
 			queued, pinned, len(failedCIDs), onlyLocal.Len())
 
-		a.pinRegistry.Update(FilePinSummary{
-			Pinned:     pinned,
-			InProgress: queued + onlyLocal.Len(),
-			Failed:     len(failedCIDs),
-		})
+		a.pinRegistry.Update(pinned, queued+onlyLocal.Len(), len(failedCIDs))
 
 		// add local files for the sync
 		for _, cid := range onlyLocal.List() {
@@ -114,6 +110,7 @@ func (a *Anytype) deriveContext(timeout time.Duration) context.Context {
 
 type FilePinSummary struct {
 	Pinned, InProgress, Failed int
+	CheckedAt                  int64
 }
 
 type FileInfo interface {
@@ -139,7 +136,14 @@ func (f *filePinRegistry) FileSummary() FilePinSummary {
 	return f.summary
 }
 
-func (f *filePinRegistry) Update(summary FilePinSummary) {
+func (f *filePinRegistry) Update(pinned, inProgress, failed int) {
+	var summary = FilePinSummary{
+		Pinned:     pinned,
+		InProgress: inProgress,
+		Failed:     failed,
+		CheckedAt:  time.Now().Unix(),
+	}
+
 	f.mu.Lock()
 	f.summary = summary
 	f.mu.Unlock()
