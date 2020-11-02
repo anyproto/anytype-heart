@@ -12,12 +12,15 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-const threadStatusUpdatePeriod = 3 * time.Second
+const (
+	threadStatusUpdatePeriod = 3 * time.Second
+)
 
 type Service interface {
 	Watch(tid thread.ID, eventCtx string)
 	Unwatch(tid thread.ID)
 	ThreadSummary() net.SyncSummary
+	FileSummary() core.FilePinSummary
 
 	// TODO extend with specific requests e.g:
 	//  - peer connectivity map
@@ -50,9 +53,9 @@ func NewService(
 		cafe:     cafe,
 		threads:  ts,
 		files:    fs,
+		emitter:  emitter,
 		watchers: make(map[thread.ID]func()),
 		connMap:  make(map[peer.ID]bool),
-		emitter:  emitter,
 	}
 }
 
@@ -116,7 +119,19 @@ func (r *service) ThreadSummary() net.SyncSummary {
 	return ps
 }
 
+func (r *service) FileSummary() core.FilePinSummary {
+	return r.files.FileSummary()
+}
+
 func (r *service) Start() error {
+	if err := r.startConnectivityTracking(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *service) startConnectivityTracking() error {
 	connEvents, err := r.threads.Connectivity()
 	if err != nil {
 		return err
