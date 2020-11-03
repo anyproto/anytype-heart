@@ -27,6 +27,7 @@ func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
 	sb.IHistory = basic.NewHistory(sb)
 	sb.Dataview = dataview.NewDataview(sb, dbCtrl)
 	sb.Router = database.New(dbCtrl)
+	sb.Text = stext.NewText(sb.SmartBlock)
 	return sb
 }
 
